@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Journal — Design System & Spec</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ─── DESIGN TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:          #F6F5F1;
+      --panel:       #FFFFFF;
+      --panel-2:     #FAFAF7;
+      --ink:         #16140F;
+      --ink-2:       #45413A;
+      --ink-3:       #8A8678;
+      --line:        #ECEAE2;
+      --line-2:      #E2DFD4;
+      --chip:        #F2EFE7;
+      --accent:      oklch(58% 0.16 264);
+      --accent-soft: oklch(95% 0.03 264);
+      --win:         oklch(63% 0.16 152);
+      --win-soft:    oklch(94% 0.06 152);
+      --loss:        oklch(60% 0.20 27);
+      --loss-soft:   oklch(94% 0.06 27);
+      --be:          oklch(75% 0.14 85);
+      --be-soft:     oklch(95% 0.06 85);
+      --radius:      14px;
+      --radius-sm:   10px;
+      --chart-1: #4f6ef7;
+      --chart-2: #2d7a3a;
+      --chart-3: #b87d2d;
+      --chart-4: #b83232;
+      --chart-5: #c4622d;
+    }
+    .dark {
+      --bg:          #0E0C09;
+      --panel:       #16140F;
+      --panel-2:     #1B1813;
+      --ink:         #F5F2EA;
+      --ink-2:       #C7C2B5;
+      --ink-3:       #807A6B;
+      --line:        #25221C;
+      --line-2:      #2F2C24;
+      --chip:        #25221C;
+      --accent-soft: #1A1C2A;
+      --win-soft:    #14201A;
+      --loss-soft:   #251514;
+      --be-soft:     #25201A;
+    }
+
+    /* ─── RESET & BASE ──────────────────────────────────────────── */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      transition: background .2s, color .2s;
+    }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); }
+    .muted { color: var(--ink-3); }
+
+    /* ─── SHELL LAYOUT ──────────────────────────────────────────── */
+    .shell { display: grid; grid-template-columns: 240px 1fr 340px; min-height: 100vh; }
+
+    /* ─── SIDEBAR ───────────────────────────────────────────────── */
+    .sidebar {
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand-mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--ink);
+      display: grid; place-items: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700; font-size: 13px; color: white;
+      position: relative;
+    }
+    .brand-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--win);
+      position: absolute; top: -2px; right: -2px;
+      border: 2px solid var(--panel);
+    }
+    .brand-name { font-size: 13px; font-weight: 600; }
+    .nav { padding: 12px 0; flex: 1; }
+    .nav-section { padding: 8px 20px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px 9px 20px; margin: 1px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px; color: var(--ink-2);
+      cursor: pointer; text-decoration: none;
+      transition: background .12s;
+    }
+    .nav-item:hover { background: var(--chip); }
+    .nav-item.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: .7; }
+    .nav-item.active svg { opacity: 1; }
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--line);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .avatar-sm {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent-soft); color: var(--accent);
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* ─── MAIN CONTENT ──────────────────────────────────────────── */
+    .main { padding: 28px 32px; overflow-y: auto; }
+    .page-head { margin-bottom: 24px; }
+    .page-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+    .page-sub { font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+
+    /* ─── RIGHT PANEL ───────────────────────────────────────────── */
+    .rail {
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      padding: 20px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .rail-user {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--accent-soft); color: var(--accent);
+      display: grid; place-items: center;
+      font-size: 14px; font-weight: 700; flex-shrink: 0;
+    }
+    .rail-user-info { flex: 1; }
+    .rail-user-name { font-size: 13px; font-weight: 600; }
+    .rail-user-role { font-size: 11px; color: var(--ink-3); }
+    .rail-section { margin-bottom: 20px; }
+    .rail-section-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+
+    /* ─── CARDS ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+    .card-sub { font-size: 11.5px; color: var(--ink-3); margin-bottom: 16px; }
+
+    /* ─── KPI CARDS ─────────────────────────────────────────────── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .kpi-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .kpi-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin-bottom: 6px; }
+    .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; letter-spacing: -.01em; margin-bottom: 6px; }
+    .kpi-sub { font-size: 11.5px; }
+
+    /* ─── GRID LAYOUTS ──────────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .grid-2-330 { display: grid; grid-template-columns: 330px 1fr; gap: 12px; margin-bottom: 16px; }
+
+    /* ─── BADGES ─────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 10.5px; font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-win   { background: var(--win-soft);  color: var(--win); }
+    .badge-loss  { background: var(--loss-soft); color: var(--loss); }
+    .badge-be    { background: var(--be-soft);   color: var(--be); }
+    .badge-acc   { background: var(--accent-soft); color: var(--accent); }
+    .badge-ink   { background: var(--chip); color: var(--ink-2); }
+
+    /* ─── DIRECTION TOGGLE ──────────────────────────────────────── */
+    .dir-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+    .dir-btn {
+      flex: 1; padding: 9px; border-radius: 99px;
+      font-size: 13px; font-weight: 700;
+      border: none; cursor: pointer;
+      letter-spacing: .02em;
+    }
+    .dir-long  { background: var(--win);  color: white; }
+    .dir-short { background: var(--chip); color: var(--ink-3); }
+    .dir-short.active { background: var(--loss); color: white; }
+
+    /* ─── FORM ELEMENTS ─────────────────────────────────────────── */
+    .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .form-input {
+      flex: 1; padding: 8px 12px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; font-size: 13px; color: var(--ink);
+      font-family: inherit; outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-select {
+      flex: 1; padding: 8px 12px;
+      background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; font-size: 12px; color: var(--ink-2);
+      font-family: inherit; outline: none; cursor: pointer;
+    }
+    .form-label { font-size: 10px; color: var(--ink-3); margin-bottom: 4px; display: block; }
+    .btn-primary {
+      width: 100%; padding: 10px;
+      background: var(--accent); color: white;
+      border: none; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .btn-secondary {
+      padding: 8px 16px;
+      background: var(--chip); color: var(--ink-2);
+      border: 1px solid var(--line); border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 500;
+      cursor: pointer; font-family: inherit;
+    }
+
+    /* ─── TABLES ─────────────────────────────────────────────────── */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th {
+      font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--ink-3); font-weight: 400;
+      padding: 8px 12px 8px 0; text-align: left;
+      border-bottom: 1px solid var(--line);
+    }
+    .data-table td {
+      padding: 11px 12px 11px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: var(--bg); }
+    .td-mono { font-family: 'JetBrains Mono', monospace; }
+    .td-win  { color: var(--win); }
+    .td-loss { color: var(--loss); }
+    .td-acc  { color: var(--accent); }
+
+    /* ─── FILTER TABS ────────────────────────────────────────────── */
+    .filter-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-tab {
+      padding: 5px 14px; border-radius: 99px;
+      font-size: 10.5px; font-weight: 500;
+      cursor: pointer; border: 1px solid var(--line);
+      background: var(--panel); color: var(--ink-2);
+      transition: all .12s;
+    }
+    .filter-tab.active {
+      background: var(--accent-soft); color: var(--accent);
+      border-color: transparent; font-weight: 600;
+    }
+
+    /* ─── TAGS ───────────────────────────────────────────────────── */
+    .tag-row { display: flex; gap: 4px; flex-wrap: wrap; }
+    .tag {
+      padding: 2px 8px; border-radius: 99px;
+      font-size: 9.5px; font-weight: 600;
+    }
+
+    /* ─── SETUP AVATAR ───────────────────────────────────────────── */
+    .setup-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .setup-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .setup-row:last-child { border-bottom: none; }
+    .setup-info { flex: 1; }
+    .setup-name { font-size: 12.5px; font-weight: 600; }
+    .setup-cat  { font-size: 10px; color: var(--ink-3); }
+    .setup-stats { text-align: right; }
+    .setup-wr { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--win); }
+    .setup-r  { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); }
+
+    /* ─── PROGRESS BAR ───────────────────────────────────────────── */
+    .progress-wrap { margin-bottom: 10px; }
+    .progress-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .progress-label { font-size: 11px; color: var(--ink-3); }
+    .progress-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .progress-bar { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width .3s; }
+    .fill-ok    { background: var(--win); }
+    .fill-warn  { background: var(--be); }
+    .fill-crit  { background: var(--loss); }
+
+    /* ─── HEATMAP ────────────────────────────────────────────────── */
+    .heatmap { display: grid; grid-template-columns: 20px repeat(12, 1fr); gap: 3px; }
+    .heatmap-cell {
+      width: 100%; aspect-ratio: 1; border-radius: 5px;
+      display: grid; place-items: center;
+      font-size: 8px; color: var(--ink-3);
+      cursor: default;
+    }
+    .hc-none    { background: var(--win-soft); }
+    .hc-minor   { background: var(--be-soft); }
+    .hc-major   { background: var(--loss-soft); }
+    .hc-empty   { background: var(--line); }
+    .hc-label   { background: transparent; font-size: 9px; text-align: right; }
+    .heatmap-cols { display: grid; grid-template-columns: 20px repeat(12, 1fr); gap: 3px; margin-bottom: 4px; }
+    .heatmap-col-label { font-size: 9px; color: var(--ink-3); text-align: center; }
+
+    /* ─── EQUITY CHART (SVG placeholder) ────────────────────────── */
+    .chart-area {
+      width: 100%; height: 120px;
+      background: var(--bg);
+      border-radius: 8px;
+      position: relative; overflow: hidden;
+    }
+    .chart-area svg { width: 100%; height: 100%; }
+
+    /* ─── ACCOUNT SWITCHER ───────────────────────────────────────── */
+    .acc-switcher { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .acc-card {
+      flex-shrink: 0; min-width: 148px; padding: 12px 14px;
+      background: var(--panel-2); border: 1px solid var(--line);
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: border-color .15s;
+    }
+    .acc-card.active { border-color: var(--accent); background: var(--accent-soft); }
+    .acc-card-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .acc-card-bal  { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .acc-card-delta { font-size: 10.5px; }
+
+    /* ─── SECTION NAVIGATION (top of spec) ──────────────────────── */
+    .spec-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: var(--panel); border-bottom: 1px solid var(--line);
+      padding: 0 32px; display: flex; align-items: center; gap: 0;
+    }
+    .spec-nav-logo { font-size: 13px; font-weight: 700; padding: 14px 20px 14px 0; border-right: 1px solid var(--line); margin-right: 16px; }
+    .spec-nav a {
+      padding: 14px 14px; font-size: 12px; color: var(--ink-3);
+      text-decoration: none; white-space: nowrap;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      transition: color .15s;
+    }
+    .spec-nav a:hover { color: var(--ink); }
+    .spec-nav a.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+    .spec-nav-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .theme-toggle {
+      padding: 6px 12px; border-radius: 99px;
+      background: var(--chip); border: none;
+      font-size: 12px; cursor: pointer; color: var(--ink-2);
+      font-family: inherit;
+    }
+
+    /* ─── SPEC SECTIONS ─────────────────────────────────────────── */
+    .spec-content { padding-top: 52px; }
+    .spec-section { padding: 48px 0; border-bottom: 1px solid var(--line); }
+    .spec-section:last-child { border-bottom: none; }
+    .spec-section-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
+    .section-title { font-size: 22px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 6px; }
+    .section-sub { font-size: 13px; color: var(--ink-3); margin-bottom: 32px; }
+
+    /* ─── COLOR SWATCHES ────────────────────────────────────────── */
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .swatch { border-radius: 10px; overflow: hidden; }
+    .swatch-color { height: 56px; border: 1px solid rgba(0,0,0,.06); border-radius: 10px 10px 0 0; }
+    .swatch-info { padding: 6px 0; }
+    .swatch-name { font-size: 10px; font-weight: 600; color: var(--ink-2); }
+    .swatch-hex  { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--ink-3); }
+
+    /* ─── TYPE SPECIMEN ─────────────────────────────────────────── */
+    .type-row { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta { font-size: 10px; color: var(--ink-3); }
+    .type-meta strong { display: block; color: var(--ink-2); font-size: 11px; margin-bottom: 2px; }
+
+    /* ─── COMPONENT PREVIEW BOX ─────────────────────────────────── */
+    .preview-box {
+      background: var(--bg); border: 1px dashed var(--line-2);
+      border-radius: var(--radius); padding: 24px;
+      margin-bottom: 12px;
+    }
+
+    /* ─── SCREEN MOCKUP ─────────────────────────────────────────── */
+    .screen-frame {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.06);
+      margin-bottom: 32px;
+    }
+    .screen-label {
+      padding: 10px 20px; background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+      font-size: 11px; color: var(--ink-3);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .screen-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .screen-body { display: flex; height: 480px; overflow: hidden; }
+
+    /* ─── DISCIPLINE SCORE ───────────────────────────────────────── */
+    .disc-score { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+    .disc-number { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 700; line-height: 1; }
+    .disc-sub-row { display: flex; gap: 20px; margin-top: 12px; }
+    .disc-sub-item { font-size: 10.5px; color: var(--ink-3); }
+    .disc-sub-item strong { display: block; font-size: 11px; color: var(--ink); }
+
+    /* ─── DOT LEGEND ────────────────────────────────────────────── */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--ink-3); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ─── STACKED BAR CHART (CSS) ────────────────────────────────── */
+    .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding-bottom: 20px; position: relative; }
+    .bar-chart::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: 20px;
+      height: 1px; background: var(--line);
+    }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+    .bar-stack { width: 100%; display: flex; flex-direction: column-reverse; }
+    .bar-seg { width: 100%; border-radius: 2px 2px 0 0; }
+    .bar-seg.neg { border-radius: 0 0 2px 2px; }
+    .bar-date { font-size: 8px; color: var(--ink-3); margin-top: 4px; white-space: nowrap; }
+
+    /* ─── DONUT (CSS-only) ───────────────────────────────────────── */
+    .donut-wrap { display: flex; align-items: center; gap: 20px; }
+    .donut {
+      width: 96px; height: 96px; border-radius: 50%;
+      flex-shrink: 0;
+      background: conic-gradient(
+        var(--chart-1) 0% 38%,
+        var(--chart-2) 38% 63%,
+        var(--chart-3) 63% 87%,
+        var(--chart-4) 87% 100%
+      );
+      position: relative;
+    }
+    .donut::after {
+      content: ''; position: absolute;
+      inset: 22px; border-radius: 50%;
+      background: var(--panel);
+    }
+
+    /* ─── MOBILE PREVIEW ────────────────────────────────────────── */
+    .mobile-frame {
+      width: 320px; border: 2px solid var(--line);
+      border-radius: 24px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.1);
+    }
+    .mobile-screen { height: 568px; background: var(--bg); overflow: hidden; position: relative; }
+    .mobile-bottom-nav {
+      height: 56px; background: var(--panel);
+      border-top: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-around;
+    }
+    .mobile-nav-item { text-align: center; }
+    .mobile-nav-icon { font-size: 18px; display: block; }
+    .mobile-nav-label { font-size: 9px; color: var(--ink-3); }
+    .mobile-nav-item.active .mobile-nav-label { color: var(--accent); }
+    .mobile-fab {
+      position: absolute; bottom: 72px; right: 16px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--accent); color: white;
+      display: grid; place-items: center;
+      font-size: 22px; font-weight: 300;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    }
+
+    /* ─── STACK TABLE ────────────────────────────────────────────── */
+    .stack-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .stack-table th { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); text-align: left; }
+    .stack-table td { padding: 10px 12px 10px 0; border-bottom: 1px solid var(--line); }
+    .stack-table tr:last-child td { border-bottom: none; }
+    .tech-pill { display: inline-flex; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-family: 'JetBrains Mono', monospace; background: var(--chip); color: var(--ink-2); }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar, .rail { display: none; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .grid-2, .grid-2-330 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── SPEC NAVIGATION ───────────────────────────────────────────────── -->
+<nav class="spec-nav">
+  <div class="spec-nav-logo">TJ Design Spec</div>
+  <a href="#tokens" class="active">Tokens</a>
+  <a href="#typography">Tipografía</a>
+  <a href="#components">Componentes</a>
+  <a href="#screens">Pantallas</a>
+  <a href="#mobile">Mobile</a>
+  <a href="#stack">Stack</a>
+  <div class="spec-nav-right">
+    <button class="theme-toggle" onclick="document.body.classList.toggle('dark')">☀ / ◑ Dark mode</button>
+  </div>
+</nav>
+
+<div class="spec-content">
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 1 — DESIGN TOKENS
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="tokens">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 01</p>
+    <h2 class="section-title">Design Tokens</h2>
+    <p class="section-sub">Todos los colores y espaciados usan CSS custom properties. Dark mode via clase <code>.dark</code> en &lt;body&gt;.</p>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">NEUTRALES — LIGHT MODE</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#F6F5F1"></div><div class="swatch-info"><p class="swatch-name">--bg</p><p class="swatch-hex">#F6F5F1</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#FFFFFF"></div><div class="swatch-info"><p class="swatch-name">--panel</p><p class="swatch-hex">#FFFFFF</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#FAFAF7"></div><div class="swatch-info"><p class="swatch-name">--panel-2</p><p class="swatch-hex">#FAFAF7</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#16140F"></div><div class="swatch-info"><p class="swatch-name">--ink</p><p class="swatch-hex">#16140F</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#45413A"></div><div class="swatch-info"><p class="swatch-name">--ink-2</p><p class="swatch-hex">#45413A</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#8A8678"></div><div class="swatch-info"><p class="swatch-name">--ink-3</p><p class="swatch-hex">#8A8678</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#ECEAE2"></div><div class="swatch-info"><p class="swatch-name">--line</p><p class="swatch-hex">#ECEAE2</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F2EFE7"></div><div class="swatch-info"><p class="swatch-name">--chip</p><p class="swatch-hex">#F2EFE7</p></div></div>
+    </div>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">SEMÁNTICO — ESTADOS</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:oklch(58% 0.16 264)"></div><div class="swatch-info"><p class="swatch-name">--accent</p><p class="swatch-hex">oklch(58% 0.16 264)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(95% 0.03 264)"></div><div class="swatch-info"><p class="swatch-name">--accent-soft</p><p class="swatch-hex">oklch(95% 0.03 264)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(63% 0.16 152)"></div><div class="swatch-info"><p class="swatch-name">--win</p><p class="swatch-hex">oklch(63% 0.16 152)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(94% 0.06 152)"></div><div class="swatch-info"><p class="swatch-name">--win-soft</p><p class="swatch-hex">oklch(94% 0.06 152)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(60% 0.20 27)"></div><div class="swatch-info"><p class="swatch-name">--loss</p><p class="swatch-hex">oklch(60% 0.20 27)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(94% 0.06 27)"></div><div class="swatch-info"><p class="swatch-name">--loss-soft</p><p class="swatch-hex">oklch(94% 0.06 27)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(75% 0.14 85)"></div><div class="swatch-info"><p class="swatch-name">--be</p><p class="swatch-hex">oklch(75% 0.14 85)</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:oklch(95% 0.06 85)"></div><div class="swatch-info"><p class="swatch-name">--be-soft</p><p class="swatch-hex">oklch(95% 0.06 85)</p></div></div>
+    </div>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">DARK MODE</h3>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="swatch-color" style="background:#0E0C09;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--bg (dark)</p><p class="swatch-hex">#0E0C09</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#16140F;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--panel</p><p class="swatch-hex">#16140F</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#1B1813;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--panel-2</p><p class="swatch-hex">#1B1813</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#F5F2EA"></div><div class="swatch-info"><p class="swatch-name">--ink (dark)</p><p class="swatch-hex">#F5F2EA</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#C7C2B5"></div><div class="swatch-info"><p class="swatch-name">--ink-2</p><p class="swatch-hex">#C7C2B5</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#807A6B"></div><div class="swatch-info"><p class="swatch-name">--ink-3</p><p class="swatch-hex">#807A6B</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#25221C;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--line</p><p class="swatch-hex">#25221C</p></div></div>
+    </div>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">PALETA DE GRÁFICOS</h3>
+    <div class="swatch-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="swatch"><div class="swatch-color" style="background:#4f6ef7"></div><div class="swatch-info"><p class="swatch-name">--chart-1</p><p class="swatch-hex">#4f6ef7</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#2d7a3a"></div><div class="swatch-info"><p class="swatch-name">--chart-2</p><p class="swatch-hex">#2d7a3a</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#b87d2d"></div><div class="swatch-info"><p class="swatch-name">--chart-3</p><p class="swatch-hex">#b87d2d</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#b83232"></div><div class="swatch-info"><p class="swatch-name">--chart-4</p><p class="swatch-hex">#b83232</p></div></div>
+      <div class="swatch"><div class="swatch-color" style="background:#c4622d"></div><div class="swatch-info"><p class="swatch-name">--chart-5</p><p class="swatch-hex">#c4622d</p></div></div>
+    </div>
+
+    <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:24px 0 12px;">RADIUS & SPACING</h3>
+    <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
+      <div style="text-align:center"><div style="width:80px;height:32px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:99px;margin:0 auto 6px"></div><p class="swatch-hex">pill · 99px</p></div>
+      <div style="text-align:center"><div style="width:64px;height:64px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:14px;margin:0 auto 6px"></div><p class="swatch-hex">--radius · 14px</p></div>
+      <div style="text-align:center"><div style="width:56px;height:56px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:10px;margin:0 auto 6px"></div><p class="swatch-hex">--radius-sm · 10px</p></div>
+      <div style="text-align:center"><div style="width:52px;height:36px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:8px;margin:0 auto 6px"></div><p class="swatch-hex">input · 8px</p></div>
+      <div style="text-align:center"><div style="width:40px;height:28px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:6px;margin:0 auto 6px"></div><p class="swatch-hex">chip · 6px</p></div>
+      <div style="text-align:center"><div style="width:40px;height:40px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:50%;margin:0 auto 6px"></div><p class="swatch-hex">avatar · 50%</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 2 — TYPOGRAPHY
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="typography">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 02</p>
+    <h2 class="section-title">Sistema de Tipografía</h2>
+    <p class="section-sub">Inter para UI · JetBrains Mono exclusivamente para valores financieros y de performance.</p>
+
+    <div style="margin-bottom:32px">
+      <div class="type-row">
+        <div class="type-meta"><strong>Display / H1</strong>Inter Bold 28px<br>tracking -0.025em</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-.025em">Trading Journal Dashboard</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>H2 / Título</strong>Inter SemiBold 22px<br>tracking -0.02em</div>
+        <div style="font-size:22px;font-weight:600;letter-spacing:-.02em">Portfolio · May 2026</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>H3 / Sección</strong>Inter SemiBold 17px<br>tracking -0.015em</div>
+        <div style="font-size:17px;font-weight:600;letter-spacing:-.015em">Equity Consolidado · 4 Cuentas</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>Body / Default</strong>Inter Regular 14px<br>tracking -0.01em</div>
+        <div style="font-size:14px;letter-spacing:-.01em">Trades, setups y revisiones semanales de performance</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>Label Small</strong>Inter Regular 12px<br>tracking -0.005em</div>
+        <div style="font-size:12px;color:var(--ink-3)">PROP FIRM · FXify 100K · Estado: OPERABLE</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>Eyebrow</strong>Inter Regular 10.5px<br>tracking +0.12em CAPS</div>
+        <div class="eyebrow">DISCIPLINE SCORE · SEMANA ACTUAL · SEM 20 · 2026</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>Mono / Valores</strong>JetBrains Mono 14px<br>tracking 0</div>
+        <div class="mono" style="font-size:14px">$321,946.07 &nbsp; +2.84% &nbsp; 1.84R &nbsp; 58%</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta"><strong>Mono KPI Bold</strong>JetBrains Mono Bold 24px<br>tracking -0.01em</div>
+        <div class="mono" style="font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--ink)">$102,840.55</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 3 — COMPONENTS
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="components">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 03</p>
+    <h2 class="section-title">Componentes</h2>
+    <p class="section-sub">Todos construidos con shadcn/ui + Tailwind 4 tokens. Props y variantes documentadas.</p>
+
+    <!-- BADGES -->
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">Status Badges</h3>
+    <div class="preview-box">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge badge-win">OPERABLE</span>
+        <span class="badge badge-be">PAUSE</span>
+        <span class="badge badge-loss">ALERTA</span>
+        <span class="badge badge-loss">DO-NOT-TRADE</span>
+        <span class="badge badge-be">DRAFT</span>
+        <span class="badge badge-win">SUBMITTED</span>
+        <span class="badge badge-acc">A+</span>
+        <span class="badge badge-acc">ACTIVO</span>
+        <span class="badge badge-be">MINOR</span>
+        <span class="badge badge-loss">MAJOR</span>
+        <span class="badge badge-win">Plan</span>
+        <span class="badge badge-be">Off-plan</span>
+        <span class="badge badge-loss">Violación</span>
+        <span class="badge badge-ink">Impulsivo</span>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">KPI Cards</h3>
+    <div class="preview-box">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">EQUITY CONSOLIDADO</div>
+          <div class="kpi-value">$321,946.07</div>
+          <div class="kpi-sub" style="color:var(--win)">+$1,018.20 hoy · 4 cuentas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">PROFIT FACTOR</div>
+          <div class="kpi-value" style="color:var(--accent)">1.84</div>
+          <div class="kpi-sub muted">30d · todas las cuentas</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">WIN RATE</div>
+          <div class="kpi-value" style="color:var(--accent)">58%</div>
+          <div class="kpi-sub muted">134 / 230 CLOSED</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">MAX DRAWDOWN</div>
+          <div class="kpi-value" style="color:var(--loss)">-3.4%</div>
+          <div class="kpi-sub muted">abr 12 · FXify 100K</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIRECTION TOGGLE -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Direction Toggle</h3>
+    <div class="preview-box" style="max-width:340px">
+      <div class="dir-toggle">
+        <button class="dir-btn dir-long">LONG ↑</button>
+        <button class="dir-btn dir-short" onclick="this.classList.toggle('active');this.previousElementSibling.classList.toggle('dir-long');this.previousElementSibling.style.background=this.classList.contains('active')?'var(--chip)':'var(--win)'">SHORT ↓</button>
+      </div>
+    </div>
+
+    <!-- QUICK TRADE FORM -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">QuickTradeForm (Right Rail)</h3>
+    <div class="preview-box" style="max-width:340px">
+      <div class="dir-toggle">
+        <button class="dir-btn dir-long">LONG ↑</button>
+        <button class="dir-btn dir-short">SHORT ↓</button>
+      </div>
+      <div class="form-row">
+        <input class="form-input" placeholder="Símbolo (ES)" style="max-width:110px">
+        <select class="form-select"><option>Opening Range Break</option><option>Liquidity Grab</option><option>Volume Profile</option></select>
+      </div>
+      <div style="margin-bottom:6px">
+        <label class="form-label">Riesgo (R)</label>
+        <div class="form-row">
+          <input class="form-input" placeholder="1" type="number" style="max-width:80px">
+          <select class="form-select" style="max-width:90px"><option>FUT</option><option>FX</option><option>EQ</option><option>OPC</option></select>
+          <select class="form-select"><option>FXify 100K</option><option>FTMO 50K</option><option>IBKR</option></select>
+        </div>
+      </div>
+      <button class="btn-primary">Registrar trade</button>
+    </div>
+
+    <!-- PROGRESS BARS -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Prop Firm Progress Bars</h3>
+    <div class="preview-box" style="max-width:440px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <span style="font-size:14px;font-weight:600">FXify 100K</span>
+        <span class="badge badge-win">OK</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-head">
+          <span class="progress-label">Max drawdown total</span>
+          <span class="progress-val" style="color:var(--win)">$2,100 / $10,000</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill fill-ok" style="width:21%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-head">
+          <span class="progress-label">Pérdida diaria</span>
+          <span class="progress-val" style="color:var(--be)">$320 / $500</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill fill-warn" style="width:64%"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-head">
+          <span class="progress-label">Trades hoy</span>
+          <span class="progress-val">2 / 3</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill fill-ok" style="width:67%"></div></div>
+      </div>
+      <p style="font-size:11px;color:var(--ink-3);margin-top:6px">Símbolos permitidos: ES, NQ, GC, CL</p>
+    </div>
+
+    <!-- HEATMAP -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Discipline Heatmap (12 semanas × 7 días)</h3>
+    <div class="preview-box">
+      <div class="heatmap-cols">
+        <div></div>
+        <div class="heatmap-col-label">S1</div><div class="heatmap-col-label">S2</div>
+        <div class="heatmap-col-label">S3</div><div class="heatmap-col-label">S4</div>
+        <div class="heatmap-col-label">S5</div><div class="heatmap-col-label">S6</div>
+        <div class="heatmap-col-label">S7</div><div class="heatmap-col-label">S8</div>
+        <div class="heatmap-col-label">S9</div><div class="heatmap-col-label">S10</div>
+        <div class="heatmap-col-label">S11</div><div class="heatmap-col-label">S12</div>
+      </div>
+      <div class="heatmap" id="heatmap-demo"></div>
+      <div class="legend" style="margin-top:10px">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--win-soft);border:1px solid var(--win)"></div>Limpio</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--be-soft);border:1px solid var(--be)"></div>Menor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--loss-soft);border:1px solid var(--loss)"></div>Mayor</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--line)"></div>Sin datos</div>
+      </div>
+    </div>
+
+    <!-- ACCOUNT SWITCHER -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Account Switcher Cards</h3>
+    <div class="preview-box">
+      <div class="acc-switcher">
+        <div class="acc-card active">
+          <div class="acc-card-name">FXify 100K</div>
+          <div class="acc-card-bal">$102,840</div>
+          <div class="acc-card-delta" style="color:var(--win)">+$1,240 hoy</div>
+        </div>
+        <div class="acc-card">
+          <div class="acc-card-name">FTMO 50K</div>
+          <div class="acc-card-bal">$51,200</div>
+          <div class="acc-card-delta" style="color:var(--loss)">-$310 hoy</div>
+        </div>
+        <div class="acc-card">
+          <div class="acc-card-name">IBKR</div>
+          <div class="acc-card-bal">$78,140</div>
+          <div class="acc-card-delta" style="color:var(--win)">+$820 hoy</div>
+        </div>
+        <div class="acc-card">
+          <div class="acc-card-name">APEX 150K</div>
+          <div class="acc-card-bal">$89,766</div>
+          <div class="acc-card-delta" style="color:var(--win)">+$1,540 hoy</div>
+        </div>
+        <div class="acc-card" style="min-width:48px;display:grid;place-items:center;font-size:20px;color:var(--ink-3)">+</div>
+      </div>
+    </div>
+
+    <!-- TOP SETUPS LIST -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Top Setups Leaderboard</h3>
+    <div class="preview-box" style="max-width:340px">
+      <div class="filter-tabs" style="margin-bottom:12px">
+        <button class="filter-tab active">Futuros</button>
+        <button class="filter-tab">FX</button>
+        <button class="filter-tab">Equities</button>
+        <button class="filter-tab">Cripto</button>
+      </div>
+      <div class="setup-row">
+        <div class="setup-avatar" style="background:rgba(79,110,247,.15);color:#4f6ef7">OR</div>
+        <div class="setup-info"><div class="setup-name">Opening Range Break</div><div class="setup-cat">Futuros · NY AM</div></div>
+        <div class="setup-stats"><div class="setup-wr">72%</div><div class="setup-r">+2.1R</div></div>
+      </div>
+      <div class="setup-row">
+        <div class="setup-avatar" style="background:rgba(97,57,200,.15);color:#6139c8">LG</div>
+        <div class="setup-info"><div class="setup-name">Liquidity Grab</div><div class="setup-cat">Futuros · NY AM</div></div>
+        <div class="setup-stats"><div class="setup-wr">68%</div><div class="setup-r">+1.8R</div></div>
+      </div>
+      <div class="setup-row">
+        <div class="setup-avatar" style="background:rgba(184,125,45,.15);color:#b87d2d">VP</div>
+        <div class="setup-info"><div class="setup-name">Volume Profile Edge</div><div class="setup-cat">Futuros · LONDON</div></div>
+        <div class="setup-stats"><div class="setup-wr">61%</div><div class="setup-r">+1.6R</div></div>
+      </div>
+      <div class="setup-row">
+        <div class="setup-avatar" style="background:rgba(184,50,50,.15);color:#b83232">BW</div>
+        <div class="setup-info"><div class="setup-name">Breakout Weak High</div><div class="setup-cat">Futuros · NY PM</div></div>
+        <div class="setup-stats"><div class="setup-wr">58%</div><div class="setup-r">+1.4R</div></div>
+      </div>
+    </div>
+
+    <!-- DISCIPLINE SCORE -->
+    <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Discipline Score Card</h3>
+    <div class="preview-box">
+      <div class="disc-score">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px">DISCIPLINE SCORE · SEMANA ACTUAL</p>
+          <div class="disc-number" style="color:var(--be)">78</div>
+          <p style="font-size:12px;color:var(--be);margin-top:4px">↑ +6 vs sem. pasada</p>
+          <div class="disc-sub-row" style="margin-top:16px">
+            <div class="disc-sub-item"><strong>SIN VIOLACIÓN</strong>78% · 18/23</div>
+            <div class="disc-sub-item"><strong>PLAN SEGUIDO</strong>82% · 19/23</div>
+            <div class="disc-sub-item"><strong>INDISCIPLINE $</strong>$214 acum.</div>
+          </div>
+        </div>
+        <div>
+          <p class="eyebrow" style="margin-bottom:12px">COMPOSICIÓN SEMANAL</p>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(var(--win) 0% 60%,var(--be) 60% 82%,var(--loss) 82% 100%);position:relative">
+              <div style="position:absolute;inset:18px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--ink-3)">23</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--win)"></div><span>Plan seguido · 14</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--be)"></div><span>Plan parcial · 5</span></div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--loss)"></div><span>Off-plan · 4</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 4 — SCREEN MOCKUPS
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="screens">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 04</p>
+    <h2 class="section-title">Pantallas — Mockups Funcionales</h2>
+    <p class="section-sub">Mockups interactivos usando los tokens reales. El dark mode funciona en todos.</p>
+
+    <!-- ── SHARED SIDEBAR MACRO ── used by all screens via inline duplication -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 1 — PORTFOLIO DASHBOARD  /
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin-bottom:16px">/ — Portfolio Dashboard</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Portfolio Dashboard · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <!-- Sidebar -->
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand">
+            <div class="brand-mark">TJ<div class="brand-dot"></div></div>
+            <span class="brand-name">Trading Journal</span>
+          </div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item active" href="#">⬛ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer">
+            <div class="avatar-sm">HC</div>
+            <div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div>
+          </div>
+        </div>
+        <!-- Main -->
+        <div class="main" style="padding:20px 24px;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div>
+              <h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Portfolio</h1>
+              <p style="font-size:12px;color:var(--ink-3)">Consolidado de 4 cuentas · PROP_FIRM y PERSONAL</p>
+            </div>
+            <select class="form-select" style="max-width:180px;font-size:12px">
+              <option>FXify 100K ▾</option>
+            </select>
+          </div>
+          <!-- KPI -->
+          <div class="kpi-grid" style="margin-bottom:12px;grid-template-columns:repeat(4,1fr)">
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">EQUITY CONSOLIDADO</div>
+              <div class="kpi-value" style="font-size:16px">$321,946.07</div>
+              <div class="kpi-sub" style="color:var(--win);font-size:10.5px">+$1,018 hoy · 4 cuentas</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">PROFIT FACTOR</div>
+              <div class="kpi-value" style="font-size:16px;color:var(--accent)">1.84</div>
+              <div class="kpi-sub muted" style="font-size:10.5px">30d · todas las cuentas</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">WIN RATE</div>
+              <div class="kpi-value" style="font-size:16px;color:var(--accent)">58%</div>
+              <div class="kpi-sub muted" style="font-size:10.5px">134 / 230 CLOSED</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">MAX DRAWDOWN</div>
+              <div class="kpi-value" style="font-size:16px;color:var(--loss)">-3.4%</div>
+              <div class="kpi-sub muted" style="font-size:10.5px">abr 12 · FXify</div>
+            </div>
+          </div>
+          <!-- 2-col -->
+          <div class="grid-2-330" style="grid-template-columns:200px 1fr">
+            <div class="card" style="padding:14px">
+              <p style="font-size:12px;font-weight:600;margin-bottom:8px">Asignación</p>
+              <div class="donut-wrap" style="flex-direction:column;align-items:flex-start;gap:8px">
+                <div class="donut" style="width:72px;height:72px"></div>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <div class="legend-item"><div class="legend-dot" style="background:#4f6ef7"></div><span>FXify 38%</span></div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#2d7a3a"></div><span>FTMO 25%</span></div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#b87d2d"></div><span>IBKR 24%</span></div>
+                  <div class="legend-item"><div class="legend-dot" style="background:#b83232"></div><span>APEX 13%</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="padding:14px">
+              <p style="font-size:12px;font-weight:600;margin-bottom:8px">P&L diario · stacked</p>
+              <div id="bar-chart-demo" style="height:100px;display:flex;align-items:flex-end;gap:3px;position:relative">
+                <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line)"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Comparison table (compact) -->
+          <div class="card" style="margin-top:12px;padding:14px">
+            <p style="font-size:12px;font-weight:600;margin-bottom:10px">Comparación de cuentas</p>
+            <table class="data-table" style="font-size:11px">
+              <thead><tr><th>CUENTA</th><th>BALANCE</th><th>WIN %</th><th>P.FACTOR</th><th>DRAWDOWN</th><th>ESTADO</th></tr></thead>
+              <tbody>
+                <tr><td><b>FXify 100K</b><br><span style="color:var(--ink-3);font-size:9.5px">PROP · FXify</span></td><td class="td-mono">$102,840</td><td class="td-mono td-acc">58%</td><td class="td-mono td-acc">1.84</td><td class="td-mono td-loss">-2.1%</td><td><span class="badge badge-win">OPERABLE</span></td></tr>
+                <tr><td><b>FTMO 50K</b><br><span style="color:var(--ink-3);font-size:9.5px">PROP · FTMO</span></td><td class="td-mono">$51,200</td><td class="td-mono td-acc">54%</td><td class="td-mono td-acc">1.62</td><td class="td-mono td-loss">-3.8%</td><td><span class="badge badge-be">PAUSE</span></td></tr>
+                <tr><td><b>IBKR Personal</b><br><span style="color:var(--ink-3);font-size:9.5px">PERSONAL</span></td><td class="td-mono">$78,140</td><td class="td-mono td-acc">61%</td><td class="td-mono td-acc">2.10</td><td class="td-mono td-loss">-1.2%</td><td><span class="badge badge-win">OPERABLE</span></td></tr>
+                <tr><td><b>APEX 150K</b><br><span style="color:var(--ink-3);font-size:9.5px">PROP · Apex</span></td><td class="td-mono">$89,766</td><td class="td-mono td-acc">50%</td><td class="td-mono td-acc">1.42</td><td class="td-mono td-loss">-5.4%</td><td><span class="badge badge-loss">ALERTA</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Rail -->
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-user">
+            <div class="avatar" style="width:36px;height:36px;font-size:13px">HC</div>
+            <div class="rail-user-info">
+              <div class="rail-user-name">Héctor O.C.</div>
+              <div class="rail-user-role">Single-Trader · TJ</div>
+              <div style="font-size:10px;color:var(--ink-3);margin-top:2px">19 may 2026 · SEM 21</div>
+            </div>
+          </div>
+          <div class="rail-section">
+            <div class="rail-section-title">Nuevo Trade</div>
+            <div class="dir-toggle" style="margin-bottom:8px">
+              <button class="dir-btn dir-long" style="font-size:11px;padding:7px">LONG ↑</button>
+              <button class="dir-btn dir-short" style="font-size:11px;padding:7px">SHORT ↓</button>
+            </div>
+            <div class="form-row" style="margin-bottom:6px">
+              <input class="form-input" placeholder="ES" style="max-width:64px;font-size:11px;padding:6px 8px">
+              <select class="form-select" style="font-size:10px;padding:6px 8px"><option>Opening Range Break</option></select>
+            </div>
+            <div class="form-row" style="margin-bottom:8px">
+              <input class="form-input" placeholder="1R" type="number" style="max-width:56px;font-size:11px;padding:6px 8px">
+              <select class="form-select" style="font-size:10px;padding:6px 8px;max-width:64px"><option>FUT</option></select>
+              <select class="form-select" style="font-size:10px;padding:6px 8px"><option>FXify</option></select>
+            </div>
+            <button class="btn-primary" style="font-size:12px;padding:8px">Registrar trade</button>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div class="rail-section-title" style="margin-bottom:8px">Setups · Top performers</div>
+            <div class="filter-tabs" style="margin-bottom:10px;gap:4px">
+              <button class="filter-tab active" style="font-size:9.5px;padding:3px 10px">Futuros</button>
+              <button class="filter-tab" style="font-size:9.5px;padding:3px 10px">FX</button>
+              <button class="filter-tab" style="font-size:9.5px;padding:3px 10px">Equities</button>
+            </div>
+            <div class="setup-row" style="padding:7px 0"><div class="setup-avatar" style="width:32px;height:32px;font-size:10px;background:rgba(79,110,247,.15);color:#4f6ef7">OR</div><div class="setup-info"><div class="setup-name" style="font-size:11px">Opening Range</div><div class="setup-cat">Futuros</div></div><div class="setup-stats"><div class="setup-wr" style="font-size:11px">72%</div><div class="setup-r">+2.1R</div></div></div>
+            <div class="setup-row" style="padding:7px 0"><div class="setup-avatar" style="width:32px;height:32px;font-size:10px;background:rgba(97,57,200,.15);color:#6139c8">LG</div><div class="setup-info"><div class="setup-name" style="font-size:11px">Liquidity Grab</div><div class="setup-cat">Futuros</div></div><div class="setup-stats"><div class="setup-wr" style="font-size:11px">68%</div><div class="setup-r">+1.8R</div></div></div>
+            <div class="setup-row" style="padding:7px 0"><div class="setup-avatar" style="width:32px;height:32px;font-size:10px;background:rgba(184,125,45,.15);color:#b87d2d">VP</div><div class="setup-info"><div class="setup-name" style="font-size:11px">Volume Profile</div><div class="setup-cat">Futuros</div></div><div class="setup-stats"><div class="setup-wr" style="font-size:11px">61%</div><div class="setup-r">+1.6R</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 2 — PER-ACCOUNT DASHBOARD  /accounts/$id/dashboard
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/accounts/$id/dashboard — FXify 100K</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Account Dashboard — FXify 100K · Tab: Operador</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <!-- Sidebar -->
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item active" href="#">⬛ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <!-- Main -->
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <!-- Account switcher cards -->
+          <div class="acc-switcher" style="margin-bottom:16px">
+            <div class="acc-card active"><div class="acc-card-name">FXify 100K</div><div class="acc-card-bal td-mono" style="color:var(--win)">$102,840</div><div class="acc-card-delta" style="color:var(--win);font-size:10px">+2.84%</div></div>
+            <div class="acc-card"><div class="acc-card-name">FTMO 50K</div><div class="acc-card-bal td-mono">$51,200</div><div class="acc-card-delta muted" style="font-size:10px">+2.40%</div></div>
+            <div class="acc-card"><div class="acc-card-name">IBKR Personal</div><div class="acc-card-bal td-mono">$78,140</div><div class="acc-card-delta" style="color:var(--win);font-size:10px">+3.20%</div></div>
+            <div class="acc-card"><div class="acc-card-name">APEX 150K</div><div class="acc-card-bal td-mono" style="color:var(--loss)">$89,766</div><div class="acc-card-delta" style="color:var(--loss);font-size:10px">-5.40%</div></div>
+          </div>
+          <!-- Tabs -->
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab active">Operador</button>
+            <button class="filter-tab">Disciplina</button>
+          </div>
+          <!-- Tab: Operador content -->
+          <div>
+            <!-- Equity curve SVG placeholder -->
+            <div class="card" style="padding:14px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <p style="font-size:12px;font-weight:600">Equity Curve · FXify 100K</p>
+                <div style="display:flex;gap:6px">
+                  <button class="filter-tab active" style="font-size:9px;padding:2px 8px">1M</button>
+                  <button class="filter-tab" style="font-size:9px;padding:2px 8px">3M</button>
+                  <button class="filter-tab" style="font-size:9px;padding:2px 8px">ALL</button>
+                </div>
+              </div>
+              <div class="chart-area" style="height:110px">
+                <svg viewBox="0 0 600 110" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="eq-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="oklch(63% 0.16 152)" stop-opacity="0.25"/>
+                      <stop offset="100%" stop-color="oklch(63% 0.16 152)" stop-opacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- grid lines -->
+                  <line x1="0" y1="100" x2="600" y2="100" stroke="var(--line)" stroke-width="1"/>
+                  <line x1="0" y1="60" x2="600" y2="60" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="4"/>
+                  <line x1="0" y1="20" x2="600" y2="20" stroke="var(--line)" stroke-width="0.5" stroke-dasharray="4"/>
+                  <!-- area fill -->
+                  <path d="M0,95 C30,90 60,85 90,78 S150,72 180,68 S240,55 270,48 S330,52 360,42 S420,35 450,28 S510,18 540,14 L570,10 L600,8 L600,100 L0,100 Z" fill="url(#eq-grad)"/>
+                  <!-- line -->
+                  <path d="M0,95 C30,90 60,85 90,78 S150,72 180,68 S240,55 270,48 S330,52 360,42 S420,35 450,28 S510,18 540,14 L570,10 L600,8" fill="none" stroke="oklch(63% 0.16 152)" stroke-width="2"/>
+                  <!-- current dot -->
+                  <circle cx="600" cy="8" r="4" fill="oklch(63% 0.16 152)"/>
+                </svg>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:4px">
+                <span style="font-size:9px;color:var(--ink-3)">Abr 15</span>
+                <span style="font-size:9px;color:var(--ink-3)">Abr 22</span>
+                <span style="font-size:9px;color:var(--ink-3)">Abr 29</span>
+                <span style="font-size:9px;color:var(--ink-3)">May 6</span>
+                <span style="font-size:9px;color:var(--ink-3)">May 13</span>
+                <span style="font-size:9px;color:var(--ink-3)">May 19</span>
+              </div>
+            </div>
+            <!-- Recent trades table -->
+            <div class="card" style="padding:14px">
+              <p style="font-size:12px;font-weight:600;margin-bottom:10px">Operaciones recientes</p>
+              <table class="data-table" style="font-size:11px">
+                <thead><tr><th>FECHA</th><th>INSTRUMENTO</th><th>SETUP</th><th>SIDE</th><th>R</th><th>P&L</th><th>ESTADO</th></tr></thead>
+                <tbody>
+                  <tr><td class="muted">19 may</td><td><b>ES</b></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono td-win">+2.1R</td><td class="td-mono td-win">+$420</td><td><span class="badge badge-win">WIN</span></td></tr>
+                  <tr><td class="muted">19 may</td><td><b>NQ</b></td><td style="color:var(--ink-3)">Liquidity Grab</td><td><span class="badge badge-loss">SHORT</span></td><td class="td-mono td-loss">-1.0R</td><td class="td-mono td-loss">-$200</td><td><span class="badge badge-loss">LOSS</span></td></tr>
+                  <tr><td class="muted">16 may</td><td><b>ES</b></td><td style="color:var(--ink-3)">Volume Profile</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono td-win">+1.6R</td><td class="td-mono td-win">+$320</td><td><span class="badge badge-win">WIN</span></td></tr>
+                  <tr><td class="muted">15 may</td><td><b>NQ</b></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono td-be">0.0R</td><td class="td-mono" style="color:var(--be)">+$0</td><td><span class="badge badge-be">B/E</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- Rail -->
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-user">
+            <div class="avatar" style="width:36px;height:36px;font-size:13px">HC</div>
+            <div class="rail-user-info"><div class="rail-user-name">FXify 100K</div><div class="rail-user-role">PROP_FIRM · Funded</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">19 may 2026</div></div>
+          </div>
+          <div class="rail-section">
+            <div class="rail-section-title">Límites de cuenta</div>
+            <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Daily Loss</span><span class="progress-val" style="color:var(--win)">$340 / $500</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:68%"></div></div></div>
+            <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Max Drawdown</span><span class="progress-val" style="color:var(--be)">$2,160 / $5,000</span></div><div class="progress-bar"><div class="progress-fill fill-warn" style="width:43%"></div></div></div>
+            <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Profit Target</span><span class="progress-val" style="color:var(--win)">$2,840 / $10,000</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:28%"></div></div></div>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div class="rail-section-title" style="margin-bottom:8px">Stats · 30 días</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">TRADES</div><div class="kpi-value" style="font-size:14px">47</div></div>
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">WIN %</div><div class="kpi-value" style="font-size:14px;color:var(--accent)">58%</div></div>
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">AVG R</div><div class="kpi-value" style="font-size:14px;color:var(--win)">+1.4R</div></div>
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">P.FACTOR</div><div class="kpi-value" style="font-size:14px;color:var(--accent)">1.84</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disciplina tab variant -->
+    <div class="screen-frame" style="margin-top:0">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Account Dashboard — FXify 100K · Tab: Disciplina</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item active" href="#">⬛ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab">Operador</button>
+            <button class="filter-tab active">Disciplina</button>
+          </div>
+          <!-- DO-NOT-TAKE banner -->
+          <div style="background:var(--loss-soft);border:1px solid var(--loss);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px;flex-shrink:0">⛔</span>
+            <div><strong style="font-size:12px;color:var(--loss)">DO-NOT-TAKE activo</strong><p style="font-size:11px;color:var(--ink-3);margin-top:1px">Regla violada: "No operar después de 2 pérdidas consecutivas" — vigente hoy 19 may.</p></div>
+          </div>
+          <!-- Discipline score + donut row -->
+          <div class="grid-2" style="margin-bottom:12px">
+            <div class="card" style="padding:14px">
+              <p style="font-size:12px;font-weight:600;margin-bottom:8px">Score de Disciplina</p>
+              <div class="disc-score" style="gap:12px">
+                <div>
+                  <div class="disc-number" style="font-size:42px;color:var(--accent)">74</div>
+                  <div style="font-size:9.5px;color:var(--ink-3);margin-top:4px">/ 100 · semana actual</div>
+                  <div class="disc-sub-row" style="margin-top:8px;gap:12px">
+                    <div class="disc-sub-item"><strong>14</strong>Plan seguido</div>
+                    <div class="disc-sub-item"><strong>5</strong>Parcial</div>
+                    <div class="disc-sub-item"><strong style="color:var(--loss)">4</strong>Off-plan</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="donut" style="width:80px;height:80px;background:conic-gradient(oklch(58% 0.16 264) 0% 74%, var(--line) 74% 100%)"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Violations by rule -->
+            <div class="card" style="padding:14px">
+              <p style="font-size:12px;font-weight:600;margin-bottom:8px">Infracciones por regla</p>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span style="color:var(--ink-2)">No operar revenge</span><span class="badge badge-loss">3 viol.</span></div>
+                <div style="height:1px;background:var(--line)"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span style="color:var(--ink-2)">Max 3 trades/día</span><span class="badge badge-be">2 viol.</span></div>
+                <div style="height:1px;background:var(--line)"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span style="color:var(--ink-2)">Stop mínimo 0.5R</span><span class="badge badge-loss">2 viol.</span></div>
+                <div style="height:1px;background:var(--line)"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span style="color:var(--ink-2)">No operar noticias</span><span class="badge badge-ink">0 viol.</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- Heatmap 12×7 -->
+          <div class="card" style="padding:14px">
+            <p style="font-size:12px;font-weight:600;margin-bottom:8px">Mapa de disciplina · semanas</p>
+            <div class="heatmap-cols">
+              <div></div>
+              <div class="heatmap-col-label">S</div><div class="heatmap-col-label">M</div><div class="heatmap-col-label">T</div><div class="heatmap-col-label">W</div><div class="heatmap-col-label">T</div><div class="heatmap-col-label">F</div>
+              <div class="heatmap-col-label">S</div><div class="heatmap-col-label">M</div><div class="heatmap-col-label">T</div><div class="heatmap-col-label">W</div><div class="heatmap-col-label">T</div><div class="heatmap-col-label">F</div>
+            </div>
+            <div class="heatmap">
+              <div class="hc-label">W18</div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-minor"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-major"></div><div class="heatmap-cell hc-minor"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-major"></div>
+              <div class="hc-label">W19</div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-minor"></div><div class="heatmap-cell hc-none"></div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-major"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div>
+              <div class="hc-label">W20</div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-major"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-minor"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-minor"></div>
+              <div class="hc-label">W21</div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-major"></div><div class="heatmap-cell hc-none"></div><div class="heatmap-cell hc-empty"></div>
+              <div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-empty"></div><div class="heatmap-cell hc-empty"></div>
+            </div>
+            <div class="legend" style="margin-top:8px">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--win-soft);border:1px solid var(--win)"></div>Sin infracción</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--be-soft);border:1px solid var(--be)"></div>Menor</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--loss-soft);border:1px solid var(--loss)"></div>Mayor</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--line)"></div>Sin sesión</div>
+            </div>
+          </div>
+        </div>
+        <!-- Rail: R distribution bar chart -->
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-section-title" style="margin-bottom:12px">Distribución de R</div>
+          <div style="display:flex;align-items:flex-end;gap:4px;height:100px;margin-bottom:16px;padding-bottom:18px;position:relative">
+            <div style="position:absolute;left:0;right:0;bottom:18px;height:1px;background:var(--line)"></div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--loss);border-radius:2px 2px 0 0;height:48px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">-2R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--loss);border-radius:2px 2px 0 0;height:32px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">-1R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--be);border-radius:2px 2px 0 0;height:16px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">0R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--win);border-radius:2px 2px 0 0;height:56px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">+1R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--win);border-radius:2px 2px 0 0;height:72px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">+2R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--win);border-radius:2px 2px 0 0;height:40px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">+3R</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+              <div style="width:100%;background:var(--accent);border-radius:2px 2px 0 0;height:20px"></div>
+              <div style="font-size:7px;color:var(--ink-3)">+4R+</div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Expectativa media</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--win);margin-bottom:16px">+1.38R</div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div class="rail-section-title" style="margin-bottom:8px">Nuevo Trade</div>
+            <div class="dir-toggle" style="margin-bottom:8px">
+              <button class="dir-btn dir-long" style="font-size:11px;padding:7px">LONG ↑</button>
+              <button class="dir-btn dir-short" style="font-size:11px;padding:7px">SHORT ↓</button>
+            </div>
+            <div class="form-row" style="margin-bottom:6px">
+              <input class="form-input" placeholder="ES" style="max-width:64px;font-size:11px;padding:6px 8px">
+              <select class="form-select" style="font-size:10px;padding:6px 8px"><option>Opening Range Break</option></select>
+            </div>
+            <button class="btn-primary" style="font-size:12px;padding:8px">Registrar trade</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 3 — OPERACIONES  /trades
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/trades — Operaciones</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Operaciones · todas las cuentas · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item active" href="#">⬛ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Operaciones</h1><p style="font-size:12px;color:var(--ink-3)">230 trades · todas las cuentas</p></div>
+            <div style="display:flex;gap:8px">
+              <select class="form-select" style="font-size:11px;padding:6px 10px"><option>Todas las cuentas</option></select>
+              <button class="btn-secondary" style="font-size:11px;padding:6px 12px">+ Importar CSV</button>
+            </div>
+          </div>
+          <!-- Stats row -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">NET P&L</div>
+              <div class="kpi-value" style="font-size:18px;color:var(--win)">+$6,420.00</div>
+              <div class="kpi-sub" style="color:var(--win);font-size:10.5px">30 días · 4 cuentas</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">TOTAL TRADES</div>
+              <div class="kpi-value" style="font-size:18px">230</div>
+              <div class="kpi-sub muted" style="font-size:10.5px">134 W · 82 L · 14 B/E</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">R TOTAL</div>
+              <div class="kpi-value" style="font-size:18px;color:var(--win)">+32.4R</div>
+              <div class="kpi-sub muted" style="font-size:10.5px">avg +1.4R/trade ganador</div>
+            </div>
+          </div>
+          <!-- Filter tabs -->
+          <div class="filter-tabs">
+            <button class="filter-tab active">Todos</button>
+            <button class="filter-tab">Win</button>
+            <button class="filter-tab">Loss</button>
+            <button class="filter-tab">B/E</button>
+            <button class="filter-tab">Long</button>
+            <button class="filter-tab">Short</button>
+            <button class="filter-tab" style="color:var(--loss)">DNT ⚠</button>
+          </div>
+          <!-- Trades table -->
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="data-table" style="font-size:11.5px">
+              <thead><tr style="background:var(--panel-2)"><th style="padding:10px 12px">FECHA</th><th>CUENTA</th><th>INSTRUMENTO</th><th>SETUP</th><th>SIDE</th><th>RIESGO</th><th>R</th><th>P&L</th><th>RESULTADO</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:10px 12px;color:var(--ink-3)">19 may 09:42</td><td>FXify 100K</td><td><b>ES</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$200</td><td class="td-mono td-win">+2.1R</td><td class="td-mono td-win">+$420</td><td><span class="badge badge-win">WIN</span></td></tr>
+                <tr><td style="padding:10px 12px;color:var(--ink-3)">19 may 11:15</td><td>FXify 100K</td><td><b>NQ</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Liquidity Grab</td><td><span class="badge badge-loss">SHORT</span></td><td class="td-mono">$200</td><td class="td-mono td-loss">-1.0R</td><td class="td-mono td-loss">-$200</td><td><span class="badge badge-loss">LOSS</span></td></tr>
+                <!-- DNT row with red left border -->
+                <tr style="border-left:3px solid var(--loss)"><td style="padding:10px 12px 10px 9px;color:var(--ink-3)">16 may 14:02</td><td>FTMO 50K</td><td><b>NQ</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--loss)">Revenge Trade ⛔</td><td><span class="badge badge-loss">SHORT</span></td><td class="td-mono">$300</td><td class="td-mono td-loss">-1.5R</td><td class="td-mono td-loss">-$450</td><td><span class="badge badge-loss">DNT</span></td></tr>
+                <tr><td style="padding:10px 12px;color:var(--ink-3)">15 may 09:55</td><td>IBKR Personal</td><td><b>SPY</b> <span style="font-size:9px;color:var(--ink-3)">EQ</span></td><td style="color:var(--ink-3)">Volume Profile</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$400</td><td class="td-mono td-win">+1.6R</td><td class="td-mono td-win">+$640</td><td><span class="badge badge-win">WIN</span></td></tr>
+                <tr><td style="padding:10px 12px;color:var(--ink-3)">14 may 10:20</td><td>APEX 150K</td><td><b>ES</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$300</td><td class="td-mono" style="color:var(--be)">0.0R</td><td class="td-mono" style="color:var(--be)">$0</td><td><span class="badge badge-be">B/E</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-section-title" style="margin-bottom:12px">Filtros avanzados</div>
+          <div style="margin-bottom:8px"><label class="form-label">Cuenta</label><select class="form-select" style="width:100%"><option>Todas</option><option>FXify 100K</option><option>FTMO 50K</option></select></div>
+          <div style="margin-bottom:8px"><label class="form-label">Instrumento</label><input class="form-input" placeholder="ES, NQ, SPY…" style="width:100%;font-size:11px"></div>
+          <div style="margin-bottom:8px"><label class="form-label">Setup</label><select class="form-select" style="width:100%"><option>Todos</option><option>Opening Range Break</option><option>Liquidity Grab</option></select></div>
+          <div style="margin-bottom:8px"><label class="form-label">Resultado</label><select class="form-select" style="width:100%"><option>Todos</option><option>Win</option><option>Loss</option></select></div>
+          <div style="margin-bottom:12px"><label class="form-label">Fecha</label><div style="display:flex;gap:4px"><input class="form-input" type="date" style="font-size:10px;padding:6px 8px"><input class="form-input" type="date" style="font-size:10px;padding:6px 8px"></div></div>
+          <button class="btn-primary" style="font-size:12px;padding:8px;margin-bottom:8px">Aplicar filtros</button>
+          <button class="btn-secondary" style="width:100%;font-size:12px">Limpiar</button>
+          <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:16px">
+            <div class="rail-section-title" style="margin-bottom:8px">Nuevo Trade</div>
+            <div class="dir-toggle"><button class="dir-btn dir-long" style="font-size:11px;padding:7px">LONG ↑</button><button class="dir-btn dir-short" style="font-size:11px;padding:7px">SHORT ↓</button></div>
+            <div class="form-row" style="margin-bottom:6px"><input class="form-input" placeholder="ES" style="max-width:64px;font-size:11px;padding:6px 8px"><select class="form-select" style="font-size:10px;padding:6px 8px"><option>Opening Range Break</option></select></div>
+            <button class="btn-primary" style="font-size:12px;padding:8px">Registrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 4 — PLAYBOOK  /setups
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/setups — Playbook</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Playbook · setup seleccionado: Opening Range Break · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item active" href="#">⬛ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Playbook</h1><p style="font-size:12px;color:var(--ink-3)">7 setups definidos · 3 mercados</p></div>
+            <button class="btn-secondary" style="font-size:11px">+ Nuevo setup</button>
+          </div>
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab active">Todos</button>
+            <button class="filter-tab">Futuros</button>
+            <button class="filter-tab">FX</button>
+            <button class="filter-tab">Equities</button>
+            <button class="filter-tab">A+</button>
+          </div>
+          <!-- Setup cards grid 2 cols -->
+          <div class="grid-2">
+            <!-- Card 1 - selected -->
+            <div class="card" style="padding:14px;border-color:var(--accent);background:var(--accent-soft)">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div class="setup-avatar" style="background:rgba(79,110,247,.2);color:#4f6ef7">OR</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Opening Range Break</div><div style="font-size:10px;color:var(--ink-3)">Futuros · ES, NQ</div></div>
+                <span class="badge badge-acc">A+</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Win%</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--win);font-weight:700">72%</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Avg R</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">+2.1R</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Trades</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">86</div></div>
+              </div>
+            </div>
+            <!-- Card 2 -->
+            <div class="card" style="padding:14px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div class="setup-avatar" style="background:rgba(97,57,200,.15);color:#6139c8">LG</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Liquidity Grab</div><div style="font-size:10px;color:var(--ink-3)">Futuros · NQ, CL</div></div>
+                <span class="badge badge-ink">A</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Win%</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--win);font-weight:700">68%</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Avg R</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">+1.8R</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Trades</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">54</div></div>
+              </div>
+            </div>
+            <!-- Card 3 -->
+            <div class="card" style="padding:14px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div class="setup-avatar" style="background:rgba(184,125,45,.15);color:#b87d2d">VP</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Volume Profile POC</div><div style="font-size:10px;color:var(--ink-3)">Futuros · ES</div></div>
+                <span class="badge badge-ink">B</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Win%</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--be);font-weight:700">61%</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Avg R</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">+1.4R</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Trades</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">41</div></div>
+              </div>
+            </div>
+            <!-- Card 4 -->
+            <div class="card" style="padding:14px">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <div class="setup-avatar" style="background:rgba(184,50,50,.12);color:#b83232">FD</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:600">Failed Breakout</div><div style="font-size:10px;color:var(--ink-3)">FX · EUR/USD</div></div>
+                <span class="badge badge-ink">B</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Win%</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--loss);font-weight:700">49%</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Avg R</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">+1.2R</div></div>
+                <div><div style="font-size:9px;color:var(--ink-3);text-transform:uppercase">Trades</div><div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700">29</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Right: setup detail panel -->
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div class="setup-avatar" style="background:rgba(79,110,247,.2);color:#4f6ef7;width:36px;height:36px;font-size:11px">OR</div>
+            <div><div style="font-size:13px;font-weight:600">Opening Range Break</div><div style="font-size:10px;color:var(--ink-3)">Futuros · A+ Grade</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--ink-3);margin-bottom:14px;line-height:1.6">Entrada en ruptura del rango de apertura (primeros 30 min). Stop debajo del rango mínimo. Target mínimo 2R.</div>
+          <div style="font-size:11px;font-weight:600;margin-bottom:8px;color:var(--ink-2)">A+ Checklist</div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="color:var(--win);font-size:13px">✓</span>Rango formado en primeros 30 min</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="color:var(--win);font-size:13px">✓</span>Volumen confirma ruptura</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="color:var(--win);font-size:13px">✓</span>Tendencia diaria alineada</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="color:var(--win);font-size:13px">✓</span>Sin noticias de alto impacto</div>
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px"><span style="color:var(--loss);font-size:13px">✗</span>Spread normal (&lt; 0.25)</div>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">PROFIT FACTOR</div><div class="kpi-value" style="font-size:15px;color:var(--accent)">2.18</div></div>
+              <div class="kpi-card" style="padding:10px 12px"><div class="kpi-label" style="font-size:8px">AVG HOLD</div><div class="kpi-value" style="font-size:15px">42 min</div></div>
+            </div>
+            <div style="font-size:11px;font-weight:600;margin-bottom:6px">Mejor horario</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+              <span class="badge badge-acc">9:30–10:00</span>
+              <span class="badge badge-acc">10:00–10:30</span>
+              <span class="badge badge-ink">14:00–14:30</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 5 — REVIEWS SEMANALES  /reviews
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/reviews — Reviews Semanales</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Reviews Semanales · semana 21 seleccionada · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item active" href="#">⬛ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <!-- Two-column layout: list 280px | detail -->
+        <div style="display:flex;flex:1;overflow:hidden">
+          <!-- Review list -->
+          <div style="width:280px;border-right:1px solid var(--line);overflow-y:auto;background:var(--panel);flex-shrink:0">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:13px;font-weight:600">Reviews</span>
+              <button class="btn-secondary" style="font-size:10px;padding:4px 10px">+ Nueva</button>
+            </div>
+            <!-- Review cards -->
+            <div style="border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 14px 12px 11px;cursor:pointer">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:600">Semana 21 · 2026</span>
+                <span class="badge badge-win" style="font-size:9px">+$1,580</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--ink-3)">12–18 may · 23 trades</div>
+              <div style="font-size:10px;color:var(--ink-3);margin-top:3px">Discipline score: <span style="color:var(--accent);font-weight:600">74</span></div>
+            </div>
+            <div style="padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:600">Semana 20 · 2026</span>
+                <span class="badge badge-win" style="font-size:9px">+$920</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--ink-3)">5–11 may · 19 trades</div>
+              <div style="font-size:10px;color:var(--ink-3);margin-top:3px">Discipline score: <span style="font-weight:600">81</span></div>
+            </div>
+            <div style="padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:600">Semana 19 · 2026</span>
+                <span class="badge badge-loss" style="font-size:9px">-$340</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--ink-3)">28 abr–4 may · 21 trades</div>
+              <div style="font-size:10px;color:var(--ink-3);margin-top:3px">Discipline score: <span style="color:var(--loss);font-weight:600">58</span></div>
+            </div>
+            <div style="padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--line)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <span style="font-size:12px;font-weight:600">Semana 18 · 2026</span>
+                <span class="badge badge-win" style="font-size:9px">+$2,100</span>
+              </div>
+              <div style="font-size:10.5px;color:var(--ink-3)">21–27 abr · 27 trades</div>
+              <div style="font-size:10px;color:var(--ink-3);margin-top:3px">Discipline score: <span style="font-weight:600">88</span></div>
+            </div>
+          </div>
+          <!-- Review detail -->
+          <div style="flex:1;overflow-y:auto;padding:20px 24px;background:var(--bg)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+              <div><h2 style="font-size:18px;font-weight:700">Semana 21 · 12–18 mayo 2026</h2><p style="font-size:11px;color:var(--ink-3);margin-top:2px">23 operaciones · FXify 100K + FTMO 50K</p></div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <span class="badge badge-win">+$1,580</span>
+                <button class="btn-secondary" style="font-size:10px;padding:4px 10px">Editar</button>
+              </div>
+            </div>
+            <!-- Auto-summary -->
+            <div style="background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px">
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em">✦ Resumen automático IA</span></div>
+              <p style="font-size:11.5px;color:var(--ink-2);line-height:1.7">Semana positiva con 23 trades y un net P&L de +$1,580. El setup de mejor rendimiento fue <strong>Opening Range Break</strong> con 8/10 wins (80% WR). Se detectaron 2 operaciones de revenge después de pérdidas consecutivas el martes. La disciplina bajó a 74 respecto a 81 de la semana anterior. Prioridad: respetar regla de stop de operaciones tras 2 pérdidas.</p>
+            </div>
+            <!-- Textareas -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+              <div>
+                <label class="form-label" style="font-size:11px;margin-bottom:6px">¿Qué funcionó bien?</label>
+                <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink-2);line-height:1.65;min-height:72px">Mantuve stops sin moverlos. Entradas en OR con confirmación de volumen. Respeto del horario de operación.</div>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px;margin-bottom:6px">¿Qué mejorar?</label>
+                <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink-2);line-height:1.65;min-height:72px">Operé 2 trades de revenge el martes. Tamaño de posición inconsistente en FTMO. Cerré profits demasiado pronto en 3 trades.</div>
+              </div>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:11px;margin-bottom:6px">Acciones para la próxima semana</label>
+              <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:11.5px;color:var(--ink-2);line-height:1.65">1. Activar regla DNT automático tras 2 pérdidas. 2. Revisar sizing en FTMO. 3. Definir target fijo de 2R para OR setups.</div>
+            </div>
+          </div>
+        </div>
+        <!-- No right rail on reviews — detail panel takes its place -->
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 6 — CUENTAS  /accounts
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/accounts — Cuentas</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Cuentas · vista general · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item active" href="#">⬛ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Cuentas</h1><p style="font-size:12px;color:var(--ink-3)">4 cuentas activas · $321,946 equity total</p></div>
+            <button class="btn-secondary" style="font-size:11px">+ Agregar cuenta</button>
+          </div>
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab active">Todas</button>
+            <button class="filter-tab">PROP_FIRM</button>
+            <button class="filter-tab">PERSONAL</button>
+            <button class="filter-tab">Activa</button>
+            <button class="filter-tab" style="color:var(--loss)">Alerta</button>
+          </div>
+          <!-- Account cards grid 2 cols -->
+          <div class="grid-2">
+            <!-- FXify -->
+            <div class="card" style="padding:18px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">FXify 100K</div>
+                  <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">PROP_FIRM · FXify · Funded</div>
+                </div>
+                <span class="badge badge-win">OPERABLE</span>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--win);margin-bottom:4px">$102,840</div>
+              <div style="font-size:10.5px;color:var(--win);margin-bottom:12px">+$2,840 ganado · +2.84%</div>
+              <div class="progress-wrap" style="margin-bottom:6px"><div class="progress-head"><span class="progress-label">Daily Loss usado</span><span class="progress-val">$340 / $500</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:68%"></div></div></div>
+              <div class="progress-wrap" style="margin-bottom:6px"><div class="progress-head"><span class="progress-label">Max Drawdown</span><span class="progress-val">$2,160 / $5,000</span></div><div class="progress-bar"><div class="progress-fill fill-warn" style="width:43%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Profit Target</span><span class="progress-val" style="color:var(--win)">$2,840 / $10,000</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:28%"></div></div></div>
+            </div>
+            <!-- FTMO -->
+            <div class="card" style="padding:18px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">FTMO 50K</div>
+                  <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">PROP_FIRM · FTMO · Funded</div>
+                </div>
+                <span class="badge badge-be">PAUSA</span>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;margin-bottom:4px">$51,200</div>
+              <div style="font-size:10.5px;color:var(--ink-3);margin-bottom:12px">+$1,200 ganado · +2.40%</div>
+              <div class="progress-wrap" style="margin-bottom:6px"><div class="progress-head"><span class="progress-label">Daily Loss usado</span><span class="progress-val" style="color:var(--be)">$420 / $500</span></div><div class="progress-bar"><div class="progress-fill fill-warn" style="width:84%"></div></div></div>
+              <div class="progress-wrap" style="margin-bottom:6px"><div class="progress-head"><span class="progress-label">Max Drawdown</span><span class="progress-val">$1,900 / $2,500</span></div><div class="progress-bar"><div class="progress-fill fill-warn" style="width:76%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Profit Target</span><span class="progress-val">$1,200 / $5,000</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:24%"></div></div></div>
+            </div>
+            <!-- IBKR -->
+            <div class="card" style="padding:18px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">IBKR Personal</div>
+                  <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">PERSONAL · Interactive Brokers</div>
+                </div>
+                <span class="badge badge-win">OPERABLE</span>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--win);margin-bottom:4px">$78,140</div>
+              <div style="font-size:10.5px;color:var(--win);margin-bottom:12px">+$3,140 ganado · +4.19%</div>
+              <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Drawdown personal</span><span class="progress-val">$940 / $7,800</span></div><div class="progress-bar"><div class="progress-fill fill-ok" style="width:12%"></div></div></div>
+            </div>
+            <!-- APEX -->
+            <div class="card" style="padding:18px;border-color:var(--loss)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">APEX 150K</div>
+                  <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px">PROP_FIRM · Apex Trader · Funded</div>
+                </div>
+                <span class="badge badge-loss">ALERTA</span>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--loss);margin-bottom:4px">$89,766</div>
+              <div style="font-size:10.5px;color:var(--loss);margin-bottom:12px">-$10,234 pérdida · -10.2%</div>
+              <div class="progress-wrap" style="margin-bottom:6px"><div class="progress-head"><span class="progress-label">Daily Loss usado</span><span class="progress-val" style="color:var(--loss)">$1,480 / $1,500</span></div><div class="progress-bar"><div class="progress-fill fill-crit" style="width:99%"></div></div></div>
+              <div class="progress-wrap"><div class="progress-head"><span class="progress-label">Max Drawdown</span><span class="progress-val" style="color:var(--loss)">$10,234 / $12,000</span></div><div class="progress-bar"><div class="progress-fill fill-crit" style="width:85%"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-section-title" style="margin-bottom:12px">Resumen portfolio</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+            <div class="kpi-card" style="padding:12px 14px"><div class="kpi-label" style="font-size:8px">EQUITY TOTAL</div><div class="kpi-value" style="font-size:16px">$321,946</div></div>
+            <div class="kpi-card" style="padding:12px 14px"><div class="kpi-label" style="font-size:8px">P&L NETO (30D)</div><div class="kpi-value" style="font-size:16px;color:var(--win)">+$6,420</div></div>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div style="font-size:11px;font-weight:600;margin-bottom:8px">Estado por tipo</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;align-items:center"><span class="muted">Operables</span><span class="badge badge-win">2</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;align-items:center"><span class="muted">En pausa</span><span class="badge badge-be">1</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;align-items:center"><span class="muted">En alerta</span><span class="badge badge-loss">1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 7 — REGLAS  /rules
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/rules — Reglas</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Reglas de trading · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item active" href="#">⬛ Reglas</a>
+            <a class="nav-item" href="#">◻ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Reglas</h1><p style="font-size:12px;color:var(--ink-3)">Sistema de trading · 12 reglas activas</p></div>
+            <button class="btn-secondary" style="font-size:11px">+ Nueva regla</button>
+          </div>
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab active">Sistema</button>
+            <button class="filter-tab">Personalizadas</button>
+            <button class="filter-tab">DNT</button>
+            <button class="filter-tab" style="color:var(--loss)">Violadas</button>
+          </div>
+          <!-- Rules list -->
+          <div class="card" style="padding:0;overflow:hidden">
+            <table class="data-table" style="font-size:12px">
+              <thead><tr style="background:var(--panel-2)"><th style="padding:10px 16px">REGLA</th><th>TIPO</th><th>SEVERIDAD</th><th>VIOLACIONES</th><th>ESTADO</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">No operar después de 2 pérdidas consecutivas</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Activar modo DNT automáticamente</div></td>
+                  <td><span class="badge badge-loss">DNT</span></td>
+                  <td><span class="badge badge-loss">CRÍTICA</span></td>
+                  <td class="td-mono td-loss">3</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Máximo 3 trades por sesión</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Contar desde apertura hasta cierre de sesión</div></td>
+                  <td><span class="badge badge-ink">LÍMITE</span></td>
+                  <td><span class="badge badge-be">ALTA</span></td>
+                  <td class="td-mono td-be">2</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Stop-loss mínimo 0.5R</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">No cerrar manualmente antes de 0.5R negativo</div></td>
+                  <td><span class="badge badge-ink">GESTIÓN</span></td>
+                  <td><span class="badge badge-be">ALTA</span></td>
+                  <td class="td-mono td-loss">2</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">No operar 15 min antes de NFP/FOMC</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Cierre de posiciones obligatorio</div></td>
+                  <td><span class="badge badge-acc">NOTICIAS</span></td>
+                  <td><span class="badge badge-loss">CRÍTICA</span></td>
+                  <td class="td-mono td-win">0</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Target mínimo 1.5R en A+ setups</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">No cerrar antes si el contexto lo permite</div></td>
+                  <td><span class="badge badge-ink">GESTIÓN</span></td>
+                  <td><span class="badge badge-ink">MEDIA</span></td>
+                  <td class="td-mono td-be">1</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Operar sólo entre 9:30 y 11:30 EST</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Horario principal de sesión ES/NQ</div></td>
+                  <td><span class="badge badge-ink">HORARIO</span></td>
+                  <td><span class="badge badge-ink">MEDIA</span></td>
+                  <td class="td-mono td-win">0</td>
+                  <td><span class="badge badge-win">Activa</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-section-title" style="margin-bottom:12px">Resumen de cumplimiento</div>
+          <div style="margin-bottom:16px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--accent);margin-bottom:4px">74%</div>
+            <div style="font-size:10.5px;color:var(--ink-3)">Cumplimiento global · 30 días</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span class="muted">Reglas respetadas</span><span style="font-weight:600;color:var(--win)">8 / 12</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span class="muted">Violaciones total</span><span style="font-weight:600;color:var(--loss)">8</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px"><span class="muted">Reglas críticas OK</span><span style="font-weight:600;color:var(--win)">2 / 3</span></div>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <div style="font-size:11px;font-weight:600;margin-bottom:8px">Tendencia semanal</div>
+            <div style="display:flex;align-items:flex-end;gap:4px;height:56px">
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;background:var(--loss);border-radius:2px 2px 0 0;height:30px"></div><div style="font-size:7px;color:var(--ink-3)">W18</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;background:var(--win);border-radius:2px 2px 0 0;height:45px"></div><div style="font-size:7px;color:var(--ink-3)">W19</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;background:var(--win);border-radius:2px 2px 0 0;height:40px"></div><div style="font-size:7px;color:var(--ink-3)">W20</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px"><div style="width:100%;background:var(--be);border-radius:2px 2px 0 0;height:35px"></div><div style="font-size:7px;color:var(--ink-3)">W21</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 8 — APRENDIZAJE  /learning
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/learning — Aprendizaje</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Aprendizaje · journal de insights · 1440px</span>
+      </div>
+      <div class="shell screen-body" style="height:520px">
+        <div class="sidebar" style="height:100%;flex-shrink:0">
+          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
+          <nav class="nav">
+            <p class="eyebrow nav-section">MENÚ</p>
+            <a class="nav-item" href="#">◻ Portfolio</a>
+            <a class="nav-item" href="#">◻ Trades</a>
+            <a class="nav-item" href="#">◻ Playbook</a>
+            <a class="nav-item" href="#">◻ Reviews</a>
+            <a class="nav-item" href="#">◻ Cuentas</a>
+            <a class="nav-item" href="#">◻ Reglas</a>
+            <a class="nav-item active" href="#">⬛ Aprendizaje</a>
+          </nav>
+          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+        </div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Aprendizaje</h1><p style="font-size:12px;color:var(--ink-3)">42 entradas · 8 destacadas</p></div>
+            <button class="btn-secondary" style="font-size:11px">+ Nueva entrada</button>
+          </div>
+          <!-- Search + filter row -->
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <input class="form-input" placeholder="Buscar en entradas…" style="flex:1;font-size:12px">
+            <button class="btn-secondary" style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap">⚑ Destacadas</button>
+            <select class="form-select" style="font-size:11px;padding:6px 10px"><option>Todos los temas</option><option>Psicología</option><option>Gestión de riesgo</option><option>Técnico</option></select>
+          </div>
+          <div class="filter-tabs" style="margin-bottom:16px">
+            <button class="filter-tab active">Todas</button>
+            <button class="filter-tab">Psicología</button>
+            <button class="filter-tab">Riesgo</button>
+            <button class="filter-tab">Técnico</button>
+            <button class="filter-tab">Proceso</button>
+          </div>
+          <!-- Entry cards -->
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <!-- Flagged entry — blue left border -->
+            <div class="card" style="padding:14px;border-left:3px solid var(--accent)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="badge badge-acc">Psicología</span>
+                  <span class="badge badge-acc" style="font-size:9px">⚑ Destacada</span>
+                </div>
+                <span style="font-size:10.5px;color:var(--ink-3)">19 may 2026</span>
+              </div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">El revenge trade siempre ocurre en la 3ª operación del día</div>
+              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">Revisando los últimos 3 meses, el patrón es claro: las operaciones de revenge ocurren casi exclusivamente cuando ya perdí 2 trades. La solución no es fuerza de voluntad sino un sistema automático que bloquee la entrada del 3er trade tras 2 pérdidas. Configurado en reglas → DNT automático.</div>
+              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">revenge</span><span class="tag badge badge-ink">disciplina</span><span class="tag badge badge-ink">sistema</span></div>
+            </div>
+            <!-- Flagged entry 2 -->
+            <div class="card" style="padding:14px;border-left:3px solid var(--accent)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="badge badge-acc">Riesgo</span>
+                  <span class="badge badge-acc" style="font-size:9px">⚑ Destacada</span>
+                </div>
+                <span style="font-size:10.5px;color:var(--ink-3)">14 may 2026</span>
+              </div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Sizing inconsistente destruye expectativa aunque el setup sea A+</div>
+              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">Comparé mis 20 mejores setups OR con sizing correcto vs. sizing reducido por miedo. La diferencia en P&L acumulado es 40%. El problema no es el setup sino la inconsistencia en la posición. Regla nueva: sizing fijo por cuenta sin ajuste emocional.</div>
+              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">sizing</span><span class="tag badge badge-ink">expectativa</span><span class="tag badge badge-ink">OR</span></div>
+            </div>
+            <!-- Normal entry -->
+            <div class="card" style="padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+                <span class="badge badge-ink">Técnico</span>
+                <span style="font-size:10.5px;color:var(--ink-3)">10 may 2026</span>
+              </div>
+              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Volume Profile POC como soporte en NQ funciona mejor en apertura</div>
+              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">El POC del día anterior como soporte sólo tiene alta probabilidad en las primeras 2 horas de sesión. Después de las 11:30 el precio tiende a ignorarlo. Ajustado horario del setup VP a 9:30–11:30.</div>
+              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">VP</span><span class="tag badge badge-ink">POC</span><span class="tag badge badge-ink">NQ</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
+          <div class="rail-section-title" style="margin-bottom:12px">Nueva entrada</div>
+          <div style="margin-bottom:8px"><label class="form-label">Título</label><input class="form-input" placeholder="Aprendizaje clave…" style="width:100%;font-size:11px"></div>
+          <div style="margin-bottom:8px"><label class="form-label">Tema</label><select class="form-select" style="width:100%"><option>Psicología</option><option>Gestión de riesgo</option><option>Técnico</option><option>Proceso</option></select></div>
+          <div style="margin-bottom:8px"><label class="form-label">Contenido</label><div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--ink-3);min-height:80px">Escribe tu insight aquí…</div></div>
+          <div style="margin-bottom:12px"><label class="form-label">Tags (separados por coma)</label><input class="form-input" placeholder="disciplina, setup…" style="width:100%;font-size:11px"></div>
+          <button class="btn-primary" style="font-size:12px;padding:8px">Guardar entrada</button>
+          <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:16px">
+            <div style="font-size:11px;font-weight:600;margin-bottom:8px">Temas frecuentes</div>
+            <div class="tag-row"><span class="tag badge badge-acc">Psicología ×18</span><span class="tag badge badge-ink">Riesgo ×12</span><span class="tag badge badge-ink">Técnico ×8</span><span class="tag badge badge-ink">Proceso ×4</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SCREEN 9 — ONBOARDING  /onboarding
+    ════════════════════════════════════════════════════════════════════════ -->
+    <h3 style="font-size:14px;font-weight:600;margin:32px 0 16px">/onboarding — Wizard</h3>
+    <div class="screen-frame">
+      <div class="screen-label">
+        <div class="screen-dot" style="background:#ff6b6b"></div>
+        <div class="screen-dot" style="background:#ffd93d"></div>
+        <div class="screen-dot" style="background:#6bcb77"></div>
+        <span style="margin-left:4px">Onboarding Wizard · Paso 2: Crear primera cuenta · 1440px</span>
+      </div>
+      <!-- Full-screen centered layout (no shell columns) -->
+      <div class="screen-body" style="height:520px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="width:100%;max-width:520px;padding:0 24px">
+          <!-- Brand -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:32px">
+            <div class="brand-mark" style="width:36px;height:36px;font-size:14px">TJ<div class="brand-dot"></div></div>
+            <span style="font-size:15px;font-weight:700">Trading Journal</span>
+          </div>
+          <!-- Step indicator -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:28px">
+            <!-- Step 1 done -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--win);color:white;display:grid;place-items:center;font-size:11px;font-weight:700">✓</div>
+              <span style="font-size:9px;color:var(--win);font-weight:600">Cuenta</span>
+            </div>
+            <div style="width:60px;height:2px;background:var(--win);margin-bottom:14px"></div>
+            <!-- Step 2 active -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:white;display:grid;place-items:center;font-size:11px;font-weight:700">2</div>
+              <span style="font-size:9px;color:var(--accent);font-weight:600">Trading</span>
+            </div>
+            <div style="width:60px;height:2px;background:var(--line);margin-bottom:14px"></div>
+            <!-- Step 3 pending -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="width:28px;height:28px;border-radius:50%;background:var(--line);color:var(--ink-3);display:grid;place-items:center;font-size:11px;font-weight:700">3</div>
+              <span style="font-size:9px;color:var(--ink-3)">Reglas</span>
+            </div>
+          </div>
+          <!-- Step 2 form: crear primera cuenta de trading -->
+          <div class="card" style="padding:28px">
+            <h2 style="font-size:18px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px">Agrega tu primera cuenta</h2>
+            <p style="font-size:12px;color:var(--ink-3);margin-bottom:20px">Conecta tu cuenta prop firm o cuenta personal para empezar a registrar trades.</p>
+            <div style="margin-bottom:12px"><label class="form-label">Nombre de la cuenta</label><input class="form-input" value="FXify 100K" style="width:100%"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label class="form-label">Tipo</label><select class="form-select" style="width:100%"><option>PROP_FIRM</option><option>PERSONAL</option></select></div>
+              <div><label class="form-label">Broker / Firma</label><input class="form-input" value="FXify" style="width:100%;font-size:12px"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label class="form-label">Capital inicial ($)</label><input class="form-input" value="100000" type="number" style="width:100%;font-size:12px"></div>
+              <div><label class="form-label">Moneda</label><select class="form-select" style="width:100%"><option>USD</option><option>EUR</option></select></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+              <div><label class="form-label">Límite diario ($)</label><input class="form-input" value="500" type="number" style="width:100%;font-size:12px"></div>
+              <div><label class="form-label">Max Drawdown ($)</label><input class="form-input" value="5000" type="number" style="width:100%;font-size:12px"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <button class="btn-secondary" style="font-size:12px">← Atrás</button>
+              <button class="btn-primary" style="width:auto;padding:10px 28px;font-size:13px">Continuar →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 5 — MOBILE
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="mobile">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 05</p>
+    <h2 class="section-title">Mobile Responsive + Expo</h2>
+    <p class="section-sub">Breakpoint 768px: sidebar → bottom nav · right rail → FAB · grids → single column.</p>
+
+    <div style="display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap">
+      <div>
+        <p style="font-size:12px;color:var(--ink-3);margin-bottom:12px">Web mobile (&lt;768px)</p>
+        <div class="mobile-frame">
+          <div class="mobile-screen">
+            <div style="padding:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div class="brand-mark" style="width:28px;height:28px;font-size:11px">TJ<div class="brand-dot"></div></div>
+                <span style="font-size:13px;font-weight:700">Portfolio</span>
+                <div class="avatar-sm" style="width:28px;height:28px;font-size:10px">HC</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <div class="kpi-card" style="padding:10px 12px">
+                  <div class="kpi-label" style="font-size:8px">EQUITY</div>
+                  <div class="kpi-value" style="font-size:14px">$321.9K</div>
+                  <div class="kpi-sub" style="font-size:9.5px;color:var(--win)">+$1,018</div>
+                </div>
+                <div class="kpi-card" style="padding:10px 12px">
+                  <div class="kpi-label" style="font-size:8px">WIN RATE</div>
+                  <div class="kpi-value" style="font-size:14px;color:var(--accent)">58%</div>
+                  <div class="kpi-sub muted" style="font-size:9.5px">134 trades</div>
+                </div>
+              </div>
+              <div class="card" style="padding:12px;margin-bottom:10px">
+                <p style="font-size:11px;font-weight:600;margin-bottom:6px">Cuentas</p>
+                <table class="data-table" style="font-size:10.5px">
+                  <thead><tr><th>CUENTA</th><th>BALANCE</th><th>ESTADO</th></tr></thead>
+                  <tbody>
+                    <tr><td>FXify 100K</td><td class="td-mono">$102.8K</td><td><span class="badge badge-win" style="font-size:8.5px">OK</span></td></tr>
+                    <tr><td>FTMO 50K</td><td class="td-mono">$51.2K</td><td><span class="badge badge-be" style="font-size:8.5px">PAUSE</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="mobile-fab">+</div>
+          </div>
+          <div class="mobile-bottom-nav">
+            <div class="mobile-nav-item active"><span class="mobile-nav-icon">◉</span><span class="mobile-nav-label" style="color:var(--accent)">Portfolio</span></div>
+            <div class="mobile-nav-item"><span class="mobile-nav-icon">◎</span><span class="mobile-nav-label">Trades</span></div>
+            <div class="mobile-nav-item"><span class="mobile-nav-icon">◎</span><span class="mobile-nav-label">Setups</span></div>
+            <div class="mobile-nav-item"><span class="mobile-nav-icon">◎</span><span class="mobile-nav-label">Reviews</span></div>
+            <div class="mobile-nav-item"><span class="mobile-nav-icon">◎</span><span class="mobile-nav-label">Cuentas</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:300px">
+        <p style="font-size:12px;color:var(--ink-3);margin-bottom:12px">Estrategia Expo (React Native)</p>
+        <div class="card" style="padding:20px">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:18px">📦</span>
+              <div><strong style="font-size:13px">packages/shared</strong><p style="font-size:12px;color:var(--ink-3)">Zod schemas + formatters + GraphQL ops compartidos entre web y mobile</p></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:18px">📱</span>
+              <div><strong style="font-size:13px">Expo Router</strong><p style="font-size:12px;color:var(--ink-3)">Rutas de archivo — misma estructura que Next.js web</p></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:18px">📊</span>
+              <div><strong style="font-size:13px">Victory Native XL (Skia)</strong><p style="font-size:12px;color:var(--ink-3)">60fps charts — mismos datos que Recharts en web</p></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:18px">🎨</span>
+              <div><strong style="font-size:13px">NativeWind + tokens JS</strong><p style="font-size:12px;color:var(--ink-3)">Mismos valores de token como constantes JS para RN</p></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              <span style="font-size:18px">🔐</span>
+              <div><strong style="font-size:13px">Supabase Auth</strong><p style="font-size:12px;color:var(--ink-3)">Mismo JWT — deep link callback para OAuth</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     SECTION 6 — TECH STACK
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="spec-section" id="stack">
+  <div class="spec-section-inner">
+    <p class="eyebrow">Sección 06</p>
+    <h2 class="section-title">Tech Stack</h2>
+    <p class="section-sub">Next.js 15 App Router · NestJS GraphQL · Expo Mobile · Supabase · Vercel + Railway</p>
+
+    <div class="grid-2" style="margin-bottom:0">
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:13px;font-weight:600;margin-bottom:14px">Frontend (Web)</h3>
+        <table class="stack-table">
+          <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+          <tbody>
+            <tr><td>Framework</td><td><span class="tech-pill">Next.js 15</span> App Router</td></tr>
+            <tr><td>Lenguaje</td><td><span class="tech-pill">TypeScript 5.9</span> strict</td></tr>
+            <tr><td>Estilos</td><td><span class="tech-pill">Tailwind CSS 4</span> + <span class="tech-pill">shadcn/ui</span></td></tr>
+            <tr><td>Data</td><td><span class="tech-pill">urql</span> GraphQL client</td></tr>
+            <tr><td>Gráficos</td><td><span class="tech-pill">Recharts 2.x</span></td></tr>
+            <tr><td>Animaciones</td><td><span class="tech-pill">Framer Motion</span></td></tr>
+            <tr><td>Formularios</td><td><span class="tech-pill">React Hook Form</span> + <span class="tech-pill">Zod</span></td></tr>
+            <tr><td>Tablas</td><td><span class="tech-pill">TanStack Table v8</span></td></tr>
+            <tr><td>Iconos</td><td><span class="tech-pill">Lucide React</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card" style="padding:20px">
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:14px">Backend</h3>
+          <table class="stack-table">
+            <tbody>
+              <tr><td>Runtime</td><td><span class="tech-pill">Node.js 22</span></td></tr>
+              <tr><td>Framework</td><td><span class="tech-pill">NestJS 10</span></td></tr>
+              <tr><td>API</td><td><span class="tech-pill">GraphQL</span> Apollo Driver</td></tr>
+              <tr><td>ORM</td><td><span class="tech-pill">Drizzle ORM</span></td></tr>
+              <tr><td>DB</td><td><span class="tech-pill">PostgreSQL</span> Supabase</td></tr>
+              <tr><td>Math</td><td><span class="tech-pill">decimal.js</span> (financiero)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card" style="padding:20px">
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:14px">Testing</h3>
+          <table class="stack-table">
+            <tbody>
+              <tr><td>Unit</td><td><span class="tech-pill">Vitest</span> + <span class="tech-pill">Testing Library</span></td></tr>
+              <tr><td>E2E</td><td><span class="tech-pill">Playwright</span></td></tr>
+              <tr><td>Codegen</td><td><span class="tech-pill">graphql-codegen</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card" style="padding:20px">
+          <h3 style="font-size:13px;font-weight:600;margin-bottom:14px">Deploy</h3>
+          <table class="stack-table">
+            <tbody>
+              <tr><td>Frontend</td><td><span class="tech-pill">Vercel</span> (Next.js native)</td></tr>
+              <tr><td>Backend</td><td><span class="tech-pill">Railway</span> Docker Node 22</td></tr>
+              <tr><td>DB + Storage</td><td><span class="tech-pill">Supabase</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div><!-- /spec-content -->
+
+<script>
+// ── GENERATE HEATMAP ─────────────────────────────────────────────
+const days = ['L','M','X','J','V','S','D'];
+const hm = document.getElementById('heatmap-demo');
+if (hm) {
+  const data = [
+    [0,0,1,0,0,'e','e'],[0,2,0,0,1,'e','e'],[1,0,0,2,0,'e','e'],
+    [0,0,0,0,0,'e','e'],[2,1,0,0,2,'e','e'],[0,0,1,0,0,'e','e'],
+    [0,0,0,1,0,'e','e'],[1,2,0,0,1,'e','e'],[0,0,0,0,0,'e','e'],
+    [0,1,2,0,0,'e','e'],[0,0,0,1,0,'e','e'],[1,0,0,0,2,'e','e'],
+  ];
+  for (let d = 0; d < 7; d++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'heatmap-cell hc-label';
+    lbl.textContent = days[d];
+    hm.appendChild(lbl);
+    for (let w = 0; w < 12; w++) {
+      const v = data[w][d];
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell ' + (v==='e'?'hc-empty':v===0?'hc-none':v===1?'hc-minor':'hc-major');
+      cell.title = v==='e'?'Fin de semana':v===0?'Sin violaciones':v===1?'1 violación menor':'2+ violaciones';
+      hm.appendChild(cell);
+    }
+  }
+}
+
+// ── GENERATE BAR CHART ───────────────────────────────────────────
+const bc = document.getElementById('bar-chart-demo');
+if (bc) {
+  const dates = ['a14','a17','a21','a24','a28','m5','m9','m12'];
+  const accs = ['#4f6ef7','#2d7a3a','#b87d2d','#b83232'];
+  const data = [
+    [30,12,8,5],[20,8,-4,3],[40,15,10,6],
+    [-8,-3,2,-5],[35,12,11,7],[28,10,8,4],
+    [32,11,9,5],[22,8,6,3]
+  ];
+  const maxVal = 50;
+  const h = 90;
+  dates.forEach((d, i) => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const stack = document.createElement('div');
+    stack.className = 'bar-stack';
+    data[i].forEach((v, a) => {
+      if (v === 0) return;
+      const seg = document.createElement('div');
+      seg.className = 'bar-seg' + (v < 0 ? ' neg' : '');
+      seg.style.height = Math.abs(v) / maxVal * h + 'px';
+      seg.style.background = accs[a];
+      seg.style.opacity = v < 0 ? '.7' : '1';
+      stack.appendChild(seg);
+    });
+    const lbl = document.createElement('div');
+    lbl.className = 'bar-date';
+    lbl.textContent = d;
+    col.appendChild(stack);
+    col.appendChild(lbl);
+    bc.appendChild(col);
+  });
+}
+
+// ── FILTER TABS ──────────────────────────────────────────────────
+document.querySelectorAll('.filter-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const siblings = btn.parentElement.querySelectorAll('.filter-tab');
+    siblings.forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// ── NAV ACTIVE ───────────────────────────────────────────────────
+document.querySelectorAll('.spec-nav a').forEach(a => {
+  const obs = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) {
+      document.querySelectorAll('.spec-nav a').forEach(x => x.classList.remove('active'));
+      a.classList.add('active');
+    }
+  }, { threshold: 0.3 });
+  const target = document.querySelector(a.getAttribute('href'));
+  if (target) obs.observe(target);
+});
+</script>
+</body>
+</html>
