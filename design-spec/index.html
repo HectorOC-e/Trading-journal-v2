@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trading Journal · Design Spec Index</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F6F5F1; --panel: #FFFFFF; --panel-2: #FAFAF7;
+      --ink: #16140F; --ink-2: #45413A; --ink-3: #8A8678;
+      --line: #ECEAE2; --line-2: #E2DFD4; --chip: #F2EFE7;
+      --accent: oklch(58% 0.16 264); --accent-soft: oklch(95% 0.03 264);
+      --win: oklch(63% 0.16 152); --win-soft: oklch(94% 0.06 152);
+      --loss: oklch(60% 0.20 27); --loss-soft: oklch(94% 0.06 27);
+      --be: oklch(75% 0.14 85); --be-soft: oklch(95% 0.06 85);
+      --radius: 14px; --radius-sm: 10px;
+    }
+    .dark {
+      --bg: #0E0C09; --panel: #16140F; --panel-2: #1B1813;
+      --ink: #F5F2EA; --ink-2: #C7C2B5; --ink-3: #807A6B;
+      --line: #25221C; --line-2: #2F2C24; --chip: #25221C;
+      --accent-soft: #1A1C2A; --win-soft: #14201A; --loss-soft: #251514; --be-soft: #25201A;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:var(--bg); color:var(--ink); font-family:'Inter',-apple-system,sans-serif; font-size:14px; line-height:1.45; }
+    .spec-nav { position:sticky;top:0;z-index:100;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 32px;display:flex;align-items:center;gap:24px;font-size:13px; }
+    .spec-nav a { color:var(--ink-2);text-decoration:none;font-size:12px;white-space:nowrap; }
+    .spec-nav a:hover { color:var(--ink); }
+    .spec-nav a.active { color:var(--accent);font-weight:600; }
+    .hero { padding:64px 48px 32px; max-width:1200px; margin:0 auto; }
+    .hero h1 { font-size:36px;font-weight:800;letter-spacing:-.04em;margin-bottom:8px; }
+    .hero p { font-size:15px;color:var(--ink-3); }
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; padding:0 48px 64px; max-width:1200px; margin:0 auto; }
+    .idx-card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:22px; text-decoration:none; color:inherit; transition:border-color .15s, box-shadow .15s; display:block; }
+    .idx-card:hover { border-color:var(--accent); box-shadow:0 4px 20px rgba(0,0,0,.08); }
+    .idx-card-route { font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:8px;font-family:'JetBrains Mono',monospace; }
+    .idx-card-name { font-size:17px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px; }
+    .idx-card-desc { font-size:12px;color:var(--ink-3);line-height:1.5; }
+    .idx-card-arrow { margin-top:14px;font-size:12px;color:var(--accent);font-weight:600; }
+    .section-label { padding:0 48px;max-width:1200px;margin:0 auto 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3); }
+  </style>
+</head>
+<body class="dark">
+
+<nav class="spec-nav">
+  <span style="font-weight:700;font-size:15px">TJ Design Spec</span>
+  <a href="index.html" class="active">Index</a>
+  <a href="foundations.html">Foundations</a>
+  <span style="color:var(--ink-3)">|</span>
+  <a href="dashboard-portfolio.html">Portfolio</a>
+  <a href="dashboard-operador.html">Operador</a>
+  <a href="dashboard-disciplina.html">Disciplina</a>
+  <a href="dashboard-playbook.html">Playbook</a>
+  <span style="color:var(--ink-3)">|</span>
+  <a href="trades.html">Trades</a>
+  <a href="reviews.html">Reviews</a>
+  <a href="cuentas.html">Cuentas</a>
+  <a href="reglas.html">Reglas</a>
+  <a href="aprendizaje.html">Aprendizaje</a>
+  <a href="onboarding.html">Onboarding</a>
+</nav>
+
+<div class="hero">
+  <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);margin-bottom:10px">DESIGN REFERENCE</p>
+  <h1>TJ Design Spec</h1>
+  <p>Trading Journal · Design System, Tokens, Components & Screen Mockups</p>
+</div>
+
+<p class="section-label">FOUNDATIONS</p>
+<div class="card-grid" style="padding-bottom:0;margin-bottom:32px">
+  <a class="idx-card" href="foundations.html">
+    <div class="idx-card-route">Design Tokens · Typography · Components</div>
+    <div class="idx-card-name">Foundations</div>
+    <div class="idx-card-desc">Color tokens, dark mode variables, typography scale, and all reusable component patterns.</div>
+    <div class="idx-card-arrow">View foundations →</div>
+  </a>
+</div>
+
+<p class="section-label">DASHBOARD TABS</p>
+<div class="card-grid" style="padding-bottom:0;margin-bottom:32px">
+  <a class="idx-card" href="dashboard-portfolio.html">
+    <div class="idx-card-route">/dashboard</div>
+    <div class="idx-card-name">Dashboard · Portfolio</div>
+    <div class="idx-card-desc">Consolidated equity view across all accounts. KPI grid, stacked P&L bar chart, account comparison table, and prop firm rule progress.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="dashboard-operador.html">
+    <div class="idx-card-route">/dashboard?tab=operador</div>
+    <div class="idx-card-name">Dashboard · Operador</div>
+    <div class="idx-card-desc">Per-account equity curve (Balance + Equity lines), account switcher cards, and recent trades table with discipline tags.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="dashboard-disciplina.html">
+    <div class="idx-card-route">/dashboard?tab=disciplina</div>
+    <div class="idx-card-name">Dashboard · Disciplina</div>
+    <div class="idx-card-desc">Discipline score donut, weekly composition, 12-week heatmap, R distribution histogram, and violation breakdown by rule.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="dashboard-playbook.html">
+    <div class="idx-card-route">/dashboard?tab=playbook</div>
+    <div class="idx-card-name">Dashboard · Playbook</div>
+    <div class="idx-card-desc">Setup performance cards with mini equity sparklines, session × setup win rate matrix, and A+ checklist compliance bars.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+</div>
+
+<p class="section-label">SCREENS</p>
+<div class="card-grid">
+  <a class="idx-card" href="trades.html">
+    <div class="idx-card-route">/trades</div>
+    <div class="idx-card-name">Trades</div>
+    <div class="idx-card-desc">Full trade log across all accounts. Filter tabs (Win/Loss/B/E/Long/Short/DNT), sortable data table, and quick import.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="reviews.html">
+    <div class="idx-card-route">/reviews</div>
+    <div class="idx-card-name">Reviews</div>
+    <div class="idx-card-desc">Weekly review list + detail panel. DRAFT/SUBMITTED badges, KPI strip, "Qué funcionó / A mejorar" structured format.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="cuentas.html">
+    <div class="idx-card-route">/cuentas</div>
+    <div class="idx-card-name">Cuentas</div>
+    <div class="idx-card-desc">Account management grid. Per-account balance, equity delta, daily loss and drawdown progress bars with color-coded severity.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="reglas.html">
+    <div class="idx-card-route">/reglas</div>
+    <div class="idx-card-name">Reglas</div>
+    <div class="idx-card-desc">Trading rule library. DNT/LÍMITE/GESTIÓN/NOTICIAS/HORARIO types, severity badges, and violation counters.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="aprendizaje.html">
+    <div class="idx-card-route">/aprendizaje</div>
+    <div class="idx-card-name">Aprendizaje</div>
+    <div class="idx-card-desc">Learning journal with tagged entries. Highlighted/flagged insights, topic filters, and full-text search.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+  <a class="idx-card" href="onboarding.html">
+    <div class="idx-card-route">/onboarding</div>
+    <div class="idx-card-name">Onboarding</div>
+    <div class="idx-card-desc">3-step wizard: account setup → trading config → rules. Centered layout, no sidebar. Step progress indicator.</div>
+    <div class="idx-card-arrow">View screen →</div>
+  </a>
+</div>
+
+</body>
+</html>
