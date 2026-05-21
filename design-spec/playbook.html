@@ -64,7 +64,7 @@
     .mono { font-family: 'JetBrains Mono', monospace; }
     .eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); }
     .muted { color: var(--ink-3); }
-    .shell { display: grid; grid-template-columns: 240px 1fr 340px; min-height: 100vh; }
+    .shell { display: grid; grid-template-columns: 240px 1fr 340px; min-height: 100%; }
     .sidebar {
       position: sticky; top: 0; height: 100vh; overflow-y: auto;
       background: var(--panel);
@@ -354,7 +354,7 @@
       display: flex; align-items: center; gap: 8px;
     }
     .screen-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .screen-body { display: flex; height: 560px; overflow: hidden; }
+    .screen-body { display: flex; min-height: 620px; overflow: visible; }
     .disc-score { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
     .disc-number { font-family: 'JetBrains Mono', monospace; font-size: 56px; font-weight: 700; line-height: 1; }
     .disc-sub-row { display: flex; gap: 20px; margin-top: 12px; }
@@ -512,7 +512,7 @@
   <a href="index.html">Index</a>
   <a href="foundations.html">Foundations</a>
   <span style="color:var(--ink-3)">|</span>
-  <a href="dashboard-portfolio.html">Dashboard</a>
+  <a href="dashboard.html">Dashboard</a>
   <a href="trades.html">Trades</a>
   <a href="playbook.html" class="current">Playbook</a>
   <a href="reviews.html">Reviews</a>

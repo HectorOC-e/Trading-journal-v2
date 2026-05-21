@@ -59,16 +59,114 @@
 
 <div style="padding:0 48px 48px">
   <div id="tab-portfolio" class="tab-panel active">
-    <iframe src="dashboard-portfolio.html" style="height:700px"></iframe>
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
+      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Portfolio</h2>
+      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Balance total · Equity curve · Heatmap calendario · Últimos trades</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;max-width:700px;margin:0 auto 24px">
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">BALANCE</p><p style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">$98,240</p></div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">EQUITY</p><p style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)">$101,480</p></div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">WIN RATE</p><p style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent)">64%</p></div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">AVG R</p><p style="font-size:20px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.2R</p></div>
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:600px;margin:0 auto">
+        <p style="font-size:11px;color:var(--ink-3);margin-bottom:12px;text-align:left">HEATMAP · Mayo 2026</p>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win);border-radius:4px;opacity:.7"></div>
+          <div style="aspect-ratio:1;background:var(--chip);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--loss-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--chip);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--chip);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--loss-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--chip);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win-soft);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:var(--win);border-radius:4px;opacity:.9"></div>
+          <div style="aspect-ratio:1;background:var(--chip);border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+          <div style="aspect-ratio:1;background:transparent;border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
   </div>
+
   <div id="tab-operador" class="tab-panel">
-    <iframe src="dashboard-operador.html" style="height:700px"></iframe>
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
+      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Operador</h2>
+      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Equity curve Balance vs Equity · Stats por sesión · Rachas win/loss</p>
+      <!-- Equity chart placeholder -->
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:700px;margin:0 auto 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <p style="font-size:12px;font-weight:600;color:var(--ink)">Equity · Balance</p>
+          <div style="display:flex;gap:16px;font-size:11px;color:var(--ink-2)">
+            <span><span style="display:inline-block;width:18px;height:2px;background:#b87d2d;vertical-align:middle;margin-right:5px"></span>Balance</span>
+            <span><span style="display:inline-block;width:18px;height:2px;background:#4f6ef7;vertical-align:middle;margin-right:5px"></span>Equity</span>
+          </div>
+        </div>
+        <div style="height:120px;background:var(--panel);border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <svg width="600" height="100" viewBox="0 0 600 100" style="max-width:100%">
+            <polyline points="0,70 60,65 120,72 180,55 240,48 300,52 360,38 420,42 480,30 540,25 600,20" stroke="#b87d2d" stroke-width="2" fill="none" opacity="0.8"/>
+            <polyline points="0,75 60,68 120,60 180,58 240,45 300,55 360,35 420,38 480,28 540,22 600,18" stroke="#4f6ef7" stroke-width="2" fill="none" opacity="0.8"/>
+          </svg>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:600px;margin:0 auto">
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">NY AM</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">+$2,840</p></div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">LONDON</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">+$960</p></div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">ASIA</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--loss)">-$120</p></div>
+      </div>
+    </div>
   </div>
+
   <div id="tab-disciplina" class="tab-panel">
-    <iframe src="dashboard-disciplina.html" style="height:700px"></iframe>
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
+      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Disciplina</h2>
+      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Score global 0–100 · Cumplimiento de reglas · Violaciones detectadas</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap">
+        <div style="text-align:center">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#4caf7a" stroke-width="10" stroke-dasharray="251" stroke-dashoffset="63" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            <text x="60" y="65" text-anchor="middle" fill="var(--ink)" font-size="22" font-weight="800" font-family="JetBrains Mono,monospace">78</text>
+          </svg>
+          <p style="font-size:12px;color:var(--ink-3);margin-top:8px">Score Disciplina</p>
+        </div>
+        <div style="max-width:300px;width:100%">
+          <div style="margin-bottom:14px;text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Plan seguido</span><span style="color:var(--win);font-family:'JetBrains Mono',monospace">88%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:88%;background:var(--win);border-radius:3px"></div></div></div>
+          <div style="margin-bottom:14px;text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Sin revenge trading</span><span style="color:#e8962a;font-family:'JetBrains Mono',monospace">72%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:72%;background:#e8962a;border-radius:3px"></div></div></div>
+          <div style="text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Max 2 trades/día</span><span style="color:var(--loss);font-family:'JetBrains Mono',monospace">55%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:55%;background:var(--loss);border-radius:3px"></div></div></div>
+        </div>
+      </div>
+    </div>
   </div>
+
   <div id="tab-playbook" class="tab-panel">
-    <iframe src="dashboard-playbook.html" style="height:700px"></iframe>
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
+      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
+      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Playbook</h2>
+      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Performance por setup · Win rate y Avg R comparados</p>
+      <table style="width:100%;max-width:700px;margin:0 auto;border-collapse:collapse;font-size:13px;text-align:left">
+        <thead><tr style="border-bottom:1px solid var(--line)"><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600">SETUP</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">TRADES</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">WIN %</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">AVG R</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">NET P&L</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Opening Range Break</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">47</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">64%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.80R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$14,320</td></tr>
+          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Liquidity Grab</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">31</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+2.20R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$12,800</td></tr>
+          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">London Reversal</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">21</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">66%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.40R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$9,800</td></tr>
+          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">VWAP Reclaim</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">19</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">68%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.50R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$5,800</td></tr>
+          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Failed Auction</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">8</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">52%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+0.90R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$4,100</td></tr>
+          <tr><td style="padding:10px 8px;color:var(--ink-3)">News Fade — NFP</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">6</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">41%</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.20R</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">-$500</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 
