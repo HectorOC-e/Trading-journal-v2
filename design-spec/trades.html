@@ -317,6 +317,7 @@
     }
     .spec-nav a { color: var(--ink-2); text-decoration: none; white-space: nowrap; }
     .spec-nav a:hover { color: var(--ink); }
+    .spec-nav a.current { background: var(--chip); color: var(--ink); font-weight: 600; padding: 3px 10px; border-radius: 6px; }
     .spec-section { padding: 48px 0; border-bottom: 1px solid var(--line); }
     .spec-section:last-child { border-bottom: none; }
     .spec-section-inner { max-width: 1100px; margin: 0 auto; padding: 0 32px; }
@@ -419,153 +420,488 @@
       .kpi-grid { grid-template-columns: 1fr 1fr; }
       .grid-2, .grid-2-330 { grid-template-columns: 1fr; }
     }
-
   </style>
 </head>
 <body class="dark">
+
+<!-- Spec nav -->
 <nav class="spec-nav">
   <span style="font-weight:700;font-size:15px">TJ Design Spec</span>
   <a href="index.html">Index</a>
   <a href="foundations.html">Foundations</a>
   <span style="color:var(--ink-3)">|</span>
-  <a href="dashboard-portfolio.html">Portfolio</a>
-  <a href="dashboard-operador.html">Operador</a>
-  <a href="dashboard-disciplina.html">Disciplina</a>
-  <a href="dashboard-playbook.html">Playbook</a>
-  <span style="color:var(--ink-3)">|</span>
-  <a href="trades.html">Trades</a>
+  <a href="dashboard-portfolio.html">Dashboard</a>
+  <a href="trades.html" class="current">Trades</a>
+  <a href="playbook.html">Playbook</a>
   <a href="reviews.html">Reviews</a>
   <a href="cuentas.html">Cuentas</a>
   <a href="reglas.html">Reglas</a>
   <a href="aprendizaje.html">Aprendizaje</a>
-  <a href="onboarding.html">Onboarding</a>
+  <a href="perfil.html">Perfil</a>
 </nav>
+
+<!-- Route header -->
 <div style="padding:40px 48px 24px;max-width:1600px;margin:0 auto">
-  <p style="font-size:12px;color:var(--ink-3);margin-bottom:4px">ROUTE</p>
-  <h1 style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Operaciones</h1>
-  <p style="color:var(--ink-2);font-size:14px">230 trades · todas las cuentas</p>
-  <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:4px">/trades</p>
+  <p style="font-size:12px;color:var(--ink-3);margin-bottom:4px">/trades</p>
+  <h1 style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Trades</h1>
+  <p style="color:var(--ink-2);font-size:14px">Lista y detalle de operaciones</p>
 </div>
+
+<!-- Screen mockup -->
 <div style="padding:0 48px 48px;max-width:1600px;margin:0 auto">
-    <div class="screen-frame">
-      <div class="screen-label">
-        <div class="screen-dot" style="background:#ff6b6b"></div>
-        <div class="screen-dot" style="background:#ffd93d"></div>
-        <div class="screen-dot" style="background:#6bcb77"></div>
-        <span style="margin-left:4px">Operaciones · todas las cuentas · 1440px</span>
-      </div>
-      <div class="shell screen-body" style="height:520px">
-        <div class="sidebar" style="height:100%;flex-shrink:0">
-          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
-          <nav class="nav">
-            <p class="eyebrow nav-section">OPERACIÓN</p>
-            <a class="nav-item" href="#">◻ Dashboard</a>
-            <a class="nav-item" href="#">◻ Cuentas</a>
-            <a class="nav-item active" href="#">⬛ Trades</a>
-            <a class="nav-item" href="#">◻ Playbook</a>
-            <a class="nav-item" href="#">◻ Reglas</a>
-            <a class="nav-item" href="#">◻ Reviews</a>
-            <a class="nav-item" href="#">◻ Aprendizaje</a>
-            <p class="eyebrow nav-section" style="margin-top:8px">CUENTA</p>
-            <a class="nav-item" href="#">◻ Perfil</a>
-          </nav>
-          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
+  <div class="screen-frame">
+    <div class="screen-label">
+      <div class="screen-dot" style="background:#ff6b6b"></div>
+      <div class="screen-dot" style="background:#ffd93d"></div>
+      <div class="screen-dot" style="background:#6bcb77"></div>
+      <span style="margin-left:4px">Trades · 10 trades · período · 1440px</span>
+    </div>
+
+    <!-- App shell -->
+    <div style="display:flex;height:620px;overflow:hidden">
+
+      <!-- Sidebar 240px -->
+      <div class="sidebar" style="width:240px;flex-shrink:0;height:100%">
+        <div class="brand">
+          <div class="brand-mark">TJ<div class="brand-dot"></div></div>
+          <span class="brand-name">Trading Journal</span>
         </div>
-        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
+        <nav class="nav">
+          <p class="eyebrow nav-section">OPERACIÓN</p>
+          <a class="nav-item" href="#">◻ Dashboard</a>
+          <a class="nav-item" href="#">◻ Cuentas</a>
+          <a class="nav-item active" href="#">⬛ Trades</a>
+          <a class="nav-item" href="#">◻ Playbook</a>
+          <a class="nav-item" href="#">◻ Reglas</a>
+          <a class="nav-item" href="#">◻ Reviews</a>
+          <a class="nav-item" href="#">◻ Aprendizaje</a>
+          <p class="eyebrow nav-section" style="margin-top:8px">CUENTA</p>
+          <a class="nav-item" href="#">◻ Perfil</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="avatar-sm">HC</div>
+          <div>
+            <div style="font-size:12px;font-weight:600">Héctor O.C.</div>
+            <div style="font-size:10px;color:var(--ink-3)">Single-Trader</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main area: trade list + detail panel -->
+      <div style="flex:1;display:flex;overflow:hidden;min-width:0">
+
+        <!-- Trade list (~700px) -->
+        <div style="flex:1;min-width:0;overflow-y:auto;padding:18px 20px;border-right:1px solid var(--line)">
+
+          <!-- Top bar -->
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
-            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Operaciones</h1><p style="font-size:12px;color:var(--ink-3)">230 trades · todas las cuentas</p></div>
-            <div style="display:flex;gap:8px">
-              <select class="form-select" style="font-size:11px;padding:6px 10px"><option>Todas las cuentas</option></select>
-              <button class="btn-secondary" style="font-size:11px;padding:6px 12px">+ Importar CSV</button>
+            <div>
+              <h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Trades</h1>
+              <p style="font-size:13px;color:var(--ink-3);margin-top:2px">10 trades · 230 totales en este período</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button style="padding:7px 14px;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer">Exportar CSV</button>
+              <button style="padding:7px 14px;background:var(--accent);color:white;border:none;border-radius:99px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;line-height:1">+</button>
             </div>
           </div>
-          <!-- Stats row -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+
+          <!-- KPI strip 4 cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
             <div class="kpi-card" style="padding:14px 16px">
-              <div class="kpi-label">NET P&L</div>
-              <div class="kpi-value" style="font-size:18px;color:var(--win)">+$6,420.00</div>
-              <div class="kpi-sub" style="color:var(--win);font-size:10.5px">30 días · 4 cuentas</div>
+              <div class="kpi-label">NET P&amp;L · PERIODO</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--win);letter-spacing:-.02em;line-height:1.1">+$3,244.70</div>
             </div>
             <div class="kpi-card" style="padding:14px 16px">
-              <div class="kpi-label">TOTAL TRADES</div>
-              <div class="kpi-value" style="font-size:18px">230</div>
-              <div class="kpi-sub muted" style="font-size:10.5px">134 W · 82 L · 14 B/E</div>
+              <div class="kpi-label">TRADES</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.1">10</div>
             </div>
             <div class="kpi-card" style="padding:14px 16px">
-              <div class="kpi-label">R TOTAL</div>
-              <div class="kpi-value" style="font-size:18px;color:var(--win)">+32.4R</div>
-              <div class="kpi-sub muted" style="font-size:10.5px">avg +1.4R/trade ganador</div>
+              <div class="kpi-label">WIN RATE</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--accent);letter-spacing:-.02em;line-height:1.1">60%</div>
+            </div>
+            <div class="kpi-card" style="padding:14px 16px">
+              <div class="kpi-label">AVG R</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--win);letter-spacing:-.02em;line-height:1.1">+0.74R</div>
             </div>
           </div>
-          <!-- Filter tabs -->
-          <div class="filter-tabs">
-            <button class="filter-tab active">Todos</button>
-            <button class="filter-tab">Win</button>
-            <button class="filter-tab">Loss</button>
-            <button class="filter-tab">B/E</button>
-            <button class="filter-tab">Long</button>
-            <button class="filter-tab">Short</button>
-            <button class="filter-tab" style="color:var(--loss)">DNT ⚠</button>
+
+          <!-- Filter bar row 1 -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;align-items:center">
+            <button class="filter-tab active" style="font-size:10px;padding:4px 12px">TODAS</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">A+</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">Plan seguido</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">Off-plan</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">Violación</button>
+            <span style="color:var(--line-2);margin:0 4px">|</span>
+            <button class="filter-tab active" style="font-size:10px;padding:4px 12px">TODAS</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">LONG</button>
+            <button class="filter-tab" style="font-size:10px;padding:4px 12px">SHORT</button>
           </div>
-          <!-- Trades table -->
-          <div class="card" style="padding:0;overflow:hidden">
-            <table class="data-table" style="font-size:11.5px">
-              <thead><tr style="background:var(--panel-2)"><th style="padding:10px 12px">FECHA</th><th>CUENTA</th><th>INSTRUMENTO</th><th>SETUP</th><th>SIDE</th><th>RIESGO</th><th>R</th><th>P&L</th><th>RESULTADO</th></tr></thead>
+          <!-- Filter bar row 2 -->
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <select class="form-select" style="font-size:11px;padding:5px 10px;flex:0 0 auto">
+              <option>Todas las cuentas</option>
+            </select>
+            <select class="form-select" style="font-size:11px;padding:5px 10px;flex:0 0 auto">
+              <option>Últimos 30 días</option>
+            </select>
+          </div>
+
+          <!-- Trade list table -->
+          <div style="overflow-x:auto">
+            <table class="data-table" style="font-size:11px;min-width:560px">
+              <thead>
+                <tr>
+                  <th style="padding-left:8px">SIDE</th>
+                  <th>SÍMBOLO</th>
+                  <th>SETUP</th>
+                  <th>SESIÓN</th>
+                  <th>R</th>
+                  <th>P&amp;L</th>
+                  <th>CUENTA</th>
+                  <th>TAGS</th>
+                  <th>FECHA</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr><td style="padding:10px 12px;color:var(--ink-3)">19 may 09:42</td><td>FXify 100K</td><td><b>ES</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$200</td><td class="td-mono td-win">+2.1R</td><td class="td-mono td-win">+$420</td><td><span class="badge badge-win">WIN</span></td></tr>
-                <tr><td style="padding:10px 12px;color:var(--ink-3)">19 may 11:15</td><td>FXify 100K</td><td><b>NQ</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Liquidity Grab</td><td><span class="badge badge-loss">SHORT</span></td><td class="td-mono">$200</td><td class="td-mono td-loss">-1.0R</td><td class="td-mono td-loss">-$200</td><td><span class="badge badge-loss">LOSS</span></td></tr>
-                <!-- DNT row with red left border -->
-                <tr style="border-left:3px solid var(--loss)"><td style="padding:10px 12px 10px 9px;color:var(--ink-3)">16 may 14:02</td><td>FTMO 50K</td><td><b>NQ</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--loss)">Revenge Trade ⛔</td><td><span class="badge badge-loss">SHORT</span></td><td class="td-mono">$300</td><td class="td-mono td-loss">-1.5R</td><td class="td-mono td-loss">-$450</td><td><span class="badge badge-loss">DNT</span></td></tr>
-                <tr><td style="padding:10px 12px;color:var(--ink-3)">15 may 09:55</td><td>IBKR Personal</td><td><b>SPY</b> <span style="font-size:9px;color:var(--ink-3)">EQ</span></td><td style="color:var(--ink-3)">Volume Profile</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$400</td><td class="td-mono td-win">+1.6R</td><td class="td-mono td-win">+$640</td><td><span class="badge badge-win">WIN</span></td></tr>
-                <tr><td style="padding:10px 12px;color:var(--ink-3)">14 may 10:20</td><td>APEX 150K</td><td><b>ES</b> <span style="font-size:9px;color:var(--ink-3)">FUT</span></td><td style="color:var(--ink-3)">Opening Range Break</td><td><span class="badge badge-win">LONG</span></td><td class="td-mono">$300</td><td class="td-mono" style="color:var(--be)">0.0R</td><td class="td-mono" style="color:var(--be)">$0</td><td><span class="badge badge-be">B/E</span></td></tr>
+                <!-- Row 1 SELECTED -->
+                <tr style="border-left:3px solid var(--accent);background:rgba(79,110,247,.07)">
+                  <td style="padding-left:8px"><span style="background:var(--win-soft);color:var(--win);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">LONG</span></td>
+                  <td><b>ES</b></td>
+                  <td style="color:var(--ink-2)">Opening Range Break</td>
+                  <td style="color:var(--ink-3)">NY AM · 08:32</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+2.4R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$1,240.00</td>
+                  <td style="color:var(--ink-3)">FXify 100K</td>
+                  <td>
+                    <span style="background:#1a2a1a;color:#4caf7a;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700">A+</span>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px;margin-left:3px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">20 may 2026</td>
+                </tr>
+                <!-- Row 2 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--loss-soft);color:var(--loss);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">SHORT</span></td>
+                  <td><b>NQ</b></td>
+                  <td style="color:var(--ink-2)">Failed Auction</td>
+                  <td style="color:var(--ink-3)">NY AM · 09:14</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-1.0R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-$480.00</td>
+                  <td style="color:var(--ink-3)">FXify 100K</td>
+                  <td>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">20 may 2026</td>
+                </tr>
+                <!-- Row 3 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--win-soft);color:var(--win);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">LONG</span></td>
+                  <td><b>EURUSD</b></td>
+                  <td style="color:var(--ink-2)">London Reversal</td>
+                  <td style="color:var(--ink-3)">London · 03:45</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+1.2R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$312.50</td>
+                  <td style="color:var(--ink-3)">FTMO Swing 50K</td>
+                  <td>
+                    <span style="background:#1a221a;color:#4caf7a;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:600">A</span>
+                  </td>
+                  <td style="color:var(--ink-3)">20 may 2026</td>
+                </tr>
+                <!-- Row 4 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--loss-soft);color:var(--loss);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">SHORT</span></td>
+                  <td><b>GC</b></td>
+                  <td style="color:var(--ink-2)">Trend Continuation</td>
+                  <td style="color:var(--ink-3)">NY PM · 14:08</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-9.4R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-$180.00</td>
+                  <td style="color:var(--ink-3)">FXify 100K</td>
+                  <td>
+                    <span style="background:#2a1a1a;color:#e07070;padding:2px 6px;border-radius:99px;font-size:10px">Off-plan</span>
+                    <span style="background:#2a1212;color:#e05050;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700;margin-left:3px">Violación</span>
+                  </td>
+                  <td style="color:var(--ink-3)">19 may 2026</td>
+                </tr>
+                <!-- Row 5 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--win-soft);color:var(--win);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">LONG</span></td>
+                  <td><b>ES</b></td>
+                  <td style="color:var(--ink-2)">Liquidity Grab</td>
+                  <td style="color:var(--ink-3)">NY AM · 08:56</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+3.1R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$1,488.00</td>
+                  <td style="color:var(--ink-3)">FXify 100K</td>
+                  <td>
+                    <span style="background:#1a2a1a;color:#4caf7a;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700">A+</span>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px;margin-left:3px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">19 may 2026</td>
+                </tr>
+                <!-- Row 6 -->
+                <tr style="background:rgba(255,255,255,.015)">
+                  <td style="padding-left:8px"><span style="background:var(--loss-soft);color:var(--loss);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">SHORT</span></td>
+                  <td><b>USDJPY</b></td>
+                  <td style="color:var(--ink-2)">Asia Sweep</td>
+                  <td style="color:var(--ink-3)">Asia · 22:12</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--be)">0.0R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$4.20</td>
+                  <td style="color:var(--ink-3)">FTMO Swing 50K</td>
+                  <td>
+                    <span style="background:var(--be-soft);color:var(--be);padding:2px 6px;border-radius:99px;font-size:10px">BE</span>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px;margin-left:3px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">18 may 2026</td>
+                </tr>
+                <!-- Row 7 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--win-soft);color:var(--win);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">LONG</span></td>
+                  <td><b>NQ</b></td>
+                  <td style="color:var(--ink-2)">VWAP Reclaim</td>
+                  <td style="color:var(--ink-3)">NY PM · 13:24</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+1.8R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$864.00</td>
+                  <td style="color:var(--ink-3)">Personal · IBKR</td>
+                  <td>
+                    <span style="background:#1a221a;color:#4caf7a;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:600">A</span>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px;margin-left:3px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">18 may 2026</td>
+                </tr>
+                <!-- Row 8 -->
+                <tr style="background:rgba(255,255,255,.015)">
+                  <td style="padding-left:8px"><span style="background:var(--loss-soft);color:var(--loss);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">SHORT</span></td>
+                  <td><b>DAX</b></td>
+                  <td style="color:var(--ink-2)">Failed Auction</td>
+                  <td style="color:var(--ink-3)">London · 08:12</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-1.0R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-$250.00</td>
+                  <td style="color:var(--ink-3)">Personal · IBKR</td>
+                  <td>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">16 may 2026</td>
+                </tr>
+                <!-- Row 9 -->
+                <tr>
+                  <td style="padding-left:8px"><span style="background:var(--win-soft);color:var(--win);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">LONG</span></td>
+                  <td><b>GBPUSD</b></td>
+                  <td style="color:var(--ink-2)">London Reversal</td>
+                  <td style="color:var(--ink-3)">London · 04:02</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+2.1R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--win)">+$630.00</td>
+                  <td style="color:var(--ink-3)">FTMO Swing 50K</td>
+                  <td>
+                    <span style="background:#1a2a1a;color:#4caf7a;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700">A+</span>
+                    <span style="background:var(--chip);color:var(--ink-2);padding:2px 6px;border-radius:99px;font-size:10px;margin-left:3px">Plan</span>
+                  </td>
+                  <td style="color:var(--ink-3)">15 may 2026</td>
+                </tr>
+                <!-- Row 10 -->
+                <tr style="background:rgba(255,255,255,.015)">
+                  <td style="padding-left:8px"><span style="background:var(--loss-soft);color:var(--loss);padding:2px 8px;border-radius:99px;font-size:9.5px;font-weight:700">SHORT</span></td>
+                  <td><b>ES</b></td>
+                  <td style="color:var(--ink-2)">Liquidity Grab</td>
+                  <td style="color:var(--ink-3)">NY AM · 09:32</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-0.8R</td>
+                  <td style="font-family:'JetBrains Mono',monospace;color:var(--loss)">-$384.00</td>
+                  <td style="color:var(--ink-3)">FXify 100K</td>
+                  <td>
+                    <span style="background:#2a1a1a;color:#e07070;padding:2px 6px;border-radius:99px;font-size:10px">Impulsivo</span>
+                    <span style="background:#2a1212;color:#e05050;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:700;margin-left:3px">Violación</span>
+                  </td>
+                  <td style="color:var(--ink-3)">15 may 2026</td>
+                </tr>
               </tbody>
             </table>
           </div>
-        </div>
-        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
-          <div style="padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><span style="font-size:13px;font-weight:600">Héctor O.C.</span><div style="display:flex;gap:8px;font-size:14px;color:var(--ink-3)"><span>🔔</span><span>⚙</span></div></div>
-            <div style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Single-Trader · TJ</div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3)"><span>19 may 2026</span><span style="font-weight:600;color:var(--ink-2)">SEM 20 · 2026</span></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:600">Setups · Top performers</span><span style="color:var(--ink-3)">···</span></div>
-          <div class="filter-tabs" style="margin-bottom:8px;gap:3px">
-            <button class="filter-tab active" style="font-size:9px;padding:3px 8px">Futuros</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">FX</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">Equities</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">Cripto</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;font-size:8.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:2px"><span>SETUP</span><span style="text-align:center">WIN %</span><span style="text-align:right">AVG R</span></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(79,110,247,.15);color:#4f6ef7;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">OR</div><div><div style="font-size:10.5px;font-weight:600">Opening Range Break</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">64%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.80</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(184,50,50,.12);color:#b83232;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">FA</div><div><div style="font-size:10.5px;font-weight:600">Failed Auction</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">52%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+8.90</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(97,57,200,.15);color:#6139c8;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LG</div><div><div style="font-size:10.5px;font-weight:600">Liquidity Grab</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">71%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+2.20</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(184,125,45,.15);color:#b87d2d;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LR</div><div><div style="font-size:10.5px;font-weight:600">London Reversal</div><div style="font-size:9px;color:var(--ink-3)">FX</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">58%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.40</div></div>
-          <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:12px">
-            <div style="font-size:13px;font-weight:600;margin-bottom:10px">Nuevo Trade</div>
-            <div class="dir-toggle" style="margin-bottom:10px"><button class="dir-btn dir-long" style="font-size:12px;padding:8px">LONG</button><button class="dir-btn dir-short" style="font-size:12px;padding:8px">SHORT</button></div>
-            <div style="margin-bottom:8px"><label class="form-label">Símbolo · Setup</label><div style="font-size:15px;font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:4px">ES</div><div style="font-size:10.5px;color:var(--ink-3);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 12px">Opening Range Break · NY AM</div></div>
-            <div><label class="form-label">Riesgo (R)</label><div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap"><span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">0.5 R</span><span style="font-size:10px;color:var(--ink-3)">≈ $514.20 sobre equity</span><span style="font-size:10px;color:var(--ink-3);margin-left:auto">USD</span></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
+        </div><!-- /trade list -->
 
-</div>
+        <!-- Trade detail panel ~280px -->
+        <div style="width:280px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:16px">
+          <!-- Header -->
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:4px">TRADE #1</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+              <div>
+                <div style="font-size:16px;font-weight:700;letter-spacing:-.01em">ES · LONG</div>
+                <div style="font-size:13px;color:var(--ink-2);margin-top:1px">Opening Range Break · NY AM</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;margin-top:2px">
+                <span style="font-size:14px;color:var(--ink-3);cursor:pointer">🔗</span>
+                <span style="font-size:14px;color:var(--ink-3);cursor:pointer">···</span>
+              </div>
+            </div>
+          </div>
 
+          <!-- Big P&L -->
+          <div style="margin-bottom:4px">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--win);letter-spacing:-.02em;line-height:1">+$1,240.00</div>
+          </div>
+          <div style="font-size:11px;color:var(--ink-3);margin-bottom:14px">Gross $1260.00 · Comisión $20.00 · +2.40R</div>
+
+          <!-- Screenshot placeholder -->
+          <div style="border:1px solid var(--line);border-radius:8px;height:180px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;background:var(--panel-2)">
+            <span style="font-size:11px;color:var(--ink-3);font-style:italic">[ screenshot — ES 08:32 ]</span>
+          </div>
+
+          <!-- Stats grid 2x3 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div>
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:2px">ENTRY</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">5824.25</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:2px">EXIT</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">5836.5</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:2px">STOP LOSS</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">5819</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:2px">TAMAÑO</div>
+              <div style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600">4</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:2px">CUENTA</div>
+              <div style="font-size:12px;color:var(--ink-2)">FXify 100K</div>
+            </div>
+            <div></div>
+          </div>
+
+          <!-- Action buttons -->
+          <div style="display:flex;gap:8px">
+            <button style="flex:1;padding:9px;border:1px solid var(--line);background:transparent;color:var(--ink-2);border-radius:8px;font-size:12px;font-family:inherit;cursor:pointer">Ver en playbook</button>
+            <button style="padding:9px 12px;border:1px solid var(--line);background:transparent;color:var(--ink-3);border-radius:8px;font-size:14px;font-family:inherit;cursor:pointer">···</button>
+          </div>
+        </div><!-- /trade detail -->
+
+      </div><!-- /main area -->
+
+      <!-- Right rail 280px -->
+      <div class="rail" style="width:280px;flex-shrink:0;height:100%;overflow-y:auto;font-size:12px">
+        <!-- User header -->
+        <div style="padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+            <span style="font-size:13px;font-weight:600">Héctor O.C.</span>
+            <div style="display:flex;gap:8px;font-size:14px;color:var(--ink-3)"><span>🔔</span><span>⚙</span></div>
+          </div>
+          <div style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Single-Trader · TJ</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3)">
+            <span>20 may 2026</span>
+            <span style="font-weight:600;color:var(--ink-2)">SEM 20 · 2026</span>
+          </div>
+        </div>
+
+        <!-- Setups top performers -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:12px;font-weight:600">Setups · Top performers</span>
+          <span style="color:var(--ink-3)">···</span>
+        </div>
+        <div class="filter-tabs" style="margin-bottom:8px;gap:3px">
+          <button class="filter-tab active" style="font-size:9px;padding:3px 8px">Futuros</button>
+          <button class="filter-tab" style="font-size:9px;padding:3px 8px">FX</button>
+          <button class="filter-tab" style="font-size:9px;padding:3px 8px">Equities</button>
+          <button class="filter-tab" style="font-size:9px;padding:3px 8px">Cripto</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 40px 40px;font-size:8.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:2px">
+          <span>SETUP</span><span style="text-align:center">WIN %</span><span style="text-align:right">AVG R</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:26px;height:26px;border-radius:6px;background:rgba(79,110,247,.15);color:#4f6ef7;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">OR</div>
+            <div><div style="font-size:10.5px;font-weight:600">Opening Range Break</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div>
+          </div>
+          <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">64%</div>
+          <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.80</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:26px;height:26px;border-radius:6px;background:rgba(184,50,50,.12);color:#b83232;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">FA</div>
+            <div><div style="font-size:10.5px;font-weight:600">Failed Auction</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div>
+          </div>
+          <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">52%</div>
+          <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+8.90</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:26px;height:26px;border-radius:6px;background:rgba(97,57,200,.15);color:#6139c8;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LG</div>
+            <div><div style="font-size:10.5px;font-weight:600">Liquidity Grab</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div>
+          </div>
+          <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">71%</div>
+          <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+2.20</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:26px;height:26px;border-radius:6px;background:rgba(184,125,45,.15);color:#b87d2d;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LR</div>
+            <div><div style="font-size:10.5px;font-weight:600">London Reversal</div><div style="font-size:9px;color:var(--ink-3)">FX</div></div>
+          </div>
+          <div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">58%</div>
+          <div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.40</div>
+        </div>
+
+        <!-- Nuevo Trade form -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:10px">Nuevo Trade</div>
+          <div class="dir-toggle" style="margin-bottom:10px">
+            <button class="dir-btn dir-long" style="font-size:12px;padding:8px">LONG</button>
+            <button class="dir-btn dir-short" style="font-size:12px;padding:8px">SHORT</button>
+          </div>
+          <div style="margin-bottom:8px">
+            <label class="form-label">Símbolo · Setup</label>
+            <div style="font-size:15px;font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:4px">ES</div>
+            <div style="font-size:10.5px;color:var(--ink-3);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 12px">Opening Range Break · NY AM</div>
+          </div>
+          <div>
+            <label class="form-label">Riesgo (R)</label>
+            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">0.5 R</span>
+              <span style="font-size:10px;color:var(--ink-3)">≈ $514.20 sobre equity</span>
+              <span style="font-size:10px;color:var(--ink-3);margin-left:auto">USD</span>
+            </div>
+          </div>
+        </div>
+      </div><!-- /right rail -->
+
+    </div><!-- /app shell flex -->
+  </div><!-- /screen-frame -->
+</div><!-- /mockup wrapper -->
+
+<!-- Annotations -->
 <div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
   <h2 style="font-size:18px;font-weight:700;margin-bottom:24px">Especificaciones</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
     <div>
       <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Layout</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>240px sidebar + flex main + 340px rail</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Screen body: height 520px</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Main: padding 20px 24px</li></ul>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>240px sidebar + flex trade list + 280px detail panel + 280px right rail</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Screen body: height 620px, full dark shell</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Trade list: padding 18px 20px, overflow-y auto</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Detail panel: 280px fixed, dark panel bg, border-right 1px var(--line)</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>KPI strip: 4 cards, grid-template-columns repeat(4,1fr), gap 10px</li>
+      </ul>
     </div>
     <div>
       <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Componentes</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>3-stat KPI strip (Net P&amp;L, Total, R Total)</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Filter tabs: Todos/Win/Loss/B/E/Long/Short/DNT</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Data table: Fecha, Cuenta, Instrumento, Setup, Side, Riesgo, R, P&amp;L, Resultado</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Badge WIN/LOSS/B/E/DNT</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>DNT row: border-left 3px rojo</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Cuenta selector + Importar CSV</li></ul>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>KPI: NET P&amp;L, TRADES, WIN RATE, AVG R — JetBrains Mono 28px bold</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Filter chips (row 1): TODAS / A+ / Plan seguido / Off-plan / Violación | TODAS / LONG / SHORT</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Filter row 2: Todas las cuentas dropdown + Últimos 30 días dropdown</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Table columns: SIDE · SÍMBOLO · SETUP · SESIÓN · R · P&amp;L · CUENTA · TAGS · FECHA</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Badge A+: bg #1a2a1a, color #4caf7a, weight 700. Violación: bg #2a1212, color #e05050</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Detail panel: header, big P&amp;L, screenshot placeholder, stats 2×3 grid, action buttons</li>
+      </ul>
     </div>
     <div>
       <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Comportamiento</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Filter tabs narrow la lista de trades</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Table sortable por columna (click en header)</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>DNT rows resaltadas con borde rojo izquierdo</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Click en fila → trade detail modal/page</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Badge LONG verde, SHORT rojo en columna Side</li></ul>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:6px">
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Selected row: border-left 3px solid var(--accent) + background rgba(79,110,247,.07)</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Click en fila → detail panel se actualiza con datos del trade</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Filter chips filtran tabla por calidad (A+, Plan, Off-plan, Violación) y dirección (LONG/SHORT)</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>Dropdowns filtran por cuenta y período; KPI strip se recalcula</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>R, P&amp;L y precios siempre en JetBrains Mono; verde=win, rojo=loss, ámbar=BE</li>
+        <li style="font-size:12px;color:var(--ink-2)"><span style="color:var(--accent);margin-right:6px">·</span>"Ver en playbook" navega al setup correspondiente en Playbook screen</li>
+      </ul>
     </div>
   </div>
 </div>
