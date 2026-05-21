@@ -697,5 +697,225 @@
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════════════
+     RESUMEN DE FUNCIONALIDAD — /perfil
+════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/perfil</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Gestión de la cuenta del usuario</li>
+        <li>→ Edición de información personal (nombre, timezone, idioma)</li>
+        <li>→ Visualización y gestión del plan de suscripción</li>
+        <li>→ Preferencias de la aplicación (tema, notificaciones)</li>
+        <li>→ Seguridad: cambio de contraseña y activación de 2FA</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Editar nombre/timezone → "Guardar cambios" → POST a API</li>
+        <li>2. "Actualizar plan" → redirect a página de precios</li>
+        <li>3. "Cambiar contraseña" → modal con campo actual + nuevo + confirmar</li>
+        <li>4. "Activar 2FA" → flujo de QR code</li>
+        <li>5. Toggle dark mode → cambia tema en tiempo real + persiste en localStorage</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ANATOMÍA DE COMPONENTES — /perfil
+════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía de Componentes</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:32px">/perfil</p>
+
+  <!-- 1. Avatar Block -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Avatar Block</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.avatar-block</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:16px;padding:20px;background:var(--panel);border-radius:12px;border:1px solid var(--line);max-width:500px">
+        <div style="width:56px;height:56px;border-radius:50%;background:#3a3a5a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0">HO</div>
+        <div>
+          <p style="font-size:15px;font-weight:700;margin-bottom:2px">Héctor O.C.</p>
+          <p style="font-size:12px;color:var(--ink-3);margin-bottom:8px">osoriohector89@gmail.com</p>
+          <span style="background:var(--chip);color:var(--ink-2);font-size:10px;padding:3px 8px;border-radius:5px;font-weight:600">Single-Trader</span>
+        </div>
+        <button style="margin-left:auto;background:var(--chip);border:none;border-radius:8px;padding:7px 14px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Cambiar foto</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --chip, --ink, --ink-2, --ink-3; avatar bg: #3a3a5a</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default; foto hover (overlay oscuro + icono cámara); sin foto (iniciales)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"Cambiar foto" → abre file picker; sube imagen → actualiza avatar en tiempo real</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Form Input -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Form Input</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.form-input</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="max-width:320px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Nombre</label>
+        <input value="Héctor Osorio" style="width:100%;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip (bg), --line (border), --ink (text), border-radius 8px, padding 9px 12px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, focused (border --accent), error (border --loss + mensaje debajo), disabled (opacity .5)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Marca el form como "sucio" al editar; habilita "Guardar cambios"</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Form Select -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Form Select</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.form-select</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="max-width:320px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Zona horaria</label>
+        <select style="width:100%;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;appearance:none;box-sizing:border-box">
+          <option>America/Mexico_City</option>
+          <option>America/New_York</option>
+          <option>Europe/London</option>
+        </select>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">Mismos tokens que Form Input; chevron icono --ink-3</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, focused (border --accent), disabled (opacity .5)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Cambia valor → marca form como "sucio"; aplica al guardar</p></div>
+    </div>
+  </div>
+
+  <!-- 4. Dark Mode Toggle -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Dark Mode Toggle</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.dark-mode-toggle</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between;max-width:300px">
+        <span style="font-size:13px;color:var(--ink)">Modo oscuro</span>
+        <div style="width:40px;height:22px;background:var(--accent,oklch(58% 0.16 264));border-radius:11px;position:relative;cursor:pointer">
+          <div style="width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;right:2px;top:2px;transition:all .2s"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (track on), --line (track off), #fff (thumb), border-radius 11px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">on (thumb derecha, track --accent), off (thumb izquierda, track --line)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → toggle body.classList 'dark'; persiste en localStorage; transición .2s</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Plan Card -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Plan Card</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.plan-card</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;max-width:420px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:14px;font-weight:800;color:var(--ink)">Tu plan</span>
+          <span style="background:var(--chip);color:var(--ink-2);font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Free</span>
+        </div>
+        <p style="font-size:12px;color:var(--ink-3);line-height:1.6;margin-bottom:16px">Acceso básico a diario, journal y hasta 50 trades/mes. Actualiza para desbloquear reviews, analytics avanzados e ilimitados.</p>
+        <button style="background:var(--accent,oklch(58% 0.16 264));color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Actualizar plan →</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --chip (badge), --accent (botón), --ink-3 (descripción)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Free (badge neutral), Pro (badge --accent), botón hover (brightness 110%)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Botón → redirect a /pricing o abre modal de planes</p></div>
+    </div>
+  </div>
+
+  <!-- 6. Security Action Row -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Security Action Row</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.security-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="max-width:480px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <div>
+            <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px">Contraseña</p>
+            <p style="font-size:11px;color:var(--ink-3)">Última actualización hace 3 meses</p>
+          </div>
+          <button style="background:var(--chip);border:none;border-radius:8px;padding:7px 14px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Cambiar →</button>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <div>
+            <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px">Autenticación 2FA</p>
+            <p style="font-size:11px;color:var(--ink-3)">No activado</p>
+          </div>
+          <button style="background:var(--accent,oklch(58% 0.16 264));color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Activar</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --chip (btn cambiar), --accent (btn activar), --ink-3 (subtexto)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">2FA off (btn --accent "Activar"), 2FA on (badge verde "Activo" + btn "Desactivar")</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"Cambiar →" → modal contraseña; "Activar" → flujo QR code paso a paso</p></div>
+    </div>
+  </div>
+
+  <!-- 7. Guardar Cambios Button -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Guardar Cambios Button</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.btn-save</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button style="background:var(--accent,oklch(58% 0.16 264));color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Guardar cambios</button>
+      <button style="background:var(--accent,oklch(58% 0.16 264));color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;opacity:.7">⏳ Guardando…</button>
+      <button style="background:#2e7d32;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✓ Guardado</button>
+      <button style="background:var(--chip);color:var(--ink-3);border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:not-allowed;font-family:inherit" disabled>Guardar cambios</button>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (default/loading), #2e7d32 (success), --chip/--ink-3 (disabled)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, loading (spinner + texto "Guardando…"), success (✓ "Guardado" 2 s), disabled (form sin cambios)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">PATCH /api/user con campos modificados; muestra feedback inline; vuelve a default tras 2 s</p></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
