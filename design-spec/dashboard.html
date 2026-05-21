@@ -119,5 +119,388 @@ function showTab(name, btn) {
   btn.classList.add('active');
 }
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════
+     RESUMEN DE FUNCIONALIDAD
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/dashboard</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Vista central del estado de trading: cuenta, performance y disciplina</li>
+        <li>→ Tab Portfolio: balance/equity, heatmap calendario, últimos trades</li>
+        <li>→ Tab Operador: equity curve, métricas de sesión, rachas win/loss</li>
+        <li>→ Tab Disciplina: score de disciplina, cumplimiento de reglas, progreso</li>
+        <li>→ Tab Playbook: performance por setup, win rate y avg R comparados</li>
+        <li>→ Right rail siempre visible: top setups + formulario nuevo trade</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Tabs</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li><strong style="color:var(--ink)">Portfolio</strong> — balance total, equity, heatmap de P&L mensual, lista de trades recientes</li>
+        <li><strong style="color:var(--ink)">Operador</strong> — equity curve Balance vs Equity, stats por sesión (NY AM/PM, London, Asia), rachas</li>
+        <li><strong style="color:var(--ink)">Disciplina</strong> — score global 0-100, cumplimiento de reglas, violaciones, progreso semanal</li>
+        <li><strong style="color:var(--ink)">Playbook</strong> — tabla de setups ordenada por avg R, win rate por setup, trades por setup</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     ANATOMÍA — COMPONENTES DE LA PANTALLA
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:32px">Componentes de la pantalla /dashboard</p>
+
+  <!-- 1. Tab Switcher -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Tab Switcher</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.tab-switcher</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:4px"><button style="background:var(--accent);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer">Portfolio</button><button style="background:none;border:none;padding:7px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);font-family:inherit;cursor:pointer">Operador</button><button style="background:none;border:none;padding:7px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);font-family:inherit;cursor:pointer">Disciplina</button><button style="background:none;border:none;padding:7px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);font-family:inherit;cursor:pointer">Playbook</button></div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (activo bg), #fff (activo color), transparent (inactivo bg), --ink-2 (inactivo color)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">active: bg --accent, color #fff; inactive: bg transparent, color --ink-2; hover: bg --chip</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Cambia el tab-panel visible; no recarga la página; un solo tab activo a la vez</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Heatmap Calendario -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Heatmap Calendario</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.heatmap-calendar</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:repeat(7,28px);grid-template-rows:repeat(5,28px);gap:3px">
+        <!-- row 1 -->
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--chip)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <!-- row 2 -->
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--loss-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--chip)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <!-- row 3 -->
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--loss-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--chip)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <!-- row 4 -->
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--loss-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--chip)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <!-- row 5 -->
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--chip)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win-soft)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:var(--win)"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+        <div style="width:28px;height:28px;border-radius:5px;background:transparent"></div>
+      </div>
+      <div style="display:flex;gap:14px;margin-top:12px;align-items:center">
+        <span style="font-size:11px;color:var(--ink-3)">Sin trades</span>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:var(--chip)"></div><span style="font-size:11px;color:var(--ink-3)">Breakeven</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:var(--win-soft)"></div><span style="font-size:11px;color:var(--ink-3)">Ganancia menor</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:var(--win)"></div><span style="font-size:11px;color:var(--ink-3)">Ganancia mayor</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:var(--loss-soft)"></div><span style="font-size:11px;color:var(--ink-3)">Pérdida</span></div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win-soft (hc-minor), --win (hc-major), --chip (hc-none), transparent (hc-empty)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal; hover → tooltip con P&amp;L del día; día seleccionado → border --accent</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Hover → tooltip con P&amp;L del día; click → filtra trades de ese día en la tabla</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Equity Chart Area -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Equity Chart Area</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.equity-chart</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:16px;margin-bottom:12px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:3px;background:#b87d2d;border-radius:2px"></div><span style="font-size:12px;color:var(--ink-2)">Balance</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div style="width:24px;height:3px;background:#4f6ef7;border-radius:2px"></div><span style="font-size:12px;color:var(--ink-2)">Equity</span></div>
+      </div>
+      <svg width="100%" height="140" viewBox="0 0 520 140" style="display:block">
+        <!-- Balance line -->
+        <polyline points="0,110 65,98 130,88 195,82 260,75 325,68 390,60 455,52 520,44"
+          fill="none" stroke="#b87d2d" stroke-width="2" stroke-linejoin="round"/>
+        <!-- Equity line (more volatile) -->
+        <polyline points="0,112 65,95 130,105 195,80 260,70 325,78 390,55 455,48 520,40"
+          fill="none" stroke="#4f6ef7" stroke-width="2" stroke-linejoin="round" stroke-dasharray="0"/>
+        <!-- Axis -->
+        <line x1="0" y1="130" x2="520" y2="130" stroke="var(--line)" stroke-width="1"/>
+      </svg>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#b87d2d (Balance), #4f6ef7 (Equity), --line (eje), --bg (fondo)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Leyenda comparativa siempre visible; ambas líneas siempre renderizadas</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">NO toggle selector; hover sobre línea → tooltip con valor en ese punto; leyenda fija arriba del chart</p></div>
+    </div>
+  </div>
+
+  <!-- 4. Discipline Score Donut -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Discipline Score Donut</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.discipline-donut</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:32px">
+        <!-- Score 78 (warn range) -->
+        <div style="position:relative;width:100px;height:100px">
+          <svg width="100" height="100" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="38" fill="none" stroke="var(--chip)" stroke-width="10"/>
+            <!-- 78% of circumference = 78% of 2π×38 = 186.1 of 238.76 -->
+            <circle cx="50" cy="50" r="38" fill="none" stroke="#e8962a" stroke-width="10"
+              stroke-dasharray="186 239" stroke-dashoffset="60" stroke-linecap="round"/>
+          </svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center">
+            <p style="font-size:22px;font-weight:800;color:#e8962a;margin:0;line-height:1">78</p>
+            <p style="font-size:9px;color:var(--ink-3);margin:0">DISC</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--win)"></div><span style="font-size:12px;color:var(--ink-2)">&gt;80 — Bueno</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:#e8962a"></div><span style="font-size:12px;color:var(--ink-2)">60-80 — Advertencia</span></div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="width:10px;height:10px;border-radius:50%;background:var(--loss)"></div><span style="font-size:12px;color:var(--ink-2)">&lt;60 — Crítico</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (>80), #e8962a (60-80), --loss (<60), --chip (track)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Color del arco y número central cambia automáticamente según rango</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Número central animado al cargar; score calculado desde reglas cumplidas / total reglas × 100</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Progress Bar Rule -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Progress Bar Rule</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-progress</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:480px">
+        <!-- OK -->
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:12px;color:var(--ink-2)">No operar primeros 5 min</span>
+            <span style="font-size:12px;font-weight:700;color:var(--win)">92%</span>
+          </div>
+          <div style="height:6px;background:var(--chip);border-radius:3px"><div style="width:92%;height:100%;background:var(--win);border-radius:3px"></div></div>
+        </div>
+        <!-- WARN -->
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:12px;color:var(--ink-2)">Máximo 3 trades por día</span>
+            <span style="font-size:12px;font-weight:700;color:#e8962a">72%</span>
+          </div>
+          <div style="height:6px;background:var(--chip);border-radius:3px"><div style="width:72%;height:100%;background:#e8962a;border-radius:3px"></div></div>
+        </div>
+        <!-- CRIT -->
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+            <span style="font-size:12px;color:var(--ink-2)">No revenge trading</span>
+            <span style="font-size:12px;font-weight:700;color:var(--loss)">45%</span>
+          </div>
+          <div style="height:6px;background:var(--chip);border-radius:3px"><div style="width:45%;height:100%;background:var(--loss);border-radius:3px"></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (ok), #e8962a (warn), --loss (crit), --chip (track)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">ok: >80%, warn: 60-80%, crit: <60% — color automático</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Color de barra y porcentaje cambia según umbral; label siempre a la izquierda</p></div>
+    </div>
+  </div>
+
+  <!-- 6. Right Rail -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Right Rail</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.right-rail</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="width:280px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em">User Header</p>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--line)">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em">Top Setups</p>
+        </div>
+        <div style="padding:14px 16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em">Nuevo Trade</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line; width: 280px; border-left: 1px solid --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Siempre visible; no colapsa en ningún breakpoint del dashboard</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Fixed al lado derecho; 3 secciones: User Header / Top Setups / Nuevo Trade form</p></div>
+    </div>
+  </div>
+
+  <!-- 7. User Header -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">User Header</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.user-header</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:12px;max-width:280px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0">H</div>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:1px">Hector Osorio</p>
+          <p style="font-size:11px;color:var(--ink-3);margin-bottom:1px">FXify · $50K</p>
+          <p style="font-size:10px;color:var(--ink-3)">Hoy: 21 May · <span style="color:var(--accent)">SEM 21</span></p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (avatar bg + SEM), --ink (nombre), --ink-3 (cuenta/fecha)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">SEM badge en --accent; fecha actualizada al día actual</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Avatar iniciales del nombre; click en cuenta → abre Account Selector dropdown</p></div>
+    </div>
+  </div>
+
+  <!-- 8. Nuevo Trade Form -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Nuevo Trade Form</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.new-trade-form</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="max-width:260px;display:flex;flex-direction:column;gap:10px">
+        <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Nuevo Trade</p>
+        <div style="display:flex;gap:4px">
+          <button style="flex:1;padding:7px;border-radius:7px;border:none;background:var(--win);color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">LONG</button>
+          <button style="flex:1;padding:7px;border-radius:7px;border:1px solid var(--line);background:none;color:var(--ink-2);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">SHORT</button>
+        </div>
+        <input type="text" placeholder="Símbolo (ES, NQ…)" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none">
+        <input type="text" placeholder="Riesgo ($)" style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--ink);font-family:inherit;outline:none">
+        <button style="background:var(--accent);border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">Registrar Trade</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (LONG activo), --loss (SHORT activo), --accent (submit), --panel, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Toggle LONG/SHORT: activo bg colored, inactivo border; inputs: focus border --accent</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Submit → crea nuevo trade y redirige a /trades/{id}; validación inline en campos</p></div>
+    </div>
+  </div>
+
+  <!-- 9. Setup Top Performers Table -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Setup Top Performers Table</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.setup-performers</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="max-width:500px">
+        <div style="display:flex;gap:4px;margin-bottom:12px">
+          <button style="background:var(--accent);color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer">Futuros</button>
+          <button style="background:none;border:none;padding:5px 12px;border-radius:6px;font-size:11px;color:var(--ink-2);font-family:inherit;cursor:pointer">FX</button>
+          <button style="background:none;border:none;padding:5px 12px;border-radius:6px;font-size:11px;color:var(--ink-2);font-family:inherit;cursor:pointer">Equities</button>
+          <button style="background:none;border:none;padding:5px 12px;border-radius:6px;font-size:11px;color:var(--ink-2);font-family:inherit;cursor:pointer">Cripto</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:6px 10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">Setup</th>
+              <th style="text-align:right;padding:6px 10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">Avg R</th>
+              <th style="text-align:right;padding:6px 10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">Win%</th>
+              <th style="text-align:right;padding:6px 10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">Trades</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:7px 10px;color:var(--ink-2)">ORB</td><td style="padding:7px 10px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">2.4R</td><td style="padding:7px 10px;text-align:right;color:var(--ink-2)">68%</td><td style="padding:7px 10px;text-align:right;color:var(--ink-3)">22</td></tr>
+            <tr><td style="padding:7px 10px;color:var(--ink-2)">VWAP Reclaim</td><td style="padding:7px 10px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">1.9R</td><td style="padding:7px 10px;text-align:right;color:var(--ink-2)">61%</td><td style="padding:7px 10px;text-align:right;color:var(--ink-3)">18</td></tr>
+            <tr><td style="padding:7px 10px;color:var(--ink-2)">Breakout Confirm</td><td style="padding:7px 10px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">1.6R</td><td style="padding:7px 10px;text-align:right;color:var(--ink-2)">57%</td><td style="padding:7px 10px;text-align:right;color:var(--ink-3)">14</td></tr>
+            <tr><td style="padding:7px 10px;color:var(--ink-2)">News Fade</td><td style="padding:7px 10px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.3R</td><td style="padding:7px 10px;text-align:right;color:var(--ink-2)">38%</td><td style="padding:7px 10px;text-align:right;color:var(--ink-3)">8</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (Avg R positivo), --loss (negativo), --ink-2 (texto), JetBrains Mono (valores)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Tab activo: --accent; filas: hover bg --chip; ordenado por Avg R desc por defecto</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Tabs filtran por categoría de instrumento; click en columna → ordena; click en setup → filtra /trades</p></div>
+    </div>
+  </div>
+
+  <!-- 10. Account Selector -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Account Selector</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.account-selector</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer"><span style="width:8px;height:8px;background:#4caf7a;border-radius:50%;display:inline-block"></span>FXify <span style="color:var(--ink-3)">▾</span></div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, #4caf7a (dot activo), --ink-3 (chevron)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (border --accent), open (dropdown visible debajo)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → dropdown con todas las cuentas disponibles; selección → recarga datos del dashboard para esa cuenta</p></div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>

@@ -579,5 +579,158 @@
   </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- RESUMEN DE FUNCIONALIDAD                                      -->
+<!-- ============================================================ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/aprendizaje</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Repositorio personal de lecciones y notas de trading</li>
+        <li>→ El trader documenta aprendizajes derivados de trades y reviews</li>
+        <li>→ Organiza notas por categoría (psicología, gestión de riesgo, técnica)</li>
+        <li>→ Permite vincular una lección a un trade o review específico</li>
+        <li>→ Búsqueda y filtrado de lecciones</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Trader escribe una lección nueva → "+" → modal</li>
+        <li>2. Filtra por categoría → lista se reduce</li>
+        <li>3. Click en lección → detalle con texto completo y trade/review vinculado</li>
+        <li>4. Desde review → "Añadir lección" → pre-vinculada a esa semana</li>
+        <li>5. Exportar lecciones como PDF / markdown</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- ANATOMÍA DE COMPONENTES                                       -->
+<!-- ============================================================ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía de Componentes</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:32px">/aprendizaje — inventario visual</p>
+
+  <!-- 1. Lesson Card -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Lesson Card</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.lesson-card</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;max-width:320px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <span style="background:var(--chip);color:var(--ink-3);font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;text-transform:uppercase">Psicología</span>
+          <span style="font-size:11px;color:var(--ink-3)">14 may 2026</span>
+        </div>
+        <p style="font-size:14px;font-weight:700;margin-bottom:6px">No operar cuando hay FOMO</p>
+        <p style="font-size:12px;color:var(--ink-2);line-height:1.6">Entré en NQ sin esperar confirmación porque el precio se movía rápido. Resultado: -1R innecesario.</p>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3)">📎 Trade #8 · Sem. 20</div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --chip, --ink, --ink-2, --ink-3</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, hover (elevación sutil), selected</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre detalle completo de la lección</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Lesson Category Tag -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Lesson Category Tag</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.category-tag</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-soft,oklch(94% 0.04 264));color:var(--accent,oklch(58% 0.16 264))">Psicología</span>
+      <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:oklch(93% 0.06 145);color:oklch(42% 0.14 145)">Risk</span>
+      <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:var(--chip);color:var(--ink-2)">Técnica</span>
+      <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:oklch(93% 0.05 50);color:oklch(48% 0.12 50)">Proceso</span>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">Psicología: --accent-soft/--accent · Risk: win-soft/win · Técnica: --chip/--ink-2 · Proceso: be-soft/be</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, active/selected (opacidad plena + outline)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → filtra lista de lecciones por esa categoría</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Lesson Link -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Lesson Link</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.lesson-link</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);background:var(--chip);padding:3px 8px;border-radius:5px;cursor:pointer">📎 Trade #8 · Sem. 20</div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip (bg), --ink-3 (text), border-radius 5px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, hover (--ink-2 + underline)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → navega al trade o review vinculado</p></div>
+    </div>
+  </div>
+
+  <!-- 4. Search Input -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Search Input</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.search-input</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 12px;max-width:300px">
+        <span style="color:var(--ink-3);font-size:14px">🔍</span>
+        <input placeholder="Buscar lección..." style="background:none;border:none;outline:none;font-size:13px;color:var(--ink);font-family:inherit;width:100%">
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip (bg), --line (border), --ink (text), border-radius 8px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, focused (border --accent), con texto (icono × para limpiar)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Filtra lista en tiempo real; debounce 200ms</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Add Lesson CTA -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Add Lesson CTA</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.add-lesson-cta</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:12px;align-items:flex-start">
+      <button style="background:var(--accent,oklch(58% 0.16 264));color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px">
+        <span style="font-size:16px;line-height:1">+</span> Nueva lección
+      </button>
+      <div style="border:2px dashed var(--line-2);border-radius:12px;padding:24px 32px;text-align:center;color:var(--ink-3);font-size:13px;min-width:260px">
+        Aún no hay lecciones. <br>¡Añade tu primera!
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (botón), --line-2 (dashed border), --ink-3 (placeholder text)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">botón: default, hover (brightness 1.1), pressed; card: vacío, con contenido (oculto)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre modal de nueva lección; empty-state oculto cuando hay lecciones</p></div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>

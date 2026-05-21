@@ -674,5 +674,315 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════════════
+     RESUMEN DE FUNCIONALIDAD
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/reviews</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Lista todas las reviews semanales (DRAFT y SUBMITTED)</li>
+        <li>→ Muestra P&L, win rate y disciplina de cada semana</li>
+        <li>→ Panel de detalle con análisis completo: KPIs, resumen ejecutivo, qué funcionó/mejorar</li>
+        <li>→ Identifica mejor y peor setup de la semana</li>
+        <li>→ Destaca trades clave de la semana</li>
+        <li>→ CTA en sidebar para iniciar review pendiente</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Sidebar CTA "Empezar review" → crea DRAFT de la semana actual</li>
+        <li>2. Click en DRAFT → abre detalle editable para completar</li>
+        <li>3. Rellena secciones → click "Submit" → pasa a SUBMITTED</li>
+        <li>4. Click en SUBMITTED → detalle en modo lectura</li>
+        <li>5. "Imprimir" → genera PDF de la review</li>
+        <li>6. Trades destacados → navega al trade en /trades</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     ANATOMÍA — COMPONENTES DE LA PANTALLA
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:32px">Componentes de la pantalla /reviews</p>
+
+  <!-- 1. Review Card — DRAFT -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Review Card — DRAFT</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.review-card.draft</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="border:1px solid var(--line);border-radius:10px;padding:16px 20px;background:var(--panel);border-left:3px solid var(--accent);max-width:340px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:700;color:var(--ink)">Sem. 20 — May 13–17</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:#2a2a1a;color:#c8a840">DRAFT</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+          <div><p style="font-size:10px;color:var(--ink-3)">P&amp;L</p><p style="font-size:14px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+$2,648</p></div>
+          <div><p style="font-size:10px;color:var(--ink-3)">WIN%</p><p style="font-size:14px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">65%</p></div>
+          <div><p style="font-size:10px;color:var(--ink-3)">DISC.</p><p style="font-size:14px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">78</p></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --loss, --accent, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (box-shadow), selected (border-left 3px --accent)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre detalle editable; DRAFT badge: bg #2a2a1a, color #c8a840</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Review Card — SUBMITTED -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Review Card — SUBMITTED</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.review-card.submitted</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="border:1px solid var(--line);border-radius:10px;padding:16px 20px;background:var(--panel);max-width:340px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:700;color:var(--ink)">Sem. 19 — May 6–10</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em;background:#1a2e1a;color:#4caf7a">SUBMITTED</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+          <div><p style="font-size:10px;color:var(--ink-3)">P&amp;L</p><p style="font-size:14px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+$1,320</p></div>
+          <div><p style="font-size:10px;color:var(--ink-3)">WIN%</p><p style="font-size:14px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</p></div>
+          <div><p style="font-size:10px;color:var(--ink-3)">DISC.</p><p style="font-size:14px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">85</p></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --accent, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (box-shadow); sin selected state (ya cerrada)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre detalle en modo lectura; SUBMITTED badge: bg #1a2e1a, color #4caf7a</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Review Stats Row -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Review Stats Row</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.review-stats-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;max-width:340px"><div><p style="font-size:10px;color:var(--ink-3)">P&amp;L</p><p style="font-size:14px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+$2,648</p></div><div><p style="font-size:10px;color:var(--ink-3)">WIN%</p><p style="font-size:14px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace">65%</p></div><div><p style="font-size:10px;color:var(--ink-3)">DISC.</p><p style="font-size:14px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">78</p></div></div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (P&amp;L positivo), --loss (negativo), --accent (WIN%), JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">P&amp;L cambia color: positivo → --win, negativo → --loss</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">3 columnas siempre visibles dentro de la review card</p></div>
+    </div>
+  </div>
+
+  <!-- 4. KPI Strip 4-col -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">KPI Strip 4-col</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.kpi-strip</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <p style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">NET P&amp;L</p>
+          <p style="font-size:18px;font-weight:800;color:var(--win);font-family:'JetBrains Mono',monospace">+$2,648</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <p style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">WIN RATE</p>
+          <p style="font-size:18px;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace">65%</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <p style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">DISCIPLINE</p>
+          <p style="font-size:18px;font-weight:800;color:var(--ink);font-family:'JetBrains Mono',monospace">78</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px">
+          <p style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">VIOLACIONES</p>
+          <p style="font-size:18px;font-weight:800;color:var(--loss);font-family:'JetBrains Mono',monospace">3</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --loss, --accent, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">P&amp;L: --win / --loss según signo; DISC: --win si >80, #e8962a si 60-80, --loss si <60</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Fila fija en la parte superior del panel de detalle de review</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Resumen Ejecutivo -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Resumen Ejecutivo</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.executive-summary</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="border-left:3px solid var(--accent);padding:12px 16px;background:var(--panel);border-radius:0 8px 8px 0;max-width:600px">
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.7">Semana sólida con ejecución consistente en los setups de apertura. La disciplina mejoró respecto a la semana anterior, aunque las dos violaciones en STOP fueron en momentos de alta volatilidad. Los mayores ganancias vinieron de los breakouts de las 9:30 con confirmación de volumen.</p>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (border-left), --panel (bg), --ink-2 (text)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Solo lectura en SUBMITTED; editable (textarea) en DRAFT</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Bloque de texto fijo en detalle; en DRAFT se convierte en textarea auto-expand</p></div>
+    </div>
+  </div>
+
+  <!-- 6. Análisis Bullets — Qué Funcionó -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Análisis Bullets — Qué Funcionó</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.bullets-worked</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <p style="font-size:11px;font-weight:700;color:var(--win);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Qué Funcionó</p>
+      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;max-width:500px">
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--win);font-size:16px;line-height:1">•</span>Respetar el nivel de invalidación en todos los ORB trades</li>
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--win);font-size:16px;line-height:1">•</span>Tomar parciales al 1:1 redujo el drawdown intraday</li>
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--win);font-size:16px;line-height:1">•</span>No operar los primeros 5 minutos de sesión NY</li>
+      </ul>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (bullets y label), --ink-2 (texto)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Solo lectura en SUBMITTED; editable (lista dinámica) en DRAFT</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Lista estática en lectura; en DRAFT permite añadir/eliminar ítems</p></div>
+    </div>
+  </div>
+
+  <!-- 7. Análisis Bullets — A Mejorar -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Análisis Bullets — A Mejorar</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.bullets-improve</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <p style="font-size:11px;font-weight:700;color:var(--loss);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">A Mejorar</p>
+      <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;max-width:500px">
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--loss);font-size:16px;line-height:1">•</span>Dos entradas contra tendencia sin confirmación de estructura</li>
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--loss);font-size:16px;line-height:1">•</span>Operar en ventana London → NY overlap sin plan previo</li>
+        <li style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--ink-2)"><span style="color:var(--loss);font-size:16px;line-height:1">•</span>Revenge trade el jueves tras pérdida en ES</li>
+      </ul>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--loss (bullets y label), --ink-2 (texto)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Solo lectura en SUBMITTED; editable en DRAFT</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Lista estática en lectura; en DRAFT permite añadir/eliminar ítems</p></div>
+    </div>
+  </div>
+
+  <!-- 8. Mejor/Peor Setup Row -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Mejor/Peor Setup Row</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.setup-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:12px"><div style="padding:10px 16px;background:var(--win-soft);border-radius:8px;font-size:12px"><p style="color:var(--win);font-weight:700;margin-bottom:2px">MEJOR SETUP</p><p style="color:var(--ink)">Opening Range Break</p></div><div style="padding:10px 16px;background:var(--loss-soft);border-radius:8px;font-size:12px"><p style="color:var(--loss);font-weight:700;margin-bottom:2px">PEOR SETUP</p><p style="color:var(--ink)">News Fade NFP</p></div></div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win-soft / --win (mejor), --loss-soft / --loss (peor)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Siempre dos chips lado a lado; se calcula automáticamente</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Calculado automáticamente por avg R del período; solo lectura</p></div>
+    </div>
+  </div>
+
+  <!-- 9. Trade Chip -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Chip</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.trade-chip</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">#5</span>
+        <span style="background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">#9</span>
+        <span style="background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;cursor:pointer">#10</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip (bg), --line (border), JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (border --accent, color --accent)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → navega a /trades#5 (anchor con ID del trade)</p></div>
+    </div>
+  </div>
+
+  <!-- 10. Notes Input + Imprimir -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Notes Input + Imprimir</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.notes-bar</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:10px;align-items:flex-start;max-width:600px">
+        <textarea placeholder="Notas adicionales…" style="flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--ink);font-family:inherit;resize:vertical;min-height:72px;outline:none"></textarea>
+        <button style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--ink-2);font-family:inherit;cursor:pointer;white-space:nowrap">🖨 Imprimir</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --ink, --ink-2</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">textarea: focus (border --accent); botón: hover (bg --chip)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Textarea auto-guarda en blur; "Imprimir" → window.print() con estilos @media print</p></div>
+    </div>
+  </div>
+
+  <!-- 11. Sidebar CTA Block -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Sidebar CTA Block</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.sidebar-cta</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;max-width:240px">
+        <p style="font-size:12px;font-weight:700;color:#c8a840;margin-bottom:4px">⚡ Review semanal lista</p>
+        <p style="font-size:11px;color:var(--ink-3);margin-bottom:12px">Sem. 20 terminó. Completa tu análisis semanal antes del lunes.</p>
+        <button style="width:100%;background:var(--accent);border:none;border-radius:8px;padding:9px 0;font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">Empezar review</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --accent (botón), #c8a840 (amber label), --ink-3 (desc)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Visible solo cuando hay semana sin review; oculto si todas SUBMITTED</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click "Empezar review" → crea DRAFT de la semana actual y redirige al detalle</p></div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>

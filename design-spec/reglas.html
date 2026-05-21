@@ -583,5 +583,227 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════ RESUMEN DE FUNCIONALIDAD -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/reglas</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Documenta y monitorea las reglas de trading del usuario</li>
+        <li>→ Muestra cumplimiento histórico de cada regla en el período</li>
+        <li>→ Detecta y contabiliza violaciones automáticamente al registrar trades</li>
+        <li>→ Clasifica reglas por categoría (Risk, Proceso, Psicología)</li>
+        <li>→ Permite activar/desactivar reglas individualmente</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Usuario define sus reglas (max drawdown diario, no revenge, etc.)</li>
+        <li>2. Sistema trackea cumplimiento al registrar cada trade</li>
+        <li>3. Vista muestra % de cumplimiento por regla en el período</li>
+        <li>4. Regla con violaciones → badge rojo + contador de incidencias</li>
+        <li>5. "+" → modal para agregar nueva regla con categoría y condición</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ ANATOMÍA DE COMPONENTES -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía de Componentes</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:32px">/reglas — elementos de UI</p>
+
+  <!-- 1. Rule Card -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Rule Card</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-card</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;width:340px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <p style="font-size:14px;font-weight:700;margin-bottom:4px">Max Drawdown Diario 2%</p>
+            <span style="background:#1a2030;color:#5b8dee;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">RISK</span>
+          </div>
+          <span style="font-size:12px;color:var(--win);font-weight:700">0 violaciones</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:4px"><span>Cumplimiento</span><span style="color:var(--win);font-weight:700">95%</span></div>
+        <div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden">
+          <div style="background:var(--win);width:95%;height:100%;border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win (cumplimiento ok)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">ok (verde) / warn (amber) / violated (rojo)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">% se recalcula al añadir trades; violaciones acumuladas en período</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Rule Card — Violated -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Rule Card — Violated</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-card.is-violated</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid #3a1a1a;border-radius:12px;padding:20px;width:340px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <p style="font-size:14px;font-weight:700;margin-bottom:4px">No Revenge Trading</p>
+            <span style="background:#2a1a30;color:#b07de0;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">PSICOLOGÍA</span>
+          </div>
+          <span style="background:#2a1212;color:#e05050;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">3 violaciones</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:4px"><span>Cumplimiento</span><span style="color:var(--loss);font-weight:700">68%</span></div>
+        <div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden">
+          <div style="background:var(--loss);width:68%;height:100%;border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--loss, #3a1a1a (border), #2a1212 (badge bg)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Borde rojo · barra roja · badge violaciones visible</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click en violaciones → filtra trades que rompieron la regla</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Rule Progress Bar -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Rule Progress Bar</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-progress</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:14px">
+      <div style="width:320px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:4px"><span>Cumplimiento · ok</span><span style="color:var(--win);font-weight:700">92%</span></div>
+        <div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden"><div style="background:var(--win);width:92%;height:100%;border-radius:4px"></div></div>
+      </div>
+      <div style="width:320px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:4px"><span>Cumplimiento · warn</span><span style="color:var(--be);font-weight:700">74%</span></div>
+        <div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden"><div style="background:var(--be);width:74%;height:100%;border-radius:4px"></div></div>
+      </div>
+      <div style="width:320px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-bottom:4px"><span>Cumplimiento · crit</span><span style="color:var(--loss);font-weight:700">55%</span></div>
+        <div style="background:var(--line);border-radius:4px;height:6px;overflow:hidden"><div style="background:var(--loss);width:55%;height:100%;border-radius:4px"></div></div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (≥80%) · --be (60–79%) · --loss (&lt;60%)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">ok / warn / crit según umbral de cumplimiento</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Ancho = porcentaje de sesiones/trades en cumplimiento</p></div>
+    </div>
+  </div>
+
+  <!-- 4. Violation Badge -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Violation Badge</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.badge-violation</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center">
+      <span style="background:#2a1212;color:#e05050;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">1 violación</span>
+      <span style="background:#2a1212;color:#e05050;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">3 violaciones</span>
+      <span style="background:#2a1212;color:#e05050;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px">7 violaciones</span>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#2a1212 bg · #e05050 text</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Oculto si 0 violaciones; visible con número dinámico</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre lista de trades que violaron la regla</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Rule Category Tag -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Rule Category Tag</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.tag-category</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center">
+      <span style="background:#1a2030;color:#5b8dee;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">RISK</span>
+      <span style="background:#1a2a1a;color:#4caf7a;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">PROCESO</span>
+      <span style="background:#2a1a30;color:#b07de0;font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px">PSICOLOGÍA</span>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">Risk: #1a2030/#5b8dee · Proceso: #1a2a1a/#4caf7a · Psicología: #2a1a30/#b07de0</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Estático — definido al crear la regla</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click en tag → filtra lista de reglas por categoría</p></div>
+    </div>
+  </div>
+
+  <!-- 6. Rule Toggle -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Rule Toggle</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Atom</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-toggle</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:24px;align-items:center">
+      <!-- on -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:20px;background:var(--win);border-radius:10px;position:relative;cursor:pointer">
+          <div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px;transition:right .15s"></div>
+        </div>
+        <span style="font-size:13px;color:var(--ink-2)">Activa</span>
+      </div>
+      <!-- off -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:20px;background:var(--line-2);border-radius:10px;position:relative;cursor:pointer">
+          <div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:left .15s"></div>
+        </div>
+        <span style="font-size:13px;color:var(--ink-3)">Inactiva</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--win (on) · --line-2 (off) · thumb #fff</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">on / off · transición CSS 150ms</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Inactiva → regla excluida del tracking automático</p></div>
+    </div>
+  </div>
+
+  <!-- 7. Add Rule CTA -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Add Rule CTA</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Molecule</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.rule-add-cta</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="border:2px dashed var(--line);border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--ink-3);font-size:13px;width:340px">
+        <span>+</span> Agregar regla
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--line (dashed), --ink-3</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default · hover (borde sólido + bg accent-soft)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre modal con nombre, categoría y condición de regla</p></div>
+    </div>
+  </div>
+
+</div>
+
 </body>
 </html>

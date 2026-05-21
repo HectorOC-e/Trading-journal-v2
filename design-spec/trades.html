@@ -911,5 +911,625 @@
   </div>
 </div>
 
+
+<!-- ═══════════════════════════════════════════════════════════ RESUMEN DE FUNCIONALIDAD -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/trades</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace esta pantalla?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Lista todas las operaciones del trader filtradas por período y cuenta</li>
+        <li>→ Muestra KPIs globales del período seleccionado (P&amp;L, trades, win rate, avg R)</li>
+        <li>→ Permite filtrar por calidad (A+, Plan, Off-plan, Violación) y dirección (LONG/SHORT)</li>
+        <li>→ Al seleccionar un trade abre el panel de detalle lateral derecho</li>
+        <li>→ Exporta la lista filtrada a CSV</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Trader aterriza en /trades → ve lista de últimos 30 días</li>
+        <li>2. Filtra por "Violación" → lista se reduce a trades con violación</li>
+        <li>3. Hace click en un trade → panel derecho muestra detalle completo</li>
+        <li>4. Click "Ver en playbook" → navega al setup correspondiente en /playbook</li>
+        <li>5. Click "Exportar CSV" → descarga archivo con trades filtrados</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ ANATOMÍA -->
+<div style="padding:0 48px 48px;max-width:1100px;margin:0 auto">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:28px">Cada elemento UI de la pantalla /trades</p>
+
+  <!-- 1. TOP BAR -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Top Bar</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.top-bar</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--ink);margin:0">Trades</p>
+          <p style="font-size:13px;color:var(--ink-3);margin:2px 0 0">Operaciones registradas</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:13px;color:var(--ink-2);font-family:inherit;cursor:pointer">Exportar CSV</button>
+          <button style="background:var(--accent);border:none;border-radius:8px;padding:8px 14px;font-size:13px;color:#fff;font-family:inherit;cursor:pointer;font-weight:600">+ Nuevo</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--ink, --ink-3, --accent, --panel-2, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Botón "+" siempre activo; "Exportar CSV" deshabilitado si 0 trades</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"+" abre modal nuevo trade; "Exportar CSV" descarga CSV filtrado</p></div>
+    </div>
+  </div>
+
+  <!-- 2. KPI STRIP -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">KPI Strip</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.kpi-strip</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Net P&amp;L</p>
+          <p style="font-size:22px;font-weight:800;color:var(--win);font-family:'JetBrains Mono',monospace;margin:0">+$3,840</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Trades</p>
+          <p style="font-size:22px;font-weight:800;color:var(--ink);font-family:'JetBrains Mono',monospace;margin:0">24</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Win Rate</p>
+          <p style="font-size:22px;font-weight:800;color:var(--accent);font-family:'JetBrains Mono',monospace;margin:0">62.5%</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Avg R</p>
+          <p style="font-size:22px;font-weight:800;color:var(--ink);font-family:'JetBrains Mono',monospace;margin:0">+1.8R</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --accent, --ink</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">P&amp;L positivo → --win; negativo → --loss</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Actualiza al cambiar filtros de período/cuenta</p></div>
+    </div>
+  </div>
+
+  <!-- 3. FILTER BAR — CALIDAD -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Filter Bar — Calidad</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.filter-bar-quality</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--ink);font-family:inherit;cursor:pointer">Todas</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">A+</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">Plan seguido</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">Off-plan</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">Violación</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --ink, --ink-3, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Chip activo: bg --chip, color --ink, font-weight 600</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Selección exclusiva, filtra tabla en tiempo real</p></div>
+    </div>
+  </div>
+
+  <!-- 4. FILTER BAR — DIRECCIÓN -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Filter Bar — Dirección</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.filter-bar-direction</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:6px">
+        <button style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--ink);font-family:inherit;cursor:pointer">Todas</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">LONG</button>
+        <button style="background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--ink-3);font-family:inherit;cursor:pointer">SHORT</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --ink, --ink-3, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Chip activo: bg --chip, color --ink, font-weight 600</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Selección exclusiva, filtra por dirección del trade</p></div>
+    </div>
+  </div>
+
+  <!-- 5. DROPDOWN SELECTOR -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Dropdown Selector</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">select.period-select</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:12px">
+      <select style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink);font-family:inherit">
+        <option>Todas las cuentas</option>
+        <option>Cuenta principal</option>
+      </select>
+      <select style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink);font-family:inherit">
+        <option>Últimos 30 días</option>
+        <option>Esta semana</option>
+        <option>Este mes</option>
+      </select>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --line, --ink</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Default, hover, focused</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Cambia contexto de datos de la tabla</p></div>
+    </div>
+  </div>
+
+  <!-- 6. TRADE ROW — NORMAL -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Row — Normal</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.trade-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:16px">
+        <span style="font-size:11px;font-weight:700;background:#14201A;color:#4caf7a;padding:3px 8px;border-radius:5px;letter-spacing:.04em">LONG</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace;min-width:32px">ES</span>
+        <span style="font-size:13px;color:var(--ink-2);flex:1">Opening Range Break</span>
+        <span style="font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace">May 19</span>
+        <span style="font-size:13px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+2.4R</span>
+        <span style="font-size:13px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+$1,240.00</span>
+        <span style="font-size:11px;font-weight:700;background:#1a2a1a;color:#4caf7a;padding:3px 8px;border-radius:5px">A+</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--line, --ink, --ink-2, --win, --loss, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Normal, hover (bg sutil), selected (border-left accent)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → carga detalle en panel derecho</p></div>
+    </div>
+  </div>
+
+  <!-- 7. TRADE ROW — SELECTED -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Row — Selected</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.trade-row.selected</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="border-left:3px solid var(--accent);background:rgba(79,110,247,.07);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:16px">
+        <span style="font-size:11px;font-weight:700;background:#14201A;color:#4caf7a;padding:3px 8px;border-radius:5px;letter-spacing:.04em">LONG</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace;min-width:32px">ES</span>
+        <span style="font-size:13px;color:var(--ink-2);flex:1">Opening Range Break</span>
+        <span style="font-size:12px;color:var(--ink-3);font-family:'JetBrains Mono',monospace">May 19</span>
+        <span style="font-size:13px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+2.4R</span>
+        <span style="font-size:13px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace">+$1,240.00</span>
+        <span style="font-size:11px;font-weight:700;background:#1a2a1a;color:#4caf7a;padding:3px 8px;border-radius:5px">A+</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (border-left), rgba(79,110,247,.07) (bg)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Estado seleccionado activo</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Panel derecho se llena con datos del trade</p></div>
+    </div>
+  </div>
+
+  <!-- 8. BADGE DE CALIDAD -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Badge de Calidad</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.quality-badge</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;font-weight:700;background:#1a2a1a;color:#4caf7a;padding:3px 10px;border-radius:5px">A+</span>
+      <span style="font-size:11px;font-weight:700;background:#1a2230;color:#4f7ef7;padding:3px 10px;border-radius:5px">Plan</span>
+      <span style="font-size:11px;font-weight:700;background:#2a2a1a;color:#c8a840;padding:3px 10px;border-radius:5px">Off-plan</span>
+      <span style="font-size:11px;font-weight:700;background:#251514;color:#e05050;padding:3px 10px;border-radius:5px">Violación</span>
+      <span style="font-size:11px;font-weight:700;background:#25201A;color:#c8a840;padding:3px 10px;border-radius:5px">BE</span>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">Colores específicos por tipo (ver foundations)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Estático, no interactivo</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Refleja clasificación del trade al momento del registro</p></div>
+    </div>
+  </div>
+
+  <!-- 9. TRADE DETAIL PANEL -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Detail Panel</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.detail-panel</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:360px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <p style="font-size:12px;color:var(--ink-3);margin:0">ES · Opening Range Break</p>
+            <p style="font-size:11px;color:var(--ink-3);margin:4px 0 0">19 May 2025 · 08:32</p>
+          </div>
+          <span style="font-size:11px;font-weight:700;background:#1a2a1a;color:#4caf7a;padding:3px 8px;border-radius:5px">A+</span>
+        </div>
+        <p style="font-size:28px;font-weight:800;color:var(--win);font-family:'JetBrains Mono',monospace;margin:0 0 16px">+$1,240.00</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--bg);border-radius:8px;padding:10px">
+            <p style="font-size:11px;color:var(--ink-3);margin:0 0 4px">R Realizado</p>
+            <p style="font-size:16px;font-weight:700;color:var(--win);font-family:'JetBrains Mono',monospace;margin:0">+2.4R</p>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px">
+            <p style="font-size:11px;color:var(--ink-3);margin:0 0 4px">Dirección</p>
+            <p style="font-size:16px;font-weight:700;color:var(--ink);margin:0">LONG</p>
+          </div>
+        </div>
+        <button style="width:100%;margin-top:14px;background:var(--accent);border:none;border-radius:8px;padding:10px;font-size:13px;color:#fff;font-family:inherit;cursor:pointer;font-weight:600">Ver en playbook</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --ink, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Vacío (sin trade seleccionado) / con datos</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Se llena al hacer click en fila; "Ver en playbook" navega al setup</p></div>
+    </div>
+  </div>
+
+  <!-- 10. SCREENSHOT PLACEHOLDER -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Screenshot Placeholder</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.screenshot-placeholder</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="height:100px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px">[ screenshot — ES 08:32 ]</div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--line, --ink-3</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Vacío (placeholder) / con imagen</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre imagen en fullscreen o permite subir screenshot</p></div>
+    </div>
+  </div>
+
+</div><!-- /anatomía trades -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     RESUMEN DE FUNCIONALIDAD — /trades
+════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/trades</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace esta pantalla?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Lista todas las operaciones del trader filtradas por período y cuenta</li>
+        <li>→ Muestra KPIs globales del período seleccionado (P&amp;L, trades, win rate, avg R)</li>
+        <li>→ Permite filtrar por calidad (A+, Plan, Off-plan, Violación) y dirección (LONG/SHORT)</li>
+        <li>→ Al seleccionar un trade abre el panel de detalle lateral derecho</li>
+        <li>→ Exporta la lista filtrada a CSV</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Trader aterriza en /trades → ve lista de últimos 30 días</li>
+        <li>2. Filtra por "Violación" → lista se reduce a trades con violación</li>
+        <li>3. Hace click en un trade → panel derecho muestra detalle completo</li>
+        <li>4. Click "Ver en playbook" → navega al setup correspondiente en /playbook</li>
+        <li>5. Click "Exportar CSV" → descarga archivo con trades filtrados</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ANATOMÍA — COMPONENTES DE LA PANTALLA /trades
+════════════════════════════════════════════════════════════════ -->
+<div style="padding:0 48px 48px;max-width:1100px;margin:0 auto">
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Anatomía</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:28px">Cada elemento UI de la pantalla /trades</p>
+
+  <!-- 1. TOP BAR -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Top Bar</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.top-bar</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <p style="font-size:20px;font-weight:800;color:var(--ink);margin:0">Trades</p>
+          <p style="font-size:13px;color:var(--ink-3);margin:2px 0 0">Historial de operaciones</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button style="padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:13px;cursor:pointer">Exportar CSV</button>
+          <button style="padding:8px 16px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">+ Nuevo trade</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--ink, --ink-3, --accent, --panel-2, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Botón "+" siempre activo; "Exportar CSV" deshabilitado si 0 trades</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"+" abre modal nuevo trade; "Exportar CSV" descarga CSV filtrado</p></div>
+    </div>
+  </div>
+
+  <!-- 2. KPI STRIP -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">KPI Strip</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.kpi-strip</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Net P&amp;L</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win);margin:0">+$4,820</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Trades</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ink);margin:0">34</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Win Rate</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin:0">62%</p>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+          <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px">Avg R</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--ink);margin:0">+1.8R</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --accent, --ink</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">P&amp;L positivo → --win; negativo → --loss</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Actualiza al cambiar filtros de período/cuenta</p></div>
+    </div>
+  </div>
+
+  <!-- 3. FILTER BAR — CALIDAD -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Filter Bar — Calidad</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.filter-chips--quality</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--ink);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Todas</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">A+</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">Plan seguido</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">Off-plan</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">Violación</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --ink, --ink-3, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Active chip: bg --ink, color #fff, font-weight 600</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Selección exclusiva, filtra tabla en tiempo real</p></div>
+    </div>
+  </div>
+
+  <!-- 4. FILTER BAR — DIRECCIÓN -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Filter Bar — Dirección</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.filter-chips--direction</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:6px">
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--ink);color:#fff;font-size:12px;font-weight:600;cursor:pointer">Todas</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">LONG</span>
+        <span style="padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--chip);color:var(--ink-3);font-size:12px;cursor:pointer">SHORT</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --ink, --ink-3, --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Active chip: bg --ink, color #fff, font-weight 600</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Selección exclusiva, filtra tabla por dirección del trade</p></div>
+    </div>
+  </div>
+
+  <!-- 5. DROPDOWN SELECTOR -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Dropdown Selector</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">select.context-selector</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:12px">
+      <select style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink);font-family:inherit"><option>Todas las cuentas</option><option>Cuenta A</option><option>Cuenta B</option></select>
+      <select style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--ink);font-family:inherit"><option>Últimos 30 días</option><option>Este mes</option><option>Este año</option></select>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--chip, --line, --ink</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">default, hover, focused</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Cambia contexto de datos de la tabla al seleccionar</p></div>
+    </div>
+  </div>
+
+  <!-- 6. TRADE ROW — NORMAL -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Row — Normal</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.trade-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:11px;font-weight:700;background:#1a2e1a;color:#4caf7a;padding:3px 8px;border-radius:5px;letter-spacing:.04em">LONG</span>
+          <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">ES</span>
+          <span style="font-size:13px;color:var(--ink-2)">Opening Range Break</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+2.4R</span>
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+$1,240.00</span>
+          <span style="font-size:11px;font-weight:700;background:#1a2418;color:#5ab870;padding:3px 8px;border-radius:5px">A+</span>
+          <span style="font-size:11px;color:var(--ink-3)">08:32 · Hoy</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--line, --ink, --ink-2, --win, --loss, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (bg sutil), selected (border-left accent + bg rgba accent)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → carga detalle en panel derecho</p></div>
+    </div>
+  </div>
+
+  <!-- 7. TRADE ROW — SELECTED -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Row — Selected</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.trade-row.selected</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:rgba(79,110,247,.07);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:11px;font-weight:700;background:#1a2e1a;color:#4caf7a;padding:3px 8px;border-radius:5px;letter-spacing:.04em">LONG</span>
+          <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">ES</span>
+          <span style="font-size:13px;color:var(--ink-2)">Opening Range Break</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+2.4R</span>
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+$1,240.00</span>
+          <span style="font-size:11px;font-weight:700;background:#1a2418;color:#5ab870;padding:3px 8px;border-radius:5px">A+</span>
+          <span style="font-size:11px;color:var(--ink-3)">08:32 · Hoy</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--accent (border-left), rgba(79,110,247,.07) (bg), --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Activo / seleccionado — estado persistente hasta click en otra fila</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Panel derecho muestra detalle de este trade</p></div>
+    </div>
+  </div>
+
+  <!-- 8. BADGE DE CALIDAD -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Badge de Calidad</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.quality-badge</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;font-weight:700;background:#1a2418;color:#5ab870;padding:4px 10px;border-radius:6px">A+</span>
+      <span style="font-size:11px;font-weight:700;background:#1a2418;color:#4caf7a;padding:4px 10px;border-radius:6px">Plan seguido</span>
+      <span style="font-size:11px;font-weight:700;background:#2a2418;color:#c8a840;padding:4px 10px;border-radius:6px">Off-plan</span>
+      <span style="font-size:11px;font-weight:700;background:#2a1a18;color:#e06050;padding:4px 10px;border-radius:6px">Violación</span>
+      <span style="font-size:11px;font-weight:700;background:#22201a;color:var(--be);padding:4px 10px;border-radius:6px">BE</span>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">Colores específicos por tipo: --win, --be, --loss y variantes</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Estático, no interactivo</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Indica calidad del trade; asignado al registrar operación</p></div>
+    </div>
+  </div>
+
+  <!-- 9. TRADE DETAIL PANEL -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Trade Detail Panel</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.detail-panel</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:320px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px">ES · LONG · 08:32</p>
+            <p style="font-size:15px;font-weight:700;color:var(--ink);margin:0">Opening Range Break</p>
+          </div>
+          <span style="font-size:11px;font-weight:700;background:#1a2418;color:#5ab870;padding:3px 8px;border-radius:5px">A+</span>
+        </div>
+        <p style="font-size:32px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win);margin:0 0 14px">+$1,240</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px">
+          <div style="background:var(--bg);border-radius:8px;padding:10px"><p style="color:var(--ink-3);margin:0 0 3px">R obtenido</p><p style="color:var(--ink);font-family:'JetBrains Mono',monospace;font-weight:700;margin:0">+2.4R</p></div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px"><p style="color:var(--ink-3);margin:0 0 3px">Setup</p><p style="color:var(--ink);font-weight:700;margin:0">ORB</p></div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px"><p style="color:var(--ink-3);margin:0 0 3px">Contrato</p><p style="color:var(--ink);font-family:'JetBrains Mono',monospace;font-weight:700;margin:0">2</p></div>
+          <div style="background:var(--bg);border-radius:8px;padding:10px"><p style="color:var(--ink-3);margin:0 0 3px">Duración</p><p style="color:var(--ink);font-weight:700;margin:0">42 min</p></div>
+        </div>
+        <button style="margin-top:14px;width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-2);font-size:12px;cursor:pointer">Ver en playbook →</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --win, --ink, JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Vacío (sin trade seleccionado) / con datos</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"Ver en playbook" navega al setup correspondiente en /playbook</p></div>
+    </div>
+  </div>
+
+  <!-- 10. SCREENSHOT PLACEHOLDER -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Screenshot Placeholder</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.screenshot-placeholder</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="height:100px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:12px">[ screenshot — ES 08:32 ]</div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--line, --ink-3</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Vacío (placeholder dashed) / con imagen</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → abre imagen en fullscreen o permite subir screenshot</p></div>
+    </div>
+  </div>
+
+</div><!-- /anatomía componentes trades -->
+
 </body>
 </html>
