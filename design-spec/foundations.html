@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trading Journal · Foundations</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg:          #F6F5F1;
@@ -424,6 +424,22 @@
       .grid-2, .grid-2-330 { grid-template-columns: 1fr; }
     }
 
+    /* Component library extras */
+    .comp-specs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 6px 20px;
+    }
+    .comp-spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+    }
+    .comp-spec-key { color: var(--ink-3); }
+    .comp-spec-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-2); }
   </style>
 </head>
 <body class="dark">
@@ -440,272 +456,719 @@
   <a href="reglas.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Reglas</a>
   <a href="aprendizaje.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Aprendizaje</a>
   <a href="perfil.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Perfil</a>
-  <button onclick="document.body.classList.toggle('dark')" style="margin-left:auto;background:var(--chip);border:none;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--ink);cursor:pointer;font-family:inherit">◐ Modo</button>
+  <button onclick="document.body.classList.toggle('dark')" style="margin-left:auto;background:var(--chip);border:none;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--ink);cursor:pointer;font-family:inherit">&#9680; Modo</button>
 </nav>
-<div style="padding:40px 48px 24px;max-width:1600px;margin:0 auto">
-  <p style="font-size:12px;color:var(--ink-3);margin-bottom:4px">ROUTE</p>
-  <h1 style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Foundations</h1>
-  <p style="color:var(--ink-2);font-size:14px">Design tokens, tipografía y componentes del sistema.</p>
-  <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:4px">/design-spec/foundations</p>
-</div>
-<div style="padding:0 48px 48px;max-width:1100px;margin:0 auto">
-<section style="padding:40px 0;border-bottom:1px solid var(--line)">
-  <p class="eyebrow">Sección 01</p>
-  <h2 class="section-title">Design Tokens</h2>
-  <p class="section-sub">Todos los colores y espaciados usan CSS custom properties. Dark mode via clase <code>.dark</code> en &lt;body&gt;.</p>
 
-  <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">NEUTRALES — LIGHT MODE</h3>
-  <div class="swatch-grid">
-    <div class="swatch"><div class="swatch-color" style="background:#F6F5F1"></div><div class="swatch-info"><p class="swatch-name">--bg</p><p class="swatch-hex">#F6F5F1</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#FFFFFF"></div><div class="swatch-info"><p class="swatch-name">--panel</p><p class="swatch-hex">#FFFFFF</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#FAFAF7"></div><div class="swatch-info"><p class="swatch-name">--panel-2</p><p class="swatch-hex">#FAFAF7</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#16140F"></div><div class="swatch-info"><p class="swatch-name">--ink</p><p class="swatch-hex">#16140F</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#45413A"></div><div class="swatch-info"><p class="swatch-name">--ink-2</p><p class="swatch-hex">#45413A</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#8A8678"></div><div class="swatch-info"><p class="swatch-name">--ink-3</p><p class="swatch-hex">#8A8678</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#ECEAE2"></div><div class="swatch-info"><p class="swatch-name">--line</p><p class="swatch-hex">#ECEAE2</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#F2EFE7"></div><div class="swatch-info"><p class="swatch-name">--chip</p><p class="swatch-hex">#F2EFE7</p></div></div>
+<div style="max-width:1100px;margin:0 auto;padding:48px 32px">
+  <h1 style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Foundations</h1>
+  <p style="color:var(--ink-2);font-size:14px;margin-bottom:40px">Tokens de diseño · Tipografía · Componentes</p>
+
+  <!-- ═══════════════════════════════════════════ DESIGN TOKENS ══ -->
+  <h2 style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--line)">Design Tokens</h2>
+
+  <!-- 1. COLOR TOKENS -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Color Tokens</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">TOKEN</span>
+    </div>
+    <!-- Live swatches -->
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:16px">
+        <!-- --bg -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--bg);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--bg</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#F6F5F1</p>
+        </div>
+        <!-- --panel -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--panel);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--panel</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#FFFFFF</p>
+        </div>
+        <!-- --panel-2 -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--panel-2);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--panel-2</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#FAFAF7</p>
+        </div>
+        <!-- --ink -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--ink);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--ink</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#16140F</p>
+        </div>
+        <!-- --ink-2 -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--ink-2);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--ink-2</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#45413A</p>
+        </div>
+        <!-- --ink-3 -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--ink-3);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--ink-3</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#8A8678</p>
+        </div>
+        <!-- --line -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--line);border:1.5px solid var(--line-2);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--line</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#ECEAE2</p>
+        </div>
+        <!-- --chip -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--chip);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--chip</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">#F2EFE7</p>
+        </div>
+        <!-- --accent -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--accent);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--accent</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">oklch 264</p>
+        </div>
+        <!-- --accent-soft -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--accent-soft);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--accent-soft</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">oklch soft</p>
+        </div>
+        <!-- --win -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--win);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--win</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">oklch 152</p>
+        </div>
+        <!-- --win-soft -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--win-soft);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--win-soft</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">94% soft</p>
+        </div>
+        <!-- --loss -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--loss);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--loss</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">oklch 27</p>
+        </div>
+        <!-- --loss-soft -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--loss-soft);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--loss-soft</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">94% soft</p>
+        </div>
+        <!-- --be -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--be);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--be</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">oklch 85</p>
+        </div>
+        <!-- --be-soft -->
+        <div style="text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--be-soft);border:1.5px solid var(--line);margin:0 auto 6px"></div>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-2);line-height:1.3">--be-soft</p>
+          <p style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">95% soft</p>
+        </div>
+      </div>
+    </div>
+    <!-- Specs -->
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">Neutral base</span><span class="comp-spec-val">--bg / --panel / --panel-2</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Text hierarchy</span><span class="comp-spec-val">--ink / --ink-2 / --ink-3</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Borders</span><span class="comp-spec-val">--line / --line-2</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Surface chips</span><span class="comp-spec-val">--chip</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Semantic: profit</span><span class="comp-spec-val">--win / --win-soft</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Semantic: loss</span><span class="comp-spec-val">--loss / --loss-soft</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Semantic: breakeven</span><span class="comp-spec-val">--be / --be-soft</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Primary action</span><span class="comp-spec-val">--accent / --accent-soft</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Color space</span><span class="comp-spec-val">oklch (P3-wide)</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Dark mode</span><span class="comp-spec-val">.dark on &lt;body&gt;</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">All colors reference CSS custom properties — never hardcoded values in components.</p>
   </div>
 
-  <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">SEMÁNTICO — ESTADOS</h3>
-  <div class="swatch-grid">
-    <div class="swatch"><div class="swatch-color" style="background:oklch(58% 0.16 264)"></div><div class="swatch-info"><p class="swatch-name">--accent</p><p class="swatch-hex">oklch(58% 0.16 264)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(95% 0.03 264)"></div><div class="swatch-info"><p class="swatch-name">--accent-soft</p><p class="swatch-hex">oklch(95% 0.03 264)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(63% 0.16 152)"></div><div class="swatch-info"><p class="swatch-name">--win</p><p class="swatch-hex">oklch(63% 0.16 152)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(94% 0.06 152)"></div><div class="swatch-info"><p class="swatch-name">--win-soft</p><p class="swatch-hex">oklch(94% 0.06 152)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(60% 0.20 27)"></div><div class="swatch-info"><p class="swatch-name">--loss</p><p class="swatch-hex">oklch(60% 0.20 27)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(94% 0.06 27)"></div><div class="swatch-info"><p class="swatch-name">--loss-soft</p><p class="swatch-hex">oklch(94% 0.06 27)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(75% 0.14 85)"></div><div class="swatch-info"><p class="swatch-name">--be</p><p class="swatch-hex">oklch(75% 0.14 85)</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:oklch(95% 0.06 85)"></div><div class="swatch-info"><p class="swatch-name">--be-soft</p><p class="swatch-hex">oklch(95% 0.06 85)</p></div></div>
+  <!-- 2. TYPOGRAPHY -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Typography</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">TOKEN</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <!-- Inter headings -->
+      <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Inter — Headings</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:32px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1">Dashboard</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">32px · 800</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:26px;font-weight:800;letter-spacing:-.03em;color:var(--ink);line-height:1">Portfolio · May 2026</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">26px · 800</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:20px;font-weight:800;letter-spacing:-.025em;color:var(--ink);line-height:1">Equity Consolidado</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">20px · 800</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:16px;font-weight:800;letter-spacing:-.02em;color:var(--ink);line-height:1">Setups &amp; Playbook</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">16px · 800</span>
+        </div>
+      </div>
+      <!-- Inter body -->
+      <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Inter — Body</p>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:14px;color:var(--ink)">Trades, setups y revisiones semanales de performance</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">14px · 400</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:13px;color:var(--ink-2)">PROP FIRM · FXify 100K · Estado: OPERABLE</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">13px · 400</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:12px;color:var(--ink-3)">Última modificación · hace 2 días · sem. 20</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">12px · 400</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em">DISCIPLINE SCORE · SEMANA ACTUAL</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">11px · eyebrow</span>
+        </div>
+      </div>
+      <!-- JetBrains Mono -->
+      <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">JetBrains Mono — Financial values only</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">$321,946.07</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">20px · 700</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+2.84%</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">16px · 700</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:14px;font-family:'JetBrains Mono',monospace;color:var(--ink-2)">1.84R &nbsp; 58% &nbsp; 230 trades</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">14px · 400</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:16px">
+          <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">ES · NQ · GC · CL</span>
+          <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;flex-shrink:0">12px · 400</span>
+        </div>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">Heading font</span><span class="comp-spec-val">Inter 800</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Body font</span><span class="comp-spec-val">Inter 400 / 500 / 600</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Mono font</span><span class="comp-spec-val">JetBrains Mono 400 / 700</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">Mono usage</span><span class="comp-spec-val">$ values, %, R, codes only</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">JetBrains Mono is reserved exclusively for numeric financial data — never prose text.</p>
   </div>
 
-  <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">DARK MODE</h3>
-  <div class="swatch-grid">
-    <div class="swatch"><div class="swatch-color" style="background:#0E0C09;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--bg (dark)</p><p class="swatch-hex">#0E0C09</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#16140F;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--panel</p><p class="swatch-hex">#16140F</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#1B1813;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--panel-2</p><p class="swatch-hex">#1B1813</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#F5F2EA"></div><div class="swatch-info"><p class="swatch-name">--ink (dark)</p><p class="swatch-hex">#F5F2EA</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#C7C2B5"></div><div class="swatch-info"><p class="swatch-name">--ink-2</p><p class="swatch-hex">#C7C2B5</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#807A6B"></div><div class="swatch-info"><p class="swatch-name">--ink-3</p><p class="swatch-hex">#807A6B</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#25221C;border:1px solid #333"></div><div class="swatch-info"><p class="swatch-name">--line</p><p class="swatch-hex">#25221C</p></div></div>
-  </div>
+  <!-- ═══════════════════════════════════════════════════ ATOMS ══ -->
+  <h2 style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;margin-top:40px;padding-bottom:8px;border-bottom:1px solid var(--line)">Atoms</h2>
 
-  <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin-bottom:12px;">PALETA DE GRÁFICOS</h3>
-  <div class="swatch-grid" style="grid-template-columns:repeat(5,1fr)">
-    <div class="swatch"><div class="swatch-color" style="background:#4f6ef7"></div><div class="swatch-info"><p class="swatch-name">--chart-1</p><p class="swatch-hex">#4f6ef7</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#2d7a3a"></div><div class="swatch-info"><p class="swatch-name">--chart-2</p><p class="swatch-hex">#2d7a3a</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#b87d2d"></div><div class="swatch-info"><p class="swatch-name">--chart-3</p><p class="swatch-hex">#b87d2d</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#b83232"></div><div class="swatch-info"><p class="swatch-name">--chart-4</p><p class="swatch-hex">#b83232</p></div></div>
-    <div class="swatch"><div class="swatch-color" style="background:#c4622d"></div><div class="swatch-info"><p class="swatch-name">--chart-5</p><p class="swatch-hex">#c4622d</p></div></div>
-  </div>
-
-  <h3 style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:24px 0 12px;">RADIUS &amp; SPACING</h3>
-  <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap">
-    <div style="text-align:center"><div style="width:80px;height:32px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:99px;margin:0 auto 6px"></div><p class="swatch-hex">pill · 99px</p></div>
-    <div style="text-align:center"><div style="width:64px;height:64px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:14px;margin:0 auto 6px"></div><p class="swatch-hex">--radius · 14px</p></div>
-    <div style="text-align:center"><div style="width:56px;height:56px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:10px;margin:0 auto 6px"></div><p class="swatch-hex">--radius-sm · 10px</p></div>
-    <div style="text-align:center"><div style="width:52px;height:36px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:8px;margin:0 auto 6px"></div><p class="swatch-hex">input · 8px</p></div>
-    <div style="text-align:center"><div style="width:40px;height:40px;background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:50%;margin:0 auto 6px"></div><p class="swatch-hex">avatar · 50%</p></div>
-  </div>
-</section>
-
-<section style="padding:40px 0;border-bottom:1px solid var(--line)">
-  <p class="eyebrow">Sección 02</p>
-  <h2 class="section-title">Sistema de Tipografía</h2>
-  <p class="section-sub">Inter para UI · JetBrains Mono exclusivamente para valores financieros y de performance.</p>
-  <div style="margin-bottom:32px">
-    <div class="type-row">
-      <div class="type-meta"><strong>Display / H1</strong>Inter Bold 28px<br>tracking -0.025em</div>
-      <div style="font-size:28px;font-weight:700;letter-spacing:-.025em">Trading Journal Dashboard</div>
+  <!-- 3. BADGES -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Badges</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
     </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>H2 / Título</strong>Inter SemiBold 22px<br>tracking -0.02em</div>
-      <div style="font-size:22px;font-weight:600;letter-spacing:-.02em">Portfolio · May 2026</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>H3 / Sección</strong>Inter SemiBold 17px<br>tracking -0.015em</div>
-      <div style="font-size:17px;font-weight:600;letter-spacing:-.015em">Equity Consolidado · 4 Cuentas</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>Body / Default</strong>Inter Regular 14px<br>tracking -0.01em</div>
-      <div style="font-size:14px;letter-spacing:-.01em">Trades, setups y revisiones semanales de performance</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>Label Small</strong>Inter Regular 12px<br>tracking -0.005em</div>
-      <div style="font-size:12px;color:var(--ink-3)">PROP FIRM · FXify 100K · Estado: OPERABLE</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>Eyebrow</strong>Inter Regular 10.5px<br>tracking +0.12em CAPS</div>
-      <div class="eyebrow">DISCIPLINE SCORE · SEMANA ACTUAL · SEM 20 · 2026</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>Mono / Valores</strong>JetBrains Mono 14px<br>tracking 0</div>
-      <div class="mono" style="font-size:14px">$321,946.07 &nbsp; +2.84% &nbsp; 1.84R &nbsp; 58%</div>
-    </div>
-    <div class="type-row">
-      <div class="type-meta"><strong>Mono KPI Bold</strong>JetBrains Mono Bold 24px<br>tracking -0.01em</div>
-      <div class="mono" style="font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--ink)">$102,840.55</div>
-    </div>
-  </div>
-</section>
-
-<section style="padding:40px 0">
-  <p class="eyebrow">Sección 03</p>
-  <h2 class="section-title">Componentes</h2>
-  <p class="section-sub">Todos construidos con shadcn/ui + Tailwind 4 tokens. Props y variantes documentadas.</p>
-
-  <h3 style="font-size:13px;font-weight:600;margin-bottom:12px">Status Badges</h3>
-  <div class="preview-box">
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <span class="badge badge-win">OPERABLE</span>
-      <span class="badge badge-be">PAUSE</span>
-      <span class="badge badge-loss">ALERTA</span>
-      <span class="badge badge-loss">DO-NOT-TRADE</span>
-      <span class="badge badge-be">DRAFT</span>
-      <span class="badge badge-win">SUBMITTED</span>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span class="badge badge-win">WIN</span>
+      <span class="badge badge-loss">LOSS</span>
+      <span class="badge badge-be">BE</span>
       <span class="badge badge-acc">A+</span>
+      <span class="badge badge-ink">Plan</span>
+      <span class="badge badge-win">OPERABLE</span>
+      <span class="badge badge-loss">VIOLACIÓN</span>
+      <span class="badge badge-be">PAUSE</span>
       <span class="badge badge-acc">ACTIVO</span>
-      <span class="badge badge-be">MINOR</span>
-      <span class="badge badge-loss">MAJOR</span>
-      <span class="badge badge-win">Plan</span>
-      <span class="badge badge-be">Off-plan</span>
-      <span class="badge badge-loss">Violación</span>
       <span class="badge badge-ink">Impulsivo</span>
     </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">height</span><span class="comp-spec-val">18px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">4px (pill: 99px)</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">font-size</span><span class="comp-spec-val">10px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">font-weight</span><span class="comp-spec-val">700</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">padding</span><span class="comp-spec-val">2px 6px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">badge-win</span><span class="comp-spec-val">--win-soft / --win</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">badge-loss</span><span class="comp-spec-val">--loss-soft / --loss</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">badge-be</span><span class="comp-spec-val">--be-soft / --be</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">badge-acc</span><span class="comp-spec-val">--accent-soft / --accent</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">badge-ink</span><span class="comp-spec-val">--chip / --ink-2</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Used to classify trade outcome, account status, and rule compliance at a glance.</p>
   </div>
 
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">KPI Cards</h3>
-  <div class="preview-box">
-    <div class="kpi-grid">
-      <div class="kpi-card">
-        <div class="kpi-label">EQUITY CONSOLIDADO</div>
-        <div class="kpi-value">$321,946.07</div>
-        <div class="kpi-sub" style="color:var(--win)">+$1,018.20 hoy · 4 cuentas</div>
+  <!-- 4. KPI CARD -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">KPI Card</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="kpi-card" style="width:180px">
+        <p class="kpi-label">WIN RATE</p>
+        <p class="kpi-value" style="color:var(--accent)">64%</p>
+        <p class="kpi-sub" style="color:var(--ink-3)">134 / 209 trades</p>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-label">PROFIT FACTOR</div>
-        <div class="kpi-value" style="color:var(--accent)">1.84</div>
-        <div class="kpi-sub muted">30d · todas las cuentas</div>
+      <div class="kpi-card" style="width:180px">
+        <p class="kpi-label">PROFIT FACTOR</p>
+        <p class="kpi-value" style="color:var(--win)">1.84</p>
+        <p class="kpi-sub" style="color:var(--ink-3)">30d · todas cuentas</p>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-label">WIN RATE</div>
-        <div class="kpi-value" style="color:var(--accent)">58%</div>
-        <div class="kpi-sub muted">134 / 230 CLOSED</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">MAX DRAWDOWN</div>
-        <div class="kpi-value" style="color:var(--loss)">-3.4%</div>
-        <div class="kpi-sub muted">abr 12 · FXify 100K</div>
+      <div class="kpi-card" style="width:180px">
+        <p class="kpi-label">MAX DRAWDOWN</p>
+        <p class="kpi-value" style="color:var(--loss)">-3.4%</p>
+        <p class="kpi-sub" style="color:var(--ink-3)">abr 12 · FXify 100K</p>
       </div>
     </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">background</span><span class="comp-spec-val">--panel</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border</span><span class="comp-spec-val">1px solid --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">12px (--radius)</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">padding</span><span class="comp-spec-val">18px 20px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">kpi-label</span><span class="comp-spec-val">9.5px · uppercase · --ink-3</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">kpi-value</span><span class="comp-spec-val">JetBrains Mono 22–28px · 700</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">kpi-sub</span><span class="comp-spec-val">11.5px · --ink-3</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">KPI cards sit in a 4-column responsive grid at the top of Dashboard and Cuentas screens.</p>
   </div>
 
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Direction Toggle</h3>
-  <div class="preview-box" style="max-width:340px">
-    <div class="dir-toggle">
-      <button class="dir-btn dir-long">LONG ↑</button>
-      <button class="dir-btn dir-short">SHORT ↓</button>
+  <!-- 5. DIRECTION TOGGLE -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Direction Toggle</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
     </div>
-  </div>
-
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">QuickTradeForm (Right Rail)</h3>
-  <div class="preview-box" style="max-width:340px">
-    <div class="dir-toggle">
-      <button class="dir-btn dir-long">LONG ↑</button>
-      <button class="dir-btn dir-short">SHORT ↓</button>
-    </div>
-    <div class="form-row">
-      <input class="form-input" placeholder="Símbolo (ES)" style="max-width:110px">
-      <select class="form-select"><option>Opening Range Break</option><option>Liquidity Grab</option><option>Volume Profile</option></select>
-    </div>
-    <div style="margin-bottom:6px">
-      <label class="form-label">Riesgo (R)</label>
-      <div class="form-row">
-        <input class="form-input" placeholder="1" type="number" style="max-width:80px">
-        <select class="form-select" style="max-width:90px"><option>FUT</option><option>FX</option><option>EQ</option><option>OPC</option></select>
-        <select class="form-select"><option>FXify 100K</option><option>FTMO 50K</option><option>IBKR</option></select>
-      </div>
-    </div>
-    <button class="btn-primary">Registrar trade</button>
-  </div>
-
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Prop Firm Progress Bars</h3>
-  <div class="preview-box" style="max-width:440px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <span style="font-size:14px;font-weight:600">FXify 100K</span>
-      <span class="badge badge-win">OK</span>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-head"><span class="progress-label">Max drawdown total</span><span class="progress-val" style="color:var(--win)">$2,100 / $10,000</span></div>
-      <div class="progress-bar"><div class="progress-fill fill-ok" style="width:21%"></div></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-head"><span class="progress-label">Pérdida diaria</span><span class="progress-val" style="color:var(--be)">$320 / $500</span></div>
-      <div class="progress-bar"><div class="progress-fill fill-warn" style="width:64%"></div></div>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-head"><span class="progress-label">Trades hoy</span><span class="progress-val">2 / 3</span></div>
-      <div class="progress-bar"><div class="progress-fill fill-ok" style="width:67%"></div></div>
-    </div>
-    <p style="font-size:11px;color:var(--ink-3);margin-top:6px">Símbolos permitidos: ES, NQ, GC, CL</p>
-  </div>
-
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Account Switcher Cards</h3>
-  <div class="preview-box">
-    <div class="acc-switcher">
-      <div class="acc-card active">
-        <div class="acc-card-name">FXify 100K</div>
-        <div class="acc-card-bal">$102,840</div>
-        <div class="acc-card-delta" style="color:var(--win)">+$1,240 hoy</div>
-      </div>
-      <div class="acc-card">
-        <div class="acc-card-name">FTMO 50K</div>
-        <div class="acc-card-bal">$51,200</div>
-        <div class="acc-card-delta" style="color:var(--loss)">-$310 hoy</div>
-      </div>
-      <div class="acc-card">
-        <div class="acc-card-name">IBKR</div>
-        <div class="acc-card-bal">$78,140</div>
-        <div class="acc-card-delta" style="color:var(--win)">+$820 hoy</div>
-      </div>
-      <div class="acc-card">
-        <div class="acc-card-name">APEX 150K</div>
-        <div class="acc-card-bal">$89,766</div>
-        <div class="acc-card-delta" style="color:var(--win)">+$1,540 hoy</div>
-      </div>
-      <div class="acc-card" style="min-width:48px;display:grid;place-items:center;font-size:20px;color:var(--ink-3)">+</div>
-    </div>
-  </div>
-
-  <h3 style="font-size:13px;font-weight:600;margin:24px 0 12px">Discipline Score Card</h3>
-  <div class="preview-box">
-    <div class="disc-score">
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <!-- LONG active state -->
       <div>
-        <p class="eyebrow" style="margin-bottom:8px">DISCIPLINE SCORE · SEMANA ACTUAL</p>
-        <div class="disc-number" style="color:var(--be)">78</div>
-        <p style="font-size:12px;color:var(--be);margin-top:4px">↑ +6 vs sem. pasada</p>
-        <div class="disc-sub-row" style="margin-top:16px">
-          <div class="disc-sub-item"><strong>SIN VIOLACIÓN</strong>78% · 18/23</div>
-          <div class="disc-sub-item"><strong>PLAN SEGUIDO</strong>82% · 19/23</div>
-          <div class="disc-sub-item"><strong>INDISCIPLINE $</strong>$214 acum.</div>
+        <p style="font-size:10px;color:var(--ink-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">LONG active</p>
+        <div class="dir-toggle" style="width:220px;margin-bottom:0">
+          <button class="dir-btn dir-long" style="background:var(--win);color:white">LONG</button>
+          <button class="dir-btn dir-short" style="background:var(--chip);color:var(--ink-3)">SHORT</button>
         </div>
       </div>
+      <!-- SHORT active state -->
       <div>
-        <p class="eyebrow" style="margin-bottom:12px">COMPOSICIÓN SEMANAL</p>
-        <div style="display:flex;gap:16px;align-items:center">
-          <div style="width:80px;height:80px;border-radius:50%;background:conic-gradient(var(--win) 0% 60%,var(--be) 60% 82%,var(--loss) 82% 100%);position:relative">
-            <div style="position:absolute;inset:18px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--ink-3)">23</div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--win)"></div><span>Plan seguido · 14</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--be)"></div><span>Plan parcial · 5</span></div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--loss)"></div><span>Off-plan · 4</span></div>
-          </div>
+        <p style="font-size:10px;color:var(--ink-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">SHORT active</p>
+        <div class="dir-toggle" style="width:220px;margin-bottom:0">
+          <button class="dir-btn dir-long" style="background:var(--chip);color:var(--ink-3)">LONG</button>
+          <button class="dir-btn dir-short" style="background:var(--loss);color:white">SHORT</button>
         </div>
       </div>
     </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">dir-long active</span><span class="comp-spec-val">bg --win · color #fff</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">dir-short active</span><span class="comp-spec-val">bg --loss · color #fff</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">inactive</span><span class="comp-spec-val">bg --chip · color --ink-3</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">99px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">font-size</span><span class="comp-spec-val">13px · 700</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">padding</span><span class="comp-spec-val">9px · flex:1</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Always appears at the top of the Quick Trade form in the Right Rail.</p>
   </div>
-</section>
-</div>
+
+  <!-- 6. PROGRESS BAR -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Progress Bar</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <div style="max-width:400px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--ink-3)">fill-ok · 82%</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">82%</span>
+          </div>
+          <div class="progress-wrap" style="margin-bottom:0"><div class="progress-bar"><div class="progress-fill fill-ok" style="width:82%"></div></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--ink-3)">fill-warn · 61%</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--be)">61%</span>
+          </div>
+          <div class="progress-wrap" style="margin-bottom:0"><div class="progress-bar"><div class="progress-fill fill-warn" style="width:61%"></div></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--ink-3)">fill-crit · 38%</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--loss)">38%</span>
+          </div>
+          <div class="progress-wrap" style="margin-bottom:0"><div class="progress-bar"><div class="progress-fill fill-crit" style="width:38%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">bar height</span><span class="comp-spec-val">6px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">bar bg</span><span class="comp-spec-val">--line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">3px (99px)</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">fill-ok (&gt;80%)</span><span class="comp-spec-val">--win</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">fill-warn (60–80%)</span><span class="comp-spec-val">#e8962a (--be)</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">fill-crit (&lt;60%)</span><span class="comp-spec-val">--loss</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Used in Cuentas to visualise prop firm drawdown and daily loss limits.</p>
+  </div>
+
+  <!-- 7. FILTER TABS -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Filter Tabs</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:4px">
+        <button class="filter-tab active">Todas</button>
+        <button class="filter-tab">A+</button>
+        <button class="filter-tab">Plan</button>
+        <button class="filter-tab">Violación</button>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">active bg</span><span class="comp-spec-val">--chip</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">active color</span><span class="comp-spec-val">--ink · font-weight 600</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">inactive bg</span><span class="comp-spec-val">transparent</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">inactive color</span><span class="comp-spec-val">--ink-3</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">6px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">padding</span><span class="comp-spec-val">6px 12px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">font-size</span><span class="comp-spec-val">13px</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Appears above the trades table and playbook grid to filter by tag or outcome.</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════ MOLECULES ══ -->
+  <h2 style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;margin-top:40px;padding-bottom:8px;border-bottom:1px solid var(--line)">Molecules</h2>
+
+  <!-- 8. DATA TABLE -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Data Table</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>SÍMBOLO</th>
+            <th>RESULTADO</th>
+            <th>P&amp;L</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-mono">ES</td>
+            <td><span class="badge badge-win">WIN</span></td>
+            <td class="td-mono td-win">+$420.00</td>
+          </tr>
+          <tr>
+            <td class="td-mono">NQ</td>
+            <td><span class="badge badge-loss">LOSS</span></td>
+            <td class="td-mono td-loss">-$210.00</td>
+          </tr>
+          <tr>
+            <td class="td-mono">GC</td>
+            <td><span class="badge badge-be">BE</span></td>
+            <td class="td-mono" style="color:var(--ink-3)">$0.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">header font-size</span><span class="comp-spec-val">9.5–11px · --ink-3 · 600</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">header text-transform</span><span class="comp-spec-val">uppercase</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">td padding</span><span class="comp-spec-val">8px 6px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-bottom</span><span class="comp-spec-val">1px solid --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">td-mono</span><span class="comp-spec-val">JetBrains Mono</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">td-win</span><span class="comp-spec-val">color --win</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">td-loss</span><span class="comp-spec-val">color --loss</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">row hover</span><span class="comp-spec-val">bg --bg</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Main component of the Trades screen; columns vary by context (trades, rules, setups).</p>
+  </div>
+
+  <!-- 9. HEATMAP -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Heatmap</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <!-- 5 rows x 7 cols heatmap -->
+      <div style="display:inline-grid;grid-template-columns:repeat(7,24px);gap:4px">
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--loss-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--loss-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+
+        <div style="width:24px;height:24px;border-radius:4px;background:transparent;border:1px solid var(--line)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--loss-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--be-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:transparent;border:1px solid var(--line)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--loss-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--chip)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win)"></div>
+        <div style="width:24px;height:24px;border-radius:4px;background:var(--win-soft)"></div>
+      </div>
+      <!-- Legend -->
+      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3)">
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--chip)"></div>hc-none
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3)">
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--win-soft)"></div>hc-minor
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3)">
+          <div style="width:12px;height:12px;border-radius:3px;background:var(--win)"></div>hc-major
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3)">
+          <div style="width:12px;height:12px;border-radius:3px;border:1px solid var(--line)"></div>hc-empty
+        </div>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">cell size</span><span class="comp-spec-val">24px × 24px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border-radius</span><span class="comp-spec-val">4px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">gap</span><span class="comp-spec-val">2px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">hc-none</span><span class="comp-spec-val">bg --chip</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">hc-minor</span><span class="comp-spec-val">bg --win-soft</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">hc-major</span><span class="comp-spec-val">bg --win</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">hc-empty</span><span class="comp-spec-val">bg transparent</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Used in Reviews and Dashboard to display day-of-week / hour-of-day performance patterns.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════ LAYOUT ══ -->
+  <h2 style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;margin-top:40px;padding-bottom:8px;border-bottom:1px solid var(--line)">Layout</h2>
+
+  <!-- 10. SCREEN SHELL -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Screen Shell</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px">
+      <!-- Wireframe diagram -->
+      <div style="display:flex;height:160px;border-radius:8px;overflow:hidden;border:1px solid var(--line)">
+        <!-- Sidebar -->
+        <div style="width:100px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0">
+          <div style="width:28px;height:4px;border-radius:2px;background:var(--accent);opacity:.7"></div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <p style="font-size:9px;color:var(--ink-3);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Sidebar</p>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-3)">240px</p>
+        </div>
+        <!-- Main -->
+        <div style="flex:1;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">
+          <div style="width:80%;height:4px;border-radius:2px;background:var(--line)"></div>
+          <div style="width:60%;height:3px;border-radius:2px;background:var(--line)"></div>
+          <div style="width:70%;height:20px;border-radius:4px;background:var(--chip);margin:4px 0"></div>
+          <div style="width:80%;height:3px;border-radius:2px;background:var(--line)"></div>
+          <p style="font-size:9px;color:var(--ink-3);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Main</p>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-3)">flex:1</p>
+        </div>
+        <!-- Rail -->
+        <div style="width:90px;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex-shrink:0">
+          <div style="width:40px;height:40px;border-radius:50%;background:var(--accent-soft);display:grid;place-items:center">
+            <span style="font-size:10px;font-weight:700;color:var(--accent)">HO</span>
+          </div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <div style="width:40px;height:3px;border-radius:2px;background:var(--chip)"></div>
+          <div style="width:50px;height:14px;border-radius:3px;background:var(--accent);opacity:.7"></div>
+          <p style="font-size:9px;color:var(--ink-3);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Rail</p>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--ink-3)">280px</p>
+        </div>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">layout</span><span class="comp-spec-val">CSS grid · 240px 1fr 280px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">sidebar</span><span class="comp-spec-val">240px · bg --panel · sticky</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">sidebar border</span><span class="comp-spec-val">border-right 1px --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">main</span><span class="comp-spec-val">flex:1 · bg --bg · overflow-y auto</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">rail</span><span class="comp-spec-val">280px · bg --panel · sticky</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">rail border</span><span class="comp-spec-val">border-left 1px --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">mobile breakpoint</span><span class="comp-spec-val">&lt;768px: sidebar+rail hidden</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">All screens share this three-column shell; only the main content area changes per route.</p>
+  </div>
+
+  <!-- 11. RIGHT RAIL -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Right Rail</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+      <!-- Rendered rail at realistic width -->
+      <div style="width:280px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px">
+        <!-- User header -->
+        <div style="display:flex;align-items:flex-start;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:14px">
+          <div class="avatar">HO</div>
+          <div style="flex:1">
+            <p style="font-size:13px;font-weight:600;color:var(--ink)">Héctor Osorio</p>
+            <p style="font-size:11px;color:var(--ink-3)">Trader · FXify 100K</p>
+          </div>
+        </div>
+        <!-- Setups table -->
+        <p style="font-size:12px;font-weight:600;color:var(--ink);margin-bottom:10px">Top Setups</p>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <div class="setup-row">
+            <div class="setup-avatar" style="background:var(--accent-soft);color:var(--accent)">ORB</div>
+            <div class="setup-info">
+              <p class="setup-name">Opening Range Break</p>
+              <p class="setup-cat">Momentum · ES</p>
+            </div>
+            <div class="setup-stats">
+              <p class="setup-wr">71%</p>
+              <p class="setup-r">2.1R</p>
+            </div>
+          </div>
+          <div class="setup-row">
+            <div class="setup-avatar" style="background:var(--win-soft);color:var(--win)">LG</div>
+            <div class="setup-info">
+              <p class="setup-name">Liquidity Grab</p>
+              <p class="setup-cat">Reversal · NQ</p>
+            </div>
+            <div class="setup-stats">
+              <p class="setup-wr">58%</p>
+              <p class="setup-r">1.7R</p>
+            </div>
+          </div>
+        </div>
+        <!-- Quick trade form -->
+        <p style="font-size:12px;font-weight:600;color:var(--ink);margin:14px 0 10px">Nuevo Trade</p>
+        <div class="dir-toggle">
+          <button class="dir-btn dir-long">LONG</button>
+          <button class="dir-btn dir-short">SHORT</button>
+        </div>
+        <div class="form-row">
+          <input class="form-input" placeholder="ES" style="max-width:80px">
+          <select class="form-select"><option>ORB</option><option>LG</option><option>VP</option></select>
+        </div>
+        <div style="margin-bottom:8px">
+          <label class="form-label">Riesgo (R)</label>
+          <div class="form-row">
+            <input class="form-input" placeholder="1" type="number" style="max-width:70px">
+            <select class="form-select"><option>FXify 100K</option><option>FTMO 50K</option></select>
+          </div>
+        </div>
+        <button class="btn-primary">Registrar trade</button>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">width</span><span class="comp-spec-val">280px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">background</span><span class="comp-spec-val">--panel</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border</span><span class="comp-spec-val">border-left 1px --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">padding</span><span class="comp-spec-val">20px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">position</span><span class="comp-spec-val">sticky top:0 · height:100vh</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">sections</span><span class="comp-spec-val">user header · setups · trade form</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Persistent across all screens — provides user context and quick trade entry without leaving any page.</p>
+  </div>
+
+  <!-- 12. SIDEBAR NAV -->
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <h3 style="font-size:15px;font-weight:700;color:var(--ink)">Sidebar Nav</h3>
+      <span style="font-size:10px;font-weight:700;color:var(--ink-3);background:var(--chip);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">LAYOUT</span>
+    </div>
+    <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:16px;display:flex;align-items:flex-start;gap:20px;flex-wrap:wrap">
+      <!-- Rendered sidebar at realistic width -->
+      <div style="width:240px;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden">
+        <!-- Brand -->
+        <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)">
+          <div class="brand-mark">TJ<span class="brand-dot"></span></div>
+          <span class="brand-name">Trading Journal</span>
+        </div>
+        <!-- Nav items -->
+        <div style="padding:10px 0">
+          <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;padding:6px 20px 4px">General</p>
+          <a class="nav-item active" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>
+            Dashboard
+          </a>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12 L5 8 L8 10 L11 5 L14 7"/></svg>
+            Trades
+          </a>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M5 3 V2 M11 3 V2"/><path d="M2 7 H14"/></svg>
+            Playbook
+          </a>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="5.5"/><path d="M8 5 V8.5 L10.5 10"/></svg>
+            Reviews
+          </a>
+          <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;padding:10px 20px 4px">Gestión</p>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="9" rx="1.5"/><path d="M5 4 V3 M11 4 V3"/></svg>
+            Cuentas
+          </a>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8 H14 M8 2 V14"/></svg>
+            Reglas
+          </a>
+          <a class="nav-item" href="#" style="text-decoration:none">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2 C4.7 2 2 4.7 2 8 S4.7 14 8 14 14 11.3 14 8 11.3 2 8 2Z"/><path d="M8 6 V9"/><circle cx="8" cy="11" r=".5" fill="currentColor"/></svg>
+            Aprendizaje
+          </a>
+        </div>
+        <!-- Footer -->
+        <div style="padding:12px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px">
+          <div class="avatar-sm">HO</div>
+          <div style="flex:1">
+            <p style="font-size:12px;font-weight:600;color:var(--ink)">Héctor O.</p>
+            <p style="font-size:10px;color:var(--ink-3)">Perfil</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="comp-specs-grid">
+      <div class="comp-spec-row"><span class="comp-spec-key">width</span><span class="comp-spec-val">240px</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">background</span><span class="comp-spec-val">--panel</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">border</span><span class="comp-spec-val">border-right 1px --line</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">position</span><span class="comp-spec-val">sticky top:0 · height:100vh</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">nav-item active</span><span class="comp-spec-val">bg --accent-soft · color --accent · 600</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">nav-item hover</span><span class="comp-spec-val">bg --chip</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">nav-item font</span><span class="comp-spec-val">13.5px · color --ink-2</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">brand-mark</span><span class="comp-spec-val">32px · bg --ink · JetBrains Mono</span></div>
+      <div class="comp-spec-row"><span class="comp-spec-key">brand-dot</span><span class="comp-spec-val">8px · bg --win · top-right</span></div>
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);font-style:italic;margin-top:10px">Navigation sections are grouped with eyebrow labels; active route is highlighted with accent-soft background.</p>
+  </div>
+
+</div><!-- /max-width wrapper -->
 
 </body>
 </html>
