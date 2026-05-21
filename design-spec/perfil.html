@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trading Journal · Aprendizaje</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trading Journal · Perfil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
     :root {
       --bg:          #F6F5F1;
       --panel:       #FFFFFF;
@@ -423,158 +423,276 @@
       .kpi-grid { grid-template-columns: 1fr 1fr; }
       .grid-2, .grid-2-330 { grid-template-columns: 1fr; }
     }
-
-  </style>
+</style>
+<style>
+  a { color:var(--ink-2);text-decoration:none; }
+  a:hover { color:var(--ink); }
+  .form-label { font-size:11px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:block; }
+  .form-input { width:100%;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--ink);font-family:inherit;box-sizing:border-box; }
+  .form-section-title { font-size:13px;font-weight:700;color:var(--ink);margin:24px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line); }
+  .ann-grid { display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:24px; }
+  .ann-h { font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px; }
+  .ann-list { list-style:none;padding:0;margin:0;font-size:13px;color:var(--ink-2);line-height:1.9; }
+</style>
 </head>
 <body class="dark">
+
+<!-- NAV -->
 <nav style="position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 32px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
   <span style="font-weight:700;font-size:14px;margin-right:10px;color:var(--ink)">TJ Spec</span>
-  <a href="index.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Index</a>
-  <a href="foundations.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Foundations</a>
+  <a href="index.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Index</a>
+  <a href="foundations.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Foundations</a>
   <span style="color:var(--line);margin:0 4px">|</span>
-  <a href="dashboard.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Dashboard</a>
-  <a href="trades.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Trades</a>
-  <a href="playbook.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Playbook</a>
-  <a href="reviews.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Reviews</a>
-  <a href="cuentas.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Cuentas</a>
-  <a href="reglas.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Reglas</a>
-  <a href="aprendizaje.html" style="padding:4px 10px;border-radius:6px;font-size:13px;background:var(--chip);color:var(--ink);font-weight:600;text-decoration:none">Aprendizaje</a>
-  <a href="perfil.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Perfil</a>
+  <a href="dashboard.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Dashboard</a>
+  <a href="trades.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Trades</a>
+  <a href="playbook.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Playbook</a>
+  <a href="reviews.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Reviews</a>
+  <a href="cuentas.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Cuentas</a>
+  <a href="reglas.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Reglas</a>
+  <a href="aprendizaje.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Aprendizaje</a>
+  <a href="perfil.html" style="padding:4px 10px;border-radius:6px;font-size:13px;background:var(--chip);color:var(--ink);font-weight:600">Perfil</a>
   <button onclick="document.body.classList.toggle('dark')" style="margin-left:auto;background:var(--chip);border:none;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--ink);cursor:pointer;font-family:inherit">◐ Modo</button>
 </nav>
-<div style="padding:40px 48px 24px;max-width:1600px;margin:0 auto">
-  <p style="font-size:12px;color:var(--ink-3);margin-bottom:4px">ROUTE</p>
-  <h1 style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Aprendizaje</h1>
-  <p style="color:var(--ink-2);font-size:14px">42 entradas · 8 destacadas</p>
-  <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-3);margin-top:4px">/aprendizaje</p>
+
+<!-- HEADER -->
+<div style="padding:36px 48px 20px">
+  <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">/perfil</p>
+  <h1 style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Perfil</h1>
+  <p style="color:var(--ink-2);font-size:14px">Configuración de cuenta y preferencias del usuario</p>
 </div>
-<div style="padding:0 48px 48px;max-width:1600px;margin:0 auto">
-    <div class="screen-frame">
-      <div class="screen-label">
-        <div class="screen-dot" style="background:#ff6b6b"></div>
-        <div class="screen-dot" style="background:#ffd93d"></div>
-        <div class="screen-dot" style="background:#6bcb77"></div>
-        <span style="margin-left:4px">Aprendizaje · journal de insights · 1440px</span>
-      </div>
-      <div class="shell screen-body" style="height:520px">
-        <div class="sidebar" style="height:100%;flex-shrink:0">
-          <div class="brand"><div class="brand-mark">TJ<div class="brand-dot"></div></div><span class="brand-name">Trading Journal</span></div>
-          <nav class="nav">
-            <p class="eyebrow nav-section">OPERACIÓN</p>
-            <a class="nav-item" href="#">◻ Dashboard</a>
-            <a class="nav-item" href="#">◻ Cuentas</a>
-            <a class="nav-item" href="#">◻ Trades</a>
-            <a class="nav-item" href="#">◻ Playbook</a>
-            <a class="nav-item" href="#">◻ Reglas</a>
-            <a class="nav-item" href="#">◻ Reviews</a>
-            <a class="nav-item active" href="#">⬛ Aprendizaje</a>
-            <p class="eyebrow nav-section" style="margin-top:8px">CUENTA</p>
-            <a class="nav-item" href="#">◻ Perfil</a>
-          </nav>
-          <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
-        </div>
-        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
-            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Aprendizaje</h1><p style="font-size:12px;color:var(--ink-3)">42 entradas · 8 destacadas</p></div>
-            <button class="btn-secondary" style="font-size:11px">+ Nueva entrada</button>
-          </div>
-          <!-- Search + filter row -->
-          <div style="display:flex;gap:8px;margin-bottom:14px">
-            <input class="form-input" placeholder="Buscar en entradas…" style="flex:1;font-size:12px">
-            <button class="btn-secondary" style="font-size:11px;display:flex;align-items:center;gap:4px;white-space:nowrap">⚑ Destacadas</button>
-            <select class="form-select" style="font-size:11px;padding:6px 10px"><option>Todos los temas</option><option>Psicología</option><option>Gestión de riesgo</option><option>Técnico</option></select>
-          </div>
-          <div class="filter-tabs" style="margin-bottom:16px">
-            <button class="filter-tab active">Todas</button>
-            <button class="filter-tab">Psicología</button>
-            <button class="filter-tab">Riesgo</button>
-            <button class="filter-tab">Técnico</button>
-            <button class="filter-tab">Proceso</button>
-          </div>
-          <!-- Entry cards -->
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <!-- Flagged entry — blue left border -->
-            <div class="card" style="padding:14px;border-left:3px solid var(--accent)">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="badge badge-acc">Psicología</span>
-                  <span class="badge badge-acc" style="font-size:9px">⚑ Destacada</span>
-                </div>
-                <span style="font-size:10.5px;color:var(--ink-3)">19 may 2026</span>
-              </div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px">El revenge trade siempre ocurre en la 3ª operación del día</div>
-              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">Revisando los últimos 3 meses, el patrón es claro: las operaciones de revenge ocurren casi exclusivamente cuando ya perdí 2 trades. La solución no es fuerza de voluntad sino un sistema automático que bloquee la entrada del 3er trade tras 2 pérdidas. Configurado en reglas → DNT automático.</div>
-              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">revenge</span><span class="tag badge badge-ink">disciplina</span><span class="tag badge badge-ink">sistema</span></div>
-            </div>
-            <!-- Flagged entry 2 -->
-            <div class="card" style="padding:14px;border-left:3px solid var(--accent)">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-                <div style="display:flex;align-items:center;gap:8px">
-                  <span class="badge badge-acc">Riesgo</span>
-                  <span class="badge badge-acc" style="font-size:9px">⚑ Destacada</span>
-                </div>
-                <span style="font-size:10.5px;color:var(--ink-3)">14 may 2026</span>
-              </div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Sizing inconsistente destruye expectativa aunque el setup sea A+</div>
-              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">Comparé mis 20 mejores setups OR con sizing correcto vs. sizing reducido por miedo. La diferencia en P&L acumulado es 40%. El problema no es el setup sino la inconsistencia en la posición. Regla nueva: sizing fijo por cuenta sin ajuste emocional.</div>
-              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">sizing</span><span class="tag badge badge-ink">expectativa</span><span class="tag badge badge-ink">OR</span></div>
-            </div>
-            <!-- Normal entry -->
-            <div class="card" style="padding:14px">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-                <span class="badge badge-ink">Técnico</span>
-                <span style="font-size:10.5px;color:var(--ink-3)">10 may 2026</span>
-              </div>
-              <div style="font-size:13px;font-weight:600;margin-bottom:4px">Volume Profile POC como soporte en NQ funciona mejor en apertura</div>
-              <div style="font-size:11.5px;color:var(--ink-2);line-height:1.65">El POC del día anterior como soporte sólo tiene alta probabilidad en las primeras 2 horas de sesión. Después de las 11:30 el precio tiende a ignorarlo. Ajustado horario del setup VP a 9:30–11:30.</div>
-              <div class="tag-row" style="margin-top:8px"><span class="tag badge badge-ink">VP</span><span class="tag badge badge-ink">POC</span><span class="tag badge badge-ink">NQ</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">
-          <div style="padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:12px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><span style="font-size:13px;font-weight:600">Héctor O.C.</span><div style="display:flex;gap:8px;font-size:14px;color:var(--ink-3)"><span>🔔</span><span>⚙</span></div></div>
-            <div style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Single-Trader · TJ</div>
-            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3)"><span>19 may 2026</span><span style="font-weight:600;color:var(--ink-2)">SEM 20 · 2026</span></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:12px;font-weight:600">Setups · Top performers</span><span style="color:var(--ink-3)">···</span></div>
-          <div class="filter-tabs" style="margin-bottom:8px;gap:3px">
-            <button class="filter-tab active" style="font-size:9px;padding:3px 8px">Futuros</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">FX</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">Equities</button>
-            <button class="filter-tab" style="font-size:9px;padding:3px 8px">Cripto</button>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;font-size:8.5px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:2px"><span>SETUP</span><span style="text-align:center">WIN %</span><span style="text-align:right">AVG R</span></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(79,110,247,.15);color:#4f6ef7;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">OR</div><div><div style="font-size:10.5px;font-weight:600">Opening Range Break</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">64%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.80</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(184,50,50,.12);color:#b83232;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">FA</div><div><div style="font-size:10.5px;font-weight:600">Failed Auction</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">52%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+8.90</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(97,57,200,.15);color:#6139c8;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LG</div><div><div style="font-size:10.5px;font-weight:600">Liquidity Grab</div><div style="font-size:9px;color:var(--ink-3)">Futuros</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">71%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+2.20</div></div>
-          <div style="display:grid;grid-template-columns:1fr 40px 40px;align-items:center;padding:6px 0"><div style="display:flex;align-items:center;gap:6px"><div style="width:26px;height:26px;border-radius:6px;background:rgba(184,125,45,.15);color:#b87d2d;font-size:9px;font-weight:700;display:grid;place-items:center;flex-shrink:0">LR</div><div><div style="font-size:10.5px;font-weight:600">London Reversal</div><div style="font-size:9px;color:var(--ink-3)">FX</div></div></div><div style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">58%</div><div style="text-align:right;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--win)">+1.40</div></div>
-          <div style="border-top:1px solid var(--line);padding-top:14px;margin-top:12px">
-            <div style="font-size:13px;font-weight:600;margin-bottom:10px">Nuevo Trade</div>
-            <div class="dir-toggle" style="margin-bottom:10px"><button class="dir-btn dir-long" style="font-size:12px;padding:8px">LONG</button><button class="dir-btn dir-short" style="font-size:12px;padding:8px">SHORT</button></div>
-            <div style="margin-bottom:8px"><label class="form-label">Símbolo · Setup</label><div style="font-size:15px;font-weight:600;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:4px">ES</div><div style="font-size:10.5px;color:var(--ink-3);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 12px">Opening Range Break · NY AM</div></div>
-            <div><label class="form-label">Riesgo (R)</label><div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap"><span style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">0.5 R</span><span style="font-size:10px;color:var(--ink-3)">≈ $514.20 sobre equity</span><span style="font-size:10px;color:var(--ink-3);margin-left:auto">USD</span></div></div>
-          </div>
-        </div>
-      </div>
+
+<!-- MOCKUP -->
+<div style="padding:0 48px 48px">
+  <div class="screen-frame">
+    <div class="screen-label">
+      <div class="screen-dot" style="background:#ff6b6b"></div>
+      <div class="screen-dot" style="background:#ffd93d"></div>
+      <div class="screen-dot" style="background:#6bcb77"></div>
+      <span style="margin-left:4px">Perfil · 1440px</span>
     </div>
+    <div class="screen-body">
+      <div class="shell">
 
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+          <div style="display:flex;align-items:center;gap:10px;padding:0 16px 20px;border-bottom:1px solid var(--line);margin-bottom:16px">
+            <div style="width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff">TJ</div>
+            <span style="font-weight:700;font-size:14px">Trading Journal</span>
+          </div>
+          <p style="font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.08em;padding:0 16px;margin-bottom:8px">OPERACIÓN</p>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">⊞</span> Dashboard
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">◈</span> Cuentas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">↕</span> Trades
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">◉</span> Playbook
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">⊟</span> Reglas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:2px">
+            <span style="font-size:15px">◎</span> Reviews
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;color:var(--ink-2);text-decoration:none;margin-bottom:16px">
+            <span style="font-size:15px">✦</span> Aprendizaje
+          </a>
+          <p style="font-size:10px;font-weight:700;color:var(--ink-3);letter-spacing:.08em;padding:0 16px;margin-bottom:8px">CUENTA</p>
+          <a href="#" style="display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:8px;font-size:13px;background:var(--chip);color:var(--ink);text-decoration:none;font-weight:500">
+            <span style="font-size:15px">◯</span> Perfil
+          </a>
+
+          <!-- Sidebar footer -->
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:16px;border-top:1px solid var(--line);background:rgba(255,165,0,.07);border-radius:0 0 0 12px">
+            <p style="font-size:11px;font-weight:700;color:#e8962a;margin-bottom:3px">Review semanal lista</p>
+            <p style="font-size:11px;color:var(--ink-3);margin-bottom:10px">Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.</p>
+            <button style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;font-weight:600;color:var(--ink);cursor:pointer;font-family:inherit">Empezar review</button>
+          </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main" style="padding:28px 32px;overflow-y:auto">
+          <!-- Top bar -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
+            <div>
+              <h2 style="font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px">Mi perfil</h2>
+              <p style="font-size:12px;color:var(--ink-3)">Gestiona tu información y preferencias</p>
+            </div>
+            <button style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Guardar cambios</button>
+          </div>
+
+          <!-- Avatar section -->
+          <div style="display:flex;align-items:center;gap:16px;padding:20px;background:var(--panel);border-radius:12px;margin-bottom:24px;border:1px solid var(--line)">
+            <div style="width:64px;height:64px;border-radius:50%;background:#3a3a5a;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--ink);flex-shrink:0">HO</div>
+            <div>
+              <p style="font-size:16px;font-weight:700;margin-bottom:2px">Héctor O.C.</p>
+              <p style="font-size:12px;color:var(--ink-3);margin-bottom:8px">osoriohector89@gmail.com</p>
+              <span style="background:var(--chip);color:var(--ink-2);font-size:10px;padding:3px 8px;border-radius:5px;font-weight:600">Single-Trader</span>
+            </div>
+            <div style="margin-left:auto">
+              <button style="background:var(--chip);border:none;border-radius:8px;padding:7px 14px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Cambiar foto</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+            <!-- Left column -->
+            <div>
+              <p class="form-section-title">Información personal</p>
+              <div style="margin-bottom:14px">
+                <label class="form-label">Nombre</label>
+                <input class="form-input" value="Héctor Osorio" readonly>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="form-label">Email</label>
+                <input class="form-input" value="osoriohector89@gmail.com" readonly>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="form-label">Zona horaria</label>
+                <select class="form-input">
+                  <option selected>America/Mexico_City (UTC-6)</option>
+                  <option>America/New_York (UTC-5)</option>
+                  <option>Europe/London (UTC+0)</option>
+                </select>
+              </div>
+              <p class="form-section-title">Preferencias</p>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <label class="form-label" style="margin:0">Modo oscuro</label>
+                <div style="width:40px;height:22px;background:var(--accent);border-radius:11px;position:relative;cursor:pointer">
+                  <div style="width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;right:2px;top:2px"></div>
+                </div>
+              </div>
+              <div style="margin-bottom:14px">
+                <label class="form-label">Idioma</label>
+                <select class="form-input">
+                  <option selected>Español</option>
+                  <option>English</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Right column -->
+            <div>
+              <p class="form-section-title">Plan</p>
+              <div style="padding:20px;background:var(--panel);border-radius:12px;border:1px solid var(--line);margin-bottom:16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                  <span style="font-size:15px;font-weight:700">Plan actual</span>
+                  <span style="background:var(--chip);color:var(--ink-2);font-size:11px;padding:3px 10px;border-radius:6px;font-weight:700">FREE</span>
+                </div>
+                <p style="font-size:13px;color:var(--ink-3);margin-bottom:16px">Acceso a dashboard, trades ilimitados y 1 cuenta. Actualiza para desbloquear múltiples cuentas, reportes avanzados y exportación CSV.</p>
+                <button style="width:100%;background:var(--accent);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit">Actualizar plan →</button>
+              </div>
+              <p class="form-section-title">Seguridad</p>
+              <div style="margin-bottom:14px">
+                <label class="form-label">Contraseña</label>
+                <button style="width:100%;background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink-2);cursor:pointer;font-family:inherit;text-align:left">Cambiar contraseña →</button>
+              </div>
+              <div>
+                <label class="form-label">Autenticación 2FA</label>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--chip);border:1px solid var(--line);border-radius:8px">
+                  <span style="font-size:13px;color:var(--ink-3)">No configurado</span>
+                  <button style="background:none;border:none;font-size:12px;color:var(--accent);cursor:pointer;font-family:inherit;font-weight:600">Activar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT RAIL -->
+        <div class="rail">
+          <div style="padding:16px 0 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <div style="width:36px;height:36px;border-radius:50%;background:#3a3a5a;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">HO</div>
+              <div>
+                <p style="font-size:13px;font-weight:700;margin-bottom:0">Héctor O.C.</p>
+                <p style="font-size:11px;color:var(--ink-3)">Single-Trader · TJ</p>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3)">
+              <span>20 may 2026</span>
+              <span>SEM 20 · 2026</span>
+            </div>
+          </div>
+          <div style="margin-bottom:16px">
+            <p style="font-size:12px;font-weight:700;color:var(--ink-3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Setups · Top performers</p>
+            <div style="display:flex;gap:4px;margin-bottom:10px">
+              <button style="background:var(--chip);border:none;border-radius:5px;padding:3px 8px;font-size:11px;color:var(--ink);cursor:pointer">Futuros</button>
+              <button style="background:none;border:none;border-radius:5px;padding:3px 8px;font-size:11px;color:var(--ink-3);cursor:pointer">FX</button>
+              <button style="background:none;border:none;border-radius:5px;padding:3px 8px;font-size:11px;color:var(--ink-3);cursor:pointer">Equities</button>
+              <button style="background:none;border:none;border-radius:5px;padding:3px 8px;font-size:11px;color:var(--ink-3);cursor:pointer">Cripto</button>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:11px">
+              <thead><tr style="color:var(--ink-3)"><th style="text-align:left;padding:3px 0;font-weight:500">SETUP</th><th style="text-align:right;padding:3px 0;font-weight:500">WIN %</th><th style="text-align:right;padding:3px 0;font-weight:500">AVG R</th></tr></thead>
+              <tbody>
+                <tr><td style="padding:4px 0;color:var(--ink-2)">Opening Range Break</td><td style="text-align:right;color:var(--ink)">64%</td><td style="text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.88</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ink-2)">Failed Auction</td><td style="text-align:right;color:var(--ink)">52%</td><td style="text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+0.90</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ink-2)">London Reversal</td><td style="text-align:right;color:var(--ink)">58%</td><td style="text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.48</td></tr>
+                <tr><td style="padding:4px 0;color:var(--ink-2)">Liquidity Grab</td><td style="text-align:right;color:var(--ink)">71%</td><td style="text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+2.28</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="border-top:1px solid var(--line);padding-top:14px">
+            <p style="font-size:12px;font-weight:700;margin-bottom:12px">Nuevo Trade</p>
+            <div style="display:flex;gap:4px;margin-bottom:10px">
+              <button style="flex:1;background:var(--win);border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:700;color:#fff;cursor:pointer">LONG</button>
+              <button style="flex:1;background:var(--chip);border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:600;color:var(--ink-3);cursor:pointer">SHORT</button>
+            </div>
+            <p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Símbolo · Setup</p>
+            <div style="background:var(--chip);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+              <p style="font-size:15px;font-weight:700;margin-bottom:1px">ES</p>
+              <p style="font-size:10px;color:var(--ink-3)">Opening Range Break · NY AM</p>
+            </div>
+            <p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">Riesgo (R)</p>
+            <div style="background:var(--chip);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace">0.5 R</span>
+              <span style="font-size:11px;color:var(--ink-3)">USD</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /shell -->
+    </div><!-- /screen-body -->
+  </div><!-- /screen-frame -->
 </div>
 
+<!-- ANNOTATIONS -->
 <div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
-  <h2 style="font-size:18px;font-weight:700;margin-bottom:24px">Especificaciones</h2>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:4px">Especificaciones</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">Layout · Componentes · Comportamiento</p>
+  <div class="ann-grid">
     <div>
-      <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Layout</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>240px sidebar + flex main + 340px rail</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Screen body: height 520px</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Main: entry cards en columna</li></ul>
+      <p class="ann-h">Layout</p>
+      <ul class="ann-list">
+        <li>240px sidebar fija</li>
+        <li>flex:1 main (2 cols: 1fr 1fr)</li>
+        <li>280px right rail</li>
+        <li>Padding main: 28px 32px</li>
+      </ul>
     </div>
     <div>
-      <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Componentes</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Search input + Destacadas toggle + Selector de tema</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Filter tabs: Todas/Psicología/Riesgo/Técnico/Proceso</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Entry card: badge categoría, badge Destacada, fecha, título, cuerpo, tags</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Entradas destacadas: border-left 3px accent</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Tags como badge-ink pills</li></ul>
+      <p class="ann-h">Componentes</p>
+      <ul class="ann-list">
+        <li>Avatar circle (64px, initials)</li>
+        <li>Form inputs (bg: --chip)</li>
+        <li>Toggle dark mode</li>
+        <li>Plan card + upgrade CTA</li>
+        <li>Security section</li>
+        <li>Guardar cambios button (accent)</li>
+      </ul>
     </div>
     <div>
-      <h3 style="font-size:13px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Comportamiento</h3>
-      <ul style='list-style:none;display:flex;flex-direction:column;gap:6px'><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Búsqueda filtra por texto en tiempo real</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Destacadas toggle muestra solo entradas con ⚑</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Filter tabs filtran por categoría</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>+ Nueva entrada abre editor</li><li style='font-size:12px;color:var(--ink-2)'><span style='color:var(--accent);margin-right:6px'>·</span>Tags son clickeables para filtrar por tag</li></ul>
+      <p class="ann-h">Comportamiento</p>
+      <ul class="ann-list">
+        <li>Form con validación en submit</li>
+        <li>Toggle dark mode → cambia clase body</li>
+        <li>Upgrade plan → modal/página de planes</li>
+        <li>Cambiar contraseña → modal</li>
+        <li>2FA → flujo de configuración</li>
+        <li>Sidebar footer: CTA review semanal</li>
+      </ul>
     </div>
   </div>
 </div>

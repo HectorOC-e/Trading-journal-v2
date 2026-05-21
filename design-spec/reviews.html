@@ -48,6 +48,10 @@
       --loss-soft:   #251514;
       --be-soft:     #25201A;
     }
+    body:not(.dark) {
+      --bg:#f4f4f8; --panel:#fff; --panel-2:#f0f0f5; --ink:#1a1a2e;
+      --ink-2:#5a5a72; --ink-3:#9898b0; --line:#e0e0ec; --chip:#e8e8f4;
+    }
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: var(--bg);
@@ -436,6 +440,7 @@
   <a href="reglas.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Reglas</a>
   <a href="aprendizaje.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Aprendizaje</a>
   <a href="perfil.html" style="padding:4px 10px;border-radius:6px;font-size:13px;color:var(--ink-2);text-decoration:none">Perfil</a>
+  <button onclick="document.body.classList.toggle('dark')" style="margin-left:auto;background:var(--chip);border:none;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--ink);cursor:pointer;font-family:inherit">◐ Modo</button>
 </nav>
 <div style="padding:40px 48px 24px;max-width:1600px;margin:0 auto">
   <p style="font-size:12px;color:var(--ink-3);margin-bottom:4px">ROUTE</p>

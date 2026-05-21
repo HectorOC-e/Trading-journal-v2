@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trading Journal · Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0f0f14; --panel:#1a1a22; --panel-2:#22222c; --ink:#e8e8f0;
+    --ink-2:#9898b0; --ink-3:#5a5a72; --line:#2a2a38; --chip:#2a2a3a;
+    --accent:#4f6ef7; --win:#4caf7a; --loss:#e05555; --radius:14px;
+  }
+  body { background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; }
+  body:not(.dark) {
+    --bg:#f4f4f8; --panel:#fff; --panel-2:#f0f0f5; --ink:#1a1a2e;
+    --ink-2:#5a5a72; --ink-3:#9898b0; --line:#e0e0ec; --chip:#e8e8f4;
+  }
+  a { color:var(--ink-2); text-decoration:none; }
+  a:hover { color:var(--ink); }
+  nav { position:sticky;top:0;z-index:100;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 32px;display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+  .tab-btn { background:none;border:none;padding:7px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--ink-2);font-family:inherit;transition:background .15s; }
+  .tab-btn.active { background:var(--accent);color:#fff; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  iframe { width:100%;border:none;display:block;border-radius:12px; }
+</style>
+</head>
+<body class="dark">
+
+<nav>
+  <span style="font-weight:700;font-size:14px;margin-right:10px;color:var(--ink)">TJ Spec</span>
+  <a href="index.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Index</a>
+  <a href="foundations.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Foundations</a>
+  <span style="color:var(--line);margin:0 4px">|</span>
+  <a href="dashboard.html" style="padding:4px 10px;border-radius:6px;font-size:13px;background:var(--chip);color:var(--ink);font-weight:600">Dashboard</a>
+  <a href="trades.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Trades</a>
+  <a href="playbook.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Playbook</a>
+  <a href="reviews.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Reviews</a>
+  <a href="cuentas.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Cuentas</a>
+  <a href="reglas.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Reglas</a>
+  <a href="aprendizaje.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Aprendizaje</a>
+  <a href="perfil.html" style="padding:4px 10px;border-radius:6px;font-size:13px">Perfil</a>
+  <button onclick="document.body.classList.toggle('dark')" style="margin-left:auto;background:var(--chip);border:none;border-radius:6px;padding:5px 12px;font-size:12px;color:var(--ink);cursor:pointer;font-family:inherit">◐ Modo</button>
+</nav>
+
+<div style="padding:36px 48px 20px">
+  <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">/dashboard</p>
+  <h1 style="font-size:26px;font-weight:800;letter-spacing:-.03em;margin-bottom:4px">Dashboard</h1>
+  <p style="color:var(--ink-2);font-size:14px">Vista principal — 4 tabs: Portfolio · Operador · Disciplina · Playbook</p>
+</div>
+
+<div style="padding:0 48px 16px;display:flex;gap:4px">
+  <button class="tab-btn active" onclick="showTab('portfolio',this)">Portfolio</button>
+  <button class="tab-btn" onclick="showTab('operador',this)">Operador</button>
+  <button class="tab-btn" onclick="showTab('disciplina',this)">Disciplina</button>
+  <button class="tab-btn" onclick="showTab('playbook',this)">Playbook</button>
+</div>
+
+<div style="padding:0 48px 48px">
+  <div id="tab-portfolio" class="tab-panel active">
+    <iframe src="dashboard-portfolio.html" style="height:700px"></iframe>
+  </div>
+  <div id="tab-operador" class="tab-panel">
+    <iframe src="dashboard-operador.html" style="height:700px"></iframe>
+  </div>
+  <div id="tab-disciplina" class="tab-panel">
+    <iframe src="dashboard-disciplina.html" style="height:700px"></iframe>
+  </div>
+  <div id="tab-playbook" class="tab-panel">
+    <iframe src="dashboard-playbook.html" style="height:700px"></iframe>
+  </div>
+</div>
+
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:16px;font-weight:700;margin-bottom:20px">Especificaciones</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
+    <div>
+      <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Layout</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:1.9">
+        <li>240px sidebar fija</li>
+        <li>flex:1 área main</li>
+        <li>280px right rail</li>
+        <li>Shell full-height dark</li>
+        <li>1440px canvas referencia</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Componentes</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:1.9">
+        <li>Tab switcher (4 tabs)</li>
+        <li>KPI grid — 4 cards</li>
+        <li>Equity/Balance chart comparativo</li>
+        <li>Heatmap calendario</li>
+        <li>Data table trades</li>
+        <li>Direction toggle LONG/SHORT</li>
+        <li>Progress bars (ok/warn/crit)</li>
+        <li>Donut discipline score</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Comportamiento</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:1.9">
+        <li>Tab switcher JS sin recarga</li>
+        <li>Balance+Equity: ambas líneas visibles</li>
+        <li>Heatmap coloreado por P&L</li>
+        <li>Right rail siempre visible</li>
+        <li>SEM badge actualiza cada lunes</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
