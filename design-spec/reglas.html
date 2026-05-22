@@ -843,7 +843,62 @@
     </div>
   </div>
 
-  <!-- 7. Add Rule CTA -->
+  <!-- 7. Modal — Nueva regla CUSTOM -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Modal — Nueva regla CUSTOM</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Organism</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.modal-nueva-regla</span>
+    </div>
+    <div style="padding:32px 20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:center">
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;width:460px;box-shadow:0 12px 40px rgba(0,0,0,.25);overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--line)">
+          <span style="font-size:15px;font-weight:700;letter-spacing:-.01em">Nueva regla CUSTOM</span>
+          <button style="background:var(--chip);border:none;border-radius:6px;width:26px;height:26px;font-size:14px;color:var(--ink-3);cursor:pointer;display:grid;place-items:center;font-family:inherit">×</button>
+        </div>
+        <div style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+          <div>
+            <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Nombre <span style="color:var(--loss)">*</span></label>
+            <input type="text" placeholder="Ej. Promediar pérdida" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Descripción <span style="color:var(--loss)">*</span></label>
+            <textarea placeholder="¿Qué comportamiento detecta esta regla?" rows="3" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
+          </div>
+          <div>
+            <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:8px">Severidad</label>
+            <div style="display:flex;gap:8px">
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--loss);cursor:pointer">
+                <span style="width:7px;height:7px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
+                <span style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap">CRÍTICA</span>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+                <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>
+                <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">MENOR</span>
+              </div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+                <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0"></span>
+                <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">INFO</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 22px 18px;border-top:1px solid var(--line);gap:10px">
+          <button style="padding:9px 20px;background:transparent;border:1px solid var(--line);border-radius:9px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;font-family:inherit">Cancelar</button>
+          <button style="padding:9px 24px;background:var(--accent);border:none;border-radius:9px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">Guardar</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, --loss (CRÍTICA active), #f59e0b (MENOR), --accent (INFO/Guardar)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Severidad pill: activo (color bg + white text) / inactivo (--chip bg + colored dot)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Backdrop rgba(0,0,0,.6) · 460px ancho · Cancelar ghost btn · Guardar --accent · campos Nombre + Descripción requeridos</p></div>
+    </div>
+  </div>
+
+  <!-- 8. Add Rule CTA -->
   <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
     <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:10px">
