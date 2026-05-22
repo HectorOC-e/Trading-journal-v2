@@ -10,11 +10,13 @@ import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { mockTrades, mockAccounts, mockSetups } from "@/mock-data"
 import type { Trade } from "@/types"
 
+import { TrendingUp, Percent, Zap, Shield } from "lucide-react"
+
 const KPI_ITEMS = [
-  { label: "Net P&L",   value: "+$3,540", sub: "este mes",    trend: "up"      as const, mono: true },
-  { label: "Win Rate",  value: "65%",     sub: "23 trades",   trend: "up"      as const, mono: true },
-  { label: "Avg R",     value: "+1.8R",   sub: "ganadores",   trend: "up"      as const, mono: true },
-  { label: "Drawdown",  value: "-2.1%",   sub: "máx. diario", trend: "neutral" as const, mono: true },
+  { label: "Net P&L",   value: "+$3,540", sub: "este mes",    trend: "up"      as const, mono: true, icon: <TrendingUp size={15} /> },
+  { label: "Win Rate",  value: "65%",     sub: "23 trades",   trend: "up"      as const, mono: true, icon: <Percent size={15} /> },
+  { label: "Avg R",     value: "+1.8R",   sub: "ganadores",   trend: "up"      as const, mono: true, icon: <Zap size={15} /> },
+  { label: "Drawdown",  value: "-2.1%",   sub: "máx. diario", trend: "neutral" as const, mono: true, icon: <Shield size={15} /> },
 ]
 
 export default function TradesPage() {

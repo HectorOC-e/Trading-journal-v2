@@ -1,32 +1,28 @@
 // TradeRow molecule — spec: Trades > Anatomy
-// Columns: Direction | Symbol+Setup | Account | Date+Time | Session | R | P&L | Quality
 
-import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
-const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
-  "A+":        "aplus",
-  "A":         "accent",
-  "B":         "default",
-  "Plan":      "accent",
-  "Off-plan":  "offplan",
-  "Impulsivo": "offplan",
-  "BE":        "be",
+const SESSION_CFG: Record<TradeSession, { label: string; color: string; bg: string }> = {
+  "New York":     { label: "NY",        color: "#6395f9", bg: "rgba(99,149,249,.12)" },
+  "London":       { label: "London",    color: "#a78bfa", bg: "rgba(167,139,250,.12)" },
+  "Asia":         { label: "Asia",      color: "#f59e0b", bg: "rgba(245,158,11,.12)" },
+  "London Close": { label: "LDN Close", color: "#c084fc", bg: "rgba(192,132,252,.10)" },
 }
 
-const SESSION_COLOR: Record<TradeSession, string> = {
-  "New York":     "bg-blue-500/15 text-blue-400",
-  "London":       "bg-purple-500/15 text-purple-400",
-  "Asia":         "bg-amber-500/15 text-amber-400",
-  "London Close": "bg-purple-500/10 text-purple-300",
+const TAG_CFG: Record<string, { color: string; bg: string }> = {
+  "A+":       { color: "#16a34a", bg: "rgba(22,163,74,.12)" },
+  "A":        { color: "var(--accent)", bg: "var(--accent-soft)" },
+  "Plan":     { color: "var(--accent)", bg: "var(--accent-soft)" },
+  "Off-plan": { color: "var(--loss)",   bg: "var(--loss-soft)" },
+  "Impulsivo":{ color: "var(--loss)",   bg: "var(--loss-soft)" },
+  "BE":       { color: "var(--be)",     bg: "var(--be-soft)" },
 }
 
-const SESSION_SHORT: Record<TradeSession, string> = {
-  "New York":     "NY",
-  "London":       "London",
-  "Asia":         "Asia",
-  "London Close": "LDN Close",
+/* ── Abbreviated account name (first word + ellipsis if long) ── */
+function shortAccount(name: string) {
+  const parts = name.split(" ")
+  if (parts.length <= 2) return name
+  return parts.slice(0, 2).join(" ")
 }
 
 interface TradeRowProps {
@@ -38,110 +34,148 @@ interface TradeRowProps {
 }
 
 export function TradeRow({ trade, account, setup, selected = false, onClick }: TradeRowProps) {
-  const pnlPositive = (trade.pnl ?? 0) >= 0
-  const rPositive   = (trade.rMultiple ?? 0) >= 0
-
-  // Primary quality tag
-  const qualityTag = trade.tags.find((t) =>
-    (["A+", "A", "B", "Plan", "Off-plan", "Impulsivo"] as TradeTag[]).includes(t)
+  const pnl        = trade.pnl ?? 0
+  const r          = trade.rMultiple ?? 0
+  const isWin      = r > 0
+  const isBe       = r === 0
+  const stripeColor = isWin ? "var(--win)" : isBe ? "var(--be)" : "var(--loss)"
+  const session    = SESSION_CFG[trade.session]
+  const qualityTag = trade.tags.find(t =>
+    (["A+", "A", "Plan", "Off-plan", "Impulsivo", "BE"] as TradeTag[]).includes(t as TradeTag)
   )
+  const tagCfg = qualityTag ? TAG_CFG[qualityTag] : null
 
   return (
     <tr
       onClick={onClick}
-      className={cn(
-        "group cursor-pointer transition-colors text-sm",
-        selected
-          ? "bg-[var(--accent-soft)] border-l-2 border-[var(--accent)]"
-          : "hover:bg-[var(--panel-2)] border-l-2 border-transparent"
-      )}
+      style={{
+        borderBottom: "1px solid var(--line)",
+        background: selected ? "var(--accent-soft)" : "transparent",
+        cursor: "pointer",
+        transition: "background .1s",
+      }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "var(--panel-2)" }}
+      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "transparent" }}
     >
-      {/* Direction */}
-      <td className="py-3 pl-4 pr-2 w-14">
-        <span
-          className={cn(
-            "inline-flex items-center justify-center w-12 h-5 rounded text-[10px] font-bold tracking-wide",
-            trade.direction === "LONG"
-              ? "bg-[var(--win-soft)] text-[var(--win)]"
-              : "bg-[var(--loss-soft)] text-[var(--loss)]"
-          )}
-        >
-          {trade.direction}
-        </span>
+      {/* Colored stripe + Direction badge */}
+      <td style={{ padding: "0 8px 0 0", width: 80, paddingLeft: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
+          {/* left stripe */}
+          <div style={{ width: 3, alignSelf: "stretch", background: stripeColor, minHeight: 52, borderRadius: "0 2px 2px 0", marginRight: 10, flexShrink: 0 }} />
+          {/* direction badge */}
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: 48, height: 22, borderRadius: 6,
+            fontSize: 10, fontWeight: 800, letterSpacing: ".06em",
+            background: trade.direction === "LONG" ? "var(--win-soft)" : "var(--loss-soft)",
+            color: trade.direction === "LONG" ? "var(--win)" : "var(--loss)",
+          }}>
+            {trade.direction}
+          </span>
+        </div>
       </td>
 
-      {/* Symbol + Setup abbreviation */}
-      <td className="py-3 px-2 min-w-[110px]">
-        <p className="font-bold text-[var(--ink)] font-mono text-sm leading-tight">{trade.symbol}</p>
-        {setup ? (
-          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 font-medium">
-            <span className="inline-flex items-center gap-1">
-              <span
-                className="inline-flex items-center justify-center px-1 h-3.5 rounded text-[9px] font-bold tracking-wide"
-                style={{ background: "var(--chip)", color: "var(--ink-2)" }}
-              >
-                {setup.abbreviation}
-              </span>
-              <span className="truncate max-w-[80px]">{setup.name}</span>
-            </span>
+      {/* Symbol + Setup */}
+      <td style={{ padding: "14px 8px", minWidth: 130 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+            {trade.symbol}
           </p>
-        ) : (
-          <p className="text-[11px] text-[var(--ink-3)] mt-0.5">{trade.setupId}</p>
+        </div>
+        {setup && (
+          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4,
+              background: "var(--accent-soft)", color: "var(--accent)",
+              letterSpacing: ".04em",
+            }}>
+              {setup.abbreviation}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--ink-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 90 }}>
+              {setup.name}
+            </span>
+          </div>
         )}
       </td>
 
       {/* Account */}
-      <td className="py-3 px-2 max-w-[140px]">
-        <p className="text-xs text-[var(--ink-2)] truncate max-w-[130px]">{account?.name ?? trade.accountId}</p>
+      <td style={{ padding: "14px 8px", maxWidth: 150 }}>
+        <p style={{ fontSize: 12.5, color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 140 }}>
+          {account ? shortAccount(account.name) : trade.accountId}
+        </p>
         {account && (
-          <p className="text-[10px] text-[var(--ink-3)] mt-0.5 font-medium">
-            {account.type === "PROP_FIRM" ? "PROP" : account.type === "PERSONAL" ? "PERSONAL" : account.type}
-          </p>
+          <span style={{
+            fontSize: 9.5, fontWeight: 600, letterSpacing: ".06em",
+            color: account.type === "PROP_FIRM" ? "var(--accent)" : "var(--ink-3)",
+          }}>
+            {account.type === "PROP_FIRM" ? "PROP" : "PERSONAL"}
+          </span>
         )}
       </td>
 
       {/* Date + Time */}
-      <td className="py-3 px-2 whitespace-nowrap">
-        <p className="text-xs text-[var(--ink-2)]">{trade.date}</p>
-        <p className="text-[11px] text-[var(--ink-3)] mt-0.5 font-mono">{trade.openTime}</p>
+      <td style={{ padding: "14px 8px", whiteSpace: "nowrap" }}>
+        <p style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{trade.date}</p>
+        <p style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>{trade.openTime}</p>
       </td>
 
-      {/* Session pill */}
-      <td className="py-3 px-2">
-        <span className={cn(
-          "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap",
-          SESSION_COLOR[trade.session]
-        )}>
-          {SESSION_SHORT[trade.session]}
+      {/* Session */}
+      <td style={{ padding: "14px 8px" }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center",
+          padding: "3px 9px", borderRadius: 999,
+          fontSize: 10.5, fontWeight: 600,
+          background: session?.bg ?? "var(--chip)",
+          color: session?.color ?? "var(--ink-3)",
+          whiteSpace: "nowrap",
+        }}>
+          {session?.label ?? trade.session}
         </span>
       </td>
 
       {/* R Multiple */}
-      <td className="py-3 px-2 text-right whitespace-nowrap">
-        <span className={cn(
-          "font-mono font-semibold text-sm",
-          rPositive ? "text-[var(--win)]" : "text-[var(--loss)]"
-        )}>
-          {rPositive ? "+" : ""}{trade.rMultiple?.toFixed(1)}R
+      <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono',monospace",
+          fontSize: 13, fontWeight: 700,
+          color: isWin ? "var(--win)" : isBe ? "var(--be)" : "var(--loss)",
+        }}>
+          {r > 0 ? "+" : ""}{r.toFixed(1)}R
         </span>
       </td>
 
       {/* P&L */}
-      <td className="py-3 px-2 text-right whitespace-nowrap">
-        <span className={cn(
-          "font-mono text-sm font-semibold",
-          pnlPositive ? "text-[var(--win)]" : "text-[var(--loss)]"
-        )}>
-          {pnlPositive ? "+" : ""}${trade.pnl?.toLocaleString()}
+      <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono',monospace",
+          fontSize: 13, fontWeight: 700,
+          color: pnl >= 0 ? "var(--win)" : "var(--loss)",
+        }}>
+          {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString()}
         </span>
+        {/* Mini P&L bar */}
+        <div style={{ height: 3, borderRadius: 99, marginTop: 4, background: "var(--line)", overflow: "hidden" }}>
+          <div style={{
+            height: "100%", borderRadius: 99,
+            width: `${Math.min(100, Math.abs(pnl) / 50)}%`,
+            background: pnl >= 0 ? "var(--win)" : "var(--loss)",
+          }} />
+        </div>
       </td>
 
       {/* Quality badge */}
-      <td className="py-3 px-2 pr-4">
-        {qualityTag ? (
-          <Badge variant={TAG_VARIANT[qualityTag]}>{qualityTag}</Badge>
+      <td style={{ padding: "14px 8px 14px 8px", paddingRight: 16 }}>
+        {tagCfg && qualityTag ? (
+          <span style={{
+            display: "inline-flex", alignItems: "center",
+            padding: "3px 10px", borderRadius: 999,
+            fontSize: 11, fontWeight: 700,
+            background: tagCfg.bg, color: tagCfg.color,
+          }}>
+            {qualityTag}
+          </span>
         ) : (
-          <span className="text-[var(--ink-3)] text-xs">—</span>
+          <span style={{ color: "var(--ink-3)", fontSize: 12 }}>—</span>
         )}
       </td>
     </tr>
