@@ -7,7 +7,7 @@ import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
-import { mockTrades } from "@/mock-data"
+import { mockTrades, mockAccounts, mockSetups } from "@/mock-data"
 import type { Trade } from "@/types"
 
 const KPI_ITEMS = [
@@ -20,6 +20,13 @@ const KPI_ITEMS = [
 export default function TradesPage() {
   const [selected, setSelected]   = useState<Trade | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+
+  const selectedAccount = selected
+    ? mockAccounts.find((a) => a.id === selected.accountId)
+    : undefined
+  const selectedSetup = selected
+    ? mockSetups.find((s) => s.id === selected.setupId)
+    : undefined
 
   return (
     <>
@@ -40,6 +47,8 @@ export default function TradesPage() {
           <KpiStrip items={KPI_ITEMS} className="mb-6" />
           <TradesTable
             trades={mockTrades}
+            accounts={mockAccounts}
+            setups={mockSetups}
             selectedId={selected?.id}
             onSelect={setSelected}
           />
@@ -50,6 +59,8 @@ export default function TradesPage() {
           <div style={{ width: 340, flexShrink: 0, borderLeft: "1px solid var(--line)", background: "var(--panel)", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
             <TradeDetailPanel
               trade={selected}
+              account={selectedAccount}
+              setup={selectedSetup}
               onClose={() => setSelected(null)}
             />
           </div>
@@ -59,7 +70,9 @@ export default function TradesPage() {
       <RegisterTradeModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        tradeCountToday={mockTrades.filter(t => t.date === new Date().toISOString().slice(0, 10)).length}
+        accounts={mockAccounts}
+        setups={mockSetups}
+        tradeCountToday={mockTrades.filter((t) => t.date === new Date().toISOString().slice(0, 10)).length}
       />
     </>
   )
