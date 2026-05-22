@@ -577,6 +577,56 @@
 
 </div>
 
+<!-- ═══════════════════════════════════════════════════════ MODALES -->
+<div style="padding:48px;max-width:1600px;margin:0 auto;border-top:1px solid var(--line)">
+  <h2 style="font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:0 0 16px;">Modales</h2>
+  <div style="display:flex;flex-wrap:wrap;gap:24px;">
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:24px;width:520px;">
+      <!-- Modal header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 14px;border-bottom:1px solid var(--line);margin-bottom:16px">
+        <span style="font-size:15px;font-weight:700;letter-spacing:-.01em">Nueva regla CUSTOM</span>
+        <button style="background:var(--chip);border:none;border-radius:6px;width:26px;height:26px;font-size:14px;color:var(--ink-3);cursor:pointer;display:grid;place-items:center;font-family:inherit">×</button>
+      </div>
+      <!-- Modal body -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <!-- Nombre -->
+        <div>
+          <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Nombre <span style="color:var(--loss)">*</span></label>
+          <input type="text" placeholder="Ej. Promediar pérdida" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;box-sizing:border-box">
+        </div>
+        <!-- Descripción -->
+        <div>
+          <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Descripción <span style="color:var(--loss)">*</span></label>
+          <textarea placeholder="¿Qué comportamiento detecta esta regla?" rows="3" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
+        </div>
+        <!-- Severidad -->
+        <div>
+          <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:8px">Severidad</label>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--loss);cursor:pointer">
+              <span style="width:7px;height:7px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap">CRÍTICA</span>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+              <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">MENOR</span>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+              <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0"></span>
+              <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">INFO</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal footer -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 0;border-top:1px solid var(--line);margin-top:16px;gap:10px">
+        <button style="padding:9px 20px;background:transparent;border:1px solid var(--line);border-radius:9px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;font-family:inherit">Cancelar</button>
+        <button style="padding:9px 24px;background:var(--accent);border:none;border-radius:9px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
   <h2 style="font-size:18px;font-weight:700;margin-bottom:24px">Especificaciones</h2>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px">
