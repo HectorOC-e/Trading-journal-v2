@@ -645,32 +645,499 @@
   </div>
 
   <div id="tab-operador" class="tab-panel">
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
-      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
-      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Operador</h2>
-      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Equity curve Balance vs Equity · Stats por sesión · Rachas win/loss</p>
-      <!-- Equity chart placeholder -->
-      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;max-width:700px;margin:0 auto 16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <p style="font-size:12px;font-weight:600;color:var(--ink)">Equity · Balance</p>
-          <div style="display:flex;gap:16px;font-size:11px;color:var(--ink-2)">
-            <span><span style="display:inline-block;width:18px;height:2px;background:#b87d2d;vertical-align:middle;margin-right:5px"></span>Balance</span>
-            <span><span style="display:inline-block;width:18px;height:2px;background:#4f6ef7;vertical-align:middle;margin-right:5px"></span>Equity</span>
+    <div style="display:flex;min-height:700px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--line)">
+
+      <!-- ═══ SIDEBAR 240px ═══ -->
+      <div style="width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:0">
+
+        <!-- Logo -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">T</div>
+          <span style="font-size:13px;font-weight:700;color:var(--ink)">Trading Journal</span>
+        </div>
+
+        <!-- Nav: OPERACIÓN -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Operación</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:16px">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;font-weight:600;background:var(--accent);color:#fff;text-decoration:none">
+            <span style="font-size:13px">▦</span> Dashboard
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◈</span> Cuentas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊟</span> Trades
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◉</span> Playbook
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊛</span> Reglas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">▤</span> Reviews
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◎</span> Aprendizaje
+          </a>
+        </nav>
+
+        <!-- Nav: CUENTA -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Cuenta</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:auto">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◌</span> Perfil
+          </a>
+        </nav>
+
+        <!-- Review CTA -->
+        <div style="background:#1e1a0e;border:1px solid #3a3010;border-radius:10px;padding:12px;margin-top:16px">
+          <p style="font-size:11px;font-weight:700;color:#e8962a;margin-bottom:4px">Review semanal lista</p>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5;margin-bottom:10px">Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.</p>
+          <button style="width:100%;background:#e8962a;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:700;color:#fff;font-family:inherit;cursor:pointer">Empezar review</button>
+        </div>
+      </div>
+
+      <!-- ═══ MAIN CONTENT ═══ -->
+      <div style="flex:1;overflow-y:auto;padding:24px 28px;min-width:0">
+
+        <!-- Top bar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:2px">Operador</h2>
+            <p style="font-size:12px;color:var(--ink-3)">FXify 100K · Phase 2 · FXify · Estado <span style="background:#1a2e1a;color:#4caf7a;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;margin-left:4px">OPERABLE</span></p>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);font-family:inherit;cursor:pointer">Disciplina</button>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);font-family:inherit;cursor:pointer">Playbook</button>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);font-family:inherit;cursor:pointer">Portfolio</button>
+            <button style="background:var(--chip);border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12px;color:var(--ink-2);font-family:inherit;cursor:pointer">⊞</button>
           </div>
         </div>
-        <div style="height:120px;background:var(--panel);border-radius:8px;display:flex;align-items:center;justify-content:center">
-          <svg width="600" height="100" viewBox="0 0 600 100" style="max-width:100%">
-            <polyline points="0,70 60,65 120,72 180,55 240,48 300,52 360,38 420,42 480,30 540,25 600,20" stroke="#b87d2d" stroke-width="2" fill="none" opacity="0.8"/>
-            <polyline points="0,75 60,68 120,60 180,58 240,45 300,55 360,35 420,38 480,28 540,22 600,18" stroke="#4f6ef7" stroke-width="2" fill="none" opacity="0.8"/>
+
+        <!-- Curva de Equity -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">Curva de Equity</p>
+              <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+                <span style="font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">$102,840.00</span>
+                <span style="font-size:12px;color:var(--win)">↑ +0.55% · 7d</span>
+              </div>
+              <p style="font-size:11px;color:var(--ink-3)">Drawdown máx: 2.1% · Profit factor 1.84 · Win rate 58%</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:10px;color:var(--ink-3);flex-shrink:0">
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#b87d2d;vertical-align:middle;margin-right:4px"></span>Balance</span>
+              <span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4f6ef7;vertical-align:middle;margin-right:4px"></span>Equity</span>
+              <span style="color:var(--ink-3)">· Últimas 30 sesiones</span>
+            </div>
+          </div>
+          <svg width="100%" height="200" viewBox="0 0 900 200" style="display:block;background:var(--bg);border-radius:8px">
+            <!-- grid lines -->
+            <line x1="60" y1="40" x2="880" y2="40" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+            <line x1="60" y1="80" x2="880" y2="80" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+            <line x1="60" y1="120" x2="880" y2="120" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+            <line x1="60" y1="160" x2="880" y2="160" stroke="var(--line)" stroke-width="1" opacity="0.5"/>
+            <!-- y labels -->
+            <text x="50" y="44" text-anchor="end" font-size="10" fill="var(--ink-3)">$103k</text>
+            <text x="50" y="84" text-anchor="end" font-size="10" fill="var(--ink-3)">$102k</text>
+            <text x="50" y="124" text-anchor="end" font-size="10" fill="var(--ink-3)">$101k</text>
+            <text x="50" y="164" text-anchor="end" font-size="10" fill="var(--ink-3)">$100k</text>
+            <!-- Balance area fill (amber) -->
+            <polygon points="60,155 120,150 190,158 260,145 330,148 400,140 470,132 540,118 610,105 680,90 750,85 820,72 870,55 870,175 60,175" fill="#b87d2d" opacity="0.08"/>
+            <!-- Equity area fill (blue) -->
+            <polygon points="60,160 120,153 190,155 260,148 330,143 400,138 470,128 540,115 610,100 680,88 750,80 820,68 870,52 870,175 60,175" fill="#4f6ef7" opacity="0.08"/>
+            <!-- Balance line (amber) -->
+            <polyline points="60,155 120,150 190,158 260,145 330,148 400,140 470,132 540,118 610,105 680,90 750,85 820,72 870,55" stroke="#b87d2d" stroke-width="2" fill="none"/>
+            <!-- Equity line (blue) -->
+            <polyline points="60,160 120,153 190,155 260,148 330,143 400,138 470,128 540,115 610,100 680,88 750,80 820,68 870,52" stroke="#4f6ef7" stroke-width="2" fill="none"/>
+            <!-- hover line at last point -->
+            <line x1="870" y1="40" x2="870" y2="175" stroke="var(--line)" stroke-width="1" stroke-dasharray="3"/>
+            <!-- tooltip -->
+            <rect x="770" y="28" width="110" height="28" rx="6" fill="var(--panel)" stroke="var(--line)"/>
+            <text x="825" y="46" text-anchor="middle" font-size="10" fill="var(--ink)">Sesión 30 · 4 trades</text>
+            <!-- x labels -->
+            <text x="60" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">abr 14</text>
+            <text x="190" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">abr 22</text>
+            <text x="330" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">may 1</text>
+            <text x="470" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">may 9</text>
+            <text x="610" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">may 15</text>
+            <text x="750" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">may 18</text>
+            <text x="870" y="190" text-anchor="middle" font-size="9" fill="var(--ink-3)">may 20</text>
           </svg>
         </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:600px;margin:0 auto">
-        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">NY AM</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">+$2,840</p></div>
-        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">LONDON</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--win)">+$960</p></div>
-        <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px"><p style="font-size:10px;color:var(--ink-3);margin-bottom:4px">ASIA</p><p style="font-size:18px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--loss)">-$120</p></div>
-      </div>
-    </div>
+
+        <!-- Tus cuentas -->
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <p style="font-size:13px;font-weight:600;color:var(--ink)">Tus cuentas</p>
+            <p style="font-size:11px;color:var(--ink-3)">4 cuentas · portfolio consolidado · $321,946.07</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:12px;align-items:stretch">
+
+            <!-- Card 1 — SELECTED -->
+            <div style="background:var(--panel);border:1.5px solid var(--ink);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:#1a1a3a;border:1.5px solid #4f6ef7;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🏠</div>
+                <span style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">PROP_FIRM</span>
+              </div>
+              <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">FXify 100K · Phase 2</p>
+              <p style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-bottom:3px">$102,840.55</p>
+              <p style="font-size:11px;color:var(--win)">+1240.20 USD hoy</p>
+            </div>
+
+            <!-- Card 2 -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:#1a2e1a;border:1.5px solid #4caf7a;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🏢</div>
+                <span style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">PROP_FIRM</span>
+              </div>
+              <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">FTMO Swing 50K</p>
+              <p style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-bottom:3px">$51,789.18</p>
+              <p style="font-size:11px;color:var(--loss)">-310.00 USD hoy</p>
+            </div>
+
+            <!-- Card 3 -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:#2e1a00;border:1.5px solid #e8962a;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">💼</div>
+                <span style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">PERSONAL</span>
+              </div>
+              <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">Personal · IBKR</p>
+              <p style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-bottom:3px">$18,285.42</p>
+              <p style="font-size:11px;color:var(--win)">+88.00 USD hoy</p>
+            </div>
+
+            <!-- Card 4 -->
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:#2e1010;border:1.5px solid #e05555;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">🔬</div>
+                <span style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">DEMO</span>
+              </div>
+              <p style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:4px">Demo · Apex 150K</p>
+              <p style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-bottom:3px">$149,120.00</p>
+              <p style="font-size:11px;color:var(--ink-3)">0.00 USD hoy</p>
+            </div>
+
+            <!-- Add button -->
+            <div style="border:1.5px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:90px;min-width:52px;cursor:pointer;color:var(--ink-3);font-size:20px">+</div>
+          </div>
+        </div>
+
+        <!-- Trades recientes -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <p style="font-size:13px;font-weight:600;color:var(--ink)">Trades recientes</p>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <!-- toggle switch -->
+              <div style="width:28px;height:16px;border-radius:8px;background:var(--chip);border:1px solid var(--line);position:relative;cursor:pointer;flex-shrink:0">
+                <div style="width:12px;height:12px;border-radius:50%;background:var(--ink-3);position:absolute;top:1px;left:1px"></div>
+              </div>
+              <span style="background:#1a2a1a;color:#4caf7a;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700;cursor:pointer">A+</span>
+              <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px;cursor:pointer">Plan seguido</span>
+              <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px;cursor:pointer">Off-plan</span>
+              <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px;cursor:pointer">Con violación</span>
+              <a href="#" style="font-size:12px;color:var(--accent);text-decoration:none">Ver todos →</a>
+            </div>
+          </div>
+          <table style="width:100%;font-size:12px;border-collapse:collapse">
+            <thead>
+              <tr>
+                <th style="text-align:left;padding:6px 8px;font-size:10px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line)">SÍMBOLO · SETUP</th>
+                <th style="text-align:right;padding:6px 8px;font-size:10px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line)">R</th>
+                <th style="text-align:right;padding:6px 8px;font-size:10px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line)">P&amp;L NETO</th>
+                <th style="text-align:left;padding:6px 8px;font-size:10px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line)">SESIÓN · TAGS</th>
+                <th style="text-align:right;padding:6px 8px;font-size:10px;font-weight:600;color:var(--ink-3);border-bottom:1px solid var(--line)">FECHA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Row 1 -->
+              <tr style="border-bottom:1px solid var(--line)">
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--win);font-weight:700">↑</span>
+                    <span style="font-weight:700;color:var(--ink)">ES</span>
+                    <span style="font-size:10px;background:var(--win);color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">LONG</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">Opening Range Break</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win);font-weight:600">+2.4R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--win)">+$1,240.00</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">NY AM · 08:32</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:#1a2a1a;color:#4caf7a;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700">A+</span>
+                    <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px">Plan</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">20 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+              <!-- Row 2 -->
+              <tr style="border-bottom:1px solid var(--line)">
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--loss);font-weight:700">↓</span>
+                    <span style="font-weight:700;color:var(--ink)">NQ</span>
+                    <span style="font-size:10px;background:var(--loss);color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">SHORT</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">Failed Auction</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--loss);font-weight:600">-1.0R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--loss)">-$480.00</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">NY AM · 09:14</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px">Plan</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">20 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+              <!-- Row 3 -->
+              <tr style="border-bottom:1px solid var(--line)">
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--win);font-weight:700">↑</span>
+                    <span style="font-weight:700;color:var(--ink)">EURUSD</span>
+                    <span style="font-size:10px;background:var(--win);color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">LONG</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">London Reversal</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win);font-weight:600">+1.2R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win)">+$312.50</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">London · 03:45</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:#1a221a;color:#4caf7a;font-size:9px;padding:1px 5px;border-radius:3px">A</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">20 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+              <!-- Row 4 -->
+              <tr style="border-bottom:1px solid var(--line)">
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--loss);font-weight:700">↓</span>
+                    <span style="font-weight:700;color:var(--ink)">GC</span>
+                    <span style="font-size:10px;background:var(--loss);color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">SHORT</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">Trend Continuation</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--loss);font-weight:600">-0.4R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--loss)">-$180.00</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">NY PM · 14:08</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:#2a1a1a;color:#e07070;font-size:9px;padding:1px 5px;border-radius:3px">Off-plan</span>
+                    <span style="background:#2a1212;color:#e05050;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700">Violación</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">19 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+              <!-- Row 5 -->
+              <tr style="border-bottom:1px solid var(--line)">
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--win);font-weight:700">↑</span>
+                    <span style="font-weight:700;color:var(--ink)">ES</span>
+                    <span style="font-size:10px;background:var(--win);color:#fff;padding:1px 5px;border-radius:3px;font-weight:700">LONG</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">Liquidity Grab</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win);font-weight:600">+3.1R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win)">+$1,488.00</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">NY AM · 08:58</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:#1a2a1a;color:#4caf7a;font-size:9px;padding:1px 5px;border-radius:3px;font-weight:700">A+</span>
+                    <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px">Plan</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">19 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+              <!-- Row 6 -->
+              <tr>
+                <td style="padding:10px 8px">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:var(--ink-3);font-weight:700">↓</span>
+                    <span style="font-weight:700;color:var(--ink)">USDJPY</span>
+                    <span style="font-size:10px;background:var(--chip);color:var(--ink-2);padding:1px 5px;border-radius:3px;font-weight:700">SHORT</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--ink-3);margin-top:2px">Asia Sweep</div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--ink-3);font-weight:600">0.0R</td>
+                <td style="text-align:right;padding:10px 8px;font-family:'JetBrains Mono',monospace;color:var(--win)">+$4.20</td>
+                <td style="padding:10px 8px">
+                  <div style="font-size:11px;color:var(--ink-2)">Asia · 22:12</div>
+                  <div style="display:flex;gap:3px;margin-top:3px">
+                    <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px">BE</span>
+                    <span style="background:var(--chip);color:var(--ink-2);font-size:9px;padding:1px 5px;border-radius:3px">Plan</span>
+                  </div>
+                </td>
+                <td style="text-align:right;padding:10px 8px;color:var(--ink-3);white-space:nowrap">18 may 2026 <span style="cursor:pointer">···</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div><!-- /MAIN -->
+
+      <!-- ═══ RIGHT RAIL 280px ═══ -->
+      <div style="width:280px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:0">
+
+        <!-- User header -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">HO</div>
+            <div>
+              <p style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:1px">Héctor O.C.</p>
+              <p style="font-size:11px;color:var(--ink-3)">Single-Trader · TJ</p>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:11px;color:var(--ink-3)">21 may 2026</span>
+            <span style="font-size:11px;color:var(--ink-3)">SEM 20 · 2026</span>
+          </div>
+        </div>
+
+        <!-- Setups Top Performers -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <p style="font-size:12px;font-weight:700;color:var(--ink)">Setups · Top performers</p>
+            <span style="font-size:14px;color:var(--ink-3);cursor:pointer">···</span>
+          </div>
+          <!-- Category tabs -->
+          <div style="display:flex;gap:3px;margin-bottom:10px">
+            <button style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer">Futuros</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">FX</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Equities</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Cripto</button>
+          </div>
+          <!-- Setup rows -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <!-- header -->
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:2px">
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3)">Setup</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">WIN%</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">AVG R</span>
+            </div>
+            <!-- OR Opening Range Break -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#b05020;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">OR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Opening Range Break</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">64%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.88</span>
+            </div>
+            <!-- FA Failed Auction -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#8b1a1a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">FA</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Failed Auction</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">52%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.98</span>
+            </div>
+            <!-- LR London Reversal -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#2a4a8a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">London Reversal</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">58%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.48</span>
+            </div>
+            <!-- LG Liquidity Grab -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5c2a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LG</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Liquidity Grab</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+2.28</span>
+            </div>
+            <!-- TC Trend Continuation -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a4a4a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">TC</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Trend Continuation</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--ink-2);font-family:'JetBrains Mono',monospace">49%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.68</span>
+            </div>
+            <!-- AS Asia Sweep -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#4a1a6a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">AS</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Asia Sweep</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">55%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.18</span>
+            </div>
+            <!-- VW VWAP Reclaim -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5a5a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">VW</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">VWAP Reclaim</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">68%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.58</span>
+            </div>
+            <!-- NF News Fade -->
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0">
+              <div style="width:20px;height:20px;border-radius:4px;background:#3a3a3a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">NF</div>
+              <div><p style="font-size:11px;color:var(--ink-3);margin:0;line-height:1.2">News Fade — NFP</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace">41%</span>
+              <span style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.28</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nuevo Trade form -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <p style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">Nuevo Trade</p>
+          <!-- LONG/SHORT toggle -->
+          <div style="display:flex;gap:4px;margin-bottom:10px">
+            <button style="flex:1;padding:6px;border-radius:7px;border:none;background:var(--win);color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">LONG</button>
+            <button style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--line);background:none;color:var(--ink-3);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">SHORT</button>
+          </div>
+          <!-- Symbol + Setup -->
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Símbolo · Setup</p>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:var(--chip);border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;color:var(--ink)">ES</span>
+            <span style="font-size:11px;color:var(--ink-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Opening Range Break · NY AM</span>
+            <button style="background:var(--chip);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--ink-2);font-family:inherit;cursor:pointer">FUT ▾</button>
+          </div>
+          <!-- Risk -->
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Riesgo (R)</p>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">0.5 R</span>
+            <span style="font-size:11px;color:var(--ink-3)">USD</span>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:8px">$514.20 sobre equity</p>
+          <!-- Risk % buttons -->
+          <div style="display:flex;gap:4px;margin-bottom:12px">
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">25%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:none;background:var(--accent);font-size:10px;color:#fff;font-weight:700;font-family:inherit;cursor:pointer">50%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">75%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">100%</button>
+          </div>
+          <!-- Checklist A+ -->
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">Checklist A+</p>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Confluencia HTF</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Killzone activa</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--ink-3);font-size:13px">☐</span><span style="font-size:11px;color:var(--ink-3)">Trade #1–2 del día</span></div>
+          </div>
+          <!-- Note input -->
+          <input type="text" placeholder="" style="width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:6px 0;font-size:12px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:10px">
+          <!-- Submit -->
+          <button style="width:100%;background:var(--accent);border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">+ Registrar Trade</button>
+        </div>
+
+        <!-- Disciplina Semanal -->
+        <div style="border-top:1px solid var(--line);padding-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">Disciplina Semanal</p>
+            <span style="font-size:11px;color:var(--win);font-weight:600">↑ +6</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+            <span style="font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1">78</span>
+            <span style="font-size:14px;color:var(--ink-3)">/100</span>
+          </div>
+          <div style="height:6px;background:var(--line);border-radius:3px;margin-bottom:8px"><div style="width:78%;height:100%;background:var(--win);border-radius:3px"></div></div>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5">18 / 23 trades sin violación · 3 trades off-plan esta semana</p>
+        </div>
+
+      </div><!-- /RAIL -->
+
+    </div><!-- /shell -->
   </div>
 
   <div id="tab-disciplina" class="tab-panel">
