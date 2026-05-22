@@ -143,17 +143,26 @@ body {
 /* ── Responsive ── */
 
 @media (max-width: 767px) {
+  /* En mobile el body scrollea — no main-content.
+     Esto es crítico para que position:fixed (header y bottom nav) funcione
+     correctamente en iOS Safari y Android Chrome. */
+  html, body {
+    height: auto;
+    overflow-y: auto;
+  }
   .shell {
     flex-direction: column;
+    min-height: 100vh;
   }
   .main-content {
     padding: 16px;
     padding-top: calc(52px + 16px);
     padding-bottom: 72px;
-    min-height: 100vh;
+    overflow-y: visible;   /* body scrollea, no este contenedor */
     overflow-x: hidden;
+    min-height: auto;
   }
-  /* Detail panels become full-screen sheets on mobile */
+  /* Detail panels: full-screen sheets sobre el contenido */
   .detail-panel-mobile {
     position: fixed !important;
     inset: 52px 0 56px 0 !important;
