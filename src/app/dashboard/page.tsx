@@ -107,6 +107,96 @@ function Sparkline({ data, color, win }: { data: number[]; color: string; win: b
 }
 
 /* ═══════════════════════════════════════════
+   PROP FIRM RULES WIDGET
+═══════════════════════════════════════════ */
+const PROP_ACCOUNTS = [
+  {
+    name: "FXify 100K · Phase 2",
+    status: "OK" as const,
+    drawdownPct: 32,
+    dailyLossPct: 41,
+    tradesUsed: 18,
+    tradesMax: 30,
+    symbols: "ES, NQ, GC",
+  },
+  {
+    name: "FTMO Swing 50K",
+    status: "ALERTA" as const,
+    drawdownPct: 71,
+    dailyLossPct: 88,
+    tradesUsed: 7,
+    tradesMax: 15,
+    symbols: "FX only",
+  },
+]
+
+function RuleBar({ pct, label, value }: { pct: number; label: string; value: string }) {
+  const color = pct >= 80 ? "var(--loss)" : pct >= 60 ? "var(--be)" : "#4f6ef7"
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between items-center">
+        <span className="text-[11px] text-[var(--ink-2)]">{label}</span>
+        <span className="text-[11px] font-mono font-semibold" style={{ color }}>{value}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
+function PropFirmRules() {
+  return (
+    <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+      <p className="text-[13px] font-semibold text-[var(--ink)]">Reglas Prop Firm · progreso</p>
+      <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">
+        Risk engine evalúa estos límites antes de aceptar cada nuevo trade.
+      </p>
+      <div className="grid grid-cols-2 gap-4">
+        {PROP_ACCOUNTS.map(a => (
+          <div key={a.name}
+            className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-3"
+            style={{ borderLeft: `3px solid ${a.status === "OK" ? "var(--win)" : "var(--loss)"}` }}>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <p className="text-[13px] font-semibold text-[var(--ink)]">{a.name}</p>
+              <span className="text-[10px] font-bold tracking-wider"
+                style={{ color: a.status === "OK" ? "var(--win)" : "var(--loss)" }}>
+                {a.status}
+              </span>
+            </div>
+            {/* Bars */}
+            <RuleBar label="Max drawdown total" value={`${a.drawdownPct}%`} pct={a.drawdownPct} />
+            <RuleBar label="Pérdida diaria"      value={`${a.dailyLossPct}%`} pct={a.dailyLossPct} />
+            {/* Trades counter */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-[var(--ink-2)]">Trades / día</span>
+                <span className="text-[11px] font-mono font-semibold text-[var(--ink)]">
+                  <span style={{ color: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--ink)" }}>{a.tradesUsed}</span>
+                  <span className="text-[var(--ink-3)]"> / {a.tradesMax}</span>
+                </span>
+              </div>
+              <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${(a.tradesUsed / a.tradesMax) * 100}%`,
+                    background: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--win)",
+                  }} />
+              </div>
+            </div>
+            {/* Symbols */}
+            <p className="text-[10px] text-[var(--ink-3)]">
+              Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">{a.symbols}</span>
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════
    TAB PORTFOLIO
 ═══════════════════════════════════════════ */
 const DONUT_DATA = [
@@ -188,6 +278,9 @@ function TabPortfolio() {
           </div>
         </Card>
       </div>
+
+      {/* Prop Firm rules progress */}
+      <PropFirmRules />
 
       {/* Accounts table */}
       <Card title="Comparación de cuentas">
