@@ -935,24 +935,22 @@ function TabPlaybook() {
             ))}
 
             {/* Data rows */}
-            {SESSION_MATRIX.map(row => (
-              <>
-                <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
-                  <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                    style={{ background: row.color }}>{row.abbr}</span>
-                  <span className="text-[11px] text-[var(--ink-2)] truncate">{row.name}</span>
-                </div>
-                {[row.nyam, row.nypm, row.london, row.asia].map((pct, ci) => {
-                  const { bg, text } = sessionCellColor(pct)
-                  return (
-                    <div key={ci} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold"
-                      style={{ background: bg, color: text }}>
-                      {pct}%
-                    </div>
-                  )
-                })}
-              </>
-            ))}
+            {SESSION_MATRIX.flatMap(row => [
+              <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
+                <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                  style={{ background: row.color }}>{row.abbr}</span>
+                <span className="text-[11px] text-[var(--ink-2)] truncate">{row.name}</span>
+              </div>,
+              ...[row.nyam, row.nypm, row.london, row.asia].map((pct, ci) => {
+                const { bg, text } = sessionCellColor(pct)
+                return (
+                  <div key={`${row.setup}-${ci}`} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold"
+                    style={{ background: bg, color: text }}>
+                    {pct}%
+                  </div>
+                )
+              }),
+            ])}
           </div>
         </div>
 
