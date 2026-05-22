@@ -1054,6 +1054,233 @@
     </div>
   </div>
 
+  <!-- 7. Modal · Nueva cuenta -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Modal · Nueva cuenta</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">Organism</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.modal-nueva-cuenta</span>
+    </div>
+    <!-- preview area: backdrop + centered panel -->
+    <div style="padding:32px 20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:center;align-items:flex-start;min-height:640px;position:relative">
+      <!-- dark backdrop visual (non-interactive) -->
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);border-radius:0"></div>
+      <!-- modal panel -->
+      <div style="position:relative;z-index:1;width:520px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0;box-shadow:0 16px 48px rgba(0,0,0,.32)">
+        <!-- header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--line)">
+          <span style="font-size:16px;font-weight:700;color:var(--ink)">Nueva cuenta</span>
+          <button style="background:none;border:none;color:var(--ink-3);font-size:18px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1">×</button>
+        </div>
+        <!-- body -->
+        <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px">
+
+          <!-- Tipo de cuenta tabs -->
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:8px">Tipo de cuenta</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line);cursor:pointer">PERSONAL</span>
+              <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700;background:var(--accent);color:#fff;border:1px solid transparent;cursor:pointer">PROP FIRM</span>
+              <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line);cursor:pointer">DEMO</span>
+              <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line);cursor:pointer">QA</span>
+            </div>
+          </div>
+
+          <!-- Nombre de la cuenta -->
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Nombre de la cuenta <span style="color:var(--loss)">*</span></label>
+            <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink)">FXify 100K — Phase 2</div>
+          </div>
+
+          <!-- Broker / Firma -->
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Broker / Firma <span style="color:var(--loss)">*</span></label>
+            <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink)">FXify</div>
+          </div>
+
+          <!-- Balance inicial + currency -->
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Balance inicial <span style="color:var(--loss)">*</span></label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">100,000</div>
+              <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;white-space:nowrap">USD ▾</div>
+            </div>
+          </div>
+
+          <!-- Timezone -->
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Timezone</label>
+            <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink-2);cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+              <span>America/New_York (ET)</span>
+              <span style="color:var(--ink-3)">▾</span>
+            </div>
+          </div>
+
+          <!-- REGLAS PROP FIRM section -->
+          <div style="border-top:1px solid var(--line);padding-top:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+              <span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap;font-weight:600">Reglas Prop Firm</span>
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <!-- Max Drawdown -->
+              <div>
+                <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Max Drawdown</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">10</div>
+                  <span style="font-size:12px;color:var(--ink-3)">%</span>
+                </div>
+              </div>
+              <!-- Daily Loss Limit -->
+              <div>
+                <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Daily Loss Limit</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">5</div>
+                  <span style="font-size:12px;color:var(--ink-3)">%</span>
+                </div>
+              </div>
+              <!-- Trades por día -->
+              <div>
+                <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Trades por día</label>
+                <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">3</div>
+              </div>
+              <!-- Objetivo de fase -->
+              <div>
+                <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Objetivo de fase</label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">8</div>
+                  <span style="font-size:12px;color:var(--ink-3)">%</span>
+                </div>
+              </div>
+              <!-- Símbolos permitidos (full width) -->
+              <div style="grid-column:1/-1">
+                <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Símbolos permitidos</label>
+                <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink)">NQ, ES, MNQ</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- footer -->
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:16px 24px 20px;border-top:1px solid var(--line)">
+          <button style="padding:9px 20px;background:none;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;font-family:inherit">Cancelar</button>
+          <button style="padding:9px 20px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">Crear cuenta</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --panel-2, --line, --accent, --ink, --ink-2, --ink-3, --loss (asterisco requerido)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Tipo tab: active (--accent bg) · default (--chip bg) · sección REGLAS visible solo en PROP FIRM</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Overlay con backdrop oscuro; foco trampeado; Cancelar cierra sin guardar; Crear cuenta valida y persiste</p></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL · NUEVA CUENTA — live mockup overlay
+     ═══════════════════════════════════════════════════════════════ -->
+<div id="modal-nueva-cuenta" style="position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)">
+  <div style="width:520px;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <!-- header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1">
+      <span style="font-size:16px;font-weight:700;color:var(--ink)">Nueva cuenta</span>
+      <button onclick="document.getElementById('modal-nueva-cuenta').style.display='none'" style="background:none;border:none;color:var(--ink-3);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1">×</button>
+    </div>
+    <!-- body -->
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px">
+
+      <!-- Tipo de cuenta -->
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:8px">Tipo de cuenta</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line)">PERSONAL</span>
+          <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:700;background:var(--accent);color:#fff;border:1px solid transparent">PROP FIRM</span>
+          <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line)">DEMO</span>
+          <span style="padding:5px 14px;border-radius:99px;font-size:11px;font-weight:600;background:var(--chip);color:var(--ink-2);border:1px solid var(--line)">QA</span>
+        </div>
+      </div>
+
+      <!-- Nombre de la cuenta -->
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Nombre de la cuenta <span style="color:var(--loss)">*</span></label>
+        <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink)">FXify 100K — Phase 2</div>
+      </div>
+
+      <!-- Broker / Firma -->
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Broker / Firma <span style="color:var(--loss)">*</span></label>
+        <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink)">FXify</div>
+      </div>
+
+      <!-- Balance inicial + currency -->
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Balance inicial <span style="color:var(--loss)">*</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">100,000</div>
+          <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;white-space:nowrap">USD ▾</div>
+        </div>
+      </div>
+
+      <!-- Timezone -->
+      <div>
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-2);display:block;margin-bottom:6px">Timezone</label>
+        <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink-2);cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <span>America/New_York (ET)</span>
+          <span style="color:var(--ink-3)">▾</span>
+        </div>
+      </div>
+
+      <!-- REGLAS PROP FIRM -->
+      <div style="border-top:1px solid var(--line);padding-top:16px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="flex:1;height:1px;background:var(--line)"></div>
+          <span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap;font-weight:600">Reglas Prop Firm</span>
+          <div style="flex:1;height:1px;background:var(--line)"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Max Drawdown</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">10</div>
+              <span style="font-size:12px;color:var(--ink-3)">%</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Daily Loss Limit</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">5</div>
+              <span style="font-size:12px;color:var(--ink-3)">%</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Trades por día</label>
+            <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">3</div>
+          </div>
+          <div>
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Objetivo de fase</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <div style="flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink);font-family:'JetBrains Mono',monospace">8</div>
+              <span style="font-size:12px;color:var(--ink-3)">%</span>
+            </div>
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);display:block;margin-bottom:5px">Símbolos permitidos</label>
+            <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--ink)">NQ, ES, MNQ</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- footer -->
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:16px 24px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--panel)">
+      <button onclick="document.getElementById('modal-nueva-cuenta').style.display='none'" style="padding:9px 20px;background:none;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;font-family:inherit">Cancelar</button>
+      <button style="padding:9px 20px;background:var(--accent);border:none;border-radius:8px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">Crear cuenta</button>
+    </div>
+  </div>
 </div>
 
 </body>
