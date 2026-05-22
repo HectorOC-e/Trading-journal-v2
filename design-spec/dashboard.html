@@ -1141,26 +1141,520 @@
   </div>
 
   <div id="tab-disciplina" class="tab-panel">
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
-      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
-      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Disciplina</h2>
-      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Score global 0–100 · Cumplimiento de reglas · Violaciones detectadas</p>
-      <div style="display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap">
-        <div style="text-align:center">
-          <svg width="120" height="120" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="50" fill="none" stroke="var(--line)" stroke-width="10"/>
-            <circle cx="60" cy="60" r="50" fill="none" stroke="#4caf7a" stroke-width="10" stroke-dasharray="251" stroke-dashoffset="63" stroke-linecap="round" transform="rotate(-90 60 60)"/>
-            <text x="60" y="65" text-anchor="middle" fill="var(--ink)" font-size="22" font-weight="800" font-family="JetBrains Mono,monospace">78</text>
-          </svg>
-          <p style="font-size:12px;color:var(--ink-3);margin-top:8px">Score Disciplina</p>
+    <div style="display:flex;min-height:700px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--line)">
+
+      <!-- ═══ SIDEBAR 240px ═══ -->
+      <div style="width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:0">
+
+        <!-- Logo -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">T</div>
+          <span style="font-size:13px;font-weight:700;color:var(--ink)">Trading Journal</span>
         </div>
-        <div style="max-width:300px;width:100%">
-          <div style="margin-bottom:14px;text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Plan seguido</span><span style="color:var(--win);font-family:'JetBrains Mono',monospace">88%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:88%;background:var(--win);border-radius:3px"></div></div></div>
-          <div style="margin-bottom:14px;text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Sin revenge trading</span><span style="color:#e8962a;font-family:'JetBrains Mono',monospace">72%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:72%;background:#e8962a;border-radius:3px"></div></div></div>
-          <div style="text-align:left"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--ink-2)">Max 2 trades/día</span><span style="color:var(--loss);font-family:'JetBrains Mono',monospace">55%</span></div><div style="height:6px;background:var(--line);border-radius:3px"><div style="height:100%;width:55%;background:var(--loss);border-radius:3px"></div></div></div>
+
+        <!-- Nav: OPERACIÓN -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Operación</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:16px">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;font-weight:600;background:var(--accent);color:#fff;text-decoration:none">
+            <span style="font-size:13px">▦</span> Dashboard
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◈</span> Cuentas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊟</span> Trades
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◉</span> Playbook
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊛</span> Reglas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">▤</span> Reviews
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◎</span> Aprendizaje
+          </a>
+        </nav>
+
+        <!-- Nav: CUENTA -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Cuenta</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:auto">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◌</span> Perfil
+          </a>
+        </nav>
+
+        <!-- Review CTA -->
+        <div style="background:#1e1a0e;border:1px solid #3a3010;border-radius:10px;padding:12px;margin-top:16px">
+          <p style="font-size:11px;font-weight:700;color:#e8962a;margin-bottom:4px">Review semanal lista</p>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5;margin-bottom:10px">Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.</p>
+          <button style="width:100%;background:#e8962a;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:700;color:#fff;font-family:inherit;cursor:pointer">Empezar review</button>
         </div>
       </div>
-    </div>
+
+      <!-- ═══ MAIN CONTENT ═══ -->
+      <div style="flex:1;overflow-y:auto;padding:24px 28px;min-width:0">
+
+        <!-- Top bar -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <h2 style="font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px">Disciplina</h2>
+            <p style="font-size:12px;color:var(--ink-3)">FXify 100K · Phase 2 · FXify · Estado <span style="color:#4caf7a;background:#1a2e1a;padding:2px 7px;border-radius:4px;font-weight:600;font-size:11px">OPERABLE</span></p>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Operador</button>
+            <div style="width:32px;height:18px;background:var(--chip);border-radius:9px;cursor:pointer"></div>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Playbook</button>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Portfolio</button>
+          </div>
+        </div>
+
+        <!-- DO-NOT-TAKE Alert Banner -->
+        <div style="display:flex;align-items:center;gap:14px;background:#2a0f0f;border:1px solid #5a2020;border-radius:10px;padding:14px 18px;margin-bottom:16px">
+          <div style="width:28px;height:28px;background:#e05555;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+            <span style="color:#fff;font-size:14px;font-weight:900">!</span>
+          </div>
+          <div style="flex:1">
+            <p style="font-size:13px;font-weight:700;color:#e07070;margin-bottom:3px">DO-NOT-TAKE activo · 3 condiciones cumplidas</p>
+            <p style="font-size:11px;color:#a05050">Ya son 3 trades hoy · plan no seguido en último trade · RR objetivo forzado a 2.5R sin confluencia</p>
+          </div>
+          <button style="background:var(--chip);border:none;border-radius:7px;padding:6px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px">Ver detalle <span>→</span></button>
+        </div>
+
+        <!-- Two-column row: Discipline Score + Composición Semanal -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+          <!-- LEFT: Discipline Score -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">DISCIPLINE SCORE · SEMANA ACTUAL</p>
+            <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+              <span style="font-size:52px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.04em;line-height:1">78</span>
+              <span style="font-size:18px;color:var(--ink-3);font-weight:400">/ 100</span>
+            </div>
+            <p style="font-size:12px;color:#4caf7a;margin-bottom:20px">↑ +6 vs sem. pasada</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div style="border-left:3px solid #4caf7a;padding-left:10px">
+                <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">SIN VIOLACIÓN</p>
+                <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#4caf7a;margin-bottom:2px">78%</p>
+                <p style="font-size:10px;color:var(--ink-3)">18 / 23 trades</p>
+              </div>
+              <div style="border-left:3px solid var(--accent);padding-left:10px">
+                <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">PLAN SEGUIDO</p>
+                <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin-bottom:2px">82%</p>
+                <p style="font-size:10px;color:var(--ink-3)">19 / 23 trades</p>
+              </div>
+              <div style="border-left:3px solid var(--loss);padding-left:10px">
+                <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">INDISCIPLINE $</p>
+                <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--loss);margin-bottom:2px">$214</p>
+                <p style="font-size:10px;color:var(--ink-3)">costo acumulado</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Composición Semanal -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px">COMPOSICIÓN SEMANAL</p>
+            <div style="display:flex;align-items:center;gap:24px">
+              <!-- donut SVG -->
+              <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+                <!-- bg circle -->
+                <circle cx="55" cy="55" r="42" fill="none" stroke="var(--line)" stroke-width="12"/>
+                <!-- Plan seguido 14/23 = 61% → 263deg → dasharray: 61%*264=161 -->
+                <circle cx="55" cy="55" r="42" fill="none" stroke="#4caf7a" stroke-width="12"
+                  stroke-dasharray="161 103" stroke-dashoffset="0"
+                  stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+                <!-- Plan parcial 5/23 = 22% → 57 -->
+                <circle cx="55" cy="55" r="42" fill="none" stroke="#e8962a" stroke-width="12"
+                  stroke-dasharray="57 207" stroke-dashoffset="-161"
+                  stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+                <!-- Off-plan 4/23 = 17% → 46 -->
+                <circle cx="55" cy="55" r="42" fill="none" stroke="#e05555" stroke-width="12"
+                  stroke-dasharray="46 218" stroke-dashoffset="-218"
+                  stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+                <text x="55" y="51" text-anchor="middle" font-size="16" font-weight="800" fill="var(--ink)" font-family="JetBrains Mono,monospace">23</text>
+                <text x="55" y="64" text-anchor="middle" font-size="9" fill="var(--ink-3)">trades</text>
+              </svg>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <span style="width:10px;height:10px;border-radius:50%;background:#4caf7a;flex-shrink:0"></span>
+                  <span style="font-size:13px;color:var(--ink-2);flex:1">Plan seguido</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">14</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                  <span style="width:10px;height:10px;border-radius:50%;background:#e8962a;flex-shrink:0"></span>
+                  <span style="font-size:13px;color:var(--ink-2);flex:1">Plan parcial</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">5</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="width:10px;height:10px;border-radius:50%;background:#e05555;flex-shrink:0"></span>
+                  <span style="font-size:13px;color:var(--ink-2);flex:1">Off-plan</span>
+                  <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Heatmap de disciplina (full width) -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+            <div>
+              <p style="font-size:13px;font-weight:600;margin-bottom:2px">Heatmap de disciplina · últimas 12 semanas</p>
+              <p style="font-size:10px;color:var(--ink-3)">Cada celda = un día. Color = severidad máxima de violación ese día.</p>
+            </div>
+            <div style="display:flex;gap:12px;font-size:11px;align-items:center">
+              <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#4caf7a;display:inline-block"></span>Limpio</span>
+              <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#e8962a;display:inline-block"></span>Menor</span>
+              <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#e05555;display:inline-block"></span>Mayor</span>
+            </div>
+          </div>
+
+          <!-- Heatmap grid -->
+          <div style="display:grid;grid-template-columns:20px repeat(12,1fr);gap:3px;margin-top:12px">
+            <!-- Header row -->
+            <div></div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S1</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S2</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S3</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S4</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S5</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S6</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S7</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S8</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S9</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S10</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S11</div>
+            <div style="font-size:9px;color:var(--ink-3);text-align:center">S12</div>
+
+            <!-- Row L (Lunes) -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">L</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+
+            <!-- Row M (Martes) -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">M</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+
+            <!-- Row X (Miércoles) -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">X</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+
+            <!-- Row J (Jueves) -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">J</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+
+            <!-- Row V (Viernes) -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">V</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#4caf7a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e05555"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:#e8962a"></div>
+
+            <!-- Row S (Sábado) — mostly empty -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">S</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+
+            <!-- Row D (Domingo) — empty -->
+            <div style="font-size:9px;color:var(--ink-3);display:flex;align-items:center">D</div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+            <div style="aspect-ratio:1;border-radius:3px;background:var(--chip);opacity:.3"></div>
+          </div>
+        </div>
+
+        <!-- Bottom two-column row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- LEFT: Distribución de R -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <p style="font-size:13px;font-weight:600;margin-bottom:2px">Distribución de R · este mes</p>
+            <p style="font-size:10px;color:var(--ink-3);margin-bottom:16px">Frecuencia de outcomes vs. expectativa.</p>
+            <svg viewBox="0 0 320 130" style="width:100%;height:auto">
+              <rect x="4" y="98" width="32" height="20" rx="3" fill="#e05555"/>
+              <text x="20" y="95" text-anchor="middle" font-size="9" fill="var(--ink-3)">2</text>
+              <text x="20" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-3R</text>
+              <rect x="40" y="88" width="32" height="30" rx="3" fill="#e05555"/>
+              <text x="56" y="85" text-anchor="middle" font-size="9" fill="var(--ink-3)">3</text>
+              <text x="56" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-2R</text>
+              <rect x="76" y="58" width="32" height="60" rx="3" fill="#e05555"/>
+              <text x="92" y="55" text-anchor="middle" font-size="9" fill="var(--ink-3)">6</text>
+              <text x="92" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-1R</text>
+              <rect x="112" y="78" width="32" height="40" rx="3" fill="#e8962a"/>
+              <text x="128" y="75" text-anchor="middle" font-size="9" fill="var(--ink-3)">4</text>
+              <text x="128" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">0R</text>
+              <rect x="148" y="48" width="32" height="70" rx="3" fill="#4caf7a"/>
+              <text x="164" y="45" text-anchor="middle" font-size="9" fill="var(--ink-3)">8</text>
+              <text x="164" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+1R</text>
+              <rect x="184" y="18" width="32" height="100" rx="3" fill="#4caf7a"/>
+              <text x="200" y="15" text-anchor="middle" font-size="9" fill="var(--ink-3)">11</text>
+              <text x="200" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+2R</text>
+              <rect x="220" y="68" width="32" height="50" rx="3" fill="#4caf7a"/>
+              <text x="236" y="65" text-anchor="middle" font-size="9" fill="var(--ink-3)">5</text>
+              <text x="236" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+3R</text>
+              <rect x="256" y="98" width="32" height="20" rx="3" fill="#4caf7a" opacity="0.7"/>
+              <text x="272" y="95" text-anchor="middle" font-size="9" fill="var(--ink-3)">2</text>
+              <text x="272" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+4R</text>
+              <line x1="0" y1="118" x2="310" y2="118" stroke="var(--line)" stroke-width="1"/>
+            </svg>
+          </div>
+
+          <!-- RIGHT: Violaciones por regla -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <p style="font-size:13px;font-weight:600">Violaciones por regla</p>
+              <a href="#" style="font-size:12px;color:var(--accent);text-decoration:none">Ver registro →</a>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+                <div style="width:3px;height:32px;background:#e05555;border-radius:2px;flex-shrink:0"></div>
+                <p style="font-size:13px;color:var(--ink-2);flex:1">Trade #4+ del día (max-trades-day)</p>
+                <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">5</span>
+                <span style="font-size:11px;color:#4caf7a">↓ 2</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+                <div style="width:3px;height:32px;background:#e8962a;border-radius:2px;flex-shrink:0"></div>
+                <p style="font-size:13px;color:var(--ink-2);flex:1">Operar fuera de sesión NY AM</p>
+                <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">3</span>
+                <span style="font-size:11px;color:#e05555">↑ 1</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+                <div style="width:3px;height:32px;background:#e05555;border-radius:2px;flex-shrink:0"></div>
+                <p style="font-size:13px;color:var(--ink-2);flex:1">Recovery RR forzado</p>
+                <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">2</span>
+                <span style="font-size:11px;color:var(--ink-3)">—</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+                <div style="width:3px;height:32px;background:#e8962a;border-radius:2px;flex-shrink:0"></div>
+                <p style="font-size:13px;color:var(--ink-2);flex:1">Sin checklist completo</p>
+                <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">2</span>
+                <span style="font-size:11px;color:#4caf7a">↓ 1</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+                <div style="width:3px;height:32px;background:#4caf7a;border-radius:2px;flex-shrink:0"></div>
+                <p style="font-size:13px;color:var(--ink-2);flex:1">Flag impulsivo manual</p>
+                <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">1</span>
+                <span style="font-size:11px;color:#4caf7a">↓ 3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /MAIN -->
+
+      <!-- ═══ RIGHT RAIL 280px ═══ -->
+      <div style="width:280px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:0">
+
+        <!-- User header -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">HO</div>
+            <div>
+              <p style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:1px">Héctor O.C.</p>
+              <p style="font-size:11px;color:var(--ink-3)">Single-Trader · TJ</p>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:11px;color:var(--ink-3)">21 may 2026</span>
+            <span style="font-size:11px;color:var(--ink-3)">SEM 20 · 2026</span>
+          </div>
+        </div>
+
+        <!-- Setups Top Performers -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <p style="font-size:12px;font-weight:700;color:var(--ink)">Setups · Top performers</p>
+            <span style="font-size:14px;color:var(--ink-3);cursor:pointer">···</span>
+          </div>
+          <!-- Category tabs -->
+          <div style="display:flex;gap:3px;margin-bottom:10px">
+            <button style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer">Futuros</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">FX</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Equities</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Cripto</button>
+          </div>
+          <!-- Setup rows -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:2px">
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3)">Setup</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">WIN%</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">AVG R</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#b05020;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">OR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Opening Range Break</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">64%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.88</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#8b1a1a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">FA</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Failed Auction</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">52%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.98</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#2a4a8a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">London Reversal</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">58%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.48</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5c2a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LG</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Liquidity Grab</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+2.28</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a4a4a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">TC</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Trend Continuation</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--ink-2);font-family:'JetBrains Mono',monospace">49%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.68</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#4a1a6a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">AS</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Asia Sweep</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">55%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.18</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5a5a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">VW</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">VWAP Reclaim</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">68%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.58</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0">
+              <div style="width:20px;height:20px;border-radius:4px;background:#3a3a3a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">NF</div>
+              <div><p style="font-size:11px;color:var(--ink-3);margin:0;line-height:1.2">News Fade — NFP</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace">41%</span>
+              <span style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.28</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nuevo Trade form -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <p style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">Nuevo Trade</p>
+          <div style="display:flex;gap:4px;margin-bottom:10px">
+            <button style="flex:1;padding:6px;border-radius:7px;border:none;background:var(--win);color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">LONG</button>
+            <button style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--line);background:none;color:var(--ink-3);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">SHORT</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Símbolo · Setup</p>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:var(--chip);border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;color:var(--ink)">ES</span>
+            <span style="font-size:11px;color:var(--ink-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Opening Range Break · NY AM</span>
+            <button style="background:var(--chip);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--ink-2);font-family:inherit;cursor:pointer">FUT ▾</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Riesgo (R)</p>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">0.5 R</span>
+            <span style="font-size:11px;color:var(--ink-3)">USD</span>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:8px">$514.20 sobre equity</p>
+          <div style="display:flex;gap:4px;margin-bottom:12px">
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">25%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:none;background:var(--accent);font-size:10px;color:#fff;font-weight:700;font-family:inherit;cursor:pointer">50%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">75%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">100%</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">Checklist A+</p>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Confluencia HTF</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Killzone activa</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--ink-3);font-size:13px">☐</span><span style="font-size:11px;color:var(--ink-3)">Trade #1–2 del día</span></div>
+          </div>
+          <input type="text" placeholder="" style="width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:6px 0;font-size:12px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:10px">
+          <button style="width:100%;background:var(--accent);border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">+ Registrar Trade</button>
+        </div>
+
+        <!-- Disciplina Semanal -->
+        <div style="border-top:1px solid var(--line);padding-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">Disciplina Semanal</p>
+            <span style="font-size:11px;color:var(--win);font-weight:600">↑ +6</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+            <span style="font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1">78</span>
+            <span style="font-size:14px;color:var(--ink-3)">/100</span>
+          </div>
+          <div style="height:6px;background:var(--line);border-radius:3px;margin-bottom:8px"><div style="width:78%;height:100%;background:var(--win);border-radius:3px"></div></div>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5">18 / 23 trades sin violación · 3 trades off-plan esta semana</p>
+        </div>
+
+      </div><!-- /RAIL -->
+
+    </div><!-- /shell -->
   </div>
 
   <div id="tab-playbook" class="tab-panel">
@@ -1608,6 +2102,291 @@ function showTab(name, btn) {
       <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel, --line, #4caf7a (dot activo), --ink-3 (chevron)</p></div>
       <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (border --accent), open (dropdown visible debajo)</p></div>
       <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">Click → dropdown con todas las cuentas disponibles; selección → recarga datos del dashboard para esa cuenta</p></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TAB · DISCIPLINA — RESUMEN DE FUNCIONALIDAD Y ANATOMÍA
+     ═══════════════════════════════════════════════════════════════════ -->
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <p style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Tab · Disciplina</p>
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/dashboard?tab=disciplina</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:40px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Muestra el score de disciplina de la semana actual (0–100)</li>
+        <li>→ Alerta DO-NOT-TAKE cuando se cumplen condiciones de stop</li>
+        <li>→ Composición semanal: plan seguido vs parcial vs off-plan</li>
+        <li>→ Heatmap de las últimas 12 semanas por severidad de violación</li>
+        <li>→ Distribución de outcomes por R (histograma -3R a +4R)</li>
+        <li>→ Ranking de reglas más violadas con tendencia semana a semana</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Trader ve alerta DO-NOT-TAKE → "Ver detalle" muestra condiciones exactas</li>
+        <li>2. Score 78/100 → referencia rápida del estado semanal</li>
+        <li>3. Heatmap → identifica patrones de días problemáticos</li>
+        <li>4. Distribución R → valida que el sistema tiene expectativa positiva</li>
+        <li>5. Violaciones → "Ver registro" navega a lista completa con contexto por trade</li>
+        <li>6. Tendencias ↓ = mejora, ↑ = empeora semana vs semana anterior</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-bottom:24px">Anatomía</h2>
+
+  <!-- 1. DO-NOT-TAKE Banner -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">DO-NOT-TAKE Banner</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.dnt-banner</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:14px;background:#2a0f0f;border:1px solid #5a2020;border-radius:10px;padding:14px 18px">
+        <div style="width:28px;height:28px;background:#e05555;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          <span style="color:#fff;font-size:14px;font-weight:900">!</span>
+        </div>
+        <div style="flex:1">
+          <p style="font-size:13px;font-weight:700;color:#e07070;margin-bottom:3px">DO-NOT-TAKE activo · 3 condiciones cumplidas</p>
+          <p style="font-size:11px;color:#a05050">Ya son 3 trades hoy · plan no seguido en último trade · RR objetivo forzado a 2.5R sin confluencia</p>
+        </div>
+        <button style="background:var(--chip);border:none;border-radius:7px;padding:6px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Ver detalle →</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#2a0f0f bg, #5a2020 border, #e07070 text, #e05555 icon bg</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">visible cuando ≥3 condiciones cumplidas; hidden cuando todas ok</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"Ver detalle" abre modal con lista de condiciones activas; se puede dismiss temporalmente</p></div>
+    </div>
+  </div>
+
+  <!-- 2. Discipline Score -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Discipline Score</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ATOM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.discipline-score</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px">
+        <span style="font-size:52px;font-weight:800;font-family:'JetBrains Mono',monospace;letter-spacing:-.04em;line-height:1;color:var(--ink)">78</span>
+        <span style="font-size:18px;color:var(--ink-3);font-weight:400">/ 100</span>
+      </div>
+      <p style="font-size:12px;color:#4caf7a">↑ +6 vs sem. pasada</p>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">JetBrains Mono 52px, --ink; indicador: --win (>80), #e8962a (60-80), --loss (&lt;60)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">&gt;80 color win, 60-80 amber, &lt;60 loss — color del número cambia automáticamente</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">calculado como promedio ponderado de % sin violación + % plan seguido</p></div>
+    </div>
+  </div>
+
+  <!-- 3. Metric Stat con border-left -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Metric Stat con border-left</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.metric-stat-bl</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="border-left:3px solid #4caf7a;padding-left:10px">
+          <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">SIN VIOLACIÓN</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:#4caf7a;margin-bottom:2px">78%</p>
+          <p style="font-size:10px;color:var(--ink-3)">18 / 23 trades</p>
+        </div>
+        <div style="border-left:3px solid var(--accent);padding-left:10px">
+          <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">PLAN SEGUIDO</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--accent);margin-bottom:2px">82%</p>
+          <p style="font-size:10px;color:var(--ink-3)">19 / 23 trades</p>
+        </div>
+        <div style="border-left:3px solid var(--loss);padding-left:10px">
+          <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">INDISCIPLINE $</p>
+          <p style="font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--loss);margin-bottom:2px">$214</p>
+          <p style="font-size:10px;color:var(--ink-3)">costo acumulado</p>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">border-left 3px colored; value JetBrains Mono 22px; SIN VIOLACIÓN → #4caf7a; PLAN SEGUIDO → --accent; INDISCIPLINE $ → --loss</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">color del border y valor sincronizados por semántica (positivo, neutro, negativo)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click → filtra trades del período en /trades</p></div>
+    </div>
+  </div>
+
+  <!-- 4. Composición Semanal Donut -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Composición Semanal Donut</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.composicion-donut</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:24px;max-width:340px">
+        <svg width="110" height="110" viewBox="0 0 110 110" style="flex-shrink:0">
+          <circle cx="55" cy="55" r="42" fill="none" stroke="var(--line)" stroke-width="12"/>
+          <circle cx="55" cy="55" r="42" fill="none" stroke="#4caf7a" stroke-width="12" stroke-dasharray="161 103" stroke-dashoffset="0" stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+          <circle cx="55" cy="55" r="42" fill="none" stroke="#e8962a" stroke-width="12" stroke-dasharray="57 207" stroke-dashoffset="-161" stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+          <circle cx="55" cy="55" r="42" fill="none" stroke="#e05555" stroke-width="12" stroke-dasharray="46 218" stroke-dashoffset="-218" stroke-linecap="butt" transform="rotate(-90 55 55)"/>
+          <text x="55" y="51" text-anchor="middle" font-size="16" font-weight="800" fill="var(--ink)" font-family="JetBrains Mono,monospace">23</text>
+          <text x="55" y="64" text-anchor="middle" font-size="9" fill="var(--ink-3)">trades</text>
+        </svg>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#4caf7a;flex-shrink:0"></span>
+            <span style="font-size:13px;color:var(--ink-2);flex:1">Plan seguido</span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">14</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#e8962a;flex-shrink:0"></span>
+            <span style="font-size:13px;color:var(--ink-2);flex:1">Plan parcial</span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">5</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#e05555;flex-shrink:0"></span>
+            <span style="font-size:13px;color:var(--ink-2);flex:1">Off-plan</span>
+            <span style="font-size:13px;font-weight:700;color:var(--ink);font-family:'JetBrains Mono',monospace">4</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#4caf7a (plan seguido), #e8962a (parcial), #e05555 (off-plan); center: JetBrains Mono 16px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">3 segmentos siempre visibles; proporciones calculadas al cargar semana</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">hover segment → resalta en leyenda; click → filtra trades de esa categoría</p></div>
+    </div>
+  </div>
+
+  <!-- 5. Heatmap de Disciplina -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Heatmap de Disciplina</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.discipline-heatmap</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:12px;font-size:11px;align-items:center;margin-bottom:10px">
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#4caf7a;display:inline-block"></span>Limpio</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#e8962a;display:inline-block"></span>Menor</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#e05555;display:inline-block"></span>Mayor</span>
+        <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:var(--chip);opacity:.4;display:inline-block"></span>Sin trading</span>
+      </div>
+      <p style="font-size:11px;color:var(--ink-3)">Grid 7 días × 12 semanas — cada celda = severidad máxima de violación ese día</p>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#4caf7a (limpio), #e8962a (menor), #e05555 (mayor), var(--chip) opacity .3 (sin trading)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal; hover → tooltip con fecha y violaciones del día; click → filtra trades</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">hover celda → tooltip con fecha y lista de violaciones; click → filtra trades de ese día</p></div>
+    </div>
+  </div>
+
+  <!-- 6. Distribución de R Histogram -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Distribución de R Histogram</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.r-distribution-histogram</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <svg viewBox="0 0 320 130" style="width:100%;max-width:400px;height:auto;display:block">
+        <rect x="4" y="98" width="32" height="20" rx="3" fill="#e05555"/>
+        <text x="20" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-3R</text>
+        <rect x="40" y="88" width="32" height="30" rx="3" fill="#e05555"/>
+        <text x="56" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-2R</text>
+        <rect x="76" y="58" width="32" height="60" rx="3" fill="#e05555"/>
+        <text x="92" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">-1R</text>
+        <rect x="112" y="78" width="32" height="40" rx="3" fill="#e8962a"/>
+        <text x="128" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">0R</text>
+        <rect x="148" y="48" width="32" height="70" rx="3" fill="#4caf7a"/>
+        <text x="164" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+1R</text>
+        <rect x="184" y="18" width="32" height="100" rx="3" fill="#4caf7a"/>
+        <text x="200" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+2R</text>
+        <rect x="220" y="68" width="32" height="50" rx="3" fill="#4caf7a"/>
+        <text x="236" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+3R</text>
+        <rect x="256" y="98" width="32" height="20" rx="3" fill="#4caf7a" opacity="0.7"/>
+        <text x="272" y="128" text-anchor="middle" font-size="9" fill="var(--ink-3)">+4R</text>
+        <line x1="0" y1="118" x2="310" y2="118" stroke="var(--line)" stroke-width="1"/>
+      </svg>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#e05555 (negativo R), #e8962a (0R), #4caf7a (positivo R); barras rx:3, baseline --line</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">barras estáticas; filtro de período (último mes default); range -3R a +4R</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">puede filtrar por período; hover barra → tooltip con conteo y % del total</p></div>
+    </div>
+  </div>
+
+  <!-- 7. Violación Row -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Violación Row</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.violacion-row</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <!-- Variante crítica -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)">
+        <div style="width:3px;height:32px;background:#e05555;border-radius:2px;flex-shrink:0"></div>
+        <p style="font-size:13px;color:var(--ink-2);flex:1">Trade #4+ del día (max-trades-day) — variante crítica</p>
+        <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">5</span>
+        <span style="font-size:11px;color:#4caf7a">↓ 2</span>
+      </div>
+      <!-- Variante advertencia -->
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0">
+        <div style="width:3px;height:32px;background:#e8962a;border-radius:2px;flex-shrink:0"></div>
+        <p style="font-size:13px;color:var(--ink-2);flex:1">Operar fuera de sesión NY AM — variante advertencia</p>
+        <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);margin-right:8px">3</span>
+        <span style="font-size:11px;color:#e05555">↑ 1</span>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">border-left 3px (#e05555 crítica, #e8962a menor, #4caf7a mínima); count JetBrains Mono 14px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">tendencia: ↓ #4caf7a (mejora), ↑ #e05555 (empeora), — var(--ink-3) (neutral)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click fila → filtra trades con esa violación específica en /trades</p></div>
+    </div>
+  </div>
+
+  <!-- 8. Tab Buttons (dentro del panel) -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Tab Buttons (in-panel switcher)</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">MOLECULE</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.panel-tab-buttons</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+      <div style="display:flex;gap:6px;align-items:center">
+        <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Operador</button>
+        <div style="width:32px;height:18px;background:var(--chip);border-radius:9px;cursor:pointer"></div>
+        <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Playbook</button>
+        <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Portfolio</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">border: 1px solid --line; color: --ink-2; border-radius: 7px; padding: 5px 12px; font-size: 12px</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">el tab activo no aparece en la lista de botones; hover: color → --ink; el toggle entre tabs adicionales</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click → cambia el tab-panel visible vía JS showTab(); sin recarga de página</p></div>
     </div>
   </div>
 
