@@ -791,87 +791,193 @@ function TabDisciplina() {
    TAB PLAYBOOK
 ═══════════════════════════════════════════ */
 const SETUPS = [
-  { abbr: "OR", name: "Opening Range Break", market: "NQ",  wr: 64, avgR: 1.80, trades: 18, color: "#f59e0b",
-    data: [10,14,12,20,17,24,22,28,25,32] },
-  { abbr: "FA", name: "Failed Auction",       market: "NQ",  wr: 52, avgR: 8.90, trades: 11, color: "#ef4444",
-    data: [22,17,20,14,18,12,16,10,13,9] },
-  { abbr: "LR", name: "London Reversal",      market: "FX",  wr: 58, avgR: 1.40, trades: 8,  color: "#4f6ef7",
-    data: [8,12,10,18,15,22,19,26,22,28] },
-  { abbr: "LG", name: "Liquidity Grab",       market: "NQ",  wr: 71, avgR: 2.20, trades: 14, color: "#22c55e",
-    data: [12,18,16,24,22,30,28,36,33,40] },
-  { abbr: "TC", name: "Trend Continuation",   market: "EQ",  wr: 49, avgR: 0.60, trades: 6,  color: "#9b59b6",
-    data: [20,16,18,13,16,11,14,9,12,7] },
-  { abbr: "AS", name: "Asia Sweep",           market: "NQ",  wr: 55, avgR: 1.10, trades: 9,  color: "#14b8a6",
-    data: [10,14,13,18,16,22,20,26,23,28] },
-  { abbr: "VW", name: "VWAP Reclaim",         market: "NQ",  wr: 60, avgR: 1.50, trades: 12, color: "#4f6ef7",
-    data: [9,14,12,20,17,24,22,28,25,30] },
-  { abbr: "NF", name: "News Fade – NFP",      market: "NQ",  wr: 41, avgR: -0.20, trades: 5, color: "#6b7280",
-    data: [18,12,16,10,14,8,12,6,10,4] },
+  { abbr: "OR", name: "Opening Range Break", market: "Futures", trades: 47, wr: 64, avgR: 1.80, cumR: 11.8,  best: "NY AM",  worst: "Asia",   color: "#f59e0b", data: [10,13,12,16,15,20,19,24,22,28,26,32] },
+  { abbr: "LG", name: "Liquidity Grab",       market: "Futures", trades: 31, wr: 71, avgR: 2.20, cumR: 19.1,  best: "NY AM",  worst: "London", color: "#22c55e", data: [8,12,11,17,16,22,21,28,27,34,32,40] },
+  { abbr: "LR", name: "London Reversal",      market: "FX",      trades: 28, wr: 58, avgR: 1.40, cumR: 14.2,  best: "London", worst: "NY PM",  color: "#4f6ef7", data: [6,10,9,14,13,18,17,22,21,26,24,28] },
+  { abbr: "VW", name: "VWAP Reclaim",         market: "Equities", trades: 19, wr: 60, avgR: 1.50, cumR: 11.2, best: "NY PM",  worst: "Asia",   color: "#14b8a6", data: [8,11,10,15,14,19,18,23,22,27,25,30] },
+  { abbr: "FA", name: "Failed Auction",       market: "Futures", trades: 24, wr: 52, avgR: 0.90, cumR: 6.8,   best: "NY AM",  worst: "Asia",   color: "#ef4444", data: [12,10,14,11,16,13,18,15,20,16,18,14] },
+  { abbr: "AS", name: "Asia Sweep",           market: "FX",      trades: 16, wr: 55, avgR: 1.10, cumR: 11.8,  best: "Asia",   worst: "NY PM",  color: "#9b59b6", data: [7,10,9,13,12,16,15,19,18,22,21,25] },
+  { abbr: "TC", name: "Trend Continuation",   market: "Equities", trades: 22, wr: 49, avgR: 0.60, cumR: -0.7, best: "NY PM",  worst: "London", color: "#e8962a", data: [14,12,15,12,14,11,13,10,12,9,11,8]  },
+  { abbr: "NF", name: "News Fade — NFP",      market: "FX",       trades: 8,  wr: 41, avgR:-0.20, cumR: -7.2, best: "FX news",worst: "NY AM",  color: "#6b7280", data: [16,13,15,11,13,9,12,8,10,6,8,4]    },
 ]
+
+// Session × Setup win rate matrix
+const SESSION_MATRIX = [
+  { setup: "OR", abbr: "OR", color: "#f59e0b", name: "Opening Range Break", nyam: 72, nypm: 58, london: 51, asia: 33 },
+  { setup: "FA", abbr: "FA", color: "#ef4444", name: "Failed Auction",      nyam: 78, nypm: 60, london: 55, asia: 48 },
+  { setup: "LR", abbr: "LR", color: "#4f6ef7", name: "London Reversal",     nyam: 44, nypm: 55, london: 68, asia: 50 },
+  { setup: "LG", abbr: "LG", color: "#22c55e", name: "Liquidity Grab",      nyam: 55, nypm: 67, london: 50, asia: 42 },
+  { setup: "TC", abbr: "TC", color: "#e8962a", name: "Trend Continuation",  nyam: 49, nypm: 53, london: 47, asia: 38 },
+  { setup: "AS", abbr: "AS", color: "#9b59b6", name: "Asia Sweep",          nyam: 38, nypm: 50, london: 45, asia: 62 },
+]
+
+// A+ checklist compliance
+const CHECKLIST = [
+  { item: "Confluencia HTF",          pct: 95 },
+  { item: "Killzone activa",          pct: 88 },
+  { item: "Trade #1–2 del día",       pct: 72 },
+  { item: "Stop visualmente protegido",pct: 81 },
+  { item: "Target a structure",       pct: 67 },
+  { item: "Risk ≤ 1R por trade",      pct: 96 },
+]
+
+function sessionCellColor(pct: number) {
+  if (pct >= 65) return { bg: "rgba(34,197,94,0.20)", text: "var(--win)"  }
+  if (pct >= 50) return { bg: "rgba(232,150,42,0.20)", text: "var(--be)"  }
+  return           { bg: "rgba(224,85,85,0.20)",  text: "var(--loss)" }
+}
+
+function checklistColor(pct: number) {
+  if (pct >= 80) return "var(--win)"
+  if (pct >= 65) return "var(--be)"
+  return "var(--loss)"
+}
 
 function TabPlaybook() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
-        <KpiCard label="Setups activos" value="8"   sub="configurados" color="var(--ink)" />
-        <KpiCard label="Mejor setup"    value="LG"  sub="71% WR · +2.2R avg" />
-        <KpiCard label="Trades A+"      value="34%" sub="del total de operaciones" color="var(--win)" />
-        <KpiCard label="Avg RR global"  value="1.8" sub="todos los setups" color="var(--win)" />
-      </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        {SETUPS.map(s => {
-          const winning = s.wr >= 50
-          const lineColor = winning ? "var(--win)" : "var(--loss)"
-          return (
-            <div key={s.abbr}
-              className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-4 flex flex-col gap-3 hover:border-[var(--line-2)] transition-all cursor-pointer group">
-              {/* Header */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-                    style={{ background: s.color }}>
-                    {s.abbr}
-                  </span>
+      {/* ── Setup cards ── */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <p className="text-[13px] font-semibold text-[var(--ink)]">Playbook · rendimiento por setup</p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">Métricas agregadas desde tu registro de trades · últimos 90 días.</p>
+          </div>
+          <div className="flex gap-1.5">
+            {["Pausados","Descartados"].map(f => (
+              <button key={f} className="text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
+          {SETUPS.map(s => {
+            const win = s.wr >= 50
+            const lineColor = win ? "#22c55e" : "#e05555"
+            const W = 240, H = 64
+            const max = Math.max(...s.data), min = Math.min(...s.data)
+            const range = max - min || 1
+            const pts = s.data.map((v, i) => ({
+              x: (i / (s.data.length - 1)) * W,
+              y: H - 6 - ((v - min) / range) * (H - 16),
+            }))
+            const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
+            const areaPath = linePath + ` L${W},${H} L0,${H} Z`
+            const fillId = `pf-${s.abbr}`
+            return (
+              <div key={s.abbr}
+                className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
+                style={{ background: "var(--panel-2)" }}>
+                {/* Card header */}
+                <div className="flex items-center gap-2.5 p-3 pb-2">
+                  <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                    style={{ background: s.color }}>{s.abbr}</span>
                   <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight">{s.name}</p>
-                    <p className="text-[10px] text-[var(--ink-3)] mt-0.5">{s.market}</p>
+                    <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
+                    <p className="text-[10px] text-[var(--ink-3)]">{s.market} · {s.trades} trades</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full mt-0.5 shrink-0"
-                  style={{
-                    background: winning ? "var(--win-soft)" : "var(--loss-soft)",
-                    color: winning ? "var(--win)" : "var(--loss)",
-                  }}>
-                  {s.wr}%
-                </span>
-              </div>
 
-              {/* Sparkline con área */}
-              <div className="rounded-[var(--radius-sm)] overflow-hidden" style={{ background: winning ? "var(--win-soft)" : "var(--loss-soft)", padding: "6px 4px 2px" }}>
-                <Sparkline data={s.data} color={lineColor} win={winning} />
-              </div>
+                {/* Sparkline full-width */}
+                <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%"   stopColor={lineColor} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <path d={areaPath} fill={`url(#${fillId})`} />
+                  <path d={linePath} fill="none" stroke={lineColor} strokeWidth="1.8"
+                    strokeLinejoin="round" strokeLinecap="round" />
+                </svg>
 
-              {/* Stats row */}
-              <div className="grid grid-cols-3 gap-1 pt-1 border-t border-[var(--line)]">
-                <div>
-                  <p className="text-[9px] font-semibold text-[var(--ink-3)] uppercase tracking-wider mb-0.5">Avg R</p>
-                  <p className={cn("text-[13px] font-mono font-bold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.avgR > 0 ? "+" : ""}{s.avgR.toFixed(1)}
-                  </p>
+                {/* Stats */}
+                <div className="px-3 pt-2 pb-1 grid grid-cols-3 gap-1">
+                  {[
+                    ["Win", `${s.wr}%`, win ? "var(--win)" : "var(--loss)"],
+                    ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
+                    ["Cum", `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
+                  ].map(([l, v, c]) => (
+                    <div key={l}>
+                      <p className="text-[9px] text-[var(--ink-3)] uppercase tracking-wider">{l}</p>
+                      <p className="text-[13px] font-mono font-bold" style={{ color: c as string }}>{v}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="text-center">
-                  <p className="text-[9px] font-semibold text-[var(--ink-3)] uppercase tracking-wider mb-0.5">Trades</p>
-                  <p className="text-[13px] font-mono font-bold text-[var(--ink-2)]">{s.trades}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-semibold text-[var(--ink-3)] uppercase tracking-wider mb-0.5">Win %</p>
-                  <p className={cn("text-[13px] font-mono font-bold", winning ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.wr}%</p>
+
+                {/* Best / worst session */}
+                <div className="px-3 pb-2.5 flex justify-between text-[10px] text-[var(--ink-3)]">
+                  <span>Mejor: <span className="text-[var(--win)]">{s.best}</span></span>
+                  <span>Peor: <span className="text-[var(--loss)]">{s.worst}</span></span>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Session matrix + Checklist ── */}
+      <div className="grid grid-cols-2 gap-4">
+
+        {/* Setup × Sesión matrix */}
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">Setup × Sesión · win rate</p>
+          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">Identifica el contexto donde cada setup performa mejor.</p>
+
+          {/* Header row */}
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: "180px repeat(4, 1fr)" }}>
+            <div />
+            {["NY AM","NY PM","LONDON","ASIA"].map(s => (
+              <div key={s} className="text-center text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider pb-1">{s}</div>
+            ))}
+
+            {/* Data rows */}
+            {SESSION_MATRIX.map(row => (
+              <>
+                <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
+                  <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                    style={{ background: row.color }}>{row.abbr}</span>
+                  <span className="text-[11px] text-[var(--ink-2)] truncate">{row.name}</span>
+                </div>
+                {[row.nyam, row.nypm, row.london, row.asia].map((pct, ci) => {
+                  const { bg, text } = sessionCellColor(pct)
+                  return (
+                    <div key={ci} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold"
+                      style={{ background: bg, color: text }}>
+                      {pct}%
+                    </div>
+                  )
+                })}
+              </>
+            ))}
+          </div>
+        </div>
+
+        {/* A+ Checklist compliance */}
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">A+ Checklist · cumplimiento</p>
+          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-5">Tasa de cumplimiento por ítem esta semana.</p>
+
+          <div className="flex flex-col gap-4">
+            {CHECKLIST.map(c => {
+              const color = checklistColor(c.pct)
+              return (
+                <div key={c.item}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[12px] text-[var(--ink)]">{c.item}</span>
+                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{c.pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${c.pct}%`, background: color }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     </div>
   )
