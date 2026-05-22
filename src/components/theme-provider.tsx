@@ -14,6 +14,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem("tj-theme") as Theme | null
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setTheme(saved)
   }, [])
 
