@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, X, ChevronDown, ChevronUp, Check } from "lucide-react"
+import { Plus, X, ChevronDown, ChevronUp, Check, TrendingUp, Percent, Award, ClipboardCheck } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { Button } from "@/components/ui/button"
@@ -94,6 +94,7 @@ const KPIS = [
     sub: "últimas 5 semanas",
     trend: (totalPnl >= 0 ? "up" : "down") as "up" | "down",
     mono: true,
+    icon: <TrendingUp size={15} />,
   },
   {
     label: "Win Rate prom.",
@@ -101,6 +102,7 @@ const KPIS = [
     sub: "promedio semanal",
     trend: (avgWr >= 55 ? "up" : "down") as "up" | "down",
     mono: true,
+    icon: <Percent size={15} />,
   },
   {
     label: "Score disciplina",
@@ -108,6 +110,7 @@ const KPIS = [
     sub: "promedio semanal",
     trend: (avgDisc >= 70 ? "up" : avgDisc >= 60 ? "neutral" : "down") as "up" | "neutral" | "down",
     mono: true,
+    icon: <Award size={15} />,
   },
   {
     label: "Semanas revisadas",
@@ -115,6 +118,7 @@ const KPIS = [
     sub: `de ${ALL_REVIEWS.length} totales`,
     trend: "neutral" as "neutral",
     mono: true,
+    icon: <ClipboardCheck size={15} />,
   },
 ]
 

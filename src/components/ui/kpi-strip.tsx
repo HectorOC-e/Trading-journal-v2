@@ -5,8 +5,10 @@ import { KpiCard } from "@/components/ui/kpi-card"
 import { cn } from "@/lib/utils"
 import type { KpiCard as KpiCardType } from "@/types"
 
+interface KpiStripItem extends KpiCardType { icon?: React.ReactNode }
+
 interface KpiStripProps {
-  items: KpiCardType[]
+  items: KpiStripItem[]
   className?: string
 }
 

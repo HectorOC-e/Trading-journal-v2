@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2 } from "lucide-react"
+import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2, BarChart2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { mockRules } from "@/mock-data"
 import type { Rule, RulesSeverity } from "@/types"
@@ -277,14 +277,17 @@ export default function ReglasPage() {
         {/* KPI strip */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 24 }}>
           {[
-            { label: "Reglas activas", value: rules.filter(r => r.enabled).length.toString(), color: "var(--ink)" },
-            { label: "Violaciones mes", value: totalViol.toString(), color: "var(--loss)" },
-            { label: "CRÍTICAS activas", value: rules.filter(r => r.severity === "CRÍTICA" && r.enabled).length.toString(), color: "var(--loss)" },
-            { label: "Cumplimiento", value: `${Math.round((1 - totalViol / Math.max(1, rules.reduce((s,r)=>s+r.violationsThisMonth+10,0))) * 100)}%`, color: "var(--win)" },
+            { label: "Reglas activas",   value: rules.filter(r => r.enabled).length.toString(),                                                                                     color: "var(--ink)",  icon: <ShieldCheck size={15} /> },
+            { label: "Violaciones mes",  value: totalViol.toString(),                                                                                                                color: totalViol > 0 ? "var(--loss)" : "var(--win)",  icon: <XCircle size={15} /> },
+            { label: "Críticas activas", value: rules.filter(r => r.severity === "CRÍTICA" && r.enabled).length.toString(),                                                          color: "var(--loss)", icon: <AlertTriangle size={15} /> },
+            { label: "Cumplimiento",     value: `${Math.round((1 - totalViol / Math.max(1, rules.reduce((s,r)=>s+r.violationsThisMonth+10,0))) * 100)}%`,                            color: "var(--win)",  icon: <CheckCircle2 size={15} /> },
           ].map(k => (
             <div key={k.label} style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "14px 16px" }}>
-              <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--ink-3)" }}>{k.label}</p>
-              <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 22, fontWeight: 700, color: k.color, marginTop: 4 }}>{k.value}</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--ink-3)" }}>{k.label}</p>
+                <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{k.icon}</span>
+              </div>
+              <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 22, fontWeight: 700, color: k.color }}>{k.value}</p>
             </div>
           ))}
         </div>

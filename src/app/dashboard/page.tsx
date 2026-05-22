@@ -9,6 +9,7 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
 import { mockAccounts } from "@/mock-data"
+import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, BookOpen, Award } from "lucide-react"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -37,14 +38,17 @@ function Card({ title, sub, children, className }: {
 }
 
 /* ── KPI card ── */
-function KpiCard({ label, value, sub, color, delta }: {
-  label: string; value: string; sub: string; color?: string; delta?: string
+function KpiCard({ label, value, sub, color, delta, icon }: {
+  label: string; value: string; sub: string; color?: string; delta?: string; icon?: React.ReactNode
 }) {
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-5 py-4 flex flex-col gap-1.5">
-      <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".08em" }}>
-        {label}
-      </p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".08em" }}>
+          {label}
+        </p>
+        {icon && <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{icon}</span>}
+      </div>
       <p style={{ fontSize: "clamp(18px, 4vw, 28px)", fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: color ?? "var(--accent)", lineHeight: 1 }}>
         {value}
       </p>
@@ -225,10 +229,10 @@ function TabPortfolio() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiCard label="Net P&L total"  value="+$18.4k" sub="30d · todas las cuentas" color="var(--win)" delta="+12.4%" />
-        <KpiCard label="Profit Factor"  value="1.84"    sub="30d · todas las cuentas" delta="+0.3 vs sem. ant." />
-        <KpiCard label="Win Rate"       value="58%"     sub="134 / 230 operaciones" />
-        <KpiCard label="Max Drawdown"   value="-3.4%"   sub="abr 12 · FXify" color="var(--loss)" />
+        <KpiCard label="Net P&L total"  value="+$18.4k" sub="30d · todas las cuentas" color="var(--win)" delta="+12.4%" icon={<TrendingUp size={15} />} />
+        <KpiCard label="Profit Factor"  value="1.84"    sub="30d · todas las cuentas" delta="+0.3 vs sem. ant."        icon={<Activity size={15} />} />
+        <KpiCard label="Win Rate"       value="58%"     sub="134 / 230 operaciones"                                    icon={<Percent size={15} />} />
+        <KpiCard label="Max Drawdown"   value="-3.4%"   sub="abr 12 · FXify" color="var(--loss)"                      icon={<Shield size={15} />} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

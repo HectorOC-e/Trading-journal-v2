@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, X, Star, TrendingUp, TrendingDown, ChevronRight, Circle, CheckCircle2, Pencil, Copy, Pause, Play } from "lucide-react"
+import { Plus, X, Star, TrendingUp, TrendingDown, ChevronRight, Circle, CheckCircle2, Pencil, Copy, Pause, Play, Percent, Award, BarChart2, Zap } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -834,10 +834,13 @@ function NuevoSetupModal({ open, onOpenChange }: { open: boolean; onOpenChange: 
 }
 
 /* ── KPI strip ── */
-function KpiBox({ label, value, sub, positive }: { label: string; value: string; sub: string; positive?: boolean }) {
+function KpiBox({ label, value, sub, positive, icon }: { label: string; value: string; sub: string; positive?: boolean; icon?: React.ReactNode }) {
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3">
-      <p className="text-eyebrow mb-1">{label}</p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+        <p className="text-eyebrow">{label}</p>
+        {icon && <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{icon}</span>}
+      </div>
       <p className={cn("text-[22px] font-mono font-bold leading-none",
         positive === undefined ? "text-[var(--ink)]" : positive ? "text-[var(--win)]" : "text-[var(--loss)]")}>
         {value}
@@ -890,10 +893,10 @@ export default function PlaybookPage() {
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <KpiBox label="P&L Total (activos)"  value={`${totalPnl >= 0 ? "+" : ""}$${Math.abs(totalPnl).toLocaleString()}`} sub={`${active.length} setups activos`} positive={totalPnl >= 0} />
-          <KpiBox label="Win Rate promedio"     value={`${avgWr}%`}                       sub="sobre setups activos"          positive={avgWr >= 50} />
-          <KpiBox label="Trades totales"        value={String(totalTrades)}               sub="todos los setups" />
-          <KpiBox label="Mejor expectancy"      value={bestSetup ? `+${bestSetup.expectancy.toFixed(2)}R` : "—"} sub={bestSetup?.name ?? ""} positive />
+          <KpiBox label="P&L Total (activos)"  value={`${totalPnl >= 0 ? "+" : ""}$${Math.abs(totalPnl).toLocaleString()}`} sub={`${active.length} setups activos`} positive={totalPnl >= 0} icon={<TrendingUp size={14} />} />
+          <KpiBox label="Win Rate promedio"     value={`${avgWr}%`}                       sub="sobre setups activos"          positive={avgWr >= 50} icon={<Percent size={14} />} />
+          <KpiBox label="Trades totales"        value={String(totalTrades)}               sub="todos los setups"              icon={<BarChart2 size={14} />} />
+          <KpiBox label="Mejor expectancy"      value={bestSetup ? `+${bestSetup.expectancy.toFixed(2)}R` : "—"} sub={bestSetup?.name ?? ""} positive icon={<Award size={14} />} />
         </div>
 
         {/* Filters */}

@@ -6,9 +6,10 @@ import type { KpiCard as KpiCardType } from "@/types"
 
 interface KpiCardProps extends KpiCardType {
   className?: string
+  icon?: React.ReactNode
 }
 
-export function KpiCard({ label, value, sub, trend, mono = true, className }: KpiCardProps) {
+export function KpiCard({ label, value, sub, trend, mono = true, className, icon }: KpiCardProps) {
   const valueColor =
     trend === "up"      ? "var(--win)"  :
     trend === "down"    ? "var(--loss)" :
@@ -17,9 +18,12 @@ export function KpiCard({ label, value, sub, trend, mono = true, className }: Kp
 
   return (
     <div className={cn("bg-[var(--panel)] border border-[var(--line)] rounded-[10px] px-5 py-4", className)}>
-      <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>
-        {label}
-      </p>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>
+          {label}
+        </p>
+        {icon && <span style={{ color: "var(--ink-3)", opacity: 0.7 }}>{icon}</span>}
+      </div>
       <p style={{ fontSize: "clamp(18px, 4vw, 28px)", fontWeight: 700, fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit", color: valueColor, marginBottom: 4, lineHeight: 1 }}>
         {value}
       </p>
