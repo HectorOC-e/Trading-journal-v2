@@ -88,7 +88,7 @@ export default function ReviewsPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div>
         <TopBar title="Reviews" subtitle="Sem. 20 · 14–20 may 2026"
           actions={[{ label: "Nueva review", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
         />

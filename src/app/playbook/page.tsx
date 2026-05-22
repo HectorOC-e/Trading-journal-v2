@@ -10,23 +10,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { cn } from "@/lib/utils"
 
 const SETUPS = [
-  { abbr: "OR", name: "Opening Range Break", market: "NQ Futures", wr: "64%", avgR: "+1.80", trades: 18, color: "#f59e0b" },
-  { abbr: "FA", name: "Failed Auction",       market: "NQ Futures", wr: "52%", avgR: "+8.90", trades: 11, color: "#ef4444" },
-  { abbr: "LR", name: "London Reversal",      market: "FX",         wr: "58%", avgR: "+1.40", trades: 8,  color: "#4f6ef7" },
-  { abbr: "LG", name: "Liquidity Grab",       market: "NQ Futures", wr: "71%", avgR: "+2.20", trades: 14, color: "#22c55e" },
-  { abbr: "TC", name: "Trend Continuation",   market: "Equities",   wr: "49%", avgR: "+0.60", trades: 6,  color: "#9b59b6" },
-  { abbr: "AS", name: "Asia Sweep",           market: "NQ Futures", wr: "55%", avgR: "+1.10", trades: 9,  color: "#14b8a6" },
-  { abbr: "VW", name: "VWAP Reclaim",         market: "NQ Futures", wr: "60%", avgR: "+1.50", trades: 12, color: "#4f6ef7" },
-  { abbr: "NF", name: "News Fade – NFP",      market: "NQ Futures", wr: "41%", avgR: "-0.20", trades: 5,  color: "#6b7280" },
+  { abbr: "OR", name: "Opening Range Break", market: "NQ Futures", wr: 64, avgR: "+1.80", trades: 18, color: "#f59e0b",
+    sparkline: [10,14,12,18,16,22,26,28,24,30] },
+  { abbr: "FA", name: "Failed Auction",       market: "NQ Futures", wr: 52, avgR: "+8.90", trades: 11, color: "#ef4444",
+    sparkline: [20,15,18,12,16,10,14,11,8,9] },
+  { abbr: "LR", name: "London Reversal",      market: "FX",         wr: 58, avgR: "+1.40", trades: 8,  color: "#4f6ef7",
+    sparkline: [8,12,10,16,14,20,18,22,19,24] },
+  { abbr: "LG", name: "Liquidity Grab",       market: "NQ Futures", wr: 71, avgR: "+2.20", trades: 14, color: "#22c55e",
+    sparkline: [12,18,15,22,20,26,30,32,28,36] },
+  { abbr: "TC", name: "Trend Continuation",   market: "Equities",   wr: 49, avgR: "+0.60", trades: 6,  color: "#9b59b6",
+    sparkline: [18,14,16,12,14,10,12,8,10,7] },
+  { abbr: "AS", name: "Asia Sweep",           market: "NQ Futures", wr: 55, avgR: "+1.10", trades: 9,  color: "#14b8a6",
+    sparkline: [10,13,12,16,15,20,18,22,20,24] },
+  { abbr: "VW", name: "VWAP Reclaim",         market: "NQ Futures", wr: 60, avgR: "+1.50", trades: 12, color: "#4f6ef7",
+    sparkline: [9,14,12,18,16,22,20,25,23,28] },
+  { abbr: "NF", name: "News Fade – NFP",      market: "NQ Futures", wr: 41, avgR: "-0.20", trades: 5,  color: "#6b7280",
+    sparkline: [15,10,14,8,12,6,10,5,8,4] },
 ]
 
-const APLUS = ["Confluencia HTF", "Killzone activa", "Volumen sobre promedio", "Stop estructural"]
+const APLUS    = ["Confluencia HTF", "Killzone activa", "Volumen sobre promedio", "Stop estructural"]
 const STANDARD = ["Setup #1 o #2 del día", "Risk ≤ 1R", "RR ≥ 1.5"]
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const max = Math.max(...data), min = Math.min(...data)
+  const W = 100, H = 32
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * W
+    const y = H - ((v - min) / (max - min || 1)) * (H - 6) - 3
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(" ")
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 32 }} preserveAspectRatio="none">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
 
 function NuevoSetupModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [direction, setDirection] = useState<"LONG" | "SHORT" | "AMBAS">("AMBAS")
-  const [aplus, setAplus] = useState(APLUS)
-  const [standard, setStandard] = useState(STANDARD)
+  const [aplus, setAplus]         = useState(APLUS)
+  const [standard, setStandard]   = useState(STANDARD)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,14 +87,12 @@ function NuevoSetupModal({ open, onOpenChange }: { open: boolean; onOpenChange: 
             <label className="text-eyebrow block mb-1.5">Descripción *</label>
             <Textarea placeholder="¿Cuándo se ejecuta este setup?" />
           </div>
-          {/* A+ checklist */}
           <div className="border-t border-[var(--line)] pt-3">
             <p className="text-eyebrow mb-2">A+ Checklist</p>
             <div className="flex flex-col gap-2">
               {aplus.map((item, i) => (
                 <label key={i} className="flex items-center gap-2 text-sm text-[var(--ink-2)] cursor-pointer">
-                  <input type="checkbox" defaultChecked className="accent-[var(--accent)]" />
-                  {item}
+                  <input type="checkbox" defaultChecked className="accent-[var(--accent)]" />{item}
                 </label>
               ))}
               <button onClick={() => setAplus([...aplus, ""])}
@@ -80,14 +101,12 @@ function NuevoSetupModal({ open, onOpenChange }: { open: boolean; onOpenChange: 
               </button>
             </div>
           </div>
-          {/* Standard checklist */}
           <div className="border-t border-[var(--line)] pt-3">
             <p className="text-eyebrow mb-2">Standard Checklist</p>
             <div className="flex flex-col gap-2">
               {standard.map((item, i) => (
                 <label key={i} className="flex items-center gap-2 text-sm text-[var(--ink-2)] cursor-pointer">
-                  <input type="checkbox" defaultChecked className="accent-[var(--accent)]" />
-                  {item}
+                  <input type="checkbox" defaultChecked className="accent-[var(--accent)]" />{item}
                 </label>
               ))}
               <button onClick={() => setStandard([...standard, ""])}
@@ -112,42 +131,44 @@ export default function PlaybookPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div>
         <TopBar title="Playbook" subtitle="8 setups activos"
           actions={[{ label: "Nuevo setup", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
         />
         <div className="grid grid-cols-4 gap-3">
           {SETUPS.map(s => (
-            <div key={s.abbr} className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-3">
+            <div key={s.abbr} className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-3 hover:border-[var(--line-2)] transition-colors">
+              {/* Header */}
               <div className="flex items-center gap-3">
                 <span className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center text-sm font-bold text-white shrink-0"
                   style={{ backgroundColor: s.color }}>
                   {s.abbr}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
+                  <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
                   <p className="text-[10px] text-[var(--ink-3)]">{s.market}</p>
                 </div>
               </div>
-              {/* Sparkline placeholder */}
-              <svg width="100%" height="32" viewBox="0 0 100 32">
-                <polyline points="0,28 20,20 40,22 60,10 80,14 100,6"
-                  fill="none" stroke="var(--accent)" strokeWidth="1.5" />
-              </svg>
+
+              {/* Sparkline */}
+              <Sparkline data={s.sparkline} color={s.wr >= 50 ? "var(--win)" : "var(--loss)"} />
+
+              {/* Stats */}
               <div className="flex justify-between text-xs">
                 <div>
-                  <p className="text-eyebrow">Win %</p>
-                  <p className="font-mono font-bold text-[var(--win)]">{s.wr}</p>
+                  <p className="eyebrow mb-0.5">Win %</p>
+                  <p className={cn("font-mono font-bold", s.wr >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.wr}%</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-eyebrow">Avg R</p>
+                  <p className="eyebrow mb-0.5">Avg R</p>
                   <p className={cn("font-mono font-bold", s.avgR.startsWith("-") ? "text-[var(--loss)]" : "text-[var(--win)]")}>{s.avgR}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-eyebrow">Trades</p>
+                  <p className="eyebrow mb-0.5">Trades</p>
                   <p className="font-mono font-bold text-[var(--ink-2)]">{s.trades}</p>
                 </div>
               </div>
+
               <Button variant="ghost" size="sm" className="w-full mt-auto">Ver trades</Button>
             </div>
           ))}

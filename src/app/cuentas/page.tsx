@@ -126,7 +126,7 @@ export default function CuentasPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div>
         <TopBar title="Cuentas" subtitle="1 cuenta activa"
           actions={[{ label: "Nueva cuenta", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
         />

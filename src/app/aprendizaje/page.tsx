@@ -1,6 +1,3 @@
-// Aprendizaje screen — spec: design-spec/aprendizaje.html
-// Shell: Sidebar (layout) + main (ResourceGrid) + right rail (stats)
-
 import { Plus } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
@@ -12,9 +9,9 @@ const inProgress    = mockResources.filter((r) => r.progressPct !== undefined &&
 
 export default function AprendizajePage() {
   return (
-    <div className="flex h-full">
+    <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
       {/* Main */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto" style={{ padding: "28px 32px" }}>
         <TopBar
           title="Aprendizaje"
           subtitle={`${mockResources.length} entradas · ${reviewPending.length} marcadas para review`}
@@ -23,18 +20,18 @@ export default function AprendizajePage() {
         <ResourceGrid resources={mockResources} />
       </div>
 
-      {/* Right rail — stats */}
-      <aside className="w-72 shrink-0 border-l border-[var(--line)] p-4 flex flex-col gap-5 overflow-y-auto bg-[var(--panel)]">
+      {/* Right rail — 340px per spec */}
+      <aside style={{ width: 340, flexShrink: 0, borderLeft: "1px solid var(--line)", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, overflowY: "auto", background: "var(--panel)", position: "sticky", top: 0, height: "100vh" }}>
 
         {/* Progreso general */}
         <div>
           <p className="text-eyebrow mb-3">Progreso General</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Total",       value: mockResources.length },
-              { label: "Completados", value: completed.length },
-              { label: "En progreso", value: inProgress.length },
-              { label: "Sin progreso",value: mockResources.length - completed.length - inProgress.length },
+              { label: "Total",        value: mockResources.length },
+              { label: "Completados",  value: completed.length },
+              { label: "En progreso",  value: inProgress.length },
+              { label: "Sin progreso", value: mockResources.length - completed.length - inProgress.length },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] p-3 text-center">
                 <p className="font-mono text-lg font-bold text-[var(--ink)]">{value}</p>
@@ -72,10 +69,8 @@ export default function AprendizajePage() {
                 <div key={type} className="flex items-center gap-2">
                   <span className="text-[10px] text-[var(--ink-3)] w-20 shrink-0">{type}</span>
                   <div className="flex-1 h-1.5 rounded-full bg-[var(--line)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)]"
-                      style={{ width: `${(count / mockResources.length) * 100}%` }}
-                    />
+                    <div className="h-full rounded-full bg-[var(--accent)]"
+                      style={{ width: `${(count / mockResources.length) * 100}%` }} />
                   </div>
                   <span className="text-[10px] font-mono text-[var(--ink-2)] w-3">{count}</span>
                 </div>

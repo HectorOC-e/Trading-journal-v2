@@ -9,18 +9,21 @@ interface KpiCardProps extends KpiCardType {
 }
 
 export function KpiCard({ label, value, sub, trend, mono = true, className }: KpiCardProps) {
-  const trendColor =
-    trend === "up"   ? "text-[var(--win)]" :
-    trend === "down" ? "text-[var(--loss)]" :
-    "text-[var(--ink)]"
+  const valueColor =
+    trend === "up"      ? "var(--win)"  :
+    trend === "down"    ? "var(--loss)" :
+    trend === "neutral" ? "var(--be)"   :
+    "var(--accent)"
 
   return (
-    <div className={cn("flex flex-col gap-1 p-4 rounded-[var(--radius)] bg-[var(--panel)] border border-[var(--line)]", className)}>
-      <p className="text-eyebrow">{label}</p>
-      <p className={cn("text-xl font-bold leading-none", trendColor, mono && "font-mono")}>
+    <div className={cn("bg-[var(--panel)] border border-[var(--line)] rounded-[10px] px-5 py-4", className)}>
+      <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 28, fontWeight: 700, fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit", color: valueColor, marginBottom: 4, lineHeight: 1 }}>
         {value}
       </p>
-      {sub && <p className="text-[11px] text-[var(--ink-3)]">{sub}</p>}
+      {sub && <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</p>}
     </div>
   )
 }

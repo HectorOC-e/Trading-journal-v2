@@ -80,7 +80,7 @@ export default function ReglasPage() {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto p-6">
+      <div>
         <TopBar title="Reglas de conducta"
           subtitle="4 reglas del sistema · 4 personalizadas · 7 Violaciones este mes"
           actions={[{ label: "Nueva regla", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}

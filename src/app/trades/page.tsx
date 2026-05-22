@@ -1,6 +1,3 @@
-// Trades screen — spec: design-spec/trades.html
-// Shell: Sidebar (layout) + main (TradesTable) + right rail (TradeDetailPanel)
-
 "use client"
 
 import { useState } from "react"
@@ -26,9 +23,10 @@ export default function TradesPage() {
 
   return (
     <>
-      <div className="flex h-full">
-        {/* Main */}
-        <div className="flex-1 overflow-y-auto p-6">
+      {/* -mx-8 -my-7 breaks out of main-content padding so the rail can go full height */}
+      <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
+        {/* Main column */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: "28px 32px" }}>
           <TopBar
             title="Trades"
             subtitle={`${mockTrades.length} operaciones este mes`}
@@ -47,9 +45,9 @@ export default function TradesPage() {
           />
         </div>
 
-        {/* Right rail — trade detail */}
+        {/* Right rail — 340px per spec */}
         {selected && (
-          <div className="w-72 shrink-0 border-l border-[var(--line)]">
+          <div style={{ width: 340, flexShrink: 0, borderLeft: "1px solid var(--line)", background: "var(--panel)", position: "sticky", top: 0, height: "100vh", overflowY: "auto" }}>
             <TradeDetailPanel
               trade={selected}
               onClose={() => setSelected(null)}
