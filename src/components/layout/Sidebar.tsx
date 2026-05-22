@@ -3,23 +3,23 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
-const NAV_SECTIONS = [
+const NAV = [
   {
-    label: "OPERACIÓN",
+    section: "OPERACIÓN",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: "⊞" },
-      { href: "/cuentas",   label: "Cuentas",   icon: "◎" },
-      { href: "/trades",    label: "Trades",    icon: "↕", badge: 3 },
-      { href: "/playbook",  label: "Playbook",  icon: "◈" },
-      { href: "/reglas",    label: "Reglas",    icon: "⊘" },
-      { href: "/reviews",   label: "Reviews",   icon: "↺" },
-      { href: "/aprendizaje", label: "Aprendizaje", icon: "◉" },
+      { href: "/dashboard",   label: "Dashboard" },
+      { href: "/cuentas",     label: "Cuentas" },
+      { href: "/trades",      label: "Trades",      badge: 3 },
+      { href: "/playbook",    label: "Playbook" },
+      { href: "/reglas",      label: "Reglas" },
+      { href: "/reviews",     label: "Reviews" },
+      { href: "/aprendizaje", label: "Aprendizaje" },
     ],
   },
   {
-    label: "CUENTA",
+    section: "CUENTA",
     items: [
-      { href: "/perfil", label: "Perfil", icon: "◯" },
+      { href: "/perfil", label: "Perfil" },
     ],
   },
 ]
@@ -29,34 +29,61 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* Logo */}
-      <div className="px-5 py-4 border-b border-[var(--line)]">
-        <span className="text-[15px] font-bold tracking-tight text-[var(--ink)]">
-          Trading <span className="text-[var(--accent)]">Journal</span>
+      {/* Brand */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "20px 20px 16px",
+        borderBottom: "1px solid var(--line)",
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8,
+          background: "var(--ink)",
+          display: "grid", placeItems: "center",
+          fontFamily: "'JetBrains Mono', monospace",
+          fontWeight: 700, fontSize: 13, color: "white",
+          position: "relative", flexShrink: 0,
+        }}>
+          TJ
+          <span style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: "var(--win)",
+            position: "absolute", top: -2, right: -2,
+            border: "2px solid var(--panel)",
+          }} />
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+          Trading Journal
         </span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2.5 py-3 flex flex-col gap-4">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.label}>
-            <p className="text-eyebrow px-3 mb-1">{section.label}</p>
-            {section.items.map((item) => {
+      <nav style={{ padding: "12px 0", flex: 1 }}>
+        {NAV.map(group => (
+          <div key={group.section}>
+            <p className="eyebrow" style={{ padding: "8px 20px 4px" }}>
+              {group.section}
+            </p>
+            {group.items.map(item => {
               const active = pathname.startsWith(item.href)
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-sm)] text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                      : "text-[var(--ink-2)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"
-                  }`}
-                >
-                  <span className="text-base leading-none">{item.icon}</span>
-                  <span className="flex-1">{item.label}</span>
+                <Link key={item.href} href={item.href} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 12px 9px 20px", margin: "1px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: 13.5,
+                  color: active ? "var(--accent)" : "var(--ink-2)",
+                  fontWeight: active ? 600 : 400,
+                  background: active ? "var(--accent-soft)" : "transparent",
+                  textDecoration: "none",
+                  transition: "background .12s",
+                }}>
+                  <span style={{ flex: 1 }}>{item.label}</span>
                   {"badge" in item && item.badge ? (
-                    <span className="text-[11px] font-semibold bg-[var(--loss)] text-white rounded-full px-1.5 py-0.5 leading-none">
+                    <span style={{
+                      fontSize: 10, fontWeight: 700,
+                      background: "var(--loss)", color: "white",
+                      borderRadius: 999, padding: "1px 6px",
+                    }}>
                       {item.badge}
                     </span>
                   ) : null}
@@ -67,18 +94,26 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Review semanal CTA */}
-      <div className="mx-3 mb-4 p-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
-        <p className="text-[12px] font-semibold text-[var(--ink)] mb-1">Review semanal lista</p>
-        <p className="text-[11px] text-[var(--ink-3)] mb-3 leading-relaxed">
-          Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.
-        </p>
-        <Link
-          href="/reviews/new"
-          className="block text-center text-[12px] font-semibold py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel)] border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
-        >
-          Empezar review
-        </Link>
+      {/* Footer — avatar + user info */}
+      <div style={{
+        padding: "16px 20px",
+        borderTop: "1px solid var(--line)",
+        display: "flex", alignItems: "center", gap: 10,
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: "50%",
+          background: "var(--accent-soft)", color: "var(--accent)",
+          display: "grid", placeItems: "center",
+          fontSize: 12, fontWeight: 700, flexShrink: 0,
+        }}>
+          HC
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", lineHeight: 1.2 }}>
+            Héctor O.C.
+          </p>
+          <p style={{ fontSize: 11, color: "var(--ink-3)" }}>Single-trader · TJ</p>
+        </div>
       </div>
     </aside>
   )

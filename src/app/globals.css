@@ -1,17 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap");
 @import "tailwindcss";
 
-/* ── Design Tokens (from design-spec/foundations.html) ── */
+/* ── Design Tokens — fiel al spec ── */
 :root {
-  --bg:          #f6f5f1;
-  --panel:       #ffffff;
-  --panel-2:     #fafaf7;
-  --ink:         #16140f;
-  --ink-2:       #45413a;
-  --ink-3:       #8a8678;
-  --line:        #eceae2;
-  --line-2:      #e2dfd4;
-  --chip:        #f2efe7;
+  --bg:          #F6F5F1;
+  --panel:       #FFFFFF;
+  --panel-2:     #FAFAF7;
+  --ink:         #16140F;
+  --ink-2:       #45413A;
+  --ink-3:       #8A8678;
+  --line:        #ECEAE2;
+  --line-2:      #E2DFD4;
+  --chip:        #F2EFE7;
   --accent:      oklch(58% 0.16 264);
   --accent-soft: oklch(95% 0.03 264);
   --win:         oklch(63% 0.16 152);
@@ -22,11 +22,11 @@
   --be-soft:     oklch(95% 0.06 85);
   --radius:      14px;
   --radius-sm:   10px;
-  --chart-1:     #4f6ef7;
-  --chart-2:     #2d7a3a;
-  --chart-3:     #b87d2d;
-  --chart-4:     #b83232;
-  --chart-5:     #c4622d;
+  --chart-1: #4f6ef7;
+  --chart-2: #2d7a3a;
+  --chart-3: #b87d2d;
+  --chart-4: #b83232;
+  --chart-5: #c4622d;
   --cat-libro:       #4f6ef7;
   --cat-video:       #9b59b6;
   --cat-nota:        #22c55e;
@@ -37,19 +37,19 @@
 }
 
 .dark {
-  --bg:          #0e0c09;
-  --panel:       #16140f;
-  --panel-2:     #1b1813;
-  --ink:         #f5f2ea;
-  --ink-2:       #c7c2b5;
-  --ink-3:       #807a6b;
-  --line:        #25221c;
-  --line-2:      #2f2c24;
-  --chip:        #25221c;
-  --accent-soft: oklch(20% 0.06 264);
-  --win-soft:    oklch(20% 0.06 152);
-  --loss-soft:   oklch(20% 0.06 27);
-  --be-soft:     oklch(20% 0.06 85);
+  --bg:          #0E0C09;
+  --panel:       #16140F;
+  --panel-2:     #1B1813;
+  --ink:         #F5F2EA;
+  --ink-2:       #C7C2B5;
+  --ink-3:       #807A6B;
+  --line:        #25221C;
+  --line-2:      #2F2C24;
+  --chip:        #25221C;
+  --accent-soft: #1A1C2A;
+  --win-soft:    #14201A;
+  --loss-soft:   #251514;
+  --be-soft:     #25201A;
 }
 
 @theme inline {
@@ -75,19 +75,66 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html, body { height: 100%; }
+
 body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Inter", sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Shell layout */
-.shell        { display: flex; height: 100vh; overflow: hidden; }
-.sidebar      { width: 240px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; }
-.main-content { flex: 1; overflow-y: auto; background: var(--bg); }
-.right-rail   { width: 280px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; }
+/* ── Shell layout — fiel al spec: 240px sidebar + 1fr main + 340px rail ── */
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
 
-/* Typography */
-.text-eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
-.mono         { font-family: "JetBrains Mono", monospace; }
+.shell-with-rail {
+  display: grid;
+  grid-template-columns: 240px 1fr 340px;
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  padding: 28px 32px;
+  overflow-y: auto;
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.right-rail {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+}
+
+/* ── Typography ── */
+.eyebrow {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+/* keep backward compat alias */
+.text-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); font-weight: 600; }
+.mono { font-family: "JetBrains Mono", monospace; }
