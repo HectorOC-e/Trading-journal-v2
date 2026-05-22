@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @db.Uuid
+  email        String   @unique
+  name         String   @default("")
+  role         String   @default("Single-trader")
+  timezone     String   @default("America/Tegucigalpa")
+  baseCurrency String   @default("USD") @map("base_currency")
+  language     String   @default("es")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  accounts          Account[]
+  setups            Setup[]
+  trades            Trade[]
+  rules             Rule[]
+  weeklyReviews     WeeklyReview[]
+  learningResources LearningResource[]
+  markets           Market[]
+
+  @@map("users")
+}
+
+model Account {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  name           String
+  broker         String
+  type           String
+  initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(14, 2)
+  currency       String   @default("USD")
+  timezone       String   @default("America/New_York")
+  pfMaxDrawdownPct  Decimal? @map("pf_max_drawdown_pct") @db.Decimal(5, 2)
+  pfDailyLossPct    Decimal? @map("pf_daily_loss_pct") @db.Decimal(5, 2)
+  pfMaxTradesPerDay Int?     @map("pf_max_trades_per_day")
+  pfTargetPct       Decimal? @map("pf_target_pct") @db.Decimal(5, 2)
+  pfAllowedSymbols  String[] @map("pf_allowed_symbols")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades        Trade[]
+  weeklyReviews WeeklyReview[]
+
+  @@map("accounts")
+}
+
+model Setup {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  name              String
+  abbreviation      String
+  market            String   @default("")
+  direction         String   @default("AMBAS")
+  status            String   @default("ACTIVO")
+  description       String   @default("")
+  aplusChecklist    String[] @map("aplus_checklist")
+  standardChecklist String[] @map("standard_checklist")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades Trade[]
+
+  @@map("setups")
+}
+
+model Trade {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  accountId      String   @map("account_id") @db.Uuid
+  setupId        String?  @map("setup_id") @db.Uuid
+  direction      String
+  symbol         String
+  entry          Decimal  @db.Decimal(16, 5)
+  stop           Decimal  @db.Decimal(16, 5)
+  target         Decimal  @db.Decimal(16, 5)
+  size           Decimal  @db.Decimal(12, 4)
+  date           DateTime @db.Date
+  openTime       String   @map("open_time")
+  session        String
+  tags           String[]
+  notes          String   @default("")
+  screenshotUrls String[] @map("screenshot_urls")
+  rMultiple      Decimal? @map("r_multiple") @db.Decimal(8, 3)
+  pnl            Decimal? @db.Decimal(14, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  setup   Setup?   @relation(fields: [setupId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([accountId])
+  @@map("trades")
+}
+
+model Rule {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  name                String
+  description         String   @default("")
+  severity            String   @default("CRÍTICA")
+  isSystem            Boolean  @default(false) @map("is_system")
+  enabled             Boolean  @default(true)
+  violationsThisMonth Int      @default(0) @map("violations_this_month")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rules")
+}
+
+model WeeklyReview {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  accountId        String?  @map("account_id") @db.Uuid
+  weekLabel        String   @map("week_label")
+  weekRange        String   @map("week_range")
+  weekStart        DateTime @map("week_start") @db.Date
+  weekEnd          DateTime @map("week_end") @db.Date
+  tradeCount       Int      @default(0) @map("trade_count")
+  netPnl           Decimal  @default(0) @map("net_pnl") @db.Decimal(14, 2)
+  winRate          Decimal  @default(0) @map("win_rate") @db.Decimal(5, 2)
+  disciplineScore  Int      @default(0) @map("discipline_score")
+  executiveSummary String   @default("") @map("executive_summary")
+  whatWorked       String   @default("") @map("what_worked")
+  toImprove        String   @default("") @map("to_improve")
+  status           String   @default("draft")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([userId, weekStart(sort: Desc)])
+  @@map("weekly_reviews")
+}
+
+model LearningResource {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  title           String
+  type            String
+  author          String   @default("")
+  source          String   @default("")
+  date            DateTime @db.Date
+  notes           String   @default("")
+  tags            String[]
+  markedForReview Boolean  @default(false) @map("marked_for_review")
+  progressPct     Int?     @map("progress_pct")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@map("learning_resources")
+}
+
+model Market {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  symbol        String
+  name          String
+  category      String
+  exchange      String   @default("")
+  tickSize      String   @default("") @map("tick_size")
+  pointValue    String   @default("") @map("point_value")
+  currency      String   @default("USD")
+  sessions      String[]
+  description   String   @default("")
+  isWatchlisted Boolean  @default(false) @map("is_watchlisted")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
+  @@map("markets")
+}
