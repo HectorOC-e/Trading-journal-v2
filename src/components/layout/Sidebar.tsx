@@ -7,7 +7,7 @@ import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, MoreHorizontal,
 } from "lucide-react"
 
 const NAV = [
@@ -55,10 +55,10 @@ export function Sidebar() {
   if (isMobile) {
     const bottomItems = [
       NAV[0].items[0], // Dashboard
-      NAV[0].items[1], // Cuentas
       NAV[0].items[2], // Trades
       NAV[0].items[5], // Reviews
       NAV[0].items[6], // Aprendizaje
+      NAV[1].items[0], // Perfil
     ]
     return (
       <>
@@ -91,17 +91,21 @@ export function Sidebar() {
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", flex: 1 }}>
             Trading Journal
           </span>
-          <button
-            onClick={toggle}
-            style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "var(--chip)", border: "1px solid var(--line)",
-              display: "grid", placeItems: "center",
-              cursor: "pointer", fontSize: 14,
-            }}
-          >
-            {theme === "dark" ? "☀️" : "🌙"}
-          </button>
+          {/* More menu: Playbook, Cuentas, Reglas */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Link href="/cuentas" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: pathname.startsWith("/cuentas") ? "var(--accent)" : "var(--ink-3)", textDecoration: "none" }} title="Cuentas">
+              <Wallet size={14} />
+            </Link>
+            <Link href="/playbook" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: pathname.startsWith("/playbook") ? "var(--accent)" : "var(--ink-3)", textDecoration: "none" }} title="Playbook">
+              <BookOpen size={14} />
+            </Link>
+            <button
+              onClick={toggle}
+              style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14 }}
+            >
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
+          </div>
         </header>
 
         {/* Bottom nav bar */}

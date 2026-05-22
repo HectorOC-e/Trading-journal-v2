@@ -154,7 +154,7 @@ function PropFirmRules() {
       <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">
         Risk engine evalúa estos límites antes de aceptar cada nuevo trade.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {PROP_ACCOUNTS.map(a => (
           <div key={a.name}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-3"
@@ -286,7 +286,8 @@ function TabPortfolio() {
 
       {/* Accounts table */}
       <Card title="Comparación de cuentas">
-        <table className="w-full">
+        <div className="overflow-x-auto -mx-1">
+        <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-[var(--line)]">
               {["Cuenta","Balance","P&L mes","Win %","Drawdown","Estado"].map(h => (
@@ -309,6 +310,7 @@ function TabPortfolio() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   )
@@ -480,7 +482,8 @@ function TabOperador() {
           </div>
         </div>
 
-        <table className="w-full">
+        <div className="overflow-x-auto -mx-1">
+        <table className="w-full min-w-[480px]">
           <thead>
             <tr className="border-b border-[var(--line)]">
               {["Símbolo · Setup","R","P&L Neto","Sesión · Tags","Fecha"].map(h => (
@@ -535,11 +538,13 @@ function TabOperador() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* ── Rendimiento por sesión ── */}
       <Card title="Rendimiento por sesión">
-        <table className="w-full">
+        <div className="overflow-x-auto -mx-1">
+        <table className="w-full min-w-[320px]">
           <thead>
             <tr className="border-b border-[var(--line)]">
               {["Sesión","Trades","Win %","Avg R"].map(h => (
@@ -562,6 +567,7 @@ function TabOperador() {
             ))}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   )

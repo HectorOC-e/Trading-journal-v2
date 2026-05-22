@@ -252,25 +252,25 @@ export function ReviewCard({
         style={{ background: isLoss ? "var(--loss)" : isDraft ? "var(--be)" : "var(--win)" }}
       />
 
-      <div className="p-5">
-        {/* Row 1: left label + pills + status */}
-        <div className="flex items-start gap-5">
+      <div className="p-4 sm:p-5">
+        {/* Header row: week label + status badge + stat pills */}
+        <div className="flex items-start gap-3 sm:gap-5 mb-3">
           {/* LEFT: week label */}
-          <div className="shrink-0 w-28">
+          <div className="shrink-0 w-20 sm:w-28">
             <p
               className="font-mono font-bold leading-none"
-              style={{ fontSize: 28, color: "var(--ink)" }}
+              style={{ fontSize: "clamp(20px,5vw,28px)", color: "var(--ink)" }}
             >
               {review.weekLabel}
             </p>
-            <p className="text-xs mt-1" style={{ color: "var(--ink-3)" }}>
+            <p className="text-[10px] sm:text-xs mt-1" style={{ color: "var(--ink-3)" }}>
               {review.weekRange}
             </p>
-            <p className="text-[11px] mt-1 font-medium" style={{ color: "var(--ink-2)" }}>
+            <p className="text-[10px] sm:text-[11px] mt-0.5 font-medium truncate" style={{ color: "var(--ink-2)" }}>
               {accountName(review.accountId)}
             </p>
             <span
-              className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-2"
+              className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full mt-1.5"
               style={{
                 background: isDraft ? "var(--be-soft)" : "var(--win-soft)",
                 color: isDraft ? "var(--be)" : "var(--win)",
@@ -282,76 +282,44 @@ export function ReviewCard({
 
           {/* CENTER: stat pills + discipline bar + summary */}
           <div className="flex-1 min-w-0">
-            {/* Stat pills row */}
-            <div className="flex items-center gap-2 flex-wrap mb-3">
-              <StatPill
-                label="Trades"
-                value={review.tradeCount.toString()}
-                color="var(--ink)"
-                bg="var(--panel-2)"
-              />
-              <StatPill
-                label="Net P&L"
-                value={formatPnl(review.netPnl)}
-                color={pnlColor(review.netPnl)}
-                bg={pnlBg(review.netPnl)}
-              />
-              <StatPill
-                label="Win Rate"
-                value={`${review.winRate}%`}
-                color={review.winRate >= 55 ? "var(--win)" : "var(--loss)"}
-                bg={review.winRate >= 55 ? "var(--win-soft)" : "var(--loss-soft)"}
-              />
-              <StatPill
-                label="Disciplina"
-                value={review.disciplineScore.toString()}
-                color={disciplineColor(review.disciplineScore)}
-                bg={disciplineBg(review.disciplineScore)}
-              />
+            {/* Stat pills — 2 per row on mobile */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-3">
+              <StatPill label="Trades" value={review.tradeCount.toString()} color="var(--ink)" bg="var(--panel-2)" />
+              <StatPill label="Net P&L" value={formatPnl(review.netPnl)} color={pnlColor(review.netPnl)} bg={pnlBg(review.netPnl)} />
+              <StatPill label="Win Rate" value={`${review.winRate}%`} color={review.winRate >= 55 ? "var(--win)" : "var(--loss)"} bg={review.winRate >= 55 ? "var(--win-soft)" : "var(--loss-soft)"} />
+              <StatPill label="Disciplina" value={review.disciplineScore.toString()} color={disciplineColor(review.disciplineScore)} bg={disciplineBg(review.disciplineScore)} />
             </div>
 
             {/* Discipline bar */}
             <div className="mb-3">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-[10px]" style={{ color: "var(--ink-3)" }}>
-                  Score de disciplina
-                </span>
-                <span
-                  className="text-[10px] font-bold"
-                  style={{ color: disciplineColor(review.disciplineScore) }}
-                >
+                <span className="text-[10px]" style={{ color: "var(--ink-3)" }}>Score de disciplina</span>
+                <span className="text-[10px] font-bold" style={{ color: disciplineColor(review.disciplineScore) }}>
                   {review.disciplineScore}/100
                 </span>
               </div>
               <DisciplineBar score={review.disciplineScore} />
             </div>
 
-            {/* Summary excerpt */}
+            {/* Summary — hidden on very small screens */}
             {review.executiveSummary && (
-              <p
-                className="text-sm line-clamp-2 leading-relaxed"
-                style={{ color: "var(--ink-2)" }}
-              >
+              <p className="hidden sm:block text-sm line-clamp-2 leading-relaxed" style={{ color: "var(--ink-2)" }}>
                 {review.executiveSummary}
               </p>
             )}
           </div>
 
-          {/* RIGHT: what worked / to improve */}
-          <div className="shrink-0 w-64 flex gap-2">
-            <BulletPreview
-              title="Qué funcionó"
-              text={review.whatWorked}
-              color="var(--win)"
-              bg="var(--win-soft)"
-            />
-            <BulletPreview
-              title="A mejorar"
-              text={review.toImprove}
-              color="var(--loss)"
-              bg="var(--loss-soft)"
-            />
+          {/* RIGHT: bullet previews — hidden on mobile, shown on md+ */}
+          <div className="hidden lg:flex shrink-0 w-64 gap-2">
+            <BulletPreview title="Qué funcionó" text={review.whatWorked} color="var(--win)" bg="var(--win-soft)" />
+            <BulletPreview title="A mejorar" text={review.toImprove} color="var(--loss)" bg="var(--loss-soft)" />
           </div>
+        </div>
+
+        {/* Bullet previews on mobile: stacked below */}
+        <div className="flex lg:hidden gap-2 mb-3">
+          <BulletPreview title="Qué funcionó" text={review.whatWorked} color="var(--win)" bg="var(--win-soft)" />
+          <BulletPreview title="A mejorar" text={review.toImprove} color="var(--loss)" bg="var(--loss-soft)" />
         </div>
 
         {/* Footer */}
