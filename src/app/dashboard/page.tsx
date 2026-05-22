@@ -568,103 +568,219 @@ function TabOperador() {
 /* ═══════════════════════════════════════════
    TAB DISCIPLINA
 ═══════════════════════════════════════════ */
-const VIOLATIONS = [
-  { rule: "Operar fuera de sesión",      count: 2, severity: "CRÍTICA" },
-  { rule: "Exceder máximo de trades",    count: 3, severity: "CRÍTICA" },
-  { rule: "Pérdida diaria sobre límite", count: 1, severity: "CRÍTICA" },
-  { rule: "Símbolo no permitido",        count: 1, severity: "MENOR"   },
+
+// Heatmap data: 7 days × 12 weeks. null = no trading, 0 = limpio, 1 = menor, 2 = mayor
+type HeatVal = null | 0 | 1 | 2
+const DAYS = ["L","M","X","J","V","S","D"]
+const WEEKS = 12
+const HEATMAP: HeatVal[][] = [
+  // L
+  [2,1,null,2,0,null,null,0,2,1,1,0],
+  // M
+  [1,0,0,0,0,0,2,0,0,0,0,0],
+  // X
+  [2,null,1,0,1,0,0,0,1,1,0,0],
+  // J
+  [1,1,2,1,0,null,0,0,2,0,null,0],
+  // V
+  [0,1,2,1,1,1,1,null,1,2,1,1],
+  // S
+  [null,null,null,null,null,null,null,null,null,null,null,null],
+  // D
+  [null,null,null,null,null,null,null,null,null,null,null,null],
 ]
 
-const DISC_WEEK = [
-  { day: "L", score: 92 }, { day: "M", score: 78 }, { day: "X", score: 85 },
-  { day: "J", score: 60 }, { day: "V", score: 88 },
+const HEAT_COLORS: Record<string, string> = {
+  "null": "var(--panel-2)",
+  "0": "var(--win)",
+  "1": "var(--be)",
+  "2": "var(--loss)",
+}
+
+const R_DIST = [
+  { r: "-3R", count: 2, color: "var(--loss)" },
+  { r: "-2R", count: 3, color: "var(--loss)" },
+  { r: "-1R", count: 6, color: "var(--loss)" },
+  { r: "0R",  count: 4, color: "var(--be)"   },
+  { r: "+1R", count: 8, color: "var(--win)"  },
+  { r: "+2R", count: 11, color: "var(--win)" },
+  { r: "+3R", count: 5, color: "var(--win)"  },
+  { r: "+4R", count: 2, color: "var(--win)"  },
+]
+
+const VIOLATIONS_DATA = [
+  { rule: "Trade #4+ del día (max-trades-day)", count: 5, delta: -2, severity: "mayor" },
+  { rule: "Operar fuera de sesión NY AM",       count: 3, delta: +1, severity: "mayor" },
+  { rule: "Recovery RR forzado",                count: 2, delta:  0, severity: "mayor" },
+  { rule: "Sin checklist completo",             count: 2, delta: -1, severity: "menor" },
+  { rule: "Flag impulsivo manual",              count: 1, delta: -3, severity: "menor" },
+]
+
+const COMP_DATA = [
+  { name: "Plan seguido", value: 14, color: "var(--win)"  },
+  { name: "Plan parcial",  value: 5,  color: "var(--be)"  },
+  { name: "Off-plan",      value: 4,  color: "var(--loss)" },
 ]
 
 function TabDisciplina() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
-        <KpiCard label="Score semana"  value="78/100" sub="Sem. 20" />
-        <KpiCard label="Violaciones"   value="7"      sub="este mes" color="var(--loss)" />
-        <KpiCard label="Plan rate"     value="82%"    sub="trades en plan" color="var(--win)" />
-        <KpiCard label="DO-NOT-TAKE"   value="3"      sub="evitados hoy" color="var(--be)" />
-      </div>
 
-      {/* Banner */}
-      <div className="rounded-[var(--radius)] border border-[var(--loss)] bg-[var(--loss-soft)] px-4 py-3 flex items-center gap-3">
-        <span className="text-xl">🚫</span>
-        <div>
-          <p className="text-sm font-semibold text-[var(--loss)]">DO-NOT-TAKE activo</p>
-          <p className="text-xs text-[var(--loss)] opacity-80">Has alcanzado el límite de 3 trades por hoy</p>
+      {/* ── DO-NOT-TAKE banner ── */}
+      <div className="rounded-[var(--radius)] border border-[var(--loss)] px-4 py-3 flex items-center justify-between gap-3"
+        style={{ background: "rgba(180,40,40,0.12)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--loss)] flex items-center justify-center text-white text-sm font-bold shrink-0">!</div>
+          <div>
+            <p className="text-sm font-bold text-[var(--loss)]">DO-NOT-TAKE activo · 3 condiciones cumplidas</p>
+            <p className="text-xs text-[var(--ink-3)] mt-0.5">Ya son 3 trades hoy · plan no seguido en último trade · RR objetivo forzado a 2.5R sin confluencia</p>
+          </div>
         </div>
+        <button className="text-xs font-semibold text-[var(--ink-3)] border border-[var(--line)] rounded-[var(--radius-sm)] px-3 py-1.5 whitespace-nowrap hover:text-[var(--ink)] transition-colors shrink-0">
+          Ver registro →
+        </button>
       </div>
 
+      {/* ── Score + Composición ── */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Score card */}
-        <Card title="Score semanal" className="col-span-1">
-          <div className="text-center py-2">
-            <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 52, lineHeight: 1 }}>78</p>
-            <p className="text-xs text-[var(--ink-3)] mt-1">de 100 · Sem. 20</p>
+        {/* Score panel */}
+        <div className="col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <p className="text-eyebrow mb-3">Discipline Score · Semana actual</p>
+          <div className="flex items-baseline gap-3 mb-1">
+            <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>78</p>
+            <p className="text-[var(--ink-3)] text-lg font-mono">/ 100</p>
+            <span className="text-sm font-semibold text-[var(--win)] flex items-center gap-1">↑ +6 vs sem. pasada</span>
           </div>
-          <div className="mt-3 h-2 rounded-full bg-[var(--line)] overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: "78%", background: "var(--be)" }} />
-          </div>
-          <div className="mt-4 flex flex-col gap-1.5">
+          {/* Three metric rows */}
+          <div className="grid grid-cols-3 gap-3 mt-5">
             {[
-              ["Plan rate",    "82%", "var(--win)"],
-              ["Violaciones",  "7",   "var(--loss)"],
-              ["DO-NOT-TAKE",  "3",   "var(--be)"],
-            ].map(([l,v,c]) => (
-              <div key={l} className="flex justify-between text-xs border-b border-[var(--line)] pb-1.5 last:border-0 last:pb-0">
-                <span className="text-[var(--ink-2)]">{l}</span>
-                <span className="font-mono font-semibold" style={{ color: c }}>{v}</span>
+              { label: "Sin violación",   value: "78%",  sub: "18 / 23 trades", color: "var(--win)"  },
+              { label: "Plan seguido",    value: "82%",  sub: "19 / 23 trades", color: "#4f6ef7"    },
+              { label: "Indiscipline $",  value: "$214", sub: "costo acumulado", color: "var(--loss)" },
+            ].map(m => (
+              <div key={m.label} className="border-l-2 pl-3" style={{ borderColor: m.color }}>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-1">{m.label}</p>
+                <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 22 }}>{m.value}</p>
+                <p className="text-[10px] text-[var(--ink-3)] mt-0.5">{m.sub}</p>
               </div>
             ))}
           </div>
-          {/* Mini score bars por día */}
-          <div className="mt-4 pt-3 border-t border-[var(--line)]">
-            <p className="text-eyebrow mb-2">Score por día</p>
-            <div className="flex gap-1 items-end h-10">
-              {DISC_WEEK.map(d => (
-                <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full rounded-sm transition-all"
-                    style={{ height: `${(d.score / 100) * 32}px`, background: d.score >= 80 ? "var(--win)" : d.score >= 60 ? "var(--be)" : "var(--loss)" }} />
-                  <span className="text-[9px] text-[var(--ink-3)]">{d.day}</span>
+        </div>
+
+        {/* Composición semanal donut */}
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 flex flex-col">
+          <p className="text-eyebrow mb-4">Composición semanal</p>
+          <div className="flex-1 flex items-center gap-4">
+            <div style={{ position: "relative", width: 120, height: 120, flexShrink: 0 }}>
+              <ResponsiveContainer width={120} height={120}>
+                <PieChart>
+                  <Pie data={COMP_DATA} cx={55} cy={55} innerRadius={36} outerRadius={54}
+                    dataKey="value" strokeWidth={2} stroke="var(--panel)">
+                    {COMP_DATA.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <p className="font-mono font-bold text-[var(--ink)] text-sm">23</p>
+                <p className="text-[9px] text-[var(--ink-3)]">trades</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              {COMP_DATA.map(d => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-[11px] text-[var(--ink-2)]">{d.name} · <strong className="text-[var(--ink)]">{d.value}</strong></span>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Heatmap ── */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <p className="text-[13px] font-semibold text-[var(--ink)]">Heatmap de disciplina · últimas 12 semanas</p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">Cada celda = un día. Color = severidad máxima de violación ese día.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {[["var(--win)","Limpio"],["var(--be)","Menor"],["var(--loss)","Mayor"]].map(([c,l]) => (
+              <span key={l} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />{l}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-x-auto">
+          {/* Week headers */}
+          <div className="flex mb-1 pl-5">
+            {Array.from({ length: WEEKS }).map((_, w) => (
+              <div key={w} className="flex-1 text-center" style={{ minWidth: 32 }}>
+                {w % 2 === 0 && <span className="text-[9px] text-[var(--ink-3)]">S{w + 1}</span>}
+              </div>
+            ))}
+          </div>
+          {/* Grid */}
+          {HEATMAP.map((row, di) => (
+            <div key={di} className="flex items-center gap-0.5 mb-0.5">
+              <span className="text-[10px] text-[var(--ink-3)] w-4 shrink-0 text-right mr-1">{DAYS[di]}</span>
+              {row.map((val, wi) => (
+                <div key={wi} className="flex-1 rounded-sm transition-colors cursor-pointer hover:opacity-80"
+                  style={{
+                    minWidth: 28, height: 28,
+                    background: HEAT_COLORS[String(val)],
+                    border: "1px solid var(--panel)",
+                  }}
+                  title={val === null ? "Sin trading" : val === 0 ? "Limpio" : val === 1 ? "Violación menor" : "Violación mayor"}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── R Distribution + Violations ── */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* R distribution bar chart */}
+        <Card title="Distribución de R · este mes" sub="Frecuencia de outcomes vs. expectativa.">
+          <div className="flex items-end gap-1.5 h-32 mt-2">
+            {R_DIST.map(d => {
+              const maxCount = Math.max(...R_DIST.map(x => x.count))
+              const h = (d.count / maxCount) * 100
+              return (
+                <div key={d.r} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[9px] font-mono font-bold text-[var(--ink-3)]">{d.count}</span>
+                  <div className="w-full rounded-t-sm transition-all"
+                    style={{ height: `${h}%`, background: d.color, minHeight: 4 }} />
+                  <span className="text-[9px] text-[var(--ink-3)]">{d.r}</span>
+                </div>
+              )
+            })}
+          </div>
         </Card>
 
-        {/* Violations table */}
-        <Card title="Violaciones este mes" className="col-span-2">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Regla","Severidad","Veces"].map(h => (
-                  <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {VIOLATIONS.map(v => (
-                <tr key={v.rule} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-3 text-sm text-[var(--ink)]">{v.rule}</td>
-                  <td className="py-3">
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                      style={{
-                        background: v.severity === "CRÍTICA" ? "var(--loss-soft)" : "var(--be-soft)",
-                        color: v.severity === "CRÍTICA" ? "var(--loss)" : "var(--be)",
-                      }}>
-                      {v.severity}
-                    </span>
-                  </td>
-                  <td className="py-3 font-mono font-bold text-[var(--loss)] text-sm">{v.count}×</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Violations per rule */}
+        <Card title="Violaciones por regla">
+          <div className="flex justify-end mb-3">
+            <button className="text-[11px] font-semibold text-[var(--accent)] hover:underline">Ver registro →</button>
+          </div>
+          <div className="flex flex-col gap-0">
+            {VIOLATIONS_DATA.map(v => (
+              <div key={v.rule} className="flex items-center gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
+                <div className="w-1 h-4 rounded-full shrink-0" style={{ background: v.severity === "mayor" ? "var(--loss)" : "var(--be)" }} />
+                <p className="flex-1 text-sm text-[var(--ink)]">{v.rule}</p>
+                <span className="font-mono font-bold text-[var(--ink)] text-sm shrink-0">{v.count}</span>
+                {v.delta !== 0 && (
+                  <span className="text-[10px] font-semibold shrink-0 flex items-center gap-0.5"
+                    style={{ color: v.delta < 0 ? "var(--win)" : "var(--loss)" }}>
+                    {v.delta < 0 ? "↓" : "↑"} {Math.abs(v.delta)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     </div>
