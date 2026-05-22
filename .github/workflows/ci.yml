@@ -31,6 +31,10 @@ jobs:
         working-directory: src
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        working-directory: src
+        run: pnpm exec prisma generate
+
       - name: TypeScript check
         working-directory: src
         run: pnpm exec tsc --noEmit
