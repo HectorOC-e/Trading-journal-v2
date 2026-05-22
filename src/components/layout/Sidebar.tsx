@@ -7,7 +7,7 @@ import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
-  ChevronLeft, ChevronRight, MoreHorizontal,
+  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
 } from "lucide-react"
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
     items: [
       { href: "/dashboard",   label: "Dashboard",   icon: LayoutDashboard },
       { href: "/cuentas",     label: "Cuentas",     icon: Wallet },
+      { href: "/mercados",    label: "Mercados",    icon: BarChart2 },
       { href: "/trades",      label: "Trades",      icon: CandlestickChart, badge: 3 },
       { href: "/playbook",    label: "Playbook",    icon: BookOpen },
       { href: "/reglas",      label: "Reglas",      icon: ShieldCheck },

@@ -1,6 +1,6 @@
 // Mock data derived from design-spec prototype content
 
-import type { Trade, Account, Setup, LearningResource, Rule, WeeklyReview } from "@/types"
+import type { Trade, Account, Setup, LearningResource, Rule, WeeklyReview, Market, RulesSeverity } from "@/types"
 
 export const mockAccounts: Account[] = [
   {
@@ -384,6 +384,35 @@ export const mockRules: Rule[] = [
   { id: "rule-sys-2", name: "Exceder máximo de trades", description: "Más trades en un día del límite de la cuenta.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 3 },
   { id: "rule-sys-3", name: "Pérdida diaria sobre límite", description: "La pérdida del día superó el límite diario configurado.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
   { id: "rule-sys-4", name: "Operar símbolo no permitido", description: "Se operó un instrumento fuera de la lista permitida.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
+  { id: "rule-cus-1", name: "Promediar en pérdida", description: "Agregar posición a un trade en pérdida para bajar el precio promedio.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 1 },
+  { id: "rule-cus-2", name: "Operar en noticias", description: "Abrir trade 15 min antes o durante publicación de noticia de alto impacto.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 2 },
+  { id: "rule-cus-3", name: "Sin checklist completado", description: "Abrir trade sin haber marcado todos los ítems del checklist del setup.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 0 },
+  { id: "rule-cus-4", name: "Trade de venganza", description: "Abrir trade inmediatamente tras pérdida sin pausa mínima de 15 minutos.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: false, violationsThisMonth: 3 },
+]
+
+export const mockMarkets: Market[] = [
+  // FUTUROS
+  { symbol: "NQ", name: "Nasdaq-100 E-mini", category: "FUTUROS", exchange: "CME", tickSize: "0.25", pointValue: "$20", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Índice tecnológico de mayor volatilidad. Principal instrumento de trading.", isWatchlisted: true },
+  { symbol: "ES", name: "S&P 500 E-mini", category: "FUTUROS", exchange: "CME", tickSize: "0.25", pointValue: "$50", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Índice más líquido del mundo. Spreads mínimos, alta correlación con macro.", isWatchlisted: true },
+  { symbol: "MNQ", name: "Micro Nasdaq-100", category: "FUTUROS", exchange: "CME", tickSize: "0.25", pointValue: "$2", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Versión micro del NQ. Ideal para sizing reducido o cuentas prop firma.", isWatchlisted: true },
+  { symbol: "MES", name: "Micro S&P 500", category: "FUTUROS", exchange: "CME", tickSize: "0.25", pointValue: "$5", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Versión micro del ES.", isWatchlisted: false },
+  { symbol: "GC", name: "Gold", category: "FUTUROS", exchange: "COMEX", tickSize: "0.10", pointValue: "$100", currency: "USD", sessions: ["London", "NY AM"], description: "Oro al contado (futuros). Alta reacción a eventos macro y noticias Fed.", isWatchlisted: true },
+  { symbol: "CL", name: "Crude Oil WTI", category: "FUTUROS", exchange: "NYMEX", tickSize: "0.01", pointValue: "$1,000", currency: "USD", sessions: ["London", "NY AM"], description: "Petróleo crudo. Muy sensible a inventarios semanales EIA.", isWatchlisted: false },
+  { symbol: "RTY", name: "Russell 2000 E-mini", category: "FUTUROS", exchange: "CME", tickSize: "0.10", pointValue: "$50", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Small caps. Más volátil que ES, menor liquidez.", isWatchlisted: false },
+  // FX
+  { symbol: "EURUSD", name: "Euro / US Dollar", category: "FX", exchange: "OTC", tickSize: "0.00001", pointValue: "$10 / lot", currency: "USD", sessions: ["London", "NY AM"], description: "Par más líquido del mundo. Killzone London 02:00–05:00 ET.", isWatchlisted: true },
+  { symbol: "GBP USD", name: "Pound / US Dollar", category: "FX", exchange: "OTC", tickSize: "0.00001", pointValue: "$10 / lot", currency: "USD", sessions: ["London", "NY AM"], description: "Cable. Alta volatilidad en noticias UK y Fed.", isWatchlisted: true },
+  { symbol: "USDJPY", name: "US Dollar / Yen", category: "FX", exchange: "OTC", tickSize: "0.001", pointValue: "$9.1 / lot", currency: "USD", sessions: ["Asia", "London"], description: "Par de carry trade. Muy activo en sesión Asia.", isWatchlisted: false },
+  { symbol: "XAUUSD", name: "Gold Spot FX", category: "FX", exchange: "OTC", tickSize: "0.01", pointValue: "$100 / lot", currency: "USD", sessions: ["London", "NY AM"], description: "Oro spot en mercado FX. Correlacionado con DXY.", isWatchlisted: false },
+  // CRIPTO
+  { symbol: "BTCUSD", name: "Bitcoin / US Dollar", category: "CRIPTO", exchange: "Binance / CME", tickSize: "1.00", pointValue: "1 BTC", currency: "USD", sessions: ["24h"], description: "Activo digital de mayor capitalización. Alta volatilidad, spreads variables.", isWatchlisted: true },
+  { symbol: "ETHUSD", name: "Ethereum / US Dollar", category: "CRIPTO", exchange: "Binance / CME", tickSize: "0.01", pointValue: "1 ETH", currency: "USD", sessions: ["24h"], description: "Segunda criptomoneda por capitalización. Correlación alta con BTC.", isWatchlisted: false },
+  { symbol: "SOLUSD", name: "Solana / US Dollar", category: "CRIPTO", exchange: "Binance", tickSize: "0.01", pointValue: "1 SOL", currency: "USD", sessions: ["24h"], description: "L1 de alta velocidad. Más volátil que ETH.", isWatchlisted: false },
+  // EQUITIES
+  { symbol: "AAPL", name: "Apple Inc.", category: "EQUITIES", exchange: "NASDAQ", tickSize: "0.01", pointValue: "$1 / acción", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Mayor capitalización del mercado. Muy seguido en earnings.", isWatchlisted: false },
+  { symbol: "NVDA", name: "NVIDIA Corp.", category: "EQUITIES", exchange: "NASDAQ", tickSize: "0.01", pointValue: "$1 / acción", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Líder en GPUs y AI. Alta volatilidad, mueve el NQ.", isWatchlisted: true },
+  { symbol: "TSLA", name: "Tesla Inc.", category: "EQUITIES", exchange: "NASDAQ", tickSize: "0.01", pointValue: "$1 / acción", currency: "USD", sessions: ["NY AM", "NY PM"], description: "Alta volatilidad individual. Reacciona fuerte a noticias del CEO.", isWatchlisted: false },
+  { symbol: "SPY", name: "SPDR S&P 500 ETF", category: "EQUITIES", exchange: "NYSE", tickSize: "0.01", pointValue: "$1 / acción", currency: "USD", sessions: ["NY AM", "NY PM"], description: "ETF del S&P 500. Alternativa a ES para accounts sin futuros.", isWatchlisted: false },
 ]
 
 export const mockReviews: WeeklyReview[] = [

@@ -1,5 +1,20 @@
 // ── Derived from design-spec modal fields and anatomy sections ──
 
+export type MarketCategory = "FUTUROS" | "FX" | "CRIPTO" | "EQUITIES"
+
+export interface Market {
+  symbol: string
+  name: string
+  category: MarketCategory
+  exchange: string
+  tickSize: string
+  pointValue: string
+  currency: string
+  sessions: string[]
+  description: string
+  isWatchlisted: boolean
+}
+
 export type TradeDirection = "LONG" | "SHORT"
 export type TradeSession = "London" | "New York" | "Asia" | "London Close"
 export type TradeTag = "A+" | "A" | "B" | "Plan" | "Off-plan" | "Impulsivo" | "BE"
