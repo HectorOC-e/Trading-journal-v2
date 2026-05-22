@@ -12,7 +12,7 @@ interface KpiStripProps {
 
 export function KpiStrip({ items, className }: KpiStripProps) {
   return (
-    <div className={cn("grid grid-cols-4 gap-3", className)}>
+    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-3", className)}>
       {items.map((item) => (
         <KpiCard key={item.label} {...item} />
       ))}

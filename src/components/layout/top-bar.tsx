@@ -21,7 +21,7 @@ interface TopBarProps {
 
 export function TopBar({ title, subtitle, actions, className }: TopBarProps) {
   return (
-    <div className={cn("flex items-start justify-between gap-4 mb-6", className)}>
+    <div className={cn("flex items-start justify-between gap-3 mb-6 flex-wrap", className)}>
       <div>
         <h1 className="text-xl font-bold text-[var(--ink)] tracking-tight">{title}</h1>
         {subtitle && (

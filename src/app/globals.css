@@ -139,3 +139,32 @@ body {
 /* keep backward compat alias */
 .text-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); font-weight: 600; }
 .mono { font-family: "JetBrains Mono", monospace; }
+
+/* ── Responsive ── */
+
+/* Mobile: hide sidebar, show bottom nav bar space */
+@media (max-width: 767px) {
+  .shell {
+    flex-direction: column;
+  }
+  .main-content {
+    padding: 16px 16px 80px;
+    padding-top: calc(52px + 16px); /* top bar height + gap */
+    min-height: 100vh;
+  }
+  /* Right-rail panels become full-screen overlays on mobile */
+  .detail-panel-mobile {
+    position: fixed !important;
+    inset: 52px 0 56px 0 !important;
+    width: 100% !important;
+    z-index: 40;
+    overflow-y: auto;
+  }
+}
+
+/* Tablet: sidebar always collapsed (icon-only) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .main-content {
+    padding: 20px 20px;
+  }
+}

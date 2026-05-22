@@ -413,7 +413,7 @@ export function DetailPanel({ review, onClose }: { review: WeeklyReview; onClose
 
   return (
     <div
-      className="flex flex-col overflow-hidden"
+      className="flex flex-col overflow-hidden detail-panel-mobile"
       style={{
         width: 380,
         background: "var(--panel)",
