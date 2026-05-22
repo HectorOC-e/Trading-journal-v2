@@ -147,12 +147,14 @@ body {
      Esto es crítico para que position:fixed (header y bottom nav) funcione
      correctamente en iOS Safari y Android Chrome. */
   html, body {
-    height: auto;
+    height: auto !important;
+    min-height: 0 !important;
     overflow-y: auto;
   }
   .shell {
     flex-direction: column;
-    min-height: 100vh;
+    min-height: 0;
+    height: auto;
   }
   .main-content {
     padding: 16px;
@@ -160,7 +162,8 @@ body {
     padding-bottom: 72px;
     overflow-y: visible;   /* body scrollea, no este contenedor */
     overflow-x: hidden;
-    min-height: auto;
+    min-height: 0 !important;
+    height: auto;
   }
   /* Detail panels: full-screen sheets sobre el contenido */
   .detail-panel-mobile {
