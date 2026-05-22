@@ -68,35 +68,112 @@
       color: var(--ink);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Bar ── */
+    .top-bar {
+      width: 100%;
+      height: 48px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .top-bar-search {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+    .top-bar-search svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-3);
+      width: 14px;
+      height: 14px;
+    }
+    .top-bar-search input {
+      width: 100%;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      padding: 7px 44px 7px 32px;
+      outline: none;
+    }
+    .top-bar-search input::placeholder { color: var(--ink-3); }
+    .kbd-badge {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--ink-3);
+      padding: 1px 5px;
+    }
+    .top-bar-spacer { flex: 1; }
+    .account-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+    }
+    .account-chip svg { width: 12px; height: 12px; color: var(--ink-3); }
+    .top-bar-icon-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink-2);
+      cursor: pointer;
+    }
+    .top-bar-icon-btn svg { width: 16px; height: 16px; }
+
+    /* ── Shell ── */
+    .shell {
+      display: flex;
+      flex: 1;
+      min-height: 0;
     }
 
     /* ── Sidebar ── */
     .sidebar {
       width: 240px;
-      min-height: 100vh;
+      min-height: 100%;
       background: var(--panel);
       border-right: 1px solid var(--line);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
       position: sticky;
-      top: 0;
-      height: 100vh;
+      top: 48px;
+      height: calc(100vh - 48px);
       overflow-y: auto;
-    }
-    .sidebar-logo {
-      padding: 20px 20px 16px;
-      border-bottom: 1px solid var(--line);
-    }
-    .sidebar-logo span {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--ink);
-      letter-spacing: -0.3px;
-    }
-    .sidebar-logo span em {
-      color: var(--accent);
-      font-style: normal;
     }
     .sidebar-nav {
       padding: 12px 10px;
@@ -105,6 +182,16 @@
       flex-direction: column;
       gap: 2px;
     }
+    .nav-section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      color: var(--ink-3);
+      padding: 8px 12px 4px;
+      margin-top: 6px;
+    }
+    .nav-section-label:first-child { margin-top: 0; }
     .nav-item {
       display: flex;
       align-items: center;
@@ -116,6 +203,7 @@
       font-size: 14px;
       font-weight: 500;
       transition: background 0.15s, color 0.15s;
+      position: relative;
     }
     .nav-item:hover {
       background: var(--panel-2);
@@ -132,6 +220,44 @@
       opacity: 0.8;
     }
     .nav-item.active svg { opacity: 1; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 99px;
+    }
+    .sidebar-bottom {
+      padding: 12px 10px;
+      border-top: 1px solid var(--line);
+    }
+    .weekly-review-card {
+      background: rgba(79, 110, 247, 0.1);
+      border: 1px solid rgba(79, 110, 247, 0.25);
+      border-radius: var(--radius);
+      padding: 12px;
+    }
+    .weekly-review-card p {
+      font-size: 11.5px;
+      color: var(--ink-2);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+    .btn-weekly-review {
+      width: 100%;
+      padding: 7px 12px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-weekly-review:hover { opacity: 0.88; }
 
     /* ── Main Layout ── */
     .main-layout {
@@ -146,63 +272,65 @@
       flex-direction: column;
     }
 
-    /* ── Header ── */
+    /* ── Page Header ── */
     .page-header {
-      padding: 28px 28px 0;
+      padding: 24px 24px 0;
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
       gap: 16px;
     }
     .header-text h1 {
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: -0.5px;
+      letter-spacing: -0.4px;
       color: var(--ink);
     }
     .header-text p {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--ink-2);
-      margin-top: 4px;
+      margin-top: 3px;
     }
     .btn-add {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 9px 16px;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
       background: var(--accent);
       color: #fff;
       border: none;
       border-radius: var(--radius);
-      font-size: 14px;
-      font-weight: 600;
+      font-size: 20px;
+      font-weight: 400;
       cursor: pointer;
-      white-space: nowrap;
       flex-shrink: 0;
       transition: opacity 0.15s;
+      line-height: 1;
     }
     .btn-add:hover { opacity: 0.88; }
 
-    /* ── Search / Filter Bar ── */
+    /* ── Filter Bar ── */
     .filter-bar {
-      padding: 20px 28px 0;
+      padding: 16px 24px 0;
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       flex-wrap: wrap;
     }
     .search-wrap {
       position: relative;
-      flex: 0 0 260px;
+      flex: 1;
+      min-width: 200px;
     }
     .search-wrap svg {
       position: absolute;
-      left: 11px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--ink-3);
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
     }
     .search-input {
       width: 100%;
@@ -211,77 +339,78 @@
       border-radius: var(--radius);
       color: var(--ink);
       font-family: 'Inter', sans-serif;
-      font-size: 13.5px;
-      padding: 8px 12px 8px 34px;
+      font-size: 13px;
+      padding: 8px 12px 8px 32px;
       outline: none;
       transition: border-color 0.15s;
     }
     .search-input::placeholder { color: var(--ink-3); }
     .search-input:focus { border-color: var(--accent); }
-    .filter-tabs {
-      display: flex;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-    .filter-tab {
+    .filter-dropdown {
       padding: 7px 12px;
-      border-radius: var(--radius);
+      background: var(--panel);
       border: 1px solid var(--line);
-      background: transparent;
+      border-radius: var(--radius);
       color: var(--ink-2);
       font-family: 'Inter', sans-serif;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
+      outline: none;
+      white-space: nowrap;
+    }
+    .btn-solo-review {
+      padding: 7px 12px;
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      color: var(--ink-2);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
     }
-    .filter-tab:hover {
+    .btn-solo-review:hover {
       background: var(--panel);
       color: var(--ink);
-    }
-    .filter-tab.active {
-      background: var(--accent);
       border-color: var(--accent);
-      color: #fff;
     }
 
     /* ── Card Grid ── */
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-      padding: 20px 28px 32px;
+      gap: 14px;
+      padding: 18px 24px 32px;
     }
 
     /* ── Resource Card ── */
     .res-card {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 18px 18px 14px;
+      border-radius: var(--radius);
+      padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       transition: border-color 0.15s;
+      position: relative;
     }
     .res-card:hover { border-color: var(--accent); }
     .card-top {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-    }
-    .card-chips {
-      display: flex;
+      align-items: center;
       gap: 6px;
       flex-wrap: wrap;
     }
     .chip {
       display: inline-flex;
       align-items: center;
-      padding: 3px 8px;
+      padding: 3px 7px;
       border-radius: 4px;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.5px;
       text-transform: uppercase;
@@ -296,115 +425,71 @@
 
     .chip-tag {
       background: var(--chip);
-      color: var(--ink-2);
-      font-size: 10.5px;
+      color: var(--ink-3);
+      font-size: 11px;
       font-weight: 500;
       letter-spacing: 0;
       text-transform: none;
+      padding: 2px 6px;
     }
     .badge-review {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
+      gap: 3px;
+      padding: 3px 7px;
       border-radius: 4px;
-      font-size: 10.5px;
+      font-size: 10px;
       font-weight: 600;
       background: rgba(245,158,11,0.18);
       color: #fbbf24;
       white-space: nowrap;
-      flex-shrink: 0;
     }
     .card-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--ink);
       line-height: 1.3;
     }
+    .card-meta {
+      font-size: 12px;
+      color: var(--ink-2);
+    }
     .card-desc {
       font-size: 13px;
       color: var(--ink-2);
-      line-height: 1.55;
-    }
-    .card-stats {
-      display: flex;
-      gap: 16px;
-    }
-    .stat-item {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .stat-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-    .stat-lbl {
-      font-size: 11px;
-      color: var(--ink-3);
-    }
-    /* Progress bar */
-    .progress-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .progress-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .progress-label { font-size: 11.5px; color: var(--ink-3); }
-    .progress-pct {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11.5px;
-      color: var(--ink-2);
-    }
-    .progress-track {
-      height: 4px;
-      background: var(--panel-2);
-      border-radius: 99px;
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
     }
-    .progress-fill {
-      height: 100%;
-      background: var(--accent);
-      border-radius: 99px;
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
     }
-    /* Action icons */
-    .card-actions {
+    .card-footer-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 2px;
+      justify-content: flex-end;
     }
-    .action-btn {
+    .btn-menu {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 30px;
-      height: 30px;
-      border-radius: var(--radius);
-      border: 1px solid var(--line);
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      border: none;
       background: transparent;
       color: var(--ink-3);
       cursor: pointer;
+      font-size: 16px;
       transition: background 0.15s, color 0.15s;
     }
-    .action-btn:hover {
+    .btn-menu:hover {
       background: var(--panel-2);
       color: var(--ink);
-    }
-    .action-btn svg { width: 14px; height: 14px; }
-    .card-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-top: 1px solid var(--line);
-      padding-top: 10px;
-      margin-top: 2px;
     }
 
     /* ── Right Rail ── */
@@ -413,145 +498,170 @@
       flex-shrink: 0;
       border-left: 1px solid var(--line);
       background: var(--panel);
-      padding: 24px 18px;
+      padding: 20px 16px;
       display: flex;
       flex-direction: column;
-      gap: 28px;
+      gap: 20px;
       position: sticky;
-      top: 0;
-      height: 100vh;
+      top: 48px;
+      height: calc(100vh - 48px);
       overflow-y: auto;
     }
-    .rail-section-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--ink-3);
-      margin-bottom: 14px;
-    }
-
-    /* Progress ring */
-    .ring-wrap {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      margin-bottom: 16px;
-    }
-    .ring-svg { flex-shrink: 0; }
-    .ring-bg  { fill: none; stroke: var(--panel-2); stroke-width: 8; }
-    .ring-fill {
-      fill: none;
-      stroke: var(--accent);
-      stroke-width: 8;
-      stroke-linecap: round;
-      stroke-dasharray: 226;
-      stroke-dashoffset: 90; /* ~60% */
-      transform: rotate(-90deg);
-      transform-origin: 50% 50%;
-      transition: stroke-dashoffset 0.4s;
-    }
-    .ring-label { text-anchor: middle; dominant-baseline: middle; }
-    .ring-label-pct {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 20px;
-      font-weight: 700;
-      fill: var(--ink);
-    }
-    .ring-label-sub {
-      font-family: 'Inter', sans-serif;
-      font-size: 10px;
-      fill: var(--ink-3);
-    }
-    .rail-stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .rail-stat {
-      background: var(--panel-2);
-      border-radius: var(--radius);
-      padding: 10px 12px;
-    }
-    .rail-stat .rs-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-    .rail-stat .rs-lbl {
-      font-size: 11px;
-      color: var(--ink-3);
-      margin-top: 2px;
-    }
-
-    /* Review list */
-    .review-item {
+    .rail-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      background: var(--panel-2);
-      border-radius: var(--radius);
-      margin-bottom: 8px;
     }
-    .review-item-title {
+    .rail-title {
       font-size: 13px;
-      font-weight: 500;
-      color: var(--ink);
-      line-height: 1.3;
-    }
-    .review-item-sub {
-      font-size: 11px;
-      color: var(--ink-3);
-      margin-top: 2px;
-    }
-    .btn-revisar {
-      padding: 5px 10px;
-      background: rgba(245,158,11,0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(245,158,11,0.3);
-      border-radius: var(--radius);
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.15s;
-    }
-    .btn-revisar:hover { background: rgba(245,158,11,0.25); }
-
-    /* Category breakdown */
-    .cat-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .cat-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .cat-name { font-size: 13px; color: var(--ink-2); flex: 1; }
-    .cat-count {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
       font-weight: 700;
       color: var(--ink);
     }
-    .cat-bar-track {
-      flex: 0 0 60px;
-      height: 4px;
+    .rail-menu-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: var(--ink-3);
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    .rail-menu-btn:hover { background: var(--panel-2); color: var(--ink); }
+
+    /* Segment tabs */
+    .segment-tabs {
+      display: flex;
       background: var(--panel-2);
+      border-radius: var(--radius);
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg-tab {
+      flex: 1;
+      padding: 5px 6px;
+      border: none;
+      background: transparent;
+      color: var(--ink-3);
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .seg-tab.active {
+      background: var(--panel);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* Setup table */
+    .setup-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .setup-table thead th {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--ink-3);
+      padding: 0 0 8px;
+      text-align: left;
+    }
+    .setup-table thead th:last-child,
+    .setup-table thead th:nth-child(2) { text-align: right; }
+    .setup-table tbody tr { border-top: 1px solid var(--line); }
+    .setup-table tbody td {
+      padding: 8px 0;
+      font-size: 12px;
+    }
+    .setup-avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      font-size: 9px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .setup-cell {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .setup-name { font-size: 12px; color: var(--ink); font-weight: 500; line-height: 1.2; }
+    .setup-sub  { font-size: 10px; color: var(--ink-3); }
+    .setup-wr   { text-align: right; font-size: 12px; font-weight: 600; color: var(--ink); font-family: 'JetBrains Mono', monospace; }
+    .setup-avgr { text-align: right; font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .setup-avgr.pos { color: var(--win); }
+    .setup-avgr.neg { color: var(--loss); }
+
+    /* Nuevo Trade card */
+    .nuevo-trade-card {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .nt-toggle {
+      display: flex;
+      background: var(--panel);
+      border-radius: 6px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .nt-toggle-btn {
+      flex: 1;
+      padding: 5px;
+      border: none;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .nt-toggle-btn.long.active { background: rgba(34,197,94,0.2); color: var(--win); }
+    .nt-toggle-btn.short { color: var(--ink-3); }
+    .nt-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-3); }
+    .nt-symbol { font-size: 22px; font-weight: 700; color: var(--ink); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+    .nt-setup  { font-size: 11px; color: var(--ink-2); margin-top: 2px; }
+    .nt-risk-val { font-size: 20px; font-weight: 700; color: var(--ink); font-family: 'JetBrains Mono', monospace; line-height: 1; }
+    .nt-risk-sub { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+    .nt-progress-track {
+      height: 4px;
+      background: var(--panel);
       border-radius: 99px;
       overflow: hidden;
     }
-    .cat-bar-fill {
+    .nt-progress-fill {
       height: 100%;
+      background: var(--accent);
       border-radius: 99px;
+      width: 50%;
     }
+    .nt-currency { font-size: 11px; font-weight: 600; color: var(--ink-3); text-align: right; }
+
+    /* Progress bar (shared) */
+    .progress-wrap { display: flex; flex-direction: column; gap: 5px; }
+    .progress-row  { display: flex; justify-content: space-between; align-items: center; }
+    .progress-label { font-size: 11.5px; color: var(--ink-3); }
+    .progress-pct { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink-2); }
+    .progress-track { height: 4px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
+    .progress-fill  { height: 100%; background: var(--accent); border-radius: 99px; }
 
     /* ── Spec Section ── */
     .spec-section {
@@ -611,11 +721,7 @@
       gap: 10px;
       flex-wrap: wrap;
     }
-    .comp-card-header h3 {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--ink);
-    }
+    .comp-card-header h3 { font-size: 14px; font-weight: 700; color: var(--ink); }
     .comp-card-header .cc-category {
       font-size: 11px;
       font-weight: 600;
@@ -644,10 +750,7 @@
       grid-template-columns: repeat(3, 1fr);
       border-top: 1px solid var(--line);
     }
-    .comp-footer-col {
-      padding: 12px 14px;
-      border-right: 1px solid var(--line);
-    }
+    .comp-footer-col { padding: 12px 14px; border-right: 1px solid var(--line); }
     .comp-footer-col:last-child { border-right: none; }
     .comp-footer-col h4 {
       font-size: 10px;
@@ -657,11 +760,7 @@
       color: var(--ink-3);
       margin-bottom: 6px;
     }
-    .comp-footer-col p, .comp-footer-col li {
-      font-size: 12px;
-      color: var(--ink-2);
-      line-height: 1.7;
-    }
+    .comp-footer-col p, .comp-footer-col li { font-size: 12px; color: var(--ink-2); line-height: 1.7; }
     .comp-footer-col ul { padding-left: 14px; }
     code {
       font-family: 'JetBrains Mono', monospace;
@@ -676,13 +775,39 @@
 <body class="dark">
 
 <!-- ══════════════════════════════════════════
+     TOP BAR
+══════════════════════════════════════════ -->
+<div class="top-bar">
+  <div class="top-bar-search">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+      <circle cx="6.5" cy="6.5" r="5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
+    </svg>
+    <input type="text" placeholder="Buscar trade, símbolo, setup, regla...">
+    <span class="kbd-badge">⌘K</span>
+  </div>
+  <div class="top-bar-spacer"></div>
+  <div class="account-chip">
+    FXify
+    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8">
+      <polyline points="2,4 6,8 10,4"/>
+    </svg>
+  </div>
+  <button class="top-bar-icon-btn">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+      <circle cx="8" cy="8" r="2.5"/>
+      <path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3.05 3.05l1.06 1.06M11.89 11.89l1.06 1.06M11.89 4.11l1.06-1.06M3.05 12.95l1.06-1.06"/>
+    </svg>
+  </button>
+</div>
+
+<div class="shell">
+
+<!-- ══════════════════════════════════════════
      SIDEBAR
 ══════════════════════════════════════════ -->
 <aside class="sidebar">
-  <div class="sidebar-logo">
-    <span>Trade<em>Journal</em></span>
-  </div>
   <nav class="sidebar-nav">
+    <div class="nav-section-label">OPERACIÓN</div>
     <a href="dashboard.html" class="nav-item">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
         <rect x="1" y="1" width="6" height="6" rx="1.5"/>
@@ -692,13 +817,6 @@
       </svg>
       Dashboard
     </a>
-    <a href="trades.html" class="nav-item">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-        <polyline points="1,11 5,7 9,9 15,3"/>
-        <polyline points="11,3 15,3 15,7"/>
-      </svg>
-      Trades
-    </a>
     <a href="cuentas.html" class="nav-item">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
         <rect x="1" y="4" width="14" height="10" rx="1.5"/>
@@ -706,6 +824,14 @@
         <circle cx="8" cy="9" r="1.5"/>
       </svg>
       Cuentas
+    </a>
+    <a href="trades.html" class="nav-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <polyline points="1,11 5,7 9,9 15,3"/>
+        <polyline points="11,3 15,3 15,7"/>
+      </svg>
+      Trades
+      <span class="nav-badge">3</span>
     </a>
     <a href="playbook.html" class="nav-item">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
@@ -715,21 +841,6 @@
       </svg>
       Playbook
     </a>
-    <a href="aprendizaje.html" class="nav-item active">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-        <path d="M8 2L1 5.5l7 3.5 7-3.5L8 2z"/>
-        <path d="M1 5.5v5l7 3.5 7-3.5v-5"/>
-        <path d="M4 7v4"/>
-      </svg>
-      Aprendizaje
-    </a>
-    <a href="reviews.html" class="nav-item">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
-        <circle cx="8" cy="8" r="6.5"/>
-        <polyline points="5,8 7,10 11,6"/>
-      </svg>
-      Reviews
-    </a>
     <a href="reglas.html" class="nav-item">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
         <path d="M2 14L2 2 10 2 14 6 14 14z"/>
@@ -738,6 +849,23 @@
       </svg>
       Reglas
     </a>
+    <a href="reviews.html" class="nav-item">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="8" cy="8" r="6.5"/>
+        <polyline points="5,8 7,10 11,6"/>
+      </svg>
+      Reviews
+    </a>
+    <a href="aprendizaje.html" class="nav-item active">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M8 2L1 5.5l7 3.5 7-3.5L8 2z"/>
+        <path d="M1 5.5v5l7 3.5 7-3.5v-5"/>
+        <path d="M4 7v4"/>
+      </svg>
+      Aprendizaje
+    </a>
+
+    <div class="nav-section-label">CUENTA</div>
     <a href="perfil.html" class="nav-item">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
         <circle cx="8" cy="5.5" r="3"/>
@@ -746,6 +874,14 @@
       Perfil
     </a>
   </nav>
+
+  <div class="sidebar-bottom">
+    <div class="weekly-review-card">
+      <p style="font-size:11px;font-weight:700;color:var(--ink);margin-bottom:4px;">Review semanal lista</p>
+      <p>Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.</p>
+      <button class="btn-weekly-review">Empezar review</button>
+    </div>
+  </div>
 </aside>
 
 <!-- ══════════════════════════════════════════
@@ -758,296 +894,168 @@
     <div class="page-header">
       <div class="header-text">
         <h1>Aprendizaje</h1>
-        <p>Biblioteca de recursos para mejorar como trader</p>
+        <p>8 entradas · 3 marcadas para review</p>
       </div>
-      <button class="btn-add">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-          <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-        </svg>
-        Añadir recurso
-      </button>
+      <button class="btn-add">+</button>
     </div>
 
     <!-- Filter Bar -->
     <div class="filter-bar">
       <div class="search-wrap">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
-          <circle cx="6.5" cy="6.5" r="5"/>
-          <line x1="10.5" y1="10.5" x2="14" y2="14"/>
+          <circle cx="6.5" cy="6.5" r="5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/>
         </svg>
-        <input class="search-input" type="text" placeholder="Buscar recursos...">
+        <input class="search-input" type="text" placeholder="Buscar por título, autor, notas o tag...">
       </div>
-      <div class="filter-tabs">
-        <button class="filter-tab active">Todos</button>
-        <button class="filter-tab">LIBRO</button>
-        <button class="filter-tab">VIDEO</button>
-        <button class="filter-tab">NOTA</button>
-        <button class="filter-tab">BACKTEST</button>
-        <button class="filter-tab">PODCAST</button>
-        <button class="filter-tab">DRILL</button>
-        <button class="filter-tab">HERRAMIENTA</button>
-      </div>
+      <select class="filter-dropdown">
+        <option>Todos</option>
+        <option>LIBRO</option>
+        <option>VIDEO</option>
+        <option>NOTA</option>
+        <option>BACKTEST</option>
+        <option>PODCAST</option>
+        <option>DRILL</option>
+        <option>HERRAMIENTA</option>
+      </select>
+      <button class="btn-solo-review">Solo marcadas para review</button>
     </div>
 
     <!-- Cards Grid -->
     <div class="cards-grid">
 
-      <!-- Card 1: Trading in the Zone -->
+      <!-- Card 1: Volume Profile · Aitor -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-libro">LIBRO</span>
-            <span class="chip chip-tag">Psicología</span>
-          </div>
-          <span class="badge-review">⏱ Review pendiente</span>
+          <span class="chip chip-libro">LIBRO</span>
+          <span class="badge-review">&#x21BB; Review pendiente</span>
         </div>
-        <div class="card-title">Trading in the Zone</div>
-        <div class="card-desc">Mark Douglas. Fundamentos de disciplina mental para traders. Capítulos 1–6 completados.</div>
-        <div class="progress-wrap">
-          <div class="progress-row">
-            <span class="progress-label">Progreso</span>
-            <span class="progress-pct">60%</span>
-          </div>
-          <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
+        <div class="card-title">Volume Profile · Aitor</div>
+        <div class="card-meta">Aitor Lobato · 16 may 2026</div>
+        <div class="card-desc">Cap 4-6: cómo identificar value area shift. Aplicar al ORB de mañana.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#futures</span>
+          <span class="chip chip-tag">#profile</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Actualizado hace 3 días</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 2: Volume Profile Mastery -->
+      <!-- Card 2: Liquidity Grab masterclass -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-libro">LIBRO</span>
-            <span class="chip chip-tag">Análisis Técnico</span>
-          </div>
+          <span class="chip chip-video">VIDEO</span>
+          <span class="badge-review">&#x21BB; Review pendiente</span>
         </div>
-        <div class="card-title">Volume Profile Mastery</div>
-        <div class="card-desc">Aitor Zárate. Análisis de perfil de volumen aplicado a futuros. Cap 4–6 pendientes.</div>
-        <div class="progress-wrap">
-          <div class="progress-row">
-            <span class="progress-label">Progreso</span>
-            <span class="progress-pct">40%</span>
-          </div>
-          <div class="progress-track"><div class="progress-fill" style="width:40%"></div></div>
+        <div class="card-title">Liquidity Grab masterclass</div>
+        <div class="card-meta">MotiveWave · 14 may 2026</div>
+        <div class="card-desc">Backtest 100 grabs en ES — wr 71% con confluencia HTF.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#liquidity</span>
+          <span class="chip chip-tag">#ICT</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Actualizado hace 1 semana</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 3: Liquidity Grabs -->
+      <!-- Card 3: Trading in the Zone — cap 8 -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-video">VIDEO</span>
-            <span class="chip chip-tag">Smart Money</span>
-          </div>
+          <span class="chip chip-libro">LIBRO</span>
         </div>
-        <div class="card-title">Liquidity Grabs — MotiweStudios</div>
-        <div class="card-desc">Serie completa sobre zonas de liquidez y order flow en NQ. 8 de 12 videos completados.</div>
-        <div class="progress-wrap">
-          <div class="progress-row">
-            <span class="progress-label">Progreso</span>
-            <span class="progress-pct">67%</span>
-          </div>
-          <div class="progress-track"><div class="progress-fill" style="width:67%"></div></div>
+        <div class="card-title">Trading in the Zone — cap 8</div>
+        <div class="card-meta">Mark Douglas · 12 may 2026</div>
+        <div class="card-desc">Probabilistic mindset. Estoy pensando en outcomes vs. proceso.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#psicologia</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">8 / 12 videos</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 4: Tilt Management -->
+      <!-- Card 4: Tilt management protocol -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-nota">NOTA</span>
-            <span class="chip chip-tag">Psicología</span>
-          </div>
-          <span class="badge-review">⏱ Review pendiente</span>
+          <span class="chip chip-nota">NOTA</span>
+          <span class="badge-review">&#x21BB; Review pendiente</span>
         </div>
-        <div class="card-title">Tilt Management Post-Loss</div>
-        <div class="card-desc">Notas personales sobre gestión emocional tras operaciones perdedoras. Creado 14 may.</div>
-        <div class="card-footer" style="margin-top:auto">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Creado 14 may 2026</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-title">Tilt management protocol</div>
+        <div class="card-meta">Propio · 10 may 2026</div>
+        <div class="card-desc">Después de -2R, walk away 30min. Apliqué viernes y funcionó.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#psicologia</span>
+          <span class="chip chip-tag">#disciplina</span>
+        </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 5: Backtest MMXM -->
+      <!-- Card 5: Backtest London Reversal Q2 -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-backtest">BACKTEST</span>
-            <span class="chip chip-tag">Estrategia</span>
-          </div>
+          <span class="chip chip-backtest">BACKTEST</span>
         </div>
-        <div class="card-title">Backtest MMXM — Mar 2026</div>
-        <div class="card-desc">200 trades analizados en NQ usando modelo MMXM. Win rate 62%, avg RR 1.8.</div>
-        <div class="card-stats">
-          <div class="stat-item">
-            <span class="stat-val">200</span>
-            <span class="stat-lbl">Trades</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-val" style="color:var(--win)">62%</span>
-            <span class="stat-lbl">Win Rate</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-val">1.8</span>
-            <span class="stat-lbl">Avg RR</span>
-          </div>
+        <div class="card-title">Backtest London Reversal Q2</div>
+        <div class="card-meta">Propio · 08 may 2026</div>
+        <div class="card-desc">100 trades · WR 58% · Avg R 1.4. Mejor en martes/miércoles.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#FX</span>
+          <span class="chip chip-tag">#reversal</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Marzo 2026</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 6: Chat with Traders -->
+      <!-- Card 6: Order Flow podcast — ep. 142 -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-podcast">PODCAST</span>
-            <span class="chip chip-tag">Psicología</span>
-          </div>
+          <span class="chip chip-podcast">PODCAST</span>
         </div>
-        <div class="card-title">Chat with Traders Ep.312</div>
-        <div class="card-desc">Entrevista con trader prop firm. Gestión del riesgo y rutina diaria.</div>
-        <div class="progress-wrap">
-          <div class="progress-row">
-            <span class="progress-label">Progreso</span>
-            <span class="progress-pct">80%</span>
-          </div>
-          <div class="progress-track"><div class="progress-fill" style="width:80%"></div></div>
+        <div class="card-title">Order Flow podcast — ep. 142</div>
+        <div class="card-meta">Spotgamma · 05 may 2026</div>
+        <div class="card-desc">Spotgamma sobre delta divergencia en NQ. Aplicar a 0DTE.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#order-flow</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Ep. 312</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 7: Killzone Drill -->
+      <!-- Card 7: VWAP-reclaim drill — semana 1 -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-drill">DRILL</span>
-            <span class="chip chip-tag">Ejecución</span>
-          </div>
+          <span class="chip chip-drill">DRILL</span>
         </div>
-        <div class="card-title">Killzone Drill — NQ Futures</div>
-        <div class="card-desc">Práctica repetitiva de entradas en killzones NY y London. 15 sesiones completadas.</div>
-        <div class="progress-wrap">
-          <div class="progress-row">
-            <span class="progress-label">Progreso</span>
-            <span class="progress-pct">50%</span>
-          </div>
-          <div class="progress-track"><div class="progress-fill" style="width:50%"></div></div>
+        <div class="card-title">VWAP-reclaim drill — semana 1</div>
+        <div class="card-meta">Propio · 03 may 2026</div>
+        <div class="card-desc">Replay 50 reclaims · identifiqué 3 falsos en cada uno.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#VWAP</span>
+          <span class="chip chip-tag">#drill</span>
         </div>
-        <div class="card-footer">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">15 sesiones</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
-      <!-- Card 8: TradingView Pine Script -->
+      <!-- Card 8: Risk-of-ruin calculator -->
       <div class="res-card">
         <div class="card-top">
-          <div class="card-chips">
-            <span class="chip chip-herramienta">HERRAMIENTA</span>
-            <span class="chip chip-tag">Herramientas</span>
-          </div>
+          <span class="chip chip-herramienta">HERRAMIENTA</span>
         </div>
-        <div class="card-title">TradingView Pine Script</div>
-        <div class="card-desc">Documentación y scripts personalizados para alertas y automatización de análisis.</div>
-        <div class="card-footer" style="margin-top:auto">
-          <span class="progress-label" style="color:var(--ink-3);font-size:11px;">Referencia activa</span>
-          <div class="card-actions">
-            <button class="action-btn" title="Ver">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="3"/><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/></svg>
-            </button>
-            <button class="action-btn" title="Editar">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2l3 3-9 9H2v-3l9-9z"/></svg>
-            </button>
-            <button class="action-btn" title="Opciones">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="4" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12" cy="8" r="1.2" fill="currentColor"/></svg>
-            </button>
-          </div>
+        <div class="card-title">Risk-of-ruin calculator</div>
+        <div class="card-meta">Externa · 01 may 2026</div>
+        <div class="card-desc">Configurado con 1% risk · ruin prob &lt; 0.1% con 200 trades.</div>
+        <div class="card-tags">
+          <span class="chip chip-tag">#risk</span>
+        </div>
+        <div class="card-footer-row">
+          <button class="btn-menu">···</button>
         </div>
       </div>
 
@@ -1059,110 +1067,163 @@
   ══════════════════════════════════════════ -->
   <aside class="right-rail">
 
-    <!-- Progreso General -->
+    <!-- Setups · Top performers -->
     <div>
-      <div class="rail-section-title">Progreso General</div>
-      <div class="ring-wrap">
-        <svg class="ring-svg" width="80" height="80" viewBox="0 0 80 80">
-          <circle class="ring-bg"   cx="40" cy="40" r="36"/>
-          <circle class="ring-fill" cx="40" cy="40" r="36"/>
-          <text x="40" y="37" class="ring-label ring-label-pct">62%</text>
-          <text x="40" y="51" class="ring-label ring-label-sub">progreso</text>
-        </svg>
-        <div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:4px;">Biblioteca general</div>
-          <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--ink);">8</div>
-          <div style="font-size:12px;color:var(--ink-2);">recursos totales</div>
-        </div>
+      <div class="rail-header" style="margin-bottom:12px;">
+        <span class="rail-title">Setups · Top performers</span>
+        <button class="rail-menu-btn">···</button>
       </div>
-      <div class="rail-stats">
-        <div class="rail-stat">
-          <div class="rs-val" style="color:var(--win)">2</div>
-          <div class="rs-lbl">Completados</div>
-        </div>
-        <div class="rail-stat">
-          <div class="rs-val" style="color:var(--accent)">5</div>
-          <div class="rs-lbl">En progreso</div>
-        </div>
-        <div class="rail-stat">
-          <div class="rs-val" style="color:var(--be)">1</div>
-          <div class="rs-lbl">Pendientes</div>
-        </div>
-        <div class="rail-stat">
-          <div class="rs-val">8</div>
-          <div class="rs-lbl">Total</div>
-        </div>
+
+      <div class="segment-tabs" style="margin-bottom:14px;">
+        <button class="seg-tab active">Futuros</button>
+        <button class="seg-tab">FX</button>
+        <button class="seg-tab">Equities</button>
+        <button class="seg-tab">Cripto</button>
       </div>
+
+      <table class="setup-table">
+        <thead>
+          <tr>
+            <th>SETUP</th>
+            <th style="text-align:right;">WIN %</th>
+            <th style="text-align:right;">AVG R</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(251,113,4,0.2);color:#fb7104;">OR</span>
+                <div>
+                  <div class="setup-name">Opening Range Break</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">64%</td>
+            <td class="setup-avgr pos">+1.80</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(239,68,68,0.2);color:#ef4444;">FA</span>
+                <div>
+                  <div class="setup-name">Failed Auction</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">52%</td>
+            <td class="setup-avgr pos">+8.90</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(79,110,247,0.2);color:#7b96f9;">LR</span>
+                <div>
+                  <div class="setup-name">London Reversal</div>
+                  <div class="setup-sub">FX</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">58%</td>
+            <td class="setup-avgr pos">+1.40</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(34,197,94,0.2);color:#22c55e;">LG</span>
+                <div>
+                  <div class="setup-name">Liquidity Grab</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">71%</td>
+            <td class="setup-avgr pos">+2.20</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(155,89,182,0.2);color:#c37ef8;">TC</span>
+                <div>
+                  <div class="setup-name">Trend Continuation</div>
+                  <div class="setup-sub">Equities</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">49%</td>
+            <td class="setup-avgr pos">+0.60</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(20,184,166,0.2);color:#14b8a6;">AS</span>
+                <div>
+                  <div class="setup-name">Asia Sweep</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">55%</td>
+            <td class="setup-avgr pos">+1.10</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(79,110,247,0.2);color:#7b96f9;">VW</span>
+                <div>
+                  <div class="setup-name">VWAP Reclaim</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">60%</td>
+            <td class="setup-avgr pos">+1.50</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="setup-cell">
+                <span class="setup-avatar" style="background:rgba(107,114,128,0.2);color:#9ca3af;">NF</span>
+                <div>
+                  <div class="setup-name">News Fade – NFP</div>
+                  <div class="setup-sub">Futures</div>
+                </div>
+              </div>
+            </td>
+            <td class="setup-wr">41%</td>
+            <td class="setup-avgr neg">-0.20</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- Review Pendiente -->
-    <div>
-      <div class="rail-section-title">Review Pendiente</div>
-      <div class="review-item">
-        <div>
-          <div class="review-item-title">Trading in the Zone</div>
-          <div class="review-item-sub">LIBRO · Psicología</div>
-        </div>
-        <button class="btn-revisar">Revisar</button>
+    <!-- Nuevo Trade card -->
+    <div class="nuevo-trade-card">
+      <div class="nt-toggle">
+        <button class="nt-toggle-btn long active">LONG</button>
+        <button class="nt-toggle-btn short">SHORT</button>
       </div>
-      <div class="review-item">
-        <div>
-          <div class="review-item-title">Tilt Management Post-Loss</div>
-          <div class="review-item-sub">NOTA · Psicología</div>
-        </div>
-        <button class="btn-revisar">Revisar</button>
+      <div>
+        <div class="nt-label">Símbolo · Setup</div>
+        <div class="nt-symbol">ES</div>
+        <div class="nt-setup">Opening Range Break · NY AM</div>
       </div>
-    </div>
-
-    <!-- Por Categoría -->
-    <div>
-      <div class="rail-section-title">Por Categoría</div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-libro)"></div>
-        <span class="cat-name">Libro</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:100%;background:var(--cat-libro)"></div></div>
-        <span class="cat-count">2</span>
+      <div>
+        <div class="nt-label">Riesgo (R)</div>
+        <div class="nt-risk-val">0.5 R</div>
+        <div class="nt-risk-sub">≈ $514.20 sobre equity</div>
       </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-video)"></div>
-        <span class="cat-name">Video</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-video)"></div></div>
-        <span class="cat-count">1</span>
+      <div class="nt-progress-track">
+        <div class="nt-progress-fill"></div>
       </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-nota)"></div>
-        <span class="cat-name">Nota</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-nota)"></div></div>
-        <span class="cat-count">1</span>
-      </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-backtest)"></div>
-        <span class="cat-name">Backtest</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-backtest)"></div></div>
-        <span class="cat-count">1</span>
-      </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-podcast)"></div>
-        <span class="cat-name">Podcast</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-podcast)"></div></div>
-        <span class="cat-count">1</span>
-      </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-drill)"></div>
-        <span class="cat-name">Drill</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-drill)"></div></div>
-        <span class="cat-count">1</span>
-      </div>
-      <div class="cat-row">
-        <div class="cat-dot" style="background:var(--cat-herramienta)"></div>
-        <span class="cat-name">Herramienta</span>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:50%;background:var(--cat-herramienta)"></div></div>
-        <span class="cat-count">1</span>
-      </div>
+      <div class="nt-currency">USD</div>
     </div>
 
   </aside>
 </div><!-- /main-layout -->
+
+</div><!-- /shell -->
 
 
 <!-- ══════════════════════════════════════════
@@ -1172,129 +1233,70 @@
   <h2>Modales de pantalla</h2>
   <div class="modal-showcase" style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
 
-    <!-- Modal 1: Añadir recurso -->
+    <!-- Modal 1: Añadir entrada -->
     <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:540px;width:100%;">
       <div style="margin-bottom:20px;">
-        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;">Añadir recurso</div>
-        <div style="font-size:13px;color:var(--ink-2);">Añade un libro, video, nota, backtest, podcast, drill o herramienta a tu biblioteca.</div>
+        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;">Nueva entrada de aprendizaje</div>
+        <div style="font-size:13px;color:var(--ink-2);">Añade una nota, libro, video, backtest, podcast, drill o herramienta a tu biblioteca.</div>
       </div>
-
       <div style="display:flex;flex-direction:column;gap:16px;">
-        <!-- Título -->
         <div>
           <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Título <span style="color:var(--loss)">*</span></label>
-          <input type="text" value="Volume Profile — Aitor" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+          <input type="text" value="Volume Profile · Aitor" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
         </div>
-
-        <!-- Tipo + Autor -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tipo <span style="color:var(--loss)">*</span></label>
             <select style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;cursor:pointer;">
-              <option>Libro</option>
-              <option>Video</option>
-              <option>Nota</option>
-              <option>Backtest</option>
-              <option>Podcast</option>
-              <option>Drill</option>
-              <option>Herramienta</option>
+              <option>Libro</option><option>Video</option><option>Nota</option><option>Backtest</option><option>Podcast</option><option>Drill</option><option>Herramienta</option>
             </select>
           </div>
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Autor</label>
-            <input type="text" value="Aitor Zárate" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
-          </div>
-        </div>
-
-        <!-- Descripción -->
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Descripción</label>
-          <textarea readonly rows="3" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;resize:vertical;" placeholder="Breve descripción del recurso..."></textarea>
-        </div>
-
-        <!-- Tags -->
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tags</label>
-          <input type="text" value="futures, profile, volumen" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;" placeholder="futures, profile, ICT...">
-        </div>
-
-        <!-- Checkbox -->
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-          <input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
-          <span style="font-size:13px;color:var(--ink-2);">Marcar para review semanal</span>
-        </label>
-
-        <!-- Divider -->
-        <div style="border-top:1px solid var(--line);"></div>
-
-        <!-- Buttons -->
-        <div style="display:flex;justify-content:flex-end;gap:10px;">
-          <button style="padding:9px 18px;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
-          <button style="padding:9px 18px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Guardar recurso</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal 2: Nueva entrada -->
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:540px;width:100%;">
-      <div style="margin-bottom:20px;">
-        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;">Nueva entrada</div>
-        <div style="font-size:13px;color:var(--ink-2);">Captura aprendizajes, backtests, lecturas y herramientas.</div>
-      </div>
-
-      <div style="display:flex;flex-direction:column;gap:16px;">
-        <!-- Recurso -->
-        <div>
-          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Recurso <span style="color:var(--loss)">*</span></label>
-          <input type="text" value="Volume Profile — Aitor" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
-        </div>
-
-        <!-- Tipo + Autor -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tipo <span style="color:var(--loss)">*</span></label>
-            <select style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;cursor:pointer;">
-              <option>Libro</option>
-              <option>Video</option>
-              <option>Nota</option>
-              <option>Backtest</option>
-              <option>Podcast</option>
-              <option>Drill</option>
-              <option>Herramienta</option>
-            </select>
-          </div>
-          <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Autor <span style="color:var(--loss)">*</span></label>
             <input type="text" value="Aitor Lobato" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
           </div>
         </div>
-
-        <!-- Notas -->
         <div>
           <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Notas</label>
           <textarea readonly rows="3" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-3);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;resize:vertical;" placeholder="Qué aprendiste · cómo aplicarlo · referencia"></textarea>
         </div>
-
-        <!-- Tags -->
         <div>
           <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tags</label>
-          <input type="text" value="futures, profile, ICT..." readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-3);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+          <input type="text" value="#futures #profile" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
         </div>
-
-        <!-- Checkbox -->
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
           <input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
           <span style="font-size:13px;color:var(--ink-2);">Marcar para review semanal</span>
         </label>
-
-        <!-- Divider -->
         <div style="border-top:1px solid var(--line);"></div>
-
-        <!-- Buttons -->
         <div style="display:flex;justify-content:flex-end;gap:10px;">
           <button style="padding:9px 18px;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
           <button style="padding:9px 18px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Guardar entrada</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal 2: Detalle de entrada -->
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:540px;width:100%;">
+      <div style="margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;">
+        <div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <span class="chip chip-libro">LIBRO</span>
+            <span class="badge-review">&#x21BB; Review pendiente</span>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:2px;">Volume Profile · Aitor</div>
+          <div style="font-size:12px;color:var(--ink-2);">Aitor Lobato · 16 may 2026</div>
+        </div>
+        <button style="background:transparent;border:none;color:var(--ink-3);cursor:pointer;font-size:18px;">···</button>
+      </div>
+      <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:14px;">Cap 4-6: cómo identificar value area shift. Aplicar al ORB de mañana.</div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <span class="chip chip-tag">#futures</span>
+        <span class="chip chip-tag">#profile</span>
+      </div>
+      <div style="border-top:1px solid var(--line);padding-top:14px;display:flex;justify-content:flex-end;gap:10px;">
+        <button style="padding:9px 18px;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Editar</button>
+        <button style="padding:9px 18px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius);color:#fbbf24;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Marcar revisado</button>
       </div>
     </div>
 
@@ -1310,17 +1312,15 @@
   <div>
     <h2>Resumen de Funcionalidad</h2>
     <p>
-      La pantalla <strong>Aprendizaje</strong> es la biblioteca de recursos de formación del trader. Centraliza libros,
-      videos, notas, backtests, podcasts, drills y herramientas en un único lugar para que el usuario pueda gestionar su
-      aprendizaje continuo, hacer seguimiento del progreso de cada recurso y recibir recordatorios de revisión periódica.
+      La pantalla <strong>Aprendizaje</strong> es la biblioteca personal del trader donde centraliza todas sus fuentes de formación: libros, videos, notas propias, backtests, podcasts, drills y herramientas. Permite buscar, filtrar por tipo, marcar entradas para review semanal y consultar el rendimiento de cada setup en el rail derecho.
     </p>
     <ul>
-      <li><strong>Grid 2 columnas:</strong> visualiza hasta 8+ recursos con tarjetas ricas en información (categoría, etiqueta, descripción, progreso/stats).</li>
-      <li><strong>Filtrado por categoría:</strong> barra de filtros con tabs para mostrar solo los recursos del tipo seleccionado.</li>
-      <li><strong>Búsqueda en tiempo real:</strong> campo de búsqueda para localizar recursos por título o descripción.</li>
-      <li><strong>Badges de revisión:</strong> los recursos marcados como "Review pendiente" aparecen destacados en la tarjeta y agrupados en el rail derecho.</li>
-      <li><strong>Rail de contexto:</strong> panel lateral con progreso general, lista de pendientes de revisión y desglose por categoría.</li>
-      <li><strong>Acciones rápidas:</strong> cada tarjeta ofrece 3 botones de acción (ver, editar, opciones) para operar sin abandonar la vista.</li>
+      <li><strong>Grid 2 columnas:</strong> 8 tarjetas con chip de categoría, badge de review pendiente, título, autor/fecha, descripción (2 líneas) y tags.</li>
+      <li><strong>Filtrado:</strong> búsqueda libre + dropdown de tipo + botón "Solo marcadas para review".</li>
+      <li><strong>Badges de revisión:</strong> aparecen en amber con ↻ en las 3 entradas marcadas (Volumen Profile, Liquidity Grab masterclass, Tilt management protocol).</li>
+      <li><strong>Rail derecho:</strong> tabla de setups Top performers con segmento Futuros/FX/Equities/Cripto y tarjeta Nuevo Trade con toggle LONG/SHORT.</li>
+      <li><strong>Sidebar:</strong> secciones OPERACIÓN y CUENTA, badge "3" en Trades, card "Review semanal lista" en el fondo.</li>
+      <li><strong>Top bar global:</strong> búsqueda ⌘K, selector de cuenta FXify y botón de configuración.</li>
     </ul>
   </div>
 
@@ -1328,43 +1328,6 @@
   <div>
     <h2>Anatomía de Componentes</h2>
     <div class="comp-grid">
-
-      <!-- Search/Filter Bar -->
-      <div class="comp-card">
-        <div class="comp-card-header">
-          <h3>Search / Filter Bar</h3>
-          <span class="cc-category">Navegación</span>
-          <span class="cc-class">.filter-bar</span>
-        </div>
-        <div class="comp-preview">
-          <div style="display:flex;gap:8px;align-items:center;width:100%;flex-wrap:wrap;">
-            <div style="position:relative;flex:0 0 180px;">
-              <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--ink-3);font-size:13px;">🔍</span>
-              <input style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-size:12px;padding:6px 10px 6px 28px;outline:none;" placeholder="Buscar recursos..." readonly>
-            </div>
-            <button style="padding:5px 10px;border-radius:var(--radius);border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:11px;font-weight:600;cursor:default;">Todos</button>
-            <button style="padding:5px 10px;border-radius:var(--radius);border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:11px;">LIBRO</button>
-            <button style="padding:5px 10px;border-radius:var(--radius);border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:11px;">VIDEO</button>
-          </div>
-        </div>
-        <div class="comp-footer">
-          <div class="comp-footer-col">
-            <h4>Tokens</h4>
-            <p><code>--panel</code> bg input<br><code>--accent</code> tab activo<br><code>--line</code> bordes<br><code>--radius</code> bordes</p>
-          </div>
-          <div class="comp-footer-col">
-            <h4>Estados</h4>
-            <ul>
-              <li>Tab: default / active / hover</li>
-              <li>Input: default / focus / filled</li>
-            </ul>
-          </div>
-          <div class="comp-footer-col">
-            <h4>Comportamiento</h4>
-            <p>Click en tab filtra la grid. Input filtra por texto en título y descripción en tiempo real.</p>
-          </div>
-        </div>
-      </div>
 
       <!-- Resource Card -->
       <div class="comp-card">
@@ -1375,77 +1338,77 @@
         </div>
         <div class="comp-preview">
           <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:12px;width:100%;">
-            <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
               <span class="chip chip-libro">LIBRO</span>
-              <span class="chip chip-tag">Psicología</span>
-              <span class="badge-review" style="margin-left:auto;">⏱ Review pendiente</span>
+              <span class="badge-review">&#x21BB; Review pendiente</span>
             </div>
-            <div style="font-size:13px;font-weight:600;margin-bottom:4px;">Trading in the Zone</div>
-            <div style="font-size:11px;color:var(--ink-2);">Mark Douglas. Fundamentos de disciplina mental.</div>
-            <div class="progress-track" style="margin-top:8px;"><div class="progress-fill" style="width:60%"></div></div>
+            <div style="font-size:13px;font-weight:600;margin-bottom:2px;">Volume Profile · Aitor</div>
+            <div style="font-size:11px;color:var(--ink-2);margin-bottom:6px;">Aitor Lobato · 16 may 2026</div>
+            <div style="font-size:11px;color:var(--ink-2);margin-bottom:8px);">Cap 4-6: cómo identificar value area shift.</div>
+            <div style="display:flex;gap:4px;"><span class="chip chip-tag">#futures</span><span class="chip chip-tag">#profile</span></div>
           </div>
         </div>
         <div class="comp-footer">
           <div class="comp-footer-col">
             <h4>Tokens</h4>
-            <p><code>--panel</code> bg<br><code>--line</code> borde<br><code>--accent</code> barra progreso<br><code>--be</code> badge review</p>
+            <p><code>--panel</code> bg<br><code>--line</code> borde<br><code>--be</code> badge review<br><code>--radius</code> 8px</p>
           </div>
           <div class="comp-footer-col">
             <h4>Estados</h4>
             <ul>
               <li>default</li>
               <li>hover (borde accent)</li>
-              <li>con / sin progreso</li>
               <li>con / sin badge review</li>
+              <li>··· menú contextual</li>
             </ul>
           </div>
           <div class="comp-footer-col">
             <h4>Comportamiento</h4>
-            <p>Click en la tarjeta abre detalle del recurso. Acciones en footer para editar u opciones.</p>
+            <p>Click en la tarjeta abre modal de detalle. Botón ··· despliega menú: Editar, Marcar revisado, Eliminar.</p>
           </div>
         </div>
       </div>
 
-      <!-- Progress Indicator -->
+      <!-- Setup Table Row -->
       <div class="comp-card">
         <div class="comp-card-header">
-          <h3>Progress Indicator</h3>
-          <span class="cc-category">Feedback</span>
-          <span class="cc-class">.progress-wrap</span>
+          <h3>Setup Table Row</h3>
+          <span class="cc-category">Datos</span>
+          <span class="cc-class">.setup-table</span>
         </div>
-        <div class="comp-preview" style="flex-direction:column;gap:12px;align-items:stretch;">
-          <div class="progress-wrap" style="width:100%">
-            <div class="progress-row">
-              <span class="progress-label">Progreso barra</span>
-              <span class="progress-pct">60%</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill" style="width:60%"></div></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <svg width="48" height="48" viewBox="0 0 80 80">
-              <circle class="ring-bg" cx="40" cy="40" r="36"/>
-              <circle class="ring-fill" cx="40" cy="40" r="36" style="stroke-dashoffset:90"/>
-              <text x="40" y="44" class="ring-label ring-label-pct" style="font-size:22px">62%</text>
-            </svg>
-            <span style="font-size:12px;color:var(--ink-2);">Anillo SVG (rail)</span>
-          </div>
+        <div class="comp-preview" style="flex-direction:column;gap:8px;align-items:stretch;">
+          <table class="setup-table" style="width:100%;">
+            <thead><tr><th>SETUP</th><th style="text-align:right;">WIN %</th><th style="text-align:right;">AVG R</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="setup-cell"><span class="setup-avatar" style="background:rgba(251,113,4,0.2);color:#fb7104;">OR</span><div><div class="setup-name">Opening Range Break</div><div class="setup-sub">Futures</div></div></div></td>
+                <td class="setup-wr">64%</td>
+                <td class="setup-avgr pos">+1.80</td>
+              </tr>
+              <tr>
+                <td><div class="setup-cell"><span class="setup-avatar" style="background:rgba(34,197,94,0.2);color:#22c55e;">LG</span><div><div class="setup-name">Liquidity Grab</div><div class="setup-sub">Futures</div></div></div></td>
+                <td class="setup-wr">71%</td>
+                <td class="setup-avgr pos">+2.20</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
         <div class="comp-footer">
           <div class="comp-footer-col">
             <h4>Tokens</h4>
-            <p><code>--accent</code> fill<br><code>--panel-2</code> track<br><code>--ink</code> texto %<br><code>--ink-3</code> label</p>
+            <p><code>--win</code> AVG R positivo<br><code>--loss</code> AVG R negativo<br><code>--line</code> separador filas<br><code>--ink-3</code> subtítulo</p>
           </div>
           <div class="comp-footer-col">
             <h4>Estados</h4>
             <ul>
-              <li>0% – 100%</li>
-              <li>Barra lineal (tarjeta)</li>
-              <li>Anillo SVG (rail)</li>
+              <li>AVG R positivo (verde)</li>
+              <li>AVG R negativo (rojo)</li>
+              <li>Segmento filtrado</li>
             </ul>
           </div>
           <div class="comp-footer-col">
             <h4>Comportamiento</h4>
-            <p>Valor calculado dinámicamente. Algunos recursos (NOTA, HERRAMIENTA) no muestran barra.</p>
+            <p>Tabs Futuros/FX/Equities/Cripto filtran las filas. Click en fila navega a detalle del setup en Playbook.</p>
           </div>
         </div>
       </div>
@@ -1453,7 +1416,7 @@
       <!-- Category Chip -->
       <div class="comp-card">
         <div class="comp-card-header">
-          <h3>Category Chip</h3>
+          <h3>Category Chip + Badge</h3>
           <span class="cc-category">Etiqueta</span>
           <span class="cc-class">.chip</span>
         </div>
@@ -1465,24 +1428,72 @@
           <span class="chip chip-podcast">PODCAST</span>
           <span class="chip chip-drill">DRILL</span>
           <span class="chip chip-herramienta">HERRAMIENTA</span>
-          <span class="chip chip-tag">Psicología</span>
+          <span class="badge-review">&#x21BB; Review pendiente</span>
+          <span class="chip chip-tag">#futures</span>
         </div>
         <div class="comp-footer">
           <div class="comp-footer-col">
             <h4>Tokens</h4>
-            <p>Cada categoría con color semántico propio + alpha 0.18 de fondo. Tag usa <code>--chip</code>.</p>
+            <p>Cada categoría con color semántico + alpha 0.18. Badge review: <code>--be</code>. Tag: <code>--chip</code> bg.</p>
           </div>
           <div class="comp-footer-col">
             <h4>Estados</h4>
             <ul>
               <li>Categoría (uppercase bold)</li>
-              <li>Tag (normal weight)</li>
-              <li>Badge review (amber)</li>
+              <li>Tag (lowercase, peso normal)</li>
+              <li>Badge review (amber ↻)</li>
             </ul>
           </div>
           <div class="comp-footer-col">
             <h4>Comportamiento</h4>
-            <p>Solo visual en tarjeta. Click en chip de la filter-bar activa el filtro. No son interactivos dentro de la tarjeta.</p>
+            <p>Solo visual en tarjeta. El dropdown de filtro y el botón "Solo marcadas" filtran la grid. No interactivos en tarjeta.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nuevo Trade Card -->
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <h3>Nuevo Trade Card</h3>
+          <span class="cc-category">Rail</span>
+          <span class="cc-class">.nuevo-trade-card</span>
+        </div>
+        <div class="comp-preview" style="align-items:stretch;">
+          <div class="nuevo-trade-card" style="width:100%;">
+            <div class="nt-toggle">
+              <button class="nt-toggle-btn long active">LONG</button>
+              <button class="nt-toggle-btn short">SHORT</button>
+            </div>
+            <div>
+              <div class="nt-label">Símbolo · Setup</div>
+              <div class="nt-symbol" style="font-size:18px;">ES</div>
+              <div class="nt-setup">Opening Range Break · NY AM</div>
+            </div>
+            <div>
+              <div class="nt-label">Riesgo (R)</div>
+              <div class="nt-risk-val" style="font-size:16px;">0.5 R</div>
+              <div class="nt-risk-sub">≈ $514.20 sobre equity</div>
+            </div>
+            <div class="nt-progress-track"><div class="nt-progress-fill"></div></div>
+            <div class="nt-currency">USD</div>
+          </div>
+        </div>
+        <div class="comp-footer">
+          <div class="comp-footer-col">
+            <h4>Tokens</h4>
+            <p><code>--panel-2</code> bg<br><code>--win</code> toggle LONG<br><code>--accent</code> progress<br><code>--ink-3</code> labels</p>
+          </div>
+          <div class="comp-footer-col">
+            <h4>Estados</h4>
+            <ul>
+              <li>LONG activo (verde)</li>
+              <li>SHORT activo (rojo)</li>
+              <li>Barra de riesgo dinámica</li>
+            </ul>
+          </div>
+          <div class="comp-footer-col">
+            <h4>Comportamiento</h4>
+            <p>Toggle LONG/SHORT cambia color del estado. Barra refleja % del riesgo sobre equity. Botón de envío crea el trade.</p>
           </div>
         </div>
       </div>
@@ -1490,44 +1501,35 @@
       <!-- Right Rail Panel -->
       <div class="comp-card">
         <div class="comp-card-header">
-          <h3>Right Rail Panel</h3>
+          <h3>Right Rail</h3>
           <span class="cc-category">Layout</span>
           <span class="cc-class">.right-rail</span>
         </div>
         <div class="comp-preview" style="flex-direction:column;gap:10px;align-items:stretch;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-3);">Progreso General</div>
-          <div style="display:flex;gap:8px;">
-            <div style="background:var(--panel-2);border-radius:var(--radius);padding:8px 10px;flex:1;text-align:center;">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--win)">2</div>
-              <div style="font-size:10px;color:var(--ink-3)">Completados</div>
-            </div>
-            <div style="background:var(--panel-2);border-radius:var(--radius);padding:8px 10px;flex:1;text-align:center;">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--accent)">5</div>
-              <div style="font-size:10px;color:var(--ink-3)">En progreso</div>
-            </div>
-          </div>
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-3);margin-top:4px;">Review Pendiente</div>
-          <div style="background:var(--panel-2);border-radius:var(--radius);padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:12px;color:var(--ink);">Trading in the Zone</span>
-            <button class="btn-revisar" style="font-size:11px;">Revisar</button>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--ink-3);margin-bottom:6px;">Setups · Top performers</div>
+          <div class="segment-tabs" style="margin-bottom:0;">
+            <button class="seg-tab active">Futuros</button>
+            <button class="seg-tab">FX</button>
+            <button class="seg-tab">Equities</button>
+            <button class="seg-tab">Cripto</button>
           </div>
         </div>
         <div class="comp-footer">
           <div class="comp-footer-col">
             <h4>Tokens</h4>
-            <p><code>--panel</code> bg<br><code>--panel-2</code> stat cards<br><code>--line</code> borde izq<br><code>280px</code> ancho fijo</p>
+            <p><code>--panel</code> bg<br><code>--panel-2</code> card nuevo trade<br><code>--line</code> borde izq<br><code>280px</code> ancho fijo</p>
           </div>
           <div class="comp-footer-col">
             <h4>Estados</h4>
             <ul>
-              <li>Sticky vertical</li>
+              <li>Sticky (top: 48px)</li>
               <li>Scroll independiente</li>
-              <li>3 secciones colapsables</li>
+              <li>Segmento activo resaltado</li>
             </ul>
           </div>
           <div class="comp-footer-col">
             <h4>Comportamiento</h4>
-            <p>Permanece visible al hacer scroll en el contenido principal. "Revisar" abre el modal de review del recurso.</p>
+            <p>Permanece visible al hacer scroll. Tabs filtran la tabla de setups. Card Nuevo Trade precarga símbolo del trade más reciente.</p>
           </div>
         </div>
       </div>
@@ -1538,11 +1540,18 @@
 </section><!-- /spec-section -->
 
 <script>
-  // Filter tabs interaction
-  document.querySelectorAll('.filter-tab').forEach(tab => {
+  // Segment tabs
+  document.querySelectorAll('.seg-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.closest('.segment-tabs').querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
+    });
+  });
+  // LONG/SHORT toggle
+  document.querySelectorAll('.nt-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.nt-toggle').querySelectorAll('.nt-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
     });
   });
 </script>
