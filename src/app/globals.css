@@ -1,0 +1,93 @@
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap");
+
+/* ── Design Tokens (from design-spec/foundations.html) ── */
+:root {
+  --bg:          #f6f5f1;
+  --panel:       #ffffff;
+  --panel-2:     #fafaf7;
+  --ink:         #16140f;
+  --ink-2:       #45413a;
+  --ink-3:       #8a8678;
+  --line:        #eceae2;
+  --line-2:      #e2dfd4;
+  --chip:        #f2efe7;
+  --accent:      oklch(58% 0.16 264);
+  --accent-soft: oklch(95% 0.03 264);
+  --win:         oklch(63% 0.16 152);
+  --win-soft:    oklch(94% 0.06 152);
+  --loss:        oklch(60% 0.20 27);
+  --loss-soft:   oklch(94% 0.06 27);
+  --be:          oklch(75% 0.14 85);
+  --be-soft:     oklch(95% 0.06 85);
+  --radius:      14px;
+  --radius-sm:   10px;
+  --chart-1:     #4f6ef7;
+  --chart-2:     #2d7a3a;
+  --chart-3:     #b87d2d;
+  --chart-4:     #b83232;
+  --chart-5:     #c4622d;
+  --cat-libro:       #4f6ef7;
+  --cat-video:       #9b59b6;
+  --cat-nota:        #22c55e;
+  --cat-backtest:    #f59e0b;
+  --cat-podcast:     #e91e8c;
+  --cat-drill:       #14b8a6;
+  --cat-herramienta: #6b7280;
+}
+
+.dark {
+  --bg:          #0e0c09;
+  --panel:       #16140f;
+  --panel-2:     #1b1813;
+  --ink:         #f5f2ea;
+  --ink-2:       #c7c2b5;
+  --ink-3:       #807a6b;
+  --line:        #25221c;
+  --line-2:      #2f2c24;
+  --chip:        #25221c;
+  --accent-soft: oklch(20% 0.06 264);
+  --win-soft:    oklch(20% 0.06 152);
+  --loss-soft:   oklch(20% 0.06 27);
+  --be-soft:     oklch(20% 0.06 85);
+}
+
+@theme inline {
+  --color-bg:          var(--bg);
+  --color-panel:       var(--panel);
+  --color-panel-2:     var(--panel-2);
+  --color-ink:         var(--ink);
+  --color-ink-2:       var(--ink-2);
+  --color-ink-3:       var(--ink-3);
+  --color-line:        var(--line);
+  --color-chip:        var(--chip);
+  --color-accent:      var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-win:         var(--win);
+  --color-win-soft:    var(--win-soft);
+  --color-loss:        var(--loss);
+  --color-loss-soft:   var(--loss-soft);
+  --color-be:          var(--be);
+  --color-be-soft:     var(--be-soft);
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Shell layout */
+.shell        { display: flex; height: 100vh; overflow: hidden; }
+.sidebar      { width: 240px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow-y: auto; }
+.main-content { flex: 1; overflow-y: auto; background: var(--bg); }
+.right-rail   { width: 280px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; }
+
+/* Typography */
+.text-eyebrow { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); }
+.mono         { font-family: "JetBrains Mono", monospace; }
