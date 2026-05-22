@@ -1166,6 +1166,142 @@
 
 
 <!-- ══════════════════════════════════════════
+     MODALES DE PANTALLA
+══════════════════════════════════════════ -->
+<section class="spec-section">
+  <h2>Modales de pantalla</h2>
+  <div class="modal-showcase" style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
+
+    <!-- Modal 1: Añadir recurso -->
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:540px;width:100%;">
+      <div style="margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;">Añadir recurso</div>
+        <div style="font-size:13px;color:var(--ink-2);">Añade un libro, video, nota, backtest, podcast, drill o herramienta a tu biblioteca.</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Título -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Título <span style="color:var(--loss)">*</span></label>
+          <input type="text" value="Volume Profile — Aitor" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+
+        <!-- Tipo + Autor -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tipo <span style="color:var(--loss)">*</span></label>
+            <select style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;cursor:pointer;">
+              <option>Libro</option>
+              <option>Video</option>
+              <option>Nota</option>
+              <option>Backtest</option>
+              <option>Podcast</option>
+              <option>Drill</option>
+              <option>Herramienta</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Autor</label>
+            <input type="text" value="Aitor Zárate" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+          </div>
+        </div>
+
+        <!-- Descripción -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Descripción</label>
+          <textarea readonly rows="3" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;resize:vertical;" placeholder="Breve descripción del recurso..."></textarea>
+        </div>
+
+        <!-- Tags -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tags</label>
+          <input type="text" value="futures, profile, volumen" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;" placeholder="futures, profile, ICT...">
+        </div>
+
+        <!-- Checkbox -->
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          <span style="font-size:13px;color:var(--ink-2);">Marcar para review semanal</span>
+        </label>
+
+        <!-- Divider -->
+        <div style="border-top:1px solid var(--line);"></div>
+
+        <!-- Buttons -->
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button style="padding:9px 18px;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+          <button style="padding:9px 18px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Guardar recurso</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 2: Nueva entrada -->
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;max-width:540px;width:100%;">
+      <div style="margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;">Nueva entrada</div>
+        <div style="font-size:13px;color:var(--ink-2);">Captura aprendizajes, backtests, lecturas y herramientas.</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Recurso -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Recurso <span style="color:var(--loss)">*</span></label>
+          <input type="text" value="Volume Profile — Aitor" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+
+        <!-- Tipo + Autor -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tipo <span style="color:var(--loss)">*</span></label>
+            <select style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;cursor:pointer;">
+              <option>Libro</option>
+              <option>Video</option>
+              <option>Nota</option>
+              <option>Backtest</option>
+              <option>Podcast</option>
+              <option>Drill</option>
+              <option>Herramienta</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Autor <span style="color:var(--loss)">*</span></label>
+            <input type="text" value="Aitor Lobato" readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+          </div>
+        </div>
+
+        <!-- Notas -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Notas</label>
+          <textarea readonly rows="3" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-3);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;resize:vertical;" placeholder="Qué aprendiste · cómo aplicarlo · referencia"></textarea>
+        </div>
+
+        <!-- Tags -->
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px;">Tags</label>
+          <input type="text" value="futures, profile, ICT..." readonly style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-3);font-family:'Inter',sans-serif;font-size:13px;padding:9px 12px;outline:none;">
+        </div>
+
+        <!-- Checkbox -->
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          <span style="font-size:13px;color:var(--ink-2);">Marcar para review semanal</span>
+        </label>
+
+        <!-- Divider -->
+        <div style="border-top:1px solid var(--line);"></div>
+
+        <!-- Buttons -->
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button style="padding:9px 18px;background:transparent;border:1px solid var(--line);border-radius:var(--radius);color:var(--ink-2);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Cancelar</button>
+          <button style="padding:9px 18px;background:var(--accent);border:none;border-radius:var(--radius);color:#fff;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Guardar entrada</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
      SPEC SECTION
 ══════════════════════════════════════════ -->
 <section class="spec-section">
