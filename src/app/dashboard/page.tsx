@@ -316,18 +316,30 @@ function TabPortfolio() {
    TAB OPERADOR
 ═══════════════════════════════════════════ */
 const EQUITY_DATA = [
-  { date: "1M",  balance: 100000, equity: 100000 },
-  { date: "5M",  balance: 100800, equity: 100350 },
-  { date: "7M",  balance: 101200, equity: 100900 },
-  { date: "8M",  balance: 100700, equity: 100400 },
-  { date: "11M", balance: 101900, equity: 101500 },
-  { date: "12M", balance: 102400, equity: 102000 },
-  { date: "13M", balance: 102100, equity: 101700 },
-  { date: "14M", balance: 102900, equity: 102600 },
-  { date: "15M", balance: 103300, equity: 102900 },
-  { date: "18M", balance: 103000, equity: 102600 },
-  { date: "19M", balance: 103500, equity: 103200 },
-  { date: "20M", balance: 103640, equity: 103220 },
+  { date: "abr 14", balance: 100000, equity: 99800  },
+  { date: "abr 17", balance: 100400, equity: 100100 },
+  { date: "abr 22", balance: 100200, equity: 99900  },
+  { date: "abr 27", balance: 100900, equity: 100600 },
+  { date: "may 1",  balance: 101400, equity: 101100 },
+  { date: "may 5",  balance: 101900, equity: 101600 },
+  { date: "may 9",  balance: 101600, equity: 101300 },
+  { date: "may 12", balance: 102400, equity: 102100 },
+  { date: "may 15", balance: 102900, equity: 102600 },
+  { date: "may 18", balance: 102600, equity: 102300 },
+  { date: "may 20", balance: 102840, equity: 102560 },
+]
+
+const ACCOUNT_CARDS = [
+  { id: "a1", type: "PROP FIRM",  name: "FXify 100K · Phase 2", balance: 102840.55, deltaToday: +1240.20, color: "#4f6ef7" },
+  { id: "a2", type: "PROP FIRM",  name: "FTMO Swing 50K",        balance: 51780.10,  deltaToday: -310.00,  color: "#22c55e" },
+  { id: "a3", type: "PERSONAL",   name: "Personal · IBKR",       balance: 18205.42,  deltaToday: +88.00,   color: "#f59e0b" },
+  { id: "a4", type: "DEMO",       name: "Demo · Apex 150K",      balance: 149120.00, deltaToday: 0,        color: "#e05555" },
+]
+
+const RECENT_TRADES = [
+  { id: "t1", dir: "LONG",  symbol: "ES",     setup: "Opening Range Break", r: 2.4,  pnl: 1240, session: "NY AM", time: "08:32", tags: ["A+","Plan"] },
+  { id: "t2", dir: "SHORT", symbol: "NQ",     setup: "Failed Auction",      r: -1.0, pnl: -480, session: "NY AM", time: "09:14", tags: ["Plan"] },
+  { id: "t3", dir: "LONG",  symbol: "EURUSD", setup: "London Reversal",     r: 1.2,  pnl: 312,  session: "London", time: "03:45", tags: ["A"] },
 ]
 
 const SESSION_DATA = [
@@ -337,110 +349,218 @@ const SESSION_DATA = [
   { session: "NY Close", trades: 1,  winRate: 0,  avgR: -1.0 },
 ]
 
+const TRADE_FILTERS = ["Todos", "A+", "Plan seguido", "Off-plan", "Con violación"]
+
 function TabOperador() {
+  const [selectedAccount, setSelectedAccount] = useState("a1")
+  const [tradeFilter, setTradeFilter] = useState("Todos")
+
+  const totalPortfolio = ACCOUNT_CARDS.reduce((s, a) => s + a.balance, 0)
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
-        <KpiCard label="Equity"   value="$103,640" sub="FXify 100K · Ph2" delta="+$3,640" />
-        <KpiCard label="Net P&L"  value="+$2,640"  sub="esta semana" color="var(--win)" />
-        <KpiCard label="Trades"   value="23"        sub="este mes" color="var(--ink)" />
-        <KpiCard label="Avg R"    value="+1.8R"     sub="ganadores" color="var(--win)" />
-      </div>
-
-      {/* Equity Curve */}
-      <Card title="Equity Curve" sub="FXify 100K · Phase 2 · Balance vs Equity en tiempo real">
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={EQUITY_DATA} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="gradBal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gradEq" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-              tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
-            <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="balance" name="Balance" stroke="#4f6ef7" strokeWidth={2}
-              fill="url(#gradBal)" dot={false} activeDot={{ r: 4, fill: "#4f6ef7" }} />
-            <Area type="monotone" dataKey="equity"  name="Equity"  stroke="#f59e0b" strokeWidth={1.5}
-              strokeDasharray="5 3" fill="url(#gradEq)" dot={false} activeDot={{ r: 4, fill: "#f59e0b" }} />
-          </AreaChart>
-        </ResponsiveContainer>
-        <div className="flex gap-5 mt-2 pt-3 border-t border-[var(--line)]">
-          {[["#4f6ef7","Balance","$103,640"],["#f59e0b","Equity","$103,220"]].map(([c,l,v]) => (
-            <div key={l} className="flex items-center gap-2">
-              <span className="w-5 h-0.5 inline-block" style={{ background: c }} />
-              <span className="text-xs text-[var(--ink-3)]">{l}</span>
-              <span className="text-xs font-mono font-semibold text-[var(--ink)]">{v}</span>
+      {/* ── Hero: equity number + inline metrics ── */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-6 py-5">
+        <div className="flex items-start justify-between mb-1">
+          <div>
+            <p className="text-eyebrow mb-2">Equity · FXify 100K Phase 2</p>
+            <div className="flex items-baseline gap-3">
+              <p style={{ fontSize: 36, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>
+                $102,840.00
+              </p>
+              <span className="flex items-center gap-1 text-sm font-semibold text-[var(--win)]">
+                ↑ +0.55% · 7d
+              </span>
             </div>
-          ))}
+            <p className="text-xs text-[var(--ink-3)] mt-2">
+              Drawdown máx. 2.1% · Profit factor 1.84 · Win rate 58%
+            </p>
+          </div>
         </div>
-      </Card>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Sesiones */}
-        <Card title="Rendimiento por sesión">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Sesión","Trades","Win %","Avg R"].map(h => (
-                  <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {SESSION_DATA.map(s => (
-                <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
-                  <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
-                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.winRate}%
-                  </td>
-                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.avgR > 0 ? "+" : ""}{s.avgR}R
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-
-        {/* Trades recientes */}
-        <Card title="Trades recientes">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["","Símbolo","R","P&L"].map(h => (
-                  <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {mockTrades.map(t => (
-                <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-2.5">
-                    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded",
-                      t.direction === "LONG" ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
-                    )}>{t.direction}</span>
-                  </td>
-                  <td className="py-2.5 font-mono text-sm font-semibold text-[var(--ink)]">{t.symbol}</td>
-                  <td className={cn("py-2.5 font-mono text-sm font-semibold", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {(t.rMultiple ?? 0) >= 0 ? "+" : ""}{t.rMultiple}R
-                  </td>
-                  <td className={cn("py-2.5 font-mono text-sm", (t.pnl ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {(t.pnl ?? 0) >= 0 ? "+" : ""}${t.pnl?.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        {/* Equity Curve */}
+        <div className="mt-4">
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={EQUITY_DATA} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradBal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradEq" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.12} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
+                tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
+              <Tooltip content={<ChartTooltip />} />
+              <Area type="monotone" dataKey="balance" name="Balance" stroke="#4f6ef7" strokeWidth={2.5}
+                fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "#4f6ef7", strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="equity" name="Equity" stroke="#f59e0b" strokeWidth={1.5}
+                strokeDasharray="5 3" fill="url(#gradEq)" dot={false} activeDot={{ r: 4, fill: "#f59e0b", strokeWidth: 0 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+          <div className="flex gap-5 mt-1 pt-3 border-t border-[var(--line)]">
+            {[["#4f6ef7","Balance","$102,840"],["#f59e0b","Equity","$102,560"]].map(([c,l,v]) => (
+              <div key={l} className="flex items-center gap-2">
+                <span className="w-5 h-px inline-block" style={{ background: c }} />
+                <span className="text-xs text-[var(--ink-3)]">{l}</span>
+                <span className="text-xs font-mono font-semibold text-[var(--ink)]">{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {/* ── Account cards ── */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">Tus cuentas</p>
+          <p className="text-[11px] text-[var(--ink-3)]">
+            4 cuentas · portfolio consolidado{" "}
+            <span className="font-mono font-semibold text-[var(--ink)]">
+              ${totalPortfolio.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </span>
+          </p>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {ACCOUNT_CARDS.map(a => {
+            const active = selectedAccount === a.id
+            return (
+              <button key={a.id} onClick={() => setSelectedAccount(a.id)}
+                className="text-left rounded-[var(--radius-sm)] p-3 border transition-all"
+                style={{
+                  border: active ? `1.5px solid ${a.color}` : "1.5px solid var(--line)",
+                  background: active ? "var(--panel-2)" : "transparent",
+                }}>
+                {/* Icon + type */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs"
+                    style={{ background: `${a.color}22`, color: a.color }}>
+                    {a.type === "PROP FIRM" ? "🏢" : a.type === "PERSONAL" ? "👤" : "🖥️"}
+                  </div>
+                  <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider">{a.type}</span>
+                </div>
+                <p className="text-[11px] font-semibold text-[var(--ink)] leading-tight mb-1.5">{a.name}</p>
+                <p className="font-mono font-bold text-[var(--ink)] text-[14px] leading-none">
+                  ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </p>
+                <p className={cn("text-[10px] font-semibold mt-1 font-mono",
+                  a.deltaToday > 0 ? "text-[var(--win)]" : a.deltaToday < 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
+                  {a.deltaToday > 0 ? "+" : ""}{a.deltaToday === 0 ? "0.00" : a.deltaToday.toFixed(2)} USD hoy
+                </p>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Trades recientes ── */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">Trades recientes</p>
+          <div className="flex items-center gap-1.5">
+            {TRADE_FILTERS.map(f => (
+              <button key={f} onClick={() => setTradeFilter(f)}
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors"
+                style={{
+                  background: tradeFilter === f ? "var(--accent)" : "var(--chip)",
+                  color: tradeFilter === f ? "white" : "var(--ink-2)",
+                }}>
+                {f}
+              </button>
+            ))}
+            <button className="text-[11px] font-semibold text-[var(--accent)] ml-1 hover:underline">
+              Ver todos →
+            </button>
+          </div>
+        </div>
+
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[var(--line)]">
+              {["Símbolo · Setup","R","P&L Neto","Sesión · Tags","Fecha"].map(h => (
+                <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {RECENT_TRADES.map(t => (
+              <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                {/* Symbol + setup */}
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-base leading-none", t.dir === "LONG" ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                      {t.dir === "LONG" ? "↑" : "↓"}
+                    </span>
+                    <div>
+                      <p className="font-mono font-bold text-[var(--ink)] text-sm">
+                        {t.symbol}
+                        <span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.dir}</span>
+                      </p>
+                      <p className="text-[10px] text-[var(--ink-3)]">{t.setup}</p>
+                    </div>
+                  </div>
+                </td>
+                {/* R */}
+                <td className={cn("py-3 font-mono font-bold text-sm", t.r >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {t.r >= 0 ? "+" : ""}{t.r}R
+                </td>
+                {/* P&L */}
+                <td className={cn("py-3 font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toLocaleString()}.00
+                </td>
+                {/* Session + tags */}
+                <td className="py-3">
+                  <p className="text-xs text-[var(--ink-2)] mb-1">{t.session} · {t.time}</p>
+                  <div className="flex gap-1">
+                    {t.tags.map(tag => (
+                      <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                        style={{
+                          background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)",
+                          color: tag === "A+" ? "var(--accent)" : "var(--ink-2)",
+                        }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                {/* Fecha */}
+                <td className="py-3 text-xs text-[var(--ink-3)]">20 may 2026</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Rendimiento por sesión ── */}
+      <Card title="Rendimiento por sesión">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-[var(--line)]">
+              {["Sesión","Trades","Win %","Avg R"].map(h => (
+                <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SESSION_DATA.map(s => (
+              <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
+                <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
+                <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {s.winRate}%
+                </td>
+                <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {s.avgR > 0 ? "+" : ""}{s.avgR}R
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
     </div>
   )
 }
