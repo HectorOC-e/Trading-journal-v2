@@ -1,6 +1,3 @@
-// ResourceGrid organism — updated per spec
-// Search + FilterBar + "Solo review" toggle + sort dropdown + count + responsive 2-col grid
-
 "use client"
 
 import { useState } from "react"
@@ -70,14 +67,17 @@ export function ResourceGrid({ resources, className }: ResourceGridProps) {
     sort
   )
 
-  const sortLabel = SORT_OPTIONS.find((o) => o.value === sort)?.label ?? "Ordenar"
+  const isFiltered = category !== "TODOS" || onlyReview || search !== ""
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
 
       {/* Row 1: Search */}
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-3)] pointer-events-none" />
+        <Search
+          size={14}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ink-3)] pointer-events-none"
+        />
         <input
           className="w-full h-9 pl-9 pr-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
           placeholder="Buscar por título, autor, notas o tag…"
@@ -102,7 +102,7 @@ export function ResourceGrid({ resources, className }: ResourceGridProps) {
           Solo review
         </button>
 
-        {/* Sort dropdown (native select styled) */}
+        {/* Sort dropdown */}
         <div className="relative ml-auto">
           <select
             value={sort}
@@ -113,17 +113,20 @@ export function ResourceGrid({ resources, className }: ResourceGridProps) {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-3)] pointer-events-none" />
+          <ChevronDown
+            size={11}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--ink-3)] pointer-events-none"
+          />
         </div>
       </div>
 
-      {/* Count */}
+      {/* Resource count */}
       <p className="text-[11px] text-[var(--ink-3)]">
         {filtered.length} {filtered.length === 1 ? "recurso" : "recursos"}
-        {(category !== "TODOS" || onlyReview || search) ? " (filtrado)" : ""}
+        {isFiltered ? " (filtrado)" : ""}
       </p>
 
-      {/* Grid */}
+      {/* Grid: single col on mobile, 2-col on md+ */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-[var(--ink-3)]">
           No hay recursos con estos filtros.
