@@ -25,9 +25,10 @@ function progressColor(pct: number): string {
 interface ResourceCardProps {
   resource: LearningResource
   className?: string
+  onReview?: (resource: LearningResource) => void
 }
 
-export function ResourceCard({ resource, className }: ResourceCardProps) {
+export function ResourceCard({ resource, className, onReview }: ResourceCardProps) {
   const accentColor = TYPE_COLORS[resource.type]
   const showSource  = resource.source && resource.source !== resource.author
 
@@ -135,6 +136,7 @@ export function ResourceCard({ resource, className }: ResourceCardProps) {
         {/* Footer: Revisar button + date added */}
         <div className="flex items-center justify-between mt-auto pt-2 border-t border-[var(--line)]">
           <button
+            onClick={() => onReview?.(resource)}
             className={cn(
               "text-[11px] font-medium px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors",
               resource.markedForReview

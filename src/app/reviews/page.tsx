@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { mockReviews, mockAccounts, mockResources } from "@/mock-data"
+import { mockReviews, mockAccounts, mockResources, mockTrades } from "@/mock-data"
 import type { WeeklyReview, LearningResource } from "@/types"
 
 // ── Additional inline mock reviews ─────────────────────────────────────────
@@ -601,24 +601,138 @@ export function DetailPanel({ review, onClose }: { review: WeeklyReview; onClose
   )
 }
 
+// ── Auto-generation from trade data ──────────────────────────────────────────
+interface GeneratedReview {
+  tradeCount:    number
+  netPnl:        number
+  winRate:       number
+  disciplineScore: number
+  executiveSummary: string
+  whatWorked:    string
+  toImprove:     string
+}
+
+function generateWeekReview(weekStart: string, weekEnd: string, accountId: string): GeneratedReview {
+  const trades = mockTrades.filter((t) => {
+    const d = t.date
+    const acctMatch = accountId === "ALL" || t.accountId === accountId
+    return acctMatch && d >= weekStart && d <= weekEnd
+  })
+
+  if (trades.length === 0) {
+    return {
+      tradeCount: 0,
+      netPnl: 0,
+      winRate: 0,
+      disciplineScore: 0,
+      executiveSummary: "No hay trades registrados para esta semana y cuenta.",
+      whatWorked: "",
+      toImprove: "",
+    }
+  }
+
+  const netPnl = trades.reduce((s, t) => s + (t.pnl ?? 0), 0)
+  const winners = trades.filter((t) => (t.pnl ?? 0) > 0)
+  const winRate = Math.round((winners.length / trades.length) * 100)
+
+  // Discipline: A+ and Plan tags = disciplined; Off-plan/Impulsivo = violations
+  const disciplinedCount = trades.filter((t) =>
+    t.tags.some((tag) => tag === "A+" || tag === "Plan")
+  ).length
+  const offPlanCount = trades.filter((t) =>
+    t.tags.some((tag) => tag === "Off-plan" || tag === "Impulsivo")
+  ).length
+  const disciplineScore = Math.round((disciplinedCount / trades.length) * 100)
+
+  // Build executive summary
+  const pnlStr = netPnl >= 0 ? `+$${netPnl.toLocaleString()}` : `-$${Math.abs(netPnl).toLocaleString()}`
+  const sentiment = disciplineScore >= 80 && winRate >= 60
+    ? "Excelente semana"
+    : disciplineScore >= 60 && netPnl >= 0
+      ? "Semana positiva"
+      : netPnl < 0
+        ? "Semana difícil"
+        : "Semana regular"
+
+  const execSummary = `${sentiment}. ${trades.length} trades ejecutados con un resultado neto de ${pnlStr} (${winRate}% win rate). Score de disciplina: ${disciplineScore}/100. ${
+    offPlanCount > 0
+      ? `${offPlanCount} trade${offPlanCount > 1 ? "s" : ""} fuera del plan registrado${offPlanCount > 1 ? "s" : ""}.`
+      : "Todos los trades siguieron el plan establecido."
+  }`
+
+  // What worked: sessions and setups from winning A+ trades
+  const winningTrades = trades.filter((t) => (t.pnl ?? 0) > 0)
+  const aPlus = trades.filter((t) => t.tags.includes("A+"))
+  const whatWorkedLines: string[] = []
+  if (aPlus.length > 0) {
+    const symbols = [...new Set(aPlus.map((t) => t.symbol))].join(", ")
+    whatWorkedLines.push(`Trades A+ en ${symbols} ejecutados con alta confluencia`)
+  }
+  if (winningTrades.length > 0) {
+    const sessions = [...new Set(winningTrades.map((t) => t.session))].join(", ")
+    whatWorkedLines.push(`Mejores resultados en sesión ${sessions}`)
+  }
+  if (disciplinedCount === trades.length) {
+    whatWorkedLines.push("100% de trades dentro del plan establecido")
+  }
+  if (winRate >= 60) {
+    whatWorkedLines.push(`Win rate de ${winRate}% por encima del objetivo`)
+  }
+  if (whatWorkedLines.length === 0) whatWorkedLines.push("—")
+
+  // To improve: off-plan trades and losing patterns
+  const toImproveLines: string[] = []
+  const offPlanTrades = trades.filter((t) => t.tags.some((tag) => tag === "Off-plan" || tag === "Impulsivo"))
+  if (offPlanTrades.length > 0) {
+    const symbols = [...new Set(offPlanTrades.map((t) => t.symbol))].join(", ")
+    toImproveLines.push(`Revisar disciplina en ${symbols} — ${offPlanTrades.length} trade${offPlanTrades.length > 1 ? "s" : ""} fuera del plan`)
+  }
+  if (winRate < 50) {
+    toImproveLines.push(`Mejorar selectividad de entradas — win rate de ${winRate}% por debajo del objetivo`)
+  }
+  const losingTrades = trades.filter((t) => (t.pnl ?? 0) < 0)
+  if (losingTrades.length > 0) {
+    const sessions = [...new Set(losingTrades.map((t) => t.session))]
+    if (sessions.length > 0) {
+      toImproveLines.push(`Analizar trades perdedores en sesión ${sessions.join(", ")}`)
+    }
+  }
+  if (toImproveLines.length === 0) toImproveLines.push("Mantener consistencia la próxima semana")
+
+  return {
+    tradeCount:       trades.length,
+    netPnl,
+    winRate,
+    disciplineScore,
+    executiveSummary: execSummary,
+    whatWorked:       whatWorkedLines.map((l) => `• ${l}`).join("\n"),
+    toImprove:        toImproveLines.map((l) => `• ${l}`).join("\n"),
+  }
+}
+
 // ── Week selector card ────────────────────────────────────────────────────────
 const WEEK_OPTIONS = [
-  { label: "Sem. 20", range: "14–20 may", trades: 23, pnl: "+$2,640", wr: "65%" },
-  { label: "Sem. 19", range: "7–13 may", trades: 18, pnl: "+$3,920", wr: "72%" },
-  { label: "Sem. 18", range: "30 abr–6 may", trades: 31, pnl: "−$1,850", wr: "42%" },
-  { label: "Sem. 17", range: "23–29 abr", trades: 15, pnl: "+$1,100", wr: "60%" },
+  { label: "Sem. 20", range: "14–20 may", start: "2026-05-14", end: "2026-05-20", displayPnl: "+$2,640", wr: "65%" },
+  { label: "Sem. 19", range: "7–13 may",  start: "2026-05-07", end: "2026-05-13", displayPnl: "+$3,920", wr: "72%" },
+  { label: "Sem. 18", range: "30 abr–6 may", start: "2026-04-30", end: "2026-05-06", displayPnl: "−$1,850", wr: "42%" },
+  { label: "Sem. 17", range: "23–29 abr", start: "2026-04-23", end: "2026-04-29", displayPnl: "+$1,100", wr: "60%" },
 ]
 
 function WeekSelectorCard({
   week,
   selected,
   onClick,
+  generated,
 }: {
   week: typeof WEEK_OPTIONS[number]
   selected: boolean
   onClick: () => void
+  generated?: GeneratedReview
 }) {
-  const isLoss = week.pnl.startsWith("−") || week.pnl.startsWith("-")
+  const pnlDisplay = generated ? (generated.netPnl >= 0 ? `+$${generated.netPnl.toLocaleString()}` : `-$${Math.abs(generated.netPnl).toLocaleString()}`) : week.displayPnl
+  const wrDisplay  = generated ? `${generated.winRate}%` : week.wr
+  const tradesDisplay = generated ? generated.tradeCount : "—"
+  const isLoss = generated ? generated.netPnl < 0 : (week.displayPnl.startsWith("−") || week.displayPnl.startsWith("-"))
   return (
     <button
       onClick={onClick}
@@ -641,16 +755,16 @@ function WeekSelectorCard({
       </p>
       <div className="flex gap-2 flex-wrap">
         <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
-          {week.trades} trades
+          {tradesDisplay} trades
         </span>
         <span
           className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
           style={{ color: isLoss ? "var(--loss)" : "var(--win)", background: isLoss ? "var(--loss-soft)" : "var(--win-soft)" }}
         >
-          {week.pnl}
+          {pnlDisplay}
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
-          {week.wr} WR
+          {wrDisplay} WR
         </span>
       </div>
     </button>
@@ -708,6 +822,8 @@ export function NuevaReviewModal({
   const [step, setStep] = useState<"config" | "analisis">("config")
   const [selectedAccountId, setSelectedAccountId] = useState(mockAccounts[0].id)
   const [selectedWeek, setSelectedWeek] = useState(0)
+  const [generated, setGenerated] = useState<GeneratedReview | null>(null)
+  const [autoFields, setAutoFields] = useState<Set<string>>(new Set())
   const [executiveSummary, setExecutiveSummary] = useState("")
   const [whatWorked, setWhatWorked] = useState("")
   const [toImprove, setToImprove] = useState("")
@@ -718,7 +834,33 @@ export function NuevaReviewModal({
   const [resourcesOpen, setResourcesOpen] = useState(false)
 
   const week = WEEK_OPTIONS[selectedWeek]
-  const isLoss = week.pnl.startsWith("−") || week.pnl.startsWith("-")
+
+  function runAutoGenerate(weekIdx: number, accountId: string) {
+    const w = WEEK_OPTIONS[weekIdx]
+    const gen = generateWeekReview(w.start, w.end, accountId)
+    setGenerated(gen)
+    setExecutiveSummary(gen.executiveSummary)
+    setWhatWorked(gen.whatWorked)
+    setToImprove(gen.toImprove)
+    setDisciplineScore(gen.disciplineScore)
+    setAutoFields(new Set(["executiveSummary", "whatWorked", "toImprove", "disciplineScore"]))
+  }
+
+  function handleSelectWeek(idx: number) {
+    setSelectedWeek(idx)
+    runAutoGenerate(idx, selectedAccountId)
+  }
+
+  function handleSelectAccount(id: string) {
+    setSelectedAccountId(id)
+    runAutoGenerate(selectedWeek, id)
+  }
+
+  function markEdited(field: string) {
+    setAutoFields((prev) => { const n = new Set(prev); n.delete(field); return n })
+  }
+
+  const isLoss = generated ? generated.netPnl < 0 : (week.displayPnl.startsWith("−") || week.displayPnl.startsWith("-"))
 
   function toggleResource(id: string) {
     setLinkedResources((prev) =>
@@ -781,7 +923,7 @@ export function NuevaReviewModal({
                       name={acct.name}
                       broker={acct.broker}
                       selected={selectedAccountId === acct.id}
-                      onClick={() => setSelectedAccountId(acct.id)}
+                      onClick={() => handleSelectAccount(acct.id)}
                     />
                   ))}
                 </div>
@@ -801,7 +943,8 @@ export function NuevaReviewModal({
                       key={w.label}
                       week={w}
                       selected={selectedWeek === i}
-                      onClick={() => setSelectedWeek(i)}
+                      onClick={() => handleSelectWeek(i)}
+                      generated={generated && selectedWeek === i ? generated : undefined}
                     />
                   ))}
                 </div>
@@ -812,38 +955,53 @@ export function NuevaReviewModal({
                 className="rounded-[var(--radius-sm)] p-4"
                 style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}
               >
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider mb-3"
-                  style={{ color: "var(--ink-3)" }}
-                >
-                  Resumen automático · {week.label}
-                </p>
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    { label: "Trades", value: week.trades.toString(), color: "var(--ink)", bg: "var(--chip)" },
-                    {
-                      label: "Net P&L",
-                      value: week.pnl,
-                      color: isLoss ? "var(--loss)" : "var(--win)",
-                      bg: isLoss ? "var(--loss-soft)" : "var(--win-soft)",
-                    },
-                    { label: "Win Rate", value: week.wr, color: "var(--win)", bg: "var(--win-soft)" },
-                    { label: "Disciplina", value: "—", color: "var(--ink-3)", bg: "var(--chip)" },
-                  ].map(({ label, value, color, bg }) => (
-                    <div
-                      key={label}
-                      className="flex flex-col items-center py-2 rounded-lg"
-                      style={{ background: bg }}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                    Resumen automático · {week.label}
+                  </p>
+                  {generated && (
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
                     >
-                      <span className="font-mono font-bold text-base" style={{ color }}>
-                        {value}
-                      </span>
-                      <span className="text-[10px] mt-0.5" style={{ color: "var(--ink-3)" }}>
-                        {label}
-                      </span>
-                    </div>
-                  ))}
+                      ✨ Auto-generado de tus trades
+                    </span>
+                  )}
                 </div>
+                {generated ? (
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { label: "Trades",    value: generated.tradeCount.toString(), color: "var(--ink)", bg: "var(--chip)" },
+                      {
+                        label: "Net P&L",
+                        value: generated.netPnl >= 0 ? `+$${generated.netPnl.toLocaleString()}` : `-$${Math.abs(generated.netPnl).toLocaleString()}`,
+                        color: generated.netPnl >= 0 ? "var(--win)" : "var(--loss)",
+                        bg:    generated.netPnl >= 0 ? "var(--win-soft)" : "var(--loss-soft)",
+                      },
+                      {
+                        label: "Win Rate",
+                        value: `${generated.winRate}%`,
+                        color: generated.winRate >= 55 ? "var(--win)" : "var(--loss)",
+                        bg:    generated.winRate >= 55 ? "var(--win-soft)" : "var(--loss-soft)",
+                      },
+                      {
+                        label: "Disciplina",
+                        value: `${generated.disciplineScore}`,
+                        color: disciplineColor(generated.disciplineScore),
+                        bg:    disciplineBg(generated.disciplineScore),
+                      },
+                    ].map(({ label, value, color, bg }) => (
+                      <div key={label} className="flex flex-col items-center py-2 rounded-lg" style={{ background: bg }}>
+                        <span className="font-mono font-bold text-base" style={{ color }}>{value}</span>
+                        <span className="text-[10px] mt-0.5" style={{ color: "var(--ink-3)" }}>{label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--ink-3)] italic text-center py-3">
+                    Selecciona una semana y cuenta para ver los stats automáticos
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -852,15 +1010,19 @@ export function NuevaReviewModal({
             <div className="flex flex-col gap-4 py-2">
               {/* Section 1 */}
               <div>
-                <label
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-                  style={{ color: "var(--ink-3)" }}
-                >
-                  📋 Resumen ejecutivo
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                    📋 Resumen ejecutivo
+                  </label>
+                  {autoFields.has("executiveSummary") && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                      ✨ Auto-generado
+                    </span>
+                  )}
+                </div>
                 <Textarea
                   value={executiveSummary}
-                  onChange={(e) => setExecutiveSummary(e.target.value)}
+                  onChange={(e) => { setExecutiveSummary(e.target.value); markEdited("executiveSummary") }}
                   placeholder="Describe los puntos clave de la semana en 3-5 líneas..."
                   rows={3}
                 />
@@ -868,15 +1030,19 @@ export function NuevaReviewModal({
 
               {/* Section 2 */}
               <div>
-                <label
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-                  style={{ color: "var(--ink-3)" }}
-                >
-                  ✅ ¿Qué funcionó bien?
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                    ✅ ¿Qué funcionó bien?
+                  </label>
+                  {autoFields.has("whatWorked") && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                      ✨ Auto-generado
+                    </span>
+                  )}
+                </div>
                 <Textarea
                   value={whatWorked}
-                  onChange={(e) => setWhatWorked(e.target.value)}
+                  onChange={(e) => { setWhatWorked(e.target.value); markEdited("whatWorked") }}
                   placeholder={"• Punto 1\n• Punto 2\n• Punto 3"}
                   rows={4}
                 />
@@ -884,15 +1050,19 @@ export function NuevaReviewModal({
 
               {/* Section 3 */}
               <div>
-                <label
-                  className="text-[10px] font-bold uppercase tracking-wider block mb-1.5"
-                  style={{ color: "var(--ink-3)" }}
-                >
-                  🔧 A mejorar la próxima semana
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>
+                    🔧 A mejorar la próxima semana
+                  </label>
+                  {autoFields.has("toImprove") && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                      ✨ Auto-generado
+                    </span>
+                  )}
+                </div>
                 <Textarea
                   value={toImprove}
-                  onChange={(e) => setToImprove(e.target.value)}
+                  onChange={(e) => { setToImprove(e.target.value); markEdited("toImprove") }}
                   placeholder={"• Punto 1\n• Punto 2\n• Punto 3"}
                   rows={4}
                 />
@@ -993,20 +1163,25 @@ export function NuevaReviewModal({
                 className="rounded-[var(--radius-sm)] p-4 text-center"
                 style={{ background: discBg, border: `1px solid ${discColor}33` }}
               >
-                <p
-                  className="text-[10px] font-bold uppercase tracking-wider mb-3"
-                  style={{ color: discColor }}
-                >
-                  Score manual de disciplina
-                </p>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: discColor }}>
+                    Score de disciplina
+                  </p>
+                  {autoFields.has("disciplineScore") && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                      ✨ Auto-calculado
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   min={0}
                   max={100}
                   value={disciplineScore}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setDisciplineScore(Math.max(0, Math.min(100, Number(e.target.value))))
-                  }
+                    markEdited("disciplineScore")
+                  }}
                   className="w-28 text-center font-mono font-bold rounded-[var(--radius-sm)] border outline-none focus:ring-2"
                   style={{
                     fontSize: 40,
@@ -1033,7 +1208,13 @@ export function NuevaReviewModal({
               <Button variant="ghost" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button variant="primary" onClick={() => setStep("analisis")}>
+              <Button
+                variant="ghost"
+                onClick={() => runAutoGenerate(selectedWeek, selectedAccountId)}
+              >
+                ✨ Auto-generar
+              </Button>
+              <Button variant="primary" onClick={() => { runAutoGenerate(selectedWeek, selectedAccountId); setStep("analisis") }}>
                 Siguiente →
               </Button>
             </>

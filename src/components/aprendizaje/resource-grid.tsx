@@ -43,9 +43,10 @@ function sortResources(resources: LearningResource[], key: SortKey): LearningRes
 interface ResourceGridProps {
   resources: LearningResource[]
   className?: string
+  onReview?: (resource: LearningResource) => void
 }
 
-export function ResourceGrid({ resources, className }: ResourceGridProps) {
+export function ResourceGrid({ resources, className, onReview }: ResourceGridProps) {
   const [search, setSearch]         = useState("")
   const [category, setCategory]     = useState("TODOS")
   const [onlyReview, setOnlyReview] = useState(false)
@@ -134,7 +135,7 @@ export function ResourceGrid({ resources, className }: ResourceGridProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((r) => (
-            <ResourceCard key={r.id} resource={r} />
+            <ResourceCard key={r.id} resource={r} onReview={onReview} />
           ))}
         </div>
       )}

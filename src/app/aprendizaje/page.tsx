@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench } from "lucide-react"
+import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench, Star, Check } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
 import { CategoryChip } from "@/components/ui/category-chip"
@@ -13,9 +13,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { mockResources } from "@/mock-data"
+import { mockResources, mockReviews } from "@/mock-data"
 import { cn } from "@/lib/utils"
-import type { ResourceType } from "@/types"
+import type { LearningResource, ResourceType } from "@/types"
 
 // ─── Type helpers ────────────────────────────────────────────────────────────
 
@@ -108,11 +108,245 @@ function emptyForm(): FormState {
   }
 }
 
+// ─── Revisar recurso modal ────────────────────────────────────────────────────
+
+const TYPE_COLORS_MAP: Record<ResourceType, string> = {
+  LIBRO:       "#f59e0b",
+  VIDEO:       "#ef4444",
+  NOTA:        "#4f6ef7",
+  BACKTEST:    "#22c55e",
+  PODCAST:     "#a855f7",
+  DRILL:       "#14b8a6",
+  HERRAMIENTA: "#6b7280",
+}
+
+interface RevisarState {
+  learned:    string
+  howToApply: string
+  insights:   string
+  rating:     number
+  markDone:   boolean
+  linkedReviewId: string
+}
+
+function emptyRevisarState(): RevisarState {
+  return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "" }
+}
+
+function RevisarRecursoModal({
+  resource,
+  open,
+  onOpenChange,
+}: {
+  resource: LearningResource | null
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const [form, setForm] = useState<RevisarState>(emptyRevisarState())
+
+  if (!resource) return null
+
+  const accentColor = TYPE_COLORS_MAP[resource.type]
+
+  function setField<K extends keyof RevisarState>(key: K, value: RevisarState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleSave() {
+    // In a real app: persist review notes, update resource.markedForReview = false if markDone
+    onOpenChange(false)
+    setForm(emptyRevisarState())
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setForm(emptyRevisarState()) }}>
+      <DialogContent className="max-w-[540px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Revisar recurso</DialogTitle>
+        </DialogHeader>
+
+        {/* Resource header */}
+        <div
+          className="flex gap-3 rounded-[var(--radius-sm)] p-3 border"
+          style={{ background: "var(--panel-2)", borderColor: "var(--line)" }}
+        >
+          <div
+            className="w-1 rounded-full shrink-0 self-stretch"
+            style={{ background: accentColor }}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <CategoryChip type={resource.type} />
+            </div>
+            <p className="font-semibold text-sm text-[var(--ink)] leading-snug mt-1">
+              {resource.title}
+            </p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
+              {resource.author} · {resource.date}
+            </p>
+            {resource.progressPct !== undefined && (
+              <div className="mt-2">
+                <div className="h-1 rounded-full bg-[var(--line)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${resource.progressPct}%`,
+                      background: resource.progressPct >= 80 ? "var(--win)" : resource.progressPct >= 40 ? "#f59e0b" : "var(--loss)",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 flex flex-col gap-4 pr-1">
+
+          {/* ¿Qué aprendiste? */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+              🧠 ¿Qué aprendiste?
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+              placeholder="Resume el concepto o lección más importante..."
+              value={form.learned}
+              onChange={(e) => setField("learned", e.target.value)}
+            />
+          </div>
+
+          {/* ¿Cómo aplicarlo? */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+              🎯 ¿Cómo aplicarlo al trading?
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+              placeholder="¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"
+              value={form.howToApply}
+              onChange={(e) => setField("howToApply", e.target.value)}
+            />
+          </div>
+
+          {/* Key insights */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+              💡 Insights clave (uno por línea)
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+              placeholder={"• Insight 1\n• Insight 2\n• Insight 3"}
+              value={form.insights}
+              onChange={(e) => setField("insights", e.target.value)}
+            />
+          </div>
+
+          {/* Rating */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">
+              ⭐ Valoración
+            </label>
+            <div className="flex gap-1.5">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setField("rating", star === form.rating ? 0 : star)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={22}
+                    fill={star <= form.rating ? "#f59e0b" : "none"}
+                    stroke={star <= form.rating ? "#f59e0b" : "var(--ink-3)"}
+                  />
+                </button>
+              ))}
+              {form.rating > 0 && (
+                <span className="self-center text-xs text-[var(--ink-3)] ml-1">
+                  {["", "Pobre", "Regular", "Bueno", "Muy bueno", "Excelente"][form.rating]}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Link to review */}
+          {mockReviews.length > 0 && (
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                🔗 Vincular a review semanal (opcional)
+              </label>
+              <select
+                value={form.linkedReviewId}
+                onChange={(e) => setField("linkedReviewId", e.target.value)}
+                className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              >
+                <option value="">— Sin vincular —</option>
+                {mockReviews.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.weekLabel} · {r.weekRange}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Mark as reviewed toggle */}
+          <div
+            className="flex items-center justify-between rounded-[var(--radius-sm)] p-3"
+            style={{ background: form.markDone ? "var(--win-soft)" : "var(--panel-2)", border: "1px solid var(--line)" }}
+          >
+            <div>
+              <p className="text-sm font-semibold text-[var(--ink)]">Marcar como revisado</p>
+              <p className="text-[11px] text-[var(--ink-3)]">
+                Lo quitará de la lista de revisión pendiente
+              </p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={form.markDone}
+              onClick={() => setField("markDone", !form.markDone)}
+              className={cn(
+                "relative inline-flex h-7 w-14 items-center rounded-full transition-colors shrink-0",
+                form.markDone ? "bg-[var(--win)]" : "bg-[var(--line)]"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+                  form.markDone ? "translate-x-8" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={!form.learned.trim()}
+          >
+            <Check size={13} className="mr-1" />
+            Guardar revisión
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AprendizajePage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm]           = useState<FormState>(emptyForm())
+  const [revisarResource, setRevisarResource] = useState<LearningResource | null>(null)
 
   const showProgress = PROGRESS_TYPES.includes(form.type)
 
@@ -155,7 +389,7 @@ export default function AprendizajePage() {
         />
 
         {/* Resource grid */}
-        <ResourceGrid resources={mockResources} />
+        <ResourceGrid resources={mockResources} onReview={(r) => setRevisarResource(r)} />
       </div>
 
       {/* ── Right rail ───────────────────────────────────────────────────── */}
@@ -251,7 +485,9 @@ export default function AprendizajePage() {
                   <p className="text-[11px] text-[var(--ink)] leading-snug flex-1 truncate">
                     {r.title}
                   </p>
-                  <button className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline">
+                  <button
+                    onClick={() => setRevisarResource(r)}
+                    className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline">
                     Revisar
                   </button>
                 </div>
@@ -542,6 +778,13 @@ export default function AprendizajePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── "Revisar Recurso" Modal ───────────────────────────────────────── */}
+      <RevisarRecursoModal
+        resource={revisarResource}
+        open={revisarResource !== null}
+        onOpenChange={(v) => { if (!v) setRevisarResource(null) }}
+      />
     </div>
   )
 }
