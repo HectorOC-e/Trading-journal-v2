@@ -23,7 +23,7 @@ export function TopBar({ title, subtitle, actions, className }: TopBarProps) {
   return (
     <div className={cn("flex items-start justify-between gap-3 mb-6 flex-wrap", className)}>
       <div>
-        <h1 className="text-xl font-bold text-[var(--ink)] tracking-tight">{title}</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-[var(--ink)] tracking-tight">{title}</h1>
         {subtitle && (
           <p className="text-sm text-[var(--ink-2)] mt-0.5">{subtitle}</p>
         )}

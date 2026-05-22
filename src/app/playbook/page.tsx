@@ -889,7 +889,7 @@ export default function PlaybookPage() {
         />
 
         {/* KPI strip */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <KpiBox label="P&L Total (activos)"  value={`${totalPnl >= 0 ? "+" : ""}$${Math.abs(totalPnl).toLocaleString()}`} sub={`${active.length} setups activos`} positive={totalPnl >= 0} />
           <KpiBox label="Win Rate promedio"     value={`${avgWr}%`}                       sub="sobre setups activos"          positive={avgWr >= 50} />
           <KpiBox label="Trades totales"        value={String(totalTrades)}               sub="todos los setups" />
@@ -911,7 +911,7 @@ export default function PlaybookPage() {
           {/* Cards grid */}
           <div className={cn(
             "grid gap-3 flex-1 transition-all",
-            selected ? "grid-cols-2" : "grid-cols-4"
+            selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
           )}>
             {visible.map(s => (
               <SetupCard
@@ -925,7 +925,7 @@ export default function PlaybookPage() {
 
           {/* Detail panel */}
           {selected && (
-            <div style={{
+            <div className="detail-panel-mobile" style={{
               width: 340, flexShrink: 0,
               background: "var(--panel)",
               border: "1px solid var(--line)",

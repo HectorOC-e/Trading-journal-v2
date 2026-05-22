@@ -394,6 +394,7 @@ export default function AprendizajePage() {
 
       {/* ── Right rail ───────────────────────────────────────────────────── */}
       <aside
+        className="rail-aside"
         style={{
           width:       340,
           flexShrink:  0,

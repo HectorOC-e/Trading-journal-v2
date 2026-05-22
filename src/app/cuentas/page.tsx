@@ -766,7 +766,7 @@ export default function CuentasPage() {
         {/* Main layout */}
         <div className="flex gap-4 items-start">
           {/* Cards */}
-          <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-2" : "grid-cols-3")}>
+          <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
             {mockAccounts.map(a => (
               <AccountCard
                 key={a.id}
@@ -780,7 +780,7 @@ export default function CuentasPage() {
 
           {/* Detail panel */}
           {selected && selectedStats && (
-            <div style={{
+            <div className="detail-panel-mobile" style={{
               width: 340, flexShrink: 0,
               background: "var(--panel)",
               border: "1px solid var(--line)",
