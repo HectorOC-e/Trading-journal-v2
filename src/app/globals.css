@@ -88,8 +88,7 @@ body {
 
 /* ── Shell layout — fiel al spec: 240px sidebar + 1fr main + 340px rail ── */
 .shell {
-  display: grid;
-  grid-template-columns: 240px 1fr;
+  display: flex;
   min-height: 100vh;
 }
 
@@ -111,6 +110,8 @@ body {
 }
 
 .main-content {
+  flex: 1;
+  min-width: 0;
   padding: 28px 32px;
   overflow-y: auto;
   background: var(--bg);
