@@ -473,66 +473,127 @@
           </nav>
           <div class="sidebar-footer"><div class="avatar-sm">HC</div><div><div style="font-size:12px;font-weight:600">Héctor O.C.</div><div style="font-size:10px;color:var(--ink-3)">Single-Trader</div></div></div>
         </div>
-        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
-            <div><h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Reglas</h1><p style="font-size:12px;color:var(--ink-3)">Sistema de trading · 12 reglas activas</p></div>
+        <div class="main" style="padding:20px 24px;overflow-y:auto;flex:1;position:relative">
+          <!-- Modal overlay — shown open for design spec -->
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);z-index:50;display:flex;align-items:center;justify-content:center;border-radius:0">
+            <div style="background:var(--panel);border:1px solid var(--line);border-radius:16px;width:460px;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden">
+              <!-- Modal header -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px 14px;border-bottom:1px solid var(--line)">
+                <span style="font-size:15px;font-weight:700;letter-spacing:-.01em">Nueva regla CUSTOM</span>
+                <button style="background:var(--chip);border:none;border-radius:6px;width:26px;height:26px;font-size:14px;color:var(--ink-3);cursor:pointer;display:grid;place-items:center;font-family:inherit">×</button>
+              </div>
+              <!-- Modal body -->
+              <div style="padding:20px 22px;display:flex;flex-direction:column;gap:16px">
+                <!-- Nombre -->
+                <div>
+                  <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Nombre <span style="color:var(--loss)">*</span></label>
+                  <input type="text" placeholder="Ej. Promediar pérdida" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;box-sizing:border-box">
+                </div>
+                <!-- Descripción -->
+                <div>
+                  <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:6px">Descripción <span style="color:var(--loss)">*</span></label>
+                  <textarea placeholder="¿Qué comportamiento detecta esta regla?" rows="3" style="width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--line);border-radius:9px;font-size:13px;color:var(--ink-3);font-family:inherit;outline:none;resize:none;box-sizing:border-box;line-height:1.5"></textarea>
+                </div>
+                <!-- Severidad -->
+                <div>
+                  <label style="font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:8px">Severidad</label>
+                  <div style="display:flex;gap:8px">
+                    <!-- CRÍTICA active -->
+                    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--loss);cursor:pointer">
+                      <span style="width:7px;height:7px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0"></span>
+                      <span style="font-size:11px;font-weight:700;color:#fff;white-space:nowrap">CRÍTICA</span>
+                    </div>
+                    <!-- MENOR inactive -->
+                    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+                      <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span>
+                      <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">MENOR</span>
+                    </div>
+                    <!-- INFORMACIÓN inactive -->
+                    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 10px;border-radius:99px;background:var(--chip);cursor:pointer;border:1px solid var(--line)">
+                      <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;flex-shrink:0"></span>
+                      <span style="font-size:11px;font-weight:600;color:var(--ink-2);white-space:nowrap">INFO</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Modal footer -->
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 22px 18px;border-top:1px solid var(--line);gap:10px">
+                <button style="padding:9px 20px;background:transparent;border:1px solid var(--line);border-radius:9px;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer;font-family:inherit">Cancelar</button>
+                <button style="padding:9px 24px;background:var(--accent);border:none;border-radius:9px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit">Guardar</button>
+              </div>
+            </div>
+          </div>
+          <!-- Page header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+            <div>
+              <h1 style="font-size:22px;font-weight:700;letter-spacing:-.02em">Reglas de conducta</h1>
+              <p style="font-size:12px;color:var(--ink-3);margin-top:3px">4 reglas del sistema · 4 personalizadas · 7 Violaciones este mes</p>
+            </div>
             <button class="btn-secondary" style="font-size:11px">+ Nueva regla</button>
           </div>
-          <div class="filter-tabs" style="margin-bottom:16px">
-            <button class="filter-tab active">Sistema</button>
+          <!-- Filter tabs -->
+          <div class="filter-tabs" style="margin-bottom:16px;margin-top:14px">
+            <button class="filter-tab active">Todas</button>
             <button class="filter-tab">Personalizadas</button>
-            <button class="filter-tab">DNT</button>
-            <button class="filter-tab" style="color:var(--loss)">Violadas</button>
+            <button class="filter-tab">Registro</button>
           </div>
-          <!-- Rules list -->
-          <div class="card" style="padding:0;overflow:hidden">
-            <table class="data-table" style="font-size:12px">
-              <thead><tr style="background:var(--panel-2)"><th style="padding:10px 16px">REGLA</th><th>TIPO</th><th>SEVERIDAD</th><th>VIOLACIONES</th><th>ESTADO</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">No operar después de 2 pérdidas consecutivas</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Activar modo DNT automáticamente</div></td>
-                  <td><span class="badge badge-loss">DNT</span></td>
-                  <td><span class="badge badge-loss">CRÍTICA</span></td>
-                  <td class="td-mono td-loss">3</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Máximo 3 trades por sesión</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Contar desde apertura hasta cierre de sesión</div></td>
-                  <td><span class="badge badge-ink">LÍMITE</span></td>
-                  <td><span class="badge badge-be">ALTA</span></td>
-                  <td class="td-mono td-be">2</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Stop-loss mínimo 0.5R</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">No cerrar manualmente antes de 0.5R negativo</div></td>
-                  <td><span class="badge badge-ink">GESTIÓN</span></td>
-                  <td><span class="badge badge-be">ALTA</span></td>
-                  <td class="td-mono td-loss">2</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">No operar 15 min antes de NFP/FOMC</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Cierre de posiciones obligatorio</div></td>
-                  <td><span class="badge badge-acc">NOTICIAS</span></td>
-                  <td><span class="badge badge-loss">CRÍTICA</span></td>
-                  <td class="td-mono td-win">0</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Target mínimo 1.5R en A+ setups</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">No cerrar antes si el contexto lo permite</div></td>
-                  <td><span class="badge badge-ink">GESTIÓN</span></td>
-                  <td><span class="badge badge-ink">MEDIA</span></td>
-                  <td class="td-mono td-be">1</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-                <tr>
-                  <td style="padding:10px 16px"><div style="font-size:12px;font-weight:600">Operar sólo entre 9:30 y 11:30 EST</div><div style="font-size:10px;color:var(--ink-3);margin-top:2px">Horario principal de sesión ES/NQ</div></td>
-                  <td><span class="badge badge-ink">HORARIO</span></td>
-                  <td><span class="badge badge-ink">MEDIA</span></td>
-                  <td class="td-mono td-win">0</td>
-                  <td><span class="badge badge-win">Activa</span></td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Sistema rules section -->
+          <div style="margin-bottom:8px">
+            <p style="font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600;margin-bottom:8px">REGLAS SISTEMA · automáticas</p>
+            <div class="card" style="padding:0;overflow:hidden">
+              <!-- Row 1 -->
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)">
+                <div style="width:28px;height:28px;border-radius:7px;background:var(--loss-soft);display:grid;place-items:center;flex-shrink:0;font-size:13px">⏰</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    Operar fuera de sesión
+                    <span style="background:var(--chip);color:var(--ink-3);font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.04em">AUTO</span>
+                    <span class="badge badge-loss" style="font-size:9px;padding:1px 7px">CRÍTICA</span>
+                  </div>
+                </div>
+                <div style="width:32px;height:18px;background:var(--win);border-radius:9px;position:relative;flex-shrink:0;cursor:pointer"><div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px"></div></div>
+                <div style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">2 violaciones</div>
+              </div>
+              <!-- Row 2 -->
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)">
+                <div style="width:28px;height:28px;border-radius:7px;background:var(--loss-soft);display:grid;place-items:center;flex-shrink:0;font-size:13px">📊</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    Exceder máximo de trades
+                    <span style="background:var(--chip);color:var(--ink-3);font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.04em">AUTO</span>
+                    <span class="badge badge-loss" style="font-size:9px;padding:1px 7px">CRÍTICA</span>
+                  </div>
+                </div>
+                <div style="width:32px;height:18px;background:var(--win);border-radius:9px;position:relative;flex-shrink:0;cursor:pointer"><div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px"></div></div>
+                <div style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">3 violaciones</div>
+              </div>
+              <!-- Row 3 -->
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)">
+                <div style="width:28px;height:28px;border-radius:7px;background:var(--loss-soft);display:grid;place-items:center;flex-shrink:0;font-size:13px">📉</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    Pérdida diaria sobre límite
+                    <span style="background:var(--chip);color:var(--ink-3);font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.04em">AUTO</span>
+                    <span class="badge badge-loss" style="font-size:9px;padding:1px 7px">CRÍTICA</span>
+                  </div>
+                </div>
+                <div style="width:32px;height:18px;background:var(--win);border-radius:9px;position:relative;flex-shrink:0;cursor:pointer"><div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px"></div></div>
+                <div style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">1 violación</div>
+              </div>
+              <!-- Row 4 -->
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 14px">
+                <div style="width:28px;height:28px;border-radius:7px;background:var(--loss-soft);display:grid;place-items:center;flex-shrink:0;font-size:13px">🚫</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                    Operar símbolo no permitido
+                    <span style="background:var(--chip);color:var(--ink-3);font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.04em">AUTO</span>
+                    <span class="badge badge-loss" style="font-size:9px;padding:1px 7px">CRÍTICA</span>
+                  </div>
+                </div>
+                <div style="width:32px;height:18px;background:var(--win);border-radius:9px;position:relative;flex-shrink:0;cursor:pointer"><div style="width:12px;height:12px;background:#fff;border-radius:50%;position:absolute;top:3px;right:3px"></div></div>
+                <div style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0">1 violación</div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="rail" style="height:100%;flex-shrink:0;overflow-y:auto;font-size:12px">

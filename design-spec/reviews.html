@@ -959,7 +959,112 @@
     </div>
   </div>
 
-  <!-- 11. Sidebar CTA Block -->
+  <!-- 11. Modal — Nueva review semanal -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14px;font-weight:700;color:var(--ink)">Modal — Nueva review semanal</span>
+        <span style="font-size:10px;font-weight:700;background:var(--chip);color:var(--ink-3);padding:2px 8px;border-radius:5px;text-transform:uppercase;letter-spacing:.06em">ORGANISM</span>
+      </div>
+      <span style="font-size:11px;color:var(--ink-3)">.modal-nueva-review</span>
+    </div>
+    <div style="padding:20px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;justify-content:center">
+      <!-- Modal preview (inline, no backdrop in anatomy card) -->
+      <div style="width:580px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.28)">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 16px;border-bottom:1px solid var(--line)">
+          <span style="font-size:16px;font-weight:700;letter-spacing:-.02em">Nueva review semanal</span>
+          <button style="width:28px;height:28px;border-radius:6px;background:var(--chip);border:1px solid var(--line);font-size:16px;color:var(--ink-3);cursor:pointer;display:grid;place-items:center;font-family:inherit">×</button>
+        </div>
+        <div style="padding:20px 24px;max-height:calc(85vh - 80px);overflow-y:auto;display:flex;flex-direction:column;gap:16px">
+          <!-- Cuenta + Semana selectors -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">Cuenta</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer">
+                <span>FXify 100K · Phase 2</span><span style="color:var(--ink-3);font-size:11px">▾</span>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:5px">Semana</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--ink);cursor:pointer">
+                <span>Sem. 20 · 14–20 may 2026</span><span style="color:var(--ink-3);font-size:11px">▾</span>
+              </div>
+            </div>
+          </div>
+          <!-- Resumen automático -->
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+              <span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap">Resumen automático</span>
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px">
+              <div style="text-align:center">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:4px">Trades</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">23</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:4px">Net P&amp;L</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--win)">+$2,640</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:4px">Win rate</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">65%</div>
+              </div>
+              <div style="text-align:center">
+                <div style="font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:4px">Discipline</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700">78</div>
+              </div>
+            </div>
+          </div>
+          <!-- Resumen ejecutivo -->
+          <div>
+            <label style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">Resumen ejecutivo</label>
+            <textarea placeholder="Describe los puntos clave de la semana…" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;min-height:80px;resize:vertical;outline:none"></textarea>
+          </div>
+          <!-- Qué funcionó -->
+          <div>
+            <label style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">¿Qué funcionó bien?</label>
+            <textarea placeholder="3–5 puntos clave" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;min-height:80px;resize:vertical;outline:none"></textarea>
+          </div>
+          <!-- A mejorar -->
+          <div>
+            <label style="font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px">A mejorar próxima semana</label>
+            <textarea placeholder="3–5 puntos de mejora" style="width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--ink);font-family:inherit;min-height:80px;resize:vertical;outline:none"></textarea>
+          </div>
+          <!-- Aprendizajes pendientes -->
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+              <span style="font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap">Aprendizajes pendientes</span>
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+            </div>
+            <div style="background:rgba(79,110,247,0.1);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px">
+              <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:8px">📚 3 entradas marcadas para revisar:</div>
+              <ul style="list-style:none;padding:0;display:flex;flex-direction:column;gap:5px">
+                <li style="font-size:12px;color:var(--ink-2)">· 'Volume Profile' — libro de Aitor (cap 4–6)</li>
+                <li style="font-size:12px;color:var(--ink-2)">· Video MotiweStudios — Liquidity Grab</li>
+                <li style="font-size:12px;color:var(--ink-2)">· Notas sobre tilt management (post-loss)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <!-- Footer -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;border-top:1px solid var(--line);gap:12px">
+          <button style="padding:9px 20px;background:transparent;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--ink-2);font-family:inherit;cursor:pointer">Guardar borrador</button>
+          <button style="padding:9px 24px;background:var(--accent);border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">Enviar review</button>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--panel (modal bg), --panel-2 (inputs/stats), --accent (border aprendizajes, btn), --win (Net P&L), rgba(79,110,247,.1) (aprendizajes bg)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Layout</p><p style="color:var(--ink-2)">width: 580px, max-height: 85vh, overflow-y: auto; backdrop: rgba(0,0,0,0.6); centrado con flexbox</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">"Guardar borrador" → guarda estado DRAFT; "Enviar review" → valida y pasa a SUBMITTED; × cierra sin guardar</p></div>
+    </div>
+  </div>
+
+  <!-- 12. Sidebar CTA Block -->
   <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
     <div style="padding:14px 20px;background:var(--panel);display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:10px">

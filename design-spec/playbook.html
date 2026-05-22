@@ -540,7 +540,7 @@
     <div class="screen-dot" style="background:#6bcb77"></div>
     <span style="margin-left:4px">Playbook · Setups · 1440px</span>
   </div>
-  <div class="screen-body">
+  <div class="screen-body" style="position:relative;">
     <div class="shell">
 
       <!-- SIDEBAR -->
@@ -975,6 +975,158 @@
       </div><!-- /rail -->
 
     </div><!-- /shell -->
+
+    <!-- ══ MODAL OVERLAY: Nuevo setup ══ -->
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200;">
+      <div style="width:540px;max-height:85vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 24px 64px rgba(0,0,0,.35);display:flex;flex-direction:column;">
+
+        <!-- Modal header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid var(--line);flex-shrink:0;">
+          <span style="font-size:16px;font-weight:700;letter-spacing:-.01em;">Nuevo setup</span>
+          <button style="width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:15px;cursor:pointer;display:grid;place-items:center;font-family:inherit;">×</button>
+        </div>
+
+        <!-- Modal body -->
+        <div style="padding:20px 24px;flex:1;overflow-y:auto;">
+
+          <!-- Nombre -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:4px;">Nombre <span style="color:var(--loss);">*</span></label>
+            <input type="text" value="MMXM — Breaker Block" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;">
+          </div>
+
+          <!-- Abreviatura + Mercado -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+            <div>
+              <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:4px;">Abreviatura <span style="color:var(--loss);">*</span></label>
+              <input type="text" value="BB" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:4px;">Mercado <span style="color:var(--loss);">*</span></label>
+              <div style="position:relative;">
+                <select style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink-2);font-family:inherit;outline:none;cursor:pointer;appearance:none;">
+                  <option selected>NQ Futures</option>
+                  <option>ES Futures</option>
+                  <option>EUR/USD FX</option>
+                </select>
+                <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--ink-3);pointer-events:none;font-size:10px;">▾</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dirección toggle -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:6px;">Dirección</label>
+            <div style="display:flex;gap:6px;">
+              <button style="padding:7px 18px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.02em;">LONG</button>
+              <button style="padding:7px 18px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--ink-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;letter-spacing:.02em;">SHORT</button>
+              <button style="padding:7px 18px;border-radius:99px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.02em;">AMBAS</button>
+            </div>
+          </div>
+
+          <!-- Status -->
+          <div style="margin-bottom:14px;">
+            <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:6px;">Status</label>
+            <div style="display:flex;align-items:center;gap:16px;font-size:13px;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);"></span>
+                </span>
+                <span style="color:var(--ink);">Activo</span>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line-2);display:block;flex-shrink:0;"></span>
+                <span style="color:var(--ink-3);">Pausado</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Descripción -->
+          <div style="margin-bottom:20px;">
+            <label style="font-size:10px;color:var(--ink-3);display:block;margin-bottom:4px;">Descripción <span style="color:var(--loss);">*</span></label>
+            <textarea rows="3" placeholder="¿Cuándo se ejecuta este setup?" style="width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink);font-family:inherit;outline:none;resize:vertical;line-height:1.5;"></textarea>
+          </div>
+
+          <!-- A+ CHECKLIST section -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <div style="flex:1;height:1px;background:var(--line);"></div>
+              <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap;">A+ CHECKLIST</span>
+              <div style="flex:1;height:1px;background:var(--line);"></div>
+            </div>
+            <p style="font-size:11px;color:var(--ink-3);margin-bottom:10px;">Criterios para considerar un trade A+</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Confluencia HTF
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Killzone activa
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Volumen sobre promedio
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Stop estructural
+              </label>
+            </div>
+            <button style="width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--line-2);background:transparent;color:var(--ink-3);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">+ Añadir ítem</button>
+          </div>
+
+          <!-- STANDARD CHECKLIST section -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <div style="flex:1;height:1px;background:var(--line);"></div>
+              <span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-3);white-space:nowrap;">STANDARD CHECKLIST</span>
+              <div style="flex:1;height:1px;background:var(--line);"></div>
+            </div>
+            <p style="font-size:11px;color:var(--ink-3);margin-bottom:10px;">Criterios mínimos para ejecutar</p>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Setup #1 o #2 del día
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                Risk ≤ 1R
+              </label>
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer;">
+                <span style="width:16px;height:16px;border-radius:4px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><polyline points="1,4 4,7 9,1" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                RR ≥ 1.5
+              </label>
+            </div>
+            <button style="width:100%;padding:8px;border-radius:8px;border:1.5px dashed var(--line-2);background:transparent;color:var(--ink-3);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;">+ Añadir ítem</button>
+          </div>
+
+        </div><!-- /modal body -->
+
+        <!-- Modal footer -->
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--line);flex-shrink:0;">
+          <button style="padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">Cancelar</button>
+          <button style="padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--line);background:transparent;color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">Ver trades</button>
+          <button style="padding:9px 20px;border-radius:var(--radius-sm);border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Guardar setup</button>
+        </div>
+
+      </div><!-- /modal panel -->
+    </div><!-- /modal overlay -->
+
   </div><!-- /screen-body -->
 </div><!-- /screen-frame -->
 
