@@ -103,7 +103,8 @@ export function TradesTable({
 
       {/* Table */}
       <div className="rounded-[var(--radius)] border border-[var(--line)] overflow-hidden bg-[var(--panel)]">
-        <table className="w-full border-collapse">
+        <div className="overflow-x-auto">
+        <table className="w-full border-collapse min-w-[600px]">
           <thead>
             <tr className="border-b border-[var(--line)]">
               {COLUMN_HEADERS.map((h, i) => (
@@ -146,6 +147,7 @@ export function TradesTable({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

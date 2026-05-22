@@ -142,29 +142,35 @@ body {
 
 /* ── Responsive ── */
 
-/* Mobile: hide sidebar, show bottom nav bar space */
 @media (max-width: 767px) {
   .shell {
     flex-direction: column;
   }
   .main-content {
-    padding: 16px 16px 80px;
-    padding-top: calc(52px + 16px); /* top bar height + gap */
+    padding: 16px;
+    padding-top: calc(52px + 16px);
+    padding-bottom: 72px;
     min-height: 100vh;
+    overflow-x: hidden;
   }
-  /* Right-rail panels become full-screen overlays on mobile */
+  /* Detail panels become full-screen sheets on mobile */
   .detail-panel-mobile {
     position: fixed !important;
     inset: 52px 0 56px 0 !important;
     width: 100% !important;
+    max-height: none !important;
     z-index: 40;
     overflow-y: auto;
+    border-left: none !important;
+    border-top: 1px solid var(--line) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
   }
+  .rail-aside { display: none !important; }
 }
 
-/* Tablet: sidebar always collapsed (icon-only) */
 @media (min-width: 768px) and (max-width: 1023px) {
   .main-content {
-    padding: 20px 20px;
+    padding: 20px;
+    overflow-x: hidden;
   }
 }

@@ -45,7 +45,7 @@ function KpiCard({ label, value, sub, color, delta }: {
       <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".08em" }}>
         {label}
       </p>
-      <p style={{ fontSize: 28, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: color ?? "var(--accent)", lineHeight: 1 }}>
+      <p style={{ fontSize: "clamp(18px, 4vw, 28px)", fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: color ?? "var(--accent)", lineHeight: 1 }}>
         {value}
       </p>
       <div className="flex items-center gap-2">
@@ -224,18 +224,18 @@ const BAR_DATA = [
 function TabPortfolio() {
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Net P&L total"  value="+$18.4k" sub="30d · todas las cuentas" color="var(--win)" delta="+12.4%" />
         <KpiCard label="Profit Factor"  value="1.84"    sub="30d · todas las cuentas" delta="+0.3 vs sem. ant." />
         <KpiCard label="Win Rate"       value="58%"     sub="134 / 230 operaciones" />
         <KpiCard label="Max Drawdown"   value="-3.4%"   sub="abr 12 · FXify" color="var(--loss)" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Donut */}
         <Card title="Asignación por cuenta" sub="Prop Firm + Personal · Demo excluido">
-          <div className="flex items-center gap-6">
-            <div style={{ width: 160, flexShrink: 0 }}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+            <div style={{ width: 120, flexShrink: 0 }}>
               <ResponsiveContainer width={160} height={160}>
                 <PieChart>
                   <Pie data={DONUT_DATA} cx={75} cy={75} innerRadius={50} outerRadius={72}
@@ -427,7 +427,7 @@ function TabOperador() {
             </span>
           </p>
         </div>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {ACCOUNT_CARDS.map(a => {
             const active = selectedAccount === a.id
             return (
@@ -644,7 +644,7 @@ function TabDisciplina() {
       </div>
 
       {/* ── Score + Composición ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Score panel */}
         <div className="col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
           <p className="text-eyebrow mb-3">Discipline Score · Semana actual</p>
@@ -654,7 +654,7 @@ function TabDisciplina() {
             <span className="text-sm font-semibold text-[var(--win)] flex items-center gap-1">↑ +6 vs sem. pasada</span>
           </div>
           {/* Three metric rows */}
-          <div className="grid grid-cols-3 gap-3 mt-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
               { label: "Sin violación",   value: "78%",  sub: "18 / 23 trades", color: "var(--win)"  },
               { label: "Plan seguido",    value: "82%",  sub: "19 / 23 trades", color: "#4f6ef7"    },
@@ -744,7 +744,7 @@ function TabDisciplina() {
       </div>
 
       {/* ── R Distribution + Violations ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* R distribution bar chart */}
         <Card title="Distribución de R · este mes" sub="Frecuencia de outcomes vs. expectativa.">
           <div className="flex items-end gap-1.5 h-32 mt-2">
@@ -855,7 +855,7 @@ function TabPlaybook() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {SETUPS.map(s => {
             const win = s.wr >= 50
             const lineColor = win ? "#22c55e" : "#e05555"
@@ -897,7 +897,7 @@ function TabPlaybook() {
                 </svg>
 
                 {/* Stats */}
-                <div className="px-3 pt-2 pb-1 grid grid-cols-3 gap-1">
+                <div className="px-3 pt-2 pb-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
                   {[
                     ["Win", `${s.wr}%`, win ? "var(--win)" : "var(--loss)"],
                     ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
@@ -922,7 +922,7 @@ function TabPlaybook() {
       </div>
 
       {/* ── Session matrix + Checklist ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
         {/* Setup × Sesión matrix */}
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">

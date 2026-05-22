@@ -748,7 +748,7 @@ export default function CuentasPage() {
         />
 
         {/* KPI strip */}
-        <div className="grid grid-cols-4 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <KpiBox label="Balance total" value={`$${totalBal.toLocaleString()}`}
             sub={`${mockAccounts.length} cuentas`}
             icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />

@@ -20,7 +20,7 @@ export function KpiCard({ label, value, sub, trend, mono = true, className }: Kp
       <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>
         {label}
       </p>
-      <p style={{ fontSize: 28, fontWeight: 700, fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit", color: valueColor, marginBottom: 4, lineHeight: 1 }}>
+      <p style={{ fontSize: "clamp(18px, 4vw, 28px)", fontWeight: 700, fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit", color: valueColor, marginBottom: 4, lineHeight: 1 }}>
         {value}
       </p>
       {sub && <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</p>}
