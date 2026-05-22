@@ -2,53 +2,107 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
+import { ChevronDown, X } from "lucide-react"
 import { TradeRow } from "@/components/trades/trade-row"
 import { cn } from "@/lib/utils"
 import type { Trade, Account, Setup, TradeDirection, TradeTag, TradeSession } from "@/types"
 
-/* ── Filter pill button ── */
-function Pill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        height: 28, padding: "0 12px",
-        borderRadius: 999,
-        background: active ? "var(--ink)" : "transparent",
-        color: active ? "var(--bg)" : "var(--ink-3)",
-        fontSize: 12, fontWeight: active ? 600 : 400,
-        border: active ? "1px solid var(--ink)" : "1px solid transparent",
-        cursor: "pointer", whiteSpace: "nowrap",
-        transition: "all .12s",
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-/* ── Filter group with label ── */
-function FilterGroup({ label, options, value, onChange }: {
+/* ── Dropdown filter chip ── */
+function FilterChip({
+  label,
+  value,
+  options,
+  onChange,
+}: {
   label: string
-  options: { value: string; label: string }[]
   value: string
+  options: { value: string; label: string }[]
   onChange: (v: string) => void
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const isActive = value !== options[0].value
+  const displayLabel = isActive
+    ? options.find(o => o.value === value)?.label ?? value
+    : label
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--ink-3)", marginRight: 4, whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-      {options.map(o => (
-        <Pill key={o.value} label={o.label} active={value === o.value} onClick={() => onChange(o.value)} />
-      ))}
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          height: 32, padding: "0 10px 0 12px",
+          borderRadius: 999,
+          background: isActive ? "var(--accent)" : "var(--panel)",
+          color: isActive ? "white" : "var(--ink-2)",
+          border: `1px solid ${isActive ? "var(--accent)" : "var(--line)"}`,
+          fontSize: 12.5, fontWeight: isActive ? 600 : 400,
+          cursor: "pointer", whiteSpace: "nowrap",
+          transition: "all .12s",
+        }}
+      >
+        {displayLabel}
+        {isActive ? (
+          <span
+            onClick={e => { e.stopPropagation(); onChange(options[0].value); setOpen(false) }}
+            style={{ display: "flex", alignItems: "center", marginLeft: 1, opacity: 0.8 }}
+          >
+            <X size={12} />
+          </span>
+        ) : (
+          <ChevronDown size={12} style={{ opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+        )}
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", left: 0,
+          background: "var(--panel)", border: "1px solid var(--line)",
+          borderRadius: "var(--radius-sm)",
+          boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+          zIndex: 60, minWidth: 140, overflow: "hidden",
+          animation: "fadeSlideDown .1s ease",
+        }}>
+          {options.map(o => (
+            <button
+              key={o.value}
+              onClick={() => { onChange(o.value); setOpen(false) }}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                width: "100%", padding: "9px 14px",
+                background: value === o.value ? "var(--accent-soft)" : "transparent",
+                color: value === o.value ? "var(--accent)" : "var(--ink-2)",
+                fontSize: 13, fontWeight: value === o.value ? 600 : 400,
+                border: "none", cursor: "pointer", textAlign: "left",
+                transition: "background .08s",
+              }}
+              onMouseEnter={e => { if (value !== o.value) (e.currentTarget as HTMLElement).style.background = "var(--panel-2)" }}
+              onMouseLeave={e => { if (value !== o.value) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+            >
+              {o.label}
+              {value === o.value && <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 const CALIDAD_OPTIONS = [
-  { value: "TODAS",     label: "Todas" },
+  { value: "TODAS",     label: "Calidad" },
   { value: "A+",        label: "A+" },
   { value: "Plan",      label: "Plan" },
   { value: "Off-plan",  label: "Off-plan" },
@@ -56,13 +110,13 @@ const CALIDAD_OPTIONS = [
 ]
 
 const DIRECTION_OPTIONS = [
-  { value: "TODAS", label: "Todas" },
+  { value: "TODAS", label: "Dirección" },
   { value: "LONG",  label: "Long" },
   { value: "SHORT", label: "Short" },
 ]
 
 const SESSION_OPTIONS = [
-  { value: "TODAS",         label: "Todas" },
+  { value: "TODAS",         label: "Sesión" },
   { value: "New York",      label: "NY" },
   { value: "London",        label: "London" },
   { value: "Asia",          label: "Asia" },
@@ -85,7 +139,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
   const [sessionF,  setSessionF]  = useState("TODAS")
 
   const accountOptions = [
-    { value: "TODAS", label: "Todas" },
+    { value: "TODAS", label: "Cuenta" },
     ...accounts.map(a => ({ value: a.id, label: a.name })),
   ]
 
@@ -97,15 +151,19 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
     return calOk && dirOk && accOk && sesOk
   })
 
-  const netPnl = filtered.reduce((s, t) => s + (t.pnl ?? 0), 0)
-  const wins   = filtered.filter(t => (t.rMultiple ?? 0) > 0).length
-  const wr     = filtered.length ? Math.round((wins / filtered.length) * 100) : 0
-  const avgR   = filtered.length
+  const netPnl  = filtered.reduce((s, t) => s + (t.pnl ?? 0), 0)
+  const wins    = filtered.filter(t => (t.rMultiple ?? 0) > 0).length
+  const wr      = filtered.length ? Math.round((wins / filtered.length) * 100) : 0
+  const avgR    = filtered.length
     ? filtered.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / filtered.length
     : 0
 
   const pnlColor = netPnl >= 0 ? "var(--win)" : "var(--loss)"
   const pnlStr   = netPnl >= 0 ? `+$${netPnl.toLocaleString()}` : `-$${Math.abs(netPnl).toLocaleString()}`
+
+  const activeFilters = [calidad, direction, accountF, sessionF].filter(v => v !== "TODAS").length
+
+  const clearAll = () => { setCalidad("TODAS"); setDirection("TODAS"); setAccountF("TODAS"); setSessionF("TODAS") }
 
   return (
     <div className={cn("flex flex-col gap-0", className)}>
@@ -114,36 +172,46 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       <div style={{
         background: "var(--panel)", border: "1px solid var(--line)",
         borderRadius: "var(--radius) var(--radius) 0 0",
-        padding: "14px 16px",
-        display: "flex", flexDirection: "column", gap: 10,
+        padding: "12px 16px 12px",
       }}>
         {/* Summary row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>{filtered.length} trades</span>
-            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: pnlColor }}>{pnlStr} neto</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>{filtered.length} trades</span>
+            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: pnlColor }}>{pnlStr}</span>
           </div>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
             <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: 9.5, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>Win Rate</p>
-              <p style={{ fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: wr >= 50 ? "var(--win)" : "var(--loss)" }}>{wr}%</p>
+              <p style={{ fontSize: 9, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>WR</p>
+              <p style={{ fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: wr >= 50 ? "var(--win)" : "var(--loss)" }}>{wr}%</p>
             </div>
             <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: 9.5, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>Avg R</p>
-              <p style={{ fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: avgR >= 0 ? "var(--win)" : "var(--loss)" }}>{avgR >= 0 ? "+" : ""}{avgR.toFixed(1)}R</p>
+              <p style={{ fontSize: 9, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>Avg R</p>
+              <p style={{ fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: avgR >= 0 ? "var(--win)" : "var(--loss)" }}>{avgR >= 0 ? "+" : ""}{avgR.toFixed(1)}R</p>
             </div>
           </div>
         </div>
 
-        {/* Filter pills */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <FilterGroup label="Calidad"   options={CALIDAD_OPTIONS}   value={calidad}   onChange={setCalidad} />
-          <div style={{ width: 1, height: 16, background: "var(--line)" }} />
-          <FilterGroup label="Dir."      options={DIRECTION_OPTIONS} value={direction} onChange={setDirection} />
-          <div style={{ width: 1, height: 16, background: "var(--line)" }} />
-          <FilterGroup label="Cuenta"    options={accountOptions}    value={accountF}  onChange={setAccountF} />
-          <div style={{ width: 1, height: 16, background: "var(--line)" }} />
-          <FilterGroup label="Sesión"    options={SESSION_OPTIONS}   value={sessionF}  onChange={setSessionF} />
+        {/* Chip row */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <FilterChip label="Calidad"   options={CALIDAD_OPTIONS}   value={calidad}   onChange={setCalidad} />
+          <FilterChip label="Dirección" options={DIRECTION_OPTIONS} value={direction} onChange={setDirection} />
+          <FilterChip label="Cuenta"    options={accountOptions}    value={accountF}  onChange={setAccountF} />
+          <FilterChip label="Sesión"    options={SESSION_OPTIONS}   value={sessionF}  onChange={setSessionF} />
+          {activeFilters > 0 && (
+            <button
+              onClick={clearAll}
+              style={{
+                height: 32, padding: "0 10px",
+                borderRadius: 999, border: "none",
+                background: "none", color: "var(--ink-3)",
+                fontSize: 12, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 4,
+              }}
+            >
+              <X size={11} /> Limpiar
+            </button>
+          )}
         </div>
       </div>
 
@@ -162,7 +230,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
                   <th
                     key={`${h}-${i}`}
                     style={{
-                      padding: i === 0 ? "10px 8px 10px 16px" : "10px 8px",
+                      padding: i === 0 ? "10px 8px 10px 0" : "10px 8px",
                       textAlign: i >= 5 ? "right" : "left",
                       fontSize: 10, fontWeight: 700, textTransform: "uppercase",
                       letterSpacing: ".07em", color: "var(--ink-3)",
@@ -202,6 +270,13 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
           </table>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeSlideDown {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }
