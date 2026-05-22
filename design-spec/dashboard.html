@@ -1658,22 +1658,586 @@
   </div>
 
   <div id="tab-playbook" class="tab-panel">
-    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:48px;text-align:center">
-      <p style="font-size:11px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Dashboard · Tab</p>
-      <h2 style="font-size:24px;font-weight:800;letter-spacing:-.03em;margin-bottom:8px">Playbook</h2>
-      <p style="font-size:14px;color:var(--ink-2);margin-bottom:24px">Performance por setup · Win rate y Avg R comparados</p>
-      <table style="width:100%;max-width:700px;margin:0 auto;border-collapse:collapse;font-size:13px;text-align:left">
-        <thead><tr style="border-bottom:1px solid var(--line)"><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600">SETUP</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">TRADES</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">WIN %</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">AVG R</th><th style="padding:10px 8px;font-size:11px;color:var(--ink-3);font-weight:600;text-align:right">NET P&L</th></tr></thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Opening Range Break</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">47</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">64%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.80R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$14,320</td></tr>
-          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Liquidity Grab</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">31</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+2.20R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$12,800</td></tr>
-          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">London Reversal</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">21</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">66%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.40R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$9,800</td></tr>
-          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">VWAP Reclaim</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">19</td><td style="padding:10px 8px;text-align:right;color:var(--accent);font-family:'JetBrains Mono',monospace">68%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+1.50R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$5,800</td></tr>
-          <tr style="border-bottom:1px solid var(--line)"><td style="padding:10px 8px;color:var(--ink)">Failed Auction</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">8</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">52%</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+0.90R</td><td style="padding:10px 8px;text-align:right;color:var(--win);font-family:'JetBrains Mono',monospace">+$4,100</td></tr>
-          <tr><td style="padding:10px 8px;color:var(--ink-3)">News Fade — NFP</td><td style="padding:10px 8px;text-align:right;color:var(--ink-2);font-family:'JetBrains Mono',monospace">6</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">41%</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.20R</td><td style="padding:10px 8px;text-align:right;color:var(--loss);font-family:'JetBrains Mono',monospace">-$500</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <div style="display:flex;min-height:700px;background:var(--bg);border-radius:12px;overflow:hidden;border:1px solid var(--line)">
+
+      <!-- ═══ SIDEBAR 240px ═══ -->
+      <div style="width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:0">
+
+        <!-- Logo -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">T</div>
+          <span style="font-size:13px;font-weight:700;color:var(--ink)">Trading Journal</span>
+        </div>
+
+        <!-- Nav: OPERACIÓN -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Operación</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:16px">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;font-weight:600;background:var(--accent);color:#fff;text-decoration:none">
+            <span style="font-size:13px">▦</span> Dashboard
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◈</span> Cuentas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊟</span> Trades
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◉</span> Playbook
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">⊛</span> Reglas
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">▤</span> Reviews
+          </a>
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◎</span> Aprendizaje
+          </a>
+        </nav>
+
+        <!-- Nav: CUENTA -->
+        <p style="font-size:9px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;padding-left:8px">Cuenta</p>
+        <nav style="display:flex;flex-direction:column;gap:1px;margin-bottom:auto">
+          <a href="#" style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;font-size:12px;color:var(--ink-2);text-decoration:none">
+            <span style="font-size:13px">◌</span> Perfil
+          </a>
+        </nav>
+
+        <!-- Review CTA -->
+        <div style="background:#1e1a0e;border:1px solid #3a3010;border-radius:10px;padding:12px;margin-top:16px">
+          <p style="font-size:11px;font-weight:700;color:#e8962a;margin-bottom:4px">Review semanal lista</p>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5;margin-bottom:10px">Cierra la semana del 14–20 may con 23 trades y 3 violaciones detectadas.</p>
+          <button style="width:100%;background:#e8962a;border:none;border-radius:7px;padding:7px;font-size:11px;font-weight:700;color:#fff;font-family:inherit;cursor:pointer">Empezar review</button>
+        </div>
+      </div>
+
+      <!-- ═══ MAIN CONTENT ═══ -->
+      <div style="flex:1;overflow-y:auto;padding:24px 28px;min-width:0">
+
+        <!-- Top bar -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px">
+          <div>
+            <h2 style="font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px">Playbook</h2>
+            <p style="font-size:12px;color:var(--ink-3)">FXify 100K · Phase 2 · FXify · Estado <span style="color:#4caf7a;background:#1a2e1a;padding:2px 7px;border-radius:4px;font-weight:600;font-size:11px">OPERABLE</span></p>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Operador</button>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Disciplina</button>
+            <div style="width:32px;height:18px;background:var(--chip);border-radius:9px;cursor:pointer"></div>
+            <button style="background:none;border:1px solid var(--line);border-radius:7px;padding:5px 12px;font-size:12px;color:var(--ink-2);cursor:pointer;font-family:inherit">Portfolio</button>
+          </div>
+        </div>
+
+        <!-- Playbook · rendimiento por setup -->
+        <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div>
+              <p style="font-size:13px;font-weight:600;margin-bottom:2px">Playbook · rendimiento por setup</p>
+              <p style="font-size:10px;color:var(--ink-3)">Métricas agregadas desde tu registro de trades · últimos 90 días.</p>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div style="width:28px;height:16px;background:var(--chip);border-radius:8px;cursor:pointer"></div>
+              <button style="background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--ink-2);cursor:pointer;font-family:inherit">Pausados</button>
+              <button style="background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--ink-2);cursor:pointer;font-family:inherit">Descartados</button>
+            </div>
+          </div>
+
+          <!-- 2×4 grid of setup cards -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+
+            <!-- Card 1: OR Opening Range Break -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#e8962a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">OR</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Opening Range Break</p>
+                  <p style="font-size:10px;color:var(--ink-3)">Futures · 47 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,30 15,26 30,22 45,18 60,14 75,10 90,8 105,5 120,3" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">64%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.80</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+11.8R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY AM</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">Asia</span></span>
+              </div>
+            </div>
+
+            <!-- Card 2: LG Liquidity Grab -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#2a7a4a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">LG</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Liquidity Grab</p>
+                  <p style="font-size:10px;color:var(--ink-3)">Futures · 31 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,32 15,28 30,20 45,15 60,12 75,8 90,5 105,4 120,2" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">71%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+2.20</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+19.1R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY AM</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">London</span></span>
+              </div>
+            </div>
+
+            <!-- Card 3: LR London Reversal -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#2a5a8a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">LR</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">London Reversal</p>
+                  <p style="font-size:10px;color:var(--ink-3)">FX · 26 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,28 15,25 30,22 45,20 60,16 75,13 90,10 105,7 120,5" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">58%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.40</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+14.2R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">London</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">NY PM</span></span>
+              </div>
+            </div>
+
+            <!-- Card 4: VW VWAP Reclaim -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#2a7a6a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">VW</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">VWAP Reclaim</p>
+                  <p style="font-size:10px;color:var(--ink-3)">Equities · 19 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,30 15,27 30,22 45,19 60,15 75,12 90,9 105,6 120,4" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">68%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.50</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+11.2R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY PM</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">Asia</span></span>
+              </div>
+            </div>
+
+            <!-- Card 5: FA Failed Auction -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#7a2a2a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">FA</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Failed Auction</p>
+                  <p style="font-size:10px;color:var(--ink-3)">Futures · 24 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,28 15,27 30,24 45,22 60,20 75,18 90,16 105,14 120,12" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">52%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+0.90</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+6.8R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY AM</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">Asia</span></span>
+              </div>
+            </div>
+
+            <!-- Card 6: AS Asia Sweep -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#5a2a7a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">AS</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Asia Sweep</p>
+                  <p style="font-size:10px;color:var(--ink-3)">FX · 16 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,26 15,24 30,22 45,20 60,18 75,16 90,14 105,12 120,10" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">55%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.10</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+11.8R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">Asia</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">NY PM</span></span>
+              </div>
+            </div>
+
+            <!-- Card 7: TC Trend Continuation -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#2a4a5a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">TC</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Trend Continuation</p>
+                  <p style="font-size:10px;color:var(--ink-3)">Equities · 22 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,18 15,20 30,15 45,22 60,18 75,24 90,20 105,26 120,22" stroke="#e05555" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink-3)">49%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">+0.60</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">-0.7R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY PM</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">London</span></span>
+              </div>
+            </div>
+
+            <!-- Card 8: NF News Fade — NFP -->
+            <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <div style="width:24px;height:24px;border-radius:5px;background:#4a4a5a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">NF</div>
+                <div>
+                  <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">News Fade — NFP</p>
+                  <p style="font-size:10px;color:var(--ink-3)">FX · 8 trades</p>
+                </div>
+              </div>
+              <div style="height:36px;margin-bottom:10px">
+                <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+                  <polyline points="0,8 15,10 30,14 45,18 60,20 75,24 90,26 105,28 120,32" stroke="#e05555" stroke-width="1.5" fill="none"/>
+                </svg>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">41%</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">-0.20</p></div>
+                <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">-7.2R</p></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:10px">
+                <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">FX news</span></span>
+                <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">NY AM</span></span>
+              </div>
+            </div>
+
+          </div><!-- /grid -->
+        </div><!-- /playbook card -->
+
+        <!-- Bottom two-column row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+          <!-- LEFT: Setup × Sesión · win rate -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <p style="font-size:13px;font-weight:600;margin-bottom:2px">Setup × Sesión · win rate</p>
+            <p style="font-size:10px;color:var(--ink-3);margin-bottom:14px">Identifica el contexto donde cada setup performa mejor.</p>
+            <table style="width:100%;border-collapse:collapse;font-size:12px">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:6px 8px;font-size:10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">SETUP</th>
+                  <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">NY AM</th>
+                  <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">NY PM</th>
+                  <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">LONDON</th>
+                  <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--ink-3);font-weight:600;border-bottom:1px solid var(--line)">ASIA</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Row 1: OR -->
+                <tr style="border-bottom:1px solid var(--line)">
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#e8962a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">OR</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a2e1a;color:#4caf7a">72%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">58%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">51%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">33%</td>
+                </tr>
+                <!-- Row 2: FA -->
+                <tr style="border-bottom:1px solid var(--line)">
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#7a2a2a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">FA</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a2e1a;color:#4caf7a">72%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">60%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">55%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">40%</td>
+                </tr>
+                <!-- Row 3: LR -->
+                <tr style="border-bottom:1px solid var(--line)">
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#2a5a8a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">LR</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">44%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">55%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a2e1a;color:#4caf7a">68%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">50%</td>
+                </tr>
+                <!-- Row 4: LG -->
+                <tr style="border-bottom:1px solid var(--line)">
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#2a7a4a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">LG</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">55%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a2e1a;color:#4caf7a">67%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">50%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">42%</td>
+                </tr>
+                <!-- Row 5: TC -->
+                <tr style="border-bottom:1px solid var(--line)">
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#2a4a5a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">TC</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">49%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">53%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">47%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">38%</td>
+                </tr>
+                <!-- Row 6: AS -->
+                <tr>
+                  <td style="padding:6px 8px"><div style="display:flex;align-items:center;gap:6px"><div style="width:14px;height:14px;border-radius:3px;background:#5a2a7a;flex-shrink:0"></div><span style="font-size:12px;color:var(--ink-2)">AS</span></div></td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">18%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">50%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">45%</td>
+                  <td style="text-align:center;padding:6px 4px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a1a2a;color:var(--ink-2)">62%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- RIGHT: A+ Checklist · cumplimiento -->
+          <div style="background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px">
+            <p style="font-size:13px;font-weight:600;margin-bottom:2px">A+ Checklist · cumplimiento</p>
+            <p style="font-size:10px;color:var(--ink-3);margin-bottom:16px">Tasa de cumplimiento por ítem esta semana.</p>
+            <div style="display:flex;flex-direction:column;gap:12px">
+
+              <!-- Item 1: Confluencia HTF 95% green -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Confluencia HTF</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#4caf7a">95%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:95%;background:#4caf7a;border-radius:3px"></div>
+                </div>
+              </div>
+
+              <!-- Item 2: Killzone activa 88% green -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Killzone activa</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#4caf7a">88%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:88%;background:#4caf7a;border-radius:3px"></div>
+                </div>
+              </div>
+
+              <!-- Item 3: Trade #1-2 del día 72% amber -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Trade #1-2 del día</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e8962a">72%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:72%;background:#e8962a;border-radius:3px"></div>
+                </div>
+              </div>
+
+              <!-- Item 4: Stop visualmente protegido 81% green -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Stop visualmente protegido</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#4caf7a">81%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:81%;background:#4caf7a;border-radius:3px"></div>
+                </div>
+              </div>
+
+              <!-- Item 5: Target a structure 67% amber -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Target a structure</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e8962a">67%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:67%;background:#e8962a;border-radius:3px"></div>
+                </div>
+              </div>
+
+              <!-- Item 6: Risk ≤ 1R por trade 96% green -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                  <span style="font-size:13px;color:var(--ink-2)">Risk ≤ 1R por trade</span>
+                  <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#4caf7a">96%</span>
+                </div>
+                <div style="height:5px;background:var(--line);border-radius:3px">
+                  <div style="height:100%;width:96%;background:#4caf7a;border-radius:3px"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div><!-- /bottom row -->
+
+      </div><!-- /MAIN CONTENT -->
+
+      <!-- ═══ RIGHT RAIL 280px ═══ -->
+      <div style="width:280px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:0">
+
+        <!-- User header -->
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;flex-shrink:0">HO</div>
+            <div>
+              <p style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:1px">Héctor O.C.</p>
+              <p style="font-size:11px;color:var(--ink-3)">Single-Trader · TJ</p>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="font-size:11px;color:var(--ink-3)">21 may 2026</span>
+            <span style="font-size:11px;color:var(--ink-3)">SEM 20 · 2026</span>
+          </div>
+        </div>
+
+        <!-- Setups Top Performers -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <p style="font-size:12px;font-weight:700;color:var(--ink)">Setups · Top performers</p>
+            <span style="font-size:14px;color:var(--ink-3);cursor:pointer">···</span>
+          </div>
+          <!-- Category tabs -->
+          <div style="display:flex;gap:3px;margin-bottom:10px">
+            <button style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer">Futuros</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">FX</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Equities</button>
+            <button style="background:none;border:none;padding:4px 9px;border-radius:5px;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">Cripto</button>
+          </div>
+          <!-- Setup rows -->
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);margin-bottom:2px">
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3)">Setup</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">WIN%</span>
+              <span style="font-size:10px;font-weight:600;color:var(--ink-3);text-align:right">AVG R</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#b05020;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">OR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Opening Range Break</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">64%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.88</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#8b1a1a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">FA</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Failed Auction</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">52%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.98</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#2a4a8a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LR</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">London Reversal</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">58%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.48</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5c2a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">LG</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Liquidity Grab</p><p style="font-size:9px;color:var(--ink-3);margin:0">Futuros</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">71%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+2.28</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a4a4a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">TC</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Trend Continuation</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--ink-2);font-family:'JetBrains Mono',monospace">49%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+0.68</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#4a1a6a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">AS</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">Asia Sweep</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">55%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.18</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line)">
+              <div style="width:20px;height:20px;border-radius:4px;background:#1a5a5a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">VW</div>
+              <div><p style="font-size:11px;color:var(--ink);margin:0;line-height:1.2">VWAP Reclaim</p><p style="font-size:9px;color:var(--ink-3);margin:0">Equities</p></div>
+              <span style="font-size:11px;color:var(--accent);font-family:'JetBrains Mono',monospace">68%</span>
+              <span style="font-size:11px;color:var(--win);font-family:'JetBrains Mono',monospace">+1.58</span>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto;gap:6px;align-items:center;padding:5px 0">
+              <div style="width:20px;height:20px;border-radius:4px;background:#3a3a3a;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#fff;flex-shrink:0">NF</div>
+              <div><p style="font-size:11px;color:var(--ink-3);margin:0;line-height:1.2">News Fade — NFP</p><p style="font-size:9px;color:var(--ink-3);margin:0">FX</p></div>
+              <span style="font-size:11px;color:var(--ink-3);font-family:'JetBrains Mono',monospace">41%</span>
+              <span style="font-size:11px;color:var(--loss);font-family:'JetBrains Mono',monospace">-0.28</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nuevo Trade form -->
+        <div style="border-top:1px solid var(--line);padding-top:14px;margin-bottom:14px">
+          <p style="font-size:12px;font-weight:700;color:var(--ink);margin-bottom:10px">Nuevo Trade</p>
+          <div style="display:flex;gap:4px;margin-bottom:10px">
+            <button style="flex:1;padding:6px;border-radius:7px;border:none;background:var(--win);color:#fff;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">LONG</button>
+            <button style="flex:1;padding:6px;border-radius:7px;border:1px solid var(--line);background:none;color:var(--ink-3);font-size:12px;font-weight:700;font-family:inherit;cursor:pointer">SHORT</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Símbolo · Setup</p>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+            <span style="background:var(--chip);border-radius:5px;padding:3px 7px;font-size:11px;font-weight:700;color:var(--ink)">ES</span>
+            <span style="font-size:11px;color:var(--ink-3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Opening Range Break · NY AM</span>
+            <button style="background:var(--chip);border:1px solid var(--line);border-radius:5px;padding:2px 7px;font-size:10px;color:var(--ink-2);font-family:inherit;cursor:pointer">FUT ▾</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:5px">Riesgo (R)</p>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:2px">
+            <span style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink)">0.5 R</span>
+            <span style="font-size:11px;color:var(--ink-3)">USD</span>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:8px">$514.20 sobre equity</p>
+          <div style="display:flex;gap:4px;margin-bottom:12px">
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">25%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:none;background:var(--accent);font-size:10px;color:#fff;font-weight:700;font-family:inherit;cursor:pointer">50%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">75%</button>
+            <button style="flex:1;padding:4px;border-radius:6px;border:1px solid var(--line);background:none;font-size:10px;color:var(--ink-3);font-family:inherit;cursor:pointer">100%</button>
+          </div>
+          <p style="font-size:10px;color:var(--ink-3);margin-bottom:6px">Checklist A+</p>
+          <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Confluencia HTF</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--win);font-size:13px">✅</span><span style="font-size:11px;color:var(--ink-2)">Killzone activa</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--ink-3);font-size:13px">☐</span><span style="font-size:11px;color:var(--ink-3)">Trade #1–2 del día</span></div>
+          </div>
+          <input type="text" placeholder="" style="width:100%;background:none;border:none;border-bottom:1px solid var(--line);padding:6px 0;font-size:12px;color:var(--ink);font-family:inherit;outline:none;margin-bottom:10px">
+          <button style="width:100%;background:var(--accent);border:none;border-radius:8px;padding:9px;font-size:13px;font-weight:600;color:#fff;font-family:inherit;cursor:pointer">+ Registrar Trade</button>
+        </div>
+
+        <!-- Disciplina Semanal -->
+        <div style="border-top:1px solid var(--line);padding-top:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <p style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em">Disciplina Semanal</p>
+            <span style="font-size:11px;color:var(--win);font-weight:600">↑ +6</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:8px">
+            <span style="font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--ink);line-height:1">78</span>
+            <span style="font-size:14px;color:var(--ink-3)">/100</span>
+          </div>
+          <div style="height:6px;background:var(--line);border-radius:3px;margin-bottom:8px"><div style="width:78%;height:100%;background:var(--win);border-radius:3px"></div></div>
+          <p style="font-size:10px;color:var(--ink-3);line-height:1.5">18 / 23 trades sin violación · 3 trades off-plan esta semana</p>
+        </div>
+
+      </div><!-- /RAIL -->
+
+    </div><!-- /shell -->
   </div>
 </div>
 
@@ -2387,6 +2951,251 @@ function showTab(name, btn) {
       <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">border: 1px solid --line; color: --ink-2; border-radius: 7px; padding: 5px 12px; font-size: 12px</p></div>
       <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">el tab activo no aparece en la lista de botones; hover: color → --ink; el toggle entre tabs adicionales</p></div>
       <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click → cambia el tab-panel visible vía JS showTab(); sin recarga de página</p></div>
+    </div>
+  </div>
+
+</div>
+
+<div style="padding:48px;max-width:1100px;margin:0 auto;border-top:1px solid var(--line)">
+  <p style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Tab · Playbook</p>
+  <h2 style="font-size:18px;font-weight:800;margin-bottom:4px">Resumen de Funcionalidad</h2>
+  <p style="font-size:13px;color:var(--ink-3);margin-bottom:24px">/dashboard?tab=playbook</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:40px">
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">¿Qué hace?</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>→ Muestra rendimiento de cada setup en los últimos 90 días</li>
+        <li>→ Cada setup card tiene sparkline de equity, Win%, Avg R y R acumulado</li>
+        <li>→ Identifica la mejor y peor sesión para cada setup</li>
+        <li>→ Heatmap Setup × Sesión: win rate por contexto horario</li>
+        <li>→ Monitorea cumplimiento del A+ Checklist ítem por ítem</li>
+        <li>→ Permite filtrar entre setups activos, pausados y descartados</li>
+      </ul>
+    </div>
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Flujos de usuario</p>
+      <ul style="list-style:none;padding:0;font-size:13px;color:var(--ink-2);line-height:2">
+        <li>1. Trader ve grid de setups → identifica cuáles tienen Cum negativo</li>
+        <li>2. Click en card → navega a /playbook con ese setup seleccionado</li>
+        <li>3. Setup × Sesión → decide en qué sesión operar cada setup</li>
+        <li>4. A+ Checklist → detecta qué condiciones se están salteando más</li>
+        <li>5. Toggle "Pausados" → ve setups desactivados temporalmente</li>
+        <li>6. Toggle "Descartados" → ve setups eliminados del plan</li>
+      </ul>
+    </div>
+  </div>
+  <h2 style="font-size:18px;font-weight:800;margin-bottom:24px">Anatomía</h2>
+
+  <!-- Component 1: Setup Card — Profitable -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">MOLECULE</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Setup Card — Profitable</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg)">
+      <!-- Live: OR card -->
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;max-width:220px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:24px;height:24px;border-radius:5px;background:#e8962a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">OR</div>
+          <div>
+            <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">Opening Range Break</p>
+            <p style="font-size:10px;color:var(--ink-3)">Futures · 47 trades</p>
+          </div>
+        </div>
+        <div style="height:36px;margin-bottom:10px">
+          <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+            <polyline points="0,30 15,26 30,22 45,18 60,14 75,10 90,8 105,5 120,3" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)">64%</p></div>
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+1.80</p></div>
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--win)">+11.8R</p></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">NY AM</span></span>
+          <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">Asia</span></span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--bg (card bg), --line (border), --accent (win%), --win (R values), JetBrains Mono</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">normal, hover (border --accent)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click → navega a /playbook con ese setup abierto en detalle</p></div>
+    </div>
+  </div>
+
+  <!-- Component 2: Setup Card — Losing -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">MOLECULE</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Setup Card — Losing</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg)">
+      <!-- Live: NF card -->
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;max-width:220px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="width:24px;height:24px;border-radius:5px;background:#4a4a5a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0">NF</div>
+          <div>
+            <p style="font-size:12px;font-weight:700;color:var(--ink);line-height:1.2">News Fade — NFP</p>
+            <p style="font-size:10px;color:var(--ink-3)">FX · 8 trades</p>
+          </div>
+        </div>
+        <div style="height:36px;margin-bottom:10px">
+          <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+            <polyline points="0,8 15,10 30,14 45,18 60,20 75,24 90,26 105,28 120,32" stroke="#e05555" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:8px">
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Win</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">41%</p></div>
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Avg R</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">-0.20</p></div>
+          <div><p style="font-size:9px;color:var(--ink-3);margin-bottom:2px">Cum</p><p style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e05555">-7.2R</p></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px">
+          <span style="color:var(--ink-3)">Mejor: <span style="color:var(--win)">FX news</span></span>
+          <span style="color:var(--ink-3)">Peor: <span style="color:var(--loss)">NY AM</span></span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">--bg, --line, --loss (win%, R values, Cum)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">Cum negativo → R value y Cum en --loss</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click → navega a /playbook con ese setup abierto en detalle</p></div>
+    </div>
+  </div>
+
+  <!-- Component 3: Sparkline SVG -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">ATOM</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Sparkline SVG</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg);display:flex;gap:24px;align-items:center">
+      <div style="height:36px;width:160px">
+        <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+          <polyline points="0,30 15,26 30,22 45,18 60,14 75,10 90,8 105,5 120,3" stroke="#4caf7a" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+      <div style="height:36px;width:160px">
+        <svg viewBox="0 0 120 36" style="width:100%;height:100%">
+          <polyline points="0,8 15,10 30,14 45,18 60,20 75,24 90,26 105,28 120,32" stroke="#e05555" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">#4caf7a (profitable), #e05555 (losing)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">color determinado por si el Cum es positivo o negativo</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">generada automáticamente desde historial de equity del setup</p></div>
+    </div>
+  </div>
+
+  <!-- Component 4: Setup Avatar Square -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">ATOM</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Setup Avatar Square</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg);display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="width:24px;height:24px;border-radius:5px;background:#e8962a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">OR</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#2a7a4a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">LG</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#2a5a8a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">LR</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#2a7a6a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">VW</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#7a2a2a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">FA</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#5a2a7a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">AS</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#2a4a5a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">TC</div>
+      <div style="width:24px;height:24px;border-radius:5px;background:#4a4a5a;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff">NF</div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">color bg custom por setup (naranja, verde, azul, teal, rojo, morado, gris-azul, gris)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">estático; color asignado al crear el setup</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">color asignado al crear el setup</p></div>
+    </div>
+  </div>
+
+  <!-- Component 5: Session × Setup Heat Cell -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">ATOM</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Session × Setup Heat Cell</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg);display:flex;gap:8px;align-items:center">
+      <div style="text-align:center;padding:6px 16px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#1a2e1a;color:#4caf7a">72%</div>
+      <div style="text-align:center;padding:6px 16px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:var(--chip);color:var(--ink-2)">58%</div>
+      <div style="text-align:center;padding:6px 16px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;background:#2a1a1a;color:#e05555">33%</div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">verde: bg #1a2e1a/color #4caf7a; neutral: bg var(--chip)/color var(--ink-2); roja: bg #2a1a1a/color #e05555</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">≥65% verde; 50-64% neutral; &lt;50% rojo</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">click celda → filtra /trades por ese setup + sesión</p></div>
+    </div>
+  </div>
+
+  <!-- Component 6: Checklist Progress Item -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">MOLECULE</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Checklist Progress Item</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg);display:flex;flex-direction:column;gap:12px;max-width:400px">
+      <!-- green 95% -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;color:var(--ink-2)">Confluencia HTF</span>
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#4caf7a">95%</span>
+        </div>
+        <div style="height:5px;background:var(--line);border-radius:3px">
+          <div style="height:100%;width:95%;background:#4caf7a;border-radius:3px"></div>
+        </div>
+      </div>
+      <!-- amber 67% -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:13px;color:var(--ink-2)">Target a structure</span>
+          <span style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#e8962a">67%</span>
+        </div>
+        <div style="height:5px;background:var(--line);border-radius:3px">
+          <div style="height:100%;width:67%;background:#e8962a;border-radius:3px"></div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">≥80%: #4caf7a; 65-79%: #e8962a; &lt;65%: #e05555; bar bg: var(--line)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">color y barra cambian según porcentaje de cumplimiento</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">% calculado desde trades de la semana con ese ítem marcado</p></div>
+    </div>
+  </div>
+
+  <!-- Component 7: Setup Filter Toggle -->
+  <div style="border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:16px">
+    <div style="padding:14px 20px;background:var(--panel-2);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-right:10px">MOLECULE</span>
+        <span style="font-size:13px;font-weight:700;color:var(--ink)">Setup Filter Toggle</span>
+      </div>
+    </div>
+    <div style="padding:20px;background:var(--bg)">
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="width:28px;height:16px;background:var(--chip);border-radius:8px;cursor:pointer"></div>
+        <button style="background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--ink-2);cursor:pointer;font-family:inherit">Pausados</button>
+        <button style="background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--ink-2);cursor:pointer;font-family:inherit">Descartados</button>
+      </div>
+    </div>
+    <div style="padding:14px 20px;background:var(--panel);display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Tokens</p><p style="color:var(--ink-2)">toggle: var(--chip); buttons: --line border, --ink-2 color</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Estados</p><p style="color:var(--ink-2)">toggle on/off; botones active con background var(--chip)</p></div>
+      <div><p style="color:var(--ink-3);margin-bottom:4px">Comportamiento</p><p style="color:var(--ink-2)">toggle alterna active/all; Pausados/Descartados filtra el grid</p></div>
     </div>
   </div>
 
