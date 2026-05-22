@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { Sidebar } from "@/components/layout/Sidebar"
+import { ThemeProvider } from "@/components/theme-provider"
 
 export const metadata: Metadata = {
   title: "Trading Journal",
@@ -9,12 +10,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" suppressHydrationWarning>
       <body>
-        <div className="shell">
-          <Sidebar />
-          <main className="main-content">{children}</main>
-        </div>
+        <ThemeProvider>
+          <div className="shell">
+            <Sidebar />
+            <main className="main-content">{children}</main>
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   )

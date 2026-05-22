@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useTheme } from "@/components/theme-provider"
 
 const NAV = [
   {
@@ -26,6 +27,7 @@ const NAV = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { theme, toggle } = useTheme()
 
   return (
     <aside className="sidebar">
@@ -114,6 +116,18 @@ export function Sidebar() {
           </p>
           <p style={{ fontSize: 11, color: "var(--ink-3)" }}>Single-trader · TJ</p>
         </div>
+        <button
+          onClick={toggle}
+          title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+          style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: "var(--chip)", border: "1px solid var(--line)",
+            display: "grid", placeItems: "center",
+            cursor: "pointer", flexShrink: 0, fontSize: 14,
+          }}
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
       </div>
     </aside>
   )
