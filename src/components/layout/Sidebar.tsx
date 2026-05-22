@@ -47,20 +47,30 @@ export function Sidebar() {
   const pathname = usePathname()
   const { theme, toggle } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const width = useWindowWidth()
 
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
 
-  // ── Mobile: top bar + bottom nav ──────────────────────────────────────────
+  // ── Mobile: top bar + bottom nav + "Más" drawer ──────────────────────────
   if (isMobile) {
     const bottomItems = [
       NAV[0].items[0], // Dashboard
-      NAV[0].items[2], // Trades
-      NAV[0].items[5], // Reviews
-      NAV[0].items[6], // Aprendizaje
+      NAV[0].items[3], // Trades
+      NAV[0].items[6], // Reviews
+      NAV[0].items[7], // Aprendizaje
       NAV[1].items[0], // Perfil
     ]
+    // Items that go into the "Más" drawer
+    const drawerItems = [
+      NAV[0].items[1], // Cuentas
+      NAV[0].items[2], // Mercados
+      NAV[0].items[4], // Playbook
+      NAV[0].items[5], // Reglas
+    ]
+    const anyDrawerActive = drawerItems.some(i => pathname.startsWith(i.href))
+
     return (
       <>
         {/* Top header bar */}
@@ -92,22 +102,67 @@ export function Sidebar() {
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)", flex: 1 }}>
             Trading Journal
           </span>
-          {/* More menu: Playbook, Cuentas, Reglas */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Link href="/cuentas" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: pathname.startsWith("/cuentas") ? "var(--accent)" : "var(--ink-3)", textDecoration: "none" }} title="Cuentas">
-              <Wallet size={14} />
-            </Link>
-            <Link href="/playbook" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", color: pathname.startsWith("/playbook") ? "var(--accent)" : "var(--ink-3)", textDecoration: "none" }} title="Playbook">
-              <BookOpen size={14} />
-            </Link>
-            <button
-              onClick={toggle}
-              style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14 }}
-            >
-              {theme === "dark" ? "☀️" : "🌙"}
-            </button>
-          </div>
+          <button
+            onClick={toggle}
+            style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14 }}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
         </header>
+
+        {/* "Más" drawer backdrop */}
+        {drawerOpen && (
+          <div
+            onClick={() => setDrawerOpen(false)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 48,
+              background: "rgba(0,0,0,.4)",
+            }}
+          />
+        )}
+
+        {/* "Más" drawer panel */}
+        <div style={{
+          position: "fixed", left: 0, right: 0, zIndex: 49,
+          bottom: drawerOpen ? 56 : "-100%",
+          background: "var(--panel)",
+          borderTop: "1px solid var(--line)",
+          borderRadius: "16px 16px 0 0",
+          padding: "16px 16px 8px",
+          transition: "bottom .25s cubic-bezier(.32,0,.67,0)",
+          boxShadow: "0 -8px 32px rgba(0,0,0,.18)",
+        }}>
+          {/* Handle */}
+          <div style={{ width: 36, height: 4, borderRadius: 99, background: "var(--line-2)", margin: "0 auto 16px" }} />
+          <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 12 }}>
+            Más secciones
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {drawerItems.map(item => {
+              const active = pathname.startsWith(item.href)
+              const Icon = item.icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setDrawerOpen(false)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "12px 14px", borderRadius: "var(--radius-sm)",
+                    background: active ? "var(--accent-soft)" : "var(--panel-2)",
+                    border: `1px solid ${active ? "var(--accent)" : "var(--line)"}`,
+                    color: active ? "var(--accent)" : "var(--ink-2)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <Icon size={18} />
+                  <span style={{ fontSize: 13.5, fontWeight: active ? 600 : 400 }}>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+          <div style={{ height: 16 }} />
+        </div>
 
         {/* Bottom nav bar */}
         <nav style={{
@@ -155,6 +210,32 @@ export function Sidebar() {
               </Link>
             )
           })}
+
+          {/* Más button */}
+          <button
+            onClick={() => setDrawerOpen(v => !v)}
+            style={{
+              flex: 1, height: 44,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              gap: 2, borderRadius: 10, border: "none",
+              color: anyDrawerActive || drawerOpen ? "var(--accent)" : "var(--ink-3)",
+              background: anyDrawerActive || drawerOpen ? "var(--accent-soft)" : "transparent",
+              cursor: "pointer", position: "relative",
+            }}
+          >
+            <MoreHorizontal size={18} />
+            <span style={{ fontSize: 9, fontWeight: anyDrawerActive || drawerOpen ? 600 : 400, lineHeight: 1 }}>Más</span>
+            {/* dot if a drawer page is active */}
+            {anyDrawerActive && !drawerOpen && (
+              <span style={{
+                position: "absolute", top: 6, right: "22%",
+                width: 6, height: 6, borderRadius: "50%",
+                background: "var(--accent)",
+                border: "1.5px solid var(--panel)",
+              }} />
+            )}
+          </button>
         </nav>
       </>
     )
