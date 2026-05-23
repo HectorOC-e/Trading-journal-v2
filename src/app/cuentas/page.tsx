@@ -4,7 +4,7 @@ import { useState } from "react"
 import {
   Plus, X, TrendingUp, TrendingDown, Shield, Target,
   AlertTriangle, CheckCircle2, Clock, BarChart3, ChevronRight,
-  Pencil, Archive, Loader2,
+  Pencil, Archive, Loader2, Trash2, PauseCircle, XCircle,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
@@ -65,10 +65,12 @@ const ACCOUNT_STATS: Record<string, AccountStats> = {
    HELPERS
 ══════════════════════════════════════ */
 const TYPE_META: Record<AccountType, { label: string; color: string; bg: string }> = {
-  PROP_FIRM: { label: "Prop Firm", color: "#4f6ef7", bg: "rgba(79,110,247,0.12)" },
-  PERSONAL:  { label: "Personal",  color: "#22c55e", bg: "rgba(34,197,94,0.12)"  },
-  DEMO:      { label: "Demo",      color: "#9b59b6", bg: "rgba(155,89,182,0.12)" },
-  QA:        { label: "QA",        color: "#6b7280", bg: "rgba(107,114,128,0.12)"},
+  PROP_FIRM:    { label: "Prop Firm",    color: "#4f6ef7", bg: "rgba(79,110,247,0.12)"  },
+  PERSONAL:     { label: "Personal",     color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  DEMO_PROP:    { label: "Demo PF",      color: "#9b59b6", bg: "rgba(155,89,182,0.12)"  },
+  DEMO_PERSONAL:{ label: "Demo",         color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
+  BACKTEST:     { label: "Backtest",     color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
+  QA:           { label: "QA",           color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 }
 
 const STATUS_META: Record<AccountStats["status"], { label: string; color: string; icon: React.ReactNode }> = {
@@ -194,8 +196,8 @@ function AccountCard({ account, stats, selected, onClick }: {
           <MiniSparkline data={stats.sparkline} positive={pos} />
         </div>
 
-        {/* Prop firm section */}
-        {account.propFirmRules && (
+        {/* Prop firm section — only for PROP_FIRM / DEMO_PROP */}
+        {isPropFirmLike(account.type) && account.propFirmRules && (
           <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--line)]">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Shield size={11} className="text-[var(--ink-3)]" />
@@ -274,13 +276,37 @@ function AccountCard({ account, stats, selected, onClick }: {
 /* ══════════════════════════════════════
    DETAIL PANEL
 ══════════════════════════════════════ */
-function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdit }: {
-  account: Account; stats: AccountStats; onClose: () => void
-  onDelete?: () => void; deleting?: boolean; onEdit?: () => void
+const ACCOUNT_STATUS_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  ACTIVE:   { label: "Activa",   color: "#22c55e", icon: <CheckCircle2 size={10} /> },
+  PAUSED:   { label: "Pausada",  color: "#f59e0b", icon: <PauseCircle size={10} /> },
+  INACTIVE: { label: "Inactiva", color: "#6b7280", icon: <Archive size={10} /> },
+  LOST:     { label: "Perdida",  color: "#ef4444", icon: <XCircle size={10} /> },
+}
+
+const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
+
+function AccountDetailPanel({ account, rawAccount, stats, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving }: {
+  account: Account
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rawAccount: any
+  stats: AccountStats
+  onClose: () => void
+  onDelete?: () => void; deleting?: boolean
+  onEdit?: () => void
+  onArchive?: () => void; archiving?: boolean
+  onLost?: (note: string) => void
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteInput, setDeleteInput] = useState("")
+  const [lostModal, setLostModal] = useState(false)
+  const [lostNote, setLostNote] = useState("")
+
   const tm  = TYPE_META[account.type]
-  const sm  = STATUS_META[stats.status]
+  const acctStatus = (rawAccount?.status as string) ?? "ACTIVE"
+  const sm  = ACCOUNT_STATUS_META[acctStatus] ?? ACCOUNT_STATUS_META.ACTIVE
   const pos = stats.pnlMonth >= 0
+  const isPF = isPropFirmLike(account.type)
+  const phase = (rawAccount?.phase as string) ?? "NONE"
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -303,8 +329,10 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
           style={{ background: `${sm.color}18`, color: sm.color }}>
           {sm.icon}
           <span className="text-[10px] font-bold ml-0.5">{sm.label}</span>
-          {account.propFirmRules && (
-            <span className="text-[10px] ml-1 opacity-70">· {stats.phase}</span>
+          {isPF && phase !== "NONE" && (
+            <span className="text-[10px] ml-1 opacity-70">
+              · {phase === "PHASE_1" ? "Fase 1" : phase === "PHASE_2" ? "Fase 2" : "Funded"}
+            </span>
           )}
         </div>
       </div>
@@ -347,24 +375,28 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
           ))}
         </div>
 
-        {/* Prop firm rules detail */}
-        {account.propFirmRules && (
+        {/* Prop firm rules — ONLY for PROP_FIRM and DEMO_PROP */}
+        {isPF && account.propFirmRules && (
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <Shield size={12} className="text-[var(--ink-3)]" />
               <p className="text-eyebrow">Reglas Prop Firm</p>
+              <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ background: "rgba(79,110,247,0.12)", color: "#4f6ef7" }}>
+                {rawAccount?.ddModel ?? "FIXED"}
+              </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RiskBar label="Drawdown total utilizado"
+              <RiskBar label="Drawdown total"
                 usedPct={(stats.drawdownPct / account.propFirmRules.maxDrawdownPct) * 100}
                 limitLabel={`${account.propFirmRules.maxDrawdownPct}% max`} />
-              <RiskBar label="Pérdida diaria utilizada"
+              <RiskBar label="Pérdida diaria"
                 usedPct={stats.dailyLossUsedPct}
                 limitLabel={`${account.propFirmRules.dailyLossPct}% límite`} />
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-[11px] text-[var(--ink-3)]">Progreso hacia objetivo ({account.propFirmRules.targetPct}%)</span>
-                  <span className="text-[11px] font-mono font-semibold text-[var(--accent)]">{stats.phaseProgressPct}%</span>
+                  <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({account.propFirmRules.targetPct}%)</span>
+                  <span className="text-[11px] font-mono font-semibold text-[var(--accent)]">{stats.phaseProgressPct}% / {account.propFirmRules.targetPct}%</span>
                 </div>
                 <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--accent)]"
@@ -373,10 +405,10 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
               </div>
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--line)]">
                 {[
-                  ["Max DD", `${account.propFirmRules.maxDrawdownPct}%`],
-                  ["Daily Loss", `${account.propFirmRules.dailyLossPct}%`],
+                  ["Max DD",        `${account.propFirmRules.maxDrawdownPct}%`],
+                  ["Daily Loss",    `${account.propFirmRules.dailyLossPct}%`],
                   ["Max trades/día", String(account.propFirmRules.maxTradesPerDay)],
-                  ["Objetivo", `${account.propFirmRules.targetPct}%`],
+                  ["Objetivo",      `${account.propFirmRules.targetPct}%`],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between text-[11px]">
                     <span className="text-[var(--ink-3)]">{k}</span>
@@ -384,10 +416,12 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
                   </div>
                 ))}
               </div>
-              <div className="text-[11px] flex justify-between pt-1 border-t border-[var(--line)]">
-                <span className="text-[var(--ink-3)]">Símbolos permitidos</span>
-                <span className="font-mono text-[var(--ink)]">{account.propFirmRules.allowedSymbols.join(", ")}</span>
-              </div>
+              {account.propFirmRules.allowedSymbols.length > 0 && (
+                <div className="text-[11px] flex justify-between pt-1 border-t border-[var(--line)]">
+                  <span className="text-[var(--ink-3)]">Símbolos</span>
+                  <span className="font-mono text-[var(--ink)]">{account.propFirmRules.allowedSymbols.join(", ")}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -397,10 +431,10 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
           <p className="text-eyebrow">Configuración</p>
           <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)] flex flex-col gap-2">
             {[
-              ["Broker",    account.broker],
+              ["Broker",          account.broker],
               ["Balance inicial", `$${account.initialBalance.toLocaleString()}`],
-              ["Divisa",    account.currency],
-              ["Timezone",  account.timezone],
+              ["Divisa",          account.currency],
+              ["Timezone",        account.timezone],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between">
                 <span className="text-[var(--ink-3)]">{k}</span>
@@ -411,22 +445,96 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-1">
-          <button onClick={onEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+        <div className="flex gap-2 pt-1 flex-wrap">
+          <button onClick={onEdit}
+            className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <Pencil size={11} /> Editar
           </button>
-          <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+          <button className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <BarChart3 size={11} /> Ver trades
           </button>
-          <button
-            onClick={onDelete}
-            disabled={deleting}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--loss)] transition-colors disabled:opacity-50">
-            {deleting ? <Loader2 size={11} className="animate-spin" /> : <Archive size={11} />}
-            {deleting ? "Eliminando…" : "Eliminar"}
+        </div>
+
+        <div className="flex gap-2 flex-wrap">
+          {/* Archive (soft delete) */}
+          <button onClick={onArchive} disabled={archiving || acctStatus === "INACTIVE"}
+            className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-amber-500 transition-colors disabled:opacity-40">
+            {archiving ? <Loader2 size={11} className="animate-spin" /> : <Archive size={11} />}
+            Archivar
+          </button>
+          {/* Mark as lost */}
+          <button onClick={() => setLostModal(true)} disabled={acctStatus === "LOST"}
+            className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-orange-500 transition-colors disabled:opacity-40">
+            <XCircle size={11} /> Perdida
+          </button>
+          {/* Hard delete */}
+          <button onClick={() => setConfirmDelete(true)}
+            className="flex-1 min-w-[90px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--loss)] transition-colors">
+            <Trash2 size={11} /> Eliminar
           </button>
         </div>
+
+        {/* Status note if LOST */}
+        {acctStatus === "LOST" && rawAccount?.statusNote && (
+          <div className="text-[11px] p-3 rounded-[var(--radius-sm)] border border-red-900/30 bg-red-950/20 text-red-400">
+            <span className="font-semibold">Nota: </span>{rawAccount.statusNote}
+          </div>
+        )}
       </div>
+
+      {/* Confirm hard delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 w-full max-w-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-[var(--loss)]">
+              <Trash2 size={16} />
+              <p className="font-bold">Eliminar cuenta</p>
+            </div>
+            <p className="text-[13px] text-[var(--ink-2)]">
+              Esta acción es <strong>irreversible</strong>. Se eliminarán todos los trades, retiros y logs.
+              Escribe el nombre de la cuenta para confirmar:
+            </p>
+            <p className="font-mono text-[13px] font-bold text-[var(--ink)] bg-[var(--panel-2)] p-2 rounded">{account.name}</p>
+            <Input value={deleteInput} onChange={e => setDeleteInput(e.target.value)}
+              placeholder="Escribe el nombre exacto…" className="text-[13px]" />
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => { setConfirmDelete(false); setDeleteInput("") }}>Cancelar</Button>
+              <Button variant="danger" className="flex-1"
+                disabled={deleteInput !== account.name || deleting}
+                onClick={() => { onDelete?.(); setConfirmDelete(false) }}>
+                {deleting ? <Loader2 size={13} className="animate-spin mr-1" /> : null}
+                Eliminar definitivamente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark as lost dialog */}
+      {lostModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 w-full max-w-sm flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-orange-400">
+              <XCircle size={16} />
+              <p className="font-bold">Marcar como Perdida</p>
+            </div>
+            <p className="text-[13px] text-[var(--ink-2)]">
+              La cuenta quedará en estado PERDIDA y se excluirá del dashboard. Agrega una nota del motivo (requerido).
+            </p>
+            <textarea value={lostNote} onChange={e => setLostNote(e.target.value)}
+              placeholder="Ej: Se llegó al drawdown máximo en la fase 2…"
+              className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink)] text-[13px] p-3 resize-none h-24 focus:outline-none focus:border-[var(--accent)]" />
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" onClick={() => { setLostModal(false); setLostNote("") }}>Cancelar</Button>
+              <Button className="flex-1 bg-orange-600 hover:bg-orange-500 text-white"
+                disabled={!lostNote.trim()}
+                onClick={() => { onLost?.(lostNote); setLostModal(false); setLostNote("") }}>
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -434,7 +542,7 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdi
 /* ══════════════════════════════════════
    NUEVA CUENTA MODAL
 ══════════════════════════════════════ */
-const ACCOUNT_TYPES: AccountType[] = ["PROP_FIRM", "PERSONAL", "DEMO", "QA"]
+const ACCOUNT_TYPES: AccountType[] = ["PROP_FIRM", "DEMO_PROP", "PERSONAL", "DEMO_PERSONAL", "BACKTEST", "QA"]
 const BROKERS = ["FXify", "FTMO", "MyForexFunds", "TopStep", "Apex", "Interactive Brokers", "TD Ameritrade", "Otro"]
 const TIMEZONES = [
   { value: "America/New_York",  label: "America/New_York (ET)" },
@@ -504,11 +612,11 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       ddMonthlyPct:    pf(form.ddMonthlyPct),
       ddTotalPct:      pf(form.ddTotalPct),
       targetPct:       pf(form.targetPct),
-      ddModel:         form.tipo === "PROP_FIRM" ? form.ddModel  : undefined,
-      phase:           form.tipo === "PROP_FIRM" ? form.phase    : undefined,
-      maxTradesPerDay: form.tipo === "PROP_FIRM" ? pi(form.maxTrades) : undefined,
-      minTradingDays:  form.tipo === "PROP_FIRM" ? pi(form.minDays)   : undefined,
-      allowedSymbols:  form.tipo === "PROP_FIRM"
+      ddModel:         isPropFirmLike(form.tipo) ? form.ddModel  : undefined,
+      phase:           isPropFirmLike(form.tipo) ? form.phase    : undefined,
+      maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
+      minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
+      allowedSymbols:  isPropFirmLike(form.tipo)
         ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
         : [],
     }
@@ -548,7 +656,7 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
               )}>
-              {t === "general" ? "🏦 General" : form.tipo === "PROP_FIRM" ? "🛡 Prop Firm" : "📊 Límites"}
+              {t === "general" ? "🏦 General" : isPropFirmLike(form.tipo) ? "🛡 Prop Firm" : "📊 Límites"}
             </button>
           ))}
         </div>
@@ -570,7 +678,7 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
                         background: form.tipo === t ? m.bg : "var(--panel-2)",
                       }}>
                       <span className="text-[11px] font-bold" style={{ color: form.tipo === t ? m.color : "var(--ink-3)" }}>
-                        {t === "PROP_FIRM" ? "PROP" : t}
+                        {TYPE_META[t].label}
                       </span>
                     </button>
                   )
@@ -691,7 +799,7 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
             </div>
 
             {/* Prop Firm extras */}
-            {form.tipo === "PROP_FIRM" && (
+            {isPropFirmLike(form.tipo) && (
               <>
                 <div className="border-t border-[var(--line)] pt-4">
                   <p className="text-eyebrow mb-3">Extras Prop Firm</p>
@@ -817,11 +925,11 @@ function EditarCuentaModal({ open, onOpenChange, account }: {
       ddMonthlyPct:    pf(form.ddMonthlyPct),
       ddTotalPct:      pf(form.ddTotalPct),
       targetPct:       pf(form.targetPct),
-      ddModel:         form.tipo === "PROP_FIRM" ? form.ddModel : undefined,
-      phase:           form.tipo === "PROP_FIRM" ? form.phase   : undefined,
-      maxTradesPerDay: form.tipo === "PROP_FIRM" ? pi(form.maxTrades) : undefined,
-      minTradingDays:  form.tipo === "PROP_FIRM" ? pi(form.minDays)   : undefined,
-      allowedSymbols:  form.tipo === "PROP_FIRM"
+      ddModel:         isPropFirmLike(form.tipo) ? form.ddModel : undefined,
+      phase:           isPropFirmLike(form.tipo) ? form.phase   : undefined,
+      maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
+      minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
+      allowedSymbols:  isPropFirmLike(form.tipo)
         ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
         : [],
     })
@@ -909,7 +1017,7 @@ function EditarCuentaModal({ open, onOpenChange, account }: {
                 <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
               </div>
             </div>
-            {form.tipo === "PROP_FIRM" && (
+            {isPropFirmLike(form.tipo) && (
               <div className="border-t border-[var(--line)] pt-3">
                 <p className="text-eyebrow mb-3">Extras Prop Firm</p>
                 <div className="grid grid-cols-2 gap-2 mb-3">
@@ -986,18 +1094,25 @@ export default function CuentasPage() {
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const utils = trpc.useUtils()
 
+  const invalidate = () => utils.accounts.list.invalidate()
+
   const deleteAccount = trpc.accounts.delete.useMutation({
-    onSuccess: () => {
-      utils.accounts.list.invalidate()
-      setSelectedId(null)
-    },
+    onSuccess: () => { invalidate(); setSelectedId(null) },
+  })
+
+  const archiveAccount = trpc.accounts.archive.useMutation({
+    onSuccess: () => { invalidate(); setSelectedId(null) },
+  })
+
+  const changeStatus = trpc.accounts.changeStatus.useMutation({
+    onSuccess: () => { invalidate(); setSelectedId(null) },
   })
 
   const selected = accounts.find(a => a.id === selectedId) ?? null
 
   // KPI totals desde datos reales
   const totalBal = accounts.reduce((s, a) => s + Number(a.initialBalance), 0)
-  const activeCount = accounts.length
+  const activeCount = accounts.filter(a => a.status === "ACTIVE").length
 
   return (
     <>
@@ -1106,7 +1221,7 @@ export default function CuentasPage() {
                     currency: selected.currency,
                     timezone: selected.timezone,
                     createdAt: String(selected.createdAt),
-                    propFirmRules: selected.ddTotalPct != null ? {
+                    propFirmRules: (selected.type === "PROP_FIRM" || selected.type === "DEMO_PROP") && selected.ddTotalPct != null ? {
                       maxDrawdownPct: Number(selected.ddTotalPct),
                       dailyLossPct: Number(selected.ddDailyPct ?? 5),
                       maxTradesPerDay: selected.maxTradesPerDay ?? 3,
@@ -1114,11 +1229,15 @@ export default function CuentasPage() {
                       allowedSymbols: selected.allowedSymbols,
                     } : undefined,
                   }}
+                  rawAccount={selected}
                   stats={{ ...ACCOUNT_STATS["acc-1"], currentBalance: Number(selected.initialBalance) }}
                   onClose={() => setSelectedId(null)}
                   onEdit={() => setEditingId(selected.id)}
                   onDelete={() => deleteAccount.mutate(selected.id)}
                   deleting={deleteAccount.isPending}
+                  onArchive={() => archiveAccount.mutate(selected.id)}
+                  archiving={archiveAccount.isPending}
+                  onLost={(note) => changeStatus.mutate({ id: selected.id, status: "LOST", statusNote: note })}
                 />
               </div>
             )}

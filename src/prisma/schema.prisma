@@ -33,9 +33,10 @@ model User {
 
 // ─────────────────────────────────────────────
 // ACCOUNT
-// type:           PERSONAL | PROP_FIRM | DEMO | QA
-// ddModel:        FIXED | TRAILING  (prop firms only)
-// phase:          PHASE_1 | PHASE_2 | FUNDED | NONE
+// type:    PERSONAL | PROP_FIRM | DEMO_PERSONAL | DEMO_PROP | BACKTEST | QA
+// status:  ACTIVE | PAUSED | INACTIVE | LOST
+// ddModel: FIXED | TRAILING  (prop firms only)
+// phase:   PHASE_1 | PHASE_2 | FUNDED | NONE
 // ─────────────────────────────────────────────
 model Account {
   id             String   @id @default(uuid()) @db.Uuid
@@ -43,6 +44,8 @@ model Account {
   name           String
   broker         String
   type           String   @default("PERSONAL")
+  status         String   @default("ACTIVE")                // ACTIVE | PAUSED | INACTIVE | LOST
+  statusNote     String   @default("") @map("status_note")  // required note when LOST
   initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(14, 2)
   currency       String   @default("USD")
   timezone       String   @default("America/New_York")
