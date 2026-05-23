@@ -276,6 +276,7 @@ export default function TradesPage() {
           open={!!positionLogTrade}
           onOpenChange={(v) => { if (!v) setPositionLogTrade(null) }}
           trade={posLogTarget as never}
+          account={(posLogTarget as never as { account?: { initialBalance: number; ddDailyPct?: number | null; ddTotalPct?: number | null } }).account}
           events={(posLogTarget as never as { events?: { id: string; type: string; price: number | null; contracts: number | null; notes: string; timestamp: string }[] }).events ?? []}
           onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data } as never)}
           adding={addEvent.isPending}

@@ -178,7 +178,7 @@ export const tradesRouter = router({
   addEvent: protectedProcedure
     .input(z.object({
       tradeId:   z.string().uuid(),
-      type:      z.enum(["STOP_MOVE", "PARTIAL_CLOSE", "SCALE_IN", "NOTE"]),
+      type:      z.enum(["STOP_MOVE", "TRAIL_STOP", "TAKE_PROFIT_MOVE", "PARTIAL_CLOSE", "SCALE_IN", "NOTE"]),
       price:     z.number().optional(),
       contracts: z.number().optional(),
       notes:     z.string().default(""),
@@ -187,29 +187,31 @@ export const tradesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const trade = await ctx.prisma.trade.findUniqueOrThrow({
         where: { id: input.tradeId, userId: ctx.userId },
+        include: { account: true },
       })
 
-      // Auto-update trade fields based on event type
       const tradeUpdate: Record<string, unknown> = {}
 
-      if (input.type === "STOP_MOVE" && input.price != null) {
+      if ((input.type === "STOP_MOVE" || input.type === "TRAIL_STOP") && input.price != null) {
         tradeUpdate.stop = input.price
       }
 
+      if (input.type === "TAKE_PROFIT_MOVE" && input.price != null) {
+        tradeUpdate.target = input.price
+      }
+
       if (input.type === "SCALE_IN" && input.price != null && input.contracts != null) {
-        const oldSize    = Number(trade.size)
-        const addedSize  = input.contracts
-        const newSize    = oldSize + addedSize
+        const oldSize     = Number(trade.size)
+        const newSize     = oldSize + input.contracts
         const newAvgEntry = newSize > 0
-          ? (Number(trade.entry) * oldSize + input.price * addedSize) / newSize
+          ? (Number(trade.entry) * oldSize + input.price * input.contracts) / newSize
           : Number(trade.entry)
         tradeUpdate.entry = newAvgEntry
         tradeUpdate.size  = newSize
       }
 
       if (input.type === "PARTIAL_CLOSE" && input.contracts != null) {
-        const newSize = Math.max(0, Number(trade.size) - input.contracts)
-        tradeUpdate.size = newSize
+        tradeUpdate.size = Math.max(0, Number(trade.size) - input.contracts)
       }
 
       if (Object.keys(tradeUpdate).length > 0) {
