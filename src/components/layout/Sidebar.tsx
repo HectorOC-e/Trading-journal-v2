@@ -1,14 +1,15 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useTheme } from "@/components/theme-provider"
 import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
-  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
+  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2, LogOut,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 const NAV = [
   {
@@ -45,10 +46,18 @@ function useWindowWidth() {
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { theme, toggle } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const width = useWindowWidth()
+
+  async function handleLogout() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
+  }
 
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
@@ -491,15 +500,41 @@ export function Sidebar() {
             </button>
           )}
         </div>
-        {collapsed && (
-          <button onClick={toggle} title={theme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
+        {collapsed ? (
+          <>
+            <button onClick={toggle} title={theme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
+              marginTop: 8,
+              width: 28, height: 28, borderRadius: 8,
+              background: "var(--chip)", border: "1px solid var(--line)",
+              display: "grid", placeItems: "center",
+              cursor: "pointer", fontSize: 14,
+            }}>
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
+            <button onClick={handleLogout} title="Cerrar sesión" style={{
+              marginTop: 4,
+              width: 28, height: 28, borderRadius: 8,
+              background: "transparent", border: "1px solid var(--line)",
+              display: "grid", placeItems: "center",
+              cursor: "pointer", color: "var(--ink-3)",
+            }}>
+              <LogOut size={14} />
+            </button>
+          </>
+        ) : (
+          <button onClick={handleLogout} style={{
             marginTop: 8,
-            width: 28, height: 28, borderRadius: 8,
-            background: "var(--chip)", border: "1px solid var(--line)",
-            display: "grid", placeItems: "center",
-            cursor: "pointer", fontSize: 14,
+            width: "100%",
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "7px 10px",
+            borderRadius: 8,
+            background: "transparent",
+            border: "1px solid var(--line)",
+            color: "var(--ink-3)",
+            fontSize: 13, cursor: "pointer",
           }}>
-            {theme === "dark" ? "☀️" : "🌙"}
+            <LogOut size={14} />
+            Cerrar sesión
           </button>
         )}
       </div>

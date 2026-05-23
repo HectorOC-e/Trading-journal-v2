@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import { Sidebar } from "@/components/layout/Sidebar"
+import { AppShell } from "@/components/layout/AppShell"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TRPCProvider } from "@/lib/trpc/provider"
 
@@ -15,10 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <TRPCProvider>
           <ThemeProvider>
-            <div className="shell">
-              <Sidebar />
-              <main className="main-content">{children}</main>
-            </div>
+            <AppShell>{children}</AppShell>
           </ThemeProvider>
         </TRPCProvider>
       </body>
