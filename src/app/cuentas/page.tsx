@@ -215,45 +215,76 @@ function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selec
           <MiniSparkline data={flatLine} positive={true} />
         </div>
 
-        {/* Prop firm section — only PROP_FIRM / DEMO_PROP */}
-        {isPF && rawAccount.ddTotalPct != null && (
+        {/* Rules / limits section — shown for ANY account type that has limits configured */}
+        {(rawAccount.ddDailyPct != null || rawAccount.ddWeeklyPct != null || rawAccount.ddMonthlyPct != null || rawAccount.ddTotalPct != null || rawAccount.targetPct != null) && (
           <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--line)]">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Shield size={11} className="text-[var(--ink-3)]" />
-              <p className="text-eyebrow">{type === "DEMO_PROP" ? "Reglas Demo PF" : "Reglas Prop Firm"}</p>
-              <span className="ml-auto text-[10px] font-mono text-[var(--ink-3)]">
-                {phase === "PHASE_1" ? "Fase 1" : phase === "PHASE_2" ? "Fase 2" : "Funded"} · objetivo {rawAccount.targetPct != null ? `${Number(rawAccount.targetPct)}%` : "—"}
-              </span>
+              <p className="text-eyebrow">
+                {isPF
+                  ? (type === "DEMO_PROP" ? "Reglas Demo PF" : "Reglas Prop Firm")
+                  : type === "BACKTEST" ? "Objetivos Backtest"
+                  : type === "DEMO_PERSONAL" ? "Límites Demo"
+                  : "Objetivos & Límites"}
+              </p>
+              {isPF && (
+                <span className="ml-auto text-[10px] font-mono text-[var(--ink-3)]">
+                  {phase === "PHASE_1" ? "Fase 1" : phase === "PHASE_2" ? "Fase 2" : "Funded"}
+                  {rawAccount.targetPct != null ? ` · objetivo ${Number(rawAccount.targetPct)}%` : ""}
+                </span>
+              )}
             </div>
-            <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
-            {rawAccount.ddDailyPct != null && (
-              <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+
+            {/* DD bars */}
+            {rawAccount.ddTotalPct != null && (
+              <RiskBar label="DD total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
             )}
+            {rawAccount.ddDailyPct != null && (
+              <RiskBar label="DD diario" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+            )}
+            {rawAccount.ddWeeklyPct != null && (
+              <RiskBar label="DD semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
+            )}
+            {rawAccount.ddMonthlyPct != null && (
+              <RiskBar label="DD mensual" usedPct={0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+            )}
+
+            {/* Objective progress */}
             {rawAccount.targetPct != null && (
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-[11px] text-[var(--ink-3)]">Progreso hacia objetivo</span>
-                  <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">— / {Number(rawAccount.targetPct)}%</span>
+                  <span className="text-[11px] text-[var(--ink-3)]">
+                    {isPF ? "Progreso hacia objetivo" : "Objetivo"}
+                  </span>
+                  <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
+                    — / {Number(rawAccount.targetPct)}%
+                  </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
                   <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: "0%" }} />
                 </div>
               </div>
             )}
-            <div className="flex justify-between text-[11px] pt-1">
-              <div className="flex items-center gap-1">
-                <BarChart3 size={10} className="text-[var(--ink-3)]" />
-                <span className="text-[var(--ink-3)]">Trades hoy:</span>
-                <span className="font-mono font-semibold ml-0.5 text-[var(--ink-3)]">
-                  0 / {rawAccount.maxTradesPerDay ?? "—"}
-                </span>
+
+            {/* Prop firm extras */}
+            {isPF && (rawAccount.maxTradesPerDay != null || rawAccount.allowedSymbols?.length > 0) && (
+              <div className="flex justify-between text-[11px] pt-1">
+                {rawAccount.maxTradesPerDay != null && (
+                  <div className="flex items-center gap-1">
+                    <BarChart3 size={10} className="text-[var(--ink-3)]" />
+                    <span className="text-[var(--ink-3)]">Trades hoy:</span>
+                    <span className="font-mono font-semibold ml-0.5 text-[var(--ink-3)]">
+                      0 / {rawAccount.maxTradesPerDay}
+                    </span>
+                  </div>
+                )}
+                {rawAccount.allowedSymbols?.length > 0 && (
+                  <span className="text-[var(--ink-3)] truncate max-w-[130px]">
+                    {rawAccount.allowedSymbols.join(", ")}
+                  </span>
+                )}
               </div>
-              {rawAccount.allowedSymbols?.length > 0 && (
-                <span className="text-[var(--ink-3)] truncate max-w-[130px]">
-                  {rawAccount.allowedSymbols.join(", ")}
-                </span>
-              )}
-            </div>
+            )}
           </div>
         )}
 
