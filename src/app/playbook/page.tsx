@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
-  Plus, X, Star, ChevronRight, Circle, CheckCircle2, Pencil, Copy,
-  Pause, Play, FlaskConical, Archive, Trash2, BarChart2, Award, Percent, TrendingUp,
+  Plus, X, Star, Circle, CheckCircle2, Pencil, Copy,
+  Pause, Play, FlaskConical, Archive, Trash2, BarChart2,
+  Percent, TrendingUp, ChevronDown,
 } from "lucide-react"
 import { TopBar }    from "@/components/layout/top-bar"
-import { Button }   from "@/components/ui/button"
-import { Input }    from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Button }    from "@/components/ui/button"
+import { Input }     from "@/components/ui/input"
+import { Textarea }  from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn }        from "@/lib/utils"
@@ -19,26 +20,28 @@ type Direction   = "LONG" | "SHORT" | "AMBAS"
 type SetupStatus = "ACTIVO" | "EN_PRUEBA" | "PAUSADO" | "DESCARTADO"
 
 interface DbSetup {
-  id:               string
-  name:             string
-  abbreviation:     string
-  market:           string
-  direction:        string
-  status:           string
-  description:      string
-  color:            string
-  aplusChecklist:   string[]
-  standardChecklist: string[]
-  createdAt:        Date | string
-  updatedAt:        Date | string
+  id: string; name: string; abbreviation: string; market: string
+  direction: string; status: string; description: string; color: string
+  aplusChecklist: string[]; standardChecklist: string[]
+  createdAt: Date | string; updatedAt: Date | string
 }
 
 /* ── Status meta ── */
 const STATUS_META: Record<SetupStatus, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
-  ACTIVO:     { label: "Activo",    bg: "#22c55e",            text: "#fff",             icon: <Play size={9} /> },
-  EN_PRUEBA:  { label: "En prueba", bg: "rgba(245,158,11,1)", text: "#fff",             icon: <FlaskConical size={9} /> },
-  PAUSADO:    { label: "Pausado",   bg: "var(--chip)",        text: "var(--ink-3)",     icon: <Pause size={9} /> },
-  DESCARTADO: { label: "Descartado", bg: "var(--chip)",       text: "var(--ink-3)",     icon: <Archive size={9} /> },
+  ACTIVO:     { label: "Activo",     bg: "#22c55e",  text: "#fff",         icon: <Play size={9} /> },
+  EN_PRUEBA:  { label: "En prueba",  bg: "#f59e0b",  text: "#fff",         icon: <FlaskConical size={9} /> },
+  PAUSADO:    { label: "Pausado",    bg: "#475569",  text: "#fff",         icon: <Pause size={9} /> },
+  DESCARTADO: { label: "Descartado", bg: "#334155",  text: "var(--ink-3)", icon: <Archive size={9} /> },
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const meta = STATUS_META[status as SetupStatus] ?? STATUS_META.PAUSADO
+  return (
+    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full"
+      style={{ background: meta.bg, color: meta.text }}>
+      {meta.icon} {meta.label.toUpperCase()}
+    </span>
+  )
 }
 
 /* ── Sparkline flat placeholder ── */
@@ -46,302 +49,368 @@ function SparklinePlaceholder({ color, height = 44 }: { color: string; height?: 
   const W = 200, mid = height / 2
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
-      <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.4" />
+      <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.35" />
     </svg>
   )
 }
 
-/* ── Stat chip ── */
-function StatChip({ label, value }: { label: string; value: string }) {
+/* ── Direction chip ── */
+function DirectionChip({ direction }: { direction: string }) {
+  const styles: Record<string, string> = {
+    LONG:  "text-[var(--win)]  bg-[rgba(34,197,94,0.12)]",
+    SHORT: "text-[var(--loss)] bg-[rgba(239,68,68,0.12)]",
+    AMBAS: "text-[var(--ink-3)] bg-[var(--chip)]",
+  }
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[10px] uppercase tracking-wide text-[var(--ink-3)] font-semibold">{label}</span>
-      <span className="text-[13px] font-mono font-bold text-[var(--ink-2)]">{value}</span>
-    </div>
-  )
-}
-
-/* ── Status badge ── */
-function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS_META[status as SetupStatus] ?? STATUS_META.PAUSADO
-  return (
-    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full"
-      style={{ background: meta.bg, color: meta.text }}>
-      {meta.icon}
-      {meta.label.toUpperCase()}
+    <span className={cn("text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded", styles[direction] ?? styles.AMBAS)}>
+      {direction}
     </span>
   )
 }
 
-/* ── Setup Card ── */
+/* ═══════════════════════════════════════════════
+   Setup Card — mejorada
+═══════════════════════════════════════════════ */
 function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boolean; onClick: () => void }) {
-  const isInactive = setup.status === "PAUSADO" || setup.status === "DESCARTADO"
-  const sparkColor = isInactive ? "var(--ink-3)" : setup.status === "EN_PRUEBA" ? "#f59e0b" : "var(--accent)"
+  const isInactive  = setup.status === "PAUSADO" || setup.status === "DESCARTADO"
+  const isDiscarded = setup.status === "DESCARTADO"
+  const sparkColor  = isDiscarded ? "var(--ink-3)"
+    : setup.status === "EN_PRUEBA" ? "#f59e0b"
+    : setup.status === "PAUSADO"   ? "var(--ink-3)"
+    : "var(--accent)"
 
   return (
     <div
       onClick={onClick}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden"
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden hover:border-[var(--accent-soft)]"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
-        boxShadow:   selected ? "0 0 0 1px var(--accent)" : "none",
-        opacity:     setup.status === "DESCARTADO" ? 0.55 : isInactive ? 0.78 : 1,
+        boxShadow:   selected ? "0 0 0 1px var(--accent)" : undefined,
+        opacity:     isDiscarded ? 0.5 : isInactive ? 0.8 : 1,
       }}
     >
-      <div style={{ height: 3, background: setup.color, opacity: isInactive ? 0.4 : 1 }} />
+      {/* Bold color bar */}
+      <div style={{ height: 4, background: setup.color, opacity: isInactive ? 0.45 : 1 }} />
 
-      <div className="p-4 flex flex-col gap-3">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span
-              className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-              style={{ background: setup.color, opacity: isInactive ? 0.5 : 1 }}
-            >
-              {setup.abbreviation}
-            </span>
-            <div className="min-w-0">
-              <p className="text-[12.5px] font-semibold text-[var(--ink)] leading-tight truncate">{setup.name}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {setup.market && <span className="text-[10px] text-[var(--ink-3)]">{setup.market}</span>}
-                {setup.market && <span className="text-[var(--line)]">·</span>}
-                <span className="text-[10px] text-[var(--ink-3)]">{setup.direction}</span>
-              </div>
+      <div className="p-4 flex flex-col gap-3.5">
+        {/* Header row */}
+        <div className="flex items-start gap-3">
+          <span
+            className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center text-[12px] font-extrabold text-white shrink-0 shadow-sm"
+            style={{ background: setup.color, opacity: isInactive ? 0.55 : 1 }}
+          >
+            {setup.abbreviation}
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-[var(--ink)] leading-snug truncate">{setup.name}</p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {setup.market && (
+                <span className="text-[10px] text-[var(--ink-3)]">{setup.market}</span>
+              )}
+              <DirectionChip direction={setup.direction} />
             </div>
           </div>
-          <div className="shrink-0">
-            <StatusBadge status={setup.status} />
-          </div>
+          <StatusBadge status={setup.status} />
         </div>
 
         {/* Sparkline */}
-        <div style={{ margin: "0 -4px" }}>
-          <SparklinePlaceholder color={sparkColor} height={44} />
+        <div style={{ margin: "0 -2px" }}>
+          <SparklinePlaceholder color={sparkColor} height={40} />
         </div>
 
-        {/* Stats */}
-        <div className="flex justify-between items-center">
-          <StatChip label="Win %" value="—" />
-          <div className="w-px h-6 bg-[var(--line)]" />
-          <StatChip label="Avg R" value="—" />
-          <div className="w-px h-6 bg-[var(--line)]" />
-          <StatChip label="P&L" value="—" />
-          <div className="w-px h-6 bg-[var(--line)]" />
-          <StatChip label="Trades" value="0" />
+        {/* Stats row */}
+        <div className="grid grid-cols-4 gap-1 text-center">
+          {[
+            { label: "Win %",  value: "—" },
+            { label: "Avg R",  value: "—" },
+            { label: "P&L",    value: "—" },
+            { label: "Trades", value: "0" },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] py-2">
+              <p className="text-[9px] uppercase tracking-wide text-[var(--ink-3)] font-semibold">{label}</p>
+              <p className="text-[12px] font-mono font-bold text-[var(--ink-2)] mt-0.5">{value}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Expectancy placeholder */}
-        <div>
-          <div className="flex justify-between mb-1">
-            <span className="text-[10px] text-[var(--ink-3)]">Expectancy</span>
-            <span className="text-[10px] font-mono text-[var(--ink-3)]">— sin trades</span>
-          </div>
-          <div className="h-1 rounded-full bg-[var(--line)] overflow-hidden" />
-        </div>
+        {/* Description preview */}
+        {setup.description && (
+          <p className="text-[11px] text-[var(--ink-3)] leading-relaxed line-clamp-2">{setup.description}</p>
+        )}
 
-        <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors mt-auto">
-          Ver detalle <ChevronRight size={11} />
-        </button>
+        {/* Checklist counts */}
+        <div className="flex items-center gap-3 pt-0.5 border-t border-[var(--line)]">
+          {setup.aplusChecklist.filter(Boolean).length > 0 && (
+            <div className="flex items-center gap-1">
+              <Star size={9} className="text-[var(--be)] fill-[var(--be)]" />
+              <span className="text-[10px] text-[var(--ink-3)]">{setup.aplusChecklist.filter(Boolean).length} A+</span>
+            </div>
+          )}
+          {setup.standardChecklist.filter(Boolean).length > 0 && (
+            <div className="flex items-center gap-1">
+              <Circle size={9} className="text-[var(--ink-3)]" />
+              <span className="text-[10px] text-[var(--ink-3)]">{setup.standardChecklist.filter(Boolean).length} std</span>
+            </div>
+          )}
+          <span className="ml-auto text-[10px] text-[var(--accent)] font-medium">Ver detalle →</span>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ── Setup Detail Panel ── */
-function SetupDetailPanel({
+/* ═══════════════════════════════════════════════
+   Drawer — móvil: desde abajo | desktop: derecha
+═══════════════════════════════════════════════ */
+function SetupDrawer({
   setup, onClose, onEdit, onSetStatus, onDuplicate, onDelete,
 }: {
-  setup: DbSetup
+  setup: DbSetup | null
   onClose: () => void
   onEdit: (s: DbSetup) => void
   onSetStatus: (s: DbSetup, status: SetupStatus) => void
   onDuplicate: (s: DbSetup) => void
   onDelete: (s: DbSetup) => void
 }) {
-  const [confirmName,    setConfirmName]    = useState("")
-  const [confirmingDel,  setConfirmingDel]  = useState(false)
+  const [confirmName,   setConfirmName]   = useState("")
+  const [confirmingDel, setConfirmingDel] = useState(false)
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+
+  /* Reset confirm state when setup changes */
+  useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false) }, [setup?.id])
+
+  const isOpen = !!setup
+
+  if (!setup) return (
+    <>
+      {/* Overlay */}
+      <div
+        className={cn("fixed inset-0 z-40 transition-opacity duration-300", isOpen ? "opacity-100" : "opacity-0 pointer-events-none")}
+        style={{ background: "rgba(0,0,0,0.45)" }}
+        onClick={onClose}
+      />
+    </>
+  )
 
   const allStatusActions: { status: SetupStatus; label: string; icon: React.ReactNode }[] = [
-    { status: "ACTIVO",     label: "Marcar activo",   icon: <Play size={11} /> },
-    { status: "EN_PRUEBA",  label: "Poner en prueba", icon: <FlaskConical size={11} /> },
-    { status: "PAUSADO",    label: "Pausar",           icon: <Pause size={11} /> },
-    { status: "DESCARTADO", label: "Descartar",        icon: <Archive size={11} /> },
+    { status: "ACTIVO",     label: "Marcar activo",   icon: <Play size={13} /> },
+    { status: "EN_PRUEBA",  label: "Poner en prueba", icon: <FlaskConical size={13} /> },
+    { status: "PAUSADO",    label: "Pausar",           icon: <Pause size={13} /> },
+    { status: "DESCARTADO", label: "Descartar",        icon: <Archive size={13} /> },
   ]
-  const statusActions = allStatusActions.filter(a => a.status !== setup.status)
+  const otherStatuses = allStatusActions.filter(a => a.status !== setup.status)
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-5 border-b border-[var(--line)] flex items-start justify-between gap-3 sticky top-0 bg-[var(--panel)] z-10">
-        <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center text-sm font-bold text-white"
+    <>
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 z-40 transition-opacity duration-300"
+        style={{ background: "rgba(0,0,0,0.5)" }}
+        onClick={onClose}
+      />
+
+      {/* Drawer — mobile: bottom sheet | desktop: right panel */}
+      <div className={cn(
+        "fixed z-50 bg-[var(--panel)] flex flex-col transition-transform duration-300 ease-out",
+        /* mobile: full-width bottom sheet, 90vh */
+        "bottom-0 left-0 right-0 rounded-t-2xl max-h-[92vh]",
+        /* desktop override: right side panel */
+        "lg:bottom-0 lg:top-0 lg:left-auto lg:right-0 lg:w-[380px] lg:rounded-none lg:max-h-full lg:h-full",
+      )}>
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-3 pb-1 lg:hidden">
+          <div className="w-10 h-1 rounded-full bg-[var(--line)]" />
+        </div>
+
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-3">
+          <span className="w-11 h-11 rounded-[var(--radius-sm)] flex items-center justify-center text-[13px] font-extrabold text-white shrink-0"
             style={{ background: setup.color }}>
             {setup.abbreviation}
           </span>
-          <div>
-            <p className="text-[13.5px] font-bold text-[var(--ink)]">{setup.name}</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-bold text-[var(--ink)] truncate">{setup.name}</p>
+            <div className="flex items-center gap-2 mt-0.5">
               {setup.market && <span className="text-[11px] text-[var(--ink-3)]">{setup.market}</span>}
-              {setup.market && <span className="text-[var(--line)]">·</span>}
-              <span className="text-[11px] text-[var(--ink-3)]">{setup.direction}</span>
+              <DirectionChip direction={setup.direction} />
+              <StatusBadge status={setup.status} />
             </div>
           </div>
-        </div>
-        <button onClick={onClose} className="p-1 rounded hover:bg-[var(--chip)] transition-colors">
-          <X size={14} className="text-[var(--ink-3)]" />
-        </button>
-      </div>
-
-      <div className="p-5 flex flex-col gap-5 overflow-y-auto flex-1">
-
-        {/* Status badge */}
-        <div className="flex items-center gap-2">
-          <StatusBadge status={setup.status} />
-        </div>
-
-        {/* Equity curve placeholder */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-eyebrow">Curva de equity</span>
-            <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
-          </div>
-          <SparklinePlaceholder color="var(--accent)" height={64} />
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Win Rate",   value: "—" },
-            { label: "Avg R",      value: "—" },
-            { label: "Expectancy", value: "—" },
-            { label: "A+ Rate",    value: "—" },
-            { label: "Trades",     value: "0" },
-            { label: "Net P&L",    value: "—" },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
-              <p className="text-[10px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
-              <p className="text-[14px] font-mono font-bold text-[var(--ink-3)]">{value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Description */}
-        {setup.description && (
-          <div>
-            <p className="text-eyebrow mb-2">Descripción</p>
-            <p className="text-[12px] text-[var(--ink-2)] leading-relaxed bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
-              {setup.description}
-            </p>
-          </div>
-        )}
-
-        {/* A+ Checklist */}
-        {setup.aplusChecklist.filter(Boolean).length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Star size={11} className="text-[var(--be)] fill-[var(--be)]" />
-              <p className="text-eyebrow">A+ Checklist</p>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {setup.aplusChecklist.filter(Boolean).map((item, i) => (
-                <div key={i} className="flex items-start gap-2.5 py-1.5 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)]">
-                  <CheckCircle2 size={13} className="text-[var(--be)] mt-0.5 shrink-0" />
-                  <span className="text-[12px] text-[var(--ink-2)]">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Standard Checklist */}
-        {setup.standardChecklist.filter(Boolean).length > 0 && (
-          <div>
-            <p className="text-eyebrow mb-2">Standard Checklist</p>
-            <div className="flex flex-col gap-1.5">
-              {setup.standardChecklist.filter(Boolean).map((item, i) => (
-                <div key={i} className="flex items-start gap-2.5 py-1.5 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)]">
-                  <Circle size={13} className="text-[var(--ink-3)] mt-0.5 shrink-0" />
-                  <span className="text-[12px] text-[var(--ink-2)]">{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Quick actions */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(setup)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
-          >
-            <Pencil size={11} /> Editar
-          </button>
-          <button
-            onClick={() => onDuplicate(setup)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
-          >
-            <Copy size={11} /> Duplicar
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--chip)] transition-colors shrink-0">
+            <X size={15} className="text-[var(--ink-3)]" />
           </button>
         </div>
 
-        {/* Status transitions */}
-        <div>
-          <p className="text-eyebrow mb-2">Cambiar estado</p>
-          <div className="flex flex-col gap-1.5">
-            {statusActions.map(a => {
-              const meta = STATUS_META[a.status]
-              return (
-                <button
-                  key={a.status}
-                  onClick={() => onSetStatus(setup, a.status)}
-                  className="flex items-center gap-2 py-2 px-3 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors text-left"
-                >
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
-                    style={{ background: meta.bg, color: meta.text }}>
-                    {meta.icon}
-                  </span>
-                  {a.label}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
+
+          {/* Equity placeholder */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-eyebrow">Curva de equity</p>
+              <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
+            </div>
+            <SparklinePlaceholder color="var(--accent)" height={60} />
+          </div>
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Win Rate",   value: "—" },
+              { label: "Avg R",      value: "—" },
+              { label: "Expectancy", value: "—" },
+              { label: "A+ Rate",    value: "—" },
+              { label: "Trades",     value: "0" },
+              { label: "Net P&L",    value: "—" },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
+                <p className="text-[9px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
+                <p className="text-[15px] font-mono font-bold text-[var(--ink-3)]">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Description */}
+          {setup.description && (
+            <div>
+              <p className="text-eyebrow mb-2">Descripción</p>
+              <p className="text-[12px] text-[var(--ink-2)] leading-relaxed bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
+                {setup.description}
+              </p>
+            </div>
+          )}
+
+          {/* A+ Checklist */}
+          {setup.aplusChecklist.filter(Boolean).length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Star size={11} className="text-[var(--be)] fill-[var(--be)]" />
+                <p className="text-eyebrow">A+ Checklist</p>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {setup.aplusChecklist.filter(Boolean).map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5 py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)]">
+                    <CheckCircle2 size={13} className="text-[var(--be)] mt-0.5 shrink-0" />
+                    <span className="text-[12px] text-[var(--ink-2)]">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Standard Checklist */}
+          {setup.standardChecklist.filter(Boolean).length > 0 && (
+            <div>
+              <p className="text-eyebrow mb-2">Standard Checklist</p>
+              <div className="flex flex-col gap-1.5">
+                {setup.standardChecklist.filter(Boolean).map((item, i) => (
+                  <div key={i} className="flex items-start gap-2.5 py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)]">
+                    <Circle size={13} className="text-[var(--ink-3)] mt-0.5 shrink-0" />
+                    <span className="text-[12px] text-[var(--ink-2)]">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Delete confirmation */}
+          {confirmingDel && (
+            <div className="flex flex-col gap-2 p-4 rounded-[var(--radius-sm)] border border-[var(--loss)]"
+              style={{ background: "var(--loss-soft)" }}>
+              <p className="text-[12px] text-[var(--loss)] font-semibold text-center">Eliminar "{setup.name}"</p>
+              <p className="text-[11px] text-[var(--ink-3)] text-center">
+                Escribe el nombre exacto para confirmar. Esta acción no se puede deshacer.
+              </p>
+              <input
+                className="h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel)] border border-[var(--loss)] text-[var(--ink)] focus:outline-none"
+                placeholder={setup.name}
+                value={confirmName}
+                onChange={e => setConfirmName(e.target.value)}
+                autoFocus
+              />
+              <div className="flex gap-2 mt-1">
+                <button onClick={() => { setConfirmingDel(false); setConfirmName("") }}
+                  className="flex-1 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)]">
+                  Cancelar
                 </button>
-              )
-            })}
-          </div>
+                <button
+                  disabled={confirmName !== setup.name}
+                  onClick={() => onDelete(setup)}
+                  className="flex-1 py-2 rounded-[var(--radius-sm)] text-[12px] font-bold bg-[var(--loss)] text-white disabled:opacity-40"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Delete with confirmation */}
-        {!confirmingDel ? (
-          <button
-            onClick={() => setConfirmingDel(true)}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium text-[var(--loss)] border border-transparent hover:border-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors"
-          >
-            <Trash2 size={11} /> Eliminar setup permanentemente
-          </button>
-        ) : (
-          <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-sm)] border border-[var(--loss)]" style={{ background: "var(--loss-soft)" }}>
-            <p className="text-[12px] text-[var(--loss)] font-semibold text-center">Eliminar "{setup.name}"</p>
-            <p className="text-[11px] text-[var(--ink-3)] text-center">Escribe el nombre del setup para confirmar. Esta acción no se puede deshacer.</p>
-            <input
-              className="h-8 px-2.5 rounded-[var(--radius-sm)] text-sm bg-[var(--panel)] border border-[var(--loss)] text-[var(--ink)] focus:outline-none"
-              placeholder={setup.name}
-              value={confirmName}
-              onChange={e => setConfirmName(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <button onClick={() => { setConfirmingDel(false); setConfirmName("") }}
-                className="flex-1 py-1.5 rounded text-[12px] bg-[var(--chip)] text-[var(--ink-2)]">
-                Cancelar
-              </button>
-              <button
-                disabled={confirmName !== setup.name}
-                onClick={() => onDelete(setup)}
-                className="flex-1 py-1.5 rounded text-[12px] bg-[var(--loss)] text-white font-semibold disabled:opacity-40"
-              >
-                Eliminar
-              </button>
-            </div>
+        {/* ── Fixed action bar at bottom ── */}
+        <div className="border-t border-[var(--line)] px-5 py-4 flex flex-col gap-2 bg-[var(--panel)]">
+
+          {/* Status dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setStatusMenuOpen(v => !v)}
+              className="w-full flex items-center justify-between gap-2 h-10 px-4 rounded-[var(--radius-sm)] text-[12px] font-semibold transition-colors"
+              style={{
+                background: STATUS_META[setup.status as SetupStatus]?.bg ?? "var(--chip)",
+                color:      STATUS_META[setup.status as SetupStatus]?.text ?? "var(--ink)",
+              }}
+            >
+              <span className="flex items-center gap-2">
+                {STATUS_META[setup.status as SetupStatus]?.icon}
+                {STATUS_META[setup.status as SetupStatus]?.label ?? setup.status}
+              </span>
+              <ChevronDown size={13} className={cn("transition-transform", statusMenuOpen && "rotate-180")} />
+            </button>
+
+            {statusMenuOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-sm)] overflow-hidden shadow-lg z-10">
+                {otherStatuses.map(a => {
+                  const meta = STATUS_META[a.status]
+                  return (
+                    <button
+                      key={a.status}
+                      onClick={() => { onSetStatus(setup, a.status); setStatusMenuOpen(false) }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[12px] font-medium hover:bg-[var(--chip)] transition-colors text-left"
+                    >
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                        style={{ background: meta.bg, color: meta.text }}>
+                        {meta.icon}
+                      </span>
+                      <span className="text-[var(--ink)]">{a.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Secondary actions */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => onEdit(setup)}
+              className="flex items-center justify-center gap-1.5 h-10 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            >
+              <Pencil size={13} /> Editar
+            </button>
+            <button
+              onClick={() => onDuplicate(setup)}
+              className="flex items-center justify-center gap-1.5 h-10 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            >
+              <Copy size={13} /> Duplicar
+            </button>
+            <button
+              onClick={() => { setConfirmingDel(true); setStatusMenuOpen(false) }}
+              className="flex items-center justify-center gap-1.5 h-10 rounded-[var(--radius-sm)] text-[12px] font-medium text-[var(--loss)] bg-[var(--chip)] hover:bg-[var(--loss-soft)] transition-colors"
+            >
+              <Trash2 size={13} /> Eliminar
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -416,14 +485,11 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   const handleOpen = (v: boolean) => {
     if (v && editSetup) {
       setForm({
-        name:             editSetup.name,
-        abbr:             editSetup.abbreviation,
-        market:           editSetup.market,
-        direction:        editSetup.direction as Direction,
-        status:           editSetup.status as SetupStatus,
-        description:      editSetup.description,
-        color:            editSetup.color,
-        aplusChecklist:   editSetup.aplusChecklist.length ? editSetup.aplusChecklist : ["", "", ""],
+        name: editSetup.name, abbr: editSetup.abbreviation,
+        market: editSetup.market, direction: editSetup.direction as Direction,
+        status: editSetup.status as SetupStatus, description: editSetup.description,
+        color: editSetup.color,
+        aplusChecklist:    editSetup.aplusChecklist.length    ? editSetup.aplusChecklist    : ["", "", ""],
         standardChecklist: editSetup.standardChecklist.length ? editSetup.standardChecklist : [""],
       })
     } else if (!v) { setForm(FORM_INIT); setTab("info") }
@@ -564,7 +630,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
               <Star size={14} className="text-[var(--be)] fill-[var(--be)] shrink-0" />
               <div>
                 <p className="text-[12px] font-semibold text-[var(--be)]">A+ Checklist</p>
-                <p className="text-[11px] text-[var(--ink-3)]">Criterios óptimos → trade se marca automáticamente como A+.</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Criterios óptimos → trade se marca como A+.</p>
               </div>
             </div>
             <ChecklistEditor title="A+ Checklist"
@@ -597,16 +663,14 @@ function SetupModal({ open, onOpenChange, editSetup }: {
                 </div>
               </div>
               <div className="flex gap-4 text-[11px]">
-                <div>
-                  <Star size={10} className="inline text-[var(--be)] fill-[var(--be)] mr-1" />
+                <span><Star size={10} className="inline text-[var(--be)] fill-[var(--be)] mr-1" />
                   <span className="text-[var(--ink-3)]">A+:</span>
                   <span className="text-[var(--ink)] font-semibold ml-1">{form.aplusChecklist.filter(Boolean).length} ítems</span>
-                </div>
-                <div>
-                  <Circle size={10} className="inline text-[var(--accent)] mr-1" />
-                  <span className="text-[var(--ink-3)]">Standard:</span>
+                </span>
+                <span><Circle size={10} className="inline text-[var(--accent)] mr-1" />
+                  <span className="text-[var(--ink-3)]">Std:</span>
                   <span className="text-[var(--ink)] font-semibold ml-1">{form.standardChecklist.filter(Boolean).length} ítems</span>
-                </div>
+                </span>
               </div>
             </div>
           </div>
@@ -640,28 +704,28 @@ function KpiBox({ label, value, sub, icon }: { label: string; value: string; sub
 
 /* ── Page ── */
 const MARKET_FILTERS = [
-  { value: "TODOS",       label: "Todos" },
-  { value: "NQ Futures",  label: "NQ" },
-  { value: "ES Futures",  label: "ES" },
-  { value: "FX",          label: "FX" },
-  { value: "Equities",    label: "Equities" },
+  { value: "TODOS",      label: "Todos"    },
+  { value: "NQ Futures", label: "NQ"       },
+  { value: "ES Futures", label: "ES"       },
+  { value: "FX",         label: "FX"       },
+  { value: "Equities",   label: "Equities" },
 ]
 const STATUS_FILTERS = [
-  { value: "TODOS",      label: "Todos" },
-  { value: "ACTIVO",     label: "Activos" },
-  { value: "EN_PRUEBA",  label: "En prueba" },
-  { value: "PAUSADO",    label: "Pausados" },
-  { value: "DESCARTADO", label: "Descartados" },
+  { value: "TODOS",      label: "Todos"      },
+  { value: "ACTIVO",     label: "Activos"    },
+  { value: "EN_PRUEBA",  label: "En prueba"  },
+  { value: "PAUSADO",    label: "Pausados"   },
+  { value: "DESCARTADO", label: "Descartados"},
 ]
 
 export default function PlaybookPage() {
   const utils = trpc.useUtils()
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editSetup, setEditSetup] = useState<DbSetup | null>(null)
-  const [selected,  setSelected]  = useState<DbSetup | null>(null)
-  const [marketF,   setMarketF]   = useState("TODOS")
-  const [statusF,   setStatusF]   = useState("TODOS")
+  const [modalOpen,     setModalOpen]     = useState(false)
+  const [editSetup,     setEditSetup]     = useState<DbSetup | null>(null)
+  const [drawerSetup,   setDrawerSetup]   = useState<DbSetup | null>(null)
+  const [marketF,       setMarketF]       = useState("TODOS")
+  const [statusF,       setStatusF]       = useState("TODOS")
   const [showDiscarded, setShowDiscarded] = useState(false)
 
   const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
@@ -669,17 +733,17 @@ export default function PlaybookPage() {
   )
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
-    onSuccess: () => { utils.setups.list.invalidate(); setSelected(null) },
+    onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
   })
   const deleteMut = trpc.setups.delete.useMutation({
-    onSuccess: () => { utils.setups.list.invalidate(); setSelected(null) },
+    onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
   })
   const createMut = trpc.setups.create.useMutation({
     onSuccess: () => utils.setups.list.invalidate(),
   })
 
-  const active   = setups.filter(s => s.status === "ACTIVO")
-  const inTest   = setups.filter(s => s.status === "EN_PRUEBA")
+  const active = setups.filter(s => s.status === "ACTIVO")
+  const inTest = setups.filter(s => s.status === "EN_PRUEBA")
 
   const visible = setups.filter(s => {
     const mOk = marketF === "TODOS" || s.market === marketF
@@ -687,15 +751,20 @@ export default function PlaybookPage() {
     return mOk && sOk
   })
 
-  const handleEdit      = (s: DbSetup) => { setEditSetup(s); setModalOpen(true) }
+  const handleEdit = (s: DbSetup) => {
+    setDrawerSetup(null)
+    setTimeout(() => { setEditSetup(s); setModalOpen(true) }, 150)
+  }
   const handleSetStatus = (s: DbSetup, status: SetupStatus) => setStatusMut.mutate({ id: s.id, status })
-  const handleDuplicate = (s: DbSetup) =>
+  const handleDuplicate = (s: DbSetup) => {
     createMut.mutate({
       name: s.name + " (copia)", abbreviation: s.abbreviation,
       market: s.market, direction: s.direction as Direction,
       status: "EN_PRUEBA", description: s.description, color: s.color,
       aplusChecklist: s.aplusChecklist, standardChecklist: s.standardChecklist,
     })
+    setDrawerSetup(null)
+  }
   const handleDelete = (s: DbSetup) => deleteMut.mutate(s.id)
 
   return (
@@ -711,9 +780,9 @@ export default function PlaybookPage() {
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <KpiBox label="P&L Total (activos)"  value="— sin trades" sub={`${active.length} setups activos`}       icon={<TrendingUp size={14} />} />
-        <KpiBox label="Win Rate promedio"     value="—"            sub="sobre setups activos"                    icon={<Percent size={14} />} />
-        <KpiBox label="Trades totales"        value="0"            sub="todos los setups"                        icon={<BarChart2 size={14} />} />
+        <KpiBox label="P&L Total (activos)"  value="— sin trades" sub={`${active.length} setups activos`}                     icon={<TrendingUp size={14} />} />
+        <KpiBox label="Win Rate promedio"     value="—"            sub="sobre setups activos"                                  icon={<Percent size={14} />} />
+        <KpiBox label="Trades totales"        value="0"            sub="todos los setups"                                      icon={<BarChart2 size={14} />} />
         <KpiBox label="En prueba"             value={String(inTest.length)} sub={inTest.map(s => s.abbreviation).join(", ") || "ninguno"} icon={<FlaskConical size={14} />} />
       </div>
 
@@ -741,13 +810,13 @@ export default function PlaybookPage() {
         </span>
       </div>
 
-      {/* Main content */}
+      {/* Cards */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-[var(--ink-3)]">Cargando setups…</div>
       ) : setups.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
           <p className="text-[var(--ink-2)] font-semibold">Aún no tienes setups</p>
-          <p className="text-[12px] text-[var(--ink-3)]">Crea tu primer setup para organizar tus estrategias de trading.</p>
+          <p className="text-[12px] text-[var(--ink-3)]">Crea tu primer setup para organizar tus estrategias.</p>
           <Button variant="primary" onClick={() => { setEditSetup(null); setModalOpen(true) }}>
             <Plus size={13} className="mr-1" /> Crear primer setup
           </Button>
@@ -757,39 +826,27 @@ export default function PlaybookPage() {
           Sin resultados para los filtros seleccionados.
         </div>
       ) : (
-        <div className="flex gap-4 items-start">
-          {/* Cards grid — ocupa todo el ancho menos el panel */}
-          <div className={cn(
-            "grid gap-3 min-w-0 flex-1",
-            selected
-              ? "grid-cols-1 sm:grid-cols-2"
-              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          )}>
-            {visible.map(s => (
-              <SetupCard
-                key={s.id}
-                setup={s}
-                selected={selected?.id === s.id}
-                onClick={() => setSelected(sel => sel?.id === s.id ? null : s)}
-              />
-            ))}
-          </div>
-
-          {/* Detail panel */}
-          {selected && (
-            <div className="shrink-0 w-[340px] bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] sticky top-0 max-h-[calc(100vh-28px)] overflow-hidden flex flex-col">
-              <SetupDetailPanel
-                setup={selected}
-                onClose={() => setSelected(null)}
-                onEdit={handleEdit}
-                onSetStatus={handleSetStatus}
-                onDuplicate={handleDuplicate}
-                onDelete={handleDelete}
-              />
-            </div>
-          )}
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {visible.map(s => (
+            <SetupCard
+              key={s.id}
+              setup={s}
+              selected={drawerSetup?.id === s.id}
+              onClick={() => setDrawerSetup(sel => sel?.id === s.id ? null : s)}
+            />
+          ))}
         </div>
       )}
+
+      {/* Drawer */}
+      <SetupDrawer
+        setup={drawerSetup}
+        onClose={() => setDrawerSetup(null)}
+        onEdit={handleEdit}
+        onSetStatus={handleSetStatus}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
+      />
 
       <SetupModal
         open={modalOpen}
