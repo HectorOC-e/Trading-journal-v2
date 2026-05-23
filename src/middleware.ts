@@ -3,32 +3,36 @@ import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({ request })
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-
-  const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  // Si no hay sesión y no está en /login, redirigir
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // Si las vars no están configuradas, dejar pasar sin proteger
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn("Supabase env vars missing — skipping auth middleware")
+    return NextResponse.next({ request })
+  }
+
+  const response = NextResponse.next({ request })
+
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() { return request.cookies.getAll() },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        )
+      },
+    },
+  })
+
+  const { data: { user } } = await supabase.auth.getUser()
+
   if (!user && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Si hay sesión y va a /login, redirigir al dashboard
   if (user && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
