@@ -1,30 +1,38 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 
+const SETUP_STATUSES = ["ACTIVO", "EN_PRUEBA", "PAUSADO", "DESCARTADO"] as const
+
 const SetupInput = z.object({
-  name:             z.string().min(1),
-  abbreviation:     z.string().min(1).max(4),
-  market:           z.string().default(""),
-  direction:        z.enum(["LONG", "SHORT", "AMBAS"]).default("AMBAS"),
-  status:           z.enum(["ACTIVO", "PAUSADO"]).default("ACTIVO"),
-  description:      z.string().default(""),
-  color:            z.string().default("#4f6ef7"),
-  aplusChecklist:   z.array(z.string()).default([]),
+  name:              z.string().min(1),
+  abbreviation:      z.string().min(1).max(4),
+  market:            z.string().default(""),
+  direction:         z.enum(["LONG", "SHORT", "AMBAS"]).default("AMBAS"),
+  status:            z.enum(SETUP_STATUSES).default("ACTIVO"),
+  description:       z.string().default(""),
+  color:             z.string().default("#4f6ef7"),
+  aplusChecklist:    z.array(z.string()).default([]),
   standardChecklist: z.array(z.string()).default([]),
 })
 
 export const setupsRouter = router({
   list: protectedProcedure
     .input(z.object({
-      market: z.string().optional(),
-      status: z.enum(["ACTIVO", "PAUSADO"]).optional(),
+      market:          z.string().optional(),
+      status:          z.enum(SETUP_STATUSES).optional(),
+      includeDiscarded: z.boolean().default(false),
     }).optional())
     .query(({ ctx, input }) =>
       ctx.prisma.setup.findMany({
         where: {
           userId: ctx.userId,
           ...(input?.market ? { market: input.market } : {}),
-          ...(input?.status ? { status: input.status } : {}),
+          ...(input?.status
+            ? { status: input.status }
+            : input?.includeDiscarded
+              ? {}
+              : { status: { not: "DESCARTADO" } }
+          ),
         },
         orderBy: [{ status: "asc" }, { name: "asc" }],
       })
@@ -48,8 +56,8 @@ export const setupsRouter = router({
       })
     }),
 
-  toggleStatus: protectedProcedure
-    .input(z.object({ id: z.string().uuid(), status: z.enum(["ACTIVO", "PAUSADO"]) }))
+  setStatus: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), status: z.enum(SETUP_STATUSES) }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.setup.update({
         where: { id: input.id, userId: ctx.userId },

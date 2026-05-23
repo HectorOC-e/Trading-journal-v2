@@ -1,19 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, X, Star, TrendingUp, TrendingDown, ChevronRight, Circle, CheckCircle2, Pencil, Copy, Pause, Play, Percent, Award, BarChart2, Trash2 } from "lucide-react"
-import { TopBar } from "@/components/layout/top-bar"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import {
+  Plus, X, Star, ChevronRight, Circle, CheckCircle2, Pencil, Copy,
+  Pause, Play, FlaskConical, Archive, Trash2, BarChart2, Award, Percent, TrendingUp,
+} from "lucide-react"
+import { TopBar }    from "@/components/layout/top-bar"
+import { Button }   from "@/components/ui/button"
+import { Input }    from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FilterBar } from "@/components/ui/filter-bar"
-import { cn } from "@/lib/utils"
-import { trpc } from "@/lib/trpc/client"
+import { cn }        from "@/lib/utils"
+import { trpc }      from "@/lib/trpc/client"
 
 /* ── Types ── */
-type Direction  = "LONG" | "SHORT" | "AMBAS"
-type SetupStatus = "ACTIVO" | "PAUSADO"
+type Direction   = "LONG" | "SHORT" | "AMBAS"
+type SetupStatus = "ACTIVO" | "EN_PRUEBA" | "PAUSADO" | "DESCARTADO"
 
 interface DbSetup {
   id:               string
@@ -30,23 +33,22 @@ interface DbSetup {
   updatedAt:        Date | string
 }
 
+/* ── Status meta ── */
+const STATUS_META: Record<SetupStatus, { label: string; bg: string; text: string; icon: React.ReactNode }> = {
+  ACTIVO:     { label: "Activo",    bg: "#22c55e",            text: "#fff",             icon: <Play size={9} /> },
+  EN_PRUEBA:  { label: "En prueba", bg: "rgba(245,158,11,1)", text: "#fff",             icon: <FlaskConical size={9} /> },
+  PAUSADO:    { label: "Pausado",   bg: "var(--chip)",        text: "var(--ink-3)",     icon: <Pause size={9} /> },
+  DESCARTADO: { label: "Descartado", bg: "var(--chip)",       text: "var(--ink-3)",     icon: <Archive size={9} /> },
+}
+
 /* ── Sparkline flat placeholder ── */
 function SparklinePlaceholder({ color, height = 44 }: { color: string; height?: number }) {
-  const W = 200
-  const mid = height / 2
+  const W = 200, mid = height / 2
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
       <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.4" />
     </svg>
   )
-}
-
-/* ── Session pill ── */
-const SESSION_COLORS: Record<string, { bg: string; text: string }> = {
-  "New York":     { bg: "rgba(79,110,247,0.12)",   text: "#4f6ef7" },
-  "London":       { bg: "rgba(168,85,247,0.12)",   text: "#a855f7" },
-  "Asia":         { bg: "rgba(245,158,11,0.12)",   text: "#f59e0b" },
-  "London Close": { bg: "rgba(100,116,139,0.12)",  text: "#64748b" },
 }
 
 /* ── Stat chip ── */
@@ -59,9 +61,22 @@ function StatChip({ label, value }: { label: string; value: string }) {
   )
 }
 
+/* ── Status badge ── */
+function StatusBadge({ status }: { status: string }) {
+  const meta = STATUS_META[status as SetupStatus] ?? STATUS_META.PAUSADO
+  return (
+    <span className="inline-flex items-center gap-1 text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full"
+      style={{ background: meta.bg, color: meta.text }}>
+      {meta.icon}
+      {meta.label.toUpperCase()}
+    </span>
+  )
+}
+
 /* ── Setup Card ── */
 function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boolean; onClick: () => void }) {
-  const sparkColor = setup.status === "PAUSADO" ? "var(--ink-3)" : "var(--accent)"
+  const isInactive = setup.status === "PAUSADO" || setup.status === "DESCARTADO"
+  const sparkColor = isInactive ? "var(--ink-3)" : setup.status === "EN_PRUEBA" ? "#f59e0b" : "var(--accent)"
 
   return (
     <div
@@ -70,11 +85,10 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow:   selected ? "0 0 0 1px var(--accent)" : "none",
-        opacity:     setup.status === "PAUSADO" ? 0.75 : 1,
+        opacity:     setup.status === "DESCARTADO" ? 0.55 : isInactive ? 0.78 : 1,
       }}
     >
-      {/* Colored top bar */}
-      <div style={{ height: 3, background: setup.color, opacity: setup.status === "PAUSADO" ? 0.4 : 1 }} />
+      <div style={{ height: 3, background: setup.color, opacity: isInactive ? 0.4 : 1 }} />
 
       <div className="p-4 flex flex-col gap-3">
         {/* Header */}
@@ -82,34 +96,30 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
           <div className="flex items-center gap-2.5 min-w-0">
             <span
               className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-              style={{ background: setup.color, opacity: setup.status === "PAUSADO" ? 0.5 : 1 }}
+              style={{ background: setup.color, opacity: isInactive ? 0.5 : 1 }}
             >
               {setup.abbreviation}
             </span>
             <div className="min-w-0">
               <p className="text-[12.5px] font-semibold text-[var(--ink)] leading-tight truncate">{setup.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] text-[var(--ink-3)]">{setup.market}</span>
+                {setup.market && <span className="text-[10px] text-[var(--ink-3)]">{setup.market}</span>}
                 {setup.market && <span className="text-[var(--line)]">·</span>}
                 <span className="text-[10px] text-[var(--ink-3)]">{setup.direction}</span>
               </div>
             </div>
           </div>
           <div className="shrink-0">
-            {setup.status === "PAUSADO" ? (
-              <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--chip)] text-[var(--ink-3)]">PAUSADO</span>
-            ) : (
-              <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded-full text-white" style={{ background: "#22c55e" }}>ACTIVO</span>
-            )}
+            <StatusBadge status={setup.status} />
           </div>
         </div>
 
-        {/* Sparkline placeholder */}
+        {/* Sparkline */}
         <div style={{ margin: "0 -4px" }}>
           <SparklinePlaceholder color={sparkColor} height={44} />
         </div>
 
-        {/* Stats row — sin trades */}
+        {/* Stats */}
         <div className="flex justify-between items-center">
           <StatChip label="Win %" value="—" />
           <div className="w-px h-6 bg-[var(--line)]" />
@@ -120,7 +130,7 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
           <StatChip label="Trades" value="0" />
         </div>
 
-        {/* Expectancy bar placeholder */}
+        {/* Expectancy placeholder */}
         <div>
           <div className="flex justify-between mb-1">
             <span className="text-[10px] text-[var(--ink-3)]">Expectancy</span>
@@ -139,19 +149,28 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
 
 /* ── Setup Detail Panel ── */
 function SetupDetailPanel({
-  setup, onClose, onEdit, onToggleStatus, onDuplicate, onDelete,
+  setup, onClose, onEdit, onSetStatus, onDuplicate, onDelete,
 }: {
   setup: DbSetup
   onClose: () => void
   onEdit: (s: DbSetup) => void
-  onToggleStatus: (s: DbSetup) => void
+  onSetStatus: (s: DbSetup, status: SetupStatus) => void
   onDuplicate: (s: DbSetup) => void
   onDelete: (s: DbSetup) => void
 }) {
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmName,    setConfirmName]    = useState("")
+  const [confirmingDel,  setConfirmingDel]  = useState(false)
+
+  const allStatusActions: { status: SetupStatus; label: string; icon: React.ReactNode }[] = [
+    { status: "ACTIVO",     label: "Marcar activo",   icon: <Play size={11} /> },
+    { status: "EN_PRUEBA",  label: "Poner en prueba", icon: <FlaskConical size={11} /> },
+    { status: "PAUSADO",    label: "Pausar",           icon: <Pause size={11} /> },
+    { status: "DESCARTADO", label: "Descartar",        icon: <Archive size={11} /> },
+  ]
+  const statusActions = allStatusActions.filter(a => a.status !== setup.status)
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-5 border-b border-[var(--line)] flex items-start justify-between gap-3 sticky top-0 bg-[var(--panel)] z-10">
         <div className="flex items-center gap-3">
@@ -161,7 +180,11 @@ function SetupDetailPanel({
           </span>
           <div>
             <p className="text-[13.5px] font-bold text-[var(--ink)]">{setup.name}</p>
-            <p className="text-[11px] text-[var(--ink-3)]">{setup.market}{setup.market ? " · " : ""}{setup.direction}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {setup.market && <span className="text-[11px] text-[var(--ink-3)]">{setup.market}</span>}
+              {setup.market && <span className="text-[var(--line)]">·</span>}
+              <span className="text-[11px] text-[var(--ink-3)]">{setup.direction}</span>
+            </div>
           </div>
         </div>
         <button onClick={onClose} className="p-1 rounded hover:bg-[var(--chip)] transition-colors">
@@ -169,7 +192,12 @@ function SetupDetailPanel({
         </button>
       </div>
 
-      <div className="p-5 flex flex-col gap-5">
+      <div className="p-5 flex flex-col gap-5 overflow-y-auto flex-1">
+
+        {/* Status badge */}
+        <div className="flex items-center gap-2">
+          <StatusBadge status={setup.status} />
+        </div>
 
         {/* Equity curve placeholder */}
         <div>
@@ -240,8 +268,8 @@ function SetupDetailPanel({
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
+        {/* Quick actions */}
+        <div className="flex gap-2">
           <button
             onClick={() => onEdit(setup)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
@@ -254,29 +282,61 @@ function SetupDetailPanel({
           >
             <Copy size={11} /> Duplicar
           </button>
-          <button
-            onClick={() => onToggleStatus(setup)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
-          >
-            {setup.status === "ACTIVO" ? <><Pause size={11} /> Pausar</> : <><Play size={11} /> Activar</>}
-          </button>
         </div>
 
-        {/* Delete */}
-        {!confirmDelete ? (
+        {/* Status transitions */}
+        <div>
+          <p className="text-eyebrow mb-2">Cambiar estado</p>
+          <div className="flex flex-col gap-1.5">
+            {statusActions.map(a => {
+              const meta = STATUS_META[a.status]
+              return (
+                <button
+                  key={a.status}
+                  onClick={() => onSetStatus(setup, a.status)}
+                  className="flex items-center gap-2 py-2 px-3 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors text-left"
+                >
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: meta.bg, color: meta.text }}>
+                    {meta.icon}
+                  </span>
+                  {a.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Delete with confirmation */}
+        {!confirmingDel ? (
           <button
-            onClick={() => setConfirmDelete(true)}
-            className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium text-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors border border-transparent hover:border-[var(--loss)]"
+            onClick={() => setConfirmingDel(true)}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium text-[var(--loss)] border border-transparent hover:border-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors"
           >
-            <Trash2 size={11} /> Eliminar setup
+            <Trash2 size={11} /> Eliminar setup permanentemente
           </button>
         ) : (
-          <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-sm)] border border-[var(--loss)] bg-[var(--loss-soft)]">
-            <p className="text-[12px] text-[var(--loss)] font-semibold text-center">¿Eliminar "{setup.name}"?</p>
-            <p className="text-[11px] text-[var(--ink-3)] text-center">Se perderán los datos del setup (los trades no se eliminan).</p>
-            <div className="flex gap-2 mt-1">
-              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-1.5 rounded text-[12px] bg-[var(--chip)] text-[var(--ink-2)]">Cancelar</button>
-              <button onClick={() => onDelete(setup)} className="flex-1 py-1.5 rounded text-[12px] bg-[var(--loss)] text-white font-semibold">Eliminar</button>
+          <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-sm)] border border-[var(--loss)]" style={{ background: "var(--loss-soft)" }}>
+            <p className="text-[12px] text-[var(--loss)] font-semibold text-center">Eliminar "{setup.name}"</p>
+            <p className="text-[11px] text-[var(--ink-3)] text-center">Escribe el nombre del setup para confirmar. Esta acción no se puede deshacer.</p>
+            <input
+              className="h-8 px-2.5 rounded-[var(--radius-sm)] text-sm bg-[var(--panel)] border border-[var(--loss)] text-[var(--ink)] focus:outline-none"
+              placeholder={setup.name}
+              value={confirmName}
+              onChange={e => setConfirmName(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <button onClick={() => { setConfirmingDel(false); setConfirmName("") }}
+                className="flex-1 py-1.5 rounded text-[12px] bg-[var(--chip)] text-[var(--ink-2)]">
+                Cancelar
+              </button>
+              <button
+                disabled={confirmName !== setup.name}
+                onClick={() => onDelete(setup)}
+                className="flex-1 py-1.5 rounded text-[12px] bg-[var(--loss)] text-white font-semibold disabled:opacity-40"
+              >
+                Eliminar
+              </button>
             </div>
           </div>
         )}
@@ -285,14 +345,9 @@ function SetupDetailPanel({
   )
 }
 
-/* ── ChecklistEditor helper ── */
-function ChecklistEditor({
-  title, icon, items, onChange,
-}: {
-  title: string
-  icon?: React.ReactNode
-  items: string[]
-  onChange: (items: string[]) => void
+/* ── ChecklistEditor ── */
+function ChecklistEditor({ title, icon, items, onChange }: {
+  title: string; icon?: React.ReactNode; items: string[]; onChange: (items: string[]) => void
 }) {
   return (
     <div>
@@ -311,14 +366,10 @@ function ChecklistEditor({
               className="flex-1 h-8 px-2.5 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
               value={item}
               placeholder={`Ítem ${i + 1}…`}
-              onChange={e => {
-                const next = [...items]; next[i] = e.target.value; onChange(next)
-              }}
+              onChange={e => { const n = [...items]; n[i] = e.target.value; onChange(n) }}
             />
-            <button
-              onClick={() => onChange(items.filter((_, j) => j !== i))}
-              className="p-1 text-[var(--ink-3)] hover:text-[var(--loss)] transition-colors"
-            >
+            <button onClick={() => onChange(items.filter((_, j) => j !== i))}
+              className="p-1 text-[var(--ink-3)] hover:text-[var(--loss)] transition-colors">
               <X size={12} />
             </button>
           </div>
@@ -335,21 +386,15 @@ function ChecklistEditor({
 }
 
 /* ── Setup Modal (create + edit) ── */
-const COLORS = ["#f59e0b", "#ef4444", "#22c55e", "#4f6ef7", "#a855f7", "#14b8a6", "#f97316", "#ec4899", "#6b7280"]
+const COLORS  = ["#f59e0b", "#ef4444", "#22c55e", "#4f6ef7", "#a855f7", "#14b8a6", "#f97316", "#ec4899", "#6b7280"]
 const MARKETS = ["NQ Futures", "ES Futures", "GC Futures", "FX", "Equities", "Crypto", "Otro"]
 
 interface SetupForm {
-  name:             string
-  abbr:             string
-  market:           string
-  direction:        Direction
-  status:           SetupStatus
-  description:      string
-  color:            string
-  aplusChecklist:   string[]
-  standardChecklist: string[]
+  name: string; abbr: string; market: string
+  direction: Direction; status: SetupStatus
+  description: string; color: string
+  aplusChecklist: string[]; standardChecklist: string[]
 }
-
 const FORM_INIT: SetupForm = {
   name: "", abbr: "", market: "NQ Futures", direction: "AMBAS", status: "ACTIVO",
   description: "", color: "#4f6ef7",
@@ -357,27 +402,17 @@ const FORM_INIT: SetupForm = {
   standardChecklist: ["Setup #1 o #2 del día", "Risk ≤ 1R", "RR mínimo 2:1", ""],
 }
 
-function SetupModal({
-  open, onOpenChange, editSetup,
-}: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  editSetup?: DbSetup | null
+function SetupModal({ open, onOpenChange, editSetup }: {
+  open: boolean; onOpenChange: (v: boolean) => void; editSetup?: DbSetup | null
 }) {
   const isEdit = !!editSetup
   const utils  = trpc.useUtils()
-
   const [form, setForm] = useState<SetupForm>(FORM_INIT)
   const [tab,  setTab]  = useState<"info" | "checklist">("info")
 
-  const createMut = trpc.setups.create.useMutation({
-    onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) },
-  })
-  const updateMut = trpc.setups.update.useMutation({
-    onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) },
-  })
+  const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
+  const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
 
-  /* Populate form when editing */
   const handleOpen = (v: boolean) => {
     if (v && editSetup) {
       setForm({
@@ -391,34 +426,23 @@ function SetupModal({
         aplusChecklist:   editSetup.aplusChecklist.length ? editSetup.aplusChecklist : ["", "", ""],
         standardChecklist: editSetup.standardChecklist.length ? editSetup.standardChecklist : [""],
       })
-    } else if (!v) {
-      setForm(FORM_INIT)
-      setTab("info")
-    }
+    } else if (!v) { setForm(FORM_INIT); setTab("info") }
     onOpenChange(v)
   }
 
-  const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) =>
-    setForm(f => ({ ...f, [key]: val }))
+  const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
 
   const handleSave = () => {
     const payload = {
-      name:             form.name.trim(),
-      abbreviation:     form.abbr.trim().toUpperCase(),
-      market:           form.market,
-      direction:        form.direction,
-      status:           form.status,
-      description:      form.description.trim(),
-      color:            form.color,
-      aplusChecklist:   form.aplusChecklist.filter(Boolean),
+      name: form.name.trim(), abbreviation: form.abbr.trim().toUpperCase(),
+      market: form.market, direction: form.direction, status: form.status,
+      description: form.description.trim(), color: form.color,
+      aplusChecklist: form.aplusChecklist.filter(Boolean),
       standardChecklist: form.standardChecklist.filter(Boolean),
     }
     if (!payload.name || !payload.abbreviation) return
-    if (isEdit && editSetup) {
-      updateMut.mutate({ id: editSetup.id, ...payload })
-    } else {
-      createMut.mutate(payload)
-    }
+    if (isEdit && editSetup) updateMut.mutate({ id: editSetup.id, ...payload })
+    else createMut.mutate(payload)
   }
 
   const isSaving = createMut.isPending || updateMut.isPending
@@ -439,13 +463,11 @@ function SetupModal({
           </div>
         </DialogHeader>
 
-        {/* Tabs */}
         <div className="flex gap-1 p-1 bg-[var(--panel-2)] rounded-[var(--radius-sm)] mb-1">
           {(["info", "checklist"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors capitalize",
-                tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
-              )}>
+              className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
+                tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]")}>
               {t === "info" ? "📋 Información" : "✓ Checklists"}
             </button>
           ))}
@@ -456,8 +478,7 @@ function SetupModal({
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
                 <label className="text-eyebrow block mb-1.5">Nombre del setup *</label>
-                <Input placeholder="MMXM — Breaker Block" value={form.name}
-                  onChange={e => set("name", e.target.value)} />
+                <Input placeholder="MMXM — Breaker Block" value={form.name} onChange={e => set("name", e.target.value)} />
               </div>
               <div>
                 <label className="text-eyebrow block mb-1.5">Abreviatura *</label>
@@ -472,10 +493,7 @@ function SetupModal({
                 {MARKETS.map(m => (
                   <button key={m} onClick={() => set("market", m)}
                     className={cn("px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-medium transition-colors",
-                      form.market === m
-                        ? "bg-[var(--accent)] text-white"
-                        : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                    )}>
+                      form.market === m ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]")}>
                     {m}
                   </button>
                 ))}
@@ -490,30 +508,27 @@ function SetupModal({
                     <button key={d} onClick={() => set("direction", d)}
                       className={cn("flex-1 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold transition-colors",
                         form.direction === d
-                          ? d === "LONG"  ? "bg-[var(--win)] text-white"
-                            : d === "SHORT" ? "bg-[var(--loss)] text-white"
-                            : "bg-[var(--accent)] text-white"
-                          : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                      )}>
+                          ? d === "LONG" ? "bg-[var(--win)] text-white" : d === "SHORT" ? "bg-[var(--loss)] text-white" : "bg-[var(--accent)] text-white"
+                          : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]")}>
                       {d}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-eyebrow mb-1.5">Estado</p>
-                <div className="flex gap-1.5">
-                  {(["ACTIVO", "PAUSADO"] as SetupStatus[]).map(s => (
-                    <button key={s} onClick={() => set("status", s)}
-                      className={cn("flex-1 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold transition-colors",
-                        form.status === s
-                          ? s === "ACTIVO" ? "text-white" : "bg-[var(--chip)] text-[var(--ink-2)]"
-                          : "bg-[var(--chip)] text-[var(--ink-3)]"
-                      )}
-                      style={form.status === s && s === "ACTIVO" ? { background: "#22c55e" } : {}}>
-                      {s === "ACTIVO" ? "✓ Activo" : "⏸ Pausado"}
-                    </button>
-                  ))}
+                <p className="text-eyebrow mb-1.5">Estado inicial</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(["ACTIVO", "EN_PRUEBA", "PAUSADO"] as SetupStatus[]).map(s => {
+                    const meta = STATUS_META[s]
+                    return (
+                      <button key={s} onClick={() => set("status", s)}
+                        className={cn("flex-1 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold transition-colors",
+                          form.status === s ? "text-white" : "bg-[var(--chip)] text-[var(--ink-3)]")}
+                        style={form.status === s ? { background: meta.bg } : {}}>
+                        {meta.label}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -524,28 +539,19 @@ function SetupModal({
                 {COLORS.map(c => (
                   <button key={c} onClick={() => set("color", c)}
                     className="w-7 h-7 rounded-full transition-transform hover:scale-110"
-                    style={{
-                      background:    c,
-                      outline:       form.color === c ? `2px solid ${c}` : "none",
-                      outlineOffset: 2,
-                    }} />
+                    style={{ background: c, outline: form.color === c ? `2px solid ${c}` : "none", outlineOffset: 2 }} />
                 ))}
               </div>
             </div>
 
             <div>
               <label className="text-eyebrow block mb-1.5">Descripción</label>
-              <Textarea
-                placeholder="¿En qué condiciones se ejecuta este setup? Describe el contexto de mercado, la estructura necesaria y los puntos clave de entrada…"
-                value={form.description}
-                onChange={e => set("description", e.target.value)}
-              />
+              <Textarea placeholder="¿En qué condiciones se ejecuta este setup?…"
+                value={form.description} onChange={e => set("description", e.target.value)} />
             </div>
 
-            <button
-              onClick={() => setTab("checklist")}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-sm)] border border-[var(--accent)] text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent-soft)] transition-colors"
-            >
+            <button onClick={() => setTab("checklist")}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-sm)] border border-[var(--accent)] text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent-soft)] transition-colors">
               Continuar → Definir Checklists
             </button>
           </div>
@@ -558,16 +564,12 @@ function SetupModal({
               <Star size={14} className="text-[var(--be)] fill-[var(--be)] shrink-0" />
               <div>
                 <p className="text-[12px] font-semibold text-[var(--be)]">A+ Checklist</p>
-                <p className="text-[11px] text-[var(--ink-3)]">Criterios óptimos. Cuando se cumplan todos → el trade se marca automáticamente como A+.</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Criterios óptimos → trade se marca automáticamente como A+.</p>
               </div>
             </div>
-
-            <ChecklistEditor
-              title="A+ Checklist"
+            <ChecklistEditor title="A+ Checklist"
               icon={<Star size={11} className="text-[var(--be)] fill-[var(--be)]" />}
-              items={form.aplusChecklist}
-              onChange={items => set("aplusChecklist", items)}
-            />
+              items={form.aplusChecklist} onChange={items => set("aplusChecklist", items)} />
 
             <div className="border-t border-[var(--line)] pt-4">
               <div className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)] mb-4"
@@ -575,14 +577,11 @@ function SetupModal({
                 <Circle size={14} className="text-[var(--accent)] shrink-0" />
                 <div>
                   <p className="text-[12px] font-semibold text-[var(--ink)]">Standard Checklist</p>
-                  <p className="text-[11px] text-[var(--ink-3)]">Criterios mínimos para tomar el trade. Si se cumplen todos → se marca como Plan.</p>
+                  <p className="text-[11px] text-[var(--ink-3)]">Criterios mínimos → se marca como Plan.</p>
                 </div>
               </div>
-              <ChecklistEditor
-                title="Standard Checklist"
-                items={form.standardChecklist}
-                onChange={items => set("standardChecklist", items)}
-              />
+              <ChecklistEditor title="Standard Checklist"
+                items={form.standardChecklist} onChange={items => set("standardChecklist", items)} />
             </div>
 
             <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
@@ -594,7 +593,7 @@ function SetupModal({
                 </span>
                 <div>
                   <p className="text-[12px] font-semibold text-[var(--ink)]">{form.name || "Nombre del setup"}</p>
-                  <p className="text-[10px] text-[var(--ink-3)]">{form.market} · {form.direction} · {form.status}</p>
+                  <p className="text-[10px] text-[var(--ink-3)]">{form.market} · {form.direction} · {STATUS_META[form.status].label}</p>
                 </div>
               </div>
               <div className="flex gap-4 text-[11px]">
@@ -615,9 +614,7 @@ function SetupModal({
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          {tab === "checklist" && (
-            <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>
-          )}
+          {tab === "checklist" && <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>}
           <Button variant="primary" onClick={handleSave} disabled={isSaving || !form.name.trim() || !form.abbr.trim()}>
             {isSaving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear setup"}
           </Button>
@@ -628,17 +625,14 @@ function SetupModal({
 }
 
 /* ── KPI strip ── */
-function KpiBox({ label, value, sub, positive, icon }: { label: string; value: string; sub: string; positive?: boolean; icon?: React.ReactNode }) {
+function KpiBox({ label, value, sub, icon }: { label: string; value: string; sub: string; icon?: React.ReactNode }) {
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+      <div className="flex items-center justify-between mb-1">
         <p className="text-eyebrow">{label}</p>
-        {icon && <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{icon}</span>}
+        {icon && <span className="text-[var(--ink-3)] opacity-65">{icon}</span>}
       </div>
-      <p className={cn("text-[22px] font-mono font-bold leading-none",
-        positive === undefined ? "text-[var(--ink)]" : positive ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-        {value}
-      </p>
+      <p className="text-[22px] font-mono font-bold leading-none text-[var(--ink)]">{value}</p>
       <p className="text-[11px] text-[var(--ink-3)] mt-1">{sub}</p>
     </div>
   )
@@ -653,23 +647,28 @@ const MARKET_FILTERS = [
   { value: "Equities",    label: "Equities" },
 ]
 const STATUS_FILTERS = [
-  { value: "TODOS",   label: "Todos" },
-  { value: "ACTIVO",  label: "Activos" },
-  { value: "PAUSADO", label: "Pausados" },
+  { value: "TODOS",      label: "Todos" },
+  { value: "ACTIVO",     label: "Activos" },
+  { value: "EN_PRUEBA",  label: "En prueba" },
+  { value: "PAUSADO",    label: "Pausados" },
+  { value: "DESCARTADO", label: "Descartados" },
 ]
 
 export default function PlaybookPage() {
   const utils = trpc.useUtils()
 
-  const [modalOpen,  setModalOpen]  = useState(false)
-  const [editSetup,  setEditSetup]  = useState<DbSetup | null>(null)
-  const [selected,   setSelected]   = useState<DbSetup | null>(null)
-  const [marketF,    setMarketF]    = useState("TODOS")
-  const [statusF,    setStatusF]    = useState("ACTIVO")
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editSetup, setEditSetup] = useState<DbSetup | null>(null)
+  const [selected,  setSelected]  = useState<DbSetup | null>(null)
+  const [marketF,   setMarketF]   = useState("TODOS")
+  const [statusF,   setStatusF]   = useState("TODOS")
+  const [showDiscarded, setShowDiscarded] = useState(false)
 
-  const { data: setups = [], isLoading } = trpc.setups.list.useQuery()
+  const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
+    { includeDiscarded: showDiscarded },
+  )
 
-  const toggleMut = trpc.setups.toggleStatus.useMutation({
+  const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setSelected(null) },
   })
   const deleteMut = trpc.setups.delete.useMutation({
@@ -679,7 +678,8 @@ export default function PlaybookPage() {
     onSuccess: () => utils.setups.list.invalidate(),
   })
 
-  const active = setups.filter(s => s.status === "ACTIVO")
+  const active   = setups.filter(s => s.status === "ACTIVO")
+  const inTest   = setups.filter(s => s.status === "EN_PRUEBA")
 
   const visible = setups.filter(s => {
     const mOk = marketF === "TODOS" || s.market === marketF
@@ -687,20 +687,14 @@ export default function PlaybookPage() {
     return mOk && sOk
   })
 
-  const handleEdit  = (s: DbSetup) => { setEditSetup(s); setModalOpen(true) }
-  const handleToggle = (s: DbSetup) =>
-    toggleMut.mutate({ id: s.id, status: s.status === "ACTIVO" ? "PAUSADO" : "ACTIVO" })
+  const handleEdit      = (s: DbSetup) => { setEditSetup(s); setModalOpen(true) }
+  const handleSetStatus = (s: DbSetup, status: SetupStatus) => setStatusMut.mutate({ id: s.id, status })
   const handleDuplicate = (s: DbSetup) =>
     createMut.mutate({
-      name:             s.name + " (copia)",
-      abbreviation:     s.abbreviation,
-      market:           s.market,
-      direction:        s.direction as Direction,
-      status:           "PAUSADO",
-      description:      s.description,
-      color:            s.color,
-      aplusChecklist:   s.aplusChecklist,
-      standardChecklist: s.standardChecklist,
+      name: s.name + " (copia)", abbreviation: s.abbreviation,
+      market: s.market, direction: s.direction as Direction,
+      status: "EN_PRUEBA", description: s.description, color: s.color,
+      aplusChecklist: s.aplusChecklist, standardChecklist: s.standardChecklist,
     })
   const handleDelete = (s: DbSetup) => deleteMut.mutate(s.id)
 
@@ -708,34 +702,46 @@ export default function PlaybookPage() {
     <>
       <TopBar
         title="Playbook"
-        subtitle={`${active.length} setups activos · ${setups.length} total`}
+        subtitle={`${active.length} activos · ${inTest.length} en prueba · ${setups.length} total`}
         actions={[{
-          label: "Nuevo setup",
-          icon: <Plus size={14} />,
-          variant: "primary",
+          label: "Nuevo setup", icon: <Plus size={14} />, variant: "primary",
           onClick: () => { setEditSetup(null); setModalOpen(true) },
         }]}
       />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <KpiBox label="P&L Total (activos)"  value="— sin trades" sub={`${active.length} setups activos`}  icon={<TrendingUp size={14} />} />
-        <KpiBox label="Win Rate promedio"     value="—"            sub="sobre setups activos"               icon={<Percent size={14} />} />
-        <KpiBox label="Trades totales"        value="0"            sub="todos los setups"                   icon={<BarChart2 size={14} />} />
-        <KpiBox label="Mejor expectancy"      value="—"            sub={active[0]?.name ?? "sin datos"}     icon={<Award size={14} />} />
+        <KpiBox label="P&L Total (activos)"  value="— sin trades" sub={`${active.length} setups activos`}       icon={<TrendingUp size={14} />} />
+        <KpiBox label="Win Rate promedio"     value="—"            sub="sobre setups activos"                    icon={<Percent size={14} />} />
+        <KpiBox label="Trades totales"        value="0"            sub="todos los setups"                        icon={<BarChart2 size={14} />} />
+        <KpiBox label="En prueba"             value={String(inTest.length)} sub={inTest.map(s => s.abbreviation).join(", ") || "ninguno"} icon={<FlaskConical size={14} />} />
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 mb-4 flex-wrap">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <FilterBar options={MARKET_FILTERS} value={marketF} onChange={setMarketF} />
         <div className="w-px h-4 bg-[var(--line)]" />
-        <FilterBar options={STATUS_FILTERS} value={statusF} onChange={setStatusF} />
+        <FilterBar options={STATUS_FILTERS} value={statusF} onChange={v => {
+          setStatusF(v)
+          if (v === "DESCARTADO") setShowDiscarded(true)
+        }} />
+        <button
+          onClick={() => setShowDiscarded(v => !v)}
+          className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium transition-colors border",
+            showDiscarded
+              ? "border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-soft)]"
+              : "border-[var(--line)] text-[var(--ink-3)] hover:text-[var(--ink)]"
+          )}
+        >
+          <Archive size={11} /> Descartados
+        </button>
         <span className="text-[11px] text-[var(--ink-3)] ml-auto">
           {visible.length} setup{visible.length !== 1 ? "s" : ""}
         </span>
       </div>
 
-      {/* Main layout */}
+      {/* Main content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-[var(--ink-3)]">Cargando setups…</div>
       ) : setups.length === 0 ? (
@@ -751,11 +757,13 @@ export default function PlaybookPage() {
           Sin resultados para los filtros seleccionados.
         </div>
       ) : (
-        <div className={cn("flex gap-4", selected ? "items-start" : "")}>
-          {/* Cards grid */}
+        <div className="flex gap-4 items-start">
+          {/* Cards grid — ocupa todo el ancho menos el panel */}
           <div className={cn(
-            "grid gap-3 flex-1 transition-all",
-            selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+            "grid gap-3 min-w-0 flex-1",
+            selected
+              ? "grid-cols-1 sm:grid-cols-2"
+              : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           )}>
             {visible.map(s => (
               <SetupCard
@@ -769,20 +777,12 @@ export default function PlaybookPage() {
 
           {/* Detail panel */}
           {selected && (
-            <div style={{
-              width: 340, flexShrink: 0,
-              background: "var(--panel)",
-              border: "1px solid var(--line)",
-              borderRadius: "var(--radius)",
-              position: "sticky", top: 0,
-              maxHeight: "calc(100vh - 28px)",
-              overflowY: "auto",
-            }}>
+            <div className="shrink-0 w-[340px] bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] sticky top-0 max-h-[calc(100vh-28px)] overflow-hidden flex flex-col">
               <SetupDetailPanel
                 setup={selected}
                 onClose={() => setSelected(null)}
                 onEdit={handleEdit}
-                onToggleStatus={handleToggle}
+                onSetStatus={handleSetStatus}
                 onDuplicate={handleDuplicate}
                 onDelete={handleDelete}
               />
