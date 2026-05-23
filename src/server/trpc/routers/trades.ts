@@ -113,7 +113,26 @@ export const tradesRouter = router({
         data: { ...input, userId: ctx.userId, date: new Date(input.date) },
         include: { account: true, setup: true, events: true },
       })
-      return serializeTrade(trade)
+
+      // Persist the opening state as the first immutable event
+      await ctx.prisma.tradeEvent.create({
+        data: {
+          userId:    ctx.userId,
+          tradeId:   trade.id,
+          type:      "OPEN",
+          price:     input.entry,
+          contracts: input.size,
+          notes:     `${input.direction} · SL ${input.stop} · TP ${input.target}`,
+          timestamp: new Date(`${input.date}T${input.openTime}:00`),
+        },
+      })
+
+      // Re-fetch with the new event included
+      const full = await ctx.prisma.trade.findUniqueOrThrow({
+        where:   { id: trade.id },
+        include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
+      })
+      return serializeTrade(full)
     }),
 
   update: protectedProcedure

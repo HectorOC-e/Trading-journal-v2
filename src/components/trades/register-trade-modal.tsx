@@ -516,6 +516,27 @@ export function RegisterTradeModal({
             {setups.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {/* Deselect option */}
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, setupId: "", checklistItems: {} }))}
+                    className={cn(
+                      "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                      !form.setupId
+                        ? "border-[var(--loss)] bg-[var(--loss-soft)]"
+                        : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                        style={{ background: "var(--chip)", color: "var(--ink-3)" }}>
+                        N/A
+                      </span>
+                    </div>
+                    <p className="text-xs font-semibold text-[var(--ink)] leading-tight">Sin setup</p>
+                    <p className="text-[10px] text-[var(--ink-3)] mt-1">Off-plan / impulsivo</p>
+                  </button>
+
                   {setups.map(setup => (
                     <button
                       key={setup.id}

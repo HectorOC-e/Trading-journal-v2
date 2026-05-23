@@ -8,18 +8,20 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 
-type EventType = "STOP_MOVE" | "TRAIL_STOP" | "TAKE_PROFIT_MOVE" | "PARTIAL_CLOSE" | "SCALE_IN" | "NOTE"
+type EventType = "OPEN" | "STOP_MOVE" | "TRAIL_STOP" | "TAKE_PROFIT_MOVE" | "PARTIAL_CLOSE" | "SCALE_IN" | "NOTE"
+type AddableType = Exclude<EventType, "OPEN">
 
 const EVENT_LABELS: Record<EventType, string> = {
-  STOP_MOVE:          "Mover stop",
-  TRAIL_STOP:         "Trail stop",
-  TAKE_PROFIT_MOVE:   "Mover TP",
-  PARTIAL_CLOSE:      "Cierre parcial",
-  SCALE_IN:           "Scale in",
-  NOTE:               "Nota",
+  OPEN:             "Apertura",
+  STOP_MOVE:        "Mover stop",
+  TRAIL_STOP:       "Trail stop",
+  TAKE_PROFIT_MOVE: "Mover TP",
+  PARTIAL_CLOSE:    "Cierre parcial",
+  SCALE_IN:         "Scale in",
+  NOTE:             "Nota",
 }
 
-const EVENT_DESCRIPTIONS: Record<EventType, string> = {
+const EVENT_DESCRIPTIONS: Record<AddableType, string> = {
   STOP_MOVE:
     "Desplazas el stop loss a un precio fijo. Útil para llevarlo a breakeven o a un nivel técnico concreto.",
   TRAIL_STOP:
@@ -35,6 +37,7 @@ const EVENT_DESCRIPTIONS: Record<EventType, string> = {
 }
 
 const EVENT_COLORS: Record<EventType, string> = {
+  OPEN:             "",   // handled separately
   STOP_MOVE:        "bg-amber-500/15 text-amber-400",
   TRAIL_STOP:       "bg-orange-500/15 text-orange-400",
   TAKE_PROFIT_MOVE: "bg-[var(--win-soft)] text-[var(--win)]",
@@ -43,8 +46,9 @@ const EVENT_COLORS: Record<EventType, string> = {
   NOTE:             "bg-[var(--chip)] text-[var(--ink-2)]",
 }
 
-const PRICE_TYPES: EventType[]     = ["STOP_MOVE", "TRAIL_STOP", "TAKE_PROFIT_MOVE", "PARTIAL_CLOSE", "SCALE_IN"]
-const CONTRACTS_TYPES: EventType[] = ["PARTIAL_CLOSE", "SCALE_IN"]
+const ADDABLE_TYPES: AddableType[] = ["STOP_MOVE", "TRAIL_STOP", "TAKE_PROFIT_MOVE", "PARTIAL_CLOSE", "SCALE_IN", "NOTE"]
+const PRICE_TYPES:     AddableType[] = ["STOP_MOVE", "TRAIL_STOP", "TAKE_PROFIT_MOVE", "PARTIAL_CLOSE", "SCALE_IN"]
+const CONTRACTS_TYPES: AddableType[] = ["PARTIAL_CLOSE", "SCALE_IN"]
 
 interface AccountRules {
   initialBalance: number
@@ -79,10 +83,18 @@ interface PositionLogModalProps {
   adding?: boolean
 }
 
+function fmt(iso: string, mode: "time" | "date") {
+  try {
+    return mode === "time"
+      ? new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
+      : new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short" })
+  } catch { return iso }
+}
+
 export function PositionLogModal({
   open, onOpenChange, trade, account, events = [], onAddEvent, adding
 }: PositionLogModalProps) {
-  const [type,      setType]      = useState<EventType>("NOTE")
+  const [type,      setType]      = useState<AddableType>("NOTE")
   const [price,     setPrice]     = useState("")
   const [contracts, setContracts] = useState("")
   const [notes,     setNotes]     = useState("")
@@ -93,40 +105,23 @@ export function PositionLogModal({
   // ── Risk warnings ──────────────────────────────────────
   const riskWarnings = useMemo(() => {
     if (type !== "SCALE_IN" || !account) return []
-    const p = parseFloat(price)
     const c = parseFloat(contracts)
-    if (isNaN(p) || isNaN(c) || c <= 0) return []
-
+    if (isNaN(c) || c <= 0) return []
     const warns: string[] = []
-    const balance = account.initialBalance
-
-    // New total risk in pts (new stop dist × new total contracts)
-    const newTotalContracts = trade.size + c
-    const newStopDist       = stopDist // stop hasn't changed yet
-
-    // Risk in base units (pts × contracts) — no pointValue here so we use pts
-    const currentRiskPts = stopDist * trade.size
-    const newRiskPts     = newStopDist * newTotalContracts
-
-    if (account.ddDailyPct && balance > 0) {
-      const maxDailyLoss = balance * (account.ddDailyPct / 100)
-      // Warn if new risk (pts) represents >50% of daily limit
-      // We approximate: if account uses $ PnL we'd need pointValue, but alert proportionally
-      if (newRiskPts > currentRiskPts * 2) {
-        warns.push(`Riesgo total se duplica con este scale-in (${currentRiskPts.toFixed(0)} → ${newRiskPts.toFixed(0)} pts)`)
-      }
-      if (account.ddDailyPct) {
-        warns.push(`Límite diario de la cuenta: ${account.ddDailyPct}% del balance ($${maxDailyLoss.toLocaleString()})`)
-      }
+    const newRiskPts = stopDist * (trade.size + c)
+    const curRiskPts = stopDist * trade.size
+    if (newRiskPts > curRiskPts * 2)
+      warns.push(`Riesgo total se duplica: ${curRiskPts.toFixed(0)} → ${newRiskPts.toFixed(0)} pts`)
+    if (account.ddDailyPct) {
+      const limit = account.initialBalance * (account.ddDailyPct / 100)
+      warns.push(`Límite diario: ${account.ddDailyPct}% del balance ($${limit.toLocaleString()})`)
     }
-
-    if (account.ddTotalPct && balance > 0) {
-      const maxTotalLoss = balance * (account.ddTotalPct / 100)
-      warns.push(`Drawdown máximo permitido: ${account.ddTotalPct}% ($${maxTotalLoss.toLocaleString()})`)
+    if (account.ddTotalPct) {
+      const limit = account.initialBalance * (account.ddTotalPct / 100)
+      warns.push(`Drawdown máximo: ${account.ddTotalPct}% ($${limit.toLocaleString()})`)
     }
-
     return warns
-  }, [type, price, contracts, account, trade.size, stopDist])
+  }, [type, contracts, account, trade.size, stopDist])
 
   // ── Auto-calculations ──────────────────────────────────
   const calc = useMemo(() => {
@@ -137,11 +132,11 @@ export function PositionLogModal({
       const newDist    = Math.abs(trade.entry - p)
       const rProtected = stopDist > 0 ? (isLong ? trade.entry - p : p - trade.entry) / stopDist : null
       return {
-        label: type === "TRAIL_STOP" ? "Trail stop" : "Nuevo stop",
+        label: "Nuevo stop",
         lines: [
           `Distancia al entry: ${newDist.toFixed(2)} pts`,
           rProtected != null ? `Riesgo protegido: ${rProtected >= 0 ? "+" : ""}${rProtected.toFixed(2)}R` : null,
-          newDist < stopDist ? "✓ Stop protegido (reducido)" : "⚠ Stop ampliado",
+          newDist < stopDist ? "✓ Stop reducido" : "⚠ Stop ampliado",
         ].filter(Boolean) as string[],
       }
     }
@@ -155,7 +150,7 @@ export function PositionLogModal({
         lines: [
           `Nuevo reward: ${newReward.toFixed(2)} pts`,
           newRR != null ? `Nuevo R:R 1:${newRR.toFixed(2)}` : null,
-          `Anterior TP: ${trade.target} (${oldReward >= 0 ? "+" : ""}${oldReward.toFixed(2)} pts)`,
+          `Anterior: ${trade.target} (${oldReward >= 0 ? "+" : ""}${oldReward.toFixed(2)} pts)`,
         ].filter(Boolean) as string[],
       }
     }
@@ -206,36 +201,27 @@ export function PositionLogModal({
     setNotes("")
   }
 
-  const formatTime = (iso: string) => {
-    try { return new Date(iso).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) }
-    catch { return iso }
-  }
-  const formatDate = (iso: string) => {
-    try { return new Date(iso).toLocaleDateString("es", { day: "2-digit", month: "short" }) }
-    catch { return iso }
+  // ── Derived summary row per event ──────────────────────
+  function eventSummary(ev: { type: string; price: number | null; contracts: number | null }): string {
+    const t = ev.type as EventType
+    const parts: string[] = []
+    if (ev.price != null)     parts.push(`@ ${ev.price}`)
+    if (ev.contracts != null) parts.push(`${ev.contracts} cts`)
+    if (t === "OPEN" && ev.price != null) parts.push(`SL/TP en notas`)
+    return parts.join(" · ")
   }
 
-  // Synthetic open event
-  const openEvent = {
-    id:        "__open__",
-    type:      "OPEN",
-    price:     trade.entry,
-    contracts: trade.size,
-    notes:     `${trade.direction} · SL ${trade.stop} · TP ${trade.target}`,
-    timestamp: `${trade.date}T${trade.openTime}:00`,
-  }
-  const allEvents  = [openEvent, ...events]
-  const openColor  = isLong ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
+  const openColor = isLong ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[480px]">
+      <DialogContent className="w-[520px]">
         <DialogHeader>
           <DialogTitle>Gestión de posición — {trade.symbol}</DialogTitle>
         </DialogHeader>
 
-        {/* Reference card */}
-        <div className="grid grid-cols-3 gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 mb-2">
+        {/* Reference card (current state) */}
+        <div className="grid grid-cols-3 gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 mb-3">
           {[
             { label: "Entry", value: trade.entry, color: "text-[var(--ink)]" },
             { label: "Stop",  value: trade.stop,  color: "text-[var(--loss)]" },
@@ -264,58 +250,82 @@ export function PositionLogModal({
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="flex flex-col gap-0 mb-4">
-          {allEvents.map((ev, i) => {
-            const t = ev.type as EventType | "OPEN"
-            const isOpenEv   = t === "OPEN"
-            const colorClass = isOpenEv
-              ? openColor
-              : (EVENT_COLORS[t as EventType] ?? "bg-[var(--chip)] text-[var(--ink-2)]")
-            const label = isOpenEv
-              ? `Apertura ${trade.direction}`
-              : (EVENT_LABELS[t as EventType] ?? t)
+        {/* ── Event log table ── */}
+        <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden mb-4">
+          <table className="w-full border-collapse text-[11px]">
+            <thead>
+              <tr className="bg-[var(--panel-2)] border-b border-[var(--line)]">
+                {["Hora", "Tipo", "Precio", "Cts", "Nota"].map(h => (
+                  <th key={h} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wide text-[var(--ink-3)]">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {events.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-3 py-6 text-center text-[var(--ink-3)] text-xs">
+                    Sin eventos registrados aún.
+                  </td>
+                </tr>
+              ) : (
+                events.map((ev, i) => {
+                  const t = ev.type as EventType
+                  const isOpenEv = t === "OPEN"
+                  const colorClass = isOpenEv
+                    ? openColor
+                    : (EVENT_COLORS[t] ?? "bg-[var(--chip)] text-[var(--ink-2)]")
 
-            return (
-              <div key={ev.id} className="flex gap-3">
-                <div className="flex flex-col items-center">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                    isOpenEv ? "bg-[var(--accent)]" : "bg-[var(--line-2)]"
-                  )} />
-                  {i < allEvents.length - 1 && (
-                    <div className="w-px flex-1 bg-[var(--line)] mt-1 mb-1" />
-                  )}
-                </div>
-                <div className="pb-4 flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", colorClass)}>
-                      {label}
-                    </span>
-                    <span className="text-[10px] text-[var(--ink-3)]">
-                      {formatDate(ev.timestamp)} {formatTime(ev.timestamp)}
-                    </span>
-                  </div>
-                  <div className="flex gap-3 text-[11px] text-[var(--ink-2)] font-mono">
-                    {ev.price != null && <span>@ {ev.price}</span>}
-                    {ev.contracts != null && <span>{ev.contracts} cts</span>}
-                  </div>
-                  {ev.notes && (
-                    <p className="text-[11px] text-[var(--ink-2)] mt-0.5">{ev.notes}</p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+                  return (
+                    <tr
+                      key={ev.id}
+                      className={cn(
+                        "border-b border-[var(--line)] last:border-0",
+                        isOpenEv && "bg-[var(--panel-2)]"
+                      )}
+                    >
+                      {/* Time */}
+                      <td className="px-3 py-2 whitespace-nowrap text-[var(--ink-3)]">
+                        <span className="block">{fmt(ev.timestamp, "date")}</span>
+                        <span className="block font-mono">{fmt(ev.timestamp, "time")}</span>
+                      </td>
+
+                      {/* Type badge */}
+                      <td className="px-3 py-2">
+                        <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap", colorClass)}>
+                          {EVENT_LABELS[t] ?? t}
+                        </span>
+                      </td>
+
+                      {/* Price */}
+                      <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
+                        {ev.price != null ? ev.price : <span className="text-[var(--ink-3)]">—</span>}
+                      </td>
+
+                      {/* Contracts */}
+                      <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
+                        {ev.contracts != null ? ev.contracts : <span className="text-[var(--ink-3)]">—</span>}
+                      </td>
+
+                      {/* Notes */}
+                      <td className="px-3 py-2 text-[var(--ink-2)] max-w-[140px]">
+                        <span className="block truncate" title={ev.notes}>{ev.notes || "—"}</span>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
-        {/* Add event form */}
+        {/* ── Add event form ── */}
         <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-3">
           <p className="text-[10px] text-[var(--ink-3)] font-semibold uppercase tracking-wide">Agregar evento</p>
 
-          {/* Type selector */}
           <div className="flex gap-1 flex-wrap">
-            {(Object.keys(EVENT_LABELS) as EventType[]).map(t => (
+            {ADDABLE_TYPES.map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -331,7 +341,6 @@ export function PositionLogModal({
             ))}
           </div>
 
-          {/* Description */}
           <p className="text-[11px] text-[var(--ink-3)] leading-snug">
             {EVENT_DESCRIPTIONS[type]}
           </p>
@@ -403,9 +412,7 @@ export function PositionLogModal({
             size="md"
             className={cn(
               "w-full text-white hover:opacity-90",
-              riskWarnings.length > 0
-                ? "bg-[var(--loss)]"
-                : "bg-[var(--accent)]"
+              riskWarnings.length > 0 ? "bg-[var(--loss)]" : "bg-[var(--accent)]"
             )}
             onClick={handleAdd}
             disabled={adding}
