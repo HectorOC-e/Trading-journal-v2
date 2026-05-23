@@ -37,7 +37,7 @@ const EVENT_DESCRIPTIONS: Record<AddableType, string> = {
 }
 
 const EVENT_COLORS: Record<EventType, string> = {
-  OPEN:             "",   // handled separately
+  OPEN:             "",
   STOP_MOVE:        "bg-amber-500/15 text-amber-400",
   TRAIL_STOP:       "bg-orange-500/15 text-orange-400",
   TAKE_PROFIT_MOVE: "bg-[var(--win-soft)] text-[var(--win)]",
@@ -102,7 +102,6 @@ export function PositionLogModal({
   const isLong   = trade.direction === "LONG"
   const stopDist = Math.abs(trade.entry - trade.stop)
 
-  // ── Risk warnings ──────────────────────────────────────
   const riskWarnings = useMemo(() => {
     if (type !== "SCALE_IN" || !account) return []
     const c = parseFloat(contracts)
@@ -123,7 +122,6 @@ export function PositionLogModal({
     return warns
   }, [type, contracts, account, trade.size, stopDist])
 
-  // ── Auto-calculations ──────────────────────────────────
   const calc = useMemo(() => {
     const p = parseFloat(price)
     const c = parseFloat(contracts)
@@ -201,16 +199,6 @@ export function PositionLogModal({
     setNotes("")
   }
 
-  // ── Derived summary row per event ──────────────────────
-  function eventSummary(ev: { type: string; price: number | null; contracts: number | null }): string {
-    const t = ev.type as EventType
-    const parts: string[] = []
-    if (ev.price != null)     parts.push(`@ ${ev.price}`)
-    if (ev.contracts != null) parts.push(`${ev.contracts} cts`)
-    if (t === "OPEN" && ev.price != null) parts.push(`SL/TP en notas`)
-    return parts.join(" · ")
-  }
-
   const openColor = isLong ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
 
   return (
@@ -250,7 +238,7 @@ export function PositionLogModal({
           </div>
         </div>
 
-        {/* ── Event log table ── */}
+        {/* Event log table */}
         <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden mb-4">
           <table className="w-full border-collapse text-[11px]">
             <thead>
@@ -270,7 +258,7 @@ export function PositionLogModal({
                   </td>
                 </tr>
               ) : (
-                events.map((ev, i) => {
+                events.map((ev) => {
                   const t = ev.type as EventType
                   const isOpenEv = t === "OPEN"
                   const colorClass = isOpenEv
@@ -285,30 +273,21 @@ export function PositionLogModal({
                         isOpenEv && "bg-[var(--panel-2)]"
                       )}
                     >
-                      {/* Time */}
                       <td className="px-3 py-2 whitespace-nowrap text-[var(--ink-3)]">
                         <span className="block">{fmt(ev.timestamp, "date")}</span>
                         <span className="block font-mono">{fmt(ev.timestamp, "time")}</span>
                       </td>
-
-                      {/* Type badge */}
                       <td className="px-3 py-2">
                         <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap", colorClass)}>
                           {EVENT_LABELS[t] ?? t}
                         </span>
                       </td>
-
-                      {/* Price */}
                       <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
                         {ev.price != null ? ev.price : <span className="text-[var(--ink-3)]">—</span>}
                       </td>
-
-                      {/* Contracts */}
                       <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
                         {ev.contracts != null ? ev.contracts : <span className="text-[var(--ink-3)]">—</span>}
                       </td>
-
-                      {/* Notes */}
                       <td className="px-3 py-2 text-[var(--ink-2)] max-w-[140px]">
                         <span className="block truncate" title={ev.notes}>{ev.notes || "—"}</span>
                       </td>
@@ -320,7 +299,7 @@ export function PositionLogModal({
           </table>
         </div>
 
-        {/* ── Add event form ── */}
+        {/* Add event form */}
         <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-3">
           <p className="text-[10px] text-[var(--ink-3)] font-semibold uppercase tracking-wide">Agregar evento</p>
 
@@ -372,7 +351,6 @@ export function PositionLogModal({
             )}
           </div>
 
-          {/* Auto-calculation preview */}
           {calc && (
             <div className="rounded-[var(--radius-sm)] bg-[var(--accent-soft)] border border-[var(--accent)]/20 px-3 py-2">
               <p className="text-[9px] text-[var(--accent)] font-semibold uppercase tracking-wide mb-1">{calc.label}</p>
@@ -382,7 +360,6 @@ export function PositionLogModal({
             </div>
           )}
 
-          {/* Risk warnings */}
           {riskWarnings.length > 0 && (
             <div className="rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)]/30 px-3 py-2.5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5">
