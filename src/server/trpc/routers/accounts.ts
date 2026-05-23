@@ -117,6 +117,7 @@ export const accountsRouter = router({
         targetPct:       z.number().optional(),
         maxTradesPerDay: z.number().int().optional(),
         minTradingDays:  z.number().int().optional(),
+        allowedSymbols:  z.array(z.string()).optional(),
       }).optional(),
       // Whether the system detected the objective was met (false = manual override)
       objectiveMet:    z.boolean().default(false),

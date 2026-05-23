@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FilterBar } from "@/components/ui/filter-bar"
+import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
 
@@ -202,17 +203,6 @@ export function RegisterTradeModal({
     return markets.filter(m => allowedSymbols.includes(m.symbol))
   }, [markets, allowedSymbols])
 
-  // Group by category
-  const marketsByCategory = useMemo(() => {
-    const map = new Map<string, MarketLike[]>()
-    for (const m of visibleMarkets) {
-      const arr = map.get(m.category) ?? []
-      arr.push(m)
-      map.set(m.category, arr)
-    }
-    return map
-  }, [visibleMarkets])
-
   // ── Lot size calculator ────────────────────────────────────────────────
   const pointValue = selectedMarket ? parsePointValue(selectedMarket.pointValue) : null
   const balance    = selectedAccount?.initialBalance ?? 0
@@ -340,49 +330,24 @@ export function RegisterTradeModal({
           {/* ── Símbolo desde mercados ── */}
           <div>
             <p className="text-eyebrow mb-2">Símbolo *</p>
-            {visibleMarkets.length === 0 ? (
-              <p className="text-xs text-[var(--ink-3)]">
-                {form.accountId
-                  ? "Esta cuenta no tiene símbolos permitidos configurados."
-                  : "Selecciona una cuenta primero."}
-              </p>
+            {!form.accountId ? (
+              <p className="text-xs text-[var(--ink-3)]">Selecciona una cuenta primero.</p>
+            ) : visibleMarkets.length === 0 ? (
+              <p className="text-xs text-[var(--ink-3)]">Esta cuenta no tiene símbolos permitidos configurados.</p>
             ) : (
-              <div className="flex flex-col gap-3">
-                {Array.from(marketsByCategory.entries()).map(([cat, mkts]) => (
-                  <div key={cat}>
-                    <p className="text-[10px] font-bold text-[var(--ink-3)] uppercase tracking-wider mb-1.5">{cat}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {mkts.map(m => {
-                        const active = form.symbol === m.symbol
-                        return (
-                          <button
-                            key={m.id}
-                            type="button"
-                            onClick={() => {
-                              setForm(f => ({ ...f, symbol: m.symbol }))
-                              setSizeManual(false)
-                            }}
-                            title={`${m.name} · Valor/pto: ${m.pointValue}`}
-                            className={cn(
-                              "h-8 px-3 rounded-[var(--radius-sm)] border text-xs font-semibold transition-all",
-                              active
-                                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
-                                : "border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink-2)] hover:border-[var(--ink-3)]"
-                            )}
-                          >
-                            {m.symbol}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <>
+                <SymbolCombobox
+                  markets={visibleMarkets}
+                  value={form.symbol}
+                  onChange={sym => { setForm(f => ({ ...f, symbol: sym })); setSizeManual(false) }}
+                  placeholder="Buscar símbolo…"
+                />
                 {selectedMarket && (
-                  <p className="text-[10px] text-[var(--ink-3)]">
+                  <p className="text-[10px] text-[var(--ink-3)] mt-1">
                     {selectedMarket.name} · Valor/pto: {selectedMarket.pointValue}
                   </p>
                 )}
-              </div>
+              </>
             )}
           </div>
 

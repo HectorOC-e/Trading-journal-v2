@@ -11,6 +11,7 @@ import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { Account, AccountType } from "@/types"
@@ -686,7 +687,7 @@ interface AccountForm {
   ddModel: "FIXED" | "TRAILING"
   phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
   maxTrades: string
-  symbols: string
+  symbols: string[]
   minDays: string
 }
 
@@ -694,12 +695,17 @@ const FORM_INIT: AccountForm = {
   tipo: "PROP_FIRM", nombre: "", broker: "", balance: "", currency: "USD",
   timezone: "America/New_York",
   ddDailyPct: "", ddWeeklyPct: "", ddMonthlyPct: "", ddTotalPct: "", targetPct: "",
-  ddModel: "FIXED", phase: "PHASE_1", maxTrades: "3", symbols: "NQ, ES, MNQ", minDays: "",
+  ddModel: "FIXED", phase: "PHASE_1", maxTrades: "3", symbols: [], minDays: "",
 }
 
 type NewAccountForm = AccountForm
 
-function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  markets?: any[]
+}) {
   const [form, setForm] = useState<NewAccountForm>(FORM_INIT)
   const [tab, setTab]   = useState<"general" | "reglas">("general")
   const utils = trpc.useUtils()
@@ -734,9 +740,7 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       phase:           isPropFirmLike(form.tipo) ? form.phase    : undefined,
       maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
-      allowedSymbols:  isPropFirmLike(form.tipo)
-        ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
-        : [],
+      allowedSymbols:  isPropFirmLike(form.tipo) ? form.symbols : [],
     }
   }
 
@@ -967,8 +971,12 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
                   {/* Symbols */}
                   <div className="mt-3">
                     <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
-                    <Input placeholder="NQ, ES, MNQ, MES, GC" value={form.symbols} onChange={e => set("symbols", e.target.value)} />
-                    <p className="text-[10px] text-[var(--ink-3)] mt-1">Separados por coma.</p>
+                    <MarketMultiSelect
+                      markets={markets}
+                      value={form.symbols}
+                      onChange={syms => set("symbols", syms)}
+                      placeholder="Seleccionar mercados permitidos…"
+                    />
                   </div>
                 </div>
               </>
@@ -993,11 +1001,13 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
 /* ══════════════════════════════════════
    EDIT MODAL
 ══════════════════════════════════════ */
-function EditarCuentaModal({ open, onOpenChange, account }: {
+function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   account: any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  markets?: any[]
 }) {
   const utils = trpc.useUtils()
   const [tab, setTab] = useState<"general" | "reglas">("general")
@@ -1017,7 +1027,7 @@ function EditarCuentaModal({ open, onOpenChange, account }: {
     ddModel:     (account.ddModel as "FIXED"|"TRAILING") ?? "FIXED",
     phase:       (account.phase as AccountForm["phase"])  ?? "PHASE_1",
     maxTrades:   account.maxTradesPerDay != null ? String(account.maxTradesPerDay) : "",
-    symbols:     account.allowedSymbols.join(", "),
+    symbols:     account.allowedSymbols ?? [],
     minDays:     account.minTradingDays != null ? String(account.minTradingDays) : "",
   }))
 
@@ -1047,9 +1057,7 @@ function EditarCuentaModal({ open, onOpenChange, account }: {
       phase:           isPropFirmLike(form.tipo) ? form.phase   : undefined,
       maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
-      allowedSymbols:  isPropFirmLike(form.tipo)
-        ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
-        : [],
+      allowedSymbols:  isPropFirmLike(form.tipo) ? form.symbols : [],
     })
   }
 
@@ -1160,7 +1168,12 @@ function EditarCuentaModal({ open, onOpenChange, account }: {
                 </div>
                 <div className="mt-3">
                   <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
-                  <Input placeholder="NQ, ES, MNQ" value={form.symbols} onChange={e => set("symbols", e.target.value)} />
+                  <MarketMultiSelect
+                    markets={markets}
+                    value={form.symbols}
+                    onChange={syms => set("symbols", syms)}
+                    placeholder="Seleccionar mercados permitidos…"
+                  />
                 </div>
               </div>
             )}
@@ -1212,6 +1225,7 @@ export default function CuentasPage() {
   const [promoteId, setPromoteId] = useState<string | null>(null)
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
+  const { data: markets = [] } = trpc.markets.list.useQuery()
   const utils = trpc.useUtils()
 
   const invalidate = () => utils.accounts.list.invalidate()
@@ -1350,11 +1364,11 @@ export default function CuentasPage() {
         )}
       </div>
 
-      <NuevaCuentaModal open={modalOpen} onOpenChange={setModalOpen} />
+      <NuevaCuentaModal open={modalOpen} onOpenChange={setModalOpen} markets={markets as never} />
       {editingId && (() => {
         const ea = accounts.find(a => a.id === editingId)
         return ea ? (
-          <EditarCuentaModal open onOpenChange={(v) => { if (!v) setEditingId(null) }} account={ea} />
+          <EditarCuentaModal open onOpenChange={(v) => { if (!v) setEditingId(null) }} account={ea} markets={markets as never} />
         ) : null
       })()}
       {historyId && historyAccount && (
@@ -1370,6 +1384,7 @@ export default function CuentasPage() {
           onClose={() => setPromoteId(null)}
           onConfirm={(input) => changePhase.mutate(input)}
           saving={changePhase.isPending}
+          markets={markets as never}
         />
       )}
     </>
@@ -1466,16 +1481,18 @@ function AccountHistoryModal({ accountId, accountName, onClose }: {
 /* ══════════════════════════════════════
    PROMOTE PHASE MODAL
 ══════════════════════════════════════ */
-function PromotePhaseModal({ account, onClose, onConfirm, saving }: {
+function PromotePhaseModal({ account, onClose, onConfirm, saving, markets = [] }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   account: any
   onClose: () => void
   onConfirm: (input: {
     id: string; phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
     note?: string; objectiveMet: boolean; manualOverride: boolean
-    newRules?: { initialBalance?: number; ddDailyPct?: number; ddWeeklyPct?: number; ddMonthlyPct?: number; ddTotalPct?: number; targetPct?: number; maxTradesPerDay?: number; minTradingDays?: number }
+    newRules?: { initialBalance?: number; ddDailyPct?: number; ddWeeklyPct?: number; ddMonthlyPct?: number; ddTotalPct?: number; targetPct?: number; maxTradesPerDay?: number; minTradingDays?: number; allowedSymbols?: string[] }
   }) => void
   saving: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  markets?: any[]
 }) {
   const currentPhase = (account.phase as string) ?? "PHASE_1"
   const targetPhase = currentPhase === "PHASE_1" ? "PHASE_2" : "FUNDED"
@@ -1489,6 +1506,7 @@ function PromotePhaseModal({ account, onClose, onConfirm, saving }: {
   const [target, setTarget] = useState(account.targetPct != null ? String(Number(account.targetPct)) : "")
   const [maxTrades, setMaxTrades] = useState(account.maxTradesPerDay != null ? String(account.maxTradesPerDay) : "")
   const [minDays, setMinDays] = useState(account.minTradingDays != null ? String(account.minTradingDays) : "")
+  const [symbols, setSymbols] = useState<string[]>(account.allowedSymbols ?? [])
 
   // Simulate objective check — will be real when trades are connected
   const objectiveMet = false // TODO: compare real trade PnL vs targetPct
@@ -1509,6 +1527,7 @@ function PromotePhaseModal({ account, onClose, onConfirm, saving }: {
         targetPct:       target   ? parseFloat(target)   : undefined,
         maxTradesPerDay: maxTrades ? parseInt(maxTrades) : undefined,
         minTradingDays:  minDays   ? parseInt(minDays)   : undefined,
+        allowedSymbols:  symbols.length > 0 ? symbols : undefined,
       },
     })
     onClose()
@@ -1570,6 +1589,19 @@ function PromotePhaseModal({ account, onClose, onConfirm, saving }: {
               ))}
             </div>
           </div>
+
+          {/* Symbols for new phase */}
+          {markets.length > 0 && (
+            <div>
+              <p className="text-[10px] text-[var(--ink-3)] mb-1">Símbolos permitidos en {targetPhase}</p>
+              <MarketMultiSelect
+                markets={markets}
+                value={symbols}
+                onChange={setSymbols}
+                placeholder="Igual que fase anterior…"
+              />
+            </div>
+          )}
 
           {/* Note */}
           <div>
