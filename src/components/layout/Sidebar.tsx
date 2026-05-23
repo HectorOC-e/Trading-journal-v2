@@ -51,7 +51,19 @@ export function Sidebar() {
   const { theme, toggle } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [userInitial, setUserInitial] = useState("")
   const width = useWindowWidth()
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) return
+      const name = data.user.user_metadata?.name as string | undefined
+      const email = data.user.email ?? ""
+      const letter = name ? name[0] : email[0]
+      if (letter) setUserInitial(letter.toUpperCase())
+    })
+  }, [])
 
   async function handleLogout() {
     const supabase = createClient()
@@ -118,6 +130,17 @@ export function Sidebar() {
           >
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
+          {userInitial && (
+            <Link href="/perfil" style={{
+              width: 32, height: 32, borderRadius: "50%",
+              background: "var(--accent-soft)", color: "var(--accent)",
+              display: "grid", placeItems: "center",
+              fontSize: 12, fontWeight: 700,
+              textDecoration: "none", flexShrink: 0,
+            }}>
+              {userInitial}
+            </Link>
+          )}
         </header>
 
         {/* "Más" drawer backdrop */}
