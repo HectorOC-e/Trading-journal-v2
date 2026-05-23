@@ -2,10 +2,11 @@
 // Header: symbol + direction + date/time + session pill
 // P&L hero, account section, setup+checklist, metrics, notes, actions
 
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2 } from "lucide-react"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
@@ -55,10 +56,13 @@ interface TradeDetailPanelProps {
   account?: Account
   setup?: Setup
   onClose?: () => void
+  onDelete?: () => void
+  deleting?: boolean
   className?: string
 }
 
-export function TradeDetailPanel({ trade, account, setup, onClose, className }: TradeDetailPanelProps) {
+export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, deleting, className }: TradeDetailPanelProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const pnlPositive = (trade.pnl ?? 0) >= 0
   const rPositive   = (trade.rMultiple ?? 0) >= 0
   const isAplus     = trade.tags.includes("A+")
@@ -262,14 +266,41 @@ export function TradeDetailPanel({ trade, account, setup, onClose, className }: 
 
       {/* ── Actions ── */}
       <div className="mt-auto pt-2 flex flex-col gap-2">
-        <Button variant="ghost" size="md" className="w-full">
-          Editar trade
-        </Button>
         {!hasScreenshots && (
           <Button variant="ghost" size="md" className="w-full flex items-center gap-1.5">
             <ImagePlus size={13} />
             Adjuntar screenshot
           </Button>
+        )}
+        {onDelete && !confirmDelete && (
+          <Button
+            variant="ghost"
+            size="md"
+            className="w-full flex items-center gap-1.5 text-[var(--loss)] hover:bg-[var(--loss-soft)]"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 size={13} />
+            Eliminar trade
+          </Button>
+        )}
+        {confirmDelete && (
+          <div className="rounded-[var(--radius-sm)] border border-[var(--loss)] bg-[var(--loss-soft)] p-3 flex flex-col gap-2">
+            <p className="text-xs font-semibold text-[var(--loss)]">¿Eliminar este trade?</p>
+            <p className="text-xs text-[var(--ink-3)]">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" className="flex-1" onClick={() => setConfirmDelete(false)}>
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="flex-1 bg-[var(--loss)] text-white hover:opacity-90"
+                onClick={onDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Eliminando…" : "Eliminar"}
+              </Button>
+            </div>
+          </div>
         )}
       </div>
 

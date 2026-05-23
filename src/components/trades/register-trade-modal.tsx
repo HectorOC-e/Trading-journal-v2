@@ -4,7 +4,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AlertTriangle, CheckCircle2, Circle, Star } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader,
@@ -95,6 +95,13 @@ export function RegisterTradeModal({
 }: RegisterTradeModalProps) {
   const [form, setForm] = useState<FormState>(INITIAL)
 
+  useEffect(() => {
+    if (!open) {
+      const t = setTimeout(() => setForm(INITIAL), 200)
+      return () => clearTimeout(t)
+    }
+  }, [open])
+
   const set = (key: keyof FormState) => (val: string) =>
     setForm((f) => ({ ...f, [key]: val }))
 
@@ -152,7 +159,6 @@ export function RegisterTradeModal({
     const finalTags: TradeTag[] = autoTag ? [autoTag] : form.tags
     onSubmit?.({ ...form, tags: finalTags })
     onOpenChange(false)
-    setForm(INITIAL)
   }
 
   const selectedAccount = accounts.find((a) => a.id === form.accountId)
