@@ -4,14 +4,14 @@ import { useState } from "react"
 import {
   Plus, X, TrendingUp, TrendingDown, Shield, Target,
   AlertTriangle, CheckCircle2, Clock, BarChart3, ChevronRight,
-  Pencil, Archive,
+  Pencil, Archive, Loader2,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { mockAccounts } from "@/mock-data"
+import { trpc } from "@/lib/trpc/client"
 import type { Account, AccountType } from "@/types"
 
 /* ══════════════════════════════════════
@@ -282,8 +282,9 @@ function AccountCard({ account, stats, selected, onClick }: {
 /* ══════════════════════════════════════
    DETAIL PANEL
 ══════════════════════════════════════ */
-function AccountDetailPanel({ account, stats, onClose }: {
+function AccountDetailPanel({ account, stats, onClose, onDelete, deleting }: {
   account: Account; stats: AccountStats; onClose: () => void
+  onDelete?: () => void; deleting?: boolean
 }) {
   const tm  = TYPE_META[account.type]
   const sm  = STATUS_META[stats.status]
@@ -425,8 +426,12 @@ function AccountDetailPanel({ account, stats, onClose }: {
           <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <BarChart3 size={11} /> Ver trades
           </button>
-          <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--loss)] transition-colors">
-            <Archive size={11} /> Archivar
+          <button
+            onClick={onDelete}
+            disabled={deleting}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--loss)] transition-colors disabled:opacity-50">
+            {deleting ? <Loader2 size={11} className="animate-spin" /> : <Archive size={11} />}
+            {deleting ? "Eliminando…" : "Eliminar"}
           </button>
         </div>
       </div>
@@ -470,6 +475,37 @@ const FORM_INIT: NewAccountForm = {
 function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [form, setForm] = useState<NewAccountForm>(FORM_INIT)
   const [tab, setTab]   = useState<"general" | "reglas">("general")
+  const utils = trpc.useUtils()
+
+  const createAccount = trpc.accounts.create.useMutation({
+    onSuccess: () => {
+      utils.accounts.list.invalidate()
+      onOpenChange(false)
+      setForm(FORM_INIT)
+      setTab("general")
+    },
+  })
+
+  const creating = createAccount.isPending
+
+  function handleCreate() {
+    if (!form.nombre.trim() || !form.broker.trim()) return
+    createAccount.mutate({
+      name:           form.nombre.trim(),
+      broker:         form.broker.trim(),
+      type:           form.tipo,
+      initialBalance: parseFloat(form.balance.replace(/,/g, "")) || 0,
+      currency:       form.currency,
+      timezone:       form.timezone,
+      pfMaxDrawdownPct:  form.tipo === "PROP_FIRM" ? parseFloat(form.maxDrawdown) : undefined,
+      pfDailyLossPct:    form.tipo === "PROP_FIRM" ? parseFloat(form.dailyLoss)   : undefined,
+      pfMaxTradesPerDay: form.tipo === "PROP_FIRM" ? parseInt(form.maxTrades)     : undefined,
+      pfTargetPct:       form.tipo === "PROP_FIRM" ? parseFloat(form.targetPct)   : undefined,
+      pfAllowedSymbols:  form.tipo === "PROP_FIRM"
+        ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
+        : [],
+    })
+  }
 
   const set = <K extends keyof NewAccountForm>(k: K, v: NewAccountForm[K]) =>
     setForm(f => ({ ...f, [k]: v }))
@@ -690,7 +726,9 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
           {tab === "reglas" && (
             <Button variant="ghost" onClick={() => setTab("general")}>← Volver</Button>
           )}
-          <Button variant="primary" onClick={() => onOpenChange(false)}>Crear cuenta</Button>
+          <Button variant="primary" onClick={handleCreate} disabled={creating}>
+            {creating ? <><Loader2 size={13} className="animate-spin" /> Creando…</> : "Crear cuenta"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -725,78 +763,148 @@ function KpiBox({ label, value, sub, positive, icon }: {
 ══════════════════════════════════════ */
 export default function CuentasPage() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [selected, setSelected]   = useState<Account | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const allStats   = mockAccounts.map(a => ACCOUNT_STATS[a.id] ?? ACCOUNT_STATS["acc-1"])
-  const totalBal   = allStats.reduce((s, a) => s + a.currentBalance, 0)
-  const totalPnl   = allStats.reduce((s, a) => s + a.pnlMonth, 0)
-  const bestDD     = Math.min(...allStats.map(a => a.drawdownPct))
-  const activeAccs = mockAccounts.filter(a => {
-    const st = ACCOUNT_STATS[a.id]?.status
-    return st === "EN_FASE" || st === "APROBADO"
-  }).length
+  const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
+  const utils = trpc.useUtils()
 
-  const selectedStats = selected ? ACCOUNT_STATS[selected.id] : null
+  const deleteAccount = trpc.accounts.delete.useMutation({
+    onSuccess: () => {
+      utils.accounts.list.invalidate()
+      setSelectedId(null)
+    },
+  })
+
+  const selected = accounts.find(a => a.id === selectedId) ?? null
+
+  // KPI totals desde datos reales
+  const totalBal = accounts.reduce((s, a) => s + Number(a.initialBalance), 0)
+  const activeCount = accounts.length
 
   return (
     <>
-      <div style={{ margin: selected ? undefined : undefined }}>
+      <div>
         <TopBar
           title="Cuentas"
-          subtitle={`${mockAccounts.length} cuentas · ${activeAccs} activas`}
+          subtitle={`${accounts.length} cuentas`}
           actions={[{ label: "Nueva cuenta", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
         />
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <KpiBox label="Balance total" value={`$${totalBal.toLocaleString()}`}
-            sub={`${mockAccounts.length} cuentas`}
+            sub={`${accounts.length} cuentas`}
             icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="P&L este mes" value={`${totalPnl >= 0 ? "+" : ""}$${Math.abs(totalPnl).toLocaleString()}`}
-            sub="todas las cuentas" positive={totalPnl >= 0}
-            icon={totalPnl >= 0 ? <TrendingUp size={15} className="text-[var(--win)]" /> : <TrendingDown size={15} className="text-[var(--loss)]" />} />
-          <KpiBox label="Menor drawdown" value={`-${bestDD.toFixed(1)}%`}
-            sub="mejor cuenta activa" positive={bestDD < 3}
+          <KpiBox label="P&L este mes" value="—"
+            sub="disponible en Fase 3"
+            icon={<TrendingUp size={15} className="text-[var(--ink-3)]" />} />
+          <KpiBox label="Menor drawdown" value="—"
+            sub="disponible en Fase 3"
             icon={<Shield size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="Cuentas activas" value={String(activeAccs)}
-            sub={`de ${mockAccounts.length} total`}
+          <KpiBox label="Cuentas activas" value={String(activeCount)}
+            sub={`de ${accounts.length} total`}
             icon={<CheckCircle2 size={15} className="text-[var(--ink-3)]" />} />
         </div>
 
-        {/* Main layout */}
-        <div className="flex gap-4 items-start">
-          {/* Cards */}
-          <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-            {mockAccounts.map(a => (
-              <AccountCard
-                key={a.id}
-                account={a}
-                stats={ACCOUNT_STATS[a.id] ?? ACCOUNT_STATS["acc-1"]}
-                selected={selected?.id === a.id}
-                onClick={() => setSelected(s => s?.id === a.id ? null : a)}
-              />
-            ))}
+        {/* Loading */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-16 gap-3 text-[var(--ink-3)]">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-sm">Cargando cuentas…</span>
           </div>
+        )}
 
-          {/* Detail panel */}
-          {selected && selectedStats && (
-            <div className="detail-panel-mobile" style={{
-              width: 340, flexShrink: 0,
-              background: "var(--panel)",
-              border: "1px solid var(--line)",
-              borderRadius: "var(--radius)",
-              position: "sticky", top: 0,
-              maxHeight: "calc(100vh - 28px)",
-              overflowY: "auto",
-            }}>
-              <AccountDetailPanel
-                account={selected}
-                stats={selectedStats}
-                onClose={() => setSelected(null)}
-              />
+        {/* Empty state */}
+        {!isLoading && accounts.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-[var(--panel-2)] flex items-center justify-center">
+              <BarChart3 size={20} className="text-[var(--ink-3)]" />
             </div>
-          )}
-        </div>
+            <div>
+              <p className="font-semibold text-[var(--ink)]">Sin cuentas aún</p>
+              <p className="text-sm text-[var(--ink-3)] mt-1">Crea tu primera cuenta para empezar a registrar trades.</p>
+            </div>
+            <Button variant="primary" onClick={() => setModalOpen(true)}>
+              <Plus size={14} /> Nueva cuenta
+            </Button>
+          </div>
+        )}
+
+        {/* Main layout */}
+        {!isLoading && accounts.length > 0 && (
+          <div className="flex gap-4 items-start">
+            {/* Cards */}
+            <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
+              {accounts.map(a => {
+                // Adaptar tipo Prisma → AccountCard props
+                const account = {
+                  id: a.id,
+                  name: a.name,
+                  broker: a.broker,
+                  type: a.type as AccountType,
+                  initialBalance: Number(a.initialBalance),
+                  currency: a.currency,
+                  timezone: a.timezone,
+                  createdAt: String(a.createdAt),
+                  propFirmRules: a.pfMaxDrawdownPct != null ? {
+                    maxDrawdownPct: Number(a.pfMaxDrawdownPct),
+                    dailyLossPct: Number(a.pfDailyLossPct ?? 5),
+                    maxTradesPerDay: a.pfMaxTradesPerDay ?? 3,
+                    targetPct: Number(a.pfTargetPct ?? 8),
+                    allowedSymbols: a.pfAllowedSymbols,
+                  } : undefined,
+                }
+                const mockStats = ACCOUNT_STATS["acc-1"]
+                return (
+                  <AccountCard
+                    key={a.id}
+                    account={account}
+                    stats={{ ...mockStats, currentBalance: account.initialBalance }}
+                    selected={selectedId === a.id}
+                    onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Detail panel */}
+            {selected && (
+              <div className="detail-panel-mobile" style={{
+                width: 340, flexShrink: 0,
+                background: "var(--panel)",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--radius)",
+                position: "sticky", top: 0,
+                maxHeight: "calc(100vh - 28px)",
+                overflowY: "auto",
+              }}>
+                <AccountDetailPanel
+                  account={{
+                    id: selected.id,
+                    name: selected.name,
+                    broker: selected.broker,
+                    type: selected.type as AccountType,
+                    initialBalance: Number(selected.initialBalance),
+                    currency: selected.currency,
+                    timezone: selected.timezone,
+                    createdAt: String(selected.createdAt),
+                    propFirmRules: selected.pfMaxDrawdownPct != null ? {
+                      maxDrawdownPct: Number(selected.pfMaxDrawdownPct),
+                      dailyLossPct: Number(selected.pfDailyLossPct ?? 5),
+                      maxTradesPerDay: selected.pfMaxTradesPerDay ?? 3,
+                      targetPct: Number(selected.pfTargetPct ?? 8),
+                      allowedSymbols: selected.pfAllowedSymbols,
+                    } : undefined,
+                  }}
+                  stats={{ ...ACCOUNT_STATS["acc-1"], currentBalance: Number(selected.initialBalance) }}
+                  onClose={() => setSelectedId(null)}
+                  onDelete={() => deleteAccount.mutate(selected.id)}
+                  deleting={deleteAccount.isPending}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <NuevaCuentaModal open={modalOpen} onOpenChange={setModalOpen} />
