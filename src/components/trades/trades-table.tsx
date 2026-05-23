@@ -101,6 +101,14 @@ function FilterChip({
   )
 }
 
+const RESULTADO_OPTIONS = [
+  { value: "TODOS",  label: "Resultado" },
+  { value: "WIN",    label: "Win" },
+  { value: "LOSS",   label: "Loss" },
+  { value: "BE",     label: "BE" },
+  { value: "OPEN",   label: "Abierto" },
+]
+
 const CALIDAD_OPTIONS = [
   { value: "TODAS",     label: "Calidad" },
   { value: "A+",        label: "A+" },
@@ -133,6 +141,7 @@ interface TradesTableProps {
 }
 
 export function TradesTable({ trades, accounts = [], setups = [], selectedId, onSelect, className }: TradesTableProps) {
+  const [resultado, setResultado] = useState("TODOS")
   const [calidad,   setCalidad]   = useState("TODAS")
   const [direction, setDirection] = useState("TODAS")
   const [accountF,  setAccountF]  = useState("TODAS")
@@ -143,12 +152,21 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
     ...accounts.map(a => ({ value: a.id, label: a.name })),
   ]
 
+  function getTradeResult(t: Trade): string {
+    if (t.status !== "CLOSED" && t.pnl == null) return "OPEN"
+    const pnl = t.pnl ?? 0
+    if (pnl > 0) return "WIN"
+    if (pnl < 0) return "LOSS"
+    return "BE"
+  }
+
   const filtered = trades.filter(t => {
+    const resOk = resultado  === "TODOS" || getTradeResult(t) === resultado
     const calOk = calidad    === "TODAS" || t.tags.includes(calidad as TradeTag)
     const dirOk = direction  === "TODAS" || t.direction === (direction as TradeDirection)
     const accOk = accountF   === "TODAS" || t.accountId === accountF
     const sesOk = sessionF   === "TODAS" || t.session === (sessionF as TradeSession)
-    return calOk && dirOk && accOk && sesOk
+    return resOk && calOk && dirOk && accOk && sesOk
   })
 
   const netPnl  = filtered.reduce((s, t) => s + (t.pnl ?? 0), 0)
@@ -161,9 +179,9 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
   const pnlColor = netPnl >= 0 ? "var(--win)" : "var(--loss)"
   const pnlStr   = netPnl >= 0 ? `+$${netPnl.toLocaleString()}` : `-$${Math.abs(netPnl).toLocaleString()}`
 
-  const activeFilters = [calidad, direction, accountF, sessionF].filter(v => v !== "TODAS").length
+  const activeFilters = [resultado !== "TODOS", calidad !== "TODAS", direction !== "TODAS", accountF !== "TODAS", sessionF !== "TODAS"].filter(Boolean).length
 
-  const clearAll = () => { setCalidad("TODAS"); setDirection("TODAS"); setAccountF("TODAS"); setSessionF("TODAS") }
+  const clearAll = () => { setResultado("TODOS"); setCalidad("TODAS"); setDirection("TODAS"); setAccountF("TODAS"); setSessionF("TODAS") }
 
   return (
     <div className={cn("flex flex-col gap-0", className)}>
@@ -194,6 +212,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
 
         {/* Chip row */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <FilterChip label="Resultado" options={RESULTADO_OPTIONS} value={resultado} onChange={setResultado} />
           <FilterChip label="Calidad"   options={CALIDAD_OPTIONS}   value={calidad}   onChange={setCalidad} />
           <FilterChip label="Dirección" options={DIRECTION_OPTIONS} value={direction} onChange={setDirection} />
           <FilterChip label="Cuenta"    options={accountOptions}    value={accountF}  onChange={setAccountF} />

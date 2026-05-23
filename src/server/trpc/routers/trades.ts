@@ -184,8 +184,42 @@ export const tradesRouter = router({
       notes:     z.string().default(""),
       timestamp: z.string().optional(),
     }))
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.tradeEvent.create({
+    .mutation(async ({ ctx, input }) => {
+      const trade = await ctx.prisma.trade.findUniqueOrThrow({
+        where: { id: input.tradeId, userId: ctx.userId },
+      })
+
+      // Auto-update trade fields based on event type
+      const tradeUpdate: Record<string, unknown> = {}
+
+      if (input.type === "STOP_MOVE" && input.price != null) {
+        tradeUpdate.stop = input.price
+      }
+
+      if (input.type === "SCALE_IN" && input.price != null && input.contracts != null) {
+        const oldSize    = Number(trade.size)
+        const addedSize  = input.contracts
+        const newSize    = oldSize + addedSize
+        const newAvgEntry = newSize > 0
+          ? (Number(trade.entry) * oldSize + input.price * addedSize) / newSize
+          : Number(trade.entry)
+        tradeUpdate.entry = newAvgEntry
+        tradeUpdate.size  = newSize
+      }
+
+      if (input.type === "PARTIAL_CLOSE" && input.contracts != null) {
+        const newSize = Math.max(0, Number(trade.size) - input.contracts)
+        tradeUpdate.size = newSize
+      }
+
+      if (Object.keys(tradeUpdate).length > 0) {
+        await ctx.prisma.trade.update({
+          where: { id: input.tradeId, userId: ctx.userId },
+          data:  tradeUpdate,
+        })
+      }
+
+      return ctx.prisma.tradeEvent.create({
         data: {
           userId:    ctx.userId,
           tradeId:   input.tradeId,
@@ -196,7 +230,7 @@ export const tradesRouter = router({
           timestamp: input.timestamp ? new Date(input.timestamp) : new Date(),
         },
       })
-    ),
+    }),
 
   delete: protectedProcedure
     .input(z.string().uuid())

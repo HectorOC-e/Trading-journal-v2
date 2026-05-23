@@ -18,11 +18,26 @@ const TAG_CFG: Record<string, { color: string; bg: string }> = {
   "BE":       { color: "var(--be)",     bg: "var(--be-soft)" },
 }
 
-/* ── Abbreviated account name (first word + ellipsis if long) ── */
 function shortAccount(name: string) {
   const parts = name.split(" ")
   if (parts.length <= 2) return name
   return parts.slice(0, 2).join(" ")
+}
+
+// Determine result based on actual closed PnL, not planned rMultiple
+function getResult(trade: Trade): "WIN" | "LOSS" | "BE" | "OPEN" {
+  if (trade.status !== "CLOSED" && trade.pnl == null) return "OPEN"
+  const pnl = trade.pnl ?? 0
+  if (pnl > 0) return "WIN"
+  if (pnl < 0) return "LOSS"
+  return "BE"
+}
+
+const RESULT_CFG = {
+  WIN:  { label: "WIN",   color: "var(--win)",    bg: "var(--win-soft)" },
+  LOSS: { label: "LOSS",  color: "var(--loss)",   bg: "var(--loss-soft)" },
+  BE:   { label: "BE",    color: "var(--be)",     bg: "var(--be-soft)" },
+  OPEN: { label: "OPEN",  color: "var(--accent)", bg: "var(--accent-soft)" },
 }
 
 interface TradeRowProps {
@@ -34,16 +49,19 @@ interface TradeRowProps {
 }
 
 export function TradeRow({ trade, account, setup, selected = false, onClick }: TradeRowProps) {
-  const pnl        = trade.pnl ?? 0
-  const r          = trade.rMultiple ?? 0
-  const isWin      = r > 0
-  const isBe       = r === 0
-  const stripeColor = isWin ? "var(--win)" : isBe ? "var(--be)" : "var(--loss)"
+  const result     = getResult(trade)
+  const resultCfg  = RESULT_CFG[result]
+  const pnl        = trade.pnl ?? null
+  const r          = trade.rMultiple ?? null
   const session    = SESSION_CFG[trade.session]
+  const isOpen     = result === "OPEN"
+
   const qualityTag = trade.tags.find(t =>
     (["A+", "A", "Plan", "Off-plan", "Impulsivo", "BE"] as TradeTag[]).includes(t as TradeTag)
   )
   const tagCfg = qualityTag ? TAG_CFG[qualityTag] : null
+
+  const stripeColor = resultCfg.color
 
   return (
     <tr
@@ -57,31 +75,45 @@ export function TradeRow({ trade, account, setup, selected = false, onClick }: T
       onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "var(--panel-2)" }}
       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "transparent" }}
     >
-      {/* Colored stripe + Direction badge */}
-      <td style={{ padding: "0 8px 0 0", width: 80, paddingLeft: 0 }}>
+      {/* Stripe + Direction */}
+      <td style={{ padding: "0 8px 0 0", width: 90, paddingLeft: 0 }}>
         <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-          {/* left stripe */}
-          <div style={{ width: 3, alignSelf: "stretch", background: stripeColor, minHeight: 52, borderRadius: "0 2px 2px 0", marginRight: 10, flexShrink: 0 }} />
-          {/* direction badge */}
-          <span style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 48, height: 22, borderRadius: 6,
-            fontSize: 10, fontWeight: 800, letterSpacing: ".06em",
-            background: trade.direction === "LONG" ? "var(--win-soft)" : "var(--loss-soft)",
-            color: trade.direction === "LONG" ? "var(--win)" : "var(--loss)",
-          }}>
-            {trade.direction}
-          </span>
+          <div style={{
+            width: 3, alignSelf: "stretch", minHeight: 52,
+            background: stripeColor,
+            borderRadius: "0 2px 2px 0", marginRight: 10, flexShrink: 0,
+            opacity: isOpen ? 0.4 : 1,
+          }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {/* Direction */}
+            <span style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 44, height: 18, borderRadius: 5,
+              fontSize: 9, fontWeight: 800, letterSpacing: ".06em",
+              background: trade.direction === "LONG" ? "var(--win-soft)" : "var(--loss-soft)",
+              color: trade.direction === "LONG" ? "var(--win)" : "var(--loss)",
+            }}>
+              {trade.direction}
+            </span>
+            {/* Result badge */}
+            <span style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 44, height: 18, borderRadius: 5,
+              fontSize: 9, fontWeight: 800, letterSpacing: ".06em",
+              background: resultCfg.bg, color: resultCfg.color,
+              border: isOpen ? `1px solid ${resultCfg.color}33` : "none",
+            }}>
+              {resultCfg.label}
+            </span>
+          </div>
         </div>
       </td>
 
       {/* Symbol + Setup */}
       <td style={{ padding: "14px 8px", minWidth: 130 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
-            {trade.symbol}
-          </p>
-        </div>
+        <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+          {trade.symbol}
+        </p>
         {setup && (
           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
             <span style={{
@@ -135,32 +167,48 @@ export function TradeRow({ trade, account, setup, selected = false, onClick }: T
 
       {/* R Multiple */}
       <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-        <span style={{
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: 13, fontWeight: 700,
-          color: isWin ? "var(--win)" : isBe ? "var(--be)" : "var(--loss)",
-        }}>
-          {r > 0 ? "+" : ""}{r.toFixed(1)}R
-        </span>
+        {isOpen ? (
+          <div>
+            <span style={{ fontSize: 10, color: "var(--ink-3)", fontFamily: "'JetBrains Mono',monospace" }}>
+              {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}
+            </span>
+            <p style={{ fontSize: 9, color: "var(--ink-3)", marginTop: 1 }}>objetivo</p>
+          </div>
+        ) : (
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            minWidth: 52, padding: "3px 8px", borderRadius: 6,
+            fontFamily: "'JetBrains Mono',monospace",
+            fontSize: 12.5, fontWeight: 800,
+            background: resultCfg.bg, color: resultCfg.color,
+          }}>
+            {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}
+          </span>
+        )}
       </td>
 
       {/* P&L */}
       <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
-        <span style={{
-          fontFamily: "'JetBrains Mono',monospace",
-          fontSize: 13, fontWeight: 700,
-          color: pnl >= 0 ? "var(--win)" : "var(--loss)",
-        }}>
-          {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString()}
-        </span>
-        {/* Mini P&L bar */}
-        <div style={{ height: 3, borderRadius: 99, marginTop: 4, background: "var(--line)", overflow: "hidden" }}>
-          <div style={{
-            height: "100%", borderRadius: 99,
-            width: `${Math.min(100, Math.abs(pnl) / 50)}%`,
-            background: pnl >= 0 ? "var(--win)" : "var(--loss)",
-          }} />
-        </div>
+        {pnl != null ? (
+          <>
+            <span style={{
+              fontFamily: "'JetBrains Mono',monospace",
+              fontSize: 13, fontWeight: 700,
+              color: resultCfg.color,
+            }}>
+              {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString()}
+            </span>
+            <div style={{ height: 3, borderRadius: 99, marginTop: 4, background: "var(--line)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", borderRadius: 99,
+                width: `${Math.min(100, Math.abs(pnl) / 50)}%`,
+                background: resultCfg.color,
+              }} />
+            </div>
+          </>
+        ) : (
+          <span style={{ fontSize: 12, color: "var(--ink-3)" }}>abierto</span>
+        )}
       </td>
 
       {/* Quality badge */}

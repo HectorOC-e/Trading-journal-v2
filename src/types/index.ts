@@ -41,6 +41,7 @@ export interface Trade {
   tags: TradeTag[]
   notes?: string
   screenshotUrls?: string[]
+  status?: string   // OPEN | CLOSED
   // computed
   rMultiple?: number
   pnl?: number
