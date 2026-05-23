@@ -7,11 +7,15 @@ import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
+import { EditTradeModal } from "@/components/trades/edit-trade-modal"
+import { PositionLogModal } from "@/components/trades/position-log-modal"
 import { trpc } from "@/lib/trpc/client"
 
 export default function TradesPage() {
   const [selectedId, setSelectedId]  = useState<string | null>(null)
   const [modalOpen, setModalOpen]    = useState(false)
+  const [editingTrade, setEditingTrade]         = useState<string | null>(null)
+  const [positionLogTrade, setPositionLogTrade] = useState<string | null>(null)
 
   const utils = trpc.useUtils()
 
@@ -39,10 +43,35 @@ export default function TradesPage() {
     },
   })
 
+  const updateTrade = trpc.trades.update.useMutation({
+    onSuccess: () => {
+      setEditingTrade(null)
+      utils.trades.list.invalidate()
+    },
+  })
+
+  const closeTrade = trpc.trades.close.useMutation({
+    onSuccess: () => utils.trades.list.invalidate(),
+  })
+
+  const addEvent = trpc.trades.addEvent.useMutation({
+    onSuccess: () => utils.trades.list.invalidate(),
+  })
+
   // ── Derived state ──────────────────────────────────────
   const selected = useMemo(
     () => trades.find(t => t.id === selectedId) ?? null,
     [trades, selectedId]
+  )
+
+  const editTarget = useMemo(
+    () => trades.find(t => t.id === editingTrade) ?? null,
+    [trades, editingTrade]
+  )
+
+  const posLogTarget = useMemo(
+    () => trades.find(t => t.id === positionLogTrade) ?? null,
+    [trades, positionLogTrade]
   )
 
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -179,6 +208,10 @@ export default function TradesPage() {
               onClose={() => setSelectedId(null)}
               onDelete={() => deleteTrade.mutate(selected.id)}
               deleting={deleteTrade.isPending}
+              onEdit={() => setEditingTrade(selected.id)}
+              onPositionLog={() => setPositionLogTrade(selected.id)}
+              onCloseTrade={(data) => closeTrade.mutate({ id: selected.id, ...data })}
+              closingTrade={closeTrade.isPending}
             />
           </div>
         )}
@@ -193,6 +226,28 @@ export default function TradesPage() {
         tradeCountToday={tradeCountToday}
         onSubmit={handleModalSubmit as never}
       />
+
+      {editTarget && (
+        <EditTradeModal
+          open={!!editingTrade}
+          onOpenChange={(v) => { if (!v) setEditingTrade(null) }}
+          trade={editTarget as never}
+          setups={setups as never}
+          onSave={(data) => updateTrade.mutate({ id: editTarget.id, ...data } as never)}
+          saving={updateTrade.isPending}
+        />
+      )}
+
+      {posLogTarget && (
+        <PositionLogModal
+          open={!!positionLogTrade}
+          onOpenChange={(v) => { if (!v) setPositionLogTrade(null) }}
+          trade={posLogTarget as never}
+          events={(posLogTarget as never as { events?: { id: string; type: string; price: number | null; contracts: number | null; notes: string; timestamp: string }[] }).events ?? []}
+          onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data } as never)}
+          adding={addEvent.isPending}
+        />
+      )}
     </>
   )
 }

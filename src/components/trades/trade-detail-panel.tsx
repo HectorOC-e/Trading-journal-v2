@@ -6,7 +6,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2 } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity } from "lucide-react"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
@@ -52,29 +52,81 @@ function MetricRow({ label, value, mono, valueClassName }: MetricRowProps) {
 }
 
 interface TradeDetailPanelProps {
-  trade: Trade
+  trade: Trade & {
+    status?: string
+    closePrice?: number | null
+    closeTime?: string | null
+    commission?: number | null
+  }
   account?: Account
   setup?: Setup
   onClose?: () => void
   onDelete?: () => void
   deleting?: boolean
+  onEdit?: () => void
+  onPositionLog?: () => void
+  onCloseTrade?: (data: { closePrice: number; closeTime: string; commission: number }) => void
+  closingTrade?: boolean
   className?: string
 }
 
-export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, deleting, className }: TradeDetailPanelProps) {
+export function TradeDetailPanel({
+  trade, account, setup, onClose, onDelete, deleting,
+  onEdit, onPositionLog, onCloseTrade, closingTrade, className
+}: TradeDetailPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [closeFormOpen, setCloseFormOpen] = useState(false)
+  const [closePrice, setClosePrice]   = useState("")
+  const [closeTime, setCloseTime]     = useState(() => {
+    const now = new Date()
+    return `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`
+  })
+  const [commission, setCommission]   = useState("")
+  const [commissionError, setCommissionError] = useState(false)
+
   const pnlPositive = (trade.pnl ?? 0) >= 0
   const rPositive   = (trade.rMultiple ?? 0) >= 0
   const isAplus     = trade.tags.includes("A+")
   const hasScreenshots = (trade.screenshotUrls?.length ?? 0) > 0
+
+  const tradeStatus = (trade as { status?: string }).status ?? (trade.pnl != null ? "CLOSED" : "OPEN")
+  const isOpen = tradeStatus === "OPEN" && trade.pnl == null
 
   // Compute RR from prices
   const riskPts    = Math.abs(trade.entry - trade.stop)
   const rewardPts  = Math.abs(trade.target - trade.entry)
   const rrComputed = riskPts > 0 ? (rewardPts / riskPts).toFixed(2) : "—"
 
+  // Live P&L preview for close form
+  const previewPnl = (() => {
+    const cp = parseFloat(closePrice)
+    const comm = parseFloat(commission)
+    if (isNaN(cp)) return null
+    const commVal = isNaN(comm) ? 0 : comm
+    const rawPnl = trade.direction === "LONG"
+      ? (cp - trade.entry) * trade.size
+      : (trade.entry - cp) * trade.size
+    return rawPnl - commVal
+  })()
+
+  const handleCloseTrade = () => {
+    const cp = parseFloat(closePrice)
+    const comm = parseFloat(commission)
+    if (isNaN(comm) && commission !== "0") {
+      setCommissionError(true)
+      return
+    }
+    if (isNaN(cp)) return
+    setCommissionError(false)
+    onCloseTrade?.({
+      closePrice: cp,
+      closeTime,
+      commission: isNaN(comm) ? 0 : comm,
+    })
+  }
+
   return (
-    <div className={cn("flex flex-col h-full bg-[var(--panel)] p-4 gap-4", className)}>
+    <div className={cn("flex flex-col min-h-full bg-[var(--panel)] p-4 gap-4 pb-8", className)}>
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
@@ -109,14 +161,14 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
 
       {/* ── Result hero ── */}
       {(() => {
-        const isOpen = trade.pnl == null
-        const isWin  = !isOpen && (trade.pnl ?? 0) > 0
-        const isLoss = !isOpen && (trade.pnl ?? 0) < 0
-        const isBE   = !isOpen && (trade.pnl ?? 0) === 0
+        const closed = tradeStatus === "CLOSED" || trade.pnl != null
+        const isWin  = closed && (trade.pnl ?? 0) > 0
+        const isLoss = closed && (trade.pnl ?? 0) < 0
+        const isBE   = closed && (trade.pnl ?? 0) === 0
         return (
           <div className={cn(
             "rounded-[var(--radius-sm)] p-3",
-            isOpen ? "bg-[var(--panel-2)] border border-[var(--line)]"
+            !closed ? "bg-[var(--panel-2)] border border-[var(--line)]"
               : isWin  ? "bg-[var(--win-soft)]"
               : isLoss ? "bg-[var(--loss-soft)]"
               : "bg-[var(--chip)]"
@@ -125,14 +177,14 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
             <div className="flex items-center justify-between mb-2">
               <span className={cn(
                 "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                isOpen ? "bg-[var(--chip)] text-[var(--ink-3)]"
+                !closed ? "bg-[var(--chip)] text-[var(--ink-3)]"
                   : isWin  ? "bg-[var(--win)] text-white"
                   : isLoss ? "bg-[var(--loss)] text-white"
                   : "bg-[var(--ink-3)] text-white"
               )}>
-                {isOpen ? "ABIERTO" : isWin ? "✓ WIN" : isLoss ? "✗ LOSS" : "BE"}
+                {!closed ? "ABIERTO" : isWin ? "✓ WIN" : isLoss ? "✗ LOSS" : "BE"}
               </span>
-              {!isOpen && trade.rMultiple != null && (
+              {closed && trade.rMultiple != null && (
                 <span className={cn(
                   "text-sm font-bold font-mono",
                   rPositive ? "text-[var(--win)]" : "text-[var(--loss)]"
@@ -142,7 +194,7 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
               )}
             </div>
             {/* P&L */}
-            {isOpen ? (
+            {!closed ? (
               <p className="text-sm text-[var(--ink-3)] text-center py-1">
                 Trade en curso — cierra para registrar P&L
               </p>
@@ -157,6 +209,91 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
           </div>
         )
       })()}
+
+      {/* ── Close trade form (only when open) ── */}
+      {isOpen && onCloseTrade && (
+        <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--chip)] transition-colors"
+            onClick={() => setCloseFormOpen(v => !v)}
+          >
+            Cerrar trade
+            {closeFormOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {closeFormOpen && (
+            <div className="px-3 pb-3 flex flex-col gap-3 border-t border-[var(--line)]">
+              <div className="pt-3 flex flex-col gap-2">
+                {/* Close price */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Precio de cierre</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    placeholder="0.00"
+                    value={closePrice}
+                    onChange={e => setClosePrice(e.target.value)}
+                  />
+                </div>
+                {/* Close time */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Hora de cierre</label>
+                  <input
+                    type="time"
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    value={closeTime}
+                    onChange={e => setCloseTime(e.target.value)}
+                  />
+                </div>
+                {/* Commission */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Comisión $</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className={cn(
+                      "w-full rounded-[var(--radius-sm)] border bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none transition-colors",
+                      commissionError
+                        ? "border-[var(--loss)] focus:border-[var(--loss)]"
+                        : "border-[var(--line)] focus:border-[var(--accent)]"
+                    )}
+                    placeholder="0.00"
+                    value={commission}
+                    onChange={e => { setCommission(e.target.value); setCommissionError(false) }}
+                  />
+                  {commissionError && (
+                    <p className="text-[10px] text-[var(--loss)]">Ingresa la comisión (puede ser $0)</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Live P&L preview */}
+              {previewPnl !== null && (
+                <div className={cn(
+                  "rounded-[var(--radius-sm)] px-3 py-2 text-center",
+                  previewPnl >= 0 ? "bg-[var(--win-soft)]" : "bg-[var(--loss-soft)]"
+                )}>
+                  <p className="text-[10px] text-[var(--ink-3)] mb-0.5">P&L estimado</p>
+                  <p className={cn(
+                    "text-lg font-bold font-mono",
+                    previewPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"
+                  )}>
+                    {previewPnl >= 0 ? "+" : ""}${previewPnl.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              <Button
+                size="md"
+                className="w-full bg-[var(--accent)] text-white hover:opacity-90"
+                onClick={handleCloseTrade}
+                disabled={closingTrade || !closePrice}
+              >
+                {closingTrade ? "Cerrando…" : "Confirmar cierre"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Account section ── */}
       {account && (
@@ -276,6 +413,12 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
           <MetricRow label="Target" value={trade.target.toLocaleString()} mono />
           <MetricRow label="Tamaño" value={`${trade.size} contratos`} />
           <MetricRow label="RR"     value={`${rrComputed}:1`} mono />
+          {(trade as { closePrice?: number | null }).closePrice != null && (
+            <MetricRow label="Cierre" value={String((trade as { closePrice?: number | null }).closePrice)} mono />
+          )}
+          {(trade as { commission?: number | null }).commission != null && (
+            <MetricRow label="Comisión" value={`$${(trade as { commission?: number | null }).commission}`} mono />
+          )}
         </div>
       </div>
 
@@ -319,6 +462,18 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
 
       {/* ── Actions ── */}
       <div className="mt-auto pt-2 flex flex-col gap-2">
+        {onEdit && (
+          <Button variant="ghost" size="md" className="w-full flex items-center gap-1.5" onClick={onEdit}>
+            <Edit2 size={13} />
+            Editar trade
+          </Button>
+        )}
+        {onPositionLog && (
+          <Button variant="ghost" size="md" className="w-full flex items-center gap-1.5" onClick={onPositionLog}>
+            <Activity size={13} />
+            Gestión de posición
+          </Button>
+        )}
         {!hasScreenshots && (
           <Button variant="ghost" size="md" className="w-full flex items-center gap-1.5">
             <ImagePlus size={13} />
