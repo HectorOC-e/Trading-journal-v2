@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -9,6 +9,14 @@ import { Button } from "@/components/ui/button"
 
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
+
+interface Setup {
+  id: string
+  name: string
+  abbreviation: string
+  standardChecklist?: string[]
+  aplusChecklist?: string[]
+}
 
 interface EditTradeModalProps {
   open: boolean
@@ -26,7 +34,7 @@ interface EditTradeModalProps {
     tags: string[]
     setupId?: string | null
   }
-  setups?: { id: string; name: string; abbreviation: string }[]
+  setups?: Setup[]
   onSave?: (data: Partial<{
     entry: number; stop: number; target: number; size: number
     session: string; notes: string; tags: string[]; setupId: string
@@ -49,11 +57,36 @@ export function EditTradeModal({
   const [notes,   setNotes]   = useState(trade.notes ?? "")
   const [tags,    setTags]    = useState<string[]>(trade.tags ?? [])
   const [setupId, setSetupId] = useState(trade.setupId ?? "")
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({})
+
+  const activeSetup = setups.find(s => s.id === setupId)
+  const stdItems  = activeSetup?.standardChecklist ?? []
+  const aplusItems = activeSetup?.aplusChecklist ?? []
+  const hasChecklist = stdItems.length > 0 || aplusItems.length > 0
+
+  // Reset checklist when setup changes
+  useEffect(() => {
+    if (!activeSetup) { setChecklist({}); return }
+    const initial: Record<string, boolean> = {}
+    ;[...stdItems, ...aplusItems].forEach(item => { initial[item] = false })
+    setChecklist(initial)
+  }, [setupId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleTag = (tag: string) =>
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
 
+  const toggleCheck = (item: string) =>
+    setChecklist(prev => ({ ...prev, [item]: !prev[item] }))
+
   const handleSave = () => {
+    // Build tags from checklist: add "A+" if all A+ items checked
+    let finalTags = [...tags]
+    if (aplusItems.length > 0 && aplusItems.every(i => checklist[i])) {
+      if (!finalTags.includes("A+")) finalTags = [...finalTags, "A+"]
+    } else {
+      finalTags = finalTags.filter(t => t !== "A+")
+    }
+
     onSave?.({
       entry:   parseFloat(entry)  || trade.entry,
       stop:    parseFloat(stop)   || trade.stop,
@@ -61,7 +94,7 @@ export function EditTradeModal({
       size:    parseFloat(size)   || trade.size,
       session,
       notes,
-      tags,
+      tags:    finalTags,
       setupId: setupId || undefined,
     })
   }
@@ -166,6 +199,53 @@ export function EditTradeModal({
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Checklist — appears when setup has items */}
+            {hasChecklist && (
+              <div className="flex flex-col gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3">
+                <p className="text-[10px] text-[var(--ink-3)] font-semibold uppercase tracking-wide">
+                  Checklist — {activeSetup?.abbreviation}
+                </p>
+
+                {stdItems.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    {stdItems.map(item => (
+                      <label key={item} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!checklist[item]}
+                          onChange={() => toggleCheck(item)}
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
+                        />
+                        <span className="text-xs text-[var(--ink-2)]">{item}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {aplusItems.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-[10px] text-[var(--ink-3)] font-semibold mt-1">A+ condiciones</p>
+                    {aplusItems.map(item => (
+                      <label key={item} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!checklist[item]}
+                          onChange={() => toggleCheck(item)}
+                          className="accent-[var(--accent)] w-3.5 h-3.5"
+                        />
+                        <span className="text-xs text-[var(--ink-2)]">{item}</span>
+                      </label>
+                    ))}
+                    {aplusItems.every(i => checklist[i]) && aplusItems.length > 0 && (
+                      <p className="text-[10px] text-[var(--win)] font-semibold mt-0.5">
+                        ★ Setup A+ completo
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
