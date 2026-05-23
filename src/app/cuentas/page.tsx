@@ -134,7 +134,18 @@ function RiskBar({ label, usedPct, limitLabel, warnAt = 60, dangerAt = 85 }: {
 /* ══════════════════════════════════════
    ACCOUNT CARD
 ══════════════════════════════════════ */
-interface TradeStats { pnlMonth: number; winRate: number | null; avgR: number | null; tradesMonth: number; tradesTotal: number }
+interface TradeStats {
+  netPnl: number
+  pnlMonth: number
+  pnlToday: number
+  winRate: number | null
+  avgR: number | null
+  tradesMonth: number
+  tradesToday: number
+  tradesTotal: number
+  drawdownPct: number    // current drawdown from equity peak as % of initial balance
+  sparkline: number[]   // equity curve starting at initialBalance
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any; selected: boolean; onClick: () => void; stats?: TradeStats }) {
@@ -149,8 +160,9 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
   // Days active since createdAt
   const daysActive = Math.max(0, Math.floor((Date.now() - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
 
-  // Flat sparkline placeholder until real trades are connected
-  const flatLine = Array(10).fill(initialBalance)
+  const flatLine   = Array(10).fill(initialBalance)
+  const sparkData  = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine
+  const sparkPos   = stats ? stats.netPnl >= 0 : true
 
   return (
     <div
@@ -206,20 +218,20 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
             <p className="text-[13px] font-mono" style={{ color: stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
-              {stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : ""}$${Math.abs(stats.pnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "— sin trades"}
+              {stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"}
             </p>
           </div>
           <div className="text-right">
             <p className="text-eyebrow mb-1">Win %</p>
             <p className="text-[13px] font-mono" style={{ color: stats && stats.winRate != null ? (stats.winRate >= 50 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
-              {stats && stats.winRate != null ? `${stats.winRate}%` : "—"}
+              {stats && stats.winRate != null ? `${stats.winRate.toFixed(2)}%` : "—"}
             </p>
           </div>
         </div>
 
         {/* Sparkline — flat until real equity data */}
         <div style={{ margin: "0 -4px" }}>
-          <MiniSparkline data={flatLine} positive={true} />
+          <MiniSparkline data={sparkData} positive={sparkPos} />
         </div>
 
         {/* Rules / limits section — shown for ANY account type that has limits configured */}
@@ -244,16 +256,16 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
 
             {/* DD bars */}
             {rawAccount.ddTotalPct != null && (
-              <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+              <RiskBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
             )}
             {rawAccount.ddDailyPct != null && (
-              <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+              <RiskBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
             )}
             {rawAccount.ddWeeklyPct != null && (
               <RiskBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
             )}
             {rawAccount.ddMonthlyPct != null && (
-              <RiskBar label="Pérdida mensual" usedPct={0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+              <RiskBar label="Pérdida mensual" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlMonth) / (initialBalance * Number(rawAccount.ddMonthlyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
 
             {/* Objective progress */}
@@ -264,11 +276,11 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
                     {isPF ? "Progreso hacia objetivo" : "Objetivo"}
                   </span>
                   <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                    — / {Number(rawAccount.targetPct)}%
+                    {stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: "0%" }} />
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * Number(rawAccount.targetPct) / 100) * 100)) : 0}%` }} />
                 </div>
               </div>
             )}
@@ -281,7 +293,7 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
                     <BarChart3 size={10} className="text-[var(--ink-3)]" />
                     <span className="text-[var(--ink-3)]">Trades hoy:</span>
                     <span className="font-mono font-semibold ml-0.5 text-[var(--ink-3)]">
-                      0 / {rawAccount.maxTradesPerDay}
+                      {stats?.tradesToday ?? 0} / {rawAccount.maxTradesPerDay}
                     </span>
                   </div>
                 )}
@@ -304,12 +316,14 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any
           <div className="text-center">
             <p className="text-[var(--ink-3)] mb-0.5">Avg R</p>
             <p className="font-mono font-semibold" style={{ color: stats?.avgR != null ? (stats.avgR >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
-              {stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(2)}R` : "—"}
+              {stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(4)}R` : "—"}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[var(--ink-3)] mb-0.5">Total trades</p>
-            <p className="font-mono font-semibold text-[var(--ink-3)]">{stats ? String(stats.tradesTotal) : "—"}</p>
+            <p className="text-[var(--ink-3)] mb-0.5">Drawdown</p>
+            <p className="font-mono font-semibold" style={{ color: stats && stats.drawdownPct > 0 ? "var(--loss)" : "var(--ink-3)" }}>
+              {stats ? `${stats.drawdownPct.toFixed(2)}%` : "—"}
+            </p>
           </div>
         </div>
 
@@ -392,32 +406,47 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
 
         {/* Equity / Balance curve */}
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-eyebrow">Equity + Balance</span>
-            <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
-          </div>
-          <MiniSparkline data={flatLine} positive={true} />
-          <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
-            <span>Balance inicial</span>
-            <span className="font-mono font-semibold text-[var(--ink)]">${initialBalance.toLocaleString()}</span>
-          </div>
+          {(() => {
+            const sparkData = stats?.sparkline && stats.sparkline.length > 1 ? stats.sparkline : flatLine
+            const sparkPos  = stats ? stats.netPnl >= 0 : true
+            const currentEquity = initialBalance + (stats?.netPnl ?? 0)
+            return (
+              <>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-eyebrow">Equity + Balance</span>
+                  <span className="text-[11px] font-mono font-semibold" style={{ color: stats ? (stats.netPnl >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
+                    {stats ? `${stats.netPnl >= 0 ? "+" : "-"}$${Math.abs(stats.netPnl).toFixed(2)}` : "— sin trades"}
+                  </span>
+                </div>
+                <MiniSparkline data={sparkData} positive={sparkPos} />
+                <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
+                  <span>Balance inicial → actual</span>
+                  <span className="font-mono font-semibold text-[var(--ink)]">${initialBalance.toLocaleString()} → ${currentEquity.toFixed(2)}</span>
+                </div>
+              </>
+            )
+          })()}
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2">
           {(() => {
-            const pnlMesStr  = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : ""}$${Math.abs(stats.pnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "— sin trades"
+            const netPnl    = stats?.netPnl ?? 0
+            const currentEq = initialBalance + netPnl
+            const pnlMesStr   = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"
             const pnlMesColor = stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
-            const wrStr   = stats?.winRate != null ? `${stats.winRate}%` : "—"
+            const wrStr   = stats?.winRate != null ? `${stats.winRate.toFixed(2)}%` : "—"
             const wrColor = stats?.winRate != null ? (stats.winRate >= 50 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
-            const avgRStr  = stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(2)}R` : "—"
+            const avgRStr   = stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(4)}R` : "—"
             const avgRColor = stats?.avgR != null ? (stats.avgR >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
+            const ddStr   = stats ? `${stats.drawdownPct.toFixed(2)}%` : "—"
+            const ddColor = stats && stats.drawdownPct > 0 ? "var(--loss)" : "var(--ink-3)"
             return [
-              { label: "Balance inicial", value: `$${initialBalance.toLocaleString()}`, color: "var(--ink)" },
+              { label: "Balance actual",  value: `$${currentEq.toFixed(2)}`, color: netPnl >= 0 ? "var(--win)" : "var(--loss)" },
               { label: "P&L mes",         value: pnlMesStr,   color: pnlMesColor },
               { label: "Win Rate",        value: wrStr,        color: wrColor },
               { label: "Avg R",           value: avgRStr,      color: avgRColor },
-              { label: "Trades mes",      value: stats ? String(stats.tradesMonth) : "—", color: "var(--ink-3)" },
+              { label: "Drawdown actual", value: ddStr,        color: ddColor },
               { label: "Total trades",    value: stats ? String(stats.tradesTotal) : "—", color: "var(--ink-3)" },
             ].map(({ label, value, color }) => (
               <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
@@ -440,18 +469,18 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
               </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}% max`} />
+              <RiskBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}% max`} />
               {rawAccount.ddDailyPct != null && (
-                <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}% límite`} />
+                <RiskBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}% límite`} />
               )}
               {rawAccount.targetPct != null && (
                 <div>
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({Number(rawAccount.targetPct)}%)</span>
-                    <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">— / {Number(rawAccount.targetPct)}%</span>
+                    <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">{stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%</span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: "0%" }} />
+                    <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * Number(rawAccount.targetPct) / 100) * 100)) : 0}%` }} />
                   </div>
                 </div>
               )}
@@ -1255,26 +1284,47 @@ export default function CuentasPage() {
 
   const accountStats = useMemo(() => {
     const now = new Date()
+    const today      = now.toISOString().slice(0, 10)
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
     const map: Record<string, TradeStats> = {}
+
     for (const t of allTrades) {
       if (t.status !== "CLOSED") continue
       const aid = t.accountId
-      if (!map[aid]) map[aid] = { pnlMonth: 0, winRate: null, avgR: null, tradesMonth: 0, tradesTotal: 0 }
+      if (!map[aid]) map[aid] = { netPnl: 0, pnlMonth: 0, pnlToday: 0, winRate: null, avgR: null, tradesMonth: 0, tradesToday: 0, tradesTotal: 0, drawdownPct: 0, sparkline: [] }
       const s = map[aid]
       s.tradesTotal++
       const pnl = t.pnl ?? 0
+      s.netPnl += pnl
       if (t.date >= monthStart) { s.pnlMonth += pnl; s.tradesMonth++ }
+      if (t.date === today)     { s.pnlToday += pnl; s.tradesToday++ }
     }
+
     for (const aid of Object.keys(map)) {
-      const trades = allTrades.filter(t => t.accountId === aid && t.status === "CLOSED")
+      const acct = accounts.find(a => a.id === aid)
+      const initBal = acct ? Number(acct.initialBalance) : 0
+      const trades = allTrades
+        .filter(t => t.accountId === aid && t.status === "CLOSED")
+        .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
       if (trades.length === 0) continue
       const wins = trades.filter(t => (t.pnl ?? 0) > 0).length
-      map[aid].winRate = Math.round((wins / trades.length) * 100)
+      map[aid].winRate = (wins / trades.length) * 100
       map[aid].avgR    = trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
+
+      // Build equity curve + current drawdown from peak
+      let cumPnl = 0, peakCumPnl = 0
+      const equity: number[] = [initBal]
+      for (const t of trades) {
+        cumPnl += t.pnl ?? 0
+        equity.push(initBal + cumPnl)
+        if (cumPnl > peakCumPnl) peakCumPnl = cumPnl
+      }
+      map[aid].sparkline   = equity
+      map[aid].drawdownPct = initBal > 0 ? ((peakCumPnl - cumPnl) / initBal) * 100 : 0
     }
+
     return map
-  }, [allTrades])
+  }, [allTrades, accounts])
 
   const invalidate = () => utils.accounts.list.invalidate()
 
@@ -1315,7 +1365,7 @@ export default function CuentasPage() {
         {(() => {
           const totalPnlMonth = Object.values(accountStats).reduce((s, v) => s + v.pnlMonth, 0)
           const totalTradesAll = Object.values(accountStats).reduce((s, v) => s + v.tradesTotal, 0)
-          const pnlStr = totalPnlMonth !== 0 ? `${totalPnlMonth >= 0 ? "+" : ""}$${Math.abs(totalPnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$0"
+          const pnlStr = `${totalPnlMonth >= 0 ? "+" : "-"}$${Math.abs(totalPnlMonth).toFixed(2)}`
           return (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               <KpiBox label="Balance total" value={`$${totalBal.toLocaleString()}`}
