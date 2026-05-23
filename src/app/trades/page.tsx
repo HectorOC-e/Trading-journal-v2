@@ -25,6 +25,9 @@ export default function TradesPage() {
   const { data: setups = [] } =
     trpc.setups.list.useQuery()
 
+  const { data: markets = [] } =
+    trpc.markets.list.useQuery()
+
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: () => utils.trades.list.invalidate(),
   })
@@ -186,6 +189,7 @@ export default function TradesPage() {
         onOpenChange={setModalOpen}
         accounts={accounts as never}
         setups={setups as never}
+        markets={markets as never}
         tradeCountToday={tradeCountToday}
         onSubmit={handleModalSubmit as never}
       />

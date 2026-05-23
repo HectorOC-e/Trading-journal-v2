@@ -1,11 +1,7 @@
-// RegisterTradeModal — major redesign
-// Steps: Account selector → Direction → Symbol+Date+Time+Size → Setup+Checklist → Session → Notes+Screenshots
-// Tags are auto-assigned based on checklist state
-
 "use client"
 
-import { useState, useEffect } from "react"
-import { AlertTriangle, CheckCircle2, Circle, Star } from "lucide-react"
+import { useState, useEffect, useMemo } from "react"
+import { AlertTriangle, CheckCircle2, Circle, Star, Calculator } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
@@ -15,7 +11,45 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn } from "@/lib/utils"
-import type { Account, Setup, TradeDirection, TradeSession, TradeTag } from "@/types"
+import type { TradeDirection, TradeSession, TradeTag } from "@/types"
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface AccountLike {
+  id: string
+  name: string
+  type: string
+  initialBalance: number
+  allowedSymbols?: string[]
+  ddDailyPct?: number | null
+  maxTradesPerDay?: number | null
+  propFirmRules?: {
+    maxDrawdownPct: number
+    dailyLossPct: number
+    maxTradesPerDay: number
+    targetPct: number
+    allowedSymbols: string[]
+  }
+}
+
+interface SetupLike {
+  id: string
+  name: string
+  abbreviation: string
+  market: string
+  aplusChecklist: string[]
+  standardChecklist: string[]
+}
+
+interface MarketLike {
+  id: string
+  symbol: string
+  name: string
+  category: string
+  pointValue: string
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
 
 const SESSION_OPTIONS: { value: TradeSession; label: string }[] = [
   { value: "London",       label: "London" },
@@ -29,6 +63,32 @@ const MANUAL_TAG_OPTIONS: { value: TradeTag; label: string }[] = [
   { value: "Impulsivo", label: "Impulsivo" },
 ]
 
+/** Extract numeric dollar value from strings like "$20", "$10 / lot", "$50" */
+function parsePointValue(pv: string): number | null {
+  const match = pv.replace(/,/g, "").match(/\$?([\d.]+)/)
+  if (!match) return null
+  const n = parseFloat(match[1])
+  return isNaN(n) ? null : n
+}
+
+function computeContracts(params: {
+  balance: number
+  riskPct: number
+  entry: number
+  stop: number
+  pointValue: number
+}): number | null {
+  const { balance, riskPct, entry, stop, pointValue } = params
+  if (!balance || !riskPct || !entry || !stop || !pointValue) return null
+  const stopDistance = Math.abs(entry - stop)
+  if (stopDistance === 0) return null
+  const riskAmount = balance * (riskPct / 100)
+  const riskPerContract = stopDistance * pointValue
+  return riskAmount / riskPerContract
+}
+
+// ── Form state ─────────────────────────────────────────────────────────────
+
 interface FormState {
   direction: TradeDirection
   symbol: string
@@ -38,13 +98,13 @@ interface FormState {
   stop: string
   target: string
   size: string
+  riskPct: string
   date: string
   openTime: string
   session: TradeSession
   tags: TradeTag[]
   notes: string
   checklistItems: Record<string, boolean>
-  aplusMode: boolean
 }
 
 const INITIAL: FormState = {
@@ -56,101 +116,140 @@ const INITIAL: FormState = {
   stop: "",
   target: "",
   size: "",
+  riskPct: "1",
   date: new Date().toISOString().slice(0, 10),
   openTime: "",
   session: "New York",
   tags: [],
   notes: "",
   checklistItems: {},
-  aplusMode: false,
 }
+
+// ── Auto quality tag ───────────────────────────────────────────────────────
+
+function computeAutoTag(form: FormState, setup: SetupLike | undefined): TradeTag | null {
+  if (!setup) return null
+  const stdTotal   = setup.standardChecklist.length
+  const stdChecked = setup.standardChecklist.filter(i => form.checklistItems[i]).length
+  const aplusTotal   = setup.aplusChecklist.length
+  const aplusChecked = setup.aplusChecklist.filter(i => form.checklistItems[i]).length
+  if (stdTotal === 0) return null
+  if (stdChecked === stdTotal && aplusTotal > 0 && aplusChecked === aplusTotal) return "A+"
+  if (stdChecked === stdTotal) return "Plan"
+  return null
+}
+
+// ── Props ──────────────────────────────────────────────────────────────────
 
 interface RegisterTradeModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  accounts?: Account[]
-  setups?: Setup[]
+  accounts?: AccountLike[]
+  setups?: SetupLike[]
+  markets?: MarketLike[]
   tradeCountToday?: number
   onSubmit?: (data: FormState) => void
 }
 
-function computeAutoTag(form: FormState, setup: Setup | undefined): TradeTag | null {
-  if (!setup) return null
-  if (form.aplusMode) return "A+"
-  const total   = setup.standardChecklist.length
-  const checked = setup.standardChecklist.filter((item) => form.checklistItems[item]).length
-  if (total === 0) return null
-  if (checked === total) return "Plan"
-  if (checked > 0) return "Plan"
-  return null
-}
+// ── Component ──────────────────────────────────────────────────────────────
 
 export function RegisterTradeModal({
   open,
   onOpenChange,
   accounts = [],
   setups = [],
+  markets = [],
   tradeCountToday = 0,
   onSubmit,
 }: RegisterTradeModalProps) {
   const [form, setForm] = useState<FormState>(INITIAL)
+  const [sizeManual, setSizeManual] = useState(false)
 
+  // Reset on close
   useEffect(() => {
     if (!open) {
-      const t = setTimeout(() => setForm(INITIAL), 200)
+      const t = setTimeout(() => {
+        setForm(INITIAL)
+        setSizeManual(false)
+      }, 200)
       return () => clearTimeout(t)
     }
   }, [open])
 
   const set = (key: keyof FormState) => (val: string) =>
-    setForm((f) => ({ ...f, [key]: val }))
+    setForm(f => ({ ...f, [key]: val }))
 
-  const selectedSetup = setups.find((s) => s.id === form.setupId)
-  const autoTag = computeAutoTag(form, selectedSetup)
+  const selectedAccount = accounts.find(a => a.id === form.accountId)
+  const selectedSetup   = setups.find(s => s.id === form.setupId)
+  const selectedMarket  = markets.find(m => m.symbol === form.symbol)
+  const autoTag         = computeAutoTag(form, selectedSetup)
 
-  // When a setup is selected, reset checklist
-  const selectSetup = (setupId: string) => {
-    setForm((f) => ({
-      ...f,
-      setupId,
-      checklistItems: {},
-      aplusMode: false,
-    }))
-  }
+  // ── Filtered symbols ───────────────────────────────────────────────────
+  const allowedSymbols: string[] | null = useMemo(() => {
+    if (!selectedAccount) return null
+    // PROP_FIRM accounts: use allowedSymbols directly (flat field from DB)
+    const raw = (selectedAccount as { allowedSymbols?: string[] }).allowedSymbols
+    if (raw && raw.length > 0) return raw
+    // legacy propFirmRules shape
+    if (selectedAccount.propFirmRules?.allowedSymbols?.length) {
+      return selectedAccount.propFirmRules.allowedSymbols
+    }
+    return null // null = show all
+  }, [selectedAccount])
 
-  // Toggle a single checklist item
-  const toggleChecklistItem = (item: string) =>
-    setForm((f) => ({
-      ...f,
-      checklistItems: {
-        ...f.checklistItems,
-        [item]: !f.checklistItems[item],
-      },
-    }))
+  const visibleMarkets = useMemo(() => {
+    if (!allowedSymbols) return markets
+    return markets.filter(m => allowedSymbols.includes(m.symbol))
+  }, [markets, allowedSymbols])
 
-  // Toggle A+ mode: auto-check all items
-  const toggleAplusMode = () => {
-    if (!selectedSetup) return
-    setForm((f) => {
-      const newMode = !f.aplusMode
-      const allChecked: Record<string, boolean> = {}
-      if (newMode) {
-        selectedSetup.standardChecklist.forEach((item) => { allChecked[item] = true })
-        selectedSetup.aplusChecklist.forEach((item) => { allChecked[item] = true })
-      }
-      return {
-        ...f,
-        aplusMode: newMode,
-        checklistItems: newMode ? allChecked : {},
-      }
+  // Group by category
+  const marketsByCategory = useMemo(() => {
+    const map = new Map<string, MarketLike[]>()
+    for (const m of visibleMarkets) {
+      const arr = map.get(m.category) ?? []
+      arr.push(m)
+      map.set(m.category, arr)
+    }
+    return map
+  }, [visibleMarkets])
+
+  // ── Lot size calculator ────────────────────────────────────────────────
+  const pointValue = selectedMarket ? parsePointValue(selectedMarket.pointValue) : null
+  const balance    = selectedAccount?.initialBalance ?? 0
+
+  const calcContracts = useMemo(() => {
+    if (!balance || !pointValue) return null
+    return computeContracts({
+      balance,
+      riskPct:  parseFloat(form.riskPct) || 0,
+      entry:    parseFloat(form.entry)   || 0,
+      stop:     parseFloat(form.stop)    || 0,
+      pointValue,
     })
+  }, [balance, pointValue, form.riskPct, form.entry, form.stop])
+
+  // Auto-fill size when calculator has a valid result and user hasn't overridden
+  useEffect(() => {
+    if (calcContracts !== null && !sizeManual) {
+      setForm(f => ({ ...f, size: calcContracts.toFixed(2) }))
+    }
+  }, [calcContracts, sizeManual])
+
+  // ── Checklist helpers ──────────────────────────────────────────────────
+  const selectSetup = (setupId: string) => {
+    setForm(f => ({ ...f, setupId, checklistItems: {} }))
   }
 
-  // Toggle manual tag (only for Off-plan / Impulsivo when no setup)
-  const toggleManualTag = (tag: TradeTag) =>
-    setForm((f) => ({
+  const toggleItem = (item: string) =>
+    setForm(f => ({
       ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag],
+      checklistItems: { ...f.checklistItems, [item]: !f.checklistItems[item] },
+    }))
+
+  const toggleManualTag = (tag: TradeTag) =>
+    setForm(f => ({
+      ...f,
+      tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag],
     }))
 
   const showWarning = tradeCountToday >= 2
@@ -161,7 +260,7 @@ export function RegisterTradeModal({
     onOpenChange(false)
   }
 
-  const selectedAccount = accounts.find((a) => a.id === form.accountId)
+  // ── Render ─────────────────────────────────────────────────────────────
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,16 +271,19 @@ export function RegisterTradeModal({
 
         <div className="flex flex-col gap-5">
 
-          {/* ── Step 1: Account selector ── */}
+          {/* ── Cuenta ── */}
           <div>
             <p className="text-eyebrow mb-2">Cuenta *</p>
             {accounts.length > 0 ? (
               <div className="flex gap-2 flex-wrap">
-                {accounts.map((acc) => (
+                {accounts.map(acc => (
                   <button
                     key={acc.id}
                     type="button"
-                    onClick={() => setForm((f) => ({ ...f, accountId: acc.id }))}
+                    onClick={() => {
+                      setForm(f => ({ ...f, accountId: acc.id, symbol: "" }))
+                      setSizeManual(false)
+                    }}
                     className={cn(
                       "flex-1 min-w-[160px] text-left rounded-[var(--radius-sm)] p-3 border transition-all",
                       form.accountId === acc.id
@@ -191,52 +293,35 @@ export function RegisterTradeModal({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{acc.name}</p>
-                      <span
-                        className={cn(
-                          "shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded",
-                          acc.type === "PROP_FIRM"
-                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                            : "bg-[var(--chip)] text-[var(--ink-2)]"
-                        )}
-                      >
+                      <span className={cn(
+                        "shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded",
+                        acc.type === "PROP_FIRM"
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                          : "bg-[var(--chip)] text-[var(--ink-2)]"
+                      )}>
                         {acc.type === "PROP_FIRM" ? "PROP" : acc.type}
                       </span>
                     </div>
                     <p className="text-[11px] text-[var(--ink-3)] mt-1 font-mono">
                       ${acc.initialBalance.toLocaleString()}
                     </p>
-                    {acc.propFirmRules && (
-                      <div className="mt-2 flex gap-2 flex-wrap">
-                        <span className="text-[10px] text-[var(--ink-3)]">
-                          DD máx {acc.propFirmRules.maxDrawdownPct}%
-                        </span>
-                        <span className="text-[10px] text-[var(--ink-3)]">·</span>
-                        <span className="text-[10px] text-[var(--ink-3)]">
-                          Pérd.diaria {acc.propFirmRules.dailyLossPct}%
-                        </span>
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
             ) : (
-              <Input
-                placeholder="ID de cuenta"
-                value={form.accountId}
-                onChange={(e) => set("accountId")(e.target.value)}
-              />
+              <p className="text-xs text-[var(--ink-3)]">No hay cuentas activas. Crea una en Cuentas primero.</p>
             )}
           </div>
 
-          {/* ── Step 2: Direction toggle ── */}
+          {/* ── Dirección ── */}
           <div>
             <p className="text-eyebrow mb-2">Dirección</p>
             <div className="flex gap-2">
-              {(["LONG", "SHORT"] as TradeDirection[]).map((d) => (
+              {(["LONG", "SHORT"] as TradeDirection[]).map(d => (
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setForm((f) => ({ ...f, direction: d }))}
+                  onClick={() => setForm(f => ({ ...f, direction: d }))}
                   className={cn(
                     "flex-1 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-colors",
                     form.direction === d
@@ -252,30 +337,68 @@ export function RegisterTradeModal({
             </div>
           </div>
 
-          {/* ── Step 3: Symbol + Date + Time + Size ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-eyebrow block mb-1.5">Símbolo *</label>
-              <Input placeholder="NQ" value={form.symbol} onChange={(e) => set("symbol")(e.target.value)} mono />
-            </div>
-            <div>
-              <label className="text-eyebrow block mb-1.5">Tamaño (contratos) *</label>
-              <Input placeholder="2" value={form.size} onChange={(e) => set("size")(e.target.value)} mono />
-            </div>
+          {/* ── Símbolo desde mercados ── */}
+          <div>
+            <p className="text-eyebrow mb-2">Símbolo *</p>
+            {visibleMarkets.length === 0 ? (
+              <p className="text-xs text-[var(--ink-3)]">
+                {form.accountId
+                  ? "Esta cuenta no tiene símbolos permitidos configurados."
+                  : "Selecciona una cuenta primero."}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {Array.from(marketsByCategory.entries()).map(([cat, mkts]) => (
+                  <div key={cat}>
+                    <p className="text-[10px] font-bold text-[var(--ink-3)] uppercase tracking-wider mb-1.5">{cat}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {mkts.map(m => {
+                        const active = form.symbol === m.symbol
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setForm(f => ({ ...f, symbol: m.symbol }))
+                              setSizeManual(false)
+                            }}
+                            title={`${m.name} · Valor/pto: ${m.pointValue}`}
+                            className={cn(
+                              "h-8 px-3 rounded-[var(--radius-sm)] border text-xs font-semibold transition-all",
+                              active
+                                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
+                                : "border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink-2)] hover:border-[var(--ink-3)]"
+                            )}
+                          >
+                            {m.symbol}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {selectedMarket && (
+                  <p className="text-[10px] text-[var(--ink-3)]">
+                    {selectedMarket.name} · Valor/pto: {selectedMarket.pointValue}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
+          {/* ── Fecha + Hora ── */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-eyebrow block mb-1.5">Fecha *</label>
-              <Input type="date" value={form.date} onChange={(e) => set("date")(e.target.value)} />
+              <Input type="date" value={form.date} onChange={e => set("date")(e.target.value)} />
             </div>
             <div>
               <label className="text-eyebrow block mb-1.5">Hora apertura *</label>
-              <Input type="time" value={form.openTime} onChange={(e) => set("openTime")(e.target.value)} />
+              <Input type="time" value={form.openTime} onChange={e => set("openTime")(e.target.value)} />
             </div>
           </div>
 
-          {/* Entry / Stop / Target */}
+          {/* ── Entry / Stop / Target ── */}
           <div className="grid grid-cols-3 gap-3">
             {(["entry", "stop", "target"] as const).map((key, i) => (
               <div key={key}>
@@ -285,20 +408,80 @@ export function RegisterTradeModal({
                 <Input
                   placeholder={["21,450.00", "21,380.00", "21,590.00"][i]}
                   value={form[key]}
-                  onChange={(e) => set(key)(e.target.value)}
+                  onChange={e => {
+                    set(key)(e.target.value)
+                    setSizeManual(false)
+                  }}
                   mono
                 />
               </div>
             ))}
           </div>
 
-          {/* ── Step 4: Setup selector + Checklist ── */}
+          {/* ── Calculadora de contratos ── */}
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Calculator size={12} className="text-[var(--ink-3)]" />
+              <p className="text-eyebrow">Tamaño (contratos) *</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-[var(--ink-3)] block mb-1">Riesgo %</label>
+                <Input
+                  placeholder="1"
+                  value={form.riskPct}
+                  onChange={e => { set("riskPct")(e.target.value); setSizeManual(false) }}
+                  mono
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-[var(--ink-3)] block mb-1">
+                  Contratos
+                  {calcContracts !== null && !sizeManual && (
+                    <span className="ml-1 text-[var(--win)]">auto</span>
+                  )}
+                </label>
+                <Input
+                  placeholder="2"
+                  value={form.size}
+                  onChange={e => {
+                    set("size")(e.target.value)
+                    setSizeManual(true)
+                  }}
+                  mono
+                />
+              </div>
+            </div>
+
+            {/* Calculator explanation */}
+            {calcContracts !== null && (
+              <div className="mt-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                <p className="text-[10px] text-[var(--ink-3)] font-mono">
+                  ${balance.toLocaleString()} × {form.riskPct}% = <span className="text-[var(--ink-2)]">${(balance * (parseFloat(form.riskPct) || 0) / 100).toFixed(0)} en riesgo</span>
+                  {pointValue && parseFloat(form.entry) && parseFloat(form.stop) ? (
+                    <>
+                      {" · "}
+                      {Math.abs(parseFloat(form.entry) - parseFloat(form.stop)).toFixed(2)} pts × ${pointValue} = <span className="text-[var(--ink-2)]">${(Math.abs(parseFloat(form.entry) - parseFloat(form.stop)) * pointValue).toFixed(0)}/contrato</span>
+                      {" → "}
+                      <span className="text-[var(--accent)] font-semibold">{calcContracts.toFixed(2)} contratos</span>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            )}
+
+            {!selectedAccount && (
+              <p className="text-[10px] text-[var(--ink-3)] mt-1">Selecciona cuenta y símbolo para calcular automáticamente.</p>
+            )}
+          </div>
+
+          {/* ── Setup + Checklists ── */}
           <div>
             <p className="text-eyebrow mb-2">Setup *</p>
             {setups.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {setups.map((setup) => (
+                  {setups.map(setup => (
                     <button
                       key={setup.id}
                       type="button"
@@ -311,10 +494,8 @@ export function RegisterTradeModal({
                       )}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "var(--chip)", color: "var(--ink-2)" }}
-                        >
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
                           {setup.abbreviation}
                         </span>
                         {setup.aplusChecklist.length > 0 && (
@@ -323,83 +504,68 @@ export function RegisterTradeModal({
                       </div>
                       <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{setup.name}</p>
                       <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
-                      <p className="text-[10px] text-[var(--ink-3)] mt-0.5">
-                        {setup.standardChecklist.length} criterios
-                      </p>
                     </button>
                   ))}
                 </div>
 
-                {/* Checklist section — shown when a setup is selected */}
+                {/* Checklists — both always visible */}
                 {selectedSetup && (
-                  <div
-                    className="mt-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3"
-                  >
-                    {/* A+ toggle */}
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-semibold text-[var(--ink)]">
-                        Checklist — {selectedSetup.name}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={toggleAplusMode}
-                        className={cn(
-                          "flex items-center gap-1.5 h-6 px-2.5 rounded text-[10px] font-bold transition-colors",
-                          form.aplusMode
-                            ? "bg-amber-400/20 text-amber-400 border border-amber-400/40"
-                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                        )}
-                      >
-                        <Star size={9} className={cn(form.aplusMode ? "fill-amber-400" : "")} />
-                        A+
-                      </button>
-                    </div>
-
-                    {form.aplusMode ? (
-                      <div className="flex items-center gap-2 py-1.5">
-                        <CheckCircle2 size={14} className="text-amber-400 shrink-0" />
-                        <p className="text-xs font-semibold text-amber-400">
-                          A+ — todos los criterios cumplidos
+                  <div className="mt-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-3">
+                    {/* Standard checklist */}
+                    {selectedSetup.standardChecklist.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-[var(--ink-2)] mb-2">
+                          Criterios estándar
+                          <span className="ml-1.5 text-[var(--ink-3)] font-normal">
+                            {selectedSetup.standardChecklist.filter(i => form.checklistItems[i]).length}/{selectedSetup.standardChecklist.length}
+                          </span>
                         </p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {selectedSetup.standardChecklist.map((item) => {
-                          const checked = !!form.checklistItems[item]
-                          return (
-                            <button
-                              key={item}
-                              type="button"
-                              onClick={() => toggleChecklistItem(item)}
-                              className="flex items-start gap-2 text-left w-full hover:opacity-80 transition-opacity"
-                            >
-                              {checked
-                                ? <CheckCircle2 size={14} className="text-[var(--win)] shrink-0 mt-px" />
-                                : <Circle size={14} className="text-[var(--ink-3)] shrink-0 mt-px" />
-                              }
-                              <span className={cn(
-                                "text-xs",
-                                checked ? "text-[var(--ink)]" : "text-[var(--ink-2)]"
-                              )}>
-                                {item}
-                              </span>
-                            </button>
-                          )
-                        })}
+                        <div className="flex flex-col gap-1.5">
+                          {selectedSetup.standardChecklist.map(item => {
+                            const checked = !!form.checklistItems[item]
+                            return (
+                              <button key={item} type="button" onClick={() => toggleItem(item)}
+                                className="flex items-start gap-2 text-left w-full hover:opacity-80 transition-opacity">
+                                {checked
+                                  ? <CheckCircle2 size={14} className="text-[var(--win)] shrink-0 mt-px" />
+                                  : <Circle size={14} className="text-[var(--ink-3)] shrink-0 mt-px" />
+                                }
+                                <span className={cn("text-xs", checked ? "text-[var(--ink)]" : "text-[var(--ink-2)]")}>
+                                  {item}
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 
-                    {/* Show A+ criteria if in A+ mode */}
-                    {form.aplusMode && selectedSetup.aplusChecklist.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-[var(--line)]">
-                        <p className="text-[10px] text-amber-400 font-semibold mb-1.5">Criterios A+</p>
+                    {/* A+ checklist — always visible if exists */}
+                    {selectedSetup.aplusChecklist.length > 0 && (
+                      <div className="pt-3 border-t border-[var(--line)]">
+                        <p className="text-[10px] font-semibold text-amber-400 mb-2 flex items-center gap-1.5">
+                          <Star size={10} className="fill-amber-400" />
+                          Criterios A+
+                          <span className="text-amber-400/60 font-normal">
+                            {selectedSetup.aplusChecklist.filter(i => form.checklistItems[i]).length}/{selectedSetup.aplusChecklist.length}
+                          </span>
+                        </p>
                         <div className="flex flex-col gap-1.5">
-                          {selectedSetup.aplusChecklist.map((item) => (
-                            <div key={item} className="flex items-start gap-2">
-                              <CheckCircle2 size={14} className="text-amber-400 shrink-0 mt-px" />
-                              <span className="text-xs text-[var(--ink-2)]">{item}</span>
-                            </div>
-                          ))}
+                          {selectedSetup.aplusChecklist.map(item => {
+                            const checked = !!form.checklistItems[item]
+                            return (
+                              <button key={item} type="button" onClick={() => toggleItem(item)}
+                                className="flex items-start gap-2 text-left w-full hover:opacity-80 transition-opacity">
+                                {checked
+                                  ? <CheckCircle2 size={14} className="text-amber-400 shrink-0 mt-px" />
+                                  : <Circle size={14} className="text-amber-400/30 shrink-0 mt-px" />
+                                }
+                                <span className={cn("text-xs", checked ? "text-amber-400" : "text-[var(--ink-3)]")}>
+                                  {item}
+                                </span>
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -407,15 +573,11 @@ export function RegisterTradeModal({
                 )}
               </>
             ) : (
-              <Input
-                placeholder="ID del setup"
-                value={form.setupId}
-                onChange={(e) => set("setupId")(e.target.value)}
-              />
+              <p className="text-xs text-[var(--ink-3)]">No hay setups activos. Crea uno en Playbook primero.</p>
             )}
           </div>
 
-          {/* ── Auto-assigned quality tag ── */}
+          {/* ── Calidad calculada ── */}
           {(autoTag || !selectedSetup) && (
             <div>
               <p className="text-eyebrow mb-2">Calidad calculada</p>
@@ -424,18 +586,14 @@ export function RegisterTradeModal({
                   {autoTag === "A+" ? (
                     <span className="flex items-center gap-1.5">
                       <Star size={12} className="text-amber-400 fill-amber-400" />
-                      <span
-                        className="text-xs font-bold px-2 py-0.5 rounded"
-                        style={{ background: "rgba(251,191,36,0.15)", color: "rgb(251,191,36)" }}
-                      >
+                      <span className="text-xs font-bold px-2 py-0.5 rounded"
+                        style={{ background: "rgba(251,191,36,0.15)", color: "rgb(251,191,36)" }}>
                         A+
                       </span>
                     </span>
                   ) : (
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded"
-                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-                    >
+                    <span className="text-xs font-bold px-2 py-0.5 rounded"
+                      style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
                       {autoTag}
                     </span>
                   )}
@@ -443,9 +601,7 @@ export function RegisterTradeModal({
                 </div>
               ) : (
                 <div>
-                  <p className="text-xs text-[var(--ink-3)] mb-2">
-                    Sin setup o criterios — selecciona manualmente:
-                  </p>
+                  <p className="text-xs text-[var(--ink-3)] mb-2">Sin setup — selecciona manualmente:</p>
                   <div className="flex gap-1 flex-wrap">
                     {MANUAL_TAG_OPTIONS.map(({ value, label }) => (
                       <button
@@ -468,17 +624,17 @@ export function RegisterTradeModal({
             </div>
           )}
 
-          {/* ── Step 5: Session ── */}
+          {/* ── Sesión ── */}
           <div>
             <p className="text-eyebrow mb-2">Sesión</p>
             <FilterBar
               options={SESSION_OPTIONS}
               value={form.session}
-              onChange={(v) => setForm((f) => ({ ...f, session: v as TradeSession }))}
+              onChange={v => setForm(f => ({ ...f, session: v as TradeSession }))}
             />
           </div>
 
-          {/* ── Do-not-take warning ── */}
+          {/* ── Advertencias ── */}
           {showWarning && (
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border-l-4 border-[var(--be)]">
               <AlertTriangle size={14} className="text-[var(--be)] shrink-0" />
@@ -488,39 +644,22 @@ export function RegisterTradeModal({
             </div>
           )}
 
-          {/* Prop firm warning for selected account */}
-          {selectedAccount?.propFirmRules && (
-            <div className="flex items-start gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)]">
-              <AlertTriangle size={14} className="text-[var(--ink-3)] shrink-0 mt-px" />
-              <div className="flex flex-col gap-0.5">
-                <p className="text-[10px] font-semibold text-[var(--ink-2)]">Reglas {selectedAccount.name}</p>
-                <p className="text-[10px] text-[var(--ink-3)]">
-                  DD máx {selectedAccount.propFirmRules.maxDrawdownPct}% · Pérdida diaria {selectedAccount.propFirmRules.dailyLossPct}% · Máx {selectedAccount.propFirmRules.maxTradesPerDay} trades/día
-                </p>
-                <p className="text-[10px] text-[var(--ink-3)]">
-                  Símbolos: {selectedAccount.propFirmRules.allowedSymbols.join(", ")}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 6: Notes + Screenshots ── */}
+          {/* ── Notas ── */}
           <div>
             <label className="text-eyebrow block mb-1.5">Notas</label>
             <Textarea
               placeholder="Entrada en zona de liquidez..."
               value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
             />
           </div>
 
+          {/* ── Screenshots ── */}
           <div>
             <label className="text-eyebrow block mb-1.5">Screenshots</label>
             <div className="border border-dashed border-[var(--line)] rounded-[var(--radius-sm)] p-6 text-center bg-[var(--panel-2)]">
               <p className="text-sm text-[var(--ink-2)]">📎 Arrastra o haz click para subir</p>
-              <p className="text-xs text-[var(--ink-3)] mt-1">
-                Se sube a Supabase Storage · presigned URL
-              </p>
+              <p className="text-xs text-[var(--ink-3)] mt-1">Supabase Storage · presigned URL</p>
             </div>
           </div>
 

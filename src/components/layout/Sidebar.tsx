@@ -18,7 +18,7 @@ const NAV = [
       { href: "/dashboard",   label: "Dashboard",   icon: LayoutDashboard },
       { href: "/cuentas",     label: "Cuentas",     icon: Wallet },
       { href: "/mercados",    label: "Mercados",    icon: BarChart2 },
-      { href: "/trades",      label: "Trades",      icon: CandlestickChart, badge: 3 },
+      { href: "/trades",      label: "Trades",      icon: CandlestickChart },
       { href: "/playbook",    label: "Playbook",    icon: BookOpen },
       { href: "/reglas",      label: "Reglas",      icon: ShieldCheck },
       { href: "/reviews",     label: "Reviews",     icon: ClipboardList },
@@ -214,7 +214,7 @@ export function Sidebar() {
                     borderRadius: 999, padding: "1px 4px",
                     lineHeight: 1.4,
                   }}>
-                    {item.badge}
+                    {(item as { badge: number }).badge}
                   </span>
                 ) : null}
               </Link>
@@ -312,7 +312,7 @@ export function Sidebar() {
                         background: "var(--loss)", color: "white",
                         borderRadius: 999, padding: "1px 4px",
                       }}>
-                        {item.badge}
+                        {(item as { badge: number }).badge}
                       </span>
                     ) : null}
                   </Link>
@@ -452,7 +452,7 @@ export function Sidebar() {
                       top: collapsed ? 4 : undefined,
                       right: collapsed ? 4 : undefined,
                     }}>
-                      {item.badge}
+                      {(item as { badge: number }).badge}
                     </span>
                   ) : null}
                 </Link>
