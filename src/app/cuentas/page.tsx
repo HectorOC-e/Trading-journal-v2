@@ -497,11 +497,11 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
       initialBalance: parseFloat(form.balance.replace(/,/g, "")) || 0,
       currency:       form.currency,
       timezone:       form.timezone,
-      pfMaxDrawdownPct:  form.tipo === "PROP_FIRM" ? parseFloat(form.maxDrawdown) : undefined,
-      pfDailyLossPct:    form.tipo === "PROP_FIRM" ? parseFloat(form.dailyLoss)   : undefined,
-      pfMaxTradesPerDay: form.tipo === "PROP_FIRM" ? parseInt(form.maxTrades)     : undefined,
-      pfTargetPct:       form.tipo === "PROP_FIRM" ? parseFloat(form.targetPct)   : undefined,
-      pfAllowedSymbols:  form.tipo === "PROP_FIRM"
+      ddTotalPct:     form.tipo === "PROP_FIRM" ? parseFloat(form.maxDrawdown) : undefined,
+      ddDailyPct:     form.tipo === "PROP_FIRM" ? parseFloat(form.dailyLoss)   : undefined,
+      maxTradesPerDay: form.tipo === "PROP_FIRM" ? parseInt(form.maxTrades)    : undefined,
+      targetPct:       form.tipo === "PROP_FIRM" ? parseFloat(form.targetPct)  : undefined,
+      allowedSymbols:  form.tipo === "PROP_FIRM"
         ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
         : [],
     })
@@ -846,12 +846,12 @@ export default function CuentasPage() {
                   currency: a.currency,
                   timezone: a.timezone,
                   createdAt: String(a.createdAt),
-                  propFirmRules: a.pfMaxDrawdownPct != null ? {
-                    maxDrawdownPct: Number(a.pfMaxDrawdownPct),
-                    dailyLossPct: Number(a.pfDailyLossPct ?? 5),
-                    maxTradesPerDay: a.pfMaxTradesPerDay ?? 3,
-                    targetPct: Number(a.pfTargetPct ?? 8),
-                    allowedSymbols: a.pfAllowedSymbols,
+                  propFirmRules: a.ddTotalPct != null ? {
+                    maxDrawdownPct: Number(a.ddTotalPct),
+                    dailyLossPct: Number(a.ddDailyPct ?? 5),
+                    maxTradesPerDay: a.maxTradesPerDay ?? 3,
+                    targetPct: Number(a.targetPct ?? 8),
+                    allowedSymbols: a.allowedSymbols,
                   } : undefined,
                 }
                 const mockStats = ACCOUNT_STATS["acc-1"]
@@ -888,12 +888,12 @@ export default function CuentasPage() {
                     currency: selected.currency,
                     timezone: selected.timezone,
                     createdAt: String(selected.createdAt),
-                    propFirmRules: selected.pfMaxDrawdownPct != null ? {
-                      maxDrawdownPct: Number(selected.pfMaxDrawdownPct),
-                      dailyLossPct: Number(selected.pfDailyLossPct ?? 5),
-                      maxTradesPerDay: selected.pfMaxTradesPerDay ?? 3,
-                      targetPct: Number(selected.pfTargetPct ?? 8),
-                      allowedSymbols: selected.pfAllowedSymbols,
+                    propFirmRules: selected.ddTotalPct != null ? {
+                      maxDrawdownPct: Number(selected.ddTotalPct),
+                      dailyLossPct: Number(selected.ddDailyPct ?? 5),
+                      maxTradesPerDay: selected.maxTradesPerDay ?? 3,
+                      targetPct: Number(selected.targetPct ?? 8),
+                      allowedSymbols: selected.allowedSymbols,
                     } : undefined,
                   }}
                   stats={{ ...ACCOUNT_STATS["acc-1"], currentBalance: Number(selected.initialBalance) }}

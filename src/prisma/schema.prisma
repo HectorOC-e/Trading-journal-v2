@@ -25,32 +25,99 @@ model User {
   weeklyReviews     WeeklyReview[]
   learningResources LearningResource[]
   markets           Market[]
+  withdrawals       Withdrawal[]
+  accountLogs       AccountLog[]
 
   @@map("users")
 }
 
+// ─────────────────────────────────────────────
+// ACCOUNT
+// type:           PERSONAL | PROP_FIRM | DEMO | QA
+// ddModel:        FIXED | TRAILING  (prop firms only)
+// phase:          PHASE_1 | PHASE_2 | FUNDED | NONE
+// ─────────────────────────────────────────────
 model Account {
   id             String   @id @default(uuid()) @db.Uuid
   userId         String   @map("user_id") @db.Uuid
   name           String
   broker         String
-  type           String
+  type           String   @default("PERSONAL")
   initialBalance Decimal  @default(0) @map("initial_balance") @db.Decimal(14, 2)
   currency       String   @default("USD")
   timezone       String   @default("America/New_York")
-  pfMaxDrawdownPct  Decimal? @map("pf_max_drawdown_pct") @db.Decimal(5, 2)
-  pfDailyLossPct    Decimal? @map("pf_daily_loss_pct") @db.Decimal(5, 2)
-  pfMaxTradesPerDay Int?     @map("pf_max_trades_per_day")
-  pfTargetPct       Decimal? @map("pf_target_pct") @db.Decimal(5, 2)
-  pfAllowedSymbols  String[] @map("pf_allowed_symbols")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // ── Drawdown limits (all account types) ──────
+  ddDailyPct    Decimal? @map("dd_daily_pct")   @db.Decimal(5, 2)
+  ddWeeklyPct   Decimal? @map("dd_weekly_pct")  @db.Decimal(5, 2)
+  ddMonthlyPct  Decimal? @map("dd_monthly_pct") @db.Decimal(5, 2)
+  ddTotalPct    Decimal? @map("dd_total_pct")   @db.Decimal(5, 2)
+
+  // ── Profit target (all account types) ────────
+  targetPct     Decimal? @map("target_pct")     @db.Decimal(5, 2)
+
+  // ── Prop Firm extras ──────────────────────────
+  ddModel           String?  @default("FIXED")   @map("dd_model")            // FIXED | TRAILING
+  phase             String?  @default("PHASE_1") @map("phase")               // PHASE_1 | PHASE_2 | FUNDED | NONE
+  maxTradesPerDay   Int?     @map("max_trades_per_day")
+  allowedSymbols    String[] @map("allowed_symbols")
+  minTradingDays    Int?     @map("min_trading_days")                        // some firms require min days
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades        Trade[]
   weeklyReviews WeeklyReview[]
+  withdrawals   Withdrawal[]
+  logs          AccountLog[]
 
+  @@index([userId])
   @@map("accounts")
+}
+
+// ─────────────────────────────────────────────
+// WITHDRAWAL
+// status: SOLICITADO | EN_PROCESO | PAGADO | RECHAZADO
+// ─────────────────────────────────────────────
+model Withdrawal {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  amount    Decimal  @db.Decimal(14, 2)
+  currency  String   @default("USD")
+  status    String   @default("SOLICITADO")   // SOLICITADO | EN_PROCESO | PAGADO | RECHAZADO
+  date      DateTime @db.Date
+  note      String   @default("")
+  reference String   @default("")              // transaction id / comprobante
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date(sort: Desc)])
+  @@index([accountId])
+  @@map("withdrawals")
+}
+
+// ─────────────────────────────────────────────
+// ACCOUNT LOG  — immutable event trail
+// event: CREATED | PHASE_CHANGE | WITHDRAWAL | STATUS_CHANGE | NOTE
+// ─────────────────────────────────────────────
+model AccountLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  event     String                              // CREATED | PHASE_CHANGE | WITHDRAWAL | STATUS_CHANGE | NOTE
+  payload   Json     @default("{}")             // flexible: { from, to, amount, note, … }
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt(sort: Desc)])
+  @@map("account_logs")
 }
 
 model Setup {
