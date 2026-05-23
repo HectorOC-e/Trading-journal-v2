@@ -237,16 +237,16 @@ function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selec
 
             {/* DD bars */}
             {rawAccount.ddTotalPct != null && (
-              <RiskBar label="DD total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+              <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
             )}
             {rawAccount.ddDailyPct != null && (
-              <RiskBar label="DD diario" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+              <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
             )}
             {rawAccount.ddWeeklyPct != null && (
-              <RiskBar label="DD semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
+              <RiskBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
             )}
             {rawAccount.ddMonthlyPct != null && (
-              <RiskBar label="DD mensual" usedPct={0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+              <RiskBar label="Pérdida mensual" usedPct={0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
 
             {/* Objective progress */}
