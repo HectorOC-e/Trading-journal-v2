@@ -6,7 +6,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
@@ -212,84 +212,180 @@ export function TradeDetailPanel({
 
       {/* ── Close trade form (only when open) ── */}
       {isOpen && onCloseTrade && (
-        <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] overflow-hidden">
+        <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden"
+          style={{ background: "var(--panel-2)" }}>
+          {/* Header toggle */}
           <button
-            className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-[var(--ink)] hover:bg-[var(--chip)] transition-colors"
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--chip)] transition-colors"
             onClick={() => setCloseFormOpen(v => !v)}
           >
-            Cerrar trade
-            {closeFormOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            <span className="text-sm font-semibold text-[var(--ink)]">Cerrar trade</span>
+            {closeFormOpen ? <ChevronUp size={15} className="text-[var(--ink-3)]" /> : <ChevronDown size={15} className="text-[var(--ink-3)]" />}
           </button>
+
           {closeFormOpen && (
-            <div className="px-3 pb-3 flex flex-col gap-3 border-t border-[var(--line)]">
-              <div className="pt-3 flex flex-col gap-2">
-                {/* Close price */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Precio de cierre</label>
+            <div className="border-t border-[var(--line)]">
+
+              {/* ── Live result card ── */}
+              {(() => {
+                const cp = parseFloat(closePrice)
+                const isWin  = previewPnl != null && previewPnl > 0
+                const isLoss = previewPnl != null && previewPnl < 0
+                const isBE   = previewPnl != null && previewPnl === 0
+                // how far close is between stop↔target (0 = at stop, 1 = at target)
+                const pct = !isNaN(cp) ? (() => {
+                  const s = trade.stop, t = trade.target, e = trade.entry
+                  const isLong = trade.direction === "LONG"
+                  const lo = isLong ? s : t
+                  const hi = isLong ? t : s
+                  return Math.min(1, Math.max(0, (cp - lo) / (hi - lo)))
+                })() : null
+
+                return (
+                  <div className={cn(
+                    "mx-3 mt-3 rounded-[var(--radius-sm)] p-3 transition-colors",
+                    previewPnl == null ? "bg-[var(--chip)]"
+                      : isWin  ? "bg-[var(--win-soft)]"
+                      : isLoss ? "bg-[var(--loss-soft)]"
+                      : "bg-[var(--chip)]"
+                  )}>
+                    {/* Result icon + label */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        {previewPnl == null
+                          ? <Minus size={13} className="text-[var(--ink-3)]" />
+                          : isWin  ? <TrendingUp  size={13} className="text-[var(--win)]" />
+                          : isLoss ? <TrendingDown size={13} className="text-[var(--loss)]" />
+                          : <Minus size={13} className="text-[var(--ink-3)]" />
+                        }
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase tracking-wide",
+                          previewPnl == null ? "text-[var(--ink-3)]"
+                            : isWin ? "text-[var(--win)]"
+                            : isLoss ? "text-[var(--loss)]"
+                            : "text-[var(--ink-3)]"
+                        )}>
+                          {previewPnl == null ? "Ingresa precio" : isWin ? "WIN" : isLoss ? "LOSS" : "Breakeven"}
+                        </span>
+                      </div>
+                      {/* R múltiplo preview */}
+                      {previewPnl != null && (() => {
+                        const risk = Math.abs(trade.entry - trade.stop) * trade.size
+                        const r = risk > 0 ? previewPnl / risk : null
+                        return r != null ? (
+                          <span className={cn("text-xs font-bold font-mono", r >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                            {r >= 0 ? "+" : ""}{r.toFixed(2)}R
+                          </span>
+                        ) : null
+                      })()}
+                    </div>
+
+                    {/* P&L number */}
+                    <p className={cn(
+                      "text-2xl font-bold font-mono text-center",
+                      previewPnl == null ? "text-[var(--ink-3)]"
+                        : isWin ? "text-[var(--win)]"
+                        : isLoss ? "text-[var(--loss)]"
+                        : "text-[var(--ink-2)]"
+                    )}>
+                      {previewPnl == null ? "—"
+                        : `${previewPnl >= 0 ? "+" : ""}$${previewPnl.toFixed(2)}`}
+                    </p>
+
+                    {/* Price range bar: stop ←→ target */}
+                    {pct != null && (
+                      <div className="mt-2.5">
+                        <div className="relative h-1.5 rounded-full bg-[var(--line)]">
+                          <div className="absolute inset-y-0 left-0 rounded-full transition-all"
+                            style={{
+                              width: `${pct * 100}%`,
+                              background: isWin ? "var(--win)" : isLoss ? "var(--loss)" : "var(--ink-3)",
+                            }} />
+                          {/* Marker dot */}
+                          <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-[var(--panel)] transition-all"
+                            style={{
+                              left: `calc(${pct * 100}% - 5px)`,
+                              background: isWin ? "var(--win)" : isLoss ? "var(--loss)" : "var(--ink-3)",
+                            }} />
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-[9px] text-[var(--loss)] font-mono">Stop {trade.stop}</span>
+                          <span className="text-[9px] text-[var(--win)] font-mono">Target {trade.target}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+              {/* ── Inputs ── */}
+              <div className="px-3 pt-3 pb-3 flex flex-col gap-2.5">
+                {/* Close price — big input */}
+                <div>
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Precio de cierre *</label>
                   <input
                     type="number"
-                    className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                    inputMode="decimal"
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-base font-mono font-semibold text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
                     placeholder="0.00"
                     value={closePrice}
                     onChange={e => setClosePrice(e.target.value)}
                   />
                 </div>
-                {/* Close time */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Hora de cierre</label>
-                  <input
-                    type="time"
-                    className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-                    value={closeTime}
-                    onChange={e => setCloseTime(e.target.value)}
-                  />
-                </div>
-                {/* Commission */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-[var(--ink-3)] font-medium">Comisión $</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className={cn(
-                      "w-full rounded-[var(--radius-sm)] border bg-[var(--panel)] px-2.5 py-1.5 text-xs font-mono text-[var(--ink)] focus:outline-none transition-colors",
-                      commissionError
-                        ? "border-[var(--loss)] focus:border-[var(--loss)]"
-                        : "border-[var(--line)] focus:border-[var(--accent)]"
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Close time */}
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Hora cierre</label>
+                    <input
+                      type="time"
+                      className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      value={closeTime}
+                      onChange={e => setCloseTime(e.target.value)}
+                    />
+                  </div>
+                  {/* Commission */}
+                  <div>
+                    <label className={cn(
+                      "text-[10px] font-medium block mb-1",
+                      commissionError ? "text-[var(--loss)]" : "text-[var(--ink-3)]"
+                    )}>
+                      Comisión $ *
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="decimal"
+                      className={cn(
+                        "w-full rounded-[var(--radius-sm)] border bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none transition-colors",
+                        commissionError
+                          ? "border-[var(--loss)] focus:border-[var(--loss)]"
+                          : "border-[var(--line)] focus:border-[var(--accent)]"
+                      )}
+                      placeholder="0.00"
+                      value={commission}
+                      onChange={e => { setCommission(e.target.value); setCommissionError(false) }}
+                    />
+                    {commissionError && (
+                      <p className="text-[9px] text-[var(--loss)] mt-0.5">Requerida (puede ser $0)</p>
                     )}
-                    placeholder="0.00"
-                    value={commission}
-                    onChange={e => { setCommission(e.target.value); setCommissionError(false) }}
-                  />
-                  {commissionError && (
-                    <p className="text-[10px] text-[var(--loss)]">Ingresa la comisión (puede ser $0)</p>
+                  </div>
+                </div>
+
+                <Button
+                  size="md"
+                  className={cn(
+                    "w-full font-semibold transition-all",
+                    parseFloat(closePrice) > 0
+                      ? "bg-[var(--accent)] text-white hover:opacity-90"
+                      : "bg-[var(--chip)] text-[var(--ink-3)] cursor-not-allowed"
                   )}
-                </div>
+                  onClick={handleCloseTrade}
+                  disabled={closingTrade || !closePrice}
+                >
+                  {closingTrade ? "Cerrando…" : "Confirmar cierre"}
+                </Button>
               </div>
-
-              {/* Live P&L preview */}
-              {previewPnl !== null && (
-                <div className={cn(
-                  "rounded-[var(--radius-sm)] px-3 py-2 text-center",
-                  previewPnl >= 0 ? "bg-[var(--win-soft)]" : "bg-[var(--loss-soft)]"
-                )}>
-                  <p className="text-[10px] text-[var(--ink-3)] mb-0.5">P&L estimado</p>
-                  <p className={cn(
-                    "text-lg font-bold font-mono",
-                    previewPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"
-                  )}>
-                    {previewPnl >= 0 ? "+" : ""}${previewPnl.toFixed(2)}
-                  </p>
-                </div>
-              )}
-
-              <Button
-                size="md"
-                className="w-full bg-[var(--accent)] text-white hover:opacity-90"
-                onClick={handleCloseTrade}
-                disabled={closingTrade || !closePrice}
-              >
-                {closingTrade ? "Cerrando…" : "Confirmar cierre"}
-              </Button>
             </div>
           )}
         </div>
