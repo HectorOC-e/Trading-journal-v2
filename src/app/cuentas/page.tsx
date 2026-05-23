@@ -171,25 +171,21 @@ function AccountCard({ account, stats, selected, onClick }: {
           </div>
         </div>
 
-        {/* Balance + P&L */}
+        {/* Balance */}
         <div className="flex items-end gap-4">
           <div className="flex-1">
-            <p className="text-eyebrow mb-1">Balance actual</p>
+            <p className="text-eyebrow mb-1">Balance inicial</p>
             <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none">
               ${stats.currentBalance.toLocaleString()}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right text-[var(--ink-3)]">
             <p className="text-eyebrow mb-1">P&L mes</p>
-            <p className={cn("text-[15px] font-mono font-bold", pos ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-              {pos ? "+" : ""}${Math.abs(stats.pnlMonth).toLocaleString()}
-            </p>
+            <p className="text-[13px] font-mono">— sin trades</p>
           </div>
-          <div className="text-right">
+          <div className="text-right text-[var(--ink-3)]">
             <p className="text-eyebrow mb-1">Win %</p>
-            <p className={cn("text-[15px] font-mono font-bold", stats.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-              {stats.winRate}%
-            </p>
+            <p className="text-[13px] font-mono">—</p>
           </div>
         </div>
 
@@ -255,19 +251,15 @@ function AccountCard({ account, stats, selected, onClick }: {
         <div className="flex justify-between text-[11px] pt-2 border-t border-[var(--line)]">
           <div>
             <p className="text-[var(--ink-3)] mb-0.5">Trades mes</p>
-            <p className="font-mono font-semibold text-[var(--ink)]">{stats.tradesMonth}</p>
+            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
           </div>
           <div className="text-center">
             <p className="text-[var(--ink-3)] mb-0.5">Avg R</p>
-            <p className={cn("font-mono font-semibold", stats.avgR >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-              {stats.avgR >= 0 ? "+" : ""}{stats.avgR.toFixed(1)}R
-            </p>
+            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
           </div>
           <div className="text-right">
             <p className="text-[var(--ink-3)] mb-0.5">Drawdown</p>
-            <p className={cn("font-mono font-semibold", ddOk ? "text-[var(--ink-2)]" : "text-[var(--be)]")}>
-              -{stats.drawdownPct.toFixed(1)}%
-            </p>
+            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
           </div>
         </div>
 
@@ -282,9 +274,9 @@ function AccountCard({ account, stats, selected, onClick }: {
 /* ══════════════════════════════════════
    DETAIL PANEL
 ══════════════════════════════════════ */
-function AccountDetailPanel({ account, stats, onClose, onDelete, deleting }: {
+function AccountDetailPanel({ account, stats, onClose, onDelete, deleting, onEdit }: {
   account: Account; stats: AccountStats; onClose: () => void
-  onDelete?: () => void; deleting?: boolean
+  onDelete?: () => void; deleting?: boolean; onEdit?: () => void
 }) {
   const tm  = TYPE_META[account.type]
   const sm  = STATUS_META[stats.status]
@@ -420,7 +412,7 @@ function AccountDetailPanel({ account, stats, onClose, onDelete, deleting }: {
 
         {/* Actions */}
         <div className="flex gap-2 pt-1">
-          <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+          <button onClick={onEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <Pencil size={11} /> Editar
           </button>
           <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
@@ -451,26 +443,35 @@ const TIMEZONES = [
   { value: "Europe/Madrid",     label: "Europe/Madrid (CET)" },
 ]
 
-interface NewAccountForm {
+interface AccountForm {
   tipo: AccountType
   nombre: string
   broker: string
   balance: string
   currency: string
   timezone: string
-  // prop firm
-  maxDrawdown: string
-  dailyLoss: string
-  maxTrades: string
+  // drawdown & target (all types)
+  ddDailyPct: string
+  ddWeeklyPct: string
+  ddMonthlyPct: string
+  ddTotalPct: string
   targetPct: string
+  // prop firm extras
+  ddModel: "FIXED" | "TRAILING"
+  phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
+  maxTrades: string
   symbols: string
+  minDays: string
 }
 
-const FORM_INIT: NewAccountForm = {
+const FORM_INIT: AccountForm = {
   tipo: "PROP_FIRM", nombre: "", broker: "", balance: "", currency: "USD",
   timezone: "America/New_York",
-  maxDrawdown: "10", dailyLoss: "5", maxTrades: "3", targetPct: "8", symbols: "NQ, ES, MNQ",
+  ddDailyPct: "", ddWeeklyPct: "", ddMonthlyPct: "", ddTotalPct: "", targetPct: "",
+  ddModel: "FIXED", phase: "PHASE_1", maxTrades: "3", symbols: "NQ, ES, MNQ", minDays: "",
 }
+
+type NewAccountForm = AccountForm
 
 function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [form, setForm] = useState<NewAccountForm>(FORM_INIT)
@@ -488,23 +489,34 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
 
   const creating = createAccount.isPending
 
-  function handleCreate() {
-    if (!form.nombre.trim() || !form.broker.trim()) return
-    createAccount.mutate({
-      name:           form.nombre.trim(),
-      broker:         form.broker.trim(),
-      type:           form.tipo,
-      initialBalance: parseFloat(form.balance.replace(/,/g, "")) || 0,
-      currency:       form.currency,
-      timezone:       form.timezone,
-      ddTotalPct:     form.tipo === "PROP_FIRM" ? parseFloat(form.maxDrawdown) : undefined,
-      ddDailyPct:     form.tipo === "PROP_FIRM" ? parseFloat(form.dailyLoss)   : undefined,
-      maxTradesPerDay: form.tipo === "PROP_FIRM" ? parseInt(form.maxTrades)    : undefined,
-      targetPct:       form.tipo === "PROP_FIRM" ? parseFloat(form.targetPct)  : undefined,
+  function buildMutationInput(form: AccountForm) {
+    const pf = (v: string) => v ? parseFloat(v) : undefined
+    const pi = (v: string) => v ? parseInt(v)   : undefined
+    return {
+      name:            form.nombre.trim(),
+      broker:          form.broker.trim(),
+      type:            form.tipo,
+      initialBalance:  parseFloat(form.balance.replace(/,/g, "")) || 0,
+      currency:        form.currency,
+      timezone:        form.timezone,
+      ddDailyPct:      pf(form.ddDailyPct),
+      ddWeeklyPct:     pf(form.ddWeeklyPct),
+      ddMonthlyPct:    pf(form.ddMonthlyPct),
+      ddTotalPct:      pf(form.ddTotalPct),
+      targetPct:       pf(form.targetPct),
+      ddModel:         form.tipo === "PROP_FIRM" ? form.ddModel  : undefined,
+      phase:           form.tipo === "PROP_FIRM" ? form.phase    : undefined,
+      maxTradesPerDay: form.tipo === "PROP_FIRM" ? pi(form.maxTrades) : undefined,
+      minTradingDays:  form.tipo === "PROP_FIRM" ? pi(form.minDays)   : undefined,
       allowedSymbols:  form.tipo === "PROP_FIRM"
         ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
         : [],
-    })
+    }
+  }
+
+  function handleCreate() {
+    if (!form.nombre.trim() || !form.broker.trim()) return
+    createAccount.mutate(buildMutationInput(form))
   }
 
   const set = <K extends keyof NewAccountForm>(k: K, v: NewAccountForm[K]) =>
@@ -536,7 +548,7 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
               )}>
-              {t === "general" ? "🏦 General" : "🛡 Reglas Prop Firm"}
+              {t === "general" ? "🏦 General" : form.tipo === "PROP_FIRM" ? "🛡 Prop Firm" : "📊 Límites"}
             </button>
           ))}
         </div>
@@ -629,95 +641,112 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
               </div>
             </div>
 
-            {form.tipo === "PROP_FIRM" && (
-              <button onClick={() => setTab("reglas")}
-                className="flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-sm)] border border-[var(--accent)] text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent-soft)] transition-colors">
-                Continuar → Configurar reglas prop firm
-              </button>
-            )}
+            <button onClick={() => setTab("reglas")}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-[var(--radius-sm)] border border-[var(--accent)] text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent-soft)] transition-colors">
+              Continuar → Configurar límites y objetivo
+            </button>
           </div>
         )}
 
         {tab === "reglas" && (
           <div className="flex flex-col gap-4">
-            {/* Info banner */}
             <div className="flex items-start gap-3 px-4 py-3 rounded-[var(--radius-sm)]"
               style={{ background: "rgba(79,110,247,0.08)", border: "1px solid rgba(79,110,247,0.2)" }}>
               <Shield size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
               <div>
-                <p className="text-[12px] font-semibold text-[var(--accent)]">Reglas Prop Firm</p>
-                <p className="text-[11px] text-[var(--ink-3)]">Estas reglas se usan para calcular el risk engine y mostrar alertas antes de cada trade.</p>
+                <p className="text-[12px] font-semibold text-[var(--accent)]">Límites de drawdown y objetivo</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Aplica para todos los tipos de cuenta. Se usarán para calcular alertas y mostrar progreso.</p>
               </div>
             </div>
 
-            {/* Limits */}
+            {/* Drawdown 4-grid */}
             <div>
-              <p className="text-eyebrow mb-2">Límites de pérdida</p>
+              <p className="text-eyebrow mb-2">Límites de pérdida (%)</p>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-eyebrow block mb-1.5">Max Drawdown total</label>
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="10" value={form.maxDrawdown} mono
-                      onChange={e => set("maxDrawdown", e.target.value)} />
-                    <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+                {([
+                  ["ddDailyPct",   "Diario",   "5",  "Pérdida máx en un día"],
+                  ["ddWeeklyPct",  "Semanal",  "8",  "Pérdida máx en la semana"],
+                  ["ddMonthlyPct", "Mensual",  "10", "Pérdida máx en el mes"],
+                  ["ddTotalPct",   "Total",    "10", "DD desde balance inicial o pico"],
+                ] as const).map(([field, label, ph, hint]) => (
+                  <div key={field}>
+                    <label className="text-eyebrow block mb-1.5">{label}</label>
+                    <div className="flex items-center gap-2">
+                      <Input placeholder={ph} value={form[field]} mono onChange={e => set(field, e.target.value)} />
+                      <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--ink-3)] mt-1">{hint}</p>
                   </div>
-                  <p className="text-[10px] text-[var(--ink-3)] mt-1">Pérdida máxima desde balance inicial</p>
-                </div>
-                <div>
-                  <label className="text-eyebrow block mb-1.5">Pérdida diaria máx</label>
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="5" value={form.dailyLoss} mono
-                      onChange={e => set("dailyLoss", e.target.value)} />
-                    <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
-                  </div>
-                  <p className="text-[10px] text-[var(--ink-3)] mt-1">Límite de pérdida en un día calendario</p>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Objective + trades */}
+            {/* Objetivo */}
             <div>
-              <p className="text-eyebrow mb-2">Objetivo y actividad</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-eyebrow block mb-1.5">Objetivo de la fase</label>
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="8" value={form.targetPct} mono
-                      onChange={e => set("targetPct", e.target.value)} />
-                    <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-eyebrow block mb-1.5">Max trades por día</label>
-                  <Input placeholder="3" value={form.maxTrades} mono
-                    onChange={e => set("maxTrades", e.target.value)} />
-                </div>
+              <label className="text-eyebrow block mb-1.5">Objetivo de ganancia</label>
+              <div className="flex items-center gap-2 max-w-[160px]">
+                <Input placeholder="8" value={form.targetPct} mono onChange={e => set("targetPct", e.target.value)} />
+                <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
               </div>
             </div>
 
-            {/* Symbols */}
-            <div>
-              <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
-              <Input placeholder="NQ, ES, MNQ, MES, GC" value={form.symbols}
-                onChange={e => set("symbols", e.target.value)} />
-              <p className="text-[10px] text-[var(--ink-3)] mt-1">Separados por coma. El risk engine bloqueará trades en otros símbolos.</p>
-            </div>
+            {/* Prop Firm extras */}
+            {form.tipo === "PROP_FIRM" && (
+              <>
+                <div className="border-t border-[var(--line)] pt-4">
+                  <p className="text-eyebrow mb-3">Extras Prop Firm</p>
 
-            {/* Preview card */}
-            <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] border border-[var(--line)] p-4">
-              <p className="text-eyebrow mb-3">Vista previa de reglas</p>
-              <div className="flex flex-col gap-2">
-                <RiskBar label="Max Drawdown" usedPct={0} limitLabel={`${form.maxDrawdown || 10}%`} />
-                <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${form.dailyLoss || 5}%`} />
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-[11px] text-[var(--ink-3)]">Progreso hacia {form.targetPct || 8}%</span>
-                    <span className="text-[11px] font-mono text-[var(--ink-3)]">0%</span>
+                  {/* DD model */}
+                  <div className="mb-4">
+                    <label className="text-eyebrow block mb-2">Modelo de trailing drawdown</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(["FIXED", "TRAILING"] as const).map(m => (
+                        <button key={m} onClick={() => set("ddModel", m)}
+                          className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold text-left border transition-all",
+                            form.ddModel === m
+                              ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
+                              : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
+                          )}>
+                          {m === "FIXED" ? "🔒 Fijo (FTMO, FXify)" : "📈 Trailing (Apex, TopStep)"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-[var(--line)]" />
+
+                  {/* Phase + max trades */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-eyebrow block mb-1.5">Fase actual</label>
+                      <div className="flex flex-col gap-1">
+                        {(["PHASE_1","PHASE_2","FUNDED","NONE"] as const).map(p => (
+                          <button key={p} onClick={() => set("phase", p)}
+                            className={cn("py-1.5 px-3 rounded-[var(--radius-sm)] text-[11px] font-medium text-left border transition-all",
+                              form.phase === p
+                                ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
+                                : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
+                            )}>
+                            {p === "PHASE_1" ? "Phase 1" : p === "PHASE_2" ? "Phase 2" : p === "FUNDED" ? "✅ Funded" : "Sin fase"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-eyebrow block mb-1.5">Max trades / día</label>
+                      <Input placeholder="3" value={form.maxTrades} mono onChange={e => set("maxTrades", e.target.value)} />
+                      <label className="text-eyebrow block mb-1.5 mt-3">Min. días trading</label>
+                      <Input placeholder="10" value={form.minDays} mono onChange={e => set("minDays", e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Symbols */}
+                  <div className="mt-3">
+                    <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
+                    <Input placeholder="NQ, ES, MNQ, MES, GC" value={form.symbols} onChange={e => set("symbols", e.target.value)} />
+                    <p className="text-[10px] text-[var(--ink-3)] mt-1">Separados por coma.</p>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -728,6 +757,194 @@ function NuevaCuentaModal({ open, onOpenChange }: { open: boolean; onOpenChange:
           )}
           <Button variant="primary" onClick={handleCreate} disabled={creating}>
             {creating ? <><Loader2 size={13} className="animate-spin" /> Creando…</> : "Crear cuenta"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/* ══════════════════════════════════════
+   EDIT MODAL
+══════════════════════════════════════ */
+function EditarCuentaModal({ open, onOpenChange, account }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  account: any
+}) {
+  const utils = trpc.useUtils()
+  const [tab, setTab] = useState<"general" | "reglas">("general")
+
+  const [form, setForm] = useState<AccountForm>(() => ({
+    tipo:        account.type as AccountType,
+    nombre:      account.name,
+    broker:      account.broker,
+    balance:     String(Number(account.initialBalance)),
+    currency:    account.currency,
+    timezone:    account.timezone,
+    ddDailyPct:  account.ddDailyPct   != null ? String(Number(account.ddDailyPct))   : "",
+    ddWeeklyPct: account.ddWeeklyPct  != null ? String(Number(account.ddWeeklyPct))  : "",
+    ddMonthlyPct:account.ddMonthlyPct != null ? String(Number(account.ddMonthlyPct)) : "",
+    ddTotalPct:  account.ddTotalPct   != null ? String(Number(account.ddTotalPct))   : "",
+    targetPct:   account.targetPct    != null ? String(Number(account.targetPct))    : "",
+    ddModel:     (account.ddModel as "FIXED"|"TRAILING") ?? "FIXED",
+    phase:       (account.phase as AccountForm["phase"])  ?? "PHASE_1",
+    maxTrades:   account.maxTradesPerDay != null ? String(account.maxTradesPerDay) : "",
+    symbols:     account.allowedSymbols.join(", "),
+    minDays:     account.minTradingDays != null ? String(account.minTradingDays) : "",
+  }))
+
+  const set = <K extends keyof AccountForm>(k: K, v: AccountForm[K]) => setForm(f => ({ ...f, [k]: v }))
+
+  const update = trpc.accounts.update.useMutation({
+    onSuccess: () => { utils.accounts.list.invalidate(); onOpenChange(false) },
+  })
+
+  function handleSave() {
+    if (!form.nombre.trim() || !form.broker.trim()) return
+    const pf = (v: string) => v ? parseFloat(v) : undefined
+    const pi = (v: string) => v ? parseInt(v)   : undefined
+    update.mutate({
+      id:              account.id,
+      name:            form.nombre.trim(),
+      broker:          form.broker.trim(),
+      type:            form.tipo,
+      currency:        form.currency,
+      timezone:        form.timezone,
+      ddDailyPct:      pf(form.ddDailyPct),
+      ddWeeklyPct:     pf(form.ddWeeklyPct),
+      ddMonthlyPct:    pf(form.ddMonthlyPct),
+      ddTotalPct:      pf(form.ddTotalPct),
+      targetPct:       pf(form.targetPct),
+      ddModel:         form.tipo === "PROP_FIRM" ? form.ddModel : undefined,
+      phase:           form.tipo === "PROP_FIRM" ? form.phase   : undefined,
+      maxTradesPerDay: form.tipo === "PROP_FIRM" ? pi(form.maxTrades) : undefined,
+      minTradingDays:  form.tipo === "PROP_FIRM" ? pi(form.minDays)   : undefined,
+      allowedSymbols:  form.tipo === "PROP_FIRM"
+        ? form.symbols.split(",").map(s => s.trim()).filter(Boolean)
+        : [],
+    })
+  }
+
+  const tm = TYPE_META[form.tipo]
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[580px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: tm.bg }}>
+              <Shield size={18} style={{ color: tm.color }} />
+            </div>
+            <div>
+              <DialogTitle className="text-[var(--ink)]">Editar — {account.name}</DialogTitle>
+              <p className="text-[11px] mt-0.5" style={{ color: tm.color }}>{tm.label} · {form.currency}</p>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="flex gap-1 p-1 bg-[var(--panel-2)] rounded-[var(--radius-sm)]">
+          {(["general", "reglas"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
+                tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
+              )}>
+              {t === "general" ? "🏦 General" : "📊 Límites"}
+            </button>
+          ))}
+        </div>
+
+        {tab === "general" && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className="text-eyebrow block mb-1.5">Nombre *</label>
+              <Input value={form.nombre} onChange={e => set("nombre", e.target.value)} />
+            </div>
+            <div>
+              <label className="text-eyebrow block mb-1.5">Broker *</label>
+              <Input value={form.broker} onChange={e => set("broker", e.target.value)} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label className="text-eyebrow block mb-1.5">Divisa</label>
+                <div className="flex gap-1">
+                  {["USD","EUR","MXN"].map(c => (
+                    <button key={c} onClick={() => set("currency", c)}
+                      className={cn("flex-1 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold",
+                        form.currency === c ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-3)]"
+                      )}>{c}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === "reglas" && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="text-eyebrow mb-2">Límites de pérdida (%)</p>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ["ddDailyPct",   "Diario",   "5"],
+                  ["ddWeeklyPct",  "Semanal",  "8"],
+                  ["ddMonthlyPct", "Mensual",  "10"],
+                  ["ddTotalPct",   "Total",    "10"],
+                ] as const).map(([field, label, ph]) => (
+                  <div key={field}>
+                    <label className="text-eyebrow block mb-1.5">{label}</label>
+                    <div className="flex items-center gap-2">
+                      <Input placeholder={ph} value={form[field]} mono onChange={e => set(field, e.target.value)} />
+                      <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-eyebrow block mb-1.5">Objetivo de ganancia</label>
+              <div className="flex items-center gap-2 max-w-[160px]">
+                <Input placeholder="8" value={form.targetPct} mono onChange={e => set("targetPct", e.target.value)} />
+                <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+              </div>
+            </div>
+            {form.tipo === "PROP_FIRM" && (
+              <div className="border-t border-[var(--line)] pt-3">
+                <p className="text-eyebrow mb-3">Extras Prop Firm</p>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  {(["FIXED","TRAILING"] as const).map(m => (
+                    <button key={m} onClick={() => set("ddModel", m)}
+                      className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold border transition-all",
+                        form.ddModel === m ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]" : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
+                      )}>
+                      {m === "FIXED" ? "🔒 Fijo" : "📈 Trailing"}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Max trades / día</label>
+                    <Input placeholder="3" value={form.maxTrades} mono onChange={e => set("maxTrades", e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Min. días trading</label>
+                    <Input placeholder="10" value={form.minDays} mono onChange={e => set("minDays", e.target.value)} />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
+                  <Input placeholder="NQ, ES, MNQ" value={form.symbols} onChange={e => set("symbols", e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="primary" onClick={handleSave} disabled={update.isPending}>
+            {update.isPending ? <><Loader2 size={13} className="animate-spin" /> Guardando…</> : "Guardar cambios"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -764,6 +981,7 @@ function KpiBox({ label, value, sub, positive, icon }: {
 export default function CuentasPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const utils = trpc.useUtils()
@@ -898,6 +1116,7 @@ export default function CuentasPage() {
                   }}
                   stats={{ ...ACCOUNT_STATS["acc-1"], currentBalance: Number(selected.initialBalance) }}
                   onClose={() => setSelectedId(null)}
+                  onEdit={() => setEditingId(selected.id)}
                   onDelete={() => deleteAccount.mutate(selected.id)}
                   deleting={deleteAccount.isPending}
                 />
@@ -908,6 +1127,16 @@ export default function CuentasPage() {
       </div>
 
       <NuevaCuentaModal open={modalOpen} onOpenChange={setModalOpen} />
+      {editingId && (() => {
+        const ea = accounts.find(a => a.id === editingId)
+        return ea ? (
+          <EditarCuentaModal
+            open
+            onOpenChange={(v) => { if (!v) setEditingId(null) }}
+            account={ea}
+          />
+        ) : null
+      })()}
     </>
   )
 }
