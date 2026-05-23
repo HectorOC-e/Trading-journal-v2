@@ -213,19 +213,19 @@ function SetupDrawer({
 
       {/* Drawer — mobile: bottom sheet | desktop: right panel */}
       <div className={cn(
-        "fixed z-50 bg-[var(--panel)] flex flex-col transition-transform duration-300 ease-out",
-        /* mobile: full-width bottom sheet, 90vh */
-        "bottom-0 left-0 right-0 rounded-t-2xl max-h-[92vh]",
+        "fixed z-50 bg-[var(--panel)] flex flex-col overflow-hidden",
+        /* mobile: full-width bottom sheet */
+        "bottom-0 left-0 right-0 rounded-t-2xl h-[92vh]",
         /* desktop override: right side panel */
-        "lg:bottom-0 lg:top-0 lg:left-auto lg:right-0 lg:w-[380px] lg:rounded-none lg:max-h-full lg:h-full",
+        "lg:bottom-0 lg:top-0 lg:left-auto lg:right-0 lg:w-[380px] lg:rounded-none lg:h-full",
       )}>
         {/* Drag handle — mobile only */}
-        <div className="flex justify-center pt-3 pb-1 lg:hidden">
+        <div className="flex justify-center pt-3 pb-1 shrink-0 lg:hidden">
           <div className="w-10 h-1 rounded-full bg-[var(--line)]" />
         </div>
 
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-[var(--line)] flex items-center gap-3">
+        {/* Header — never scrolls */}
+        <div className="shrink-0 px-5 py-4 border-b border-[var(--line)] flex items-center gap-3">
           <span className="w-11 h-11 rounded-[var(--radius-sm)] flex items-center justify-center text-[13px] font-extrabold text-white shrink-0"
             style={{ background: setup.color }}>
             {setup.abbreviation}
@@ -238,8 +238,8 @@ function SetupDrawer({
               <StatusBadge status={setup.status} />
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-[var(--chip)] transition-colors shrink-0">
-            <X size={15} className="text-[var(--ink-3)]" />
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--chip)] transition-colors shrink-0">
+            <X size={18} className="text-[var(--ink-2)]" />
           </button>
         </div>
 
@@ -370,7 +370,7 @@ function SetupDrawer({
         </div>
 
         {/* ── Fixed action bar at bottom ── */}
-        <div className="border-t border-[var(--line)] px-5 py-4 flex flex-col gap-2 bg-[var(--panel)]">
+        <div className="shrink-0 border-t border-[var(--line)] px-5 py-4 flex flex-col gap-2 bg-[var(--panel)]">
 
           {/* Status dropdown */}
           <div className="relative">
