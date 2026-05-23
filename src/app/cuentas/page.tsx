@@ -558,27 +558,50 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
 
       {/* Confirm hard delete dialog */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 w-full max-w-sm flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-[var(--loss)]">
-              <Trash2 size={16} />
-              <p className="font-bold">Eliminar cuenta</p>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="w-full sm:max-w-sm bg-[var(--panel)] border border-[var(--line)] rounded-t-2xl sm:rounded-[var(--radius)] flex flex-col overflow-hidden">
+            {/* Header strip */}
+            <div className="px-5 pt-5 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+              <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: "var(--loss-soft)" }}>
+                <Trash2 size={15} className="text-[var(--loss)]" />
+              </div>
+              <div>
+                <p className="text-[13.5px] font-bold text-[var(--ink)]">Eliminar cuenta</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Acción irreversible</p>
+              </div>
             </div>
-            <p className="text-[13px] text-[var(--ink-2)]">
-              Esta acción es <strong>irreversible</strong>. Se eliminarán todos los trades, retiros y logs.
-              Escribe el nombre de la cuenta para confirmar:
-            </p>
-            <p className="font-mono text-[13px] font-bold text-[var(--ink)] bg-[var(--panel-2)] p-2 rounded">{account.name}</p>
-            <Input value={deleteInput} onChange={e => setDeleteInput(e.target.value)}
-              placeholder="Escribe el nombre exacto…" className="text-[13px]" />
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => { setConfirmDelete(false); setDeleteInput("") }}>Cancelar</Button>
-              <Button variant="danger" className="flex-1"
+            {/* Body */}
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-[12.5px] text-[var(--ink-2)] leading-relaxed">
+                Se eliminarán todos los trades, retiros y logs asociados. Escribe el nombre exacto para confirmar:
+              </p>
+              <div className="px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                <p className="font-mono text-[13px] font-bold text-[var(--ink)]">{account.name}</p>
+              </div>
+              <input
+                value={deleteInput}
+                onChange={e => setDeleteInput(e.target.value)}
+                placeholder="Escribe el nombre exacto…"
+                className="h-10 px-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:border-[var(--loss)] transition-colors"
+              />
+            </div>
+            {/* Actions */}
+            <div className="px-5 pb-5 flex gap-2">
+              <button
+                onClick={() => { setConfirmDelete(false); setDeleteInput("") }}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
                 disabled={deleteInput !== account.name || deleting}
-                onClick={() => { onDelete?.(); setConfirmDelete(false) }}>
-                {deleting ? <Loader2 size={13} className="animate-spin mr-1" /> : null}
-                Eliminar definitivamente
-              </Button>
+                onClick={() => { onDelete?.(); setConfirmDelete(false) }}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-semibold text-white transition-colors disabled:opacity-40"
+                style={{ background: "var(--loss)" }}
+              >
+                {deleting ? <Loader2 size={13} className="animate-spin inline mr-1" /> : null}
+                Eliminar
+              </button>
             </div>
           </div>
         </div>
@@ -586,25 +609,46 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
 
       {/* Mark as lost dialog */}
       {lostModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 w-full max-w-sm flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-orange-400">
-              <XCircle size={16} />
-              <p className="font-bold">Marcar como Perdida</p>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="w-full sm:max-w-sm bg-[var(--panel)] border border-[var(--line)] rounded-t-2xl sm:rounded-[var(--radius)] flex flex-col overflow-hidden">
+            {/* Header strip */}
+            <div className="px-5 pt-5 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+              <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: "rgba(234,88,12,0.12)" }}>
+                <XCircle size={15} style={{ color: "#ea580c" }} />
+              </div>
+              <div>
+                <p className="text-[13.5px] font-bold text-[var(--ink)]">Marcar como Perdida</p>
+                <p className="text-[11px] text-[var(--ink-3)]">El estado se registrará en el historial</p>
+              </div>
             </div>
-            <p className="text-[13px] text-[var(--ink-2)]">
-              La cuenta quedará en estado PERDIDA y se excluirá del dashboard. Agrega una nota del motivo (requerido).
-            </p>
-            <textarea value={lostNote} onChange={e => setLostNote(e.target.value)}
-              placeholder="Ej: Se llegó al drawdown máximo en la fase 2…"
-              className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink)] text-[13px] p-3 resize-none h-24 focus:outline-none focus:border-[var(--accent)]" />
-            <div className="flex gap-2">
-              <Button variant="ghost" className="flex-1" onClick={() => { setLostModal(false); setLostNote("") }}>Cancelar</Button>
-              <Button className="flex-1 bg-orange-600 hover:bg-orange-500 text-white"
+            {/* Body */}
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-[12.5px] text-[var(--ink-2)] leading-relaxed">
+                La cuenta quedará en estado <strong className="text-[var(--ink)]">PERDIDA</strong> y se excluirá del dashboard. Agrega una nota del motivo:
+              </p>
+              <textarea
+                value={lostNote}
+                onChange={e => setLostNote(e.target.value)}
+                placeholder="Ej: Se llegó al drawdown máximo en la fase 2…"
+                className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[var(--ink)] text-[13px] p-3 resize-none h-24 focus:outline-none focus:border-[var(--accent)] placeholder:text-[var(--ink-3)] transition-colors"
+              />
+            </div>
+            {/* Actions */}
+            <div className="px-5 pb-5 flex gap-2">
+              <button
+                onClick={() => { setLostModal(false); setLostNote("") }}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
                 disabled={!lostNote.trim()}
-                onClick={() => { onLost?.(lostNote); setLostModal(false); setLostNote("") }}>
+                onClick={() => { onLost?.(lostNote); setLostModal(false); setLostNote("") }}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-semibold text-white transition-colors disabled:opacity-40"
+                style={{ background: "#ea580c" }}
+              >
                 Confirmar
-              </Button>
+              </button>
             </div>
           </div>
         </div>
