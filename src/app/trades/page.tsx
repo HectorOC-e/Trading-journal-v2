@@ -104,33 +104,33 @@ export default function TradesPage() {
     accountId: string; setupId: string; direction: "LONG" | "SHORT"
     symbol: string; entry: string; stop: string; target: string; size: string
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
-    tags: string[]; notes: string
+    tags: string[]; notes: string; screenshots: string[]
   }) => {
     const entry  = parseFloat(form.entry)
     const stop   = parseFloat(form.stop)
     const target = parseFloat(form.target)
     const size   = parseFloat(form.size)
 
-    // Compute planned RR for reference
     const risk   = Math.abs(entry - stop)
     const reward = Math.abs(target - entry)
     const rr     = risk > 0 ? reward / risk : null
 
     createTrade.mutate({
-      accountId:  form.accountId,
-      setupId:    form.setupId || undefined,
-      direction:  form.direction,
-      symbol:     form.symbol.toUpperCase(),
+      accountId:     form.accountId,
+      setupId:       form.setupId || undefined,
+      direction:     form.direction,
+      symbol:        form.symbol.toUpperCase(),
       entry,
       stop,
       target,
       size,
-      date:       form.date,
-      openTime:   form.openTime,
-      session:    form.session,
-      tags:       form.tags,
-      notes:      form.notes,
-      rMultiple:  rr ?? undefined,
+      date:          form.date,
+      openTime:      form.openTime,
+      session:       form.session,
+      tags:          form.tags,
+      notes:         form.notes,
+      rMultiple:     rr ?? undefined,
+      screenshotUrls: form.screenshots,
     })
   }
 

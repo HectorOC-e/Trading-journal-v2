@@ -107,19 +107,56 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
         )}
       </div>
 
-      {/* ── P&L hero ── */}
-      <div className={cn(
-        "rounded-[var(--radius-sm)] p-3 text-center",
-        pnlPositive ? "bg-[var(--win-soft)]" : "bg-[var(--loss-soft)]"
-      )}>
-        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--ink-3)] mb-1">Net P&L</p>
-        <p className={cn("text-2xl font-bold font-mono", pnlPositive ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-          {pnlPositive ? "+" : ""}${trade.pnl?.toLocaleString()}
-        </p>
-        <p className={cn("text-sm font-mono font-semibold mt-0.5", rPositive ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-          {rPositive ? "+" : ""}{trade.rMultiple?.toFixed(1)}R
-        </p>
-      </div>
+      {/* ── Result hero ── */}
+      {(() => {
+        const isOpen = trade.pnl == null
+        const isWin  = !isOpen && (trade.pnl ?? 0) > 0
+        const isLoss = !isOpen && (trade.pnl ?? 0) < 0
+        const isBE   = !isOpen && (trade.pnl ?? 0) === 0
+        return (
+          <div className={cn(
+            "rounded-[var(--radius-sm)] p-3",
+            isOpen ? "bg-[var(--panel-2)] border border-[var(--line)]"
+              : isWin  ? "bg-[var(--win-soft)]"
+              : isLoss ? "bg-[var(--loss-soft)]"
+              : "bg-[var(--chip)]"
+          )}>
+            {/* Status badge */}
+            <div className="flex items-center justify-between mb-2">
+              <span className={cn(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                isOpen ? "bg-[var(--chip)] text-[var(--ink-3)]"
+                  : isWin  ? "bg-[var(--win)] text-white"
+                  : isLoss ? "bg-[var(--loss)] text-white"
+                  : "bg-[var(--ink-3)] text-white"
+              )}>
+                {isOpen ? "ABIERTO" : isWin ? "✓ WIN" : isLoss ? "✗ LOSS" : "BE"}
+              </span>
+              {!isOpen && trade.rMultiple != null && (
+                <span className={cn(
+                  "text-sm font-bold font-mono",
+                  rPositive ? "text-[var(--win)]" : "text-[var(--loss)]"
+                )}>
+                  {rPositive ? "+" : ""}{trade.rMultiple.toFixed(1)}R
+                </span>
+              )}
+            </div>
+            {/* P&L */}
+            {isOpen ? (
+              <p className="text-sm text-[var(--ink-3)] text-center py-1">
+                Trade en curso — cierra para registrar P&L
+              </p>
+            ) : (
+              <p className={cn(
+                "text-2xl font-bold font-mono text-center",
+                isWin ? "text-[var(--win)]" : isLoss ? "text-[var(--loss)]" : "text-[var(--ink-2)]"
+              )}>
+                {(trade.pnl ?? 0) > 0 ? "+" : ""}${trade.pnl?.toLocaleString()}
+              </p>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Account section ── */}
       {account && (
@@ -261,6 +298,22 @@ export function TradeDetailPanel({ trade, account, setup, onClose, onDelete, del
           <p className="text-xs text-[var(--ink-2)] leading-relaxed bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
             {trade.notes}
           </p>
+        </div>
+      )}
+
+      {/* ── Screenshots ── */}
+      {hasScreenshots && (
+        <div>
+          <p className="text-eyebrow mb-2">Screenshots</p>
+          <div className="flex flex-wrap gap-2">
+            {trade.screenshotUrls!.map((url, i) => (
+              <a key={url} href={url} target="_blank" rel="noopener noreferrer"
+                className="block w-24 h-24 rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] hover:opacity-90 transition-opacity">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`screenshot ${i + 1}`} className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
         </div>
       )}
 
