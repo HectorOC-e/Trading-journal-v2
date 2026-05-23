@@ -253,6 +253,46 @@ export const tradesRouter = router({
       })
     }),
 
+  stats: protectedProcedure
+    .input(z.object({
+      accountId: z.string().uuid().optional(),
+      setupId:   z.string().uuid().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const trades = await ctx.prisma.trade.findMany({
+        where: {
+          userId: ctx.userId,
+          status: "CLOSED",
+          ...(input?.accountId && { accountId: input.accountId }),
+          ...(input?.setupId   && { setupId:   input.setupId }),
+        },
+        select: { pnl: true, rMultiple: true, tags: true, date: true, accountId: true, setupId: true },
+      })
+
+      const total = trades.length
+      if (total === 0) return { total: 0, wins: 0, losses: 0, be: 0, winRate: 0, avgR: 0, netPnl: 0, pnlMonth: 0, expectancy: 0, aplusRate: 0, profitFactor: 0 }
+
+      const wins      = trades.filter(t => Number(t.pnl ?? 0) > 0).length
+      const losses    = trades.filter(t => Number(t.pnl ?? 0) < 0).length
+      const be        = total - wins - losses
+      const winRate   = Math.round((wins / total) * 100)
+      const netPnl    = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const avgR      = trades.reduce((s, t) => s + Number(t.rMultiple ?? 0), 0) / total
+      const grossWin  = trades.filter(t => Number(t.pnl ?? 0) > 0).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const grossLoss = Math.abs(trades.filter(t => Number(t.pnl ?? 0) < 0).reduce((s, t) => s + Number(t.pnl ?? 0), 0))
+      const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
+      const expectancy   = avgR * (winRate / 100) - (1 - winRate / 100)
+      const aplusTrades  = trades.filter(t => (t.tags as string[]).includes("A+")).length
+      const aplusRate    = Math.round((aplusTrades / total) * 100)
+      const now          = new Date()
+      const monthStart   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      const pnlMonth     = trades
+        .filter(t => (t.date as Date).toISOString().slice(0, 10) >= monthStart)
+        .reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+
+      return { total, wins, losses, be, winRate, avgR, netPnl, pnlMonth, expectancy, aplusRate, profitFactor }
+    }),
+
   delete: protectedProcedure
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {

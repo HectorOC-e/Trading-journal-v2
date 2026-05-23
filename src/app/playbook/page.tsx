@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Plus, X, Star, Circle, CheckCircle2, Pencil, Copy,
   Pause, Play, FlaskConical, Archive, Trash2, BarChart2,
@@ -73,7 +73,9 @@ function DirectionChip({ direction }: { direction: string }) {
 /* ═══════════════════════════════════════════════
    Setup Card — mejorada
 ═══════════════════════════════════════════════ */
-function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boolean; onClick: () => void }) {
+type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number }
+
+function SetupCard({ setup, selected, onClick, stats }: { setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats }) {
   const isInactive  = setup.status === "PAUSADO" || setup.status === "DESCARTADO"
   const isDiscarded = setup.status === "DESCARTADO"
   const sparkColor  = isDiscarded ? "var(--ink-3)"
@@ -123,10 +125,10 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
         {/* Stats row */}
         <div className="grid grid-cols-4 gap-1 text-center">
           {[
-            { label: "Win %",  value: "—" },
-            { label: "Avg R",  value: "—" },
-            { label: "P&L",    value: "—" },
-            { label: "Trades", value: "0" },
+            { label: "Win %",  value: stats && stats.total > 0 ? `${Math.round(stats.wins / stats.total * 100)}%` : "—" },
+            { label: "Avg R",  value: stats && stats.total > 0 ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(1)}R` : "—" },
+            { label: "P&L",    value: stats && stats.total > 0 ? `${stats.netPnl >= 0 ? "+" : "-"}$${Math.abs(stats.netPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—" },
+            { label: "Trades", value: stats ? String(stats.total) : "0" },
           ].map(({ label, value }) => (
             <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] py-2">
               <p className="text-[9px] uppercase tracking-wide text-[var(--ink-3)] font-semibold">{label}</p>
@@ -165,7 +167,7 @@ function SetupCard({ setup, selected, onClick }: { setup: DbSetup; selected: boo
    Drawer — móvil: desde abajo | desktop: derecha
 ═══════════════════════════════════════════════ */
 function SetupDrawer({
-  setup, onClose, onEdit, onSetStatus, onDuplicate, onDelete,
+  setup, onClose, onEdit, onSetStatus, onDuplicate, onDelete, stats,
 }: {
   setup: DbSetup | null
   onClose: () => void
@@ -173,6 +175,7 @@ function SetupDrawer({
   onSetStatus: (s: DbSetup, status: SetupStatus) => void
   onDuplicate: (s: DbSetup) => void
   onDelete: (s: DbSetup) => void
+  stats?: SetupStats
 }) {
   const [confirmName,    setConfirmName]    = useState("")
   const [confirmingDel,  setConfirmingDel]  = useState(false)
@@ -257,19 +260,24 @@ function SetupDrawer({
 
           {/* Stats grid */}
           <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Win Rate",   value: "—" },
-              { label: "Avg R",      value: "—" },
-              { label: "Expectancy", value: "—" },
-              { label: "A+ Rate",    value: "—" },
-              { label: "Trades",     value: "0" },
-              { label: "Net P&L",    value: "—" },
-            ].map(({ label, value }) => (
-              <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
-                <p className="text-[9px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
-                <p className="text-[15px] font-mono font-bold text-[var(--ink-3)]">{value}</p>
-              </div>
-            ))}
+            {(() => {
+              const s = stats
+              const hasSt = s && s.total > 0
+              const pnlColor = hasSt ? (s.netPnl >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
+              return [
+                { label: "Win Rate",   value: hasSt ? `${Math.round(s.wins / s.total * 100)}%` : "—",                                        color: hasSt ? (s.wins / s.total >= 0.5 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" },
+                { label: "Avg R",      value: hasSt ? `${s.avgR >= 0 ? "+" : ""}${s.avgR.toFixed(2)}R` : "—",                                color: hasSt ? (s.avgR >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" },
+                { label: "Expectancy", value: hasSt ? `${s.expectancy >= 0 ? "+" : ""}${s.expectancy.toFixed(2)}R` : "—",                    color: hasSt ? (s.expectancy >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" },
+                { label: "A+ Rate",    value: hasSt ? `${s.aplusRate}%` : "—",                                                                color: "var(--be)" },
+                { label: "Trades",     value: s ? String(s.total) : "0",                                                                      color: "var(--ink)" },
+                { label: "Net P&L",    value: hasSt ? `${s.netPnl >= 0 ? "+" : "-"}$${Math.abs(s.netPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—", color: pnlColor },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
+                  <p className="text-[9px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
+                  <p className="text-[15px] font-mono font-bold leading-none" style={{ color }}>{value}</p>
+                </div>
+              ))
+            })()}
           </div>
 
           {/* Description */}
@@ -885,6 +893,32 @@ export default function PlaybookPage() {
   const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
     { includeDiscarded: showDiscarded },
   )
+  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+
+  const setupStats = useMemo(() => {
+    const map: Record<string, SetupStats> = {}
+    for (const t of allTrades) {
+      if (t.status !== "CLOSED" || !t.setupId) continue
+      const sid = t.setupId
+      if (!map[sid]) map[sid] = { total: 0, wins: 0, netPnl: 0, avgR: 0, aplusRate: 0, expectancy: 0 }
+      const s = map[sid]
+      s.total++
+      const pnl = t.pnl ?? 0
+      if (pnl > 0) s.wins++
+      s.netPnl += pnl
+      s.avgR   += t.rMultiple ?? 0
+    }
+    for (const sid of Object.keys(map)) {
+      const s = map[sid]
+      if (s.total === 0) continue
+      s.avgR /= s.total
+      const wr = s.wins / s.total
+      s.expectancy = s.avgR * wr - (1 - wr)
+      const aplusTrades = allTrades.filter(t => t.setupId === sid && t.status === "CLOSED" && (t.tags as string[]).includes("A+")).length
+      s.aplusRate = Math.round((aplusTrades / s.total) * 100)
+    }
+    return map
+  }, [allTrades])
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
@@ -933,12 +967,23 @@ export default function PlaybookPage() {
       />
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <KpiBox label="P&L Total (activos)"  value="— sin trades" sub={`${active.length} setups activos`}                     icon={<TrendingUp size={14} />} />
-        <KpiBox label="Win Rate promedio"     value="—"            sub="sobre setups activos"                                  icon={<Percent size={14} />} />
-        <KpiBox label="Trades totales"        value="0"            sub="todos los setups"                                      icon={<BarChart2 size={14} />} />
-        <KpiBox label="En prueba"             value={String(inTest.length)} sub={inTest.map(s => s.abbreviation).join(", ") || "ninguno"} icon={<FlaskConical size={14} />} />
-      </div>
+      {(() => {
+        const activeStats = active.map(s => setupStats[s.id]).filter(Boolean) as SetupStats[]
+        const totalTrades = Object.values(setupStats).reduce((s, v) => s + v.total, 0)
+        const totalPnl    = Object.values(setupStats).reduce((s, v) => s + v.netPnl, 0)
+        const avgWinRate  = activeStats.length > 0
+          ? Math.round(activeStats.reduce((s, v) => s + (v.total > 0 ? v.wins / v.total * 100 : 0), 0) / activeStats.length)
+          : null
+        const pnlStr = totalPnl !== 0 ? `${totalPnl >= 0 ? "+" : "-"}$${Math.abs(totalPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$0"
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <KpiBox label="P&L Total (activos)"  value={totalTrades > 0 ? pnlStr : "— sin trades"} sub={`${active.length} setups activos`}                     icon={<TrendingUp size={14} />} />
+            <KpiBox label="Win Rate promedio"     value={avgWinRate != null ? `${avgWinRate}%` : "—"}            sub="sobre setups activos"                                  icon={<Percent size={14} />} />
+            <KpiBox label="Trades totales"        value={String(totalTrades)}            sub="todos los setups"                                      icon={<BarChart2 size={14} />} />
+            <KpiBox label="En prueba"             value={String(inTest.length)} sub={inTest.map(s => s.abbreviation).join(", ") || "ninguno"} icon={<FlaskConical size={14} />} />
+          </div>
+        )
+      })()}
 
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
@@ -987,6 +1032,7 @@ export default function PlaybookPage() {
               setup={s}
               selected={drawerSetup?.id === s.id}
               onClick={() => setDrawerSetup(sel => sel?.id === s.id ? null : s)}
+              stats={setupStats[s.id]}
             />
           ))}
         </div>
@@ -1000,6 +1046,7 @@ export default function PlaybookPage() {
         onSetStatus={handleSetStatus}
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
+        stats={drawerSetup ? setupStats[drawerSetup.id] : undefined}
       />
 
       <SetupModal

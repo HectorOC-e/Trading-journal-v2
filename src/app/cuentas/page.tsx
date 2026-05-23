@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   Plus, X, TrendingUp, TrendingDown, Shield, Target,
   AlertTriangle, CheckCircle2, Clock, BarChart3, ChevronRight,
@@ -134,8 +134,10 @@ function RiskBar({ label, usedPct, limitLabel, warnAt = 60, dangerAt = 85 }: {
 /* ══════════════════════════════════════
    ACCOUNT CARD
 ══════════════════════════════════════ */
+interface TradeStats { pnlMonth: number; winRate: number | null; avgR: number | null; tradesMonth: number; tradesTotal: number }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selected: boolean; onClick: () => void }) {
+function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any; selected: boolean; onClick: () => void; stats?: TradeStats }) {
   const type   = rawAccount.type as AccountType
   const tm     = TYPE_META[type] ?? TYPE_META.PERSONAL
   const status = (rawAccount.status as string) ?? "ACTIVE"
@@ -201,13 +203,17 @@ function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selec
               ${initialBalance.toLocaleString()}
             </p>
           </div>
-          <div className="text-right text-[var(--ink-3)]">
+          <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
-            <p className="text-[13px] font-mono">— sin trades</p>
+            <p className="text-[13px] font-mono" style={{ color: stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
+              {stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : ""}$${Math.abs(stats.pnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "— sin trades"}
+            </p>
           </div>
-          <div className="text-right text-[var(--ink-3)]">
+          <div className="text-right">
             <p className="text-eyebrow mb-1">Win %</p>
-            <p className="text-[13px] font-mono">—</p>
+            <p className="text-[13px] font-mono" style={{ color: stats && stats.winRate != null ? (stats.winRate >= 50 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
+              {stats && stats.winRate != null ? `${stats.winRate}%` : "—"}
+            </p>
           </div>
         </div>
 
@@ -293,15 +299,17 @@ function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selec
         <div className="flex justify-between text-[11px] pt-2 border-t border-[var(--line)]">
           <div>
             <p className="text-[var(--ink-3)] mb-0.5">Trades mes</p>
-            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
+            <p className="font-mono font-semibold text-[var(--ink-3)]">{stats ? String(stats.tradesMonth) : "—"}</p>
           </div>
           <div className="text-center">
             <p className="text-[var(--ink-3)] mb-0.5">Avg R</p>
-            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
+            <p className="font-mono font-semibold" style={{ color: stats?.avgR != null ? (stats.avgR >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
+              {stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(2)}R` : "—"}
+            </p>
           </div>
           <div className="text-right">
-            <p className="text-[var(--ink-3)] mb-0.5">Drawdown</p>
-            <p className="font-mono font-semibold text-[var(--ink-3)]">—</p>
+            <p className="text-[var(--ink-3)] mb-0.5">Total trades</p>
+            <p className="font-mono font-semibold text-[var(--ink-3)]">{stats ? String(stats.tradesTotal) : "—"}</p>
           </div>
         </div>
 
@@ -325,7 +333,7 @@ const ACCOUNT_STATUS_META: Record<string, { label: string; color: string; icon: 
 
 const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
-function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase }: {
+function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, stats }: {
   account: Account
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rawAccount: any
@@ -336,6 +344,7 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
   onLost?: (note: string) => void
   onOpenHistory?: () => void
   onPromotePhase?: () => void
+  stats?: TradeStats
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteInput, setDeleteInput] = useState("")
@@ -394,21 +403,29 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
           </div>
         </div>
 
-        {/* Stats grid — real data when trades connected (Fase 3) */}
+        {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Balance actual",  value: `$${initialBalance.toLocaleString()}`, mono: true },
-            { label: "P&L mes",         value: "— sin trades", mono: true },
-            { label: "Win Rate",        value: "—", mono: true },
-            { label: "Avg R",           value: "—", mono: true },
-            { label: "Profit Factor",   value: "—" },
-            { label: "Sharpe Ratio",    value: "—" },
-          ].map(({ label, value, mono }) => (
-            <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
-              <p className="text-[10px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
-              <p className={cn("text-[14px] font-bold leading-none text-[var(--ink-3)]", mono && "font-mono")}>{value}</p>
-            </div>
-          ))}
+          {(() => {
+            const pnlMesStr  = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : ""}$${Math.abs(stats.pnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "— sin trades"
+            const pnlMesColor = stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
+            const wrStr   = stats?.winRate != null ? `${stats.winRate}%` : "—"
+            const wrColor = stats?.winRate != null ? (stats.winRate >= 50 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
+            const avgRStr  = stats?.avgR != null ? `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(2)}R` : "—"
+            const avgRColor = stats?.avgR != null ? (stats.avgR >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
+            return [
+              { label: "Balance inicial", value: `$${initialBalance.toLocaleString()}`, color: "var(--ink)" },
+              { label: "P&L mes",         value: pnlMesStr,   color: pnlMesColor },
+              { label: "Win Rate",        value: wrStr,        color: wrColor },
+              { label: "Avg R",           value: avgRStr,      color: avgRColor },
+              { label: "Trades mes",      value: stats ? String(stats.tradesMonth) : "—", color: "var(--ink-3)" },
+              { label: "Total trades",    value: stats ? String(stats.tradesTotal) : "—", color: "var(--ink-3)" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
+                <p className="text-[10px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
+                <p className="text-[14px] font-bold font-mono leading-none" style={{ color }}>{value}</p>
+              </div>
+            ))
+          })()}
         </div>
 
         {/* Prop firm rules — ONLY for PROP_FIRM and DEMO_PROP */}
@@ -1233,7 +1250,31 @@ export default function CuentasPage() {
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const { data: markets = [] } = trpc.markets.list.useQuery()
+  const { data: allTrades = [] } = trpc.trades.list.useQuery()
   const utils = trpc.useUtils()
+
+  const accountStats = useMemo(() => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+    const map: Record<string, TradeStats> = {}
+    for (const t of allTrades) {
+      if (t.status !== "CLOSED") continue
+      const aid = t.accountId
+      if (!map[aid]) map[aid] = { pnlMonth: 0, winRate: null, avgR: null, tradesMonth: 0, tradesTotal: 0 }
+      const s = map[aid]
+      s.tradesTotal++
+      const pnl = t.pnl ?? 0
+      if (t.date >= monthStart) { s.pnlMonth += pnl; s.tradesMonth++ }
+    }
+    for (const aid of Object.keys(map)) {
+      const trades = allTrades.filter(t => t.accountId === aid && t.status === "CLOSED")
+      if (trades.length === 0) continue
+      const wins = trades.filter(t => (t.pnl ?? 0) > 0).length
+      map[aid].winRate = Math.round((wins / trades.length) * 100)
+      map[aid].avgR    = trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
+    }
+    return map
+  }, [allTrades])
 
   const invalidate = () => utils.accounts.list.invalidate()
 
@@ -1271,20 +1312,28 @@ export default function CuentasPage() {
         />
 
         {/* KPI strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <KpiBox label="Balance total" value={`$${totalBal.toLocaleString()}`}
-            sub={`${accounts.length} cuentas`}
-            icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="P&L este mes" value="—"
-            sub="disponible en Fase 3"
-            icon={<TrendingUp size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="Menor drawdown" value="—"
-            sub="disponible en Fase 3"
-            icon={<Shield size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="Cuentas activas" value={String(activeCount)}
-            sub={`de ${accounts.length} total`}
-            icon={<CheckCircle2 size={15} className="text-[var(--ink-3)]" />} />
-        </div>
+        {(() => {
+          const totalPnlMonth = Object.values(accountStats).reduce((s, v) => s + v.pnlMonth, 0)
+          const totalTradesAll = Object.values(accountStats).reduce((s, v) => s + v.tradesTotal, 0)
+          const pnlStr = totalPnlMonth !== 0 ? `${totalPnlMonth >= 0 ? "+" : ""}$${Math.abs(totalPnlMonth).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$0"
+          return (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              <KpiBox label="Balance total" value={`$${totalBal.toLocaleString()}`}
+                sub={`${accounts.length} cuentas`}
+                icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />
+              <KpiBox label="P&L este mes" value={totalTradesAll > 0 ? pnlStr : "— sin trades"}
+                positive={totalTradesAll > 0 ? totalPnlMonth >= 0 : undefined}
+                sub={totalTradesAll > 0 ? `${Object.values(accountStats).reduce((s, v) => s + v.tradesMonth, 0)} trades este mes` : "sin trades cerrados"}
+                icon={<TrendingUp size={15} className="text-[var(--ink-3)]" />} />
+              <KpiBox label="Total trades" value={String(totalTradesAll)}
+                sub="trades cerrados"
+                icon={<Shield size={15} className="text-[var(--ink-3)]" />} />
+              <KpiBox label="Cuentas activas" value={String(activeCount)}
+                sub={`de ${accounts.length} total`}
+                icon={<CheckCircle2 size={15} className="text-[var(--ink-3)]" />} />
+            </div>
+          )
+        })()}
 
         {/* Loading */}
         {isLoading && (
@@ -1321,6 +1370,7 @@ export default function CuentasPage() {
                   rawAccount={a}
                   selected={selectedId === a.id}
                   onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
+                  stats={accountStats[a.id]}
                 />
               ))}
             </div>
@@ -1364,6 +1414,7 @@ export default function CuentasPage() {
                   onLost={(note) => changeStatus.mutate({ id: selected.id, status: "LOST", statusNote: note })}
                   onOpenHistory={() => setHistoryId(selected.id)}
                   onPromotePhase={() => setPromoteId(selected.id)}
+                  stats={accountStats[selected.id]}
                 />
               </div>
             )}
