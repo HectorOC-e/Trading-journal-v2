@@ -460,9 +460,23 @@ export function RegisterTradeModal({
               </div>
             )}
 
-            {!selectedAccount && (
-              <p className="text-[10px] text-[var(--ink-3)] mt-1">Selecciona cuenta y símbolo para calcular automáticamente.</p>
-            )}
+            {/* Missing-fields hint — only when calc can't run */}
+            {calcContracts === null && (() => {
+              const missing: string[] = []
+              if (!selectedAccount)            missing.push("cuenta")
+              if (!form.symbol)                missing.push("símbolo")
+              if (!parseFloat(form.entry))     missing.push("entry")
+              if (!parseFloat(form.stop))      missing.push("stop")
+              if (!parseFloat(form.riskPct))   missing.push("riesgo %")
+              if (form.symbol && !pointValue)  missing.push("valor/pto del símbolo")
+              if (missing.length === 0) return null
+              return (
+                <p className="text-[10px] mt-1.5 flex items-center gap-1" style={{ color: "var(--loss)" }}>
+                  <span style={{ fontSize: 10 }}>⚠</span>
+                  Falta: {missing.join(", ")}
+                </p>
+              )
+            })()}
           </div>
 
           {/* ── Setup + Checklists ── */}
