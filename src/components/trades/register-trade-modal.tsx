@@ -213,20 +213,20 @@ export function RegisterTradeModal({
   const autoTag         = computeAutoTag(form, selectedSetup)
 
   // ── Filtered symbols ───────────────────────────────────────────────────
+  // null = no restriction (show all); string[] with items = filter to those
   const allowedSymbols: string[] | null = useMemo(() => {
     if (!selectedAccount) return null
-    // PROP_FIRM accounts: use allowedSymbols directly (flat field from DB)
     const raw = (selectedAccount as { allowedSymbols?: string[] }).allowedSymbols
     if (raw && raw.length > 0) return raw
-    // legacy propFirmRules shape
     if (selectedAccount.propFirmRules?.allowedSymbols?.length) {
       return selectedAccount.propFirmRules.allowedSymbols
     }
-    return null // null = show all
+    return null
   }, [selectedAccount])
 
   const visibleMarkets = useMemo(() => {
-    if (!allowedSymbols) return markets
+    // If account has no restrictions (null or empty), show all markets
+    if (!allowedSymbols || allowedSymbols.length === 0) return markets
     return markets.filter(m => allowedSymbols.includes(m.symbol))
   }, [markets, allowedSymbols])
 
@@ -281,7 +281,7 @@ export function RegisterTradeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Registrar trade</DialogTitle>
         </DialogHeader>
@@ -357,10 +357,8 @@ export function RegisterTradeModal({
           {/* ── Símbolo desde mercados ── */}
           <div>
             <p className="text-eyebrow mb-2">Símbolo *</p>
-            {!form.accountId ? (
-              <p className="text-xs text-[var(--ink-3)]">Selecciona una cuenta primero.</p>
-            ) : visibleMarkets.length === 0 ? (
-              <p className="text-xs text-[var(--ink-3)]">Esta cuenta no tiene símbolos permitidos configurados.</p>
+            {markets.length === 0 ? (
+              <p className="text-xs text-[var(--ink-3)]">No hay mercados. Agrégalos en la sección Mercados.</p>
             ) : (
               <>
                 <SymbolCombobox

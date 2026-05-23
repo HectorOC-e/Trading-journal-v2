@@ -757,7 +757,7 @@ function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
 
   return (
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setForm(FORM_INIT); setTab("general") } }}>
-      <DialogContent className="max-w-[580px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[580px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0"
@@ -1068,7 +1068,7 @@ function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[580px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[580px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: tm.bg }}>
