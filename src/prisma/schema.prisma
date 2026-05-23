@@ -132,6 +132,7 @@ model Setup {
   direction         String   @default("AMBAS")
   status            String   @default("ACTIVO")
   description       String   @default("")
+  color             String   @default("#4f6ef7")
   aplusChecklist    String[] @map("aplus_checklist")
   standardChecklist String[] @map("standard_checklist")
   createdAt         DateTime @default(now()) @map("created_at")
