@@ -586,7 +586,7 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
               />
             </div>
             {/* Actions */}
-            <div className="px-5 pb-5 flex gap-2">
+            <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">
               <button
                 onClick={() => { setConfirmDelete(false); setDeleteInput("") }}
                 className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
@@ -634,7 +634,7 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
               />
             </div>
             {/* Actions */}
-            <div className="px-5 pb-5 flex gap-2">
+            <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">
               <button
                 onClick={() => { setLostModal(false); setLostNote("") }}
                 className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"

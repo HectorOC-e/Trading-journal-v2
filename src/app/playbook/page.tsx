@@ -338,35 +338,7 @@ function SetupDrawer({
           )}
 
           {/* Delete confirmation */}
-          {confirmingDel && (
-            <div className="flex flex-col gap-2 p-4 rounded-[var(--radius-sm)] border border-[var(--loss)]"
-              style={{ background: "var(--loss-soft)" }}>
-              <p className="text-[12px] text-[var(--loss)] font-semibold text-center">Eliminar "{setup.name}"</p>
-              <p className="text-[11px] text-[var(--ink-3)] text-center">
-                Escribe el nombre exacto para confirmar. Esta acción no se puede deshacer.
-              </p>
-              <input
-                className="h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel)] border border-[var(--loss)] text-[var(--ink)] focus:outline-none"
-                placeholder={setup.name}
-                value={confirmName}
-                onChange={e => setConfirmName(e.target.value)}
-                autoFocus
-              />
-              <div className="flex gap-2 mt-1">
-                <button onClick={() => { setConfirmingDel(false); setConfirmName("") }}
-                  className="flex-1 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)]">
-                  Cancelar
-                </button>
-                <button
-                  disabled={confirmName !== setup.name}
-                  onClick={() => onDelete(setup)}
-                  className="flex-1 py-2 rounded-[var(--radius-sm)] text-[12px] font-bold bg-[var(--loss)] text-white disabled:opacity-40"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </div>
-          )}
+          {/* placeholder to keep spacing — actual confirm is an overlay */}
         </div>
 
         {/* ── Fixed action bar at bottom ── */}
@@ -434,6 +406,54 @@ function SetupDrawer({
           </div>
         </div>
       </div>
+
+      {/* Confirm delete overlay — same design as cuentas */}
+      {confirmingDel && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="w-full sm:max-w-sm bg-[var(--panel)] border border-[var(--line)] rounded-t-2xl sm:rounded-[var(--radius)] flex flex-col overflow-hidden">
+            <div className="px-5 pt-5 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+              <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: "var(--loss-soft)" }}>
+                <Trash2 size={15} className="text-[var(--loss)]" />
+              </div>
+              <div>
+                <p className="text-[13.5px] font-bold text-[var(--ink)]">Eliminar setup</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Acción irreversible</p>
+              </div>
+            </div>
+            <div className="px-5 py-4 flex flex-col gap-3">
+              <p className="text-[12.5px] text-[var(--ink-2)] leading-relaxed">
+                Los trades asociados no se eliminarán. Escribe el nombre exacto para confirmar:
+              </p>
+              <div className="px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                <p className="font-mono text-[13px] font-bold text-[var(--ink)]">{setup.name}</p>
+              </div>
+              <input
+                value={confirmName}
+                onChange={e => setConfirmName(e.target.value)}
+                placeholder="Escribe el nombre exacto…"
+                autoFocus
+                className="h-10 px-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:border-[var(--loss)] transition-colors"
+              />
+            </div>
+            <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">
+              <button
+                onClick={() => { setConfirmingDel(false); setConfirmName("") }}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                disabled={confirmName !== setup.name}
+                onClick={() => onDelete(setup)}
+                className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-semibold text-white transition-colors disabled:opacity-40"
+                style={{ background: "var(--loss)" }}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxImg && (
