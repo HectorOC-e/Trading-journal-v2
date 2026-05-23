@@ -740,7 +740,7 @@ function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
       phase:           isPropFirmLike(form.tipo) ? form.phase    : undefined,
       maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
-      allowedSymbols:  isPropFirmLike(form.tipo) ? form.symbols : [],
+      allowedSymbols:  form.symbols,
     }
   }
 
@@ -968,18 +968,21 @@ function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                     </div>
                   </div>
 
-                  {/* Symbols */}
-                  <div className="mt-3">
-                    <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
-                    <MarketMultiSelect
-                      markets={markets}
-                      value={form.symbols}
-                      onChange={syms => set("symbols", syms)}
-                      placeholder="Seleccionar mercados permitidos…"
-                    />
-                  </div>
                 </div>
               </>
+            )}
+
+            {/* Symbols — shown for all account types */}
+            {tab === "reglas" && (
+              <div className="mt-3">
+                <label className="text-eyebrow block mb-1.5">Mercados / Símbolos</label>
+                <MarketMultiSelect
+                  markets={markets}
+                  value={form.symbols}
+                  onChange={syms => set("symbols", syms)}
+                  placeholder="Seleccionar mercados…"
+                />
+              </div>
             )}
           </div>
         )}
@@ -1057,7 +1060,7 @@ function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
       phase:           isPropFirmLike(form.tipo) ? form.phase   : undefined,
       maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
-      allowedSymbols:  isPropFirmLike(form.tipo) ? form.symbols : [],
+      allowedSymbols:  form.symbols,
     })
   }
 
@@ -1166,15 +1169,19 @@ function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
                     <Input placeholder="10" value={form.minDays} mono onChange={e => set("minDays", e.target.value)} />
                   </div>
                 </div>
-                <div className="mt-3">
-                  <label className="text-eyebrow block mb-1.5">Símbolos permitidos</label>
-                  <MarketMultiSelect
-                    markets={markets}
-                    value={form.symbols}
-                    onChange={syms => set("symbols", syms)}
-                    placeholder="Seleccionar mercados permitidos…"
-                  />
-                </div>
+              </div>
+            )}
+
+            {/* Symbols — shown for all account types */}
+            {tab === "reglas" && (
+              <div className="mt-3">
+                <label className="text-eyebrow block mb-1.5">Mercados / Símbolos</label>
+                <MarketMultiSelect
+                  markets={markets}
+                  value={form.symbols}
+                  onChange={syms => set("symbols", syms)}
+                  placeholder="Seleccionar mercados…"
+                />
               </div>
             )}
           </div>

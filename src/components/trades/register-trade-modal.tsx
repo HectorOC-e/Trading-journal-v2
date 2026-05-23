@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { AlertTriangle, CheckCircle2, Circle, Star, Calculator } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogFooter,
@@ -106,6 +107,7 @@ interface FormState {
   tags: TradeTag[]
   notes: string
   checklistItems: Record<string, boolean>
+  screenshots: string[]
 }
 
 const INITIAL: FormState = {
@@ -124,6 +126,7 @@ const INITIAL: FormState = {
   tags: [],
   notes: "",
   checklistItems: {},
+  screenshots: [],
 }
 
 // ── Auto quality tag ───────────────────────────────────────────────────────
@@ -165,6 +168,30 @@ export function RegisterTradeModal({
 }: RegisterTradeModalProps) {
   const [form, setForm] = useState<FormState>(INITIAL)
   const [sizeManual, setSizeManual] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploading(true)
+    const supabase = createClient()
+    const urls: string[] = []
+    for (const file of files) {
+      const ext  = file.name.split(".").pop()
+      const path = `trades/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from("trade-screenshots").upload(path, file, { upsert: false })
+      if (!error) {
+        const { data } = supabase.storage.from("trade-screenshots").getPublicUrl(path)
+        urls.push(data.publicUrl)
+      }
+    }
+    setForm(f => ({ ...f, screenshots: [...f.screenshots, ...urls] }))
+    setUploading(false)
+    e.target.value = ""
+  }
+
+  const removeScreenshot = (idx: number) =>
+    setForm(f => ({ ...f, screenshots: f.screenshots.filter((_, i) => i !== idx) }))
 
   // Reset on close
   useEffect(() => {
@@ -622,10 +649,42 @@ export function RegisterTradeModal({
           {/* ── Screenshots ── */}
           <div>
             <label className="text-eyebrow block mb-1.5">Screenshots</label>
-            <div className="border border-dashed border-[var(--line)] rounded-[var(--radius-sm)] p-6 text-center bg-[var(--panel-2)]">
-              <p className="text-sm text-[var(--ink-2)]">📎 Arrastra o haz click para subir</p>
-              <p className="text-xs text-[var(--ink-3)] mt-1">Supabase Storage · presigned URL</p>
-            </div>
+
+            {form.screenshots.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {form.screenshots.map((url, idx) => (
+                  <div key={url} className="relative group w-20 h-20 rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeScreenshot(idx)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label className={cn(
+              "flex items-center justify-center gap-2 h-10 rounded-[var(--radius-sm)] border border-dashed text-[12px] font-medium transition-colors cursor-pointer",
+              uploading
+                ? "border-[var(--accent)] text-[var(--accent)] opacity-60"
+                : "border-[var(--line)] text-[var(--ink-3)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            )}>
+              <ImagePlus size={14} />
+              {uploading ? "Subiendo…" : "Subir screenshots"}
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageUpload}
+                disabled={uploading}
+              />
+            </label>
           </div>
 
         </div>

@@ -22,8 +22,8 @@ export function DialogContent({
       <RadixDialog.Content
         className={cn(
           "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-          "w-full max-h-[85vh] overflow-y-auto",
-          "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-6 shadow-xl",
+          "w-full max-h-[85vh] flex flex-col",
+          "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] shadow-xl",
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -31,8 +31,12 @@ export function DialogContent({
         )}
         {...props}
       >
-        {children}
-        <RadixDialog.Close className="absolute right-4 top-4 rounded-sm text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors">
+        {/* Scrollable body — pr-10 leaves room for the fixed close button */}
+        <div className="flex-1 overflow-y-auto p-6 pr-10">
+          {children}
+        </div>
+        {/* Close button sits outside the scroll so it's always visible */}
+        <RadixDialog.Close className="absolute right-3 top-3 z-10 p-1 rounded-sm text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)] transition-colors">
           <X size={16} />
         </RadixDialog.Close>
       </RadixDialog.Content>
