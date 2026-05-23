@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -8,7 +8,7 @@ import {
 import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
-import { mockAccounts } from "@/mock-data"
+import { trpc } from "@/lib/trpc/client"
 import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, BookOpen, Award } from "lucide-react"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
@@ -19,6 +19,23 @@ const TABS = [
   { value: "disciplina", label: "Disciplina" },
   { value: "playbook",   label: "Playbook" },
 ]
+
+/* ── TYPE_META ── */
+const TYPE_META: Record<string, { color: string; label: string; icon: string }> = {
+  PROP_FIRM:      { color: "#4f6ef7", label: "PROP FIRM",  icon: "🏢" },
+  PERSONAL:       { color: "#22c55e", label: "PERSONAL",   icon: "👤" },
+  DEMO_PROP:      { color: "#9b59b6", label: "DEMO PROP",  icon: "🖥️" },
+  DEMO_PERSONAL:  { color: "#a78bfa", label: "DEMO",       icon: "🖥️" },
+  BACKTEST:       { color: "#f59e0b", label: "BACKTEST",   icon: "📊" },
+  QA:             { color: "#6b7280", label: "QA",         icon: "🔬" },
+}
+
+const MONTHS_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
+
+function fmtDate(iso: string) {
+  const [, m, d] = iso.split("-")
+  return `${parseInt(d)} ${MONTHS_ES[parseInt(m) - 1]}`
+}
 
 /* ── Card wrapper ── */
 function Card({ title, sub, children, className }: {
@@ -115,27 +132,6 @@ function Sparkline({ data, color, win }: { data: number[]; color: string; win: b
 /* ═══════════════════════════════════════════
    PROP FIRM RULES WIDGET
 ═══════════════════════════════════════════ */
-const PROP_ACCOUNTS = [
-  {
-    name: "FXify 100K · Phase 2",
-    status: "OK" as const,
-    drawdownPct: 32,
-    dailyLossPct: 41,
-    tradesUsed: 18,
-    tradesMax: 30,
-    symbols: "ES, NQ, GC",
-  },
-  {
-    name: "FTMO Swing 50K",
-    status: "ALERTA" as const,
-    drawdownPct: 71,
-    dailyLossPct: 88,
-    tradesUsed: 7,
-    tradesMax: 15,
-    symbols: "FX only",
-  },
-]
-
 function RuleBar({ pct, label, value }: { pct: number; label: string; value: string }) {
   const color = pct >= 80 ? "var(--loss)" : pct >= 60 ? "var(--be)" : "#4f6ef7"
   return (
@@ -151,7 +147,19 @@ function RuleBar({ pct, label, value }: { pct: number; label: string; value: str
   )
 }
 
-function PropFirmRules() {
+type PropAccountItem = {
+  id: string
+  name: string
+  status: "OK" | "ALERTA"
+  drawdownPct: number
+  dailyLossPct: number
+  tradesUsed: number
+  tradesMax: number
+  symbols: string
+}
+
+function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
+  if (propAccounts.length === 0) return null
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
       <p className="text-[13px] font-semibold text-[var(--ink)]">Reglas Prop Firm · progreso</p>
@@ -159,8 +167,8 @@ function PropFirmRules() {
         Risk engine evalúa estos límites antes de aceptar cada nuevo trade.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {PROP_ACCOUNTS.map(a => (
-          <div key={a.name}
+        {propAccounts.map(a => (
+          <div key={a.id}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-3"
             style={{ borderLeft: `3px solid ${a.status === "OK" ? "var(--win)" : "var(--loss)"}` }}>
             {/* Header */}
@@ -172,28 +180,30 @@ function PropFirmRules() {
               </span>
             </div>
             {/* Bars */}
-            <RuleBar label="Max drawdown total" value={`${a.drawdownPct}%`} pct={a.drawdownPct} />
-            <RuleBar label="Pérdida diaria"      value={`${a.dailyLossPct}%`} pct={a.dailyLossPct} />
+            <RuleBar label="Max drawdown total" value={`${a.drawdownPct.toFixed(1)}%`} pct={a.drawdownPct} />
+            <RuleBar label="Pérdida diaria"      value={`${a.dailyLossPct.toFixed(1)}%`} pct={a.dailyLossPct} />
             {/* Trades counter */}
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] text-[var(--ink-2)]">Trades / día</span>
                 <span className="text-[11px] font-mono font-semibold text-[var(--ink)]">
-                  <span style={{ color: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--ink)" }}>{a.tradesUsed}</span>
-                  <span className="text-[var(--ink-3)]"> / {a.tradesMax}</span>
+                  <span style={{ color: a.tradesMax > 0 && a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--ink)" }}>{a.tradesUsed}</span>
+                  <span className="text-[var(--ink-3)]"> / {a.tradesMax > 0 ? a.tradesMax : "∞"}</span>
                 </span>
               </div>
-              <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${(a.tradesUsed / a.tradesMax) * 100}%`,
-                    background: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--win)",
-                  }} />
-              </div>
+              {a.tradesMax > 0 && (
+                <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min((a.tradesUsed / a.tradesMax) * 100, 100)}%`,
+                      background: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--win)",
+                    }} />
+                </div>
+              )}
             </div>
             {/* Symbols */}
             <p className="text-[10px] text-[var(--ink-3)]">
-              Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">{a.symbols}</span>
+              Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">{a.symbols || "—"}</span>
             </p>
           </div>
         ))}
@@ -205,115 +215,300 @@ function PropFirmRules() {
 /* ═══════════════════════════════════════════
    TAB PORTFOLIO
 ═══════════════════════════════════════════ */
-const DONUT_DATA = [
-  { name: "FXify 100K",   value: 31.9, color: "#4f6ef7" },
-  { name: "FTMO 50K",     value: 16.1, color: "#22c55e" },
-  { name: "IBKR Personal",value: 5.7,  color: "#f59e0b" },
-  { name: "Apex Demo",    value: 46.3, color: "#e05555" },
-]
+const HEAT_COLORS: Record<string, string> = {
+  "null": "var(--panel-2)",
+  "0": "var(--win)",
+  "1": "var(--be)",
+  "2": "var(--loss)",
+}
 
-const BAR_DATA = [
-  { date: "7M",  FXify: 280, FTMO: 150, IBKR: 80 },
-  { date: "8M",  FXify: -120, FTMO: 50, IBKR: 0 },
-  { date: "11M", FXify: 480, FTMO: 200, IBKR: 100 },
-  { date: "12M", FXify: 360, FTMO: 150, IBKR: 50 },
-  { date: "13M", FXify: 310, FTMO: 100, IBKR: 0 },
-  { date: "14M", FXify: 420, FTMO: 250, IBKR: 120 },
-  { date: "15M", FXify: 510, FTMO: 200, IBKR: 80 },
-  { date: "18M", FXify: -80, FTMO: 100, IBKR: 0 },
-  { date: "19M", FXify: 380, FTMO: 180, IBKR: 60 },
-  { date: "20M", FXify: 260, FTMO: 120, IBKR: 40 },
-]
+type Trade = {
+  id: string
+  symbol: string
+  direction: string
+  status: string
+  pnl: number | null
+  rMultiple: number | null
+  date: string
+  session: string | null
+  tags: string[]
+  setupId: string | null
+  accountId: string
+  setup: { name: string; abbreviation: string; color?: string } | null
+  account: {
+    id: string
+    name: string
+    type: string
+    initialBalance: number
+    ddDailyPct: number | null
+    ddTotalPct: number | null
+    maxTradesPerDay: number | null
+    allowedSymbols: string[]
+  } | null
+  openTime: string | null
+  closeTime: string | null
+}
 
-function TabPortfolio() {
+type AccountRow = {
+  id: string
+  name: string
+  type: string
+  initialBalance: number | string
+  ddDailyPct: number | null | string
+  ddTotalPct: number | null | string
+  maxTradesPerDay: number | null
+  allowedSymbols: string[]
+  status: string
+}
+
+function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accounts: AccountRow[] }) {
+  const today = new Date().toISOString().slice(0, 10)
+  const nowMonth = new Date()
+  const monthStart = new Date(nowMonth.getFullYear(), nowMonth.getMonth(), 1).toISOString().slice(0, 10)
+
+  const netPnl = useMemo(() => closedTrades.reduce((s, t) => s + (t.pnl ?? 0), 0), [closedTrades])
+  const wins = useMemo(() => closedTrades.filter(t => (t.pnl ?? 0) > 0).length, [closedTrades])
+  const winRate = closedTrades.length > 0 ? ((wins / closedTrades.length) * 100).toFixed(1) : "0.0"
+  const avgR = useMemo(() => {
+    const rs = closedTrades.filter(t => t.rMultiple != null)
+    return rs.length > 0 ? rs.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / rs.length : 0
+  }, [closedTrades])
+
+  const grossWin = useMemo(() => closedTrades.filter(t => (t.pnl ?? 0) > 0).reduce((s, t) => s + (t.pnl ?? 0), 0), [closedTrades])
+  const grossLoss = useMemo(() => Math.abs(closedTrades.filter(t => (t.pnl ?? 0) < 0).reduce((s, t) => s + (t.pnl ?? 0), 0)), [closedTrades])
+  const pf = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
+
+  // Donut: allocation by account initialBalance
+  const totalInitial = useMemo(() => accounts.reduce((s, a) => s + Number(a.initialBalance), 0), [accounts])
+  const donutData = useMemo(() => accounts.map(a => {
+    const meta = TYPE_META[a.type] ?? { color: "#6b7280" }
+    const pct = totalInitial > 0 ? (Number(a.initialBalance) / totalInitial) * 100 : 0
+    return { name: a.name, value: parseFloat(pct.toFixed(1)), color: meta.color }
+  }), [accounts, totalInitial])
+
+  // Bar chart: group by date + accountId (last 15 sessions)
+  const barData = useMemo(() => {
+    const byDate: Record<string, Record<string, number>> = {}
+    for (const t of closedTrades) {
+      if (!byDate[t.date]) byDate[t.date] = {}
+      const acctName = t.account?.name ?? t.accountId
+      byDate[t.date][acctName] = (byDate[t.date][acctName] ?? 0) + (t.pnl ?? 0)
+    }
+    const sorted = Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-15)
+    return sorted.map(([date, vals]) => ({ date: fmtDate(date), ...vals }))
+  }, [closedTrades])
+
+  const barAccountNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const t of closedTrades) names.add(t.account?.name ?? t.accountId)
+    return Array.from(names)
+  }, [closedTrades])
+
+  // Prop firm accounts
+  const propAccounts = useMemo((): PropAccountItem[] => {
+    return accounts
+      .filter(a => a.type === "PROP_FIRM" || a.type === "DEMO_PROP")
+      .map(a => {
+        const acctTrades = closedTrades.filter(t => t.accountId === a.id)
+        const balance = Number(a.initialBalance)
+
+        // Peak drawdown
+        let cum = 0, peak = 0, maxDd = 0
+        for (const t of [...acctTrades].sort((x, y) => x.date.localeCompare(y.date))) {
+          cum += (t.pnl ?? 0)
+          if (cum > peak) peak = cum
+          const dd = peak - cum
+          if (dd > maxDd) maxDd = dd
+        }
+        const ddTotalLimit = Number(a.ddTotalPct ?? 5)
+        const ddPctUsed = balance > 0 && ddTotalLimit > 0
+          ? (maxDd / balance) / (ddTotalLimit / 100) * 100
+          : 0
+
+        // Daily loss
+        const todayTrades = acctTrades.filter(t => t.date === today)
+        const todayLoss = Math.abs(Math.min(0, todayTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)))
+        const ddDailyLimit = Number(a.ddDailyPct ?? 1)
+        const dailyLossPct = balance > 0 && ddDailyLimit > 0
+          ? (todayLoss / balance) / (ddDailyLimit / 100) * 100
+          : 0
+
+        const tradesUsed = todayTrades.length
+        const tradesMax = a.maxTradesPerDay ?? 0
+        const status: "OK" | "ALERTA" = ddPctUsed >= 70 || dailyLossPct >= 80 ? "ALERTA" : "OK"
+
+        return {
+          id: a.id,
+          name: a.name,
+          status,
+          drawdownPct: parseFloat(ddPctUsed.toFixed(1)),
+          dailyLossPct: parseFloat(dailyLossPct.toFixed(1)),
+          tradesUsed,
+          tradesMax,
+          symbols: (a.allowedSymbols as string[]).join(", "),
+        }
+      })
+  }, [accounts, closedTrades, today])
+
+  // Accounts table
+  const accountsWithStats = useMemo(() => {
+    return accounts.map(a => {
+      const acctTrades = closedTrades.filter(t => t.accountId === a.id)
+      const monthTrades = acctTrades.filter(t => t.date >= monthStart)
+      const pnlMonth = monthTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
+      const acctWins = acctTrades.filter(t => (t.pnl ?? 0) > 0).length
+      const wr = acctTrades.length > 0 ? ((acctWins / acctTrades.length) * 100).toFixed(0) : "0"
+      const netPnlAcct = acctTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
+      const balance = Number(a.initialBalance) + netPnlAcct
+
+      // Drawdown
+      let cum = 0, peak = 0, maxDd = 0
+      for (const t of [...acctTrades].sort((x, y) => x.date.localeCompare(y.date))) {
+        cum += (t.pnl ?? 0)
+        if (cum > peak) peak = cum
+        const dd = peak - cum
+        if (dd > maxDd) maxDd = dd
+      }
+      const ddPct = Number(a.initialBalance) > 0 ? (maxDd / Number(a.initialBalance)) * 100 : 0
+      return { ...a, balance, pnlMonth, wr, ddPct }
+    })
+  }, [accounts, closedTrades, monthStart])
+
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <KpiCard label="Net P&L total"  value="+$18.4k" sub="30d · todas las cuentas" color="var(--win)" delta="+12.4%" icon={<TrendingUp size={15} />} />
-        <KpiCard label="Profit Factor"  value="1.84"    sub="30d · todas las cuentas" delta="+0.3 vs sem. ant."        icon={<Activity size={15} />} />
-        <KpiCard label="Win Rate"       value="58%"     sub="134 / 230 operaciones"                                    icon={<Percent size={15} />} />
-        <KpiCard label="Max Drawdown"   value="-3.4%"   sub="abr 12 · FXify" color="var(--loss)"                      icon={<Shield size={15} />} />
+        <KpiCard label="Net P&L total"
+          value={`${netPnl >= 0 ? "+" : ""}$${Math.abs(netPnl).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          sub={`${closedTrades.length} operaciones cerradas`}
+          color={netPnl >= 0 ? "var(--win)" : "var(--loss)"}
+          icon={netPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />} />
+        <KpiCard label="Profit Factor"
+          value={pf === 999 ? "∞" : pf.toFixed(2)}
+          sub="todas las cuentas"
+          icon={<Activity size={15} />} />
+        <KpiCard label="Win Rate"
+          value={`${winRate}%`}
+          sub={`${wins} / ${closedTrades.length} operaciones`}
+          icon={<Percent size={15} />} />
+        <KpiCard label="Avg R"
+          value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R`}
+          sub="promedio rMultiple"
+          color={avgR >= 0 ? "var(--win)" : "var(--loss)"}
+          icon={<Target size={15} />} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Donut */}
-        <Card title="Asignación por cuenta" sub="Prop Firm + Personal · Demo excluido">
+        <Card title="Asignación por cuenta" sub="Ponderación por balance inicial">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <div style={{ width: 120, flexShrink: 0 }}>
               <ResponsiveContainer width={160} height={160}>
                 <PieChart>
-                  <Pie data={DONUT_DATA} cx={75} cy={75} innerRadius={50} outerRadius={72}
+                  <Pie data={donutData.length > 0 ? donutData : [{ name: "Sin cuentas", value: 1, color: "var(--line)" }]}
+                    cx={75} cy={75} innerRadius={50} outerRadius={72}
                     dataKey="value" strokeWidth={2} stroke="var(--panel)">
-                    {DONUT_DATA.map((d) => <Cell key={d.name} fill={d.color} />)}
+                    {(donutData.length > 0 ? donutData : [{ color: "var(--line)" }]).map((d, i) => <Cell key={i} fill={d.color} />)}
                   </Pie>
                   <Tooltip content={<ChartTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="flex flex-col gap-2.5 flex-1">
-              {DONUT_DATA.map((d) => (
+              {donutData.map((d) => (
                 <div key={d.name} className="flex items-center gap-2.5">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
                   <span className="text-[11px] text-[var(--ink)] flex-1">{d.name}</span>
                   <span className="text-[11px] font-mono font-bold text-[var(--ink-2)]">{d.value}%</span>
                 </div>
               ))}
+              {donutData.length === 0 && <p className="text-[11px] text-[var(--ink-3)]">Sin cuentas</p>}
             </div>
           </div>
         </Card>
 
         {/* Bar chart */}
-        <Card title="P&L diario por cuenta" sub="Últimas 10 sesiones · USD">
-          <ResponsiveContainer width="100%" height={175}>
-            <BarChart data={BAR_DATA} barSize={10} barCategoryGap="28%">
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-                tickFormatter={v => v >= 0 ? `+$${v}` : `-$${Math.abs(v)}`} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
-              <Bar dataKey="FXify" stackId="a" fill="#4f6ef7" radius={[0,0,0,0]} />
-              <Bar dataKey="FTMO"  stackId="a" fill="#22c55e" radius={[0,0,0,0]} />
-              <Bar dataKey="IBKR"  stackId="a" fill="#f59e0b" radius={[3,3,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 mt-1">
-            {[["#4f6ef7","FXify"],["#22c55e","FTMO"],["#f59e0b","IBKR"]].map(([c,l]) => (
-              <span key={l} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />{l}
-              </span>
-            ))}
-          </div>
+        <Card title="P&L diario por cuenta" sub="Últimas 15 sesiones · USD">
+          {barData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={175}>
+                <BarChart data={barData} barSize={10} barCategoryGap="28%">
+                  <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
+                    tickFormatter={v => v >= 0 ? `+$${v}` : `-$${Math.abs(v)}`} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
+                  {barAccountNames.map((name, i) => {
+                    const meta = accounts.find(a => a.name === name)
+                    const color = meta ? (TYPE_META[meta.type]?.color ?? "#4f6ef7") : "#4f6ef7"
+                    const isLast = i === barAccountNames.length - 1
+                    return (
+                      <Bar key={name} dataKey={name} stackId="a" fill={color}
+                        radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+                    )
+                  })}
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex gap-4 mt-1 flex-wrap">
+                {barAccountNames.map(name => {
+                  const meta = accounts.find(a => a.name === name)
+                  const color = meta ? (TYPE_META[meta.type]?.color ?? "#4f6ef7") : "#4f6ef7"
+                  return (
+                    <span key={name} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />{name}
+                    </span>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="h-[175px] flex items-center justify-center text-[var(--ink-3)] text-sm">Sin datos de trades</div>
+          )}
         </Card>
       </div>
 
       {/* Prop Firm rules progress */}
-      <PropFirmRules />
+      <PropFirmRules propAccounts={propAccounts} />
 
       {/* Accounts table */}
       <Card title="Comparación de cuentas">
         <div className="overflow-x-auto -mx-1">
-        <table className="w-full min-w-[480px]">
-          <thead>
-            <tr className="border-b border-[var(--line)]">
-              {["Cuenta","Balance","P&L mes","Win %","Drawdown","Estado"].map(h => (
-                <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {mockAccounts.map(a => (
-              <tr key={a.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
-                <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.initialBalance.toLocaleString()}</td>
-                <td className="py-3 font-mono text-sm font-semibold text-[var(--win)]">+$3,640</td>
-                <td className="py-3 font-mono text-sm text-[var(--ink)]">65%</td>
-                <td className="py-3 font-mono text-sm text-[var(--loss)]">-0.4%</td>
-                <td className="py-3">
-                  <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-[var(--win-soft)] text-[var(--win)]">Activa</span>
-                </td>
+          <table className="w-full min-w-[480px]">
+            <thead>
+              <tr className="border-b border-[var(--line)]">
+                {["Cuenta","Balance","P&L mes","Win %","Drawdown","Estado"].map(h => (
+                  <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {accountsWithStats.map(a => (
+                <tr key={a.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                  <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
+                  <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.balance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className={cn("py-3 font-mono text-sm font-semibold", a.pnlMonth >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {a.pnlMonth >= 0 ? "+" : ""}${Math.abs(a.pnlMonth).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </td>
+                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.wr}%</td>
+                  <td className={cn("py-3 font-mono text-sm", a.ddPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
+                    {a.ddPct > 0 ? `-${a.ddPct.toFixed(1)}%` : "0.0%"}
+                  </td>
+                  <td className="py-3">
+                    <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
+                      a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]"
+                      : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]"
+                      : "bg-[var(--chip)] text-[var(--ink-3)]"
+                    )}>
+                      {a.status === "ACTIVE" ? "Activa" : a.status === "PAUSED" ? "Pausada" : a.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {accountsWithStats.length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin cuentas registradas</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
     </div>
@@ -323,47 +518,81 @@ function TabPortfolio() {
 /* ═══════════════════════════════════════════
    TAB OPERADOR
 ═══════════════════════════════════════════ */
-const EQUITY_DATA = [
-  { date: "abr 14", balance: 100000, equity: 99800  },
-  { date: "abr 17", balance: 100400, equity: 100100 },
-  { date: "abr 22", balance: 100200, equity: 99900  },
-  { date: "abr 27", balance: 100900, equity: 100600 },
-  { date: "may 1",  balance: 101400, equity: 101100 },
-  { date: "may 5",  balance: 101900, equity: 101600 },
-  { date: "may 9",  balance: 101600, equity: 101300 },
-  { date: "may 12", balance: 102400, equity: 102100 },
-  { date: "may 15", balance: 102900, equity: 102600 },
-  { date: "may 18", balance: 102600, equity: 102300 },
-  { date: "may 20", balance: 102840, equity: 102560 },
-]
-
-const ACCOUNT_CARDS = [
-  { id: "a1", type: "PROP FIRM",  name: "FXify 100K · Phase 2", balance: 102840.55, deltaToday: +1240.20, color: "#4f6ef7" },
-  { id: "a2", type: "PROP FIRM",  name: "FTMO Swing 50K",        balance: 51780.10,  deltaToday: -310.00,  color: "#22c55e" },
-  { id: "a3", type: "PERSONAL",   name: "Personal · IBKR",       balance: 18205.42,  deltaToday: +88.00,   color: "#f59e0b" },
-  { id: "a4", type: "DEMO",       name: "Demo · Apex 150K",      balance: 149120.00, deltaToday: 0,        color: "#e05555" },
-]
-
-const RECENT_TRADES = [
-  { id: "t1", dir: "LONG",  symbol: "ES",     setup: "Opening Range Break", r: 2.4,  pnl: 1240, session: "NY AM", time: "08:32", tags: ["A+","Plan"] },
-  { id: "t2", dir: "SHORT", symbol: "NQ",     setup: "Failed Auction",      r: -1.0, pnl: -480, session: "NY AM", time: "09:14", tags: ["Plan"] },
-  { id: "t3", dir: "LONG",  symbol: "EURUSD", setup: "London Reversal",     r: 1.2,  pnl: 312,  session: "London", time: "03:45", tags: ["A"] },
-]
-
-const SESSION_DATA = [
-  { session: "London",   trades: 6,  winRate: 67, avgR: 1.4  },
-  { session: "New York", trades: 14, winRate: 71, avgR: 1.9  },
-  { session: "Asia",     trades: 2,  winRate: 50, avgR: 0.8  },
-  { session: "NY Close", trades: 1,  winRate: 0,  avgR: -1.0 },
-]
-
 const TRADE_FILTERS = ["Todos", "A+", "Plan seguido", "Off-plan", "Con violación"]
 
-function TabOperador() {
-  const [selectedAccount, setSelectedAccount] = useState("a1")
+function TabOperador({ allTrades, closedTrades, accounts }: {
+  allTrades: Trade[]; closedTrades: Trade[]; accounts: AccountRow[]
+}) {
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [tradeFilter, setTradeFilter] = useState("Todos")
+  const today = new Date().toISOString().slice(0, 10)
 
-  const totalPortfolio = ACCOUNT_CARDS.reduce((s, a) => s + a.balance, 0)
+  // Account cards
+  const accountCards = useMemo(() => {
+    return accounts.map(a => {
+      const meta = TYPE_META[a.type] ?? { color: "#6b7280", label: a.type, icon: "📊" }
+      const acctTrades = closedTrades.filter(t => t.accountId === a.id)
+      const netPnl = acctTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
+      const balance = Number(a.initialBalance) + netPnl
+      const todayPnl = closedTrades
+        .filter(t => t.accountId === a.id && t.date === today)
+        .reduce((s, t) => s + (t.pnl ?? 0), 0)
+      return { ...a, balance, deltaToday: todayPnl, color: meta.color, typeLabel: meta.label, typeIcon: meta.icon }
+    })
+  }, [accounts, closedTrades, today])
+
+  const totalPortfolio = useMemo(() => accountCards.reduce((s, a) => s + a.balance, 0), [accountCards])
+
+  const activeAccountId = selectedAccountId ?? accountCards[0]?.id ?? null
+  const activeAccount = accountCards.find(a => a.id === activeAccountId) ?? accountCards[0]
+
+  // Equity curve for selected account
+  const equityData = useMemo(() => {
+    if (!activeAccountId) return []
+    const acctTrades = closedTrades
+      .filter(t => t.accountId === activeAccountId)
+      .sort((a, b) => a.date.localeCompare(b.date))
+    const initialBalance = Number(activeAccount?.initialBalance ?? 0)
+    let cum = 0
+    const result: { date: string; balance: number }[] = []
+    for (const t of acctTrades) {
+      cum += (t.pnl ?? 0)
+      result.push({ date: fmtDate(t.date), balance: parseFloat((initialBalance + cum).toFixed(2)) })
+    }
+    return result
+  }, [activeAccountId, closedTrades, activeAccount])
+
+  // Recent trades (filtered)
+  const recentTrades = useMemo(() => {
+    let trades = [...closedTrades].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
+    if (tradeFilter === "A+") trades = trades.filter(t => t.tags.includes("A+"))
+    else if (tradeFilter === "Plan seguido") trades = trades.filter(t => t.setupId != null)
+    else if (tradeFilter === "Off-plan") trades = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))
+    else if (tradeFilter === "Con violación") trades = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan") || t.tags.includes("Revanche"))
+    return trades.slice(0, 10)
+  }, [closedTrades, tradeFilter])
+
+  // Session performance
+  const sessionData = useMemo(() => {
+    const bySession: Record<string, { trades: number; wins: number; rSum: number }> = {}
+    for (const t of closedTrades) {
+      const s = t.session ?? "Sin sesión"
+      if (!bySession[s]) bySession[s] = { trades: 0, wins: 0, rSum: 0 }
+      bySession[s].trades++
+      if ((t.pnl ?? 0) > 0) bySession[s].wins++
+      bySession[s].rSum += (t.rMultiple ?? 0)
+    }
+    return Object.entries(bySession).map(([session, v]) => ({
+      session,
+      trades: v.trades,
+      winRate: v.trades > 0 ? parseFloat(((v.wins / v.trades) * 100).toFixed(1)) : 0,
+      avgR: v.trades > 0 ? parseFloat((v.rSum / v.trades).toFixed(2)) : 0,
+    })).sort((a, b) => b.trades - a.trades)
+  }, [closedTrades])
+
+  const equityStart = equityData[0]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
+  const equityEnd = equityData[equityData.length - 1]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
+  const equityChangePct = equityStart > 0 ? ((equityEnd - equityStart) / equityStart) * 100 : 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -371,53 +600,48 @@ function TabOperador() {
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-6 py-5">
         <div className="flex items-start justify-between mb-1">
           <div>
-            <p className="text-eyebrow mb-2">Equity · FXify 100K Phase 2</p>
+            <p className="text-eyebrow mb-2">Equity · {activeAccount?.name ?? "—"}</p>
             <div className="flex items-baseline gap-3">
               <p style={{ fontSize: 36, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>
-                $102,840.00
+                ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
-              <span className="flex items-center gap-1 text-sm font-semibold text-[var(--win)]">
-                ↑ +0.55% · 7d
+              <span className={cn("flex items-center gap-1 text-sm font-semibold", equityChangePct >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                {equityChangePct >= 0 ? "↑" : "↓"} {equityChangePct >= 0 ? "+" : ""}{equityChangePct.toFixed(2)}%
               </span>
             </div>
-            <p className="text-xs text-[var(--ink-3)] mt-2">
-              Drawdown máx. 2.1% · Profit factor 1.84 · Win rate 58%
-            </p>
           </div>
         </div>
 
         {/* Equity Curve */}
         <div className="mt-4">
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={EQUITY_DATA} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="gradBal" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gradEq" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#f59e0b" stopOpacity={0.12} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-                tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
-              <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="balance" name="Balance" stroke="#4f6ef7" strokeWidth={2.5}
-                fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "#4f6ef7", strokeWidth: 0 }} />
-              <Area type="monotone" dataKey="equity" name="Equity" stroke="#f59e0b" strokeWidth={1.5}
-                strokeDasharray="5 3" fill="url(#gradEq)" dot={false} activeDot={{ r: 4, fill: "#f59e0b", strokeWidth: 0 }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {equityData.length > 1 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={equityData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradBal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
+                  tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
+                <Tooltip content={<ChartTooltip />} />
+                <Area type="monotone" dataKey="balance" name="Balance" stroke="#4f6ef7" strokeWidth={2.5}
+                  fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "#4f6ef7", strokeWidth: 0 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center text-[var(--ink-3)] text-sm">Sin suficientes datos para la curva de equidad</div>
+          )}
           <div className="flex gap-5 mt-1 pt-3 border-t border-[var(--line)]">
-            {[["#4f6ef7","Balance","$102,840"],["#f59e0b","Equity","$102,560"]].map(([c,l,v]) => (
-              <div key={l} className="flex items-center gap-2">
-                <span className="w-5 h-px inline-block" style={{ background: c }} />
-                <span className="text-xs text-[var(--ink-3)]">{l}</span>
-                <span className="text-xs font-mono font-semibold text-[var(--ink)]">{v}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-px inline-block" style={{ background: "#4f6ef7" }} />
+              <span className="text-xs text-[var(--ink-3)]">Balance</span>
+              <span className="text-xs font-mono font-semibold text-[var(--ink)]">
+                ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -427,33 +651,32 @@ function TabOperador() {
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] font-semibold text-[var(--ink)]">Tus cuentas</p>
           <p className="text-[11px] text-[var(--ink-3)]">
-            4 cuentas · portfolio consolidado{" "}
+            {accountCards.length} cuentas · portfolio consolidado{" "}
             <span className="font-mono font-semibold text-[var(--ink)]">
-              ${totalPortfolio.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${totalPortfolio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {ACCOUNT_CARDS.map(a => {
-            const active = selectedAccount === a.id
+          {accountCards.map(a => {
+            const active = (selectedAccountId ?? accountCards[0]?.id) === a.id
             return (
-              <button key={a.id} onClick={() => setSelectedAccount(a.id)}
+              <button key={a.id} onClick={() => setSelectedAccountId(a.id)}
                 className="text-left rounded-[var(--radius-sm)] p-3 border transition-all"
                 style={{
                   border: active ? `1.5px solid ${a.color}` : "1.5px solid var(--line)",
                   background: active ? "var(--panel-2)" : "transparent",
                 }}>
-                {/* Icon + type */}
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs"
                     style={{ background: `${a.color}22`, color: a.color }}>
-                    {a.type === "PROP FIRM" ? "🏢" : a.type === "PERSONAL" ? "👤" : "🖥️"}
+                    {a.typeIcon}
                   </div>
-                  <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider">{a.type}</span>
+                  <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider">{a.typeLabel}</span>
                 </div>
                 <p className="text-[11px] font-semibold text-[var(--ink)] leading-tight mb-1.5">{a.name}</p>
                 <p className="font-mono font-bold text-[var(--ink)] text-[14px] leading-none">
-                  ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className={cn("text-[10px] font-semibold mt-1 font-mono",
                   a.deltaToday > 0 ? "text-[var(--win)]" : a.deltaToday < 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
@@ -462,6 +685,9 @@ function TabOperador() {
               </button>
             )
           })}
+          {accountCards.length === 0 && (
+            <div className="col-span-4 py-4 text-center text-[var(--ink-3)] text-sm">Sin cuentas registradas</div>
+          )}
         </div>
       </div>
 
@@ -469,7 +695,7 @@ function TabOperador() {
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[13px] font-semibold text-[var(--ink)]">Trades recientes</p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {TRADE_FILTERS.map(f => (
               <button key={f} onClick={() => setTradeFilter(f)}
                 className="text-[11px] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors"
@@ -480,97 +706,95 @@ function TabOperador() {
                 {f}
               </button>
             ))}
-            <button className="text-[11px] font-semibold text-[var(--accent)] ml-1 hover:underline">
-              Ver todos →
-            </button>
           </div>
         </div>
 
         <div className="overflow-x-auto -mx-1">
-        <table className="w-full min-w-[480px]">
-          <thead>
-            <tr className="border-b border-[var(--line)]">
-              {["Símbolo · Setup","R","P&L Neto","Sesión · Tags","Fecha"].map(h => (
-                <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {RECENT_TRADES.map(t => (
-              <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                {/* Symbol + setup */}
-                <td className="py-3">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-base leading-none", t.dir === "LONG" ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                      {t.dir === "LONG" ? "↑" : "↓"}
-                    </span>
-                    <div>
-                      <p className="font-mono font-bold text-[var(--ink)] text-sm">
-                        {t.symbol}
-                        <span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.dir}</span>
-                      </p>
-                      <p className="text-[10px] text-[var(--ink-3)]">{t.setup}</p>
-                    </div>
-                  </div>
-                </td>
-                {/* R */}
-                <td className={cn("py-3 font-mono font-bold text-sm", t.r >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                  {t.r >= 0 ? "+" : ""}{t.r}R
-                </td>
-                {/* P&L */}
-                <td className={cn("py-3 font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                  {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toLocaleString()}.00
-                </td>
-                {/* Session + tags */}
-                <td className="py-3">
-                  <p className="text-xs text-[var(--ink-2)] mb-1">{t.session} · {t.time}</p>
-                  <div className="flex gap-1">
-                    {t.tags.map(tag => (
-                      <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                        style={{
-                          background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)",
-                          color: tag === "A+" ? "var(--accent)" : "var(--ink-2)",
-                        }}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                {/* Fecha */}
-                <td className="py-3 text-xs text-[var(--ink-3)]">20 may 2026</td>
+          <table className="w-full min-w-[480px]">
+            <thead>
+              <tr className="border-b border-[var(--line)]">
+                {["Símbolo · Setup","R","P&L Neto","Sesión · Tags","Fecha"].map(h => (
+                  <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentTrades.map(t => (
+                <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                  <td className="py-3">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-base leading-none", t.direction === "LONG" ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                        {t.direction === "LONG" ? "↑" : "↓"}
+                      </span>
+                      <div>
+                        <p className="font-mono font-bold text-[var(--ink)] text-sm">
+                          {t.symbol}
+                          <span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.direction}</span>
+                        </p>
+                        <p className="text-[10px] text-[var(--ink-3)]">{t.setup?.name ?? "—"}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className={cn("py-3 font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R
+                  </td>
+                  <td className={cn("py-3 font-mono font-bold text-sm", (t.pnl ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {(t.pnl ?? 0) >= 0 ? "+" : ""}${Math.abs(t.pnl ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="py-3">
+                    <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {(t.tags as string[]).map(tag => (
+                        <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                          style={{
+                            background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)",
+                            color: tag === "A+" ? "var(--accent)" : "var(--ink-2)",
+                          }}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="py-3 text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</td>
+                </tr>
+              ))}
+              {recentTrades.length === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin trades</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* ── Rendimiento por sesión ── */}
       <Card title="Rendimiento por sesión">
         <div className="overflow-x-auto -mx-1">
-        <table className="w-full min-w-[320px]">
-          <thead>
-            <tr className="border-b border-[var(--line)]">
-              {["Sesión","Trades","Win %","Avg R"].map(h => (
-                <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SESSION_DATA.map(s => (
-              <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
-                <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
-                <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                  {s.winRate}%
-                </td>
-                <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                  {s.avgR > 0 ? "+" : ""}{s.avgR}R
-                </td>
+          <table className="w-full min-w-[320px]">
+            <thead>
+              <tr className="border-b border-[var(--line)]">
+                {["Sesión","Trades","Win %","Avg R"].map(h => (
+                  <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sessionData.map(s => (
+                <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                  <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
+                  <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
+                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {s.winRate}%
+                  </td>
+                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {s.avgR > 0 ? "+" : ""}{s.avgR}R
+                  </td>
+                </tr>
+              ))}
+              {sessionData.length === 0 && (
+                <tr><td colSpan={4} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin datos de sesiones</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
     </div>
@@ -580,95 +804,149 @@ function TabOperador() {
 /* ═══════════════════════════════════════════
    TAB DISCIPLINA
 ═══════════════════════════════════════════ */
-
-// Heatmap data: 7 days × 12 weeks. null = no trading, 0 = limpio, 1 = menor, 2 = mayor
 type HeatVal = null | 0 | 1 | 2
 const DAYS = ["L","M","X","J","V","S","D"]
 const WEEKS = 12
-const HEATMAP: HeatVal[][] = [
-  // L
-  [2,1,null,2,0,null,null,0,2,1,1,0],
-  // M
-  [1,0,0,0,0,0,2,0,0,0,0,0],
-  // X
-  [2,null,1,0,1,0,0,0,1,1,0,0],
-  // J
-  [1,1,2,1,0,null,0,0,2,0,null,0],
-  // V
-  [0,1,2,1,1,1,1,null,1,2,1,1],
-  // S
-  [null,null,null,null,null,null,null,null,null,null,null,null],
-  // D
-  [null,null,null,null,null,null,null,null,null,null,null,null],
-]
 
-const HEAT_COLORS: Record<string, string> = {
-  "null": "var(--panel-2)",
-  "0": "var(--win)",
-  "1": "var(--be)",
-  "2": "var(--loss)",
-}
+function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
+  const today = new Date()
+  const todayISO = today.toISOString().slice(0, 10)
 
-const R_DIST = [
-  { r: "-3R", count: 2, color: "var(--loss)" },
-  { r: "-2R", count: 3, color: "var(--loss)" },
-  { r: "-1R", count: 6, color: "var(--loss)" },
-  { r: "0R",  count: 4, color: "var(--be)"   },
-  { r: "+1R", count: 8, color: "var(--win)"  },
-  { r: "+2R", count: 11, color: "var(--win)" },
-  { r: "+3R", count: 5, color: "var(--win)"  },
-  { r: "+4R", count: 2, color: "var(--win)"  },
-]
+  // Heatmap: last 12 calendar weeks
+  const heatmap = useMemo((): HeatVal[][] => {
+    // Build a map of date -> severity
+    const dateMap: Record<string, HeatVal> = {}
+    for (const t of closedTrades) {
+      const tags = t.tags as string[]
+      const isOffPlan = tags.includes("Impulsivo") || tags.includes("Off-plan")
+      const isLoss = (t.pnl ?? 0) < 0
+      const current = dateMap[t.date] ?? null
+      let severity: HeatVal = 0
+      if (isOffPlan) severity = 2
+      else if (isLoss) severity = 1
+      // Take max severity
+      if (current === null) dateMap[t.date] = severity
+      else if (severity > current) dateMap[t.date] = severity as HeatVal
+    }
 
-const VIOLATIONS_DATA = [
-  { rule: "Trade #4+ del día (max-trades-day)", count: 5, delta: -2, severity: "mayor" },
-  { rule: "Operar fuera de sesión NY AM",       count: 3, delta: +1, severity: "mayor" },
-  { rule: "Recovery RR forzado",                count: 2, delta:  0, severity: "mayor" },
-  { rule: "Sin checklist completo",             count: 2, delta: -1, severity: "menor" },
-  { rule: "Flag impulsivo manual",              count: 1, delta: -3, severity: "menor" },
-]
+    // Build 12-week grid: rows = days of week (Mon=0..Sun=6), cols = weeks (oldest first)
+    const grid: HeatVal[][] = DAYS.map(() => Array(WEEKS).fill(null))
+    // Find start: 12 weeks ago, Monday
+    const endDate = new Date(today)
+    // Go to most recent Monday
+    const dayOfWeek = (endDate.getDay() + 6) % 7 // Mon=0
+    endDate.setDate(endDate.getDate() - dayOfWeek + 6) // Sunday of current week
+    const startDate = new Date(endDate)
+    startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1))
 
-const COMP_DATA = [
-  { name: "Plan seguido", value: 14, color: "var(--win)"  },
-  { name: "Plan parcial",  value: 5,  color: "var(--be)"  },
-  { name: "Off-plan",      value: 4,  color: "var(--loss)" },
-]
+    for (let w = 0; w < WEEKS; w++) {
+      for (let d = 0; d < 7; d++) {
+        const cellDate = new Date(startDate)
+        cellDate.setDate(startDate.getDate() + w * 7 + d)
+        if (cellDate > today) { grid[d][w] = null; continue }
+        const iso = cellDate.toISOString().slice(0, 10)
+        grid[d][w] = dateMap[iso] !== undefined ? dateMap[iso] : null
+      }
+    }
+    return grid
+  }, [closedTrades, todayISO])
 
-function TabDisciplina() {
+  // R distribution
+  const rDist = useMemo(() => {
+    const buckets: Record<string, number> = {
+      "-3R": 0, "-2R": 0, "-1R": 0, "0R": 0, "+1R": 0, "+2R": 0, "+3R": 0, "+4R+": 0
+    }
+    for (const t of closedTrades) {
+      const r = t.rMultiple ?? 0
+      if (r <= -2.5) buckets["-3R"]++
+      else if (r <= -1.5) buckets["-2R"]++
+      else if (r <= -0.5) buckets["-1R"]++
+      else if (r <= 0.5) buckets["0R"]++
+      else if (r <= 1.5) buckets["+1R"]++
+      else if (r <= 2.5) buckets["+2R"]++
+      else if (r <= 3.5) buckets["+3R"]++
+      else buckets["+4R+"]++
+    }
+    return [
+      { r: "-3R",  count: buckets["-3R"],  color: "var(--loss)" },
+      { r: "-2R",  count: buckets["-2R"],  color: "var(--loss)" },
+      { r: "-1R",  count: buckets["-1R"],  color: "var(--loss)" },
+      { r: "0R",   count: buckets["0R"],   color: "var(--be)"   },
+      { r: "+1R",  count: buckets["+1R"],  color: "var(--win)"  },
+      { r: "+2R",  count: buckets["+2R"],  color: "var(--win)"  },
+      { r: "+3R",  count: buckets["+3R"],  color: "var(--win)"  },
+      { r: "+4R+", count: buckets["+4R+"], color: "var(--win)"  },
+    ]
+  }, [closedTrades])
+
+  // Violations
+  const violations = useMemo(() => {
+    const impulsivoCount = closedTrades.filter(t => (t.tags as string[]).includes("Impulsivo")).length
+    const offPlanCount = closedTrades.filter(t => (t.tags as string[]).includes("Off-plan")).length
+    const revanCheCount = closedTrades.filter(t => (t.tags as string[]).includes("Revanche")).length
+    const noSetupCount = closedTrades.filter(t => !t.setupId).length
+    return [
+      { rule: "Flag impulsivo manual",    count: impulsivoCount, severity: "mayor" },
+      { rule: "Off-plan",                 count: offPlanCount,   severity: "mayor" },
+      { rule: "Revanche / revenge trade", count: revanCheCount,  severity: "mayor" },
+      { rule: "Sin setup asignado",       count: noSetupCount,   severity: "menor" },
+    ].filter(v => v.count > 0)
+  }, [closedTrades])
+
+  // Comp data
+  const compData = useMemo(() => {
+    const planSeguido = closedTrades.filter(t => t.setupId != null && !(t.tags as string[]).includes("Impulsivo") && !(t.tags as string[]).includes("Off-plan")).length
+    const offPlan = closedTrades.filter(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan")).length
+    const partial = closedTrades.length - planSeguido - offPlan
+    return [
+      { name: "Plan seguido", value: planSeguido, color: "var(--win)"  },
+      { name: "Plan parcial",  value: Math.max(0, partial), color: "var(--be)"  },
+      { name: "Off-plan",      value: offPlan,    color: "var(--loss)" },
+    ]
+  }, [closedTrades])
+
+  const total = closedTrades.length
+  const planSeguidoPct = total > 0 ? ((compData[0].value / total) * 100).toFixed(1) : "0.0"
+  const sinViolacionPct = total > 0 ? (((total - violations.reduce((s, v) => s + v.count, 0)) / total) * 100).toFixed(1) : "0.0"
+  const disciplineScore = total > 0 ? Math.round((compData[0].value / total) * 100) : 0
+
+  // Today's trades count
+  const todayTradesCount = closedTrades.filter(t => t.date === todayISO).length
+
   return (
     <div className="flex flex-col gap-4">
 
       {/* ── DO-NOT-TAKE banner ── */}
-      <div className="rounded-[var(--radius)] border border-[var(--loss)] px-4 py-3 flex items-center justify-between gap-3"
-        style={{ background: "rgba(180,40,40,0.12)" }}>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--loss)] flex items-center justify-center text-white text-sm font-bold shrink-0">!</div>
-          <div>
-            <p className="text-sm font-bold text-[var(--loss)]">DO-NOT-TAKE activo · 3 condiciones cumplidas</p>
-            <p className="text-xs text-[var(--ink-3)] mt-0.5">Ya son 3 trades hoy · plan no seguido en último trade · RR objetivo forzado a 2.5R sin confluencia</p>
+      {todayTradesCount >= 3 && (
+        <div className="rounded-[var(--radius)] border border-[var(--loss)] px-4 py-3 flex items-center justify-between gap-3"
+          style={{ background: "rgba(180,40,40,0.12)" }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--loss)] flex items-center justify-center text-white text-sm font-bold shrink-0">!</div>
+            <div>
+              <p className="text-sm font-bold text-[var(--loss)]">DO-NOT-TAKE · {todayTradesCount} trades hoy</p>
+              <p className="text-xs text-[var(--ink-3)] mt-0.5">Verifica los límites de tu plan operativo antes de continuar.</p>
+            </div>
           </div>
+          <button className="text-xs font-semibold text-[var(--ink-3)] border border-[var(--line)] rounded-[var(--radius-sm)] px-3 py-1.5 whitespace-nowrap hover:text-[var(--ink)] transition-colors shrink-0">
+            Ver registro →
+          </button>
         </div>
-        <button className="text-xs font-semibold text-[var(--ink-3)] border border-[var(--line)] rounded-[var(--radius-sm)] px-3 py-1.5 whitespace-nowrap hover:text-[var(--ink)] transition-colors shrink-0">
-          Ver registro →
-        </button>
-      </div>
+      )}
 
       {/* ── Score + Composición ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Score panel */}
         <div className="col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
-          <p className="text-eyebrow mb-3">Discipline Score · Semana actual</p>
+          <p className="text-eyebrow mb-3">Discipline Score · acumulado</p>
           <div className="flex items-baseline gap-3 mb-1">
-            <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>78</p>
+            <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>{disciplineScore}</p>
             <p className="text-[var(--ink-3)] text-lg font-mono">/ 100</p>
-            <span className="text-sm font-semibold text-[var(--win)] flex items-center gap-1">↑ +6 vs sem. pasada</span>
           </div>
-          {/* Three metric rows */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
-              { label: "Sin violación",   value: "78%",  sub: "18 / 23 trades", color: "var(--win)"  },
-              { label: "Plan seguido",    value: "82%",  sub: "19 / 23 trades", color: "#4f6ef7"    },
-              { label: "Indiscipline $",  value: "$214", sub: "costo acumulado", color: "var(--loss)" },
+              { label: "Sin violación",   value: `${sinViolacionPct}%`, sub: `${total} trades total`,   color: "var(--win)"  },
+              { label: "Plan seguido",    value: `${planSeguidoPct}%`,  sub: `${compData[0].value} / ${total}`, color: "#4f6ef7" },
+              { label: "Off-plan count",  value: `${compData[2].value}`, sub: "trades off-plan",         color: "var(--loss)" },
             ].map(m => (
               <div key={m.label} className="border-l-2 pl-3" style={{ borderColor: m.color }}>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-1">{m.label}</p>
@@ -679,26 +957,27 @@ function TabDisciplina() {
           </div>
         </div>
 
-        {/* Composición semanal donut */}
+        {/* Composición donut */}
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 flex flex-col">
-          <p className="text-eyebrow mb-4">Composición semanal</p>
+          <p className="text-eyebrow mb-4">Composición global</p>
           <div className="flex-1 flex items-center gap-4">
             <div style={{ position: "relative", width: 120, height: 120, flexShrink: 0 }}>
               <ResponsiveContainer width={120} height={120}>
                 <PieChart>
-                  <Pie data={COMP_DATA} cx={55} cy={55} innerRadius={36} outerRadius={54}
+                  <Pie data={total > 0 ? compData : [{ name: "Sin datos", value: 1, color: "var(--line)" }]}
+                    cx={55} cy={55} innerRadius={36} outerRadius={54}
                     dataKey="value" strokeWidth={2} stroke="var(--panel)">
-                    {COMP_DATA.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    {(total > 0 ? compData : [{ color: "var(--line)" }]).map((d, i) => <Cell key={i} fill={d.color} />)}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <p className="font-mono font-bold text-[var(--ink)] text-sm">23</p>
+                <p className="font-mono font-bold text-[var(--ink)] text-sm">{total}</p>
                 <p className="text-[9px] text-[var(--ink-3)]">trades</p>
               </div>
             </div>
             <div className="flex flex-col gap-2">
-              {COMP_DATA.map(d => (
+              {compData.map(d => (
                 <div key={d.name} className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
                   <span className="text-[11px] text-[var(--ink-2)]">{d.name} · <strong className="text-[var(--ink)]">{d.value}</strong></span>
@@ -726,7 +1005,6 @@ function TabDisciplina() {
         </div>
 
         <div className="mt-4 overflow-x-auto">
-          {/* Week headers */}
           <div className="flex mb-1 pl-5">
             {Array.from({ length: WEEKS }).map((_, w) => (
               <div key={w} className="flex-1 text-center" style={{ minWidth: 32 }}>
@@ -734,8 +1012,7 @@ function TabDisciplina() {
               </div>
             ))}
           </div>
-          {/* Grid */}
-          {HEATMAP.map((row, di) => (
+          {heatmap.map((row, di) => (
             <div key={di} className="flex items-center gap-0.5 mb-0.5">
               <span className="text-[10px] text-[var(--ink-3)] w-4 shrink-0 text-right mr-1">{DAYS[di]}</span>
               {row.map((val, wi) => (
@@ -755,11 +1032,10 @@ function TabDisciplina() {
 
       {/* ── R Distribution + Violations ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* R distribution bar chart */}
-        <Card title="Distribución de R · este mes" sub="Frecuencia de outcomes vs. expectativa.">
+        <Card title="Distribución de R · acumulado" sub="Frecuencia de outcomes vs. expectativa.">
           <div className="flex items-end gap-1.5 h-32 mt-2">
-            {R_DIST.map(d => {
-              const maxCount = Math.max(...R_DIST.map(x => x.count))
+            {rDist.map(d => {
+              const maxCount = Math.max(...rDist.map(x => x.count), 1)
               const h = (d.count / maxCount) * 100
               return (
                 <div key={d.r} className="flex-1 flex flex-col items-center gap-1">
@@ -773,25 +1049,21 @@ function TabDisciplina() {
           </div>
         </Card>
 
-        {/* Violations per rule */}
-        <Card title="Violaciones por regla">
+        <Card title="Violaciones por tag">
           <div className="flex justify-end mb-3">
             <button className="text-[11px] font-semibold text-[var(--accent)] hover:underline">Ver registro →</button>
           </div>
           <div className="flex flex-col gap-0">
-            {VIOLATIONS_DATA.map(v => (
+            {violations.map(v => (
               <div key={v.rule} className="flex items-center gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
                 <div className="w-1 h-4 rounded-full shrink-0" style={{ background: v.severity === "mayor" ? "var(--loss)" : "var(--be)" }} />
                 <p className="flex-1 text-sm text-[var(--ink)]">{v.rule}</p>
                 <span className="font-mono font-bold text-[var(--ink)] text-sm shrink-0">{v.count}</span>
-                {v.delta !== 0 && (
-                  <span className="text-[10px] font-semibold shrink-0 flex items-center gap-0.5"
-                    style={{ color: v.delta < 0 ? "var(--win)" : "var(--loss)" }}>
-                    {v.delta < 0 ? "↓" : "↑"} {Math.abs(v.delta)}
-                  </span>
-                )}
               </div>
             ))}
+            {violations.length === 0 && (
+              <p className="py-4 text-center text-[var(--ink-3)] text-sm">Sin violaciones registradas</p>
+            )}
           </div>
         </Card>
       </div>
@@ -802,37 +1074,6 @@ function TabDisciplina() {
 /* ═══════════════════════════════════════════
    TAB PLAYBOOK
 ═══════════════════════════════════════════ */
-const SETUPS = [
-  { abbr: "OR", name: "Opening Range Break", market: "Futures", trades: 47, wr: 64, avgR: 1.80, cumR: 11.8,  best: "NY AM",  worst: "Asia",   color: "#f59e0b", data: [10,13,12,16,15,20,19,24,22,28,26,32] },
-  { abbr: "LG", name: "Liquidity Grab",       market: "Futures", trades: 31, wr: 71, avgR: 2.20, cumR: 19.1,  best: "NY AM",  worst: "London", color: "#22c55e", data: [8,12,11,17,16,22,21,28,27,34,32,40] },
-  { abbr: "LR", name: "London Reversal",      market: "FX",      trades: 28, wr: 58, avgR: 1.40, cumR: 14.2,  best: "London", worst: "NY PM",  color: "#4f6ef7", data: [6,10,9,14,13,18,17,22,21,26,24,28] },
-  { abbr: "VW", name: "VWAP Reclaim",         market: "Equities", trades: 19, wr: 60, avgR: 1.50, cumR: 11.2, best: "NY PM",  worst: "Asia",   color: "#14b8a6", data: [8,11,10,15,14,19,18,23,22,27,25,30] },
-  { abbr: "FA", name: "Failed Auction",       market: "Futures", trades: 24, wr: 52, avgR: 0.90, cumR: 6.8,   best: "NY AM",  worst: "Asia",   color: "#ef4444", data: [12,10,14,11,16,13,18,15,20,16,18,14] },
-  { abbr: "AS", name: "Asia Sweep",           market: "FX",      trades: 16, wr: 55, avgR: 1.10, cumR: 11.8,  best: "Asia",   worst: "NY PM",  color: "#9b59b6", data: [7,10,9,13,12,16,15,19,18,22,21,25] },
-  { abbr: "TC", name: "Trend Continuation",   market: "Equities", trades: 22, wr: 49, avgR: 0.60, cumR: -0.7, best: "NY PM",  worst: "London", color: "#e8962a", data: [14,12,15,12,14,11,13,10,12,9,11,8]  },
-  { abbr: "NF", name: "News Fade — NFP",      market: "FX",       trades: 8,  wr: 41, avgR:-0.20, cumR: -7.2, best: "FX news",worst: "NY AM",  color: "#6b7280", data: [16,13,15,11,13,9,12,8,10,6,8,4]    },
-]
-
-// Session × Setup win rate matrix
-const SESSION_MATRIX = [
-  { setup: "OR", abbr: "OR", color: "#f59e0b", name: "Opening Range Break", nyam: 72, nypm: 58, london: 51, asia: 33 },
-  { setup: "FA", abbr: "FA", color: "#ef4444", name: "Failed Auction",      nyam: 78, nypm: 60, london: 55, asia: 48 },
-  { setup: "LR", abbr: "LR", color: "#4f6ef7", name: "London Reversal",     nyam: 44, nypm: 55, london: 68, asia: 50 },
-  { setup: "LG", abbr: "LG", color: "#22c55e", name: "Liquidity Grab",      nyam: 55, nypm: 67, london: 50, asia: 42 },
-  { setup: "TC", abbr: "TC", color: "#e8962a", name: "Trend Continuation",  nyam: 49, nypm: 53, london: 47, asia: 38 },
-  { setup: "AS", abbr: "AS", color: "#9b59b6", name: "Asia Sweep",          nyam: 38, nypm: 50, london: 45, asia: 62 },
-]
-
-// A+ checklist compliance
-const CHECKLIST = [
-  { item: "Confluencia HTF",          pct: 95 },
-  { item: "Killzone activa",          pct: 88 },
-  { item: "Trade #1–2 del día",       pct: 72 },
-  { item: "Stop visualmente protegido",pct: 81 },
-  { item: "Target a structure",       pct: 67 },
-  { item: "Risk ≤ 1R por trade",      pct: 96 },
-]
-
 function sessionCellColor(pct: number) {
   if (pct >= 65) return { bg: "rgba(34,197,94,0.20)", text: "var(--win)"  }
   if (pct >= 50) return { bg: "rgba(232,150,42,0.20)", text: "var(--be)"  }
@@ -845,147 +1086,235 @@ function checklistColor(pct: number) {
   return "var(--loss)"
 }
 
-function TabPlaybook() {
+type SetupData = {
+  id: string
+  abbr: string
+  name: string
+  market: string
+  color: string
+  trades: number
+  wr: number
+  avgR: number
+  cumR: number
+  netPnl: number
+  equityCurve: number[]
+}
+
+function TabPlaybook({ closedTrades, setups }: {
+  closedTrades: Trade[]
+  setups: { id: string; name: string; abbreviation: string; market: string; color: string; status: string }[]
+}) {
+  const setupData = useMemo((): SetupData[] => {
+    return setups
+      .filter(s => s.status !== "DESCARTADO")
+      .map(s => {
+        const sTrades = closedTrades.filter(t => t.setupId === s.id)
+        const wins = sTrades.filter(t => (t.pnl ?? 0) > 0).length
+        const wr = sTrades.length > 0 ? (wins / sTrades.length) * 100 : 0
+        const avgR = sTrades.length > 0
+          ? sTrades.reduce((sum, t) => sum + (t.rMultiple ?? 0), 0) / sTrades.length
+          : 0
+        const netPnl = sTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0)
+        const cumR = sTrades.reduce((sum, t) => sum + (t.rMultiple ?? 0), 0)
+
+        // Build equity curve (sorted by date)
+        const sorted = [...sTrades].sort((a, b) => a.date.localeCompare(b.date))
+        let cum = 0
+        const equityCurve = sorted.map(t => { cum += (t.pnl ?? 0); return cum })
+        // Pad with at least 2 points for sparkline
+        if (equityCurve.length === 0) equityCurve.push(0, 0)
+        else if (equityCurve.length === 1) equityCurve.unshift(0)
+
+        return {
+          id: s.id,
+          abbr: s.abbreviation,
+          name: s.name,
+          market: s.market,
+          color: s.color || "#4f6ef7",
+          trades: sTrades.length,
+          wr: parseFloat(wr.toFixed(1)),
+          avgR: parseFloat(avgR.toFixed(2)),
+          cumR: parseFloat(cumR.toFixed(1)),
+          netPnl,
+          equityCurve,
+        }
+      })
+      .sort((a, b) => b.trades - a.trades)
+  }, [closedTrades, setups])
+
+  // Session × Setup matrix
+  const sessionMatrix = useMemo(() => {
+    const sessions = ["New York", "London", "Asia", "London Close"]
+    return setupData.slice(0, 6).map(s => {
+      const sTrades = closedTrades.filter(t => t.setupId === s.id)
+      const bySession: Record<string, { total: number; wins: number }> = {}
+      for (const t of sTrades) {
+        const sess = t.session ?? "Sin sesión"
+        if (!bySession[sess]) bySession[sess] = { total: 0, wins: 0 }
+        bySession[sess].total++
+        if ((t.pnl ?? 0) > 0) bySession[sess].wins++
+      }
+      const wr = (sess: string) => {
+        const d = bySession[sess]
+        return d && d.total > 0 ? Math.round((d.wins / d.total) * 100) : null
+      }
+      return {
+        setup: s.id,
+        abbr: s.abbr,
+        color: s.color,
+        name: s.name,
+        nyam: wr("New York"),
+        nypm: wr("London Close"),
+        london: wr("London"),
+        asia: wr("Asia"),
+      }
+    })
+  }, [setupData, closedTrades])
+
   return (
     <div className="flex flex-col gap-4">
-
       {/* ── Setup cards ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-[13px] font-semibold text-[var(--ink)]">Playbook · rendimiento por setup</p>
-            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">Métricas agregadas desde tu registro de trades · últimos 90 días.</p>
-          </div>
-          <div className="flex gap-1.5">
-            {["Pausados","Descartados"].map(f => (
-              <button key={f} className="text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
-                {f}
-              </button>
-            ))}
+            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">Métricas agregadas desde tu registro de trades.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {SETUPS.map(s => {
-            const win = s.wr >= 50
-            const lineColor = win ? "#22c55e" : "#e05555"
-            const W = 240, H = 64
-            const max = Math.max(...s.data), min = Math.min(...s.data)
-            const range = max - min || 1
-            const pts = s.data.map((v, i) => ({
-              x: (i / (s.data.length - 1)) * W,
-              y: H - 6 - ((v - min) / range) * (H - 16),
-            }))
-            const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
-            const areaPath = linePath + ` L${W},${H} L0,${H} Z`
-            const fillId = `pf-${s.abbr}`
-            return (
-              <div key={s.abbr}
-                className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
-                style={{ background: "var(--panel-2)" }}>
-                {/* Card header */}
-                <div className="flex items-center gap-2.5 p-3 pb-2">
-                  <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                    style={{ background: s.color }}>{s.abbr}</span>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
-                    <p className="text-[10px] text-[var(--ink-3)]">{s.market} · {s.trades} trades</p>
-                  </div>
-                </div>
-
-                {/* Sparkline full-width */}
-                <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%"   stopColor={lineColor} stopOpacity={0.25} />
-                      <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <path d={areaPath} fill={`url(#${fillId})`} />
-                  <path d={linePath} fill="none" stroke={lineColor} strokeWidth="1.8"
-                    strokeLinejoin="round" strokeLinecap="round" />
-                </svg>
-
-                {/* Stats */}
-                <div className="px-3 pt-2 pb-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
-                  {[
-                    ["Win", `${s.wr}%`, win ? "var(--win)" : "var(--loss)"],
-                    ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
-                    ["Cum", `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
-                  ].map(([l, v, c]) => (
-                    <div key={l}>
-                      <p className="text-[9px] text-[var(--ink-3)] uppercase tracking-wider">{l}</p>
-                      <p className="text-[13px] font-mono font-bold" style={{ color: c as string }}>{v}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Best / worst session */}
-                <div className="px-3 pb-2.5 flex justify-between text-[10px] text-[var(--ink-3)]">
-                  <span>Mejor: <span className="text-[var(--win)]">{s.best}</span></span>
-                  <span>Peor: <span className="text-[var(--loss)]">{s.worst}</span></span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── Session matrix + Checklist ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-        {/* Setup × Sesión matrix */}
-        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
-          <p className="text-[13px] font-semibold text-[var(--ink)]">Setup × Sesión · win rate</p>
-          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">Identifica el contexto donde cada setup performa mejor.</p>
-
-          {/* Header row */}
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: "180px repeat(4, 1fr)" }}>
-            <div />
-            {["NY AM","NY PM","LONDON","ASIA"].map(s => (
-              <div key={s} className="text-center text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider pb-1">{s}</div>
-            ))}
-
-            {/* Data rows */}
-            {SESSION_MATRIX.flatMap(row => [
-              <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
-                <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                  style={{ background: row.color }}>{row.abbr}</span>
-                <span className="text-[11px] text-[var(--ink-2)] truncate">{row.name}</span>
-              </div>,
-              ...[row.nyam, row.nypm, row.london, row.asia].map((pct, ci) => {
-                const { bg, text } = sessionCellColor(pct)
-                return (
-                  <div key={`${row.setup}-${ci}`} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold"
-                    style={{ background: bg, color: text }}>
-                    {pct}%
-                  </div>
-                )
-              }),
-            ])}
-          </div>
-        </div>
-
-        {/* A+ Checklist compliance */}
-        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
-          <p className="text-[13px] font-semibold text-[var(--ink)]">A+ Checklist · cumplimiento</p>
-          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-5">Tasa de cumplimiento por ítem esta semana.</p>
-
-          <div className="flex flex-col gap-4">
-            {CHECKLIST.map(c => {
-              const color = checklistColor(c.pct)
+        {setupData.length === 0 ? (
+          <p className="text-center text-[var(--ink-3)] text-sm py-8">Sin setups registrados. Crea setups en la sección Playbook.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {setupData.map(s => {
+              const win = s.wr >= 50
+              const lineColor = win ? "#22c55e" : "#e05555"
+              const W = 240, H = 64
+              const max = Math.max(...s.equityCurve)
+              const min = Math.min(...s.equityCurve)
+              const range = max - min || 1
+              const pts = s.equityCurve.map((v, i) => ({
+                x: (i / (s.equityCurve.length - 1)) * W,
+                y: H - 6 - ((v - min) / range) * (H - 16),
+              }))
+              const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
+              const areaPath = linePath + ` L${W},${H} L0,${H} Z`
+              const fillId = `pf-${s.abbr}`
               return (
-                <div key={c.item}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[12px] text-[var(--ink)]">{c.item}</span>
-                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{c.pct}%</span>
+                <div key={s.id}
+                  className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
+                  style={{ background: "var(--panel-2)" }}>
+                  <div className="flex items-center gap-2.5 p-3 pb-2">
+                    <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                      style={{ background: s.color }}>{s.abbr}</span>
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
+                      <p className="text-[10px] text-[var(--ink-3)]">{s.market || "—"} · {s.trades} trades</p>
+                    </div>
                   </div>
-                  <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${c.pct}%`, background: color }} />
+
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"   stopColor={lineColor} stopOpacity={0.25} />
+                        <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <path d={areaPath} fill={`url(#${fillId})`} />
+                    <path d={linePath} fill="none" stroke={lineColor} strokeWidth="1.8"
+                      strokeLinejoin="round" strokeLinecap="round" />
+                  </svg>
+
+                  <div className="px-3 pt-2 pb-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                    {[
+                      ["Win", `${s.wr}%`, win ? "var(--win)" : "var(--loss)"],
+                      ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
+                      ["Cum", `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
+                    ].map(([l, v, c]) => (
+                      <div key={l}>
+                        <p className="text-[9px] text-[var(--ink-3)] uppercase tracking-wider">{l}</p>
+                        <p className="text-[13px] font-mono font-bold" style={{ color: c as string }}>{v}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="px-3 pb-2.5 flex justify-between text-[10px] text-[var(--ink-3)]">
+                    <span>P&amp;L: <span className={s.netPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}>
+                      {s.netPnl >= 0 ? "+" : ""}${Math.abs(s.netPnl).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span></span>
                   </div>
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Session matrix + No-data placeholder ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">Setup × Sesión · win rate</p>
+          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">Identifica el contexto donde cada setup performa mejor.</p>
+
+          {sessionMatrix.length === 0 ? (
+            <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos suficientes</p>
+          ) : (
+            <div className="grid gap-1.5" style={{ gridTemplateColumns: "180px repeat(4, 1fr)" }}>
+              <div />
+              {["NY","LDN CL","LONDON","ASIA"].map(s => (
+                <div key={s} className="text-center text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider pb-1">{s}</div>
+              ))}
+              {sessionMatrix.flatMap(row => [
+                <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
+                  <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                    style={{ background: row.color }}>{row.abbr}</span>
+                  <span className="text-[11px] text-[var(--ink-2)] truncate">{row.name}</span>
+                </div>,
+                ...[row.nyam, row.nypm, row.london, row.asia].map((pct, ci) => {
+                  if (pct === null) return (
+                    <div key={`${row.setup}-${ci}`} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold text-[var(--ink-3)]"
+                      style={{ background: "var(--chip)" }}>—</div>
+                  )
+                  const { bg, text } = sessionCellColor(pct)
+                  return (
+                    <div key={`${row.setup}-${ci}`} className="rounded-[6px] flex items-center justify-center py-2 text-[12px] font-mono font-bold"
+                      style={{ background: bg, color: text }}>
+                      {pct}%
+                    </div>
+                  )
+                }),
+              ])}
+            </div>
+          )}
+        </div>
+
+        {/* Placeholder for checklist — static until checklist data is in DB */}
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">A+ Checklist · cumplimiento</p>
+          <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-5">% de trades con tag A+ por setup.</p>
+          <div className="flex flex-col gap-4">
+            {setupData.slice(0, 6).map(s => {
+              const sTrades = closedTrades.filter(t => t.setupId === s.id)
+              const aPlusTrades = sTrades.filter(t => (t.tags as string[]).includes("A+")).length
+              const pct = sTrades.length > 0 ? Math.round((aPlusTrades / sTrades.length) * 100) : 0
+              const color = checklistColor(pct)
+              return (
+                <div key={s.id}>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                        style={{ background: s.color }}>{s.abbr}</span>
+                      <span className="text-[12px] text-[var(--ink)]">{s.name}</span>
+                    </div>
+                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                  </div>
+                </div>
+              )
+            })}
+            {setupData.length === 0 && <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin setups</p>}
           </div>
         </div>
       </div>
@@ -999,14 +1328,42 @@ function TabPlaybook() {
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("portfolio")
 
+  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+  const { data: rawAccounts = [] } = trpc.accounts.list.useQuery()
+  const { data: rawSetups = [] } = trpc.setups.list.useQuery()
+
+  // Normalize accounts (Prisma Decimal → number)
+  const accounts = useMemo(() => rawAccounts.map(a => ({
+    ...a,
+    initialBalance: Number(a.initialBalance),
+    ddDailyPct: a.ddDailyPct != null ? Number(a.ddDailyPct) : null,
+    ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null,
+    allowedSymbols: (a.allowedSymbols as string[]) ?? [],
+  })), [rawAccounts])
+
+  // Normalize setups
+  const setups = useMemo(() => rawSetups.map(s => ({
+    id: s.id,
+    name: s.name,
+    abbreviation: s.abbreviation,
+    market: s.market ?? "",
+    color: s.color ?? "#4f6ef7",
+    status: s.status,
+  })), [rawSetups])
+
+  // Cast trades to our Trade type
+  const trades = allTrades as unknown as Trade[]
+
+  const closedTrades = useMemo(() => trades.filter(t => t.status === "CLOSED"), [trades])
+
   return (
     <div>
-      <TopBar title="Dashboard" subtitle="FXify 100K · Phase 2 · Sem. 20" />
+      <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
       <FilterBar options={TABS} value={tab} onChange={(v) => setTab(v as Tab)} className="mb-6" />
-      {tab === "portfolio"  && <TabPortfolio />}
-      {tab === "operador"   && <TabOperador />}
-      {tab === "disciplina" && <TabDisciplina />}
-      {tab === "playbook"   && <TabPlaybook />}
+      {tab === "portfolio"  && <TabPortfolio closedTrades={closedTrades} accounts={accounts} />}
+      {tab === "operador"   && <TabOperador allTrades={trades} closedTrades={closedTrades} accounts={accounts} />}
+      {tab === "disciplina" && <TabDisciplina closedTrades={closedTrades} />}
+      {tab === "playbook"   && <TabPlaybook closedTrades={closedTrades} setups={setups} />}
     </div>
   )
 }
