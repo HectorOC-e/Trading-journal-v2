@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import {
   Plus, X, Star, Circle, CheckCircle2, Pencil, Copy,
   Pause, Play, FlaskConical, Archive, Trash2, BarChart2,
-  Percent, TrendingUp, ChevronDown,
+  Percent, TrendingUp, ChevronDown, ImagePlus, ZoomIn,
 } from "lucide-react"
 import { TopBar }    from "@/components/layout/top-bar"
 import { Button }    from "@/components/ui/button"
@@ -13,7 +13,8 @@ import { Textarea }  from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn }        from "@/lib/utils"
-import { trpc }      from "@/lib/trpc/client"
+import { trpc }           from "@/lib/trpc/client"
+import { createClient }   from "@/lib/supabase/client"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -22,6 +23,7 @@ type SetupStatus = "ACTIVO" | "EN_PRUEBA" | "PAUSADO" | "DESCARTADO"
 interface DbSetup {
   id: string; name: string; abbreviation: string; market: string
   direction: string; status: string; description: string; color: string
+  images: string[]
   aplusChecklist: string[]; standardChecklist: string[]
   createdAt: Date | string; updatedAt: Date | string
 }
@@ -172,12 +174,12 @@ function SetupDrawer({
   onDuplicate: (s: DbSetup) => void
   onDelete: (s: DbSetup) => void
 }) {
-  const [confirmName,   setConfirmName]   = useState("")
-  const [confirmingDel, setConfirmingDel] = useState(false)
+  const [confirmName,    setConfirmName]    = useState("")
+  const [confirmingDel,  setConfirmingDel]  = useState(false)
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
+  const [lightboxImg,    setLightboxImg]    = useState<string | null>(null)
 
-  /* Reset confirm state when setup changes */
-  useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false) }, [setup?.id])
+  useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false); setLightboxImg(null) }, [setup?.id])
 
   const isOpen = !!setup
 
@@ -313,6 +315,28 @@ function SetupDrawer({
             </div>
           )}
 
+          {/* Reference images */}
+          {setup.images.length > 0 && (
+            <div>
+              <p className="text-eyebrow mb-2">Imágenes de referencia</p>
+              <div className="grid grid-cols-2 gap-2">
+                {setup.images.map((url, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setLightboxImg(url)}
+                    className="relative aspect-video rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] hover:border-[var(--accent)] transition-colors group"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Referencia ${i + 1}`} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <ZoomIn size={18} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Delete confirmation */}
           {confirmingDel && (
             <div className="flex flex-col gap-2 p-4 rounded-[var(--radius-sm)] border border-[var(--loss)]"
@@ -410,6 +434,29 @@ function SetupDrawer({
           </div>
         </div>
       </div>
+
+      {/* Lightbox */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.85)" }}
+          onClick={() => setLightboxImg(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightboxImg}
+            alt="Referencia"
+            className="max-w-full max-h-full rounded-[var(--radius)] object-contain"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
     </>
   )
 }
@@ -462,11 +509,13 @@ interface SetupForm {
   name: string; abbr: string; market: string
   direction: Direction; status: SetupStatus
   description: string; color: string
+  images: string[]
   aplusChecklist: string[]; standardChecklist: string[]
 }
 const FORM_INIT: SetupForm = {
   name: "", abbr: "", market: "NQ Futures", direction: "AMBAS", status: "ACTIVO",
   description: "", color: "#4f6ef7",
+  images: [],
   aplusChecklist: ["", "", ""],
   standardChecklist: ["Setup #1 o #2 del día", "Risk ≤ 1R", "RR mínimo 2:1", ""],
 }
@@ -476,33 +525,73 @@ function SetupModal({ open, onOpenChange, editSetup }: {
 }) {
   const isEdit = !!editSetup
   const utils  = trpc.useUtils()
-  const [form, setForm] = useState<SetupForm>(FORM_INIT)
-  const [tab,  setTab]  = useState<"info" | "checklist">("info")
+  const [form,        setForm]        = useState<SetupForm>(FORM_INIT)
+  const [tab,         setTab]         = useState<"info" | "checklist">("info")
+  const [uploading,   setUploading]   = useState(false)
+
+  /* ── Populate or clear form whenever the modal opens/closes ── */
+  useEffect(() => {
+    if (open) {
+      if (editSetup) {
+        setForm({
+          name:             editSetup.name,
+          abbr:             editSetup.abbreviation,
+          market:           editSetup.market,
+          direction:        editSetup.direction as Direction,
+          status:           editSetup.status as SetupStatus,
+          description:      editSetup.description,
+          color:            editSetup.color,
+          images:           editSetup.images ?? [],
+          aplusChecklist:   editSetup.aplusChecklist.length    ? editSetup.aplusChecklist    : ["", "", ""],
+          standardChecklist: editSetup.standardChecklist.length ? editSetup.standardChecklist : [""],
+        })
+      } else {
+        setForm(FORM_INIT)
+        setTab("info")
+      }
+    } else {
+      /* Small delay so form doesn't flash empty while modal animates out */
+      const t = setTimeout(() => { setForm(FORM_INIT); setTab("info") }, 200)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editSetup?.id])
 
   const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
   const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
 
-  const handleOpen = (v: boolean) => {
-    if (v && editSetup) {
-      setForm({
-        name: editSetup.name, abbr: editSetup.abbreviation,
-        market: editSetup.market, direction: editSetup.direction as Direction,
-        status: editSetup.status as SetupStatus, description: editSetup.description,
-        color: editSetup.color,
-        aplusChecklist:    editSetup.aplusChecklist.length    ? editSetup.aplusChecklist    : ["", "", ""],
-        standardChecklist: editSetup.standardChecklist.length ? editSetup.standardChecklist : [""],
-      })
-    } else if (!v) { setForm(FORM_INIT); setTab("info") }
-    onOpenChange(v)
+  const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
+
+  /* ── Image upload via Supabase Storage ── */
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploading(true)
+    const supabase = createClient()
+    const urls: string[] = []
+    for (const file of files) {
+      const ext  = file.name.split(".").pop()
+      const path = `setups/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from("setup-images").upload(path, file, { upsert: false })
+      if (!error) {
+        const { data } = supabase.storage.from("setup-images").getPublicUrl(path)
+        urls.push(data.publicUrl)
+      }
+    }
+    setForm(f => ({ ...f, images: [...f.images, ...urls] }))
+    setUploading(false)
+    e.target.value = ""
   }
 
-  const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
+  const removeImage = (idx: number) =>
+    setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
 
   const handleSave = () => {
     const payload = {
       name: form.name.trim(), abbreviation: form.abbr.trim().toUpperCase(),
       market: form.market, direction: form.direction, status: form.status,
       description: form.description.trim(), color: form.color,
+      images: form.images,
       aplusChecklist: form.aplusChecklist.filter(Boolean),
       standardChecklist: form.standardChecklist.filter(Boolean),
     }
@@ -511,10 +600,10 @@ function SetupModal({ open, onOpenChange, editSetup }: {
     else createMut.mutate(payload)
   }
 
-  const isSaving = createMut.isPending || updateMut.isPending
+  const isSaving = createMut.isPending || updateMut.isPending || uploading
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -614,6 +703,51 @@ function SetupModal({ open, onOpenChange, editSetup }: {
               <label className="text-eyebrow block mb-1.5">Descripción</label>
               <Textarea placeholder="¿En qué condiciones se ejecuta este setup?…"
                 value={form.description} onChange={e => set("description", e.target.value)} />
+            </div>
+
+            {/* Images */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-eyebrow">Imágenes de referencia</label>
+                <span className="text-[10px] text-[var(--ink-3)]">{form.images.length} imagen{form.images.length !== 1 ? "es" : ""}</span>
+              </div>
+
+              {/* Grid preview */}
+              {form.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  {form.images.map((url, i) => (
+                    <div key={i} className="relative aspect-video rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeImage(i)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Upload button */}
+              <label className={cn(
+                "flex items-center justify-center gap-2 h-10 rounded-[var(--radius-sm)] border border-dashed text-[12px] font-medium transition-colors cursor-pointer",
+                uploading
+                  ? "border-[var(--accent)] text-[var(--accent)] opacity-60"
+                  : "border-[var(--line)] text-[var(--ink-3)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              )}>
+                <ImagePlus size={14} />
+                {uploading ? "Subiendo…" : "Subir imágenes"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+              </label>
             </div>
 
             <button onClick={() => setTab("checklist")}

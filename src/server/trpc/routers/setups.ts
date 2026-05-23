@@ -11,6 +11,7 @@ const SetupInput = z.object({
   status:            z.enum(SETUP_STATUSES).default("ACTIVO"),
   description:       z.string().default(""),
   color:             z.string().default("#4f6ef7"),
+  images:            z.array(z.string()).default([]),
   aplusChecklist:    z.array(z.string()).default([]),
   standardChecklist: z.array(z.string()).default([]),
 })
