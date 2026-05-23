@@ -245,6 +245,17 @@ export function RegisterTradeModal({
     })
   }, [balance, pointValue, form.riskPct, form.entry, form.stop])
 
+  const calcRR = useMemo(() => {
+    const entry  = parseFloat(form.entry)
+    const stop   = parseFloat(form.stop)
+    const target = parseFloat(form.target)
+    if (!entry || !stop || !target) return null
+    const risk   = Math.abs(entry - stop)
+    const reward = form.direction === "LONG" ? target - entry : entry - target
+    if (risk === 0 || reward <= 0) return null
+    return reward / risk
+  }, [form.entry, form.stop, form.target, form.direction])
+
   // Auto-fill size when calculator has a valid result and user hasn't overridden
   useEffect(() => {
     if (calcContracts !== null && !sizeManual) {
@@ -443,20 +454,40 @@ export function RegisterTradeModal({
               </div>
             </div>
 
-            {/* Calculator explanation */}
-            {calcContracts !== null && (
-              <div className="mt-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
-                <p className="text-[10px] text-[var(--ink-3)] font-mono">
-                  ${balance.toLocaleString()} × {form.riskPct}% = <span className="text-[var(--ink-2)]">${(balance * (parseFloat(form.riskPct) || 0) / 100).toFixed(0)} en riesgo</span>
-                  {pointValue && parseFloat(form.entry) && parseFloat(form.stop) ? (
-                    <>
-                      {" · "}
-                      {Math.abs(parseFloat(form.entry) - parseFloat(form.stop)).toFixed(2)} pts × ${pointValue} = <span className="text-[var(--ink-2)]">${(Math.abs(parseFloat(form.entry) - parseFloat(form.stop)) * pointValue).toFixed(0)}/contrato</span>
-                      {" → "}
-                      <span className="text-[var(--accent)] font-semibold">{calcContracts.toFixed(2)} contratos</span>
-                    </>
-                  ) : null}
-                </p>
+            {/* Calculator explanation + R:R */}
+            {(calcContracts !== null || calcRR !== null) && (
+              <div className="mt-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] flex flex-col gap-1.5">
+                {/* Position size breakdown */}
+                {calcContracts !== null && (
+                  <p className="text-[10px] text-[var(--ink-3)] font-mono leading-relaxed">
+                    ${balance.toLocaleString()} × {form.riskPct}% = <span className="text-[var(--ink-2)]">${(balance * (parseFloat(form.riskPct) || 0) / 100).toFixed(0)} en riesgo</span>
+                    {pointValue && parseFloat(form.entry) && parseFloat(form.stop) && (
+                      <>
+                        {" · "}
+                        {Math.abs(parseFloat(form.entry) - parseFloat(form.stop)).toFixed(2)} pts × ${pointValue} = <span className="text-[var(--ink-2)]">${(Math.abs(parseFloat(form.entry) - parseFloat(form.stop)) * pointValue).toFixed(0)}/contrato</span>
+                        {" → "}
+                        <span className="text-[var(--accent)] font-semibold">{calcContracts.toFixed(2)} contratos</span>
+                      </>
+                    )}
+                  </p>
+                )}
+
+                {/* R:R row */}
+                {calcRR !== null && (
+                  <div className="flex items-center gap-2 pt-1 border-t border-[var(--line)]">
+                    <span className="text-[10px] text-[var(--ink-3)]">Risk:Reward</span>
+                    <span className="text-sm font-bold font-mono" style={{
+                      color: calcRR >= 2 ? "var(--win)" : calcRR >= 1 ? "var(--be)" : "var(--loss)",
+                    }}>
+                      1 : {calcRR.toFixed(2)}
+                    </span>
+                    <span className="text-[10px]" style={{
+                      color: calcRR >= 2 ? "var(--win)" : calcRR >= 1 ? "var(--be)" : "var(--loss)",
+                    }}>
+                      {calcRR >= 2 ? "✓ Bueno" : calcRR >= 1 ? "Aceptable" : "⚠ Bajo"}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
