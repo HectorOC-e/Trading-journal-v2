@@ -247,6 +247,11 @@ type Trade = {
   } | null
   openTime: string | null
   closeTime: string | null
+  entry: number | null
+  stop: number | null
+  target: number | null
+  size: number | null
+  createdAt: string
 }
 
 type AccountRow = {
@@ -277,6 +282,54 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
   const grossWin = useMemo(() => closedTrades.filter(t => (t.pnl ?? 0) > 0).reduce((s, t) => s + (t.pnl ?? 0), 0), [closedTrades])
   const grossLoss = useMemo(() => Math.abs(closedTrades.filter(t => (t.pnl ?? 0) < 0).reduce((s, t) => s + (t.pnl ?? 0), 0)), [closedTrades])
   const pf = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
+
+  // Sharpe ratio (avgR / stdDevR)
+  const sharpe = useMemo(() => {
+    const rs = closedTrades.filter(t => t.rMultiple != null).map(t => t.rMultiple!)
+    if (rs.length < 2) return null
+    const mean = rs.reduce((a, b) => a + b, 0) / rs.length
+    const std = Math.sqrt(rs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / rs.length)
+    return std > 0 ? mean / std : null
+  }, [closedTrades])
+
+  // Expectancy in $
+  const expectancyDollar = useMemo(() => {
+    if (closedTrades.length === 0) return null
+    const winsT   = closedTrades.filter(t => (t.pnl ?? 0) > 0)
+    const lossesT = closedTrades.filter(t => (t.pnl ?? 0) < 0)
+    const avgWin  = winsT.length   > 0 ? winsT.reduce((s, t) => s + (t.pnl ?? 0), 0)   / winsT.length   : 0
+    const avgLoss = lossesT.length > 0 ? Math.abs(lossesT.reduce((s, t) => s + (t.pnl ?? 0), 0) / lossesT.length) : 0
+    const wr = winsT.length / closedTrades.length
+    const lr = lossesT.length / closedTrades.length
+    return avgWin * wr - avgLoss * lr
+  }, [closedTrades])
+
+  // Best / worst day
+  const { bestDay, worstDay } = useMemo(() => {
+    const byDate: Record<string, number> = {}
+    for (const t of closedTrades) byDate[t.date] = (byDate[t.date] ?? 0) + (t.pnl ?? 0)
+    const entries = Object.entries(byDate)
+    if (entries.length === 0) return { bestDay: null, worstDay: null }
+    const best  = entries.reduce((a, b) => b[1] > a[1] ? b : a)
+    const worst = entries.reduce((a, b) => b[1] < a[1] ? b : a)
+    return { bestDay: { date: best[0], pnl: best[1] }, worstDay: { date: worst[0], pnl: worst[1] } }
+  }, [closedTrades])
+
+  // Current consecutive win/loss streak
+  const streak = useMemo(() => {
+    const sorted = [...closedTrades].sort((a, b) => b.date.localeCompare(a.date))
+    if (sorted.length === 0) return null
+    const first = sorted[0].pnl ?? 0
+    if (first === 0) return null
+    const isWin = first > 0
+    let count = 0
+    for (const t of sorted) {
+      const p = t.pnl ?? 0
+      if (isWin ? p > 0 : p < 0) count++
+      else break
+    }
+    return { count, isWin }
+  }, [closedTrades])
 
   // Donut: allocation by account initialBalance
   const totalInitial = useMemo(() => accounts.reduce((s, a) => s + Number(a.initialBalance), 0), [accounts])
@@ -359,7 +412,7 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
       const monthTrades = acctTrades.filter(t => t.date >= monthStart)
       const pnlMonth = monthTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
       const acctWins = acctTrades.filter(t => (t.pnl ?? 0) > 0).length
-      const wr = acctTrades.length > 0 ? ((acctWins / acctTrades.length) * 100).toFixed(0) : "0"
+      const wr = acctTrades.length > 0 ? ((acctWins / acctTrades.length) * 100).toFixed(2) : "0.00"
       const netPnlAcct = acctTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
       const balance = Number(a.initialBalance) + netPnlAcct
 
@@ -380,23 +433,50 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Net P&L total"
-          value={`${netPnl >= 0 ? "+" : ""}$${Math.abs(netPnl).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          value={`${netPnl >= 0 ? "+" : "-"}$${Math.abs(netPnl).toFixed(2)}`}
           sub={`${closedTrades.length} operaciones cerradas`}
           color={netPnl >= 0 ? "var(--win)" : "var(--loss)"}
           icon={netPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />} />
         <KpiCard label="Profit Factor"
-          value={pf === 999 ? "∞" : pf.toFixed(2)}
+          value={pf === 999 ? "∞" : pf.toFixed(4)}
           sub="todas las cuentas"
           icon={<Activity size={15} />} />
         <KpiCard label="Win Rate"
-          value={`${winRate}%`}
+          value={`${(closedTrades.length > 0 ? (wins / closedTrades.length * 100) : 0).toFixed(2)}%`}
           sub={`${wins} / ${closedTrades.length} operaciones`}
           icon={<Percent size={15} />} />
         <KpiCard label="Avg R"
-          value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(2)}R`}
+          value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(4)}R`}
           sub="promedio rMultiple"
           color={avgR >= 0 ? "var(--win)" : "var(--loss)"}
           icon={<Target size={15} />} />
+        <KpiCard label="Sharpe Ratio"
+          value={sharpe != null ? sharpe.toFixed(4) : "—"}
+          sub="avgR / desv. estándar R"
+          color={sharpe != null && sharpe >= 1 ? "var(--win)" : sharpe != null && sharpe < 0 ? "var(--loss)" : undefined}
+          icon={<BarChart2 size={15} />} />
+        <KpiCard label="Expectancy $"
+          value={expectancyDollar != null ? `${expectancyDollar >= 0 ? "+" : "-"}$${Math.abs(expectancyDollar).toFixed(2)}` : "—"}
+          sub="por trade promedio"
+          color={expectancyDollar != null ? (expectancyDollar >= 0 ? "var(--win)" : "var(--loss)") : undefined}
+          icon={<CheckCircle2 size={15} />} />
+        <KpiCard label="Mejor día"
+          value={bestDay ? `+$${bestDay.pnl.toFixed(2)}` : "—"}
+          sub={bestDay ? fmtDate(bestDay.date) : "sin datos"}
+          color="var(--win)"
+          icon={<TrendingUp size={15} />} />
+        <KpiCard label="Peor día"
+          value={worstDay && worstDay.pnl < 0 ? `-$${Math.abs(worstDay.pnl).toFixed(2)}` : "—"}
+          sub={worstDay && worstDay.pnl < 0 ? fmtDate(worstDay.date) : "sin datos"}
+          color="var(--loss)"
+          icon={<TrendingDown size={15} />} />
+        {streak && (
+          <KpiCard label="Racha actual"
+            value={`${streak.count}${streak.isWin ? "W" : "L"}`}
+            sub={streak.isWin ? "victorias consecutivas" : "pérdidas consecutivas"}
+            color={streak.isWin ? "var(--win)" : "var(--loss)"}
+            icon={<Award size={15} />} />
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -485,9 +565,9 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
               {accountsWithStats.map(a => (
                 <tr key={a.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
                   <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
-                  <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.balance.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.balance.toFixed(2)}</td>
                   <td className={cn("py-3 font-mono text-sm font-semibold", a.pnlMonth >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {a.pnlMonth >= 0 ? "+" : ""}${Math.abs(a.pnlMonth).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    {a.pnlMonth >= 0 ? "+" : "-"}${Math.abs(a.pnlMonth).toFixed(2)}
                   </td>
                   <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.wr}%</td>
                   <td className={cn("py-3 font-mono text-sm", a.ddPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
@@ -593,6 +673,74 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
   const equityStart = equityData[0]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
   const equityEnd = equityData[equityData.length - 1]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
   const equityChangePct = equityStart > 0 ? ((equityEnd - equityStart) / equityStart) * 100 : 0
+
+  // P&L por símbolo
+  const pnlBySymbol = useMemo(() => {
+    const map: Record<string, { pnl: number; trades: number; wins: number }> = {}
+    for (const t of closedTrades) {
+      if (!map[t.symbol]) map[t.symbol] = { pnl: 0, trades: 0, wins: 0 }
+      map[t.symbol].pnl    += t.pnl ?? 0
+      map[t.symbol].trades++
+      if ((t.pnl ?? 0) > 0) map[t.symbol].wins++
+    }
+    return Object.entries(map)
+      .map(([symbol, v]) => ({ symbol, pnl: v.pnl, trades: v.trades, winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0 }))
+      .sort((a, b) => b.pnl - a.pnl)
+      .slice(0, 8)
+  }, [closedTrades])
+
+  // Horario óptimo (by openTime hour)
+  const horarioOptimo = useMemo(() => {
+    const map: Record<number, { trades: number; wins: number; rSum: number }> = {}
+    for (const t of closedTrades) {
+      if (!t.openTime) continue
+      const hour = parseInt(t.openTime.split(":")[0])
+      if (isNaN(hour)) continue
+      if (!map[hour]) map[hour] = { trades: 0, wins: 0, rSum: 0 }
+      map[hour].trades++
+      if ((t.pnl ?? 0) > 0) map[hour].wins++
+      map[hour].rSum += t.rMultiple ?? 0
+    }
+    return Object.entries(map)
+      .map(([h, v]) => ({
+        hora: `${h.padStart(2, "0")}:00`,
+        trades: v.trades,
+        winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
+        avgR: v.trades > 0 ? v.rSum / v.trades : 0,
+      }))
+      .sort((a, b) => b.avgR - a.avgR)
+      .slice(0, 8)
+  }, [closedTrades])
+
+  // Tiempo promedio en trade (minutos)
+  const tiempoPromedio = useMemo(() => {
+    const durations: number[] = []
+    for (const t of closedTrades) {
+      if (!t.openTime || !t.closeTime) continue
+      const [oh, om] = t.openTime.split(":").map(Number)
+      const [ch, cm] = t.closeTime.split(":").map(Number)
+      const mins = (ch * 60 + cm) - (oh * 60 + om)
+      if (mins > 0) durations.push(mins)
+    }
+    if (durations.length === 0) return null
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length
+    return avg
+  }, [closedTrades])
+
+  // MAE / MFE estimado
+  const maeMfe = useMemo(() => {
+    const maes: number[] = [], mfes: number[] = []
+    for (const t of closedTrades) {
+      if (t.entry == null || t.stop == null || t.target == null || t.size == null) continue
+      const risk   = Math.abs(t.entry - t.stop)   * t.size
+      const reward = Math.abs(t.target - t.entry) * t.size
+      if (risk   > 0) maes.push(risk)
+      if (reward > 0) mfes.push(reward)
+    }
+    const mae = maes.length > 0 ? maes.reduce((a, b) => a + b, 0) / maes.length : null
+    const mfe = mfes.length > 0 ? mfes.reduce((a, b) => a + b, 0) / mfes.length : null
+    return { mae, mfe }
+  }, [closedTrades])
 
   return (
     <div className="flex flex-col gap-4">
@@ -797,6 +945,107 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
           </table>
         </div>
       </Card>
+
+      {/* ── P&L por símbolo + Horario óptimo ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card title="P&L por símbolo" sub="Rendimiento neto acumulado por instrumento">
+          {pnlBySymbol.length === 0 ? (
+            <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[var(--line)]">
+                  {["Símbolo","Trades","Win %","Net P&L"].map(h => (
+                    <th key={h} className="pb-2 text-left text-[10px] font-semibold text-[var(--ink-3)] uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {pnlBySymbol.map(s => (
+                  <tr key={s.symbol} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{s.symbol}</td>
+                    <td className="py-2 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
+                    <td className={cn("py-2 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                      {s.winRate.toFixed(2)}%
+                    </td>
+                    <td className={cn("py-2 font-mono text-sm font-semibold", s.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                      {s.pnl >= 0 ? "+" : "-"}${Math.abs(s.pnl).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        <Card title="Horario óptimo" sub="Por hora de apertura · avg R desc.">
+          {horarioOptimo.length === 0 ? (
+            <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos de openTime</p>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[var(--line)]">
+                  {["Hora","Trades","Win %","Avg R"].map(h => (
+                    <th key={h} className="pb-2 text-left text-[10px] font-semibold text-[var(--ink-3)] uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {horarioOptimo.map(h => (
+                  <tr key={h.hora} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{h.hora}</td>
+                    <td className="py-2 font-mono text-sm text-[var(--ink-2)]">{h.trades}</td>
+                    <td className={cn("py-2 font-mono text-sm font-semibold", h.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                      {h.winRate.toFixed(2)}%
+                    </td>
+                    <td className={cn("py-2 font-mono text-sm font-semibold", h.avgR >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                      {h.avgR >= 0 ? "+" : ""}{h.avgR.toFixed(4)}R
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
+
+      {/* ── Métricas de ejecución ── */}
+      <Card title="Métricas de ejecución" sub="Tiempo en posición y riesgo/objetivo planificado">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            {
+              label: "Tiempo prom. en trade",
+              value: tiempoPromedio != null
+                ? tiempoPromedio >= 60
+                  ? `${Math.floor(tiempoPromedio / 60)}h ${Math.round(tiempoPromedio % 60)}m`
+                  : `${tiempoPromedio.toFixed(1)} min`
+                : "—",
+              sub: "entre openTime y closeTime",
+            },
+            {
+              label: "MAE estimado prom.",
+              value: maeMfe.mae != null ? `$${maeMfe.mae.toFixed(2)}` : "—",
+              sub: "riesgo planificado por trade",
+            },
+            {
+              label: "MFE estimado prom.",
+              value: maeMfe.mfe != null ? `$${maeMfe.mfe.toFixed(2)}` : "—",
+              sub: "objetivo planificado por trade",
+            },
+            {
+              label: "Ratio MFE/MAE",
+              value: maeMfe.mae && maeMfe.mfe ? (maeMfe.mfe / maeMfe.mae).toFixed(4) : "—",
+              sub: "recompensa/riesgo planificado",
+            },
+          ].map(({ label, value, sub }) => (
+            <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--ink-3)] font-semibold mb-2">{label}</p>
+              <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none">{value}</p>
+              <p className="text-[10px] text-[var(--ink-3)] mt-1">{sub}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
     </div>
   )
 }
@@ -906,15 +1155,111 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
   }, [closedTrades])
 
   const total = closedTrades.length
-  const planSeguidoPct = total > 0 ? ((compData[0].value / total) * 100).toFixed(1) : "0.0"
-  const sinViolacionPct = total > 0 ? (((total - violations.reduce((s, v) => s + v.count, 0)) / total) * 100).toFixed(1) : "0.0"
-  const disciplineScore = total > 0 ? Math.round((compData[0].value / total) * 100) : 0
+  const planSeguidoPct = total > 0 ? ((compData[0].value / total) * 100).toFixed(2) : "0.00"
+  const sinViolacionPct = total > 0 ? (((total - violations.reduce((s, v) => s + v.count, 0)) / total) * 100).toFixed(2) : "0.00"
+  const disciplineScore = total > 0 ? ((compData[0].value / total) * 100).toFixed(2) : "0.00"
 
   // Today's trades count
   const todayTradesCount = closedTrades.filter(t => t.date === todayISO).length
 
+  // Costo de indisciplina
+  const costoIndisciplina = useMemo(() =>
+    closedTrades
+      .filter(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan"))
+      .reduce((s, t) => s + (t.pnl ?? 0), 0),
+    [closedTrades])
+
+  // Racha de días limpios
+  const rachaDiasLimpios = useMemo(() => {
+    const tradingDays = [...new Set(closedTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
+    let streak = 0
+    for (const day of tradingDays) {
+      const dayTrades = closedTrades.filter(t => t.date === day)
+      const hasViolation = dayTrades.some(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan"))
+      if (hasViolation) break
+      streak++
+    }
+    return streak
+  }, [closedTrades])
+
+  // A+ vs estándar
+  const aplusStats = useMemo(() => {
+    const aplus = closedTrades.filter(t => (t.tags as string[]).includes("A+"))
+    const std   = closedTrades.filter(t => !(t.tags as string[]).includes("A+"))
+    const aplusWr  = aplus.length > 0 ? aplus.filter(t => (t.pnl ?? 0) > 0).length / aplus.length * 100 : null
+    const stdWr    = std.length   > 0 ? std.filter(t => (t.pnl ?? 0) > 0).length   / std.length   * 100 : null
+    const aplusAvgR = aplus.length > 0 ? aplus.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / aplus.length : null
+    const stdAvgR   = std.length   > 0 ? std.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / std.length   : null
+    return { aplusWr, stdWr, aplusAvgR, stdAvgR, aplusCount: aplus.length, stdCount: std.length }
+  }, [closedTrades])
+
+  // Score semanal (last 12 ISO weeks)
+  const weeklyScore = useMemo(() => {
+    const byWeek: Record<string, { plan: number; total: number }> = {}
+    for (const t of closedTrades) {
+      const d = new Date(t.date)
+      const jan1 = new Date(d.getFullYear(), 0, 1)
+      const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
+      const key  = `${d.getFullYear()}-W${String(week).padStart(2, "0")}`
+      if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
+      byWeek[key].total++
+      const isOk = t.setupId != null && !(t.tags as string[]).includes("Impulsivo") && !(t.tags as string[]).includes("Off-plan")
+      if (isOk) byWeek[key].plan++
+    }
+    return Object.entries(byWeek)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
+  }, [closedTrades])
+
   return (
     <div className="flex flex-col gap-4">
+
+      {/* ── New KPI row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KpiCard label="Costo indisciplina"
+          value={`${costoIndisciplina >= 0 ? "+" : "-"}$${Math.abs(costoIndisciplina).toFixed(2)}`}
+          sub="P&L acumulado off-plan"
+          color={costoIndisciplina < 0 ? "var(--loss)" : "var(--ink-3)"}
+          icon={<Shield size={15} />} />
+        <KpiCard label="Racha días limpios"
+          value={String(rachaDiasLimpios)}
+          sub="días consecutivos sin violación"
+          color={rachaDiasLimpios >= 3 ? "var(--win)" : rachaDiasLimpios >= 1 ? "var(--be)" : "var(--loss)"}
+          icon={<CheckCircle2 size={15} />} />
+        <KpiCard label="A+ Win Rate"
+          value={aplusStats.aplusWr != null ? `${aplusStats.aplusWr.toFixed(2)}%` : "—"}
+          sub={`vs std ${aplusStats.stdWr != null ? aplusStats.stdWr.toFixed(2) + "%" : "—"} · ${aplusStats.aplusCount} A+`}
+          color={aplusStats.aplusWr != null && aplusStats.stdWr != null && aplusStats.aplusWr > aplusStats.stdWr ? "var(--win)" : undefined}
+          icon={<Award size={15} />} />
+        <KpiCard label="A+ Avg R"
+          value={aplusStats.aplusAvgR != null ? `${aplusStats.aplusAvgR >= 0 ? "+" : ""}${aplusStats.aplusAvgR.toFixed(4)}R` : "—"}
+          sub={`vs std ${aplusStats.stdAvgR != null ? (aplusStats.stdAvgR >= 0 ? "+" : "") + aplusStats.stdAvgR.toFixed(4) + "R" : "—"}`}
+          color={aplusStats.aplusAvgR != null ? (aplusStats.aplusAvgR >= 0 ? "var(--win)" : "var(--loss)") : undefined}
+          icon={<Target size={15} />} />
+      </div>
+
+      {/* ── Score semanal ── */}
+      {weeklyScore.length > 1 && (
+        <Card title="Discipline Score semanal" sub="% trades plan seguido por semana · últimas 12 semanas">
+          <ResponsiveContainer width="100%" height={120}>
+            <AreaChart data={weeklyScore} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradScore" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="week" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
+                tickFormatter={v => `${v}%`} width={32} />
+              <Tooltip content={<ChartTooltip />} />
+              <Area type="monotone" dataKey="score" name="Score" stroke="#4f6ef7" strokeWidth={2}
+                fill="url(#gradScore)" dot={{ r: 3, fill: "#4f6ef7", strokeWidth: 0 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* ── DO-NOT-TAKE banner ── */}
       {todayTradesCount >= 3 && (
@@ -940,7 +1285,7 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
           <p className="text-eyebrow mb-3">Discipline Score · acumulado</p>
           <div className="flex items-baseline gap-3 mb-1">
             <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>{disciplineScore}</p>
-            <p className="text-[var(--ink-3)] text-lg font-mono">/ 100</p>
+            <p className="text-[var(--ink-3)] text-lg font-mono">/ 100.00</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
@@ -1142,6 +1487,52 @@ function TabPlaybook({ closedTrades, setups }: {
       .sort((a, b) => b.trades - a.trades)
   }, [closedTrades, setups])
 
+  // Summary chips
+  const playbookSummary = useMemo(() => {
+    if (setupData.length === 0) return null
+    const mostUsed      = setupData.reduce((a, b) => b.trades > a.trades ? b : a)
+    const mostProfitable = setupData.reduce((a, b) => b.netPnl > a.netPnl ? b : a)
+    // Best A+ rate
+    const withAplus = setupData.map(s => {
+      const sTrades = closedTrades.filter(t => t.setupId === s.id)
+      const aplusCount = sTrades.filter(t => (t.tags as string[]).includes("A+")).length
+      const rate = sTrades.length > 0 ? aplusCount / sTrades.length * 100 : 0
+      return { ...s, aplusRate: rate }
+    })
+    const bestAplus = withAplus.reduce((a, b) => b.aplusRate > a.aplusRate ? b : a)
+    // Setup en racha (most consecutive recent wins)
+    const setupInStreak = setupData.map(s => {
+      const sorted = closedTrades.filter(t => t.setupId === s.id).sort((a, b) => b.date.localeCompare(a.date))
+      let streak = 0
+      for (const t of sorted) {
+        if ((t.pnl ?? 0) > 0) streak++
+        else break
+      }
+      return { ...s, streak }
+    }).reduce((a, b) => b.streak > a.streak ? b : a)
+    return { mostUsed, mostProfitable, bestAplus, setupInStreak }
+  }, [setupData, closedTrades])
+
+  // Direction breakdown per setup
+  const directionData = useMemo(() => {
+    return setupData.filter(s => {
+      const sTrades = closedTrades.filter(t => t.setupId === s.id)
+      const hasLong  = sTrades.some(t => t.direction === "LONG")
+      const hasShort = sTrades.some(t => t.direction === "SHORT")
+      return hasLong && hasShort
+    }).map(s => {
+      const longs  = closedTrades.filter(t => t.setupId === s.id && t.direction === "LONG")
+      const shorts = closedTrades.filter(t => t.setupId === s.id && t.direction === "SHORT")
+      const wr = (arr: Trade[]) => arr.length > 0 ? arr.filter(t => (t.pnl ?? 0) > 0).length / arr.length * 100 : 0
+      const ar = (arr: Trade[]) => arr.length > 0 ? arr.reduce((a, t) => a + (t.rMultiple ?? 0), 0) / arr.length : 0
+      return {
+        id: s.id, abbr: s.abbr, name: s.name, color: s.color,
+        longWr: wr(longs), longAvgR: ar(longs), longCount: longs.length,
+        shortWr: wr(shorts), shortAvgR: ar(shorts), shortCount: shorts.length,
+      }
+    })
+  }, [setupData, closedTrades])
+
   // Session × Setup matrix
   const sessionMatrix = useMemo(() => {
     const sessions = ["New York", "London", "Asia", "London Close"]
@@ -1156,7 +1547,7 @@ function TabPlaybook({ closedTrades, setups }: {
       }
       const wr = (sess: string) => {
         const d = bySession[sess]
-        return d && d.total > 0 ? Math.round((d.wins / d.total) * 100) : null
+        return d && d.total > 0 ? parseFloat((d.wins / d.total * 100).toFixed(2)) : null
       }
       return {
         setup: s.id,
@@ -1173,6 +1564,25 @@ function TabPlaybook({ closedTrades, setups }: {
 
   return (
     <div className="flex flex-col gap-4">
+
+      {/* ── Summary chips ── */}
+      {playbookSummary && (
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: "📊", label: "Más usado",     text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
+            { icon: "💰", label: "Más rentable",   text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
+            { icon: "🔥", label: "En racha",        text: playbookSummary.setupInStreak.streak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.streak}W` : "—", color: "var(--be)" },
+            { icon: "⭐", label: "Mejor A+",        text: `${playbookSummary.bestAplus.abbr} · ${(playbookSummary.bestAplus as typeof playbookSummary.bestAplus & { aplusRate: number }).aplusRate.toFixed(2)}%`, color: "var(--accent)" },
+          ].map(({ icon, label, text, color }) => (
+            <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel)] border border-[var(--line)]">
+              <span className="text-sm">{icon}</span>
+              <span className="text-[10px] text-[var(--ink-3)] uppercase tracking-wider font-semibold">{label}:</span>
+              <span className="text-[12px] font-mono font-bold" style={{ color }}>{text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Setup cards ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-start justify-between mb-4">
@@ -1288,7 +1698,48 @@ function TabPlaybook({ closedTrades, setups }: {
           )}
         </div>
 
-        {/* Placeholder for checklist — static until checklist data is in DB */}
+        {/* Rendimiento por dirección */}
+        {directionData.length > 0 && (
+          <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+            <p className="text-[13px] font-semibold text-[var(--ink)] mb-0.5">Rendimiento por dirección</p>
+            <p className="text-[11px] text-[var(--ink-3)] mb-4">Long vs Short por setup · solo setups con ambas direcciones.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="text-[var(--ink-3)] text-[11px] uppercase tracking-wider">
+                    <th className="text-left pb-2 font-semibold">Setup</th>
+                    <th className="text-right pb-2 font-semibold">Long trades</th>
+                    <th className="text-right pb-2 font-semibold">Long WR%</th>
+                    <th className="text-right pb-2 font-semibold">Long avgR</th>
+                    <th className="text-right pb-2 font-semibold">Short trades</th>
+                    <th className="text-right pb-2 font-semibold">Short WR%</th>
+                    <th className="text-right pb-2 font-semibold">Short avgR</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--line)]">
+                  {directionData.map(d => (
+                    <tr key={d.id}>
+                      <td className="py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: d.color }}>{d.abbr}</span>
+                          <span className="text-[var(--ink)]">{d.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.longCount}</td>
+                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</td>
+                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</td>
+                      <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.shortCount}</td>
+                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</td>
+                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* A+ Checklist — static until checklist data is in DB */}
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
           <p className="text-[13px] font-semibold text-[var(--ink)]">A+ Checklist · cumplimiento</p>
           <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-5">% de trades con tag A+ por setup.</p>
@@ -1296,7 +1747,7 @@ function TabPlaybook({ closedTrades, setups }: {
             {setupData.slice(0, 6).map(s => {
               const sTrades = closedTrades.filter(t => t.setupId === s.id)
               const aPlusTrades = sTrades.filter(t => (t.tags as string[]).includes("A+")).length
-              const pct = sTrades.length > 0 ? Math.round((aPlusTrades / sTrades.length) * 100) : 0
+              const pct = sTrades.length > 0 ? (aPlusTrades / sTrades.length * 100) : 0
               const color = checklistColor(pct)
               return (
                 <div key={s.id}>
@@ -1306,10 +1757,10 @@ function TabPlaybook({ closedTrades, setups }: {
                         style={{ background: s.color }}>{s.abbr}</span>
                       <span className="text-[12px] text-[var(--ink)]">{s.name}</span>
                     </div>
-                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{pct}%</span>
+                    <span className="text-[12px] font-mono font-bold" style={{ color }}>{pct.toFixed(2)}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct.toFixed(2)}%`, background: color }} />
                   </div>
                 </div>
               )
