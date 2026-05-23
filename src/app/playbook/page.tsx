@@ -215,7 +215,7 @@ function SetupDrawer({
       <div className={cn(
         "fixed z-50 bg-[var(--panel)] flex flex-col overflow-hidden",
         /* mobile: full-width bottom sheet */
-        "bottom-0 left-0 right-0 rounded-t-2xl h-[92vh]",
+        "bottom-0 left-0 right-0 rounded-t-2xl h-[88dvh]",
         /* desktop override: right side panel */
         "lg:bottom-0 lg:top-0 lg:left-auto lg:right-0 lg:w-[380px] lg:rounded-none lg:h-full",
       )}>
