@@ -5,6 +5,7 @@ import { withdrawalsRouter } from "./routers/withdrawals"
 import { accountLogsRouter } from "./routers/account-logs"
 import { marketsRouter }     from "./routers/markets"
 import { setupsRouter }      from "./routers/setups"
+import { rulesRouter }       from "./routers/rules"
 
 export const appRouter = router({
   trades:      tradesRouter,
@@ -13,6 +14,7 @@ export const appRouter = router({
   accountLogs: accountLogsRouter,
   markets:     marketsRouter,
   setups:      setupsRouter,
+  rules:       rulesRouter,
 })
 
 export type AppRouter = typeof appRouter

@@ -1,106 +1,91 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2, BarChart2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
-import { mockRules } from "@/mock-data"
-import type { Rule, RulesSeverity } from "@/types"
+import { trpc }   from "@/lib/trpc/client"
+
+/* ── Types ── */
+type Severity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
+
+interface DbRule {
+  id: string; name: string; description: string
+  severity: string; isSystem: boolean; enabled: boolean
+  violationsThisMonth: number
+  createdAt: Date | string; updatedAt: Date | string
+}
 
 /* ── Severity config ── */
-const SEV = {
-  "CRÍTICA":     { color: "var(--loss)",   soft: "var(--loss-soft)",   icon: AlertTriangle },
-  "MENOR":       { color: "var(--be)",     soft: "var(--be-soft)",     icon: Zap },
-  "INFORMACIÓN": { color: "var(--accent)", soft: "var(--accent-soft)", icon: Info },
-} as const
+const SEV: Record<Severity, { color: string; soft: string; icon: React.ReactNode }> = {
+  "CRÍTICA":     { color: "var(--loss)",   soft: "var(--loss-soft)",   icon: <AlertTriangle size={9} /> },
+  "MENOR":       { color: "var(--be)",     soft: "var(--be-soft)",     icon: <Zap size={9} /> },
+  "INFORMACIÓN": { color: "var(--accent)", soft: "var(--accent-soft)", icon: <Info size={9} /> },
+}
 
-function SevBadge({ sev }: { sev: RulesSeverity }) {
-  const cfg = SEV[sev]
-  const Icon = cfg.icon
+function SevBadge({ sev }: { sev: string }) {
+  const cfg = SEV[sev as Severity] ?? SEV["INFORMACIÓN"]
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "2px 8px", borderRadius: 999,
-      background: cfg.soft, color: cfg.color,
-      fontSize: 10, fontWeight: 700, letterSpacing: ".06em",
-    }}>
-      <Icon size={9} />
-      {sev}
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-wide px-2 py-0.5 rounded-full"
+      style={{ background: cfg.soft, color: cfg.color }}>
+      {cfg.icon} {sev}
     </span>
   )
 }
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
-    <button onClick={() => onChange(!on)} style={{
-      width: 40, height: 22, borderRadius: 11,
-      background: on ? "var(--win)" : "var(--line-2)",
-      border: "none", cursor: "pointer", flexShrink: 0,
-      position: "relative", transition: "background .15s",
-    }}>
-      <span style={{
-        position: "absolute", top: 3,
-        left: on ? 21 : 3,
-        width: 16, height: 16, borderRadius: "50%",
-        background: "white", transition: "left .15s",
-        boxShadow: "0 1px 3px rgba(0,0,0,.25)",
-      }} />
+    <button
+      onClick={() => onChange(!on)}
+      className="relative shrink-0 transition-colors"
+      style={{ width: 40, height: 22, borderRadius: 11, background: on ? "var(--win)" : "var(--line)" }}
+    >
+      <span className="absolute top-[3px] rounded-full bg-white transition-all"
+        style={{ left: on ? 21 : 3, width: 16, height: 16, boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
     </button>
   )
 }
 
-/* ── Rule row ── */
+/* ── Rule Row ── */
 function RuleRow({ rule, onEdit, onDelete, onToggle }: {
-  rule: Rule
-  onEdit?: (r: Rule) => void
-  onDelete?: (id: string) => void
+  rule: DbRule
+  onEdit?: (r: DbRule) => void
+  onDelete?: (r: DbRule) => void
   onToggle: (id: string, v: boolean) => void
 }) {
-  const cfg = SEV[rule.severity]
+  const cfg = SEV[rule.severity as Severity] ?? SEV["INFORMACIÓN"]
   return (
-    <div style={{
-      display: "flex", alignItems: "flex-start", gap: 14,
-      padding: "14px 20px",
-      borderBottom: "1px solid var(--line)",
-      opacity: rule.enabled ? 1 : 0.5,
-    }}>
-      {/* Severity stripe */}
-      <div style={{ width: 3, alignSelf: "stretch", borderRadius: 99, background: cfg.color, flexShrink: 0, minHeight: 32 }} />
-
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{rule.name}</p>
+    <div className="flex items-start gap-3.5 px-5 py-3.5 border-b border-[var(--line)] last:border-0 transition-opacity"
+      style={{ opacity: rule.enabled ? 1 : 0.45 }}>
+      <div className="w-[3px] self-stretch rounded-full shrink-0 min-h-[32px]" style={{ background: cfg.color }} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-[13px] font-semibold text-[var(--ink)]">{rule.name}</p>
           {rule.isSystem && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", letterSpacing: ".08em" }}>
-              AUTO
-            </span>
+            <span className="text-[9px] font-bold tracking-widest px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">AUTO</span>
           )}
           <SevBadge sev={rule.severity} />
         </div>
-        <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 3 }}>{rule.description}</p>
+        {rule.description && (
+          <p className="text-[12px] text-[var(--ink-3)] mt-0.5 leading-snug">{rule.description}</p>
+        )}
       </div>
-
-      {/* Right: violations + toggle + actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      <div className="flex items-center gap-2.5 shrink-0">
         {rule.violationsThisMonth > 0 && (
-          <span style={{
-            fontFamily: "'JetBrains Mono',monospace",
-            fontSize: 11, fontWeight: 700,
-            color: "var(--loss)",
-            background: "var(--loss-soft)",
-            padding: "2px 7px", borderRadius: 999,
-          }}>
+          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full"
+            style={{ color: "var(--loss)", background: "var(--loss-soft)" }}>
             {rule.violationsThisMonth} viol.
           </span>
         )}
         <Toggle on={rule.enabled} onChange={v => onToggle(rule.id, v)} />
         {!rule.isSystem && onEdit && (
-          <button onClick={() => onEdit(rule)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4, borderRadius: 6, display: "grid", placeItems: "center" }}>
+          <button onClick={() => onEdit(rule)}
+            className="p-1.5 rounded-[var(--radius-sm)] text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)] transition-colors">
             <Pencil size={13} />
           </button>
         )}
         {!rule.isSystem && onDelete && (
-          <button onClick={() => onDelete(rule.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--loss)", padding: 4, borderRadius: 6, display: "grid", placeItems: "center" }}>
+          <button onClick={() => onDelete(rule)}
+            className="p-1.5 rounded-[var(--radius-sm)] text-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors">
             <Trash2 size={13} />
           </button>
         )}
@@ -109,113 +94,144 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: {
   )
 }
 
-/* ── Modal ── */
-const SEVERITIES: RulesSeverity[] = ["CRÍTICA", "MENOR", "INFORMACIÓN"]
+/* ── Rule Modal ── */
+const SEVERITIES: Severity[] = ["CRÍTICA", "MENOR", "INFORMACIÓN"]
+interface RuleForm { name: string; description: string; severity: Severity; enabled: boolean }
+const FORM_INIT: RuleForm = { name: "", description: "", severity: "CRÍTICA", enabled: true }
 
-function RuleModal({ open, rule, onClose, onSave }: {
-  open: boolean
-  rule?: Rule | null
-  onClose: () => void
-  onSave: (data: Omit<Rule, "id" | "isSystem" | "violationsThisMonth">) => void
+function RuleModal({ open, onOpenChange, editRule }: {
+  open: boolean; onOpenChange: (v: boolean) => void; editRule?: DbRule | null
 }) {
-  const [name, setName]   = useState(rule?.name ?? "")
-  const [desc, setDesc]   = useState(rule?.description ?? "")
-  const [sev,  setSev]    = useState<RulesSeverity>(rule?.severity ?? "CRÍTICA")
-  const [enabled, setEnabled] = useState(rule?.enabled ?? true)
+  const isEdit = !!editRule
+  const utils  = trpc.useUtils()
+  const [form, setForm] = useState<RuleForm>(FORM_INIT)
+
+  useEffect(() => {
+    if (open) {
+      setForm(editRule
+        ? { name: editRule.name, description: editRule.description, severity: editRule.severity as Severity, enabled: editRule.enabled }
+        : FORM_INIT
+      )
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editRule?.id])
+
+  const createMut = trpc.rules.create.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
+  const updateMut = trpc.rules.update.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
+
+  const set = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => setForm(f => ({ ...f, [k]: v }))
+  const isSaving = createMut.isPending || updateMut.isPending
+
+  const handleSave = () => {
+    if (!form.name.trim()) return
+    const payload = { name: form.name.trim(), description: form.description.trim(), severity: form.severity, enabled: form.enabled }
+    if (isEdit && editRule) updateMut.mutate({ id: editRule.id, ...payload })
+    else createMut.mutate(payload)
+  }
 
   if (!open) return null
 
-  const handleSave = () => {
-    if (!name.trim()) return
-    onSave({ name: name.trim(), description: desc.trim(), severity: sev, enabled })
-    onClose()
-  }
-
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 100,
-      background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 16,
-    }} onClick={onClose}>
-      <div style={{
-        background: "var(--panel)", border: "1px solid var(--line)",
-        borderRadius: "var(--radius)", padding: 24, width: "100%", maxWidth: 460,
-        display: "flex", flexDirection: "column", gap: 18,
-      }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)" }}>
-            {rule ? "Editar regla" : "Nueva regla CUSTOM"}
-          </p>
-          <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>
-            Las reglas CUSTOM se verifican manualmente cuando revisas un trade.
-          </p>
-        </div>
-
-        {/* Name */}
-        <div>
-          <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 6 }}>
-            Nombre *
-          </label>
-          <input
-            value={name} onChange={e => setName(e.target.value)}
-            placeholder="Ej. Promediar pérdida"
-            style={{ width: "100%", height: 38, padding: "0 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--panel-2)", color: "var(--ink)", fontSize: 13, outline: "none" }}
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 6 }}>
-            Descripción *
-          </label>
-          <textarea
-            value={desc} onChange={e => setDesc(e.target.value)}
-            placeholder="¿Qué comportamiento detecta o prohíbe esta regla?"
-            rows={3}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--line)", background: "var(--panel-2)", color: "var(--ink)", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit" }}
-          />
-        </div>
-
-        {/* Severity */}
-        <div>
-          <p style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 8 }}>Severidad</p>
-          <div style={{ display: "flex", gap: 8 }}>
-            {SEVERITIES.map(s => {
-              const cfg = SEV[s]
-              const active = sev === s
-              return (
-                <button key={s} onClick={() => setSev(s)} style={{
-                  flex: 1, height: 36, borderRadius: "var(--radius-sm)",
-                  border: active ? `1.5px solid ${cfg.color}` : "1px solid var(--line)",
-                  background: active ? cfg.soft : "var(--chip)",
-                  color: active ? cfg.color : "var(--ink-2)",
-                  fontSize: 11, fontWeight: 700, cursor: "pointer",
-                  letterSpacing: ".05em",
-                }}>
-                  {s}
-                </button>
-              )
-            })}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: "rgba(0,0,0,0.55)" }}
+      onClick={() => onOpenChange(false)}>
+      <div className="w-full sm:max-w-[460px] bg-[var(--panel)] border border-[var(--line)] rounded-t-2xl sm:rounded-[var(--radius)] flex flex-col overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+          <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0 bg-[var(--accent-soft)]">
+            <ShieldCheck size={15} className="text-[var(--accent)]" />
           </div>
-        </div>
-
-        {/* Enabled toggle */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>Regla activa</p>
-            <p style={{ fontSize: 11, color: "var(--ink-3)" }}>Aparecerá en la revisión de trades.</p>
+            <p className="text-[13.5px] font-bold text-[var(--ink)]">{isEdit ? "Editar regla" : "Nueva regla"}</p>
+            <p className="text-[11px] text-[var(--ink-3)]">{isEdit ? "Modifica los detalles" : "Se verifica manualmente al revisar un trade"}</p>
           </div>
-          <Toggle on={enabled} onChange={setEnabled} />
         </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
-          <button onClick={onClose} style={{ height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)", background: "var(--chip)", border: "1px solid var(--line)", color: "var(--ink-2)", fontSize: 13, cursor: "pointer" }}>
+        <div className="px-5 py-4 flex flex-col gap-4">
+          <div>
+            <label className="text-eyebrow block mb-1.5">Nombre *</label>
+            <input value={form.name} onChange={e => set("name", e.target.value)}
+              placeholder="Ej. Promediar pérdida"
+              className="w-full h-10 px-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:border-[var(--accent)] transition-colors" />
+          </div>
+          <div>
+            <label className="text-eyebrow block mb-1.5">Descripción</label>
+            <textarea value={form.description} onChange={e => set("description", e.target.value)}
+              placeholder="¿Qué comportamiento detecta o prohíbe esta regla?" rows={3}
+              className="w-full px-3 py-2.5 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:border-[var(--accent)] resize-none transition-colors" />
+          </div>
+          <div>
+            <p className="text-eyebrow mb-2">Severidad</p>
+            <div className="flex gap-2">
+              {SEVERITIES.map(s => {
+                const cfg = SEV[s]; const active = form.severity === s
+                return (
+                  <button key={s} onClick={() => set("severity", s)}
+                    className="flex-1 h-9 rounded-[var(--radius-sm)] text-[11px] font-bold tracking-wide transition-colors"
+                    style={{
+                      border:     active ? `1.5px solid ${cfg.color}` : "1px solid var(--line)",
+                      background: active ? cfg.soft : "var(--chip)",
+                      color:      active ? cfg.color : "var(--ink-2)",
+                    }}>
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-[13px] font-medium text-[var(--ink)]">Regla activa</p>
+              <p className="text-[11px] text-[var(--ink-3)]">Aparecerá en la revisión de trades</p>
+            </div>
+            <Toggle on={form.enabled} onChange={v => set("enabled", v)} />
+          </div>
+        </div>
+        <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">
+          <button onClick={() => onOpenChange(false)}
+            className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             Cancelar
           </button>
-          <button onClick={handleSave} disabled={!name.trim()} style={{ height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)", background: name.trim() ? "var(--accent)" : "var(--chip)", color: name.trim() ? "white" : "var(--ink-3)", fontSize: 13, fontWeight: 600, border: "none", cursor: name.trim() ? "pointer" : "default" }}>
-            {rule ? "Guardar cambios" : "Crear regla"}
+          <button onClick={handleSave} disabled={!form.name.trim() || isSaving}
+            className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-semibold text-white transition-colors disabled:opacity-40"
+            style={{ background: "var(--accent)" }}>
+            {isSaving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear regla"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── Delete confirm ── */
+function DeleteConfirm({ rule, onCancel, onConfirm }: { rule: DbRule; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ background: "rgba(0,0,0,0.55)" }} onClick={onCancel}>
+      <div className="w-full sm:max-w-sm bg-[var(--panel)] border border-[var(--line)] rounded-t-2xl sm:rounded-[var(--radius)] flex flex-col overflow-hidden"
+        onClick={e => e.stopPropagation()}>
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--line)] flex items-center gap-3">
+          <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: "var(--loss-soft)" }}>
+            <Trash2 size={15} className="text-[var(--loss)]" />
+          </div>
+          <div>
+            <p className="text-[13.5px] font-bold text-[var(--ink)]">Eliminar regla</p>
+            <p className="text-[11px] text-[var(--ink-3)]">Esta acción no se puede deshacer</p>
+          </div>
+        </div>
+        <div className="px-5 py-4">
+          <p className="text-[12.5px] text-[var(--ink-2)] leading-relaxed">
+            ¿Eliminar <strong className="text-[var(--ink)]">"{rule.name}"</strong>?
+          </p>
+        </div>
+        <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">
+          <button onClick={onCancel}
+            className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+            Cancelar
+          </button>
+          <button onClick={onConfirm}
+            className="flex-1 h-10 rounded-[var(--radius-sm)] text-[13px] font-semibold text-white"
+            style={{ background: "var(--loss)" }}>
+            Eliminar
           </button>
         </div>
       </div>
@@ -224,118 +240,136 @@ function RuleModal({ open, rule, onClose, onSave }: {
 }
 
 /* ── Page ── */
+type FilterType = "todas" | "sistema" | "custom"
+
 export default function ReglasPage() {
-  const [rules, setRules] = useState<Rule[]>(mockRules)
-  const [modal, setModal] = useState<{ open: boolean; rule?: Rule | null }>({ open: false })
-  const [filter, setFilter] = useState<"todas" | "sistema" | "custom">("todas")
+  const utils = trpc.useUtils()
+
+  const [modalOpen,  setModalOpen]  = useState(false)
+  const [editRule,   setEditRule]   = useState<DbRule | null>(null)
+  const [deleteRule, setDeleteRule] = useState<DbRule | null>(null)
+  const [filter,     setFilter]     = useState<FilterType>("todas")
+
+  const { data: rules = [], isLoading } = trpc.rules.list.useQuery()
+  const seedMut   = trpc.rules.seedDefaults.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
+  const toggleMut = trpc.rules.toggle.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
+  const deleteMut = trpc.rules.delete.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); setDeleteRule(null) } })
+
+  useEffect(() => {
+    if (!isLoading && rules.length === 0) seedMut.mutate()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, rules.length])
 
   const systemRules = rules.filter(r => r.isSystem)
   const customRules = rules.filter(r => !r.isSystem)
   const totalViol   = rules.reduce((s, r) => s + r.violationsThisMonth, 0)
+  const activeCount = rules.filter(r => r.enabled).length
+  const critActive  = rules.filter(r => r.severity === "CRÍTICA" && r.enabled).length
 
-  const handleToggle = (id: string, v: boolean) =>
-    setRules(prev => prev.map(r => r.id === id ? { ...r, enabled: v } : r))
-
-  const handleSave = (data: Omit<Rule, "id" | "isSystem" | "violationsThisMonth">) => {
-    if (modal.rule) {
-      setRules(prev => prev.map(r => r.id === modal.rule!.id ? { ...r, ...data } : r))
-    } else {
-      const newRule: Rule = { id: `rule-cus-${Date.now()}`, isSystem: false, violationsThisMonth: 0, ...data }
-      setRules(prev => [...prev, newRule])
-    }
-  }
-
-  const handleDelete = (id: string) => setRules(prev => prev.filter(r => r.id !== id))
-
-  const visibleSystem = filter === "custom" ? [] : systemRules
+  const visibleSystem = filter === "custom"  ? [] : systemRules
   const visibleCustom = filter === "sistema" ? [] : customRules
 
   return (
     <>
-      <div className="main-content">
-        <TopBar
-          title="Reglas de conducta"
-          subtitle={`${systemRules.length} sistema · ${customRules.length} personalizadas · ${totalViol} violaciones este mes`}
-          actions={[{ label: "Nueva regla", icon: <Plus size={14} />, variant: "primary", onClick: () => setModal({ open: true, rule: null }) }]}
-        />
+      <TopBar
+        title="Reglas de conducta"
+        subtitle={`${systemRules.length} sistema · ${customRules.length} personalizadas · ${totalViol} violaciones este mes`}
+        actions={[{
+          label: "Nueva regla", icon: <Plus size={14} />, variant: "primary",
+          onClick: () => { setEditRule(null); setModalOpen(true) },
+        }]}
+      />
 
-        {/* Filter tabs */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
-          {([["todas","Todas"], ["sistema","Sistema"], ["custom","Personalizadas"]] as const).map(([v, l]) => (
-            <button key={v} onClick={() => setFilter(v)} style={{
-              height: 32, padding: "0 14px", borderRadius: "var(--radius-sm)",
-              background: filter === v ? "var(--ink)" : "var(--chip)",
-              color: filter === v ? "var(--bg)" : "var(--ink-2)",
-              fontSize: 12.5, fontWeight: filter === v ? 600 : 400,
-              border: "1px solid var(--line)", cursor: "pointer",
-            }}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        {/* KPI strip */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12, marginBottom: 24 }}>
-          {[
-            { label: "Reglas activas",   value: rules.filter(r => r.enabled).length.toString(),                                                                                     color: "var(--ink)",  icon: <ShieldCheck size={15} /> },
-            { label: "Violaciones mes",  value: totalViol.toString(),                                                                                                                color: totalViol > 0 ? "var(--loss)" : "var(--win)",  icon: <XCircle size={15} /> },
-            { label: "Críticas activas", value: rules.filter(r => r.severity === "CRÍTICA" && r.enabled).length.toString(),                                                          color: "var(--loss)", icon: <AlertTriangle size={15} /> },
-            { label: "Cumplimiento",     value: `${Math.round((1 - totalViol / Math.max(1, rules.reduce((s,r)=>s+r.violationsThisMonth+10,0))) * 100)}%`,                            color: "var(--win)",  icon: <CheckCircle2 size={15} /> },
-          ].map(k => (
-            <div key={k.label} style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--ink-3)" }}>{k.label}</p>
-                <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{k.icon}</span>
-              </div>
-              <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 22, fontWeight: 700, color: k.color }}>{k.value}</p>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "Reglas activas",   value: isLoading ? "…" : activeCount.toString(), color: "var(--ink)",  icon: <ShieldCheck size={14} /> },
+          { label: "Violaciones mes",  value: isLoading ? "…" : totalViol.toString(),   color: totalViol > 0 ? "var(--loss)" : "var(--win)", icon: <XCircle size={14} /> },
+          { label: "Críticas activas", value: isLoading ? "…" : critActive.toString(),  color: critActive > 0 ? "var(--loss)" : "var(--ink)", icon: <AlertTriangle size={14} /> },
+          { label: "Cumplimiento",     value: isLoading || rules.length === 0 ? "—" : `${Math.max(0, 100 - totalViol * 10)}%`, color: "var(--win)", icon: <CheckCircle2 size={14} /> },
+        ].map(k => (
+          <div key={k.label} className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-eyebrow">{k.label}</p>
+              <span className="text-[var(--ink-3)] opacity-65">{k.icon}</span>
             </div>
-          ))}
-        </div>
-
-        {/* Sistema rules */}
-        {visibleSystem.length > 0 && (
-          <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden", marginBottom: 16 }}>
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Sistema · automáticas</p>
-              <span style={{ fontSize: 10, color: "var(--ink-3)" }}>Se verifican automáticamente en cada trade</span>
-            </div>
-            {visibleSystem.map(r => (
-              <RuleRow key={r.id} rule={r} onToggle={handleToggle} />
-            ))}
+            <p className="text-[22px] font-mono font-bold leading-none" style={{ color: k.color }}>{k.value}</p>
           </div>
-        )}
-
-        {/* Custom rules */}
-        {visibleCustom.length > 0 ? (
-          <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" }}>
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Personalizadas · manuales</p>
-              <span style={{ fontSize: 10, color: "var(--ink-3)" }}>Marcas al revisar cada trade</span>
-            </div>
-            {visibleCustom.map(r => (
-              <RuleRow key={r.id} rule={r}
-                onToggle={handleToggle}
-                onEdit={rule => setModal({ open: true, rule })}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        ) : filter !== "sistema" && (
-          <div style={{ border: "1.5px dashed var(--line)", borderRadius: "var(--radius)", padding: "40px 24px", textAlign: "center" }}>
-            <p style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 12 }}>Sin reglas personalizadas. Crea la primera para detectar tus patrones de error.</p>
-            <button onClick={() => setModal({ open: true, rule: null })} style={{ height: 34, padding: "0 16px", borderRadius: "var(--radius-sm)", background: "var(--chip)", border: "1px solid var(--line)", color: "var(--ink-2)", fontSize: 12.5, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Plus size={13} /> Nueva regla
-            </button>
-          </div>
-        )}
+        ))}
       </div>
 
+      {/* Filter tabs */}
+      <div className="flex gap-1.5 mb-5">
+        {([["todas","Todas"], ["sistema","Sistema"], ["custom","Personalizadas"]] as [FilterType, string][]).map(([v, l]) => (
+          <button key={v} onClick={() => setFilter(v)}
+            className="h-8 px-3.5 rounded-[var(--radius-sm)] text-[12.5px] transition-colors border"
+            style={{
+              background:  filter === v ? "var(--ink)"  : "var(--chip)",
+              color:       filter === v ? "var(--bg)"   : "var(--ink-2)",
+              borderColor: filter === v ? "var(--ink)"  : "var(--line)",
+              fontWeight:  filter === v ? 600 : 400,
+            }}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20 text-[var(--ink-3)]">Cargando reglas…</div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {/* Sistema */}
+          {visibleSystem.length > 0 && (
+            <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[var(--line)] flex items-center justify-between">
+                <p className="text-eyebrow">Sistema · automáticas</p>
+                <span className="text-[10px] text-[var(--ink-3)]">Se verifican automáticamente</span>
+              </div>
+              {visibleSystem.map(r => <RuleRow key={r.id} rule={r} onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })} />)}
+            </div>
+          )}
+
+          {/* Personalizadas */}
+          {visibleCustom.length > 0 ? (
+            <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[var(--line)] flex items-center justify-between">
+                <p className="text-eyebrow">Personalizadas · manuales</p>
+                <span className="text-[10px] text-[var(--ink-3)]">Marcas al revisar cada trade</span>
+              </div>
+              {visibleCustom.map(r => (
+                <RuleRow key={r.id} rule={r}
+                  onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })}
+                  onEdit={rule => { setEditRule(rule); setModalOpen(true) }}
+                  onDelete={setDeleteRule}
+                />
+              ))}
+            </div>
+          ) : filter !== "sistema" && (
+            <div className="border border-dashed border-[var(--line)] rounded-[var(--radius)] py-12 flex flex-col items-center gap-3 text-center">
+              <p className="text-[13px] text-[var(--ink-2)] font-medium">Sin reglas personalizadas</p>
+              <p className="text-[12px] text-[var(--ink-3)]">Crea reglas para detectar tus patrones de error.</p>
+              <button onClick={() => { setEditRule(null); setModalOpen(true) }}
+                className="flex items-center gap-1.5 h-8 px-4 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+                <Plus size={12} /> Nueva regla
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <RuleModal
-        open={modal.open}
-        rule={modal.rule}
-        onClose={() => setModal({ open: false })}
-        onSave={handleSave}
+        open={modalOpen}
+        onOpenChange={v => { setModalOpen(v); if (!v) setEditRule(null) }}
+        editRule={editRule}
       />
+
+      {deleteRule && (
+        <DeleteConfirm
+          rule={deleteRule}
+          onCancel={() => setDeleteRule(null)}
+          onConfirm={() => deleteMut.mutate(deleteRule.id)}
+        />
+      )}
     </>
   )
 }
