@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Plus, TrendingUp, Percent, Zap, Shield } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
@@ -163,12 +163,37 @@ export default function TradesPage() {
     })
   }
 
+  // Lock body scroll when panel is open on mobile
+  useEffect(() => {
+    if (selected) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => { document.body.style.overflow = "" }
+  }, [!!selected])
+
+  const detailPanel = selected ? (
+    <TradeDetailPanel
+      trade={selected as never}
+      account={selected.account as never}
+      setup={selected.setup as never}
+      onClose={() => setSelectedId(null)}
+      onDelete={() => deleteTrade.mutate(selected.id)}
+      deleting={deleteTrade.isPending}
+      onEdit={() => setEditingTrade(selected.id)}
+      onPositionLog={() => setPositionLogTrade(selected.id)}
+      onCloseTrade={(data) => closeTrade.mutate({ id: selected.id, ...data })}
+      closingTrade={closeTrade.isPending}
+    />
+  ) : null
+
   // ── Render ────────────────────────────────────────────
   return (
     <>
-      <div className="flex overflow-x-hidden" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
+      <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
         {/* Main column */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: "28px 32px" }}>
+        <div className="flex-1" style={{ padding: "28px 32px", minWidth: 0 }}>
           <TopBar
             title="Trades"
             subtitle={tradesLoading ? "Cargando…" : `${trades.length} operaciones`}
@@ -189,10 +214,10 @@ export default function TradesPage() {
           />
         </div>
 
-        {/* Right rail */}
+        {/* Right rail — desktop only, lives inside layout */}
         {selected && (
           <div
-            className="detail-panel-mobile"
+            className="hidden md:block"
             style={{
               width: 340, flexShrink: 0,
               borderLeft: "1px solid var(--line)",
@@ -201,21 +226,29 @@ export default function TradesPage() {
               height: "100vh", overflowY: "auto",
             }}
           >
-            <TradeDetailPanel
-              trade={selected as never}
-              account={selected.account as never}
-              setup={selected.setup as never}
-              onClose={() => setSelectedId(null)}
-              onDelete={() => deleteTrade.mutate(selected.id)}
-              deleting={deleteTrade.isPending}
-              onEdit={() => setEditingTrade(selected.id)}
-              onPositionLog={() => setPositionLogTrade(selected.id)}
-              onCloseTrade={(data) => closeTrade.mutate({ id: selected.id, ...data })}
-              closingTrade={closeTrade.isPending}
-            />
+            {detailPanel}
           </div>
         )}
       </div>
+
+      {/* Mobile panel — rendered OUTSIDE the layout div so no overflow ancestor blocks iOS scroll */}
+      {selected && (
+        <div
+          className="md:hidden"
+          style={{
+            position: "fixed",
+            top: 52, left: 0, right: 0, bottom: 56,
+            zIndex: 40,
+            overflowY: "scroll",
+            WebkitOverflowScrolling: "touch" as never,
+            overscrollBehavior: "contain",
+            background: "var(--panel)",
+            borderTop: "1px solid var(--line)",
+          }}
+        >
+          {detailPanel}
+        </div>
+      )}
 
       <RegisterTradeModal
         open={modalOpen}

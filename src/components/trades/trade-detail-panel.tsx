@@ -333,7 +333,7 @@ export function TradeDetailPanel({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
                   {/* Close time */}
                   <div>
                     <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Hora cierre</label>
