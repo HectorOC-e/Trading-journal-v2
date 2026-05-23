@@ -133,13 +133,21 @@ function RiskBar({ label, usedPct, limitLabel, warnAt = 60, dangerAt = 85 }: {
 /* ══════════════════════════════════════
    ACCOUNT CARD
 ══════════════════════════════════════ */
-function AccountCard({ account, stats, selected, onClick }: {
-  account: Account; stats: AccountStats; selected: boolean; onClick: () => void
-}) {
-  const tm   = TYPE_META[account.type]
-  const sm   = STATUS_META[stats.status]
-  const pos  = stats.pnlMonth >= 0
-  const ddOk = stats.drawdownPct < (account.propFirmRules?.maxDrawdownPct ?? 10) * 0.7
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function AccountCard({ rawAccount, selected, onClick }: { rawAccount: any; selected: boolean; onClick: () => void }) {
+  const type   = rawAccount.type as AccountType
+  const tm     = TYPE_META[type] ?? TYPE_META.PERSONAL
+  const status = (rawAccount.status as string) ?? "ACTIVE"
+  const sm     = ACCOUNT_STATUS_META[status] ?? ACCOUNT_STATUS_META.ACTIVE
+  const isPF   = isPropFirmLike(type)
+  const phase  = (rawAccount.phase as string) ?? "NONE"
+
+  const initialBalance = Number(rawAccount.initialBalance)
+  // Days active since createdAt
+  const daysActive = Math.max(0, Math.floor((Date.now() - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
+
+  // Flat sparkline placeholder until real trades are connected
+  const flatLine = Array(10).fill(initialBalance)
 
   return (
     <div
@@ -159,19 +167,29 @@ function AccountCard({ account, stats, selected, onClick }: {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-semibold text-[var(--ink)] leading-tight">{account.name}</p>
+              <p className="font-semibold text-[var(--ink)] leading-tight">{rawAccount.name}</p>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: tm.bg, color: tm.color }}>
-                {tm.label}
+                style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
+            </div>
+            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
+              {rawAccount.broker} · {rawAccount.currency} · {daysActive}d activa
+            </p>
+          </div>
+          {/* Badge: phase for prop firms, account status for others */}
+          {isPF ? (
+            <div className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-full bg-[rgba(79,110,247,0.12)] text-[#4f6ef7]">
+              <Target size={10} />
+              <span className="text-[10px] font-bold ml-1">
+                {phase === "PHASE_1" ? "Fase 1" : phase === "PHASE_2" ? "Fase 2" : phase === "FUNDED" ? "Funded" : "En fase"}
               </span>
             </div>
-            <p className="text-[11px] text-[var(--ink-3)] mt-0.5">{account.broker} · {account.currency} · {stats.daysActive}d activa</p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-full"
-            style={{ background: `${sm.color}18`, color: sm.color }}>
-            {sm.icon}
-            <span className="text-[10px] font-bold ml-1">{sm.label}</span>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1 shrink-0 px-2 py-1 rounded-full"
+              style={{ background: `${sm.color}18`, color: sm.color }}>
+              {sm.icon}
+              <span className="text-[10px] font-bold ml-1">{sm.label}</span>
+            </div>
+          )}
         </div>
 
         {/* Balance */}
@@ -179,7 +197,7 @@ function AccountCard({ account, stats, selected, onClick }: {
           <div className="flex-1">
             <p className="text-eyebrow mb-1">Balance inicial</p>
             <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none">
-              ${stats.currentBalance.toLocaleString()}
+              ${initialBalance.toLocaleString()}
             </p>
           </div>
           <div className="text-right text-[var(--ink-3)]">
@@ -192,60 +210,49 @@ function AccountCard({ account, stats, selected, onClick }: {
           </div>
         </div>
 
-        {/* Sparkline */}
+        {/* Sparkline — flat until real equity data */}
         <div style={{ margin: "0 -4px" }}>
-          <MiniSparkline data={stats.sparkline} positive={pos} />
+          <MiniSparkline data={flatLine} positive={true} />
         </div>
 
-        {/* Prop firm section — only for PROP_FIRM / DEMO_PROP */}
-        {isPropFirmLike(account.type) && account.propFirmRules && (
+        {/* Prop firm section — only PROP_FIRM / DEMO_PROP */}
+        {isPF && rawAccount.ddTotalPct != null && (
           <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--line)]">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Shield size={11} className="text-[var(--ink-3)]" />
-              <p className="text-eyebrow">Reglas prop firm</p>
-              {stats.phaseProgressPct > 0 && (
-                <span className="ml-auto text-[10px] font-mono text-[var(--win)]">
-                  {stats.phase} · {stats.phaseProgressPct}% objetivo
-                </span>
-              )}
+              <p className="text-eyebrow">{type === "DEMO_PROP" ? "Reglas Demo PF" : "Reglas Prop Firm"}</p>
+              <span className="ml-auto text-[10px] font-mono text-[var(--ink-3)]">
+                {phase === "PHASE_1" ? "Fase 1" : phase === "PHASE_2" ? "Fase 2" : "Funded"} · objetivo {rawAccount.targetPct != null ? `${Number(rawAccount.targetPct)}%` : "—"}
+              </span>
             </div>
-            <RiskBar
-              label="Drawdown total"
-              usedPct={(stats.drawdownPct / account.propFirmRules.maxDrawdownPct) * 100}
-              limitLabel={`${account.propFirmRules.maxDrawdownPct}%`}
-            />
-            <RiskBar
-              label="Pérdida diaria"
-              usedPct={stats.dailyLossUsedPct}
-              limitLabel={`${account.propFirmRules.dailyLossPct}%`}
-            />
-            {/* Phase progress */}
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-[11px] text-[var(--ink-3)]">Progreso hacia objetivo</span>
-                <span className="text-[11px] font-mono font-semibold text-[var(--win)]">
-                  {stats.phaseProgressPct}% / {account.propFirmRules.targetPct}%
-                </span>
+            <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+            {rawAccount.ddDailyPct != null && (
+              <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+            )}
+            {rawAccount.targetPct != null && (
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-[11px] text-[var(--ink-3)]">Progreso hacia objetivo</span>
+                  <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">— / {Number(rawAccount.targetPct)}%</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: "0%" }} />
+                </div>
               </div>
-              <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700 bg-[var(--accent)]"
-                  style={{ width: `${Math.min((stats.phaseProgressPct / account.propFirmRules.targetPct) * 100, 100)}%` }} />
-              </div>
-            </div>
-            {/* Trades + symbols */}
+            )}
             <div className="flex justify-between text-[11px] pt-1">
               <div className="flex items-center gap-1">
                 <BarChart3 size={10} className="text-[var(--ink-3)]" />
                 <span className="text-[var(--ink-3)]">Trades hoy:</span>
-                <span className={cn("font-mono font-semibold ml-0.5",
-                  stats.tradesMonth > 0 && account.propFirmRules.maxTradesPerDay > 0
-                    ? "text-[var(--ink)]" : "text-[var(--ink-3)]")}>
-                  0 / {account.propFirmRules.maxTradesPerDay}
+                <span className="font-mono font-semibold ml-0.5 text-[var(--ink-3)]">
+                  0 / {rawAccount.maxTradesPerDay ?? "—"}
                 </span>
               </div>
-              <span className="text-[var(--ink-3)] truncate max-w-[130px]">
-                {account.propFirmRules.allowedSymbols.join(", ")}
-              </span>
+              {rawAccount.allowedSymbols?.length > 0 && (
+                <span className="text-[var(--ink-3)] truncate max-w-[130px]">
+                  {rawAccount.allowedSymbols.join(", ")}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -286,11 +293,10 @@ const ACCOUNT_STATUS_META: Record<string, { label: string; color: string; icon: 
 
 const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
-function AccountDetailPanel({ account, rawAccount, stats, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase }: {
+function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase }: {
   account: Account
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rawAccount: any
-  stats: AccountStats
   onClose: () => void
   onDelete?: () => void; deleting?: boolean
   onEdit?: () => void
@@ -307,9 +313,10 @@ function AccountDetailPanel({ account, rawAccount, stats, onClose, onDelete, del
   const tm  = TYPE_META[account.type]
   const acctStatus = (rawAccount?.status as string) ?? "ACTIVE"
   const sm  = ACCOUNT_STATUS_META[acctStatus] ?? ACCOUNT_STATUS_META.ACTIVE
-  const pos = stats.pnlMonth >= 0
   const isPF = isPropFirmLike(account.type)
   const phase = (rawAccount?.phase as string) ?? "NONE"
+  const initialBalance = Number(rawAccount?.initialBalance ?? account.initialBalance)
+  const flatLine = Array(10).fill(initialBalance)
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -342,87 +349,81 @@ function AccountDetailPanel({ account, rawAccount, stats, onClose, onDelete, del
 
       <div className="p-5 flex flex-col gap-5">
 
-        {/* Equity curve */}
+        {/* Equity / Balance curve */}
         <div>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-eyebrow">Curva de balance</span>
-            <span className={cn("text-[12px] font-mono font-bold", pos ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-              {pos ? "+" : ""}${Math.abs(stats.pnlMonth).toLocaleString()} este mes
-            </span>
+            <span className="text-eyebrow">Equity + Balance</span>
+            <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
           </div>
-          <MiniSparkline data={stats.sparkline} positive={pos} />
+          <MiniSparkline data={flatLine} positive={true} />
           <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
-            <span>Inicio</span>
-            <span className="font-mono font-semibold text-[var(--ink)]">${stats.currentBalance.toLocaleString()}</span>
+            <span>Balance inicial</span>
+            <span className="font-mono font-semibold text-[var(--ink)]">${initialBalance.toLocaleString()}</span>
           </div>
         </div>
 
-        {/* Stats grid */}
+        {/* Stats grid — real data when trades connected (Fase 3) */}
         <div className="grid grid-cols-2 gap-2">
           {[
-            { label: "Balance",     value: `$${stats.currentBalance.toLocaleString()}`, mono: true },
-            { label: "P&L mes",     value: `${pos ? "+" : ""}$${Math.abs(stats.pnlMonth).toLocaleString()}`, mono: true, pos },
-            { label: "Win Rate",    value: `${stats.winRate}%`,                         mono: true, pos: stats.winRate >= 50 },
-            { label: "Avg R",       value: `${stats.avgR >= 0 ? "+" : ""}${stats.avgR.toFixed(1)}R`, mono: true, pos: stats.avgR >= 0 },
-            { label: "Trades mes",  value: String(stats.tradesMonth) },
-            { label: "Días activa", value: `${stats.daysActive}d` },
-          ].map(({ label, value, mono, pos: p }) => (
+            { label: "Balance actual",  value: `$${initialBalance.toLocaleString()}`, mono: true },
+            { label: "P&L mes",         value: "— sin trades", mono: true },
+            { label: "Win Rate",        value: "—", mono: true },
+            { label: "Avg R",           value: "—", mono: true },
+            { label: "Profit Factor",   value: "—" },
+            { label: "Sharpe Ratio",    value: "—" },
+          ].map(({ label, value, mono }) => (
             <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
               <p className="text-[10px] uppercase tracking-wide text-[var(--ink-3)] font-semibold mb-1">{label}</p>
-              <p className={cn(
-                "text-[14px] font-bold leading-none",
-                mono && "font-mono",
-                p === undefined ? "text-[var(--ink)]" : p ? "text-[var(--win)]" : "text-[var(--loss)]"
-              )}>{value}</p>
+              <p className={cn("text-[14px] font-bold leading-none text-[var(--ink-3)]", mono && "font-mono")}>{value}</p>
             </div>
           ))}
         </div>
 
         {/* Prop firm rules — ONLY for PROP_FIRM and DEMO_PROP */}
-        {isPF && account.propFirmRules && (
+        {isPF && rawAccount?.ddTotalPct != null && (
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <Shield size={12} className="text-[var(--ink-3)]" />
-              <p className="text-eyebrow">Reglas Prop Firm</p>
+              <p className="text-eyebrow">{account.type === "DEMO_PROP" ? "Reglas Demo PF" : "Reglas Prop Firm"}</p>
               <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
                 style={{ background: "rgba(79,110,247,0.12)", color: "#4f6ef7" }}>
                 {rawAccount?.ddModel ?? "FIXED"}
               </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RiskBar label="Drawdown total"
-                usedPct={(stats.drawdownPct / account.propFirmRules.maxDrawdownPct) * 100}
-                limitLabel={`${account.propFirmRules.maxDrawdownPct}% max`} />
-              <RiskBar label="Pérdida diaria"
-                usedPct={stats.dailyLossUsedPct}
-                limitLabel={`${account.propFirmRules.dailyLossPct}% límite`} />
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({account.propFirmRules.targetPct}%)</span>
-                  <span className="text-[11px] font-mono font-semibold text-[var(--accent)]">{stats.phaseProgressPct}% / {account.propFirmRules.targetPct}%</span>
+              <RiskBar label="Drawdown total" usedPct={0} limitLabel={`${Number(rawAccount.ddTotalPct)}% max`} />
+              {rawAccount.ddDailyPct != null && (
+                <RiskBar label="Pérdida diaria" usedPct={0} limitLabel={`${Number(rawAccount.ddDailyPct)}% límite`} />
+              )}
+              {rawAccount.targetPct != null && (
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({Number(rawAccount.targetPct)}%)</span>
+                    <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">— / {Number(rawAccount.targetPct)}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
+                    <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: "0%" }} />
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--accent)]"
-                    style={{ width: `${Math.min((stats.phaseProgressPct / account.propFirmRules.targetPct) * 100, 100)}%` }} />
-                </div>
-              </div>
+              )}
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--line)]">
-                {[
-                  ["Max DD",        `${account.propFirmRules.maxDrawdownPct}%`],
-                  ["Daily Loss",    `${account.propFirmRules.dailyLossPct}%`],
-                  ["Max trades/día", String(account.propFirmRules.maxTradesPerDay)],
-                  ["Objetivo",      `${account.propFirmRules.targetPct}%`],
-                ].map(([k, v]) => (
+                {([
+                  rawAccount.ddTotalPct     != null ? ["Max DD",          `${Number(rawAccount.ddTotalPct)}%`]     : null,
+                  rawAccount.ddDailyPct     != null ? ["Daily Loss",      `${Number(rawAccount.ddDailyPct)}%`]     : null,
+                  rawAccount.maxTradesPerDay != null ? ["Max trades/día",  String(rawAccount.maxTradesPerDay)]      : null,
+                  rawAccount.targetPct      != null ? ["Objetivo",         `${Number(rawAccount.targetPct)}%`]     : null,
+                  rawAccount.minTradingDays  != null ? ["Min días",         String(rawAccount.minTradingDays)]      : null,
+                ] as ([string, string] | null)[]).filter((x): x is [string, string] => x !== null).map(([k, v]) => (
                   <div key={k} className="flex justify-between text-[11px]">
                     <span className="text-[var(--ink-3)]">{k}</span>
                     <span className="font-mono font-semibold text-[var(--ink)]">{v}</span>
                   </div>
                 ))}
               </div>
-              {account.propFirmRules.allowedSymbols.length > 0 && (
+              {rawAccount.allowedSymbols?.length > 0 && (
                 <div className="text-[11px] flex justify-between pt-1 border-t border-[var(--line)]">
                   <span className="text-[var(--ink-3)]">Símbolos</span>
-                  <span className="font-mono text-[var(--ink)]">{account.propFirmRules.allowedSymbols.join(", ")}</span>
+                  <span className="font-mono text-[var(--ink)]">{rawAccount.allowedSymbols.join(", ")}</span>
                 </div>
               )}
             </div>
@@ -434,7 +435,9 @@ function AccountDetailPanel({ account, rawAccount, stats, onClose, onDelete, del
           <div>
             <div className="flex items-center gap-1.5 mb-3">
               <Shield size={12} className="text-[var(--ink-3)]" />
-              <p className="text-eyebrow">Límites configurados</p>
+              <p className="text-eyebrow">
+                {account.type === "DEMO_PERSONAL" ? "Límites Demo" : account.type === "BACKTEST" ? "Límites Backtest" : "Límites personales"}
+              </p>
             </div>
             <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)] flex flex-col gap-2 text-[11px]">
               {[
@@ -1216,36 +1219,14 @@ export default function CuentasPage() {
           <div className="flex gap-4 items-start">
             {/* Cards */}
             <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-              {accounts.map(a => {
-                // Adaptar tipo Prisma → AccountCard props
-                const account = {
-                  id: a.id,
-                  name: a.name,
-                  broker: a.broker,
-                  type: a.type as AccountType,
-                  initialBalance: Number(a.initialBalance),
-                  currency: a.currency,
-                  timezone: a.timezone,
-                  createdAt: String(a.createdAt),
-                  propFirmRules: a.ddTotalPct != null ? {
-                    maxDrawdownPct: Number(a.ddTotalPct),
-                    dailyLossPct: Number(a.ddDailyPct ?? 5),
-                    maxTradesPerDay: a.maxTradesPerDay ?? 3,
-                    targetPct: Number(a.targetPct ?? 8),
-                    allowedSymbols: a.allowedSymbols,
-                  } : undefined,
-                }
-                const mockStats = ACCOUNT_STATS["acc-1"]
-                return (
-                  <AccountCard
-                    key={a.id}
-                    account={account}
-                    stats={{ ...mockStats, currentBalance: account.initialBalance }}
-                    selected={selectedId === a.id}
-                    onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
-                  />
-                )
-              })}
+              {accounts.map(a => (
+                <AccountCard
+                  key={a.id}
+                  rawAccount={a}
+                  selected={selectedId === a.id}
+                  onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
+                />
+              ))}
             </div>
 
             {/* Detail panel */}
@@ -1278,7 +1259,6 @@ export default function CuentasPage() {
                     } : undefined,
                   }}
                   rawAccount={selected}
-                  stats={{ ...ACCOUNT_STATS["acc-1"], currentBalance: Number(selected.initialBalance) }}
                   onClose={() => setSelectedId(null)}
                   onEdit={() => setEditingId(selected.id)}
                   onDelete={() => deleteAccount.mutate(selected.id)}
