@@ -115,7 +115,7 @@ La función `set_updated_at()` (trigger que actualiza el campo `updated_at` en m
 
 ### TASK-004
 **Prioridad:** 🔴 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Recrear las 10 políticas RLS usando el patrón `(select auth.uid())` en lugar de `auth.uid()` directamente para evitar reevaluación por fila.
@@ -154,7 +154,7 @@ Todas las políticas RLS activas usan `USING (auth.uid() = user_id)`. PostgreSQL
 
 ### TASK-005
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Restringir las políticas de SELECT en los buckets de Supabase Storage `setup-images` y `trade-screenshots` para requerir autenticación.
@@ -286,7 +286,7 @@ Eliminar el objeto `propFirmRules` anidado del archivo `src/mock-data/index.ts` 
 
 ### TASK-009
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Crear el router tRPC `weeklyReviewsRouter` en `src/server/trpc/routers/weekly-reviews.ts` con los procedimientos `list`, `create`, `update`, `delete`, `getByWeek`.
@@ -325,7 +325,7 @@ weeklyReviews.delete // input: { id }
 
 ### TASK-010
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Crear el router tRPC `learningResourcesRouter` en `src/server/trpc/routers/learning-resources.ts` con los procedimientos `list`, `create`, `update`, `delete`, `toggleMarkedForReview`.
@@ -428,7 +428,7 @@ Refactorizar `src/app/aprendizaje/page.tsx` para eliminar imports de mock-data y
 
 ### TASK-013
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Registrar `weeklyReviewsRouter` y `learningResourcesRouter` en `src/server/trpc/root.ts`.
@@ -1107,7 +1107,7 @@ Ongoing (Calidad código):
 
 ### TASK-034
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Crear índice faltante en `account_logs.user_id` — detectado por Performance Advisor durante sesión de remediación Semana 1.
