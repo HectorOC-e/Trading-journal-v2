@@ -362,8 +362,8 @@ function DetailPanel({
           </p>
           <div className="rounded-lg p-3" style={{ background: "var(--win-soft)" }}>
             {review.whatWorked
-              .split("\n").map((l) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
-              .map((item, i) => (
+              .split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
+              .map((item: string, i: number) => (
                 <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
                   <span className="text-[10px] mt-0.5 font-bold" style={{ color: "var(--win)" }}>•</span>
                   <span className="text-xs leading-snug" style={{ color: "var(--ink-2)" }}>{item}</span>
@@ -378,8 +378,8 @@ function DetailPanel({
           </p>
           <div className="rounded-lg p-3" style={{ background: "var(--loss-soft)" }}>
             {review.toImprove
-              .split("\n").map((l) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
-              .map((item, i) => (
+              .split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
+              .map((item: string, i: number) => (
                 <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
                   <span className="text-[10px] mt-0.5 font-bold" style={{ color: "var(--loss)" }}>•</span>
                   <span className="text-xs leading-snug" style={{ color: "var(--ink-2)" }}>{item}</span>
@@ -481,10 +481,10 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   const winRate  = Math.round((winners.length / filtered.length) * 100)
 
   const disciplinedCount = filtered.filter((t) =>
-    t.tags.some((tag) => tag === "A+" || tag === "Plan")
+    t.tags.some((tag: string) => tag === "A+" || tag === "Plan")
   ).length
   const offPlanCount = filtered.filter((t) =>
-    t.tags.some((tag) => tag === "Off-plan" || tag === "Impulsivo")
+    t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo")
   ).length
   const disciplineScore = filtered.length > 0 ? Math.round((disciplinedCount / filtered.length) * 100) : 0
 
@@ -519,7 +519,7 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   if (whatWorkedLines.length === 0) whatWorkedLines.push("—")
 
   const toImproveLines: string[] = []
-  const offPlanTrades = filtered.filter((t) => t.tags.some((tag) => tag === "Off-plan" || tag === "Impulsivo"))
+  const offPlanTrades = filtered.filter((t) => t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo"))
   if (offPlanTrades.length > 0) {
     toImproveLines.push(`Revisar disciplina en ${[...new Set(offPlanTrades.map((t) => t.symbol))].join(", ")} — ${offPlanTrades.length} trade${offPlanTrades.length > 1 ? "s" : ""} fuera del plan`)
   }
@@ -766,7 +766,7 @@ function NuevaReviewModal({
                   {accounts.length === 0 ? (
                     <p className="text-xs text-[var(--ink-3)] italic py-2">Cargando cuentas…</p>
                   ) : (
-                    accounts.map((acct) => (
+                    accounts.map((acct: AccountFromDB) => (
                       <AccountSelectorCard
                         key={acct.id}
                         account={acct}
@@ -1034,16 +1034,16 @@ export default function ReviewsPage() {
 
   const accountName = (id: string | null) => {
     if (!id) return "—"
-    return accounts.find((a) => a.id === id)?.name ?? id
+    return accounts.find((a: AccountFromDB) => a.id === id)?.name ?? id
   }
 
-  const totalPnl = useMemo(() => reviews.reduce((s, r) => s + r.netPnl, 0), [reviews])
+  const totalPnl = useMemo(() => reviews.reduce((s: number, r: ReviewFromDB) => s + r.netPnl, 0), [reviews])
   const avgWr    = useMemo(() =>
-    reviews.length ? Math.round(reviews.reduce((s, r) => s + r.winRate, 0) / reviews.length) : 0,
+    reviews.length ? Math.round(reviews.reduce((s: number, r: ReviewFromDB) => s + r.winRate, 0) / reviews.length) : 0,
     [reviews]
   )
   const avgDisc  = useMemo(() =>
-    reviews.length ? Math.round(reviews.reduce((s, r) => s + r.disciplineScore, 0) / reviews.length) : 0,
+    reviews.length ? Math.round(reviews.reduce((s: number, r: ReviewFromDB) => s + r.disciplineScore, 0) / reviews.length) : 0,
     [reviews]
   )
 
@@ -1074,7 +1074,7 @@ export default function ReviewsPage() {
     },
     {
       label: "Semanas revisadas",
-      value: reviews.filter((r) => r.status === "submitted").length.toString(),
+      value: reviews.filter((r: ReviewFromDB) => r.status === "submitted").length.toString(),
       sub:   `de ${reviews.length} totales`,
       trend: "neutral" as "neutral",
       mono:  true,
@@ -1084,14 +1084,14 @@ export default function ReviewsPage() {
 
   const weekTrades = useMemo(() => {
     if (!selectedReview) return []
-    return allTrades.filter((t) => {
+    return allTrades.filter((t: TradeFromDB) => {
       const acctMatch = !selectedReview.accountId || t.accountId === selectedReview.accountId
       return acctMatch && t.date >= selectedReview.weekStart && t.date <= selectedReview.weekEnd
     })
   }, [selectedReview, allTrades])
 
   function handleCardClick(review: ReviewFromDB) {
-    setSelectedReview((prev) => (prev?.id === review.id ? null : review))
+    setSelectedReview((prev: ReviewFromDB | null) => (prev?.id === review.id ? null : review))
   }
 
   return (
@@ -1125,7 +1125,7 @@ export default function ReviewsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-3">
-              {reviews.map((review) => (
+              {reviews.map((review: ReviewFromDB) => (
                 <ReviewCard
                   key={review.id}
                   review={review}

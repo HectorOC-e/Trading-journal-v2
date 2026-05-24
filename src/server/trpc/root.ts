@@ -1,3 +1,4 @@
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server"
 import { router } from "./init"
 import { tradesRouter }           from "./routers/trades"
 import { accountsRouter }         from "./routers/accounts"
@@ -21,4 +22,6 @@ export const appRouter = router({
   learningResources: learningResourcesRouter,
 })
 
-export type AppRouter = typeof appRouter
+export type AppRouter     = typeof appRouter
+export type RouterOutputs = inferRouterOutputs<AppRouter>
+export type RouterInputs  = inferRouterInputs<AppRouter>
