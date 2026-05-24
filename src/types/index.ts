@@ -112,6 +112,8 @@ export interface LearningResource {
   isFavorite: boolean
   rating?: number | null
   completedAt?: string | null
+  // Fields added in TASK-L013
+  linkedSetups?: { id: string; name: string }[]
 }
 
 export interface Rule {

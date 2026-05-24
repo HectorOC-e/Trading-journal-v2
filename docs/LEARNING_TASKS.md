@@ -601,7 +601,7 @@ const reviewDates = await ctx.prisma.resourceReview.findMany({
 
 ### TASK-L013
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 5  
 **Activado por:** P12-A ("muy útil, contexto de origen del setup") — ACTIVADO CON ALTA PRIORIDAD
 
@@ -723,7 +723,7 @@ Implementar resumen semanal por email y alerta de inactividad. Las notificacione
 
 ### TASK-L016
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 5 — Conexión Aprendizaje↔Trading  
 **Activado por:** P13-A ("Setup 72% WR desde que estudiaste X" — killer feature) + P18 (aprendizaje no separado del trading real)
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState, useEffect, useCallback } from "react"
-import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy, CheckCircle2 } from "lucide-react"
+import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy, CheckCircle2, Link } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
@@ -104,6 +104,8 @@ export interface ResourceCardProps {
   onUpdateStatus?:    (id: string, status: ResourceStatus) => void
   onToggleFavorite?:  (id: string) => void
   onUpdateProgress?:  (id: string, currentUnits: number) => void
+  onLinkSetup?:       (resource: LearningResource) => void
+  onUnlinkSetup?:     (resourceId: string, setupId: string) => void
 }
 
 export function ResourceCard({
@@ -115,6 +117,8 @@ export function ResourceCard({
   onUpdateStatus,
   onToggleFavorite,
   onUpdateProgress,
+  onLinkSetup,
+  onUnlinkSetup,
 }: ResourceCardProps) {
   const [menuOpen,        setMenuOpen]        = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
@@ -261,6 +265,13 @@ export function ResourceCard({
                         onClick={() => { onUpdateStatus?.(resource.id, "ABANDONED"); closeMenu() }}
                       />
                     )}
+                    {onLinkSetup && (
+                      <MenuItem
+                        icon={<Link size={12} />}
+                        label="Vincular a setup"
+                        onClick={() => { onLinkSetup(resource); closeMenu() }}
+                      />
+                    )}
                     <div className="border-t border-[var(--line)] my-1" />
                     <MenuItem
                       icon={<Trash2 size={12} />}
@@ -356,6 +367,30 @@ export function ResourceCard({
                 className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--chip)] text-[var(--ink-3)]"
               >
                 #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Linked setups */}
+        {resource.linkedSetups && resource.linkedSetups.length > 0 && (
+          <div className="flex gap-1 flex-wrap">
+            {resource.linkedSetups.map((s) => (
+              <span
+                key={s.id}
+                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)] border-opacity-30"
+              >
+                <Link size={8} />
+                {s.name}
+                {onUnlinkSetup && (
+                  <button
+                    className="ml-0.5 hover:text-red-500 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); onUnlinkSetup(resource.id, s.id) }}
+                    aria-label={`Desvincular ${s.name}`}
+                  >
+                    ×
+                  </button>
+                )}
               </span>
             ))}
           </div>

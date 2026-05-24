@@ -35,6 +35,10 @@ const LearningResourceInput = z.object({
   reviewInterval:  z.number().int().min(1).optional().nullable(),
 })
 
+type LinkedSetup = { id: string; name: string }
+
+type ResourceInput = LearningResource & { linkedSetups?: LinkedSetup[] }
+
 type SerializedResource = Omit<
   LearningResource,
   "date" | "createdAt" | "updatedAt" | "avgScore" | "nextReviewAt" | "completedAt"
@@ -45,10 +49,11 @@ type SerializedResource = Omit<
   avgScore:     number | null
   nextReviewAt: string | null
   completedAt:  string | null
+  linkedSetups: LinkedSetup[]
 }
 
-function serializeResource(r: LearningResource): SerializedResource {
-  const { avgScore, nextReviewAt, completedAt, date, createdAt, updatedAt, ...rest } = r
+function serializeResource(r: ResourceInput): SerializedResource {
+  const { avgScore, nextReviewAt, completedAt, date, createdAt, updatedAt, linkedSetups, ...rest } = r
   return {
     ...rest,
     date:         date.toISOString().slice(0, 10),
@@ -57,6 +62,7 @@ function serializeResource(r: LearningResource): SerializedResource {
     avgScore:     avgScore ? avgScore.toNumber() : null,
     nextReviewAt: nextReviewAt ? nextReviewAt.toISOString().slice(0, 10) : null,
     completedAt:  completedAt ? completedAt.toISOString() : null,
+    linkedSetups: linkedSetups ?? [],
   }
 }
 
@@ -119,6 +125,7 @@ export const learningResourcesRouter = router({
           ...(input?.status ? { status: input.status } : {}),
         },
         orderBy: { date: "desc" },
+        include: { linkedSetups: { select: { id: true, name: true } } },
       })
       return resources.map(serializeResource)
     }),
@@ -323,6 +330,80 @@ export const learningResourcesRouter = router({
         where: { id: input, userId: ctx.userId },
         data:  { isFavorite: !resource.isFavorite },
       })
+    }),
+
+  // TASK-L013: Many-to-many LearningResource ↔ Setup
+  linkSetup: protectedProcedure
+    .input(z.object({ resourceId: z.string().uuid(), setupId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.learningResource.findUniqueOrThrow({
+        where: { id: input.resourceId, userId: ctx.userId },
+      })
+      await ctx.prisma.setup.findUniqueOrThrow({
+        where: { id: input.setupId, userId: ctx.userId },
+      })
+      return ctx.prisma.learningResource.update({
+        where: { id: input.resourceId },
+        data:  { linkedSetups: { connect: { id: input.setupId } } },
+      })
+    }),
+
+  unlinkSetup: protectedProcedure
+    .input(z.object({ resourceId: z.string().uuid(), setupId: z.string().uuid() }))
+    .mutation(({ ctx, input }) =>
+      ctx.prisma.learningResource.update({
+        where: { id: input.resourceId, userId: ctx.userId },
+        data:  { linkedSetups: { disconnect: { id: input.setupId } } },
+      })
+    ),
+
+  listBySetup: protectedProcedure
+    .input(z.string().uuid())
+    .query(async ({ ctx, input }) => {
+      const resources = await ctx.prisma.learningResource.findMany({
+        where:   { userId: ctx.userId, linkedSetups: { some: { id: input } } },
+        orderBy: { date: "desc" },
+        include: { linkedSetups: { select: { id: true, name: true } } },
+      })
+      return resources.map(serializeResource)
+    }),
+
+  // TASK-L016: WR of each linked setup since resource was completed (P13-A killer feature)
+  setupImpact: protectedProcedure
+    .input(z.string().uuid())
+    .query(async ({ ctx, input }) => {
+      const resource = await ctx.prisma.learningResource.findUniqueOrThrow({
+        where:   { id: input, userId: ctx.userId },
+        select:  { completedAt: true, linkedSetups: { select: { id: true, name: true } } },
+      })
+      if (!resource.completedAt) return []
+
+      const completedAt = resource.completedAt
+
+      return Promise.all(
+        resource.linkedSetups.map(async (setup) => {
+          const trades = await ctx.prisma.trade.findMany({
+            where: {
+              userId:  ctx.userId,
+              setupId: setup.id,
+              date:    { gte: completedAt },
+              status:  "CLOSED",
+            },
+            select: { rMultiple: true, pnl: true },
+          })
+          const wins = trades.filter(
+            t => (t.rMultiple ? t.rMultiple.toNumber() > 0 : (t.pnl ? t.pnl.toNumber() > 0 : false))
+          ).length
+          return {
+            setupId:     setup.id,
+            setupName:   setup.name,
+            totalTrades: trades.length,
+            wins,
+            winRate:     trades.length > 0 ? Math.round((wins / trades.length) * 100) : null,
+            completedAt: completedAt.toISOString(),
+          }
+        })
+      )
     }),
 
   // Stats for the right panel. Streak counts only days with resource_reviews (P15-E).

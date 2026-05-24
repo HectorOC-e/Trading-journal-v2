@@ -143,6 +143,7 @@ model Setup {
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades Trade[]
+  linkedResources LearningResource[] @relation("ResourceSetups")
 
   @@map("setups")
 }
@@ -270,8 +271,9 @@ model LearningResource {
   rating          Int?
   completedAt     DateTime? @map("completed_at")
 
-  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviews ResourceReview[]
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews      ResourceReview[]
+  linkedSetups Setup[]          @relation("ResourceSetups")
 
   @@index([userId, date(sort: Desc)])
   @@map("learning_resources")
