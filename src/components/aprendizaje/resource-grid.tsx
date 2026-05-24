@@ -48,6 +48,7 @@ interface ResourceGridProps {
   onDelete?:          (id: string) => void
   onUpdateStatus?:    (id: string, status: ResourceStatus) => void
   onToggleFavorite?:  (id: string) => void
+  onUpdateProgress?:  (id: string, currentUnits: number) => void
 }
 
 export function ResourceGrid({
@@ -58,6 +59,7 @@ export function ResourceGrid({
   onDelete,
   onUpdateStatus,
   onToggleFavorite,
+  onUpdateProgress,
 }: ResourceGridProps) {
   const [search, setSearch]         = useState("")
   const [category, setCategory]     = useState("TODOS")
@@ -155,6 +157,7 @@ export function ResourceGrid({
                 onDelete={onDelete}
                 onUpdateStatus={onUpdateStatus}
                 onToggleFavorite={onToggleFavorite}
+                onUpdateProgress={onUpdateProgress}
               />
           ))}
         </div>

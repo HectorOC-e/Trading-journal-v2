@@ -1,7 +1,7 @@
 "use client"
 
-import { useRef, useState, useEffect } from "react"
-import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy } from "lucide-react"
+import { useRef, useState, useEffect, useCallback } from "react"
+import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
@@ -17,10 +17,60 @@ const TYPE_COLORS: Record<ResourceType, string> = {
   HERRAMIENTA: "#6b7280",
 }
 
+const STATUS_CONFIG: Record<ResourceStatus, { label: string; bg: string; text: string }> = {
+  PENDING:     { label: "Pendiente",   bg: "var(--chip)",     text: "var(--ink-3)" },
+  IN_PROGRESS: { label: "En progreso", bg: "#dbeafe",         text: "#1d4ed8" },
+  COMPLETED:   { label: "Completado",  bg: "var(--win-soft)", text: "var(--win)" },
+  IN_REVIEW:   { label: "Revisar",     bg: "#fef3c7",         text: "#b45309" },
+  MASTERED:    { label: "Dominado",    bg: "#d1fae5",         text: "#059669" },
+  ABANDONED:   { label: "Archivado",   bg: "var(--chip)",     text: "var(--ink-3)" },
+}
+
 function progressColor(pct: number): string {
   if (pct >= 80) return "var(--win)"
   if (pct >= 40) return "#f59e0b"
   return "var(--loss)"
+}
+
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  if (h === 0) return `${m}min`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}
+
+function progressLabel(
+  progressType: string | null | undefined,
+  currentUnits: number | null | undefined,
+  totalUnits:   number | null | undefined,
+  progressPct:  number | null | undefined,
+): string | null {
+  if (currentUnits == null || totalUnits == null) return null
+  const pctStr = progressPct != null ? ` · ${progressPct}%` : ""
+  if (progressType === "minutes") {
+    return `${formatMinutes(currentUnits)} de ${formatMinutes(totalUnits)}${pctStr}`
+  }
+  if (progressType === "pages") {
+    return `${currentUnits} de ${totalUnits} páginas${pctStr}`
+  }
+  if (progressType === "sessions") {
+    return `${currentUnits} de ${totalUnits} sesiones${pctStr}`
+  }
+  return null
+}
+
+function reviewCountdown(nextReviewAt: string | null | undefined): string | null {
+  if (!nextReviewAt) return null
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const review = new Date(nextReviewAt)
+  review.setHours(0, 0, 0, 0)
+  const diff = Math.round((review.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  if (diff > 3) return null
+  if (diff < 0) return "Review vencida"
+  if (diff === 0) return "Review hoy"
+  return `Review en ${diff} día${diff === 1 ? "" : "s"}`
 }
 
 interface MenuItemProps {
@@ -46,13 +96,14 @@ function MenuItem({ icon, label, onClick, destructive }: MenuItemProps) {
 }
 
 export interface ResourceCardProps {
-  resource:          LearningResource
-  className?:        string
-  onReview?:         (resource: LearningResource) => void
-  onEdit?:           (resource: LearningResource) => void
-  onDelete?:         (id: string) => void
-  onUpdateStatus?:   (id: string, status: ResourceStatus) => void
-  onToggleFavorite?: (id: string) => void
+  resource:           LearningResource
+  className?:         string
+  onReview?:          (resource: LearningResource) => void
+  onEdit?:            (resource: LearningResource) => void
+  onDelete?:          (id: string) => void
+  onUpdateStatus?:    (id: string, status: ResourceStatus) => void
+  onToggleFavorite?:  (id: string) => void
+  onUpdateProgress?:  (id: string, currentUnits: number) => void
 }
 
 export function ResourceCard({
@@ -63,10 +114,22 @@ export function ResourceCard({
   onDelete,
   onUpdateStatus,
   onToggleFavorite,
+  onUpdateProgress,
 }: ResourceCardProps) {
-  const [menuOpen,      setMenuOpen]      = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [menuOpen,        setMenuOpen]        = useState(false)
+  const [confirmDelete,   setConfirmDelete]   = useState(false)
+  const [progressInput,   setProgressInput]   = useState<string>("")
+  const [progressEditing, setProgressEditing] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const handleProgressConfirm = useCallback(() => {
+    const val = parseInt(progressInput, 10)
+    if (!isNaN(val) && val >= 0) {
+      onUpdateProgress?.(resource.id, val)
+    }
+    setProgressEditing(false)
+    setProgressInput("")
+  }, [progressInput, resource.id, onUpdateProgress])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -108,7 +171,7 @@ export function ResourceCard({
       {/* Card body */}
       <div className="flex flex-col gap-3 p-4 flex-1 min-w-0">
 
-        {/* Top row: chips + menu */}
+        {/* Top row: chips + status badge + menu */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <CategoryChip type={resource.type} />
@@ -118,6 +181,15 @@ export function ResourceCard({
                 Review
               </Badge>
             )}
+            <span
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+              style={{
+                background: STATUS_CONFIG[resource.status].bg,
+                color:      STATUS_CONFIG[resource.status].text,
+              }}
+            >
+              {STATUS_CONFIG[resource.status].label}
+            </span>
           </div>
 
           {/* ··· dropdown */}
@@ -230,18 +302,32 @@ export function ResourceCard({
           </p>
         )}
 
-        {/* Progress bar */}
-        {resource.progressPct != null && (
+        {/* Progress: contextual units + bar */}
+        {resource.progressPct != null && resource.progressType !== null && (
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-[var(--ink-3)]">Progreso</span>
-              <span
-                className="text-[10px] font-mono font-semibold"
-                style={{ color: progressColor(resource.progressPct) }}
-              >
-                {resource.progressPct}%
-              </span>
-            </div>
+            {(() => {
+              const label = progressLabel(
+                resource.progressType,
+                resource.currentUnits,
+                resource.totalUnits,
+                resource.progressPct,
+              )
+              return (
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-[var(--ink-3)]">
+                    {label ?? "Progreso"}
+                  </span>
+                  {!label && (
+                    <span
+                      className="text-[10px] font-mono font-semibold"
+                      style={{ color: progressColor(resource.progressPct) }}
+                    >
+                      {resource.progressPct}%
+                    </span>
+                  )}
+                </div>
+              )
+            })()}
             <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
               <div
                 className="h-full rounded-full transition-all"
@@ -252,6 +338,13 @@ export function ResourceCard({
               />
             </div>
           </div>
+        )}
+
+        {/* nextReviewAt countdown */}
+        {reviewCountdown(resource.nextReviewAt) && (
+          <span className="text-[10px] font-medium" style={{ color: "#b45309" }}>
+            ⏰ {reviewCountdown(resource.nextReviewAt)}
+          </span>
         )}
 
         {/* Tags */}
@@ -269,11 +362,11 @@ export function ResourceCard({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between mt-auto pt-2 border-t border-[var(--line)]">
+        <div className="flex items-center gap-2 mt-auto pt-2 border-t border-[var(--line)]">
           <button
             onClick={() => onReview?.(resource)}
             className={cn(
-              "text-[11px] font-medium px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors",
+              "text-[11px] font-medium px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors shrink-0",
               resource.markedForReview
                 ? "bg-[var(--accent-soft)] text-[var(--accent)] hover:opacity-80"
                 : "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)] border border-[var(--line)]"
@@ -281,7 +374,44 @@ export function ResourceCard({
           >
             Revisar
           </button>
-          <span className="text-[10px] text-[var(--ink-3)]">
+
+          {/* Inline progress updater ��� only when totalUnits is set */}
+          {resource.totalUnits != null && onUpdateProgress && (
+            progressEditing ? (
+              <div className="flex items-center gap-1 flex-1">
+                <input
+                  type="number"
+                  min={0}
+                  max={resource.totalUnits}
+                  autoFocus
+                  className="w-16 h-6 px-1.5 text-xs rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[var(--ink)] focus:outline-none"
+                  placeholder={String(resource.currentUnits ?? 0)}
+                  value={progressInput}
+                  onChange={(e) => setProgressInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleProgressConfirm()
+                    if (e.key === "Escape") { setProgressEditing(false); setProgressInput("") }
+                  }}
+                />
+                <span className="text-[10px] text-[var(--ink-3)]">/ {resource.totalUnits}</span>
+                <button
+                  className="text-[var(--win)] hover:opacity-80 transition-opacity"
+                  onClick={handleProgressConfirm}
+                >
+                  <CheckCircle2 size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                className="text-[10px] text-[var(--ink-3)] hover:text-[var(--ink)] px-1.5 py-0.5 rounded hover:bg-[var(--chip)] transition-colors"
+                onClick={() => { setProgressInput(String(resource.currentUnits ?? 0)); setProgressEditing(true) }}
+              >
+                +progreso
+              </button>
+            )
+          )}
+
+          <span className="text-[10px] text-[var(--ink-3)] ml-auto shrink-0">
             {new Date(resource.createdAt).toLocaleDateString("es-ES", {
               day:   "numeric",
               month: "short",

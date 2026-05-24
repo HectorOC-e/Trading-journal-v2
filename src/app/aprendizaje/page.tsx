@@ -363,6 +363,10 @@ export default function AprendizajePage() {
     },
   })
 
+  const updateProgress = trpc.learningResources.updateProgress.useMutation({
+    onSuccess: () => utils.learningResources.list.invalidate(),
+  })
+
   const deleteResource = trpc.learningResources.delete.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
   })
@@ -486,6 +490,7 @@ export default function AprendizajePage() {
               onDelete={(id) => deleteResource.mutate(id)}
               onUpdateStatus={(id, status) => updateStatus.mutate({ id, status })}
               onToggleFavorite={(id) => toggleFavorite.mutate(id)}
+              onUpdateProgress={(id, currentUnits) => updateProgress.mutate({ id, currentUnits })}
             />
         )}
       </div>

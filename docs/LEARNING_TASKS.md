@@ -357,7 +357,7 @@ Al cambiar el `type` en el selector, el área de progreso se re-renderiza con lo
 
 ### TASK-L007
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 2 — UI
 
 **Descripción:**  
@@ -397,7 +397,7 @@ Si `nextReviewAt` está presente y es ≤ hoy + 3 días: mostrar countdown `"Rev
 
 ### TASK-L008
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 2 — UI
 
 **Descripción:**  
