@@ -1,9 +1,10 @@
 # LEARNING TASKS — Sección Aprendizaje
 
 > **Generado:** 2026-05-24  
+> **Actualizado con encuesta:** 2026-05-24 — encuesta completada (18 respuestas)  
 > **Fuente:** LEARNING_REMEDIATION_PLAN.md + auditoría de código  
 > **Branch:** `claude/epic-darwin-1XZTX`  
-> **Referencia encuesta:** preguntas P4-P17 de LEARNING_SURVEY (ver LEARNING_REMEDIATION_PLAN.md)
+> **Resultados encuesta:** P4=min, P5=pág, P6=A(hrs), P7=B(ses+score), P8=B, P9=B(✅activado), P10=B, P11=D(intervalo por recurso), P12=A(✅activado), P13=A(killer feature), P14=B, P15=E(calidad), P16=E(configurable), P17=B+C+E(visual+email, NO push)
 
 ---
 
@@ -113,13 +114,16 @@ Migración de schema: añadir campos nuevos a `learning_resources` y crear tabla
 **Campos nuevos en `learning_resources`:**
 ```prisma
 status          String    @default("PENDING")
-progressType    String?
-totalUnits      Int?
-currentUnits    Int?
+                          // PENDING | IN_PROGRESS | COMPLETED | IN_REVIEW | MASTERED | ABANDONED
+progressType    String?   // 'manual' | 'pages' | 'minutes' | 'sessions'
+totalUnits      Int?      // páginas | minutos | sesiones objetivo
+currentUnits    Int?      // páginas leídas | minutos vistos | sesiones hechas
+avgScore        Decimal?  @map("avg_score")   // P7-B: score promedio de sesiones DRILL
 nextReviewAt    DateTime? @db.Date
-reviewInterval  Int?
+reviewInterval  Int?      // P11-D: días al próximo review, configurable por recurso
 isFavorite      Boolean   @default(false) @map("is_favorite")
-rating          Int?
+rating          Int?      // valoración 1-5 del review más reciente
+completedAt     DateTime? @map("completed_at") // para métricas de impacto (TASK-L016)
 ```
 
 **Nueva tabla `resource_reviews`:**
@@ -154,10 +158,12 @@ ALTER TABLE learning_resources
   ADD COLUMN IF NOT EXISTS progress_type   TEXT,
   ADD COLUMN IF NOT EXISTS total_units     INTEGER,
   ADD COLUMN IF NOT EXISTS current_units   INTEGER,
+  ADD COLUMN IF NOT EXISTS avg_score       DECIMAL(5,2),
   ADD COLUMN IF NOT EXISTS next_review_at  DATE,
   ADD COLUMN IF NOT EXISTS review_interval INTEGER,
   ADD COLUMN IF NOT EXISTS is_favorite     BOOLEAN NOT NULL DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS rating          INTEGER;
+  ADD COLUMN IF NOT EXISTS rating          INTEGER,
+  ADD COLUMN IF NOT EXISTS completed_at    TIMESTAMPTZ;
 
 -- 2. Migrar progreso existente: si progressPct > 0 → IN_PROGRESS, si 100 → COMPLETED
 UPDATE learning_resources
@@ -424,58 +430,74 @@ El flujo más frecuente es: "terminé de ver más del video, quiero actualizar e
 
 ### TASK-L009
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[?]`  
+**Estado:** `[ ]`  
 **Fase:** 3 — Spaced repetition  
-**Condición:** Activar si encuesta P9 responde A/B mayoritariamente
+**Activado por:** P9-B (reminder visual) + P11-D (intervalo por recurso — NO intervalos fijos globales)
 
 **Descripción:**  
-Implementar la lógica de cálculo de `nextReviewAt` en el procedimiento `createReview`.
+Implementar la lógica de cálculo de `nextReviewAt` en el procedimiento `createReview`, usando el `reviewInterval` del recurso (configurable por el usuario en el editor de cada recurso) en lugar de intervalos fijos globales.
 
-**Lógica:**
+**Arquitectura (P11-D):**  
+Cada recurso tiene su propio `reviewInterval` (días). El usuario define cuántos días quiere entre reviews de ese recurso específico al crearlo o editarlo (campo "Cada cuántos días revisar", default: 7). Al guardar un review, `nextReviewAt` se calcula así:
+
 ```typescript
-const INTERVALS = { day1: 1, week1: 7, month1: 30, month3: 90 }
-
-function nextReviewDate(reviewType: string, masteryLevel: number): Date {
-  const base = INTERVALS[reviewType as keyof typeof INTERVALS] ?? 7
-  const days = masteryLevel <= 2 ? Math.ceil(base / 2) : base
+function nextReviewDate(reviewInterval: number, masteryLevel: number): Date {
+  let days: number
+  if (masteryLevel <= 2) {
+    // No dominado → repetir más pronto (mitad del intervalo)
+    days = Math.max(1, Math.ceil(reviewInterval / 2))
+  } else if (masteryLevel >= 4) {
+    // Bien dominado → espaciar más (1.5× el intervalo)
+    days = Math.round(reviewInterval * 1.5)
+  } else {
+    // Neutral → usar el intervalo configurado
+    days = reviewInterval
+  }
   const date = new Date()
   date.setDate(date.getDate() + days)
   return date
 }
 ```
 
-Al guardar un review → actualizar `learning_resources.nextReviewAt` + `learning_resources.reviewInterval`.
+Al guardar un review → actualizar `learning_resources.nextReviewAt`.
+
+**Cambio en formulario (TASK-L006):**  
+Añadir campo "Revisar cada X días" (number input, default 7) al formulario de creación/edición. Este valor se guarda en `reviewInterval`.
 
 **Validaciones:**
-- [ ] Review con `masteryLevel=5` en `week1` → `nextReviewAt = hoy + 7`
-- [ ] Review con `masteryLevel=1` en `week1` → `nextReviewAt = hoy + 4`
+- [ ] Recurso con `reviewInterval=14`, `masteryLevel=5` → `nextReviewAt = hoy + 21`
+- [ ] Recurso con `reviewInterval=14`, `masteryLevel=1` → `nextReviewAt = hoy + 7`
+- [ ] Recurso con `reviewInterval=14`, `masteryLevel=3` → `nextReviewAt = hoy + 14`
 - [ ] `learning_resources.nextReviewAt` actualizado después de crear review
 - [ ] Card muestra countdown correcto
+- [ ] Si `reviewInterval` es null, usar default de 7 días
 
 **Dependencias:** TASK-L001, TASK-L005  
 **Archivos afectados:**
 - `src/server/trpc/routers/learning-resources.ts` (`createReview`)
+- `src/app/aprendizaje/page.tsx` (formulario creación — campo `reviewInterval`)
 
 ---
 
 ### TASK-L010
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[?]`  
+**Estado:** `[ ]`  
 **Fase:** 3  
-**Condición:** Activar si encuesta P9 responde A/B mayoritariamente
+**Activado por:** P9-B + P11-D
 
 **Descripción:**  
-Actualizar el modal de review para incluir selector de intervalo y nivel de maestría.
+Actualizar el modal "Revisar recurso" para incluir nivel de maestría y mostrar la fecha calculada del próximo review.
 
 **Cambios al `RevisarRecursoModal`:**
-1. Añadir selector "¿Qué tan bien lo dominas?" (escala 1-5 con labels)
-2. Añadir selector de `reviewType` si P11 valida intervalos configurables por recurso
-3. Mostrar la fecha calculada del próximo review antes de guardar
+1. Añadir selector "¿Qué tan bien lo dominas?" (escala 1-5 con labels: 1=Confundido, 2=Parcial, 3=Entiendo, 4=Fluido, 5=Dominado)
+2. Mostrar dinámicamente la fecha calculada: "Próximo review: 15 jun 2026" — calculada con `reviewInterval` del recurso y el mastery level seleccionado
+3. **NO** añadir selector de `reviewType` fijo (días: 1/7/30/90) — ese modelo fue descartado por P11-D. El intervalo se configura en el recurso, no en cada review.
 
 **Validaciones:**
-- [ ] El modal muestra el nivel de maestría antes de guardar
-- [ ] Se calcula y muestra "Próximo review: 15 jun 2026" dinámicamente
-- [ ] Al guardar, el `nextReviewAt` correcto se persiste
+- [ ] El modal muestra el selector de nivel de maestría (1-5)
+- [ ] La fecha del próximo review se actualiza en tiempo real al mover el selector
+- [ ] Al guardar, el `nextReviewAt` correcto se persiste en BD
+- [ ] Si el recurso no tiene `reviewInterval`, usa 7 días como default
 
 **Dependencias:** TASK-L001, TASK-L009  
 **Archivos afectados:**
@@ -531,15 +553,15 @@ Lógica: si hay urgentToday[0] → ese recurso. Si no → IN_PROGRESS con mayor 
 
 ### TASK-L012
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[?]`  
+**Estado:** `[ ]`  
 **Fase:** 4  
-**Condición:** Activar si encuesta P15 valida streaks (A/B/E mayoritario)
+**Activado por:** P15-E (solo calidad — streaks basados en reviews completados, NO en logins ni updates de progreso)
 
 **Descripción:**  
-Implementar cálculo de racha de aprendizaje real.
+Implementar cálculo de racha de aprendizaje basada en reviews de calidad.
 
-**Definición de racha:**  
-Un día cuenta si el usuario completó al menos 1 review (`resource_reviews.created_at`) o actualizó progreso (`learning_resources.updated_at`) en ese día calendario.
+**Definición de racha (P15-E — calidad sobre cantidad):**  
+Un día cuenta ÚNICAMENTE si el usuario creó al menos 1 review en `resource_reviews` ese día calendario. Actualizar el slider de progreso NO cuenta para la racha. La racha mide reflexión activa, no consumo pasivo.
 
 **Cálculo en el backend:**
 ```typescript
@@ -549,14 +571,22 @@ const reviewDates = await ctx.prisma.resourceReview.findMany({
   select: { createdAt: true },
   orderBy: { createdAt: 'desc' },
 })
-// contar días consecutivos hacia atrás desde hoy
+// Extraer días únicos (YYYY-MM-DD en la timezone del usuario)
+// Contar días consecutivos hacia atrás desde hoy
+// Si el último día de review es ayer o hoy → racha activa
+// Si el último día fue hace ≥ 2 días → racha = 0
 ```
 
+**Display:**  
+"Racha: 12 días de review" — no llamarla "streak de aprendizaje" para evitar confusión con logins.
+
 **Validaciones:**
-- [ ] La racha es 0 si el usuario no tiene reviews
-- [ ] La racha es 1 si el último review fue ayer o hoy
-- [ ] La racha se rompe si no hay actividad en un día
+- [ ] La racha es 0 si el usuario no tiene ningún review
+- [ ] Actualizar progreso de un recurso NO incrementa la racha
+- [ ] La racha es 1 si el último review fue hoy o ayer
+- [ ] La racha se rompe si no hay reviews en 2 días consecutivos
 - [ ] El panel derecho muestra el número correcto
+- [ ] `bestStreak` histórico se calcula correctamente
 
 **Dependencias:** TASK-L001, TASK-L011  
 **Archivos afectados:**
@@ -570,10 +600,10 @@ const reviewDates = await ctx.prisma.resourceReview.findMany({
 ---
 
 ### TASK-L013
-**Prioridad:** 🟡 MEDIA  
-**Estado:** `[?]`  
+**Prioridad:** 🟠 ALTA  
+**Estado:** `[ ]`  
 **Fase:** 5  
-**Condición:** Activar solo si encuesta P12 responde A mayoritariamente
+**Activado por:** P12-A ("muy útil, contexto de origen del setup") — ACTIVADO CON ALTA PRIORIDAD
 
 **Descripción:**  
 Implementar relación many-to-many entre `LearningResource` y `Setup`.
@@ -616,68 +646,189 @@ Opción "Vincular a setup" en el menú `···`. Abre selector de setups del usu
 ---
 
 ### TASK-L014
-**Prioridad:** 🟢 BAJA  
-**Estado:** `[?]`  
+**Prioridad:** 🟡 MEDIA  
+**Estado:** `[ ]`  
 **Fase:** 6  
-**Condición:** Activar si encuesta P16 responde A/B/C/E mayoritariamente
+**Activado por:** P16-E (el usuario define sus propias metas — NO metas predefinidas)
 
 **Descripción:**  
-Implementar objetivos semanales de aprendizaje con widget en el panel derecho.
+Implementar objetivos semanales de aprendizaje configurables por el usuario.
 
-**Si P16-E (configurable):** Añadir campo `weeklyGoalMinutes Int?` en settings de usuario.  
-**Si P16-A (tiempo):** Meta fija en horas + progreso de la semana actual.
+**Arquitectura (P16-E):**  
+El usuario define su propia meta semanal (por defecto: 5 horas/semana). El campo `weeklyGoalMinutes Int?` se añade al modelo `User` (o tabla separada de preferencias).
+
+**Cambios requeridos:**
+1. Añadir `weeklyGoalMinutes Int? @map("weekly_goal_minutes")` al model `User` en schema Prisma
+2. SQL: `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_goal_minutes INTEGER DEFAULT 300;`
+3. Nuevo procedure: `trpc.user.updateLearningGoal` (o en settings existentes)
+4. Widget en panel derecho: barra de progreso semana actual vs meta configurada
+5. Botón "Editar meta" que abre un input inline para cambiar el valor
+
+**Cálculo de progreso semanal:**  
+Suma de `currentUnits` actualizados esta semana (lunes-domingo) para recursos tipo `minutes`. Dividir entre 60 para convertir a horas.
+
+**Display:**
+```
+Esta semana: 3h 20m  ████████░░  Meta: 5h  [Editar meta]
+```
 
 **Validaciones:**
-- [ ] Widget muestra progreso vs meta semanal
-- [ ] Se reinicia automáticamente cada lunes
-- [ ] Si es configurable, la meta se guarda por usuario
+- [ ] Widget muestra progreso vs meta del lunes al domingo actual
+- [ ] La meta se guarda por usuario y persiste entre sesiones
+- [ ] El progreso se reinicia automáticamente cada lunes
+- [ ] Editar meta actualiza la barra en tiempo real
 
 **Dependencias:** TASK-L011  
+**Archivos afectados:**
+- `src/prisma/schema.prisma` (campo en `User`)
+- `src/server/trpc/routers/learning-resources.ts` (incluir en `stats`)
+- `src/app/aprendizaje/page.tsx` (widget en panel derecho)  
 
 ---
 
 ### TASK-L015
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[?]`  
+**Estado:** `[ ]` *(parcial — email + alerta inactividad SÍ, push NO)*  
 **Fase:** 6  
-**Condición:** Activar si encuesta P17 incluye A o C mayoritariamente
+**Activado por:** P17-C (email semanal ✅) + P17-E (alerta inactividad ✅) — P17-A (push) ❌ NO implementar
 
 **Descripción:**  
-Implementar resumen semanal por email (si P17-C) o notificaciones push (si P17-A).
+Implementar resumen semanal por email y alerta de inactividad. Las notificaciones push quedan fuera de scope.
 
-**Si solo P17-B (visual):** Esta tarea NO se implementa — los indicadores visuales ya están cubiertos en TASK-L007 y TASK-L011.
+**Scope confirmado:**
+- ✅ **Email semanal** (P17-C): Resumen cada lunes con recursos completados la semana anterior, reviews pendientes y progreso semanal vs meta. Integración con Resend via Supabase Edge Function.
+- ✅ **Alerta de inactividad** (P17-E): Si el usuario no tiene ningún review en 7 días → email con "No has revisado ningún recurso en una semana. Tu próximo review pendiente es: [recurso]".
+- ❌ **Push notifications** (P17-A): NO implementar — requiere service worker + FCM, complejidad innecesaria dado que P17-A no fue la respuesta principal.
 
-**Nota:** Notificaciones push requieren service worker + FCM. Email requiere integración con Resend. Evaluar scope real después de encuesta.
+**Implementación mínima (email):**
+1. Supabase Edge Function `weekly-learning-summary` disparada por `pg_cron` cada lunes 9:00 AM
+2. Query: usuarios con ≥1 recurso en los últimos 30 días
+3. Para cada usuario: calcular stats de la semana anterior
+4. Enviar via Resend con plantilla HTML simple
 
-**Dependencias:** TASK-L011, TASK-L012  
+**Validaciones:**
+- [ ] Edge Function desplegada y testeable manualmente
+- [ ] El email incluye: recursos completados, reviews pendientes, progreso semanal
+- [ ] La alerta de inactividad se dispara solo si no hay reviews en los últimos 7 días
+- [ ] El usuario puede desactivar los emails desde sus preferencias
+
+**Dependencias:** TASK-L011, TASK-L012, TASK-L014  
+**Archivos afectados:**
+- Nueva Edge Function en Supabase
+- `src/prisma/schema.prisma` (campo `emailNotifications Boolean @default(true)` en User)  
+
+---
+
+---
+
+### TASK-L016
+**Prioridad:** 🟠 ALTA  
+**Estado:** `[ ]`  
+**Fase:** 5 — Conexión Aprendizaje↔Trading  
+**Activado por:** P13-A ("Setup 72% WR desde que estudiaste X" — killer feature) + P18 (aprendizaje no separado del trading real)
+
+**Descripción:**  
+Calcular y mostrar el winrate de cada setup vinculado DESDE que el usuario completó el recurso asociado. Es la métrica que cierra el loop entre aprendizaje y resultados reales.
+
+**El dato objetivo:**
+```
+"El Doble Techo tiene 72% WR (18/25 trades) desde que completaste
+ 'ICT Liquidity Sweeps' el 15 mar 2026"
+```
+
+**Requiere:**
+- `learning_resources.completedAt` (ya incluido en TASK-L003 — se puebla cuando `status` → COMPLETED)
+- La relación many-to-many `LearningResource ↔ Setup` de TASK-L013
+- Acceso a `trades` de ese setup filtrados por `trade.date > completedAt`
+
+**Nuevo procedimiento:**
+```typescript
+learningResources.setupImpact: protectedProcedure
+  .input(z.string().uuid())  // resourceId
+  .query(async ({ ctx, input }) => {
+    const resource = await ctx.prisma.learningResource.findUniqueOrThrow({
+      where: { id: input, userId: ctx.userId },
+      select: { completedAt: true, linkedSetups: { select: { id: true, name: true } } },
+    })
+    if (!resource.completedAt) return []
+
+    return Promise.all(
+      resource.linkedSetups.map(async (setup) => {
+        const trades = await ctx.prisma.trade.findMany({
+          where: {
+            userId: ctx.userId,
+            setupId: setup.id,
+            date: { gte: resource.completedAt! },
+          },
+          select: { outcome: true },
+        })
+        const wins = trades.filter(t => t.outcome === 'WIN').length
+        return {
+          setupId: setup.id,
+          setupName: setup.name,
+          totalTrades: trades.length,
+          wins,
+          winRate: trades.length > 0 ? Math.round((wins / trades.length) * 100) : null,
+          completedAt: resource.completedAt,
+        }
+      })
+    )
+  })
+```
+
+**Display:**  
+Panel inferior del detalle de recurso (o tooltip en hover del chip de setup vinculado):
+```
+📊 Impacto en trading
+Doble Techo  72% WR (18/25) desde 15 mar 2026
+ICT OB        65% WR (13/20) desde 15 mar 2026
+```
+
+Si `completedAt` es null: "Completa este recurso para empezar a medir su impacto."  
+Si `trades.length < 5`: "Pocos datos — necesitas al menos 5 trades para estadística confiable."
+
+**Validaciones:**
+- [ ] Recurso sin `completedAt` → mensaje "Completa el recurso primero"
+- [ ] Recurso completado con setup vinculado y ≥1 trade posterior → WR correcto
+- [ ] Trades anteriores a `completedAt` no se cuentan
+- [ ] Muestra aviso de "pocos datos" si `totalTrades < 5`
+
+**Dependencias:** TASK-L003 (`completedAt`), TASK-L013 (relación many-to-many)  
+**Archivos afectados:**
+- `src/server/trpc/routers/learning-resources.ts` (procedure `setupImpact`)
+- `src/app/aprendizaje/page.tsx` (panel de detalle de recurso)
+- `src/components/aprendizaje/resource-card.tsx` (chips de setups vinculados)
 
 ---
 
 ## Resumen de Prioridades
 
+> **Encuesta completada — todos los condicionales resueltos.**
+
 | Prioridad | Tasks |
 |-----------|-------|
 | 🔴 CRÍTICA | TASK-L001, TASK-L002, TASK-L003, TASK-L005 |
-| 🟠 ALTA | TASK-L004, TASK-L006, TASK-L007, TASK-L008, TASK-L009, TASK-L011 |
-| 🟡 MEDIA | TASK-L010, TASK-L012, TASK-L013 |
-| 🟢 BAJA | TASK-L014, TASK-L015 |
+| 🟠 ALTA | TASK-L004, TASK-L006, TASK-L007, TASK-L008, TASK-L009, TASK-L011, TASK-L013, TASK-L016 |
+| 🟡 MEDIA | TASK-L010, TASK-L012, TASK-L014 |
+| 🟢 BAJA | TASK-L015 |
 
 ## Orden de Ejecución Recomendado
 
 ```
-Sprint 1 (sin encuesta — bugs críticos + arquitectura):
+Sprint 1 — Bugs críticos + arquitectura:
   TASK-L003 → TASK-L005 → TASK-L001 → TASK-L002 → TASK-L004
 
-Sprint 2 (sin encuesta — core UX):
+Sprint 2 — Core UX + progreso real:
   TASK-L006 → TASK-L007 → TASK-L008 → TASK-L011
 
-Sprint 3 (post-encuesta — spaced repetition):
-  TASK-L009 → TASK-L010 → TASK-L012  [si P9 A/B]
+Sprint 3 — Spaced repetition (ACTIVADO P9-B):
+  TASK-L009 → TASK-L010 → TASK-L012
 
-Sprint 4 (post-encuesta — conexiones y gamificación):
-  TASK-L013  [si P12 A]
-  TASK-L014  [si P16 A/B/C/E]
-  TASK-L015  [si P17 A/C]
+Sprint 4 — Conexión aprendizaje↔trading (ACTIVADO P12-A + P13-A):
+  TASK-L013 → TASK-L016
+
+Sprint 5 — Gamificación (ACTIVADO P16-E + P17-C):
+  TASK-L014 → TASK-L015
 ```
 
 ---

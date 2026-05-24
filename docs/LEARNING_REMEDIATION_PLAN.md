@@ -1,6 +1,7 @@
 # LEARNING REMEDIATION PLAN — Sección Aprendizaje
 
 > **Generado:** 2026-05-24  
+> **Actualizado con encuesta:** 2026-05-24 — 18 respuestas analizadas, todos los condicionales resueltos  
 > **Fuente:** Auditoría técnica de `src/app/aprendizaje/page.tsx`, `src/components/aprendizaje/`, `src/server/trpc/routers/learning-resources.ts`, schema Prisma, y análisis UX/producto  
 > **Branch:** `claude/epic-darwin-1XZTX`
 
@@ -8,22 +9,33 @@
 
 ## Índice de Fases
 
-| # | Fase | Prioridad | Tipo | Bloquea encuesta |
+| # | Fase | Prioridad | Tipo | Estado encuesta |
 |---|------|-----------|------|-----------------|
-| 0 | [Correcciones Críticas](#fase-0--correcciones-críticas) | 🔴 CRÍTICA | Bug fixes + CRUD básico | No |
-| 1 | [Arquitectura Base](#fase-1--arquitectura-base) | 🔴 ALTA | Schema + API | No |
-| 2 | [Funcionalidades Core](#fase-2--funcionalidades-core) | 🟠 ALTA | Progreso real + Status | No |
-| 3 | [Sistema de Review](#fase-3--sistema-de-review) | 🟠 MEDIA | Spaced repetition | **Sí — depende P9/P11** |
-| 4 | [Panel Derecho Real](#fase-4--panel-derecho-real) | 🟡 MEDIA | Stats + Analytics | Parcial — depende P6 |
-| 5 | [Conexión Aprendizaje↔Trading](#fase-5--conexión-aprendizajetrading) | 🟡 MEDIA | Vinculación recurso↔setup | **Sí — depende P12/P14** |
-| 6 | [Gamificación](#fase-6--gamificación) | 🟢 BAJA | Streaks + Goals | **Sí — depende P15/P16/P17** |
+| 0 | [Correcciones Críticas](#fase-0--correcciones-críticas) | 🔴 CRÍTICA | Bug fixes + CRUD básico | ✅ No depende |
+| 1 | [Arquitectura Base](#fase-1--arquitectura-base) | 🔴 ALTA | Schema + API | ✅ No depende |
+| 2 | [Funcionalidades Core](#fase-2--funcionalidades-core) | 🟠 ALTA | Progreso real + Status | ✅ No depende |
+| 3 | [Sistema de Review](#fase-3--sistema-de-review) | 🟠 MEDIA | Spaced repetition | ✅ ACTIVADO (P9-B, P11-D) |
+| 4 | [Panel Derecho Real](#fase-4--panel-derecho-real) | 🟡 MEDIA | Stats + Analytics | ✅ ACTIVADO (P6-A, P15-E) |
+| 5 | [Conexión Aprendizaje↔Trading](#fase-5--conexión-aprendizajetrading) | 🟠 ALTA | Vinculación + Impacto WR | ✅ ACTIVADO (P12-A, P13-A) |
+| 6 | [Gamificación](#fase-6--gamificación) | 🟢 BAJA | Streaks + Goals + Email | ✅ ACTIVADO parcial (P15-E, P16-E, P17-C) |
 
 ---
 
 ## Estado de encuesta
 
-> La encuesta UX/Product Discovery debe completarse antes de iniciar Fases 3, 5 y 6.  
-> Las Fases 0, 1 y 2 pueden ejecutarse en paralelo con la distribución de la encuesta.
+> **✅ ENCUESTA COMPLETADA — 2026-05-24** (18 respuestas recibidas y analizadas)  
+>  
+> Decisiones principales:
+> - **P6-A** → tracking de horas confirmado (Fase 4 Sección 3 ACTIVADA)
+> - **P7-B** → DRILL tracking por sesiones + score promedio (`avgScore` campo nuevo en schema)
+> - **P9-B** → spaced repetition con reminder visual ACTIVADO
+> - **P11-D** → intervalo configurable POR RECURSO (no intervalos fijos globales 1/7/30/90)
+> - **P12-A** → vinculación recurso↔setup ACTIVADA, prioridad 🟠 ALTA
+> - **P13-A** → "Setup WR desde que estudiaste X" es el killer feature → nueva TASK-L016
+> - **P15-E** → racha basada solo en reviews completados (no en logins)
+> - **P16-E** → metas semanales configurables por el usuario (no predefinidas)
+> - **P17-C + E** → email semanal + alerta inactividad ACTIVADOS; push (P17-A) ❌ NO implementar
+> - **P18 (abierta)** → "El aprendizaje no debería estar separado del trading real" — refuerza P12+P13
 
 ---
 
@@ -152,10 +164,12 @@ model LearningResource {
   progressType    String?   // 'manual' | 'pages' | 'minutes' | 'sessions'
   totalUnits      Int?      // páginas totales | minutos totales | sesiones objetivo
   currentUnits    Int?      // páginas leídas | minutos vistos | sesiones completadas
+  avgScore        Decimal?  @map("avg_score")   // P7-B: score promedio sesiones DRILL
   nextReviewAt    DateTime? @db.Date
-  reviewInterval  Int?      // días hasta próximo review: 1 | 7 | 30 | 90
+  reviewInterval  Int?      // P11-D: días hasta próximo review, configurable por recurso
   isFavorite      Boolean   @default(false) @map("is_favorite")
   rating          Int?      // última valoración 1-5 (del review más reciente)
+  completedAt     DateTime? @map("completed_at") // cuándo se marcó COMPLETED — para TASK-L016
 
   reviews         ResourceReview[]
 
@@ -301,55 +315,44 @@ ABANDONED   → PENDING      (restaurar desde archivo)
 ## FASE 3 — Sistema de Review (Spaced Repetition)
 
 **Objetivo:** Implementar el ciclo de revisión inteligente.  
-⚠️ **Requiere validación de encuesta: preguntas P8, P9, P10, P11.**
+✅ **ACTIVADO — P9-B (reminder visual) + P11-D (intervalo configurable por recurso)**
 
 ---
 
-### Decisión condicional de encuesta:
+### Decisiones de encuesta aplicadas:
 
-| Resultado P9 | Acción |
-|--------------|--------|
-| Mayoría A/B | Implementar spaced repetition completo con intervalos automáticos |
-| Mayoría C/D | Solo mostrar "última vez revisado hace X días" — sin intervalos automáticos |
+| Pregunta | Respuesta | Acción aplicada |
+|----------|-----------|-----------------|
+| P9 | B (probablemente con reminder visual) | ✅ Implementar spaced repetition completo |
+| P10 | B (anota qué cambió en trading) | ✅ El campo `howToApply` en reviews es relevante |
+| P11 | D (quiere intervalo por recurso, no fijo global) | ✅ Usar `resource.reviewInterval` — NO INTERVALS map |
 
-| Resultado P11 | Acción |
-|---------------|--------|
-| A (intervalos fijos) | `nextReviewAt = hoy + interval[reviewType]` (1/7/30/90 días) |
-| D (por recurso) | Campo `reviewInterval` configurable en el editor del recurso |
-
----
-
-### Problema 3.1 — Lógica de cálculo de próximo review
-
-**Si encuesta valida spaced repetition:**
+**Arquitectura P11-D (cambio importante):**  
+Descartar el sistema `day1/week1/month1/month3` con intervalos fijos globales. En su lugar, cada recurso tiene un campo `reviewInterval Int` (días) que el usuario configura. La función de cálculo usa ese valor:
 
 ```typescript
-const REVIEW_INTERVALS = {
-  day1:   1,
-  week1:  7,
-  month1: 30,
-  month3: 90,
-} as const
-
-function calcNextReviewAt(reviewType: string, masteryLevel: number): Date {
+function calcNextReviewAt(reviewInterval: number, masteryLevel: number): Date {
   const today = new Date()
   let days: number
 
   if (masteryLevel <= 2) {
-    // No dominado → repetir más pronto
-    days = reviewType === 'day1' ? 1 : REVIEW_INTERVALS[reviewType] / 2
+    days = Math.max(1, Math.ceil(reviewInterval / 2))  // repetir antes
   } else if (masteryLevel >= 4) {
-    // Bien dominado → avanzar al siguiente intervalo
-    const next = { day1: 'week1', week1: 'month1', month1: 'month3', month3: 'month3' }
-    days = REVIEW_INTERVALS[next[reviewType] ?? 'month3']
+    days = Math.round(reviewInterval * 1.5)             // espaciar más
   } else {
-    days = REVIEW_INTERVALS[reviewType] ?? 7
+    days = reviewInterval                               // intervalo normal
   }
 
   today.setDate(today.getDate() + days)
   return today
 }
 ```
+
+---
+
+### Problema 3.1 — Lógica de cálculo de próximo review
+
+**Estado: ACTIVADO** — ver TASK-L009 para implementación detallada.
 
 ---
 
@@ -381,45 +384,45 @@ Actualizar de lista plana a lista con countdown:
 📅 Esta semana: 2 más
 ```
 
-### Sección 3: Estadísticas de tiempo (condicional — depende P6)
+### Sección 3: Estadísticas de tiempo (✅ ACTIVADO — P6-A)
 
-Si P6 responde A/B mayoritariamente:
+P6-A confirmó que el usuario definitivamente usará tracking de horas. Implementar:
 ```
-Esta semana: 3h 20m  ████░░░  Meta: 5h
+Esta semana: 3h 20m  ████░░░  Meta: 5h  [Editar meta]
 ```
-Cálculo: suma de `(currentUnits actualizado esta semana)` para recursos tipo `minutes`.
+Cálculo: suma de `currentUnits` actualizados esta semana para recursos tipo `minutes` / 60.
 
-### Sección 4: Racha real (condicional — depende P15)
+### Sección 4: Racha real (✅ ACTIVADO — P15-E)
 
-Si P15 responde A/B/E mayoritariamente:  
-Calcular racha real: días consecutivos en que el usuario completó al menos 1 review o actualizó progreso.
+P15-E: solo racha de calidad. Un día cuenta ÚNICAMENTE si el usuario creó al menos 1 review en `resource_reviews`. Actualizar progreso (slider) NO cuenta. Calcular días consecutivos con reviews hacia atrás desde hoy.
 
 ---
 
 ## FASE 5 — Conexión Aprendizaje↔Trading
 
-**Objetivo:** Vincular recursos con setups del playbook.  
-⚠️ **Requiere validación de encuesta: preguntas P12, P13, P14.**
+**Objetivo:** Vincular recursos con setups del playbook y medir su impacto real en resultados.  
+✅ **ACTIVADO — P12-A + P13-A + P18. Elevado a prioridad 🟠 ALTA.**
 
 ---
 
-### Decisión condicional de encuesta:
+### Decisiones de encuesta aplicadas:
 
-| Resultado P12 | Acción |
-|---------------|--------|
-| Mayoría A | Sprint completo: relación many-to-many + UI de vinculación |
-| Mayoría B/C | Feature diferida — no en roadmap actual |
+| Pregunta | Respuesta | Acción aplicada |
+|----------|-----------|-----------------|
+| P12 | A ("muy útil, contexto de origen del setup") | ✅ Sprint completo: many-to-many + UI |
+| P13 | A ("Setup 72% WR desde que estudiaste X") | ✅ TASK-L016 nueva — killer feature |
+| P14 | B (vagamente sabe WR pero no documentado) | ✅ La herramienta cubre exactamente esta necesidad |
+| P18 | "El aprendizaje no debería estar separado del trading" | ✅ Refuerza P12+P13 |
 
 ---
 
-### Problema 5.1 — Sin relación many-to-many recurso↔setup
-
-**Si encuesta valida:**
+### Problema 5.1 — Sin relación many-to-many recurso↔setup (TASK-L013)
 
 ```prisma
 // Relación implícita many-to-many en Prisma
 model LearningResource {
   linkedSetups Setup[] @relation("ResourceSetups")
+  completedAt  DateTime? @map("completed_at")  // para métricas de impacto
 }
 
 model Setup {
@@ -427,40 +430,41 @@ model Setup {
 }
 ```
 
-**Nuevo procedimiento:**
+**Procedimientos:**
 ```typescript
-learningResources.linkSetup: { input: { resourceId, setupId } }
+learningResources.linkSetup:   { input: { resourceId, setupId } }
 learningResources.unlinkSetup: { input: { resourceId, setupId } }
+learningResources.listBySetup: { input: { setupId } }
 ```
+
+### Problema 5.2 — Sin métricas de impacto en trading (TASK-L016 — killer feature)
+
+Nuevo procedimiento `learningResources.setupImpact` que calcula el WR de cada setup vinculado filtrando solo los trades ejecutados DESPUÉS de que el usuario completó el recurso (`completedAt`). Ver TASK-L016 para implementación detallada.
+
+**Resultado esperado:**  
+"El Doble Techo tiene 72% WR (18/25 trades) desde que completaste 'ICT Liquidity Sweeps' el 15 mar 2026"
 
 ---
 
 ## FASE 6 — Gamificación
 
-**Objetivo:** Streaks, objetivos semanales, notificaciones.  
-⚠️ **Requiere validación de encuesta: preguntas P15, P16, P17.**
+**Objetivo:** Streaks de calidad, objetivos configurables, email semanal.  
+✅ **ACTIVADO PARCIAL — P15-E, P16-E, P17-C+E. Push (P17-A) descartado.**
 
 ---
 
-### Decisión condicional de encuesta:
+### Decisiones de encuesta aplicadas:
 
-| Resultado P15 | Scope de gamificación |
-|---------------|----------------------|
-| A/B mayoritario | Streak completo con cálculo diario y display prominente |
-| E (solo calidad) | Streak basado en reviews completados, no en logins |
-| D (ansiedad) | Sin streak, o streak oculto por defecto |
+| Pregunta | Respuesta | Acción aplicada |
+|----------|-----------|-----------------|
+| P15 | E (solo calidad) | ✅ Racha basada en reviews completados únicamente. Sin racha por login. |
+| P16 | E (configurable) | ✅ Campo `weeklyGoalMinutes` en User settings. El usuario define su propia meta. |
+| P17 | B + C + E | ✅ Email semanal (P17-C) + Alerta inactividad (P17-E). Push (P17-A) ❌ descartado. |
 
-| Resultado P16 | Scope de objetivos |
-|---------------|-------------------|
-| A/B/C | Implementar widget de meta semanal con barra de progreso |
-| D | No implementar |
-| E | Campo configurable en settings |
-
-| Resultado P17 | Infraestructura |
-|---------------|----------------|
-| Solo B (visual) | Solo indicadores en UI — sin backend adicional |
-| A (push) | Requiere service worker + FCM o similar |
-| C (email) | Integración con Resend — nueva función de edge |
+**Scope final:**
+- `TASK-L012`: Racha de calidad — solo `resource_reviews.created_at`, días consecutivos
+- `TASK-L014`: Meta semanal configurable (`weeklyGoalMinutes`), default 300 min (5h)  
+- `TASK-L015`: Email semanal vía Resend + alerta si sin reviews en 7 días
 
 ---
 
