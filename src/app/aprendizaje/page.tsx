@@ -116,8 +116,12 @@ function RevisarRecursoModal({
   const [form, setForm] = useState<RevisarState>(emptyRevisarState())
   const utils = trpc.useUtils()
 
-  const toggle = trpc.learningResources.toggleMarkedForReview.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+  const createReview = trpc.learningResources.createReview.useMutation({
+    onSuccess: () => {
+      utils.learningResources.list.invalidate()
+      onOpenChange(false)
+      setForm(emptyRevisarState())
+    },
   })
 
   if (!resource) return null
@@ -129,11 +133,15 @@ function RevisarRecursoModal({
   }
 
   function handleSave() {
-    if (form.markDone && resource != null && resource.markedForReview) {
-      toggle.mutate(resource.id)
-    }
-    onOpenChange(false)
-    setForm(emptyRevisarState())
+    if (!resource) return
+    createReview.mutate({
+      resourceId:   resource.id,
+      learned:      form.learned,
+      howToApply:   form.howToApply,
+      insights:     form.insights.split("\n").map(s => s.trim()).filter(Boolean),
+      rating:       form.rating,
+      masteryLevel: 3, // TASK-L010 will add the mastery selector
+    })
   }
 
   return (
@@ -308,7 +316,7 @@ function RevisarRecursoModal({
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={!form.learned.trim() || toggle.isPending}
+            disabled={!form.learned.trim() || createReview.isPending}
           >
             <Check size={13} className="mr-1" />
             Guardar revisión

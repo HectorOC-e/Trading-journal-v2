@@ -33,7 +33,7 @@
 
 ### TASK-L001
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 0 — Bug fix
 
 **Descripción:**  
