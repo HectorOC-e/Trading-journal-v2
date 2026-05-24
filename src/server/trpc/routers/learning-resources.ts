@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import type { LearningResource } from "@/lib/generated/prisma/client"
 
 const RESOURCE_TYPES = [
   "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
@@ -17,17 +18,18 @@ const LearningResourceInput = z.object({
   progressPct:     z.number().int().min(0).max(100).optional().nullable(),
 })
 
-function serializeResource(r: {
-  date:      Date | string
-  createdAt: Date | string
-  updatedAt: Date | string
-  [key: string]: unknown
-}) {
+type SerializedResource = Omit<LearningResource, "date" | "createdAt" | "updatedAt"> & {
+  date:      string
+  createdAt: string
+  updatedAt: string
+}
+
+function serializeResource(r: LearningResource): SerializedResource {
   return {
     ...r,
-    date:      r.date      instanceof Date ? r.date.toISOString().slice(0, 10) : (r.date as string),
-    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : (r.createdAt as string),
-    updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt as string),
+    date:      r.date.toISOString().slice(0, 10),
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
   }
 }
 

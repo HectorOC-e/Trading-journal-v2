@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import type { WeeklyReview } from "@/lib/generated/prisma/client"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -17,24 +18,27 @@ const WeeklyReviewInput = z.object({
   status:           z.enum(["draft", "submitted"]).default("draft"),
 })
 
-// Serializes Decimal and DateTime fields to plain JS types for JSON transport
-function serializeReview(r: {
-  netPnl:    { toNumber(): number } | number
-  winRate:   { toNumber(): number } | number
-  weekStart: Date | string
-  weekEnd:   Date | string
-  createdAt: Date | string
-  updatedAt: Date | string
-  [key: string]: unknown
-}) {
+type SerializedReview = Omit<
+  WeeklyReview,
+  "netPnl" | "winRate" | "weekStart" | "weekEnd" | "createdAt" | "updatedAt"
+> & {
+  netPnl:    number
+  winRate:   number
+  weekStart: string
+  weekEnd:   string
+  createdAt: string
+  updatedAt: string
+}
+
+function serializeReview(r: WeeklyReview): SerializedReview {
   return {
     ...r,
-    netPnl:    Number(r.netPnl),
-    winRate:   Number(r.winRate),
-    weekStart: r.weekStart instanceof Date ? r.weekStart.toISOString().slice(0, 10) : (r.weekStart as string),
-    weekEnd:   r.weekEnd   instanceof Date ? r.weekEnd.toISOString().slice(0, 10)   : (r.weekEnd as string),
-    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : (r.createdAt as string),
-    updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt as string),
+    netPnl:    r.netPnl.toNumber(),
+    winRate:   r.winRate.toNumber(),
+    weekStart: r.weekStart.toISOString().slice(0, 10),
+    weekEnd:   r.weekEnd.toISOString().slice(0, 10),
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
   }
 }
 

@@ -129,7 +129,7 @@ function RevisarRecursoModal({
   }
 
   function handleSave() {
-    if (form.markDone && resource.markedForReview) {
+    if (form.markDone && resource != null && resource.markedForReview) {
       toggle.mutate(resource.id)
     }
     onOpenChange(false)
