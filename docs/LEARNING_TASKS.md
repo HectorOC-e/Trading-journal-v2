@@ -430,7 +430,7 @@ El flujo más frecuente es: "terminé de ver más del video, quiero actualizar e
 
 ### TASK-L009
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 3 — Spaced repetition  
 **Activado por:** P9-B (reminder visual) + P11-D (intervalo por recurso — NO intervalos fijos globales)
 
@@ -481,7 +481,7 @@ Añadir campo "Revisar cada X días" (number input, default 7) al formulario de 
 
 ### TASK-L010
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 3  
 **Activado por:** P9-B + P11-D
 

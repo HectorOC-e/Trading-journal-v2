@@ -93,17 +93,41 @@ function emptyForm(): FormState {
 
 // ─── Revisar recurso modal ────────────────────────────────────────────────────
 
+const MASTERY_LABELS: Record<number, string> = {
+  1: "Confundido",
+  2: "Parcial",
+  3: "Entiendo",
+  4: "Fluido",
+  5: "Dominado",
+}
+
+function calcPreviewNextReview(reviewInterval: number | null | undefined, masteryLevel: number): string {
+  const interval = reviewInterval ?? 7
+  let days: number
+  if (masteryLevel <= 2) {
+    days = Math.max(1, Math.ceil(interval / 2))
+  } else if (masteryLevel >= 4) {
+    days = Math.round(interval * 1.5)
+  } else {
+    days = interval
+  }
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+}
+
 interface RevisarState {
-  learned:    string
-  howToApply: string
-  insights:   string
-  rating:     number
-  markDone:   boolean
+  learned:      string
+  howToApply:   string
+  insights:     string
+  rating:       number
+  markDone:     boolean
   linkedReviewId: string
+  masteryLevel: number
 }
 
 function emptyRevisarState(): RevisarState {
-  return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "" }
+  return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "", masteryLevel: 3 }
 }
 
 function RevisarRecursoModal({
@@ -144,7 +168,7 @@ function RevisarRecursoModal({
       howToApply:   form.howToApply,
       insights:     form.insights.split("\n").map(s => s.trim()).filter(Boolean),
       rating:       form.rating,
-      masteryLevel: 3, // TASK-L010 will add the mastery selector
+      masteryLevel: form.masteryLevel,
     })
   }
 
@@ -259,6 +283,33 @@ function RevisarRecursoModal({
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Mastery level selector */}
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">
+              🧩 ¿Qué tan bien lo dominas?
+            </label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((level) => (
+                <button
+                  key={level}
+                  onClick={() => setField("masteryLevel", level)}
+                  className={cn(
+                    "flex-1 h-8 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border",
+                    form.masteryLevel === level
+                      ? "bg-[var(--accent)] text-white border-[var(--accent)]"
+                      : "bg-[var(--panel-2)] text-[var(--ink-2)] border-[var(--line)] hover:border-[var(--accent)]"
+                  )}
+                  title={MASTERY_LABELS[level]}
+                >
+                  {level}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-[var(--ink-3)] mt-1">
+              {MASTERY_LABELS[form.masteryLevel]} · Próximo review: {calcPreviewNextReview(resource.reviewInterval, form.masteryLevel)}
+            </p>
           </div>
 
           {/* Link to review */}
