@@ -274,6 +274,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: true,
     progressPct: 60,
     createdAt: "2026-05-16T00:00:00Z",
+    updatedAt: "2026-05-16T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-2",
@@ -287,6 +290,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: true,
     progressPct: 67,
     createdAt: "2026-05-14T00:00:00Z",
+    updatedAt: "2026-05-14T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-3",
@@ -300,6 +306,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 80,
     createdAt: "2026-05-12T00:00:00Z",
+    updatedAt: "2026-05-12T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: true,
   },
   {
     id: "res-4",
@@ -312,6 +321,9 @@ export const mockResources: LearningResource[] = [
     tags: ["psicologia", "disciplina"],
     markedForReview: true,
     createdAt: "2026-05-10T00:00:00Z",
+    updatedAt: "2026-05-10T00:00:00Z",
+    status: "COMPLETED",
+    isFavorite: false,
   },
   {
     id: "res-5",
@@ -324,6 +336,9 @@ export const mockResources: LearningResource[] = [
     tags: ["FX", "reversal"],
     markedForReview: false,
     createdAt: "2026-05-08T00:00:00Z",
+    updatedAt: "2026-05-08T00:00:00Z",
+    status: "COMPLETED",
+    isFavorite: false,
   },
   {
     id: "res-6",
@@ -337,6 +352,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 80,
     createdAt: "2026-05-05T00:00:00Z",
+    updatedAt: "2026-05-05T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-7",
@@ -350,6 +368,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 50,
     createdAt: "2026-05-03T00:00:00Z",
+    updatedAt: "2026-05-03T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-8",
@@ -362,6 +383,9 @@ export const mockResources: LearningResource[] = [
     tags: ["risk"],
     markedForReview: false,
     createdAt: "2026-05-01T00:00:00Z",
+    updatedAt: "2026-05-01T00:00:00Z",
+    status: "PENDING",
+    isFavorite: false,
   },
 ]
 

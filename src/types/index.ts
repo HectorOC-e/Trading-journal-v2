@@ -80,18 +80,38 @@ export interface Setup {
   createdAt: string
 }
 
+export type ResourceStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "IN_REVIEW"
+  | "MASTERED"
+  | "ABANDONED"
+
 export interface LearningResource {
   id: string
   title: string
   type: ResourceType
   author: string
   source: "Propio" | "Externa" | string
-  date: string          // ISO date
+  date: string
   notes: string
   tags: string[]
   markedForReview: boolean
-  progressPct?: number  // 0-100, undefined if N/A
+  progressPct?: number | null
   createdAt: string
+  updatedAt: string
+  // Fields added in TASK-L003
+  status: ResourceStatus
+  progressType?: string | null
+  totalUnits?: number | null
+  currentUnits?: number | null
+  avgScore?: number | null
+  nextReviewAt?: string | null
+  reviewInterval?: number | null
+  isFavorite: boolean
+  rating?: number | null
+  completedAt?: string | null
 }
 
 export interface Rule {

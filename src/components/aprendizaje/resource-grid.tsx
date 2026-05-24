@@ -5,7 +5,7 @@ import { Search, ChevronDown } from "lucide-react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { ResourceCard } from "@/components/aprendizaje/resource-card"
 import { cn } from "@/lib/utils"
-import type { LearningResource, ResourceType } from "@/types"
+import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
 const CATEGORY_OPTIONS = [
   { value: "TODOS",       label: "Todos" },
@@ -41,12 +41,24 @@ function sortResources(resources: LearningResource[], key: SortKey): LearningRes
 }
 
 interface ResourceGridProps {
-  resources: LearningResource[]
-  className?: string
-  onReview?: (resource: LearningResource) => void
+  resources:          LearningResource[]
+  className?:         string
+  onReview?:          (resource: LearningResource) => void
+  onEdit?:            (resource: LearningResource) => void
+  onDelete?:          (id: string) => void
+  onUpdateStatus?:    (id: string, status: ResourceStatus) => void
+  onToggleFavorite?:  (id: string) => void
 }
 
-export function ResourceGrid({ resources, className, onReview }: ResourceGridProps) {
+export function ResourceGrid({
+  resources,
+  className,
+  onReview,
+  onEdit,
+  onDelete,
+  onUpdateStatus,
+  onToggleFavorite,
+}: ResourceGridProps) {
   const [search, setSearch]         = useState("")
   const [category, setCategory]     = useState("TODOS")
   const [onlyReview, setOnlyReview] = useState(false)
@@ -135,7 +147,15 @@ export function ResourceGrid({ resources, className, onReview }: ResourceGridPro
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((r) => (
-            <ResourceCard key={r.id} resource={r} onReview={onReview} />
+            <ResourceCard
+                key={r.id}
+                resource={r}
+                onReview={onReview}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onUpdateStatus={onUpdateStatus}
+                onToggleFavorite={onToggleFavorite}
+              />
           ))}
         </div>
       )}

@@ -333,6 +333,7 @@ export default function AprendizajePage() {
   const [modalOpen, setModalOpen]             = useState(false)
   const [form, setForm]                       = useState<FormState>(emptyForm())
   const [revisarResource, setRevisarResource] = useState<ResourceFromDB | null>(null)
+  const [editTarget, setEditTarget]           = useState<ResourceFromDB | null>(null)
 
   const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
@@ -347,6 +348,18 @@ export default function AprendizajePage() {
       setModalOpen(false)
       setForm(emptyForm())
     },
+  })
+
+  const deleteResource = trpc.learningResources.delete.useMutation({
+    onSuccess: () => utils.learningResources.list.invalidate(),
+  })
+
+  const updateStatus = trpc.learningResources.updateStatus.useMutation({
+    onSuccess: () => utils.learningResources.list.invalidate(),
+  })
+
+  const toggleFavorite = trpc.learningResources.toggleFavorite.useMutation({
+    onSuccess: () => utils.learningResources.list.invalidate(),
   })
 
   const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])
@@ -415,7 +428,14 @@ export default function AprendizajePage() {
             <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
           </div>
         ) : (
-          <ResourceGrid resources={resources} onReview={(r) => setRevisarResource(r as unknown as ResourceFromDB)} />
+          <ResourceGrid
+              resources={resources}
+              onReview={(r) => setRevisarResource(r as unknown as ResourceFromDB)}
+              onEdit={(r) => setEditTarget(r as unknown as ResourceFromDB)}
+              onDelete={(id) => deleteResource.mutate(id)}
+              onUpdateStatus={(id, status) => updateStatus.mutate({ id, status })}
+              onToggleFavorite={(id) => toggleFavorite.mutate(id)}
+            />
         )}
       </div>
 

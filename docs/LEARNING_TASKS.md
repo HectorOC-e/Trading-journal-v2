@@ -64,7 +64,7 @@ No existe tabla `resource_reviews` en el schema. El modal captura datos correcto
 
 ### TASK-L002
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 0 — Bug fix
 
 **Descripción:**  
