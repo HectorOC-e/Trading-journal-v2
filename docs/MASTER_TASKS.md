@@ -32,7 +32,7 @@
 
 ### TASK-001
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Habilitar Row Level Security (RLS) en la tabla `public.trade_events` en Supabase y crear la política de aislamiento por usuario.
@@ -61,7 +61,7 @@ La tabla `trade_events` tiene `row_level_security = false` confirmado por dos fu
 
 ### TASK-002
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Revocar el permiso EXECUTE del rol `anon` sobre la función `handle_new_user()` en Supabase.
@@ -89,7 +89,7 @@ La función `handle_new_user()` (trigger de Supabase que inserta en `public.user
 
 ### TASK-003
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Fijar el `search_path` de la función `set_updated_at()` en Supabase para prevenir search_path hijacking.
@@ -644,7 +644,7 @@ Corregir el manejo de `rMultiple` en el procedimiento `create` de trades: no gua
 
 ### TASK-020
 **Prioridad:** 🔴 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Crear los 5 índices de FK faltantes en Supabase identificados por el Performance Advisor.
@@ -926,7 +926,7 @@ Consolidar el componente `KpiCard` para usar exclusivamente la implementación e
 
 ### TASK-030
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Corregir los errores de TypeScript en los componentes Recharts del dashboard que causaron 7+ deployments con estado ERROR en Vercel.
@@ -1102,6 +1102,32 @@ Semana 4 (Testing):
 Ongoing (Calidad código):
   TASK-017 → TASK-018 → TASK-026 → TASK-027 → TASK-028 → TASK-029 → TASK-005 → TASK-008
 ```
+
+---
+
+### TASK-034
+**Prioridad:** 🟡 MEDIA  
+**Estado:** `[ ]`
+
+**Descripción técnica:**  
+Crear índice faltante en `account_logs.user_id` — detectado por Performance Advisor durante sesión de remediación Semana 1.
+
+**Problema detectado:**  
+El Performance Advisor de Supabase reportó `account_logs_user_id_fkey` sin índice cobertor después de aplicar TASK-020. Esta FK no estaba en el listado original de 5 índices del audit inicial.
+
+**SQL:**
+```sql
+CREATE INDEX IF NOT EXISTS account_logs_user_id_idx ON public.account_logs(user_id);
+```
+
+**Dependencias:** Ninguna.
+
+**Validaciones:**
+- [ ] Índice `account_logs_user_id_idx` existe en Supabase
+- [ ] Performance Advisor ya no reporta `account_logs_user_id_fkey` como unindexed
+
+**Archivos afectados:**
+- Supabase: tabla `public.account_logs`
 
 ---
 
