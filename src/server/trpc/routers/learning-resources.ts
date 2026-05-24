@@ -2,7 +2,7 @@ import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 
 const RESOURCE_TYPES = [
-  "LIBRO", "VIDEO", "CURSO", "ARTÍCULO", "PODCAST", "WEBINAR", "OTRO",
+  "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
 ] as const
 
 const LearningResourceInput = z.object({
@@ -17,14 +17,28 @@ const LearningResourceInput = z.object({
   progressPct:     z.number().int().min(0).max(100).optional().nullable(),
 })
 
+function serializeResource(r: {
+  date:      Date | string
+  createdAt: Date | string
+  updatedAt: Date | string
+  [key: string]: unknown
+}) {
+  return {
+    ...r,
+    date:      r.date      instanceof Date ? r.date.toISOString().slice(0, 10) : (r.date as string),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : (r.createdAt as string),
+    updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt as string),
+  }
+}
+
 export const learningResourcesRouter = router({
   list: protectedProcedure
     .input(z.object({
-      type:           z.enum(RESOURCE_TYPES).optional(),
+      type:            z.enum(RESOURCE_TYPES).optional(),
       markedForReview: z.boolean().optional(),
     }).optional())
-    .query(({ ctx, input }) =>
-      ctx.prisma.learningResource.findMany({
+    .query(async ({ ctx, input }) => {
+      const resources = await ctx.prisma.learningResource.findMany({
         where: {
           userId: ctx.userId,
           ...(input?.type            ? { type: input.type }                         : {}),
@@ -34,7 +48,8 @@ export const learningResourcesRouter = router({
         },
         orderBy: { date: "desc" },
       })
-    ),
+      return resources.map(serializeResource)
+    }),
 
   create: protectedProcedure
     .input(LearningResourceInput)

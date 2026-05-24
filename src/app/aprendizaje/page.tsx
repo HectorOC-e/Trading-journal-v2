@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench, Star, Check } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
@@ -13,9 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { mockResources, mockReviews } from "@/mock-data"
+import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
 import type { LearningResource, ResourceType } from "@/types"
+import type { RouterOutputs } from "@/server/trpc/root"
+
+type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
+type ReviewFromDB   = RouterOutputs["weeklyReviews"]["list"][number]
 
 // ─── Type helpers ────────────────────────────────────────────────────────────
 
@@ -55,31 +59,6 @@ const ALL_TYPES: ResourceType[] = [
 
 const PROGRESS_TYPES: ResourceType[] = ["LIBRO", "VIDEO", "PODCAST", "DRILL"]
 
-// ─── Streak mock data ─────────────────────────────────────────────────────────
-
-const STREAK_DAYS = 7
-const LAST_14: boolean[] = [
-  false, true, false, true, true, false, true,
-  true,  true, false, true, true, true,  true,
-]
-
-// ─── Stats derived from mock data ─────────────────────────────────────────────
-
-const reviewPending = mockResources.filter((r) => r.markedForReview)
-const completed     = mockResources.filter((r) => (r.progressPct ?? 0) >= 100)
-const inProgress    = mockResources.filter(
-  (r) => r.progressPct !== undefined && r.progressPct < 100
-)
-const noProgress    = mockResources.filter(
-  (r) => r.progressPct === undefined
-)
-const overallPct = mockResources.length
-  ? Math.round(
-      mockResources.reduce((sum, r) => sum + (r.progressPct ?? 0), 0) /
-        mockResources.length
-    )
-  : 0
-
 // ─── Empty form state ─────────────────────────────────────────────────────────
 
 interface FormState {
@@ -110,16 +89,6 @@ function emptyForm(): FormState {
 
 // ─── Revisar recurso modal ────────────────────────────────────────────────────
 
-const TYPE_COLORS_MAP: Record<ResourceType, string> = {
-  LIBRO:       "#f59e0b",
-  VIDEO:       "#ef4444",
-  NOTA:        "#4f6ef7",
-  BACKTEST:    "#22c55e",
-  PODCAST:     "#a855f7",
-  DRILL:       "#14b8a6",
-  HERRAMIENTA: "#6b7280",
-}
-
 interface RevisarState {
   learned:    string
   howToApply: string
@@ -135,25 +104,34 @@ function emptyRevisarState(): RevisarState {
 
 function RevisarRecursoModal({
   resource,
+  reviews,
   open,
   onOpenChange,
 }: {
-  resource: LearningResource | null
-  open: boolean
+  resource: ResourceFromDB | null
+  reviews:  ReviewFromDB[]
+  open:     boolean
   onOpenChange: (v: boolean) => void
 }) {
   const [form, setForm] = useState<RevisarState>(emptyRevisarState())
+  const utils = trpc.useUtils()
+
+  const toggle = trpc.learningResources.toggleMarkedForReview.useMutation({
+    onSuccess: () => utils.learningResources.list.invalidate(),
+  })
 
   if (!resource) return null
 
-  const accentColor = TYPE_COLORS_MAP[resource.type]
+  const accentColor = TYPE_COLORS[resource.type as ResourceType] ?? "#4f6ef7"
 
   function setField<K extends keyof RevisarState>(key: K, value: RevisarState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
   function handleSave() {
-    // In a real app: persist review notes, update resource.markedForReview = false if markDone
+    if (form.markDone && resource.markedForReview) {
+      toggle.mutate(resource.id)
+    }
     onOpenChange(false)
     setForm(emptyRevisarState())
   }
@@ -176,7 +154,7 @@ function RevisarRecursoModal({
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
-              <CategoryChip type={resource.type} />
+              <CategoryChip type={resource.type as ResourceType} />
             </div>
             <p className="font-semibold text-sm text-[var(--ink)] leading-snug mt-1">
               {resource.title}
@@ -184,7 +162,7 @@ function RevisarRecursoModal({
             <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
               {resource.author} · {resource.date}
             </p>
-            {resource.progressPct !== undefined && (
+            {resource.progressPct != null && (
               <div className="mt-2">
                 <div className="h-1 rounded-full bg-[var(--line)] overflow-hidden">
                   <div
@@ -272,7 +250,7 @@ function RevisarRecursoModal({
           </div>
 
           {/* Link to review */}
-          {mockReviews.length > 0 && (
+          {reviews.length > 0 && (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
                 🔗 Vincular a review semanal (opcional)
@@ -283,7 +261,7 @@ function RevisarRecursoModal({
                 className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
               >
                 <option value="">— Sin vincular —</option>
-                {mockReviews.map((r) => (
+                {reviews.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.weekLabel} · {r.weekRange}
                   </option>
@@ -330,7 +308,7 @@ function RevisarRecursoModal({
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={!form.learned.trim()}
+            disabled={!form.learned.trim() || toggle.isPending}
           >
             <Check size={13} className="mr-1" />
             Guardar revisión
@@ -344,9 +322,35 @@ function RevisarRecursoModal({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AprendizajePage() {
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm]           = useState<FormState>(emptyForm())
-  const [revisarResource, setRevisarResource] = useState<LearningResource | null>(null)
+  const [modalOpen, setModalOpen]             = useState(false)
+  const [form, setForm]                       = useState<FormState>(emptyForm())
+  const [revisarResource, setRevisarResource] = useState<ResourceFromDB | null>(null)
+
+  const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
+  const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
+  const utils = trpc.useUtils()
+
+  // Safe cast: router validates type against the same ResourceType enum values
+  const resources = rawResources as unknown as LearningResource[]
+
+  const createResource = trpc.learningResources.create.useMutation({
+    onSuccess: () => {
+      utils.learningResources.list.invalidate()
+      setModalOpen(false)
+      setForm(emptyForm())
+    },
+  })
+
+  const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])
+  const completed     = useMemo(() => resources.filter((r) => (r.progressPct ?? 0) >= 100), [resources])
+  const inProgress    = useMemo(() => resources.filter((r) => r.progressPct != null && r.progressPct < 100), [resources])
+  const noProgress    = useMemo(() => resources.filter((r) => r.progressPct == null), [resources])
+  const overallPct    = useMemo(() =>
+    resources.length
+      ? Math.round(resources.reduce((sum, r) => sum + (r.progressPct ?? 0), 0) / resources.length)
+      : 0,
+    [resources]
+  )
 
   const showProgress = PROGRESS_TYPES.includes(form.type)
 
@@ -360,8 +364,18 @@ export default function AprendizajePage() {
   }
 
   function handleSave() {
-    // In a real app: persist form data
-    setModalOpen(false)
+    if (!form.title.trim()) return
+    createResource.mutate({
+      title:           form.title,
+      type:            form.type,
+      author:          form.author,
+      source:          form.source,
+      date:            form.date,
+      notes:           form.notes,
+      tags:            form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      progressPct:     showProgress ? form.progressPct : undefined,
+      markedForReview: form.markedForReview,
+    })
   }
 
   return (
@@ -377,7 +391,7 @@ export default function AprendizajePage() {
         {/* TopBar */}
         <TopBar
           title="Aprendizaje"
-          subtitle={`${mockResources.length} recursos · ${reviewPending.length} marcados para review`}
+          subtitle={`${resources.length} recursos · ${reviewPending.length} marcados para review`}
           actions={[
             {
               label:   "Añadir recurso",
@@ -388,33 +402,36 @@ export default function AprendizajePage() {
           ]}
         />
 
-        {/* Resource grid */}
-        <ResourceGrid resources={mockResources} onReview={(r) => setRevisarResource(r)} />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
+          </div>
+        ) : (
+          <ResourceGrid resources={resources} onReview={(r) => setRevisarResource(r as unknown as ResourceFromDB)} />
+        )}
       </div>
 
       {/* ── Right rail ───────────────────────────────────────────────────── */}
       <aside
         className="rail-aside"
         style={{
-          width:       340,
-          flexShrink:  0,
-          borderLeft:  "1px solid var(--line)",
-          padding:     "24px 20px",
-          display:     "flex",
+          width:         340,
+          flexShrink:    0,
+          borderLeft:    "1px solid var(--line)",
+          padding:       "24px 20px",
+          display:       "flex",
           flexDirection: "column",
-          gap:         24,
-          overflowY:   "auto",
-          background:  "var(--panel)",
-          position:    "sticky",
-          top:         0,
-          height:      "100vh",
+          gap:           24,
+          overflowY:     "auto",
+          background:    "var(--panel)",
+          position:      "sticky",
+          top:           0,
+          height:        "100vh",
         }}
       >
         {/* 1. Progreso general */}
         <section>
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3"
-          >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
             Progreso general
           </p>
 
@@ -422,7 +439,7 @@ export default function AprendizajePage() {
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[11px] text-[var(--ink-2)]">
-                {completed.length} / {mockResources.length} completados
+                {completed.length} / {resources.length} completados
               </span>
               <span className="text-[11px] font-mono font-semibold text-[var(--ink)]">
                 {overallPct}%
@@ -446,7 +463,7 @@ export default function AprendizajePage() {
           {/* 2×2 stat chips */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Total",        value: mockResources.length },
+              { label: "Total",        value: resources.length },
               { label: "Completados",  value: completed.length },
               { label: "En progreso",  value: inProgress.length },
               { label: "Sin progreso", value: noProgress.length },
@@ -464,9 +481,7 @@ export default function AprendizajePage() {
 
         {/* 2. Review pendiente */}
         <section>
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3"
-          >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
             📚 Review pendiente
           </p>
           {reviewPending.length === 0 ? (
@@ -482,13 +497,14 @@ export default function AprendizajePage() {
                   key={r.id}
                   className="flex items-center gap-2 py-2 border-b border-[var(--line)] last:border-0"
                 >
-                  <CategoryChip type={r.type} className="shrink-0" />
+                  <CategoryChip type={r.type as ResourceType} className="shrink-0" />
                   <p className="text-[11px] text-[var(--ink)] leading-snug flex-1 truncate">
                     {r.title}
                   </p>
                   <button
-                    onClick={() => setRevisarResource(r)}
-                    className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline">
+                    onClick={() => setRevisarResource(r as unknown as ResourceFromDB)}
+                    className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline"
+                  >
                     Revisar
                   </button>
                 </div>
@@ -497,16 +513,14 @@ export default function AprendizajePage() {
           )}
         </section>
 
-        {/* 3. Por tipo — horizontal bar chart */}
+        {/* 3. Por tipo */}
         <section>
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3"
-          >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
             Por tipo
           </p>
           <div className="flex flex-col gap-2">
             {ALL_TYPES.map((type) => {
-              const count = mockResources.filter((r) => r.type === type).length
+              const count = resources.filter((r) => r.type === type).length
               if (!count) return null
               return (
                 <div key={type} className="flex items-center gap-2">
@@ -517,7 +531,7 @@ export default function AprendizajePage() {
                     <div
                       className="h-full rounded-full transition-all"
                       style={{
-                        width:      `${(count / mockResources.length) * 100}%`,
+                        width:      `${(count / resources.length) * 100}%`,
                         background: TYPE_COLORS[type],
                       }}
                     />
@@ -531,50 +545,27 @@ export default function AprendizajePage() {
           </div>
         </section>
 
-        {/* 4. Racha de aprendizaje */}
+        {/* 4. Racha de aprendizaje — kept as informational placeholder */}
         <section>
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3"
-          >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
             Racha de aprendizaje
           </p>
-
-          {/* Streak badge */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-2">
             <div
               className="h-12 w-12 rounded-full flex items-center justify-center font-mono font-bold text-white text-lg shrink-0"
               style={{ background: "var(--accent)" }}
             >
-              {STREAK_DAYS}
+              {resources.length}
             </div>
             <div>
               <p className="text-sm font-semibold text-[var(--ink)]">
-                {STREAK_DAYS} días de racha
+                {resources.length} recursos añadidos
               </p>
               <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
-                ¡Sigue así!
+                Sigue aprendiendo cada día.
               </p>
             </div>
           </div>
-
-          {/* Calendar dots — last 14 days */}
-          <div className="grid grid-cols-7 gap-1.5 mb-3">
-            {LAST_14.map((active, i) => (
-              <div
-                key={i}
-                title={active ? "Activo" : "Sin actividad"}
-                className="h-5 w-full rounded-sm transition-colors"
-                style={{
-                  background: active ? "var(--accent)" : "var(--line)",
-                  opacity:    active ? 1 : 0.5,
-                }}
-              />
-            ))}
-          </div>
-
-          <p className="text-[11px] text-[var(--ink-3)]">
-            Mantén la racha añadiendo un recurso hoy.
-          </p>
         </section>
       </aside>
 
@@ -772,9 +763,9 @@ export default function AprendizajePage() {
               variant="primary"
               size="sm"
               onClick={handleSave}
-              disabled={!form.title.trim()}
+              disabled={!form.title.trim() || createResource.isPending}
             >
-              Guardar recurso
+              {createResource.isPending ? "Guardando…" : "Guardar recurso"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -783,6 +774,7 @@ export default function AprendizajePage() {
       {/* ── "Revisar Recurso" Modal ───────────────────────────────────────── */}
       <RevisarRecursoModal
         resource={revisarResource}
+        reviews={reviews}
         open={revisarResource !== null}
         onOpenChange={(v) => { if (!v) setRevisarResource(null) }}
       />

@@ -14,21 +14,43 @@ const WeeklyReviewInput = z.object({
   executiveSummary: z.string().default(""),
   whatWorked:       z.string().default(""),
   toImprove:        z.string().default(""),
-  status:           z.enum(["draft", "published"]).default("draft"),
+  status:           z.enum(["draft", "submitted"]).default("draft"),
 })
+
+// Serializes Decimal and DateTime fields to plain JS types for JSON transport
+function serializeReview(r: {
+  netPnl:    { toNumber(): number } | number
+  winRate:   { toNumber(): number } | number
+  weekStart: Date | string
+  weekEnd:   Date | string
+  createdAt: Date | string
+  updatedAt: Date | string
+  [key: string]: unknown
+}) {
+  return {
+    ...r,
+    netPnl:    Number(r.netPnl),
+    winRate:   Number(r.winRate),
+    weekStart: r.weekStart instanceof Date ? r.weekStart.toISOString().slice(0, 10) : (r.weekStart as string),
+    weekEnd:   r.weekEnd   instanceof Date ? r.weekEnd.toISOString().slice(0, 10)   : (r.weekEnd as string),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : (r.createdAt as string),
+    updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : (r.updatedAt as string),
+  }
+}
 
 export const weeklyReviewsRouter = router({
   list: protectedProcedure
     .input(z.object({ accountId: z.string().uuid().optional() }).optional())
-    .query(({ ctx, input }) =>
-      ctx.prisma.weeklyReview.findMany({
+    .query(async ({ ctx, input }) => {
+      const reviews = await ctx.prisma.weeklyReview.findMany({
         where: {
           userId:    ctx.userId,
           ...(input?.accountId ? { accountId: input.accountId } : {}),
         },
         orderBy: { weekStart: "desc" },
       })
-    ),
+      return reviews.map(serializeReview)
+    }),
 
   getByWeek: protectedProcedure
     .input(z.object({ weekStart: z.string() }))

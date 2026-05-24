@@ -361,7 +361,7 @@ learningResources.toggleMarkedForReview // input: { id } → toggle boolean
 
 ### TASK-011
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Refactorizar `src/app/reviews/page.tsx` para eliminar todos los imports de mock-data y conectar a los routers tRPC reales.
@@ -399,7 +399,7 @@ Refactorizar `src/app/reviews/page.tsx` para eliminar todos los imports de mock-
 
 ### TASK-012
 **Prioridad:** 🔴 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Refactorizar `src/app/aprendizaje/page.tsx` para eliminar imports de mock-data y conectar al router tRPC `learningResources`.
