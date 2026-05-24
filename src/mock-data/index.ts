@@ -11,13 +11,6 @@ export const mockAccounts: Account[] = [
     initialBalance: 100000,
     currency: "USD",
     timezone: "America/New_York",
-    propFirmRules: {
-      maxDrawdownPct: 10,
-      dailyLossPct: 5,
-      maxTradesPerDay: 3,
-      targetPct: 8,
-      allowedSymbols: ["NQ", "ES", "MNQ"],
-    },
     createdAt: "2026-01-01T00:00:00Z",
   },
   {
@@ -28,13 +21,6 @@ export const mockAccounts: Account[] = [
     initialBalance: 50000,
     currency: "USD",
     timezone: "America/New_York",
-    propFirmRules: {
-      maxDrawdownPct: 10,
-      dailyLossPct: 5,
-      maxTradesPerDay: 5,
-      targetPct: 10,
-      allowedSymbols: ["NQ", "ES", "GC", "CL", "MNQ", "MES"],
-    },
     createdAt: "2026-02-01T00:00:00Z",
   },
   {

@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, BookOpen, Award } from "lucide-react"
 import { calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
+import { RuleBar } from "@/components/ui/rule-bar"
+import { KpiCard } from "@/components/ui/kpi-card"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -55,32 +57,6 @@ function Card({ title, sub, children, className }: {
   )
 }
 
-/* ── KPI card ── */
-function KpiCard({ label, value, sub, color, delta, icon }: {
-  label: string; value: string; sub: string; color?: string; delta?: string; icon?: React.ReactNode
-}) {
-  return (
-    <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-5 py-4 flex flex-col gap-1.5">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <p style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".08em" }}>
-          {label}
-        </p>
-        {icon && <span style={{ color: "var(--ink-3)", opacity: 0.65 }}>{icon}</span>}
-      </div>
-      <p style={{ fontSize: "clamp(18px, 4vw, 28px)", fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: color ?? "var(--accent)", lineHeight: 1 }}>
-        {value}
-      </p>
-      <div className="flex items-center gap-2">
-        <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</p>
-        {delta && (
-          <span style={{ fontSize: 10, fontWeight: 600, color: delta.startsWith("+") ? "var(--win)" : "var(--loss)" }}>
-            {delta}
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
 
 /* ── Tooltip ── */
 interface TooltipPayload { dataKey: string; name: string; value: number; color: string }
@@ -98,55 +74,9 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   )
 }
 
-/* ── Sparkline con área de relleno ── */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function Sparkline({ data, color, win }: { data: number[]; color: string; win: boolean }) {
-  const W = 200, H = 48
-  const max = Math.max(...data), min = Math.min(...data)
-  const range = max - min || 1
-  const pad = 4
-
-  const points = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * W,
-    y: H - pad - ((v - min) / range) * (H - pad * 2),
-  }))
-
-  const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
-  const areaPath = linePath + ` L${W},${H} L0,${H} Z`
-
-  const fillId = `fill-${color.replace(/[^a-z0-9]/gi, "")}-${win ? "w" : "l"}`
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 48 }} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill={`url(#${fillId})`} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 /* ═══════════════════════════════════════════
    PROP FIRM RULES WIDGET
 ═══════════════════════════════════════════ */
-function RuleBar({ pct, label, value }: { pct: number; label: string; value: string }) {
-  const color = pct >= 80 ? "var(--loss)" : pct >= 60 ? "var(--be)" : "#4f6ef7"
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex justify-between items-center">
-        <span className="text-[11px] text-[var(--ink-2)]">{label}</span>
-        <span className="text-[11px] font-mono font-semibold" style={{ color }}>{value}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
-      </div>
-    </div>
-  )
-}
 
 type PropAccountItem = {
   id: string
@@ -181,8 +111,8 @@ function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
               </span>
             </div>
             {/* Bars */}
-            <RuleBar label="Max drawdown total" value={`${a.drawdownPct.toFixed(1)}%`} pct={a.drawdownPct} />
-            <RuleBar label="Pérdida diaria"      value={`${a.dailyLossPct.toFixed(1)}%`} pct={a.dailyLossPct} />
+            <RuleBar label="Max drawdown total" usedPct={a.drawdownPct} displayRight={`${a.drawdownPct.toFixed(1)}%`} />
+            <RuleBar label="Pérdida diaria"      usedPct={a.dailyLossPct} displayRight={`${a.dailyLossPct.toFixed(1)}%`} />
             {/* Trades counter */}
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center">

@@ -255,7 +255,7 @@ Migrar los campos `tick_size` y `point_value` del modelo `Market` de `String` a 
 
 ### TASK-008
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Eliminar el objeto `propFirmRules` anidado del archivo `src/mock-data/index.ts` y alinear la estructura de datos mock con el schema plano de Prisma.
@@ -825,7 +825,7 @@ Eliminar la segunda definición duplicada de `ACCOUNT_STATUS_META` en `src/app/c
 
 ### TASK-026
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Eliminar el componente `Sparkline` y su comentario `eslint-disable` asociado de `src/app/dashboard/page.tsx`.
@@ -848,7 +848,7 @@ El componente `Sparkline` está definido en `src/app/dashboard/page.tsx` pero no
 
 ### TASK-027
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Extraer el componente `RuleBar` a `src/components/ui/rule-bar.tsx` y usarlo desde `dashboard/page.tsx` y `cuentas/page.tsx`.
@@ -874,7 +874,7 @@ El componente `RuleBar` está definido inline en dos archivos: `src/app/dashboar
 
 ### TASK-028
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Extraer el componente `MiniSparkline` SVG a `src/components/ui/mini-sparkline.tsx` y usarlo desde `dashboard/page.tsx` y `cuentas/page.tsx`.
@@ -899,7 +899,7 @@ El SVG `MiniSparkline` está duplicado en `src/app/dashboard/page.tsx` y `src/ap
 
 ### TASK-029
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Consolidar el componente `KpiCard` para usar exclusivamente la implementación en `src/components/kpi-strip.tsx`, eliminando la definición inline duplicada en `src/app/dashboard/page.tsx`.
@@ -968,7 +968,7 @@ El log de deployments de Vercel (via `list_deployments` MCP) muestra 7+ deployme
 
 ### TASK-031
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Crear `src/lib/formulas.ts` con todas las funciones de cálculo financiero extraídas del dashboard y del router de trades, y escribir tests unitarios en `src/lib/formulas.test.ts`.

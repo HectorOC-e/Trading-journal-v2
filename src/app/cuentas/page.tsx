@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { Account, AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { RuleBar } from "@/components/ui/rule-bar"
+import { MiniSparkline } from "@/components/ui/mini-sparkline"
 
 type RawAccount = RouterOutputs['accounts']['list'][number]
 
@@ -31,54 +33,7 @@ const TYPE_META: Record<AccountType, { label: string; color: string; bg: string 
   QA:           { label: "QA",           color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
 }
 
-/* ── Mini sparkline ── */
-function MiniSparkline({ data, positive }: { data: number[]; positive: boolean }) {
-  const W = 120, H = 36
-  const max = Math.max(...data), min = Math.min(...data)
-  const rng = max - min || 1
-  const pts = data.map((v, i) => ({
-    x: (i / (data.length - 1)) * W,
-    y: H - 4 - ((v - min) / rng) * (H - 8),
-  }))
-  const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
-  const area = line + ` L${W},${H} L0,${H} Z`
-  const color = positive ? "var(--win)" : "var(--loss)"
-  const id = `sp-${positive ? "w" : "l"}-${Math.random().toString(36).slice(2, 6)}`
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: H }} preserveAspectRatio="none">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.18} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#${id})`} />
-      <path d={line} fill="none" stroke={color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  )
-}
 
-/* ── Risk gauge bar ── */
-function RiskBar({ label, usedPct, limitLabel, warnAt = 60, dangerAt = 85 }: {
-  label: string; usedPct: number; limitLabel: string; warnAt?: number; dangerAt?: number
-}) {
-  const color = usedPct >= dangerAt ? "var(--loss)" : usedPct >= warnAt ? "var(--be)" : "var(--win)"
-  return (
-    <div>
-      <div className="flex justify-between mb-1">
-        <span className="text-[11px] text-[var(--ink-3)]">{label}</span>
-        <div className="flex items-center gap-1.5">
-          <span className="text-[11px] font-mono font-semibold" style={{ color }}>{usedPct.toFixed(0)}%</span>
-          <span className="text-[10px] text-[var(--ink-3)]">de {limitLabel}</span>
-        </div>
-      </div>
-      <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700"
-          style={{ width: `${Math.min(usedPct, 100)}%`, background: color }} />
-      </div>
-    </div>
-  )
-}
 
 /* ══════════════════════════════════════
    ACCOUNT CARD
@@ -204,16 +159,16 @@ function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: Raw
 
             {/* DD bars */}
             {rawAccount.ddTotalPct != null && (
-              <RiskBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
             )}
             {rawAccount.ddDailyPct != null && (
-              <RiskBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+              <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
             )}
             {rawAccount.ddWeeklyPct != null && (
-              <RiskBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
+              <RuleBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
             )}
             {rawAccount.ddMonthlyPct != null && (
-              <RiskBar label="Pérdida mensual" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlMonth) / (initialBalance * Number(rawAccount.ddMonthlyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+              <RuleBar label="Pérdida mensual" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlMonth) / (initialBalance * Number(rawAccount.ddMonthlyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
 
             {/* Objective progress */}
@@ -416,9 +371,9 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
               </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RiskBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}% max`} />
+              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}% max`} />
               {rawAccount.ddDailyPct != null && (
-                <RiskBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}% límite`} />
+                <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}% límite`} />
               )}
               {rawAccount.targetPct != null && (
                 <div>
