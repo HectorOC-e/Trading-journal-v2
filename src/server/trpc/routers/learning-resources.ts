@@ -10,6 +10,16 @@ const RESOURCE_STATUSES = [
   "PENDING", "IN_PROGRESS", "COMPLETED", "IN_REVIEW", "MASTERED", "ABANDONED",
 ] as const
 
+const PROGRESS_TYPE_MAP: Record<string, string | null> = {
+  VIDEO:       "minutes",
+  PODCAST:     "minutes",
+  LIBRO:       "pages",
+  DRILL:       "sessions",
+  BACKTEST:    "sessions",
+  NOTA:        null,
+  HERRAMIENTA: null,
+}
+
 const LearningResourceInput = z.object({
   title:           z.string().min(1),
   type:            z.enum(RESOURCE_TYPES),
@@ -20,6 +30,9 @@ const LearningResourceInput = z.object({
   tags:            z.array(z.string()).default([]),
   markedForReview: z.boolean().default(false),
   progressPct:     z.number().int().min(0).max(100).optional().nullable(),
+  totalUnits:      z.number().int().min(1).optional().nullable(),
+  currentUnits:    z.number().int().min(0).optional().nullable(),
+  reviewInterval:  z.number().int().min(1).optional().nullable(),
 })
 
 type SerializedResource = Omit<
@@ -112,21 +125,46 @@ export const learningResourcesRouter = router({
 
   create: protectedProcedure
     .input(LearningResourceInput)
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.learningResource.create({
-        data: { ...input, date: new Date(input.date), userId: ctx.userId },
+    .mutation(({ ctx, input }) => {
+      const { date, type, currentUnits, totalUnits, progressPct, ...rest } = input
+      const progressType = PROGRESS_TYPE_MAP[type] ?? null
+      const computedPct =
+        currentUnits != null && totalUnits != null && totalUnits > 0
+          ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
+          : (progressPct ?? null)
+      return ctx.prisma.learningResource.create({
+        data: {
+          ...rest,
+          type,
+          date:         new Date(date),
+          userId:       ctx.userId,
+          progressType,
+          totalUnits:   totalUnits ?? null,
+          currentUnits: currentUnits ?? null,
+          progressPct:  computedPct,
+        },
       })
-    ),
+    }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).merge(LearningResourceInput.partial()))
     .mutation(({ ctx, input }) => {
-      const { id, date, ...rest } = input
+      const { id, date, type, currentUnits, totalUnits, progressPct, ...rest } = input
+      const progressType = type ? (PROGRESS_TYPE_MAP[type] ?? null) : undefined
+      const computedPct =
+        currentUnits != null && totalUnits != null && totalUnits > 0
+          ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
+          : progressPct
       return ctx.prisma.learningResource.update({
         where: { id, userId: ctx.userId },
         data: {
           ...rest,
-          ...(date ? { date: new Date(date) } : {}),
+          ...(type         ? { type }                     : {}),
+          ...(date         ? { date: new Date(date) }     : {}),
+          ...(progressType !== undefined ? { progressType } : {}),
+          ...(totalUnits   !== undefined ? { totalUnits }  : {}),
+          ...(currentUnits !== undefined ? { currentUnits } : {}),
+          ...(computedPct  !== undefined ? { progressPct: computedPct } : {}),
         },
       })
     }),

@@ -57,33 +57,37 @@ const ALL_TYPES: ResourceType[] = [
   "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
 ]
 
-const PROGRESS_TYPES: ResourceType[] = ["LIBRO", "VIDEO", "PODCAST", "DRILL"]
+const PROGRESS_TYPES: ResourceType[] = ["LIBRO", "VIDEO", "PODCAST", "DRILL", "BACKTEST"]
 
 // ─── Empty form state ─────────────────────────────────────────────────────────
 
 interface FormState {
-  type:          ResourceType
-  title:         string
-  author:        string
-  source:        string
-  date:          string
-  notes:         string
-  tags:          string
-  progressPct:   number
+  type:            ResourceType
+  title:           string
+  author:          string
+  source:          string
+  date:            string
+  notes:           string
+  tags:            string
   markedForReview: boolean
+  totalUnits:      number | null
+  currentUnits:    number | null
+  reviewInterval:  number
 }
 
 function emptyForm(): FormState {
   return {
-    type:           "LIBRO",
-    title:          "",
-    author:         "",
-    source:         "",
-    date:           new Date().toISOString().slice(0, 10),
-    notes:          "",
-    tags:           "",
-    progressPct:    0,
+    type:            "LIBRO",
+    title:           "",
+    author:          "",
+    source:          "",
+    date:            new Date().toISOString().slice(0, 10),
+    notes:           "",
+    tags:            "",
     markedForReview: false,
+    totalUnits:      null,
+    currentUnits:    null,
+    reviewInterval:  7,
   }
 }
 
@@ -384,6 +388,16 @@ export default function AprendizajePage() {
 
   const showProgress = PROGRESS_TYPES.includes(form.type)
 
+  const PROGRESS_LABELS: Record<ResourceType, { current: string; total: string } | null> = {
+    VIDEO:       { current: "Minutos vistos",        total: "Duración total (min)" },
+    PODCAST:     { current: "Minutos escuchados",    total: "Duración total (min)" },
+    LIBRO:       { current: "Página actual",         total: "Total páginas" },
+    DRILL:       { current: "Sesiones completadas",  total: "Sesiones objetivo" },
+    BACKTEST:    { current: "Sesiones completadas",  total: "Sesiones objetivo" },
+    NOTA:        null,
+    HERRAMIENTA: null,
+  }
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
@@ -406,8 +420,10 @@ export default function AprendizajePage() {
       date:            resource.date,
       notes:           resource.notes ?? "",
       tags:            resource.tags.join(", "),
-      progressPct:     resource.progressPct ?? 0,
       markedForReview: resource.markedForReview,
+      totalUnits:      resource.totalUnits ?? null,
+      currentUnits:    resource.currentUnits ?? null,
+      reviewInterval:  resource.reviewInterval ?? 7,
     })
     setModalOpen(true)
   }
@@ -422,8 +438,10 @@ export default function AprendizajePage() {
       date:            form.date,
       notes:           form.notes,
       tags:            form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      progressPct:     showProgress ? form.progressPct : undefined,
       markedForReview: form.markedForReview,
+      totalUnits:      showProgress ? form.totalUnits   : null,
+      currentUnits:    showProgress ? form.currentUnits : null,
+      reviewInterval:  form.reviewInterval,
     }
     if (isEditMode) {
       updateResource.mutate({ id: editTarget.id, ...payload })
@@ -746,41 +764,55 @@ export default function AprendizajePage() {
               <p className="text-[10px] text-[var(--ink-3)] mt-1">Separados por coma</p>
             </div>
 
-            {/* Progress slider — only for eligible types */}
-            {showProgress && (
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide">
-                    Progreso
+            {/* Contextual progress fields */}
+            {showProgress && PROGRESS_LABELS[form.type] && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-1.5 block">
+                    {PROGRESS_LABELS[form.type]!.current}
                   </label>
-                  <span className="text-[11px] font-mono font-semibold text-[var(--accent)]">
-                    {form.progressPct}%
-                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    placeholder="0"
+                    value={form.currentUnits ?? ""}
+                    onChange={(e) => setField("currentUnits", e.target.value === "" ? null : Number(e.target.value))}
+                  />
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={form.progressPct}
-                  onChange={(e) => setField("progressPct", Number(e.target.value))}
-                  className="w-full accent-[var(--accent)]"
-                />
-                <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden mt-1.5">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width:      `${form.progressPct}%`,
-                      background: form.progressPct >= 80
-                        ? "var(--win)"
-                        : form.progressPct >= 40
-                          ? "#f59e0b"
-                          : "var(--loss)",
-                    }}
+                <div>
+                  <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-1.5 block">
+                    {PROGRESS_LABELS[form.type]!.total}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                    placeholder="—"
+                    value={form.totalUnits ?? ""}
+                    onChange={(e) => setField("totalUnits", e.target.value === "" ? null : Number(e.target.value))}
                   />
                 </div>
               </div>
             )}
+
+            {/* Review interval */}
+            <div>
+              <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-1.5 block">
+                Revisar cada X días
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                value={form.reviewInterval}
+                onChange={(e) => setField("reviewInterval", Math.max(1, Number(e.target.value) || 7))}
+              />
+              <p className="text-[10px] text-[var(--ink-3)] mt-1">
+                Intervalo base para el sistema de repaso espaciado (default: 7)
+              </p>
+            </div>
 
             {/* Marcar para review toggle */}
             <div className="flex items-center justify-between">

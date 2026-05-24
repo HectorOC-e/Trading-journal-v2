@@ -321,7 +321,7 @@ stats: protectedProcedure
 
 ### TASK-L006
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 2 — UI
 
 **Descripción:**  
