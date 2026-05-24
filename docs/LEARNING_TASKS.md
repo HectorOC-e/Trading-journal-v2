@@ -511,7 +511,7 @@ Actualizar el modal "Revisar recurso" para incluir nivel de maestría y mostrar 
 
 ### TASK-L011
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 4 — Stats
 
 **Descripción:**  
@@ -553,7 +553,7 @@ Lógica: si hay urgentToday[0] → ese recurso. Si no → IN_PROGRESS con mayor 
 
 ### TASK-L012
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 4  
 **Activado por:** P15-E (solo calidad — streaks basados en reviews completados, NO en logins ni updates de progreso)
 

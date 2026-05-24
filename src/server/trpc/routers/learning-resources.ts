@@ -404,6 +404,26 @@ export const learningResourcesRouter = router({
         }
       }
 
+      // P15-E: bestStreak = longest consecutive run in all-time review days
+      const sortedDayMs = Array.from(uniqueReviewDays)
+        .map(key => {
+          const [y, m, d] = key.split("-").map(Number)
+          return new Date(y, m, d).getTime()
+        })
+        .sort((a, b) => a - b)
+      let bestStreak = 0
+      let tempStreak = sortedDayMs.length > 0 ? 1 : 0
+      const DAY_MS = 24 * 60 * 60 * 1000
+      for (let i = 1; i < sortedDayMs.length; i++) {
+        if (sortedDayMs[i] - sortedDayMs[i - 1] === DAY_MS) {
+          tempStreak++
+        } else {
+          bestStreak = Math.max(bestStreak, tempStreak)
+          tempStreak = 1
+        }
+      }
+      bestStreak = Math.max(bestStreak, tempStreak)
+
       // Focus resource: overdue review > highest-progress IN_PROGRESS > oldest PENDING
       const inProgress = resources
         .filter(r => r.status === "IN_PROGRESS")
@@ -424,6 +444,7 @@ export const learningResourcesRouter = router({
         resourcesByStatus,
         estimatedHoursThisWeek,
         currentStreak,
+        bestStreak,
         focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
       }
     }),

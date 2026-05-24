@@ -392,6 +392,7 @@ export default function AprendizajePage() {
 
   const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
+  const { data: stats }                        = trpc.learningResources.stats.useQuery()
   const utils = trpc.useUtils()
 
   // Safe cast: router validates type against the same ResourceType enum values
@@ -564,44 +565,17 @@ export default function AprendizajePage() {
           height:        "100vh",
         }}
       >
-        {/* 1. Progreso general */}
+        {/* 1. KPIs reales (stats procedure) */}
         <section>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
-            Progreso general
+            Resumen
           </p>
-
-          {/* Overall bar */}
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] text-[var(--ink-2)]">
-                {completed.length} / {resources.length} completados
-              </span>
-              <span className="text-[11px] font-mono font-semibold text-[var(--ink)]">
-                {overallPct}%
-              </span>
-            </div>
-            <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width:      `${overallPct}%`,
-                  background: overallPct >= 80
-                    ? "var(--win)"
-                    : overallPct >= 40
-                      ? "#f59e0b"
-                      : "var(--loss)",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* 2×2 stat chips */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Total",        value: resources.length },
-              { label: "Completados",  value: completed.length },
-              { label: "En progreso",  value: inProgress.length },
-              { label: "Sin progreso", value: noProgress.length },
+              { label: "Total",            value: stats?.totalResources    ?? resources.length },
+              { label: "Completados mes",  value: stats?.completedThisMonth ?? completed.length },
+              { label: "Horas esta semana",value: stats ? `${stats.estimatedHoursThisWeek}h` : "—" },
+              { label: "Reviews urgentes", value: stats?.pendingReviewsCount ?? 0 },
             ].map(({ label, value }) => (
               <div
                 key={label}
@@ -614,15 +588,68 @@ export default function AprendizajePage() {
           </div>
         </section>
 
-        {/* 2. Review pendiente */}
+        {/* 2. Foco del día */}
+        {stats?.focusResource && (
+          <section>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
+              🎯 Foco del día
+            </p>
+            <div className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <CategoryChip type={stats.focusResource.type as ResourceType} />
+              </div>
+              <p className="text-[12px] font-semibold text-[var(--ink)] leading-snug mt-1 line-clamp-2">
+                {stats.focusResource.title}
+              </p>
+              {stats.focusResource.nextReviewAt && (
+                <p className="text-[10px] text-[#b45309] mt-1">
+                  ⏰ Review: {new Date(stats.focusResource.nextReviewAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* 3. Reviews urgentes */}
+        {stats && stats.urgentReviews.length > 0 && (
+          <section>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
+              ⚠️ Reviews vencidas
+            </p>
+            <div className="flex flex-col gap-2">
+              {stats.urgentReviews.map((r) => (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-2 py-2 border-b border-[var(--line)] last:border-0"
+                >
+                  <CategoryChip type={r.type as ResourceType} className="shrink-0" />
+                  <p className="text-[11px] text-[var(--ink)] leading-snug flex-1 truncate">
+                    {r.title}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const match = rawResources.find((x) => x.id === r.id)
+                      if (match) setRevisarResource(match as ResourceFromDB)
+                    }}
+                    className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline"
+                  >
+                    Revisar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 4. Review pendiente (manual) */}
         <section>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
-            📚 Review pendiente
+            📚 Marcados para review
           </p>
           {reviewPending.length === 0 ? (
-            <div className="py-6 text-center">
+            <div className="py-4 text-center">
               <p className="text-[11px] text-[var(--ink-3)]">
-                Sin recursos pendientes de review.
+                Sin recursos marcados.
               </p>
             </div>
           ) : (
@@ -648,7 +675,7 @@ export default function AprendizajePage() {
           )}
         </section>
 
-        {/* 3. Por tipo */}
+        {/* 5. Por tipo */}
         <section>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
             Por tipo
@@ -680,24 +707,24 @@ export default function AprendizajePage() {
           </div>
         </section>
 
-        {/* 4. Racha de aprendizaje — kept as informational placeholder */}
+        {/* 6. Racha de reviews (P15-E quality streak) */}
         <section>
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
-            Racha de aprendizaje
+            🔥 Racha de reviews
           </p>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3">
             <div
               className="h-12 w-12 rounded-full flex items-center justify-center font-mono font-bold text-white text-lg shrink-0"
               style={{ background: "var(--accent)" }}
             >
-              {resources.length}
+              {stats?.currentStreak ?? 0}
             </div>
             <div>
               <p className="text-sm font-semibold text-[var(--ink)]">
-                {resources.length} recursos añadidos
+                {stats?.currentStreak ?? 0} día{(stats?.currentStreak ?? 0) !== 1 ? "s" : ""} de review
               </p>
               <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
-                Sigue aprendiendo cada día.
+                Mejor racha: {stats?.bestStreak ?? 0} días
               </p>
             </div>
           </div>
