@@ -217,7 +217,7 @@ CREATE INDEX IF NOT EXISTS resource_reviews_resource_idx
 
 ### TASK-L004
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 0 — Bug fix
 
 **Descripción:**  

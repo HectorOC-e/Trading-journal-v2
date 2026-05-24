@@ -350,6 +350,15 @@ export default function AprendizajePage() {
     },
   })
 
+  const updateResource = trpc.learningResources.update.useMutation({
+    onSuccess: () => {
+      utils.learningResources.list.invalidate()
+      setEditTarget(null)
+      setModalOpen(false)
+      setForm(emptyForm())
+    },
+  })
+
   const deleteResource = trpc.learningResources.delete.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
   })
@@ -379,14 +388,33 @@ export default function AprendizajePage() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const isEditMode = editTarget !== null && modalOpen
+
   function handleOpen() {
+    setEditTarget(null)
     setForm(emptyForm())
+    setModalOpen(true)
+  }
+
+  function handleEditOpen(resource: ResourceFromDB) {
+    setEditTarget(resource)
+    setForm({
+      type:            resource.type as ResourceType,
+      title:           resource.title,
+      author:          resource.author,
+      source:          resource.source ?? "",
+      date:            resource.date,
+      notes:           resource.notes ?? "",
+      tags:            resource.tags.join(", "),
+      progressPct:     resource.progressPct ?? 0,
+      markedForReview: resource.markedForReview,
+    })
     setModalOpen(true)
   }
 
   function handleSave() {
     if (!form.title.trim()) return
-    createResource.mutate({
+    const payload = {
       title:           form.title,
       type:            form.type,
       author:          form.author,
@@ -396,7 +424,12 @@ export default function AprendizajePage() {
       tags:            form.tags.split(",").map((t) => t.trim()).filter(Boolean),
       progressPct:     showProgress ? form.progressPct : undefined,
       markedForReview: form.markedForReview,
-    })
+    }
+    if (isEditMode) {
+      updateResource.mutate({ id: editTarget.id, ...payload })
+    } else {
+      createResource.mutate(payload)
+    }
   }
 
   return (
@@ -431,7 +464,7 @@ export default function AprendizajePage() {
           <ResourceGrid
               resources={resources}
               onReview={(r) => setRevisarResource(r as unknown as ResourceFromDB)}
-              onEdit={(r) => setEditTarget(r as unknown as ResourceFromDB)}
+              onEdit={(r) => handleEditOpen(r as unknown as ResourceFromDB)}
               onDelete={(id) => deleteResource.mutate(id)}
               onUpdateStatus={(id, status) => updateStatus.mutate({ id, status })}
               onToggleFavorite={(id) => toggleFavorite.mutate(id)}
@@ -597,11 +630,11 @@ export default function AprendizajePage() {
         </section>
       </aside>
 
-      {/* ── "Añadir Recurso" Modal ────────────────────────────────────────── */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      {/* ── Añadir / Editar Recurso Modal ────────────────────────────────── */}
+      <Dialog open={modalOpen} onOpenChange={(v) => { setModalOpen(v); if (!v) { setEditTarget(null); setForm(emptyForm()) } }}>
         <DialogContent className="max-w-lg w-full">
           <DialogHeader>
-            <DialogTitle>Añadir recurso</DialogTitle>
+            <DialogTitle>{isEditMode ? "Editar recurso" : "Añadir recurso"}</DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-5">
@@ -791,9 +824,9 @@ export default function AprendizajePage() {
               variant="primary"
               size="sm"
               onClick={handleSave}
-              disabled={!form.title.trim() || createResource.isPending}
+              disabled={!form.title.trim() || createResource.isPending || updateResource.isPending}
             >
-              {createResource.isPending ? "Guardando…" : "Guardar recurso"}
+              {(createResource.isPending || updateResource.isPending) ? "Guardando…" : isEditMode ? "Guardar cambios" : "Guardar recurso"}
             </Button>
           </DialogFooter>
         </DialogContent>
