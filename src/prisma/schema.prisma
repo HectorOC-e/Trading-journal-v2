@@ -24,6 +24,7 @@ model User {
   rules             Rule[]
   weeklyReviews     WeeklyReview[]
   learningResources LearningResource[]
+  resourceReviews   ResourceReview[]
   markets           Market[]
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
@@ -243,24 +244,58 @@ model WeeklyReview {
 }
 
 model LearningResource {
-  id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
   title           String
   type            String
-  author          String   @default("")
-  source          String   @default("")
-  date            DateTime @db.Date
-  notes           String   @default("")
+  author          String    @default("")
+  source          String    @default("")
+  date            DateTime  @db.Date
+  notes           String    @default("")
   tags            String[]
-  markedForReview Boolean  @default(false) @map("marked_for_review")
-  progressPct     Int?     @map("progress_pct")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  markedForReview Boolean   @default(false) @map("marked_for_review")
+  progressPct     Int?      @map("progress_pct")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // New fields (TASK-L003)
+  status          String    @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | IN_REVIEW | MASTERED | ABANDONED
+  progressType    String?   @map("progress_type") // manual | pages | minutes | sessions
+  totalUnits      Int?      @map("total_units")
+  currentUnits    Int?      @map("current_units")
+  avgScore        Decimal?  @map("avg_score") @db.Decimal(5, 2)
+  nextReviewAt    DateTime? @map("next_review_at") @db.Date
+  reviewInterval  Int?      @map("review_interval")
+  isFavorite      Boolean   @default(false) @map("is_favorite")
+  rating          Int?
+  completedAt     DateTime? @map("completed_at")
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews ResourceReview[]
 
   @@index([userId, date(sort: Desc)])
   @@map("learning_resources")
+}
+
+model ResourceReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  resourceId   String   @map("resource_id") @db.Uuid
+  learned      String   @default("")
+  howToApply   String   @default("") @map("how_to_apply")
+  insights     String[]
+  rating       Int      @default(0)
+  masteryLevel Int      @default(1) @map("mastery_level")
+  reviewType   String   @default("manual") @map("review_type")
+  nextReviewAt DateTime @db.Date @map("next_review_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextReviewAt])
+  @@index([resourceId])
+  @@map("resource_reviews")
 }
 
 model Market {

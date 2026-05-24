@@ -105,7 +105,7 @@ Implementar el menú de 3 puntos (`···`) en `ResourceCard`. Actualmente el bo
 
 ### TASK-L003 *(requerido por TASK-L001)*
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 1 — Arquitectura (desbloqueador de Fase 0)
 
 **Descripción:**  
