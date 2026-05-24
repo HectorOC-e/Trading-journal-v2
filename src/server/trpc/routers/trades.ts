@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
+import { calcExpectancyR, calcProfitFactor } from "@/lib/formulas"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -101,7 +102,6 @@ export const tradesRouter = router({
       tags:           z.array(z.string()).default([]),
       notes:          z.string().default(""),
       screenshotUrls: z.array(z.string()).default([]),
-      rMultiple:      z.number().optional(),
       pnl:            z.number().optional(),
       closePrice:     z.number().optional(),
       closeTime:      z.string().optional(),
@@ -276,19 +276,30 @@ export const tradesRouter = router({
       const losses    = trades.filter(t => Number(t.pnl ?? 0) < 0).length
       const be        = total - wins - losses
       const winRate   = Math.round((wins / total) * 100)
-      const netPnl    = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const avgR      = trades.reduce((s, t) => s + Number(t.rMultiple ?? 0), 0) / total
-      const grossWin  = trades.filter(t => Number(t.pnl ?? 0) > 0).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const grossLoss = Math.abs(trades.filter(t => Number(t.pnl ?? 0) < 0).reduce((s, t) => s + Number(t.pnl ?? 0), 0))
-      const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
-      const expectancy   = avgR * (winRate / 100) - (1 - winRate / 100)
-      const aplusTrades  = trades.filter(t => (t.tags as string[]).includes("A+")).length
-      const aplusRate    = Math.round((aplusTrades / total) * 100)
-      const now          = new Date()
-      const monthStart   = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const pnlMonth     = trades
+      const netPnl    = trades.reduce((s: number, t) => s + Number(t.pnl ?? 0), 0)
+
+      // avgR: only trades with a recorded rMultiple contribute (excludes open trades)
+      const closedWithR = trades.filter(t => t.rMultiple != null)
+      const avgR = closedWithR.length > 0
+        ? closedWithR.reduce((s: number, t) => s + Number(t.rMultiple!), 0) / closedWithR.length
+        : 0
+
+      const grossWin  = trades.filter(t => Number(t.pnl ?? 0) > 0).reduce((s: number, t) => s + Number(t.pnl ?? 0), 0)
+      const grossLoss = Math.abs(trades.filter(t => Number(t.pnl ?? 0) < 0).reduce((s: number, t) => s + Number(t.pnl ?? 0), 0))
+      const profitFactor = calcProfitFactor(grossWin, grossLoss)
+
+      // Expectancy in R: uses real avgWinR and avgLossR from closed trades
+      const expectancy = calcExpectancyR(
+        trades.map(t => ({ rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null, pnl: t.pnl != null ? Number(t.pnl) : null }))
+      )
+
+      const aplusTrades = trades.filter(t => (t.tags as string[]).includes("A+")).length
+      const aplusRate   = Math.round((aplusTrades / total) * 100)
+      const now         = new Date()
+      const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      const pnlMonth    = trades
         .filter(t => (t.date as Date).toISOString().slice(0, 10) >= monthStart)
-        .reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+        .reduce((s: number, t) => s + Number(t.pnl ?? 0), 0)
 
       return { total, wins, losses, be, winRate, avgR, netPnl, pnlMonth, expectancy, aplusRate, profitFactor }
     }),

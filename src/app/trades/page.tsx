@@ -140,25 +140,20 @@ export default function TradesPage() {
     const target = parseFloat(form.target)
     const size   = parseFloat(form.size)
 
-    const risk   = Math.abs(entry - stop)
-    const reward = Math.abs(target - entry)
-    const rr     = risk > 0 ? reward / risk : null
-
     createTrade.mutate({
-      accountId:     form.accountId,
-      setupId:       form.setupId || undefined,
-      direction:     form.direction,
-      symbol:        form.symbol.toUpperCase(),
+      accountId:      form.accountId,
+      setupId:        form.setupId || undefined,
+      direction:      form.direction,
+      symbol:         form.symbol.toUpperCase(),
       entry,
       stop,
       target,
       size,
-      date:          form.date,
-      openTime:      form.openTime,
-      session:       form.session,
-      tags:          form.tags,
-      notes:         form.notes,
-      rMultiple:     rr ?? undefined,
+      date:           form.date,
+      openTime:       form.openTime,
+      session:        form.session,
+      tags:           form.tags,
+      notes:          form.notes,
       screenshotUrls: form.screenshots,
     })
   }

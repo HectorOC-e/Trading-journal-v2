@@ -10,6 +10,7 @@ import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, BookOpen, Award } from "lucide-react"
+import { calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -283,13 +284,10 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
   const grossLoss = useMemo(() => Math.abs(closedTrades.filter(t => (t.pnl ?? 0) < 0).reduce((s, t) => s + (t.pnl ?? 0), 0)), [closedTrades])
   const pf = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
 
-  // Sharpe ratio (avgR / stdDevR)
+  // Sharpe ratio (mean R / sample stdDev R — Bessel correction n-1)
   const sharpe = useMemo(() => {
     const rs = closedTrades.filter(t => t.rMultiple != null).map(t => t.rMultiple!)
-    if (rs.length < 2) return null
-    const mean = rs.reduce((a, b) => a + b, 0) / rs.length
-    const std = Math.sqrt(rs.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / rs.length)
-    return std > 0 ? mean / std : null
+    return calcSharpeRatio(rs)
   }, [closedTrades])
 
   // Expectancy in $
@@ -1023,19 +1021,19 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
               sub: "entre openTime y closeTime",
             },
             {
-              label: "MAE estimado prom.",
+              label: "Riesgo Planificado prom.",
               value: maeMfe.mae != null ? `$${maeMfe.mae.toFixed(2)}` : "—",
-              sub: "riesgo planificado por trade",
+              sub: "riesgo en $ al abrir el trade",
             },
             {
-              label: "MFE estimado prom.",
+              label: "Reward Planificado prom.",
               value: maeMfe.mfe != null ? `$${maeMfe.mfe.toFixed(2)}` : "—",
-              sub: "objetivo planificado por trade",
+              sub: "objetivo en $ al abrir el trade",
             },
             {
-              label: "Ratio MFE/MAE",
+              label: "Ratio Reward/Riesgo",
               value: maeMfe.mae && maeMfe.mfe ? (maeMfe.mfe / maeMfe.mae).toFixed(4) : "—",
-              sub: "recompensa/riesgo planificado",
+              sub: "objetivo / riesgo planificado",
             },
           ].map(({ label, value, sub }) => (
             <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4">
@@ -1197,10 +1195,8 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
   const weeklyScore = useMemo(() => {
     const byWeek: Record<string, { plan: number; total: number }> = {}
     for (const t of closedTrades) {
-      const d = new Date(t.date)
-      const jan1 = new Date(d.getFullYear(), 0, 1)
-      const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7)
-      const key  = `${d.getFullYear()}-W${String(week).padStart(2, "0")}`
+      const d   = new Date(t.date)
+      const key = getISOWeekKey(d)
       if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
       byWeek[key].total++
       const isOk = t.setupId != null && !(t.tags as string[]).includes("Impulsivo") && !(t.tags as string[]).includes("Off-plan")

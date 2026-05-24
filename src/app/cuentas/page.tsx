@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import {
   Plus, X, TrendingUp, TrendingDown, Shield, Target,
-  AlertTriangle, CheckCircle2, Clock, BarChart3, ChevronRight,
+  AlertTriangle, CheckCircle2, BarChart3, ChevronRight,
   Pencil, Archive, Loader2, Trash2, PauseCircle, XCircle,
   History, ArrowUpCircle,
 } from "lucide-react"
@@ -15,53 +15,9 @@ import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { Account, AccountType } from "@/types"
+import type { RouterOutputs } from "@/server/trpc/root"
 
-/* ══════════════════════════════════════
-   EXTENDED MOCK STATS PER ACCOUNT
-══════════════════════════════════════ */
-interface AccountStats {
-  currentBalance: number
-  pnlMonth: number
-  pnlTotal: number
-  drawdownPct: number        // current DD from peak
-  dailyLossUsedPct: number   // today's loss as % of daily limit
-  tradesMonth: number
-  tradeWin: number
-  winRate: number
-  avgR: number
-  daysActive: number
-  phase: string
-  phaseProgressPct: number   // progress toward target %
-  status: "EN_FASE" | "APROBADO" | "PAUSADO" | "FALLIDO"
-  sparkline: number[]        // last 10 sessions equity
-}
-
-const ACCOUNT_STATS: Record<string, AccountStats> = {
-  "acc-1": {
-    currentBalance: 103_640, pnlMonth: 3_640, pnlTotal: 3_640,
-    drawdownPct: 0.4, dailyLossUsedPct: 0,
-    tradesMonth: 23, tradeWin: 15, winRate: 65, avgR: 1.8,
-    daysActive: 52, phase: "Phase 2", phaseProgressPct: 45,
-    status: "EN_FASE",
-    sparkline: [100000, 100420, 101200, 100640, 101900, 102440, 101800, 102960, 103200, 103640],
-  },
-  "acc-2": {
-    currentBalance: 51_080, pnlMonth: 1_080, pnlTotal: 1_080,
-    drawdownPct: 1.2, dailyLossUsedPct: 55,
-    tradesMonth: 11, tradeWin: 6, winRate: 55, avgR: 1.2,
-    daysActive: 21, phase: "Phase 1", phaseProgressPct: 22,
-    status: "EN_FASE",
-    sparkline: [50000, 50200, 50800, 50400, 51000, 50600, 50900, 51200, 50900, 51080],
-  },
-  "acc-3": {
-    currentBalance: 24_320, pnlMonth: -680, pnlTotal: -680,
-    drawdownPct: 2.7, dailyLossUsedPct: 0,
-    tradesMonth: 6, tradeWin: 3, winRate: 50, avgR: 0.8,
-    daysActive: 18, phase: "Personal", phaseProgressPct: 0,
-    status: "PAUSADO",
-    sparkline: [25000, 24800, 25100, 24600, 24900, 24400, 24700, 24500, 24350, 24320],
-  },
-}
+type RawAccount = RouterOutputs['accounts']['list'][number]
 
 /* ══════════════════════════════════════
    HELPERS
@@ -73,13 +29,6 @@ const TYPE_META: Record<AccountType, { label: string; color: string; bg: string 
   DEMO_PERSONAL:{ label: "Demo",         color: "#a78bfa", bg: "rgba(167,139,250,0.12)" },
   BACKTEST:     { label: "Backtest",     color: "#f59e0b", bg: "rgba(245,158,11,0.12)"  },
   QA:           { label: "QA",           color: "#6b7280", bg: "rgba(107,114,128,0.12)" },
-}
-
-const STATUS_META: Record<AccountStats["status"], { label: string; color: string; icon: React.ReactNode }> = {
-  EN_FASE:  { label: "En fase",  color: "#4f6ef7", icon: <Target size={10} /> },
-  APROBADO: { label: "Aprobado", color: "#22c55e", icon: <CheckCircle2 size={10} /> },
-  PAUSADO:  { label: "Pausado",  color: "#f59e0b", icon: <Clock size={10} /> },
-  FALLIDO:  { label: "Fallido",  color: "#ef4444", icon: <AlertTriangle size={10} /> },
 }
 
 /* ── Mini sparkline ── */
@@ -147,8 +96,7 @@ interface TradeStats {
   sparkline: number[]   // equity curve starting at initialBalance
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: any; selected: boolean; onClick: () => void; stats?: TradeStats }) {
+function AccountCard({ rawAccount, selected, onClick, stats }: { rawAccount: RawAccount; selected: boolean; onClick: () => void; stats?: TradeStats }) {
   const type   = rawAccount.type as AccountType
   const tm     = TYPE_META[type] ?? TYPE_META.PERSONAL
   const status = (rawAccount.status as string) ?? "ACTIVE"
@@ -349,8 +297,7 @@ const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "
 
 function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, stats }: {
   account: Account
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rawAccount: any
+  rawAccount: RawAccount
   onClose: () => void
   onDelete?: () => void; deleting?: boolean
   onEdit?: () => void
@@ -1053,8 +1000,7 @@ function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
 function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  account: any
+  account: RawAccount
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   markets?: any[]
 }) {
@@ -1590,8 +1536,7 @@ function AccountHistoryModal({ accountId, accountName, onClose }: {
    PROMOTE PHASE MODAL
 ══════════════════════════════════════ */
 function PromotePhaseModal({ account, onClose, onConfirm, saving, markets = [] }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  account: any
+  account: RawAccount
   onClose: () => void
   onConfirm: (input: {
     id: string; phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"

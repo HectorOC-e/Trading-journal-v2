@@ -455,7 +455,7 @@ Actualmente `src/server/trpc/root.ts` solo registra: `accountsRouter`, `tradesRo
 
 ### TASK-014
 **Prioridad:** 🔴 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Corregir la fórmula de Expectancy en `src/server/trpc/routers/trades.ts` línea 284 para usar el promedio real de R de los trades perdedores.
@@ -494,7 +494,7 @@ const expectancy = (winRate / 100) * avgWinR - (1 - winRate / 100) * avgLossR
 
 ### TASK-015
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Corregir el cálculo de Sharpe Ratio en `src/app/dashboard/page.tsx` para usar desviación estándar muestral en lugar de poblacional.
@@ -526,7 +526,7 @@ Adicionalmente, manejar el edge case `rs.length === 1` (stdDev = 0 → Sharpe = 
 
 ### TASK-016
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Unificar el cálculo de Expectancy entre `src/server/trpc/routers/trades.ts` y `src/app/dashboard/page.tsx` para que ambos usen la misma fórmula y muestren el mismo valor.
@@ -553,7 +553,7 @@ Existen dos implementaciones de Expectancy en el proyecto que producen valores d
 
 ### TASK-017
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Renombrar las métricas MAE/MFE en `src/app/dashboard/page.tsx` para reflejar que son "Riesgo Planificado" y "Reward Planificado", no excursiones reales de precio.
@@ -579,7 +579,7 @@ Renombrar las métricas MAE/MFE en `src/app/dashboard/page.tsx` para reflejar qu
 
 ### TASK-018
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Reemplazar el cálculo de semana ISO en `src/app/dashboard/page.tsx` con `getISOWeek` de `date-fns`.
@@ -612,7 +612,7 @@ const weekYear = getISOWeekYear(d)
 
 ### TASK-019
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Corregir el manejo de `rMultiple` en el procedimiento `create` de trades: no guardar el RR planificado como `rMultiple`.
@@ -723,7 +723,7 @@ El procedimiento `list` en `src/server/trpc/routers/trades.ts` ejecuta `prisma.t
 
 ### TASK-022
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[!]`
 
 **Descripción técnica:**  
 Corregir los 4 casts `as never` en `src/app/trades/page.tsx` (líneas 179, 209, 210, 279) reemplazándolos con tipos explícitos derivados de los schemas Zod de los routers tRPC.
@@ -753,7 +753,7 @@ Usar `CreateTradeInput` como tipo de los datos del formulario, asegurando compat
 
 ### TASK-023
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Eliminar los 3 usos de `any` explícito en `src/app/cuentas/page.tsx` reemplazándolos con el tipo inferido del router `accounts.list`.
@@ -781,7 +781,7 @@ type AccountFromRouter = RouterOutputs['accounts']['list'][number]
 
 ### TASK-024
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Eliminar el objeto muerto `ACCOUNT_STATS` de `src/app/cuentas/page.tsx` (líneas 39-64).
@@ -803,7 +803,7 @@ Eliminar el objeto muerto `ACCOUNT_STATS` de `src/app/cuentas/page.tsx` (líneas
 
 ### TASK-025
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]`
+**Estado:** `[x]`
 
 **Descripción técnica:**  
 Eliminar la segunda definición duplicada de `ACCOUNT_STATUS_META` en `src/app/cuentas/page.tsx` (línea ~341).
