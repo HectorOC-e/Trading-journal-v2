@@ -249,7 +249,7 @@ El modal de edición es idéntico al de creación pero con datos pre-llenados. S
 
 ### TASK-L005
 **Prioridad:** 🔴 CRÍTICA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 1 — API
 
 **Descripción:**  
