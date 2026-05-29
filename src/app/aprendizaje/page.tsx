@@ -675,6 +675,7 @@ export default function AprendizajePage() {
   const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
   const { data: stats }                        = trpc.learningResources.stats.useQuery()
+  const { data: dailyInsight }                 = trpc.learningResources.dailyInsight.useQuery()
   const utils = trpc.useUtils()
 
   // Safe cast: router validates type against the same ResourceType enum values
@@ -957,6 +958,23 @@ export default function AprendizajePage() {
             )
           })()}
         </section>
+
+        {/* 1c. Insight del día — TASK-L025 */}
+        {dailyInsight && (
+          <section>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
+              💡 Insight del día
+            </p>
+            <div className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] p-3">
+              <p className="text-sm text-[var(--ink)] leading-relaxed italic">
+                &ldquo;{dailyInsight.text}&rdquo;
+              </p>
+              <p className="text-[10px] text-[var(--ink-3)] mt-2 text-right">
+                — {dailyInsight.resourceTitle}
+              </p>
+            </div>
+          </section>
+        )}
 
         {/* 2. Foco del día */}
         {stats?.focusResource && (

@@ -587,4 +587,29 @@ export const learningResourcesRouter = router({
         minutesThisWeek,
       }
     }),
+
+  dailyInsight: protectedProcedure
+    .query(async ({ ctx }) => {
+      const reviews = await ctx.prisma.resourceReview.findMany({
+        where:  { userId: ctx.userId, insights: { isEmpty: false } },
+        select: {
+          insights: true,
+          createdAt: true,
+          resource: { select: { title: true } },
+        },
+      })
+
+      const allInsights = reviews.flatMap(r =>
+        r.insights.map(insight => ({
+          text:          insight,
+          resourceTitle: r.resource.title,
+          reviewedAt:    r.createdAt.toISOString(),
+        }))
+      )
+      if (allInsights.length === 0) return null
+
+      // Deterministic by day: same insight all day, cycles through pool
+      const dayIndex = Math.floor(Date.now() / 86_400_000)
+      return allInsights[dayIndex % allInsights.length]
+    }),
 })
