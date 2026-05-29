@@ -117,17 +117,18 @@ function calcPreviewNextReview(reviewInterval: number | null | undefined, master
 }
 
 interface RevisarState {
-  learned:      string
-  howToApply:   string
-  insights:     string
-  rating:       number
-  markDone:     boolean
+  learned:        string
+  howToApply:     string
+  insights:       string
+  rating:         number
+  markDone:       boolean
   linkedReviewId: string
-  masteryLevel: number
+  masteryLevel:   number
+  quickNote:      string
 }
 
 function emptyRevisarState(): RevisarState {
-  return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "", masteryLevel: 3 }
+  return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "", masteryLevel: 3, quickNote: "" }
 }
 
 function fmtRelativeTime(isoDate: string): string {
@@ -151,9 +152,18 @@ function RevisarRecursoModal({
   open:     boolean
   onOpenChange: (v: boolean) => void
 }) {
-  const [form, setForm]                   = useState<RevisarState>(emptyRevisarState())
+  const [form, setForm]                       = useState<RevisarState>(emptyRevisarState())
   const [contextExpanded, setContextExpanded] = useState(true)
+  const [reviewMode, setReviewMode]           = useState<"quick" | "deep">(() => {
+    if (typeof window === "undefined") return "quick"
+    return (localStorage.getItem("review-mode") as "quick" | "deep") ?? "quick"
+  })
   const utils = trpc.useUtils()
+
+  function switchMode(mode: "quick" | "deep") {
+    setReviewMode(mode)
+    localStorage.setItem("review-mode", mode)
+  }
 
   const { data: resourceReviews = [] } = trpc.learningResources.listReviews.useQuery(
     resource?.id ?? "",
@@ -179,21 +189,51 @@ function RevisarRecursoModal({
 
   function handleSave() {
     if (!resource) return
-    createReview.mutate({
-      resourceId:   resource.id,
-      learned:      form.learned,
-      howToApply:   form.howToApply,
-      insights:     form.insights.split("\n").map(s => s.trim()).filter(Boolean),
-      rating:       form.rating,
-      masteryLevel: form.masteryLevel,
-    })
+    if (reviewMode === "quick") {
+      createReview.mutate({
+        resourceId:   resource.id,
+        learned:      form.quickNote.trim() || "(review rápido)",
+        howToApply:   "",
+        insights:     [],
+        rating:       0,
+        masteryLevel: form.masteryLevel,
+      })
+    } else {
+      createReview.mutate({
+        resourceId:   resource.id,
+        learned:      form.learned,
+        howToApply:   form.howToApply,
+        insights:     form.insights.split("\n").map(s => s.trim()).filter(Boolean),
+        rating:       form.rating,
+        masteryLevel: form.masteryLevel,
+      })
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setForm(emptyRevisarState()) }}>
       <DialogContent className="max-w-[540px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Revisar recurso</DialogTitle>
+          <div className="flex items-center justify-between gap-3">
+            <DialogTitle>Revisar recurso</DialogTitle>
+            {/* Mode toggle */}
+            <div className="flex rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden shrink-0">
+              {(["quick", "deep"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => switchMode(mode)}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium transition-colors",
+                    reviewMode === mode
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-[var(--panel)] text-[var(--ink-2)] hover:bg-[var(--chip)]"
+                  )}
+                >
+                  {mode === "quick" ? "⚡ Quick" : "📝 Deep"}
+                </button>
+              ))}
+            </div>
+          </div>
         </DialogHeader>
 
         {/* Resource header */}
@@ -268,74 +308,95 @@ function RevisarRecursoModal({
             </div>
           )}
 
-          {/* ¿Qué aprendiste? */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
-              🧠 ¿Qué aprendiste?
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
-              placeholder="Resume el concepto o lección más importante..."
-              value={form.learned}
-              onChange={(e) => setField("learned", e.target.value)}
-            />
-          </div>
-
-          {/* ¿Cómo aplicarlo? */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
-              🎯 ¿Cómo aplicarlo al trading?
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
-              placeholder="¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"
-              value={form.howToApply}
-              onChange={(e) => setField("howToApply", e.target.value)}
-            />
-          </div>
-
-          {/* Key insights */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
-              💡 Insights clave (uno por línea)
-            </label>
-            <textarea
-              rows={3}
-              className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
-              placeholder={"• Insight 1\n• Insight 2\n• Insight 3"}
-              value={form.insights}
-              onChange={(e) => setField("insights", e.target.value)}
-            />
-          </div>
-
-          {/* Rating */}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">
-              ⭐ Valoración
-            </label>
-            <div className="flex gap-1.5">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setField("rating", star === form.rating ? 0 : star)}
-                  className="transition-transform hover:scale-110"
-                >
-                  <Star
-                    size={22}
-                    fill={star <= form.rating ? "#f59e0b" : "none"}
-                    stroke={star <= form.rating ? "#f59e0b" : "var(--ink-3)"}
-                  />
-                </button>
-              ))}
-              {form.rating > 0 && (
-                <span className="self-center text-xs text-[var(--ink-3)] ml-1">
-                  {["", "Pobre", "Regular", "Bueno", "Muy bueno", "Excelente"][form.rating]}
-                </span>
-              )}
+          {/* Quick mode: note only */}
+          {reviewMode === "quick" && (
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                💬 ¿Algo que añadir? (opcional)
+              </label>
+              <input
+                type="text"
+                className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                placeholder="Un insight clave, algo que recordar..."
+                value={form.quickNote}
+                onChange={(e) => setField("quickNote", e.target.value)}
+              />
             </div>
-          </div>
+          )}
+
+          {/* Deep mode: full form */}
+          {reviewMode === "deep" && (
+            <>
+              {/* ¿Qué aprendiste? */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                  🧠 ¿Qué aprendiste?
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+                  placeholder="Resume el concepto o lección más importante..."
+                  value={form.learned}
+                  onChange={(e) => setField("learned", e.target.value)}
+                />
+              </div>
+
+              {/* ¿Cómo aplicarlo? */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                  🎯 ¿Cómo aplicarlo al trading?
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+                  placeholder="¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"
+                  value={form.howToApply}
+                  onChange={(e) => setField("howToApply", e.target.value)}
+                />
+              </div>
+
+              {/* Key insights */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                  💡 Insights clave (uno por línea)
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)] resize-none"
+                  placeholder={"• Insight 1\n• Insight 2\n• Insight 3"}
+                  value={form.insights}
+                  onChange={(e) => setField("insights", e.target.value)}
+                />
+              </div>
+
+              {/* Rating */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">
+                  ⭐ Valoración
+                </label>
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => setField("rating", star === form.rating ? 0 : star)}
+                      className="transition-transform hover:scale-110"
+                    >
+                      <Star
+                        size={22}
+                        fill={star <= form.rating ? "#f59e0b" : "none"}
+                        stroke={star <= form.rating ? "#f59e0b" : "var(--ink-3)"}
+                      />
+                    </button>
+                  ))}
+                  {form.rating > 0 && (
+                    <span className="self-center text-xs text-[var(--ink-3)] ml-1">
+                      {["", "Pobre", "Regular", "Bueno", "Muy bueno", "Excelente"][form.rating]}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Mastery level selector */}
           <div>
@@ -423,10 +484,10 @@ function RevisarRecursoModal({
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={!form.learned.trim() || createReview.isPending}
+            disabled={(reviewMode === "deep" && !form.learned.trim()) || createReview.isPending}
           >
             <Check size={13} className="mr-1" />
-            Guardar revisión
+            {reviewMode === "quick" ? "Guardar review" : "Guardar revisión"}
           </Button>
         </DialogFooter>
       </DialogContent>
