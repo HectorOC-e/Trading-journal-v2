@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench, Star, Check } from "lucide-react"
+import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench, Star, Check, ChevronDown, ChevronUp } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
 import { CategoryChip } from "@/components/ui/category-chip"
@@ -130,6 +130,16 @@ function emptyRevisarState(): RevisarState {
   return { learned: "", howToApply: "", insights: "", rating: 0, markDone: false, linkedReviewId: "", masteryLevel: 3 }
 }
 
+function fmtRelativeTime(isoDate: string): string {
+  const diffDays = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86_400_000)
+  if (diffDays === 0) return "hoy"
+  if (diffDays === 1) return "ayer"
+  if (diffDays < 7)  return `hace ${diffDays}d`
+  const weeks = Math.floor(diffDays / 7)
+  if (weeks < 5) return `hace ${weeks} sem`
+  return `hace ${Math.floor(diffDays / 30)} mes`
+}
+
 function RevisarRecursoModal({
   resource,
   reviews,
@@ -141,8 +151,15 @@ function RevisarRecursoModal({
   open:     boolean
   onOpenChange: (v: boolean) => void
 }) {
-  const [form, setForm] = useState<RevisarState>(emptyRevisarState())
+  const [form, setForm]                   = useState<RevisarState>(emptyRevisarState())
+  const [contextExpanded, setContextExpanded] = useState(true)
   const utils = trpc.useUtils()
+
+  const { data: resourceReviews = [] } = trpc.learningResources.listReviews.useQuery(
+    resource?.id ?? "",
+    { enabled: open && !!resource }
+  )
+  const mostRecent = resourceReviews[0] ?? null
 
   const createReview = trpc.learningResources.createReview.useMutation({
     onSuccess: () => {
@@ -215,6 +232,41 @@ function RevisarRecursoModal({
         </div>
 
         <div className="overflow-y-auto flex-1 flex flex-col gap-4 pr-1">
+
+          {/* Previous review context (collapsible) */}
+          {mostRecent && (
+            <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+                onClick={() => setContextExpanded((v) => !v)}
+              >
+                <span>
+                  Último review ({fmtRelativeTime(mostRecent.createdAt)} · Maestría: {mostRecent.masteryLevel}/5)
+                </span>
+                {contextExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+              {contextExpanded && (
+                <div className="px-3 pb-3 flex flex-col gap-1.5 text-xs text-[var(--ink-2)]">
+                  {mostRecent.learned && (
+                    <p><span className="text-[var(--ink-3)]">Aprendiste:</span> "{mostRecent.learned}"</p>
+                  )}
+                  {mostRecent.howToApply && (
+                    <p><span className="text-[var(--ink-3)]">Ibas a aplicar:</span> "{mostRecent.howToApply}"</p>
+                  )}
+                  {mostRecent.insights && mostRecent.insights.length > 0 && (
+                    <div>
+                      <span className="text-[var(--ink-3)]">Insights:</span>
+                      <ul className="mt-0.5 pl-3 list-disc flex flex-col gap-0.5">
+                        {mostRecent.insights.map((ins: string, i: number) => (
+                          <li key={i}>{ins}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ¿Qué aprendiste? */}
           <div>
