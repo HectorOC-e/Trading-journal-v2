@@ -46,7 +46,7 @@ interface ResourceGridProps {
   onReview?:          (resource: LearningResource) => void
   onEdit?:            (resource: LearningResource) => void
   onDelete?:          (id: string) => void
-  onUpdateStatus?:    (id: string, status: ResourceStatus) => void
+  onUpdateStatus?:    (id: string, status: ResourceStatus, archiveReason?: string) => void
   onToggleFavorite?:  (id: string) => void
   onUpdateProgress?:  (id: string, currentUnits: number) => void
   onLinkSetup?:       (resource: LearningResource) => void
@@ -67,13 +67,18 @@ export function ResourceGrid({
   onUnlinkSetup,
   onViewImpact,
 }: ResourceGridProps) {
-  const [search, setSearch]         = useState("")
-  const [category, setCategory]     = useState("TODOS")
-  const [onlyReview, setOnlyReview] = useState(false)
-  const [sort, setSort]             = useState<SortKey>("recent")
+  const [search, setSearch]           = useState("")
+  const [category, setCategory]       = useState("TODOS")
+  const [onlyReview, setOnlyReview]   = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [sort, setSort]               = useState<SortKey>("recent")
 
   const filtered = sortResources(
     resources.filter((r) => {
+      // Archived view: only ABANDONED; normal view: exclude ABANDONED
+      if (showArchived) return r.status === "ABANDONED"
+      if (r.status === "ABANDONED") return false
+
       const q = search.toLowerCase()
       const matchSearch =
         q === "" ||
@@ -107,7 +112,7 @@ export function ResourceGrid({
         />
       </div>
 
-      {/* Row 2: FilterBar + review toggle + sort */}
+      {/* Row 2: FilterBar + review toggle + archived toggle + sort */}
       <div className="flex items-center gap-2 flex-wrap">
         <FilterBar options={CATEGORY_OPTIONS} value={category} onChange={setCategory} />
 
@@ -121,6 +126,18 @@ export function ResourceGrid({
           )}
         >
           Solo review
+        </button>
+
+        <button
+          onClick={() => setShowArchived((v) => !v)}
+          className={cn(
+            "h-7 px-3 rounded-full text-xs font-medium transition-colors whitespace-nowrap",
+            showArchived
+              ? "bg-[var(--ink-3)] text-white"
+              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] border border-[var(--line)]"
+          )}
+        >
+          Archivados
         </button>
 
         {/* Sort dropdown */}

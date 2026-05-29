@@ -715,7 +715,7 @@ export default function AprendizajePage() {
               onReview={(r) => setRevisarResource(r as unknown as ResourceFromDB)}
               onEdit={(r) => handleEditOpen(r as unknown as ResourceFromDB)}
               onDelete={(id) => deleteResource.mutate(id)}
-              onUpdateStatus={(id, status) => updateStatus.mutate({ id, status })}
+              onUpdateStatus={(id, status, archiveReason) => updateStatus.mutate({ id, status, ...(archiveReason ? { archiveReason: archiveReason as "irrelevant" | "mastered" | "no_time" } : {}) })}
               onToggleFavorite={(id) => toggleFavorite.mutate(id)}
               onUpdateProgress={(id, currentUnits) => updateProgress.mutate({ id, currentUnits })}
               onLinkSetup={(r) => setLinkSetupTarget(r as unknown as ResourceFromDB)}

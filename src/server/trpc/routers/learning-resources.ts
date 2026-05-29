@@ -314,11 +314,12 @@ export const learningResourcesRouter = router({
   // Explicit status transition; sets completedAt when first reaching COMPLETED.
   updateStatus: protectedProcedure
     .input(z.object({
-      id:     z.string().uuid(),
-      status: z.enum(RESOURCE_STATUSES),
+      id:            z.string().uuid(),
+      status:        z.enum(RESOURCE_STATUSES),
+      archiveReason: z.enum(["irrelevant", "mastered", "no_time"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { id, status } = input
+      const { id, status, archiveReason } = input
 
       const existing = await ctx.prisma.learningResource.findUniqueOrThrow({
         where: { id, userId: ctx.userId },
@@ -330,6 +331,8 @@ export const learningResourcesRouter = router({
         data: {
           status,
           ...(status === "COMPLETED" && !existing.completedAt ? { completedAt: new Date() } : {}),
+          ...(status === "ABANDONED" ? { archiveReason: archiveReason ?? null } : {}),
+          ...(status !== "ABANDONED" ? { archiveReason: null } : {}),
         },
       })
 

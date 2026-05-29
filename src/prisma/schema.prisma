@@ -274,6 +274,7 @@ model LearningResource {
   completedAt     DateTime? @map("completed_at")
   weekDeltaMinutes Int      @default(0) @map("week_delta_minutes")
   weekDeltaResetAt DateTime? @map("week_delta_reset_at")
+  archiveReason   String?   @map("archive_reason") // "irrelevant" | "mastered" | "no_time"
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews      ResourceReview[]

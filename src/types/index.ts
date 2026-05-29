@@ -114,6 +114,8 @@ export interface LearningResource {
   completedAt?: string | null
   // Fields added in TASK-L013
   linkedSetups?: { id: string; name: string }[]
+  // Fields added in TASK-L019
+  archiveReason?: string | null
 }
 
 export interface Rule {

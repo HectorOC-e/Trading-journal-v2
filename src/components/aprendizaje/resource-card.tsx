@@ -96,18 +96,24 @@ function MenuItem({ icon, label, onClick, destructive }: MenuItemProps) {
 }
 
 export interface ResourceCardProps {
-  resource:           LearningResource
-  className?:         string
-  onReview?:          (resource: LearningResource) => void
-  onEdit?:            (resource: LearningResource) => void
-  onDelete?:          (id: string) => void
-  onUpdateStatus?:    (id: string, status: ResourceStatus) => void
-  onToggleFavorite?:  (id: string) => void
-  onUpdateProgress?:  (id: string, currentUnits: number) => void
-  onLinkSetup?:       (resource: LearningResource) => void
-  onUnlinkSetup?:     (resourceId: string, setupId: string) => void
-  onViewImpact?:      (resource: LearningResource) => void
+  resource:               LearningResource
+  className?:             string
+  onReview?:              (resource: LearningResource) => void
+  onEdit?:                (resource: LearningResource) => void
+  onDelete?:              (id: string) => void
+  onUpdateStatus?:        (id: string, status: ResourceStatus, archiveReason?: string) => void
+  onToggleFavorite?:      (id: string) => void
+  onUpdateProgress?:      (id: string, currentUnits: number) => void
+  onLinkSetup?:           (resource: LearningResource) => void
+  onUnlinkSetup?:         (resourceId: string, setupId: string) => void
+  onViewImpact?:          (resource: LearningResource) => void
 }
+
+const ARCHIVE_REASONS = [
+  { key: "irrelevant", label: "Ya no relevante" },
+  { key: "mastered",   label: "Ya lo dominé" },
+  { key: "no_time",    label: "Sin tiempo" },
+] as const
 
 export function ResourceCard({
   resource,
@@ -126,7 +132,9 @@ export function ResourceCard({
   const [confirmDelete,   setConfirmDelete]   = useState(false)
   const [progressInput,   setProgressInput]   = useState<string>("")
   const [progressEditing, setProgressEditing] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [archivePrompt,   setArchivePrompt]   = useState(false)
+  const menuRef    = useRef<HTMLDivElement>(null)
+  const archiveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const handleProgressConfirm = useCallback(() => {
     const val = parseInt(progressInput, 10)
@@ -152,12 +160,31 @@ export function ResourceCard({
   const accentColor = TYPE_COLORS[resource.type]
   const showSource  = resource.source && resource.source !== resource.author
   const isCompleted = resource.status === "COMPLETED" || resource.status === "MASTERED"
+  const isAbandoned = resource.status === "ABANDONED"
   const canMaster   = resource.status === "COMPLETED" || resource.status === "IN_REVIEW"
-  const canComplete = !isCompleted && resource.status !== "ABANDONED"
+  const canComplete = !isCompleted && !isAbandoned
 
   function closeMenu() {
     setMenuOpen(false)
     setConfirmDelete(false)
+  }
+
+  function handleArchive() {
+    closeMenu()
+    onUpdateStatus?.(resource.id, "ABANDONED")
+    setArchivePrompt(true)
+    archiveTimer.current = setTimeout(() => setArchivePrompt(false), 2500)
+  }
+
+  function handleArchiveReason(reason: string) {
+    if (archiveTimer.current) clearTimeout(archiveTimer.current)
+    onUpdateStatus?.(resource.id, "ABANDONED", reason)
+    setArchivePrompt(false)
+  }
+
+  function handleRestore() {
+    closeMenu()
+    onUpdateStatus?.(resource.id, "PENDING")
   }
 
   return (
@@ -260,11 +287,17 @@ export function ResourceCard({
                       label={resource.isFavorite ? "Quitar favorito" : "Añadir favorito"}
                       onClick={() => { onToggleFavorite?.(resource.id); closeMenu() }}
                     />
-                    {resource.status !== "ABANDONED" && (
+                    {isAbandoned ? (
+                      <MenuItem
+                        icon={<RotateCcw size={12} />}
+                        label="Restaurar"
+                        onClick={handleRestore}
+                      />
+                    ) : (
                       <MenuItem
                         icon={<Archive size={12} />}
                         label="Archivar"
-                        onClick={() => { onUpdateStatus?.(resource.id, "ABANDONED"); closeMenu() }}
+                        onClick={handleArchive}
                       />
                     )}
                     {onLinkSetup && (
@@ -465,6 +498,24 @@ export function ResourceCard({
             })}
           </span>
         </div>
+
+        {/* Archive reason micro-prompt */}
+        {archivePrompt && (
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-[var(--line)]">
+            <p className="text-[11px] text-[var(--ink-2)]">¿Por qué archivas este recurso?</p>
+            <div className="flex gap-1 flex-wrap">
+              {ARCHIVE_REASONS.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => handleArchiveReason(r.key)}
+                  className="text-[10px] px-2 py-1 rounded border border-[var(--line)] bg-[var(--chip)] text-[var(--ink-2)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition-colors"
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
