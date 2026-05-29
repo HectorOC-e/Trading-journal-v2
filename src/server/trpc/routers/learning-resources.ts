@@ -260,7 +260,11 @@ export const learningResourcesRouter = router({
 
       const existing = await ctx.prisma.learningResource.findUniqueOrThrow({
         where: { id, userId: ctx.userId },
-        select: { totalUnits: true, status: true, completedAt: true },
+        select: {
+          totalUnits: true, status: true, completedAt: true,
+          currentUnits: true, progressType: true,
+          weekDeltaMinutes: true, weekDeltaResetAt: true,
+        },
       })
 
       const effectiveTotalUnits = totalUnits ?? existing.totalUnits
@@ -268,6 +272,28 @@ export const learningResourcesRouter = router({
       const newStatus = computeStatus(currentUnits, effectiveTotalUnits)
       const isNowCompleted = newStatus === "COMPLETED"
       const wasAlreadyCompleted = existing.completedAt !== null
+
+      // Compute weekly delta for minute-tracked resources
+      const effectiveProgressType = progressType ?? existing.progressType
+      let weekDeltaUpdate: { weekDeltaMinutes: number; weekDeltaResetAt: Date } | undefined
+      if (effectiveProgressType === "minutes") {
+        const now = new Date()
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        const dayOfWeek = todayStart.getDay()
+        const daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+        const weekStart = new Date(todayStart)
+        weekStart.setDate(weekStart.getDate() - daysToMon)
+
+        const needsReset =
+          !existing.weekDeltaResetAt || existing.weekDeltaResetAt < weekStart
+        const prevDelta = needsReset ? 0 : (existing.weekDeltaMinutes ?? 0)
+        const prevUnits = existing.currentUnits ?? 0
+        const increment = Math.max(0, currentUnits - prevUnits)
+        weekDeltaUpdate = {
+          weekDeltaMinutes: prevDelta + increment,
+          weekDeltaResetAt: needsReset ? weekStart : (existing.weekDeltaResetAt ?? weekStart),
+        }
+      }
 
       const resource = await ctx.prisma.learningResource.update({
         where: { id, userId: ctx.userId },
@@ -278,6 +304,7 @@ export const learningResourcesRouter = router({
           ...(progressPct !== null ? { progressPct }        : {}),
           status: newStatus,
           ...(isNowCompleted && !wasAlreadyCompleted ? { completedAt: new Date() } : {}),
+          ...(weekDeltaUpdate !== undefined ? weekDeltaUpdate : {}),
         },
       })
 
@@ -447,8 +474,8 @@ export const learningResourcesRouter = router({
           take:    10,
         }),
         ctx.prisma.learningResource.findMany({
-          where:  { userId: ctx.userId, progressType: "minutes", updatedAt: { gte: weekStart } },
-          select: { currentUnits: true },
+          where:  { userId: ctx.userId, progressType: "minutes" },
+          select: { weekDeltaMinutes: true, weekDeltaResetAt: true },
         }),
         ctx.prisma.resourceReview.findMany({
           where:   { userId: ctx.userId },
@@ -474,10 +501,11 @@ export const learningResourcesRouter = router({
         return acc
       }, {})
 
-      const estimatedHoursThisWeek =
-        Math.round(
-          minuteResources.reduce((sum, r) => sum + (r.currentUnits ?? 0), 0) / 60 * 10
-        ) / 10
+      const minutesThisWeekRaw = minuteResources.reduce((sum, r) => {
+        const stale = !r.weekDeltaResetAt || r.weekDeltaResetAt < weekStart
+        return sum + (stale ? 0 : (r.weekDeltaMinutes ?? 0))
+      }, 0)
+      const estimatedHoursThisWeek = Math.round(minutesThisWeekRaw / 60 * 10) / 10
 
       // P15-E: streak = consecutive calendar days going back from today with ≥1 review
       const uniqueReviewDays = new Set(
@@ -532,7 +560,7 @@ export const learningResourcesRouter = router({
       })
 
       const weeklyGoalMinutes = user.weeklyGoalMinutes ?? 300
-      const minutesThisWeek = minuteResources.reduce((sum, r) => sum + (r.currentUnits ?? 0), 0)
+      const minutesThisWeek = minutesThisWeekRaw
 
       return {
         totalResources:          resources.length,

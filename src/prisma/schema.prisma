@@ -272,6 +272,8 @@ model LearningResource {
   isFavorite      Boolean   @default(false) @map("is_favorite")
   rating          Int?
   completedAt     DateTime? @map("completed_at")
+  weekDeltaMinutes Int      @default(0) @map("week_delta_minutes")
+  weekDeltaResetAt DateTime? @map("week_delta_reset_at")
 
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews      ResourceReview[]
