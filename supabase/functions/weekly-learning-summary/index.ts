@@ -23,6 +23,22 @@ function isAuthorized(req: Request): boolean {
   return auth === `Bearer ${CRON_SECRET}` || auth === `Bearer ${SUPABASE_SERVICE_ROLE}`
 }
 
+// ─── Timezone check ───────────────────────────────────────────────────────────
+
+// Returns true if the user's local time is currently targetHour on Monday.
+// Called once per cron tick (hourly on Mondays) to gate per-user sending.
+function shouldSendNow(timezone: string, targetHour: number): boolean {
+  try {
+    const now   = new Date()
+    const local = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
+    return local.getDay() === 1 && local.getHours() === targetHour
+  } catch {
+    // Unknown timezone → fall back to UTC
+    const now = new Date()
+    return now.getDay() === 1 && now.getHours() === targetHour
+  }
+}
+
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
 function fmtMin(m: number): string {
@@ -88,18 +104,24 @@ async function sendWeeklySummary(
       .order("next_review_at", { ascending: true })
       .limit(5),
 
+    // Use week_delta_minutes (true weekly increment) instead of current_units (total)
     supabase
       .from("learning_resources")
-      .select("current_units")
+      .select("week_delta_minutes, week_delta_reset_at")
       .eq("user_id", userId)
-      .eq("progress_type", "minutes")
-      .gte("updated_at", weekStartISO)
-      .lt("updated_at", weekEndISO),
+      .eq("progress_type", "minutes"),
   ])
 
   const completed     = completedRes.data ?? []
   const pendingReviews = pendingRes.data ?? []
-  const minutesThisWeek = (minuteRes.data ?? []).reduce((s, r) => s + (r.current_units ?? 0), 0)
+
+  // Sum only resources whose delta was recorded in the current week window
+  const minutesThisWeek = (minuteRes.data ?? []).reduce((s, r) => {
+    const resetAt = r.week_delta_reset_at ? new Date(r.week_delta_reset_at) : null
+    const stale   = !resetAt || resetAt < weekStart
+    return s + (stale ? 0 : (r.week_delta_minutes ?? 0))
+  }, 0)
+
   const goalPct = Math.min(100, Math.round((minutesThisWeek / goalMinutes) * 100))
 
   const weekRange = `${fmtDate(weekStart.toISOString())} – ${fmtDate(weekEnd.toISOString())}`
@@ -208,13 +230,17 @@ Deno.serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401 })
   }
 
-  const body = await req.json().catch(() => ({})) as { type?: string }
-  const type = body.type === "inactivity" ? "inactivity" : "weekly"
+  const body = await req.json().catch(() => ({})) as { type?: string; force?: boolean }
+  const type  = body.type === "inactivity" ? "inactivity" : "weekly"
+  const force = body.force === true  // bypass timezone filter (for manual testing)
 
-  // Fetch users with email notifications enabled
+  // Target local hour per notification type
+  const TARGET_HOUR = type === "inactivity" ? 10 : 9
+
+  // Fetch users with email notifications enabled (include timezone for local-time filtering)
   const { data: users, error } = await supabase
     .from("users")
-    .select("id, email, name, email_notifications, weekly_goal_minutes")
+    .select("id, email, name, email_notifications, weekly_goal_minutes, timezone")
     .eq("email_notifications", true)
 
   if (error || !users) {
@@ -229,7 +255,7 @@ Deno.serve(async (req: Request) => {
   let sent       = 0
   let skipped    = 0
 
-  // Calculate last week range (Mon–Sun)
+  // Calculate last week range (Mon–Sun) in UTC
   const dayOfWeek  = now.getDay()
   const daysToMon  = dayOfWeek === 0 ? 6 : dayOfWeek - 1
   const thisMonday = new Date(now)
@@ -242,6 +268,14 @@ Deno.serve(async (req: Request) => {
 
   for (const user of users) {
     try {
+      const tz = (user.timezone as string | null) ?? "UTC"
+
+      // Gate by local time unless force=true (manual trigger)
+      if (!force && !shouldSendNow(tz, TARGET_HOUR)) {
+        skipped++
+        continue
+      }
+
       if (type === "inactivity") {
         const didSend = await sendInactivityAlert(user.email, user.name, user.id)
         didSend ? sent++ : skipped++
@@ -252,7 +286,7 @@ Deno.serve(async (req: Request) => {
           lastMonday,
           lastSunday,
           user.id,
-          user.weekly_goal_minutes ?? 300,
+          (user.weekly_goal_minutes as number | null) ?? 300,
         )
         sent++
       }
