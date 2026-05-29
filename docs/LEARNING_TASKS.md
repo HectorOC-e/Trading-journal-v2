@@ -688,7 +688,7 @@ Esta semana: 3h 20m  ████████░░  Meta: 5h  [Editar meta]
 
 ### TASK-L015
 **Prioridad:** 🟢 BAJA  
-**Estado:** `[ ]` *(parcial — email + alerta inactividad SÍ, push NO)*  
+**Estado:** `[x]` *(email semanal + alerta inactividad; push NO implementado per P17-A decisión)*  
 **Fase:** 6  
 **Activado por:** P17-C (email semanal ✅) + P17-E (alerta inactividad ✅) — P17-A (push) ❌ NO implementar
 
