@@ -118,6 +118,7 @@ export interface ResourceCardProps {
   onLinkSetup?:           (resource: LearningResource) => void
   onUnlinkSetup?:         (resourceId: string, setupId: string) => void
   onViewImpact?:          (resource: LearningResource) => void
+  onViewDetail?:          (resource: LearningResource) => void
 }
 
 const ARCHIVE_REASONS = [
@@ -138,6 +139,7 @@ export function ResourceCard({
   onLinkSetup,
   onUnlinkSetup,
   onViewImpact,
+  onViewDetail,
 }: ResourceCardProps) {
   const [menuOpen,        setMenuOpen]        = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
@@ -339,8 +341,12 @@ export function ResourceCard({
         {/* Title + author / date */}
         <div>
           <p
-            className="font-semibold text-[var(--ink)] leading-snug"
+            className={cn(
+              "font-semibold text-[var(--ink)] leading-snug",
+              onViewDetail && "cursor-pointer hover:text-[var(--accent)] transition-colors"
+            )}
             style={{ fontSize: "13.5px" }}
+            onClick={() => onViewDetail?.(resource)}
           >
             {resource.title}
           </p>

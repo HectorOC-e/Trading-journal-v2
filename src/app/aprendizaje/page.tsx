@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { Plus, BookOpen, Video, FileText, BarChart2, Mic, Dumbbell, Wrench, Star, Check, ChevronDown, ChevronUp } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
+import { ResourceDrawer } from "@/components/aprendizaje/resource-drawer"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Button } from "@/components/ui/button"
 import {
@@ -667,6 +668,7 @@ export default function AprendizajePage() {
   const [editTarget, setEditTarget]             = useState<ResourceFromDB | null>(null)
   const [linkSetupTarget, setLinkSetupTarget]   = useState<ResourceFromDB | null>(null)
   const [impactTarget, setImpactTarget]         = useState<ResourceFromDB | null>(null)
+  const [drawerResource, setDrawerResource]     = useState<ResourceFromDB | null>(null)
   const [goalEditing, setGoalEditing]           = useState(false)
   const [goalInput, setGoalInput]               = useState("")
 
@@ -834,6 +836,7 @@ export default function AprendizajePage() {
               onLinkSetup={(r) => setLinkSetupTarget(r as unknown as ResourceFromDB)}
               onUnlinkSetup={(resourceId, setupId) => unlinkSetup.mutate({ resourceId, setupId })}
               onViewImpact={(r) => setImpactTarget(r as unknown as ResourceFromDB)}
+              onViewDetail={(r) => setDrawerResource(r as unknown as ResourceFromDB)}
             />
         )}
       </div>
@@ -1334,6 +1337,21 @@ export default function AprendizajePage() {
         resource={impactTarget}
         open={impactTarget !== null}
         onOpenChange={(v) => { if (!v) setImpactTarget(null) }}
+      />
+
+      {/* ── Resource Drawer (L023) ───────────────────────────────────────── */}
+      <ResourceDrawer
+        resource={drawerResource as unknown as LearningResource | null}
+        open={drawerResource !== null}
+        onClose={() => setDrawerResource(null)}
+        onReview={(r) => {
+          setDrawerResource(null)
+          setRevisarResource(r as unknown as ResourceFromDB)
+        }}
+        onEdit={(r) => {
+          setDrawerResource(null)
+          handleEditOpen(r as unknown as ResourceFromDB)
+        }}
       />
     </div>
   )

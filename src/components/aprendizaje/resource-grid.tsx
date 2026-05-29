@@ -52,6 +52,7 @@ interface ResourceGridProps {
   onLinkSetup?:       (resource: LearningResource) => void
   onUnlinkSetup?:     (resourceId: string, setupId: string) => void
   onViewImpact?:      (resource: LearningResource) => void
+  onViewDetail?:      (resource: LearningResource) => void
 }
 
 export function ResourceGrid({
@@ -66,6 +67,7 @@ export function ResourceGrid({
   onLinkSetup,
   onUnlinkSetup,
   onViewImpact,
+  onViewDetail,
 }: ResourceGridProps) {
   const [search, setSearch]           = useState("")
   const [category, setCategory]       = useState("TODOS")
@@ -184,6 +186,7 @@ export function ResourceGrid({
                 onLinkSetup={onLinkSetup}
                 onUnlinkSetup={onUnlinkSetup}
                 onViewImpact={onViewImpact}
+                onViewDetail={onViewDetail}
               />
           ))}
         </div>
