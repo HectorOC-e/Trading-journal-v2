@@ -496,6 +496,195 @@ function RevisarRecursoModal({
   )
 }
 
+// ─── Session Review Modal — TASK-L026 ────────────────────────────────────────
+
+type SessionResource = { id: string; title: string; type: string; reviewInterval?: number | null }
+
+function SessionReviewModal({
+  queue,
+  open,
+  onClose,
+}: {
+  queue:   SessionResource[]
+  open:    boolean
+  onClose: () => void
+}) {
+  const [index,       setIndex]       = useState(0)
+  const [masteryLevel, setMastery]    = useState(3)
+  const [quickNote,   setQuickNote]   = useState("")
+  const [saved,       setSaved]       = useState(0)
+  const [done,        setDone]        = useState(false)
+  const utils = trpc.useUtils()
+
+  const current = queue[index] ?? null
+
+  const { data: resourceReviews = [] } = trpc.learningResources.listReviews.useQuery(
+    current?.id ?? "",
+    { enabled: open && !!current }
+  )
+  const mostRecent = resourceReviews[0] ?? null
+  const [ctxExpanded, setCtxExpanded] = useState(true)
+
+  const createReview = trpc.learningResources.createReview.useMutation({
+    onSuccess: () => {
+      utils.learningResources.list.invalidate()
+      utils.learningResources.stats.invalidate()
+      advance(true)
+    },
+  })
+
+  function advance(didSave: boolean) {
+    if (didSave) setSaved((v) => v + 1)
+    const next = index + 1
+    if (next >= queue.length) {
+      setDone(true)
+    } else {
+      setIndex(next)
+      setMastery(3)
+      setQuickNote("")
+      setCtxExpanded(true)
+    }
+  }
+
+  function handleSave() {
+    if (!current) return
+    createReview.mutate({
+      resourceId:   current.id,
+      learned:      quickNote.trim() || "(review rápido)",
+      howToApply:   "",
+      insights:     [],
+      rating:       0,
+      masteryLevel,
+    })
+  }
+
+  function handleClose() {
+    setIndex(0); setSaved(0); setDone(false); setMastery(3); setQuickNote("")
+    onClose()
+  }
+
+  if (!open) return null
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose() }}>
+      <DialogContent className="max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+        {done ? (
+          // ── Completion screen ──
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <span className="text-4xl">🎉</span>
+            <div>
+              <h2 className="text-lg font-bold text-[var(--ink)]">¡Sesión completada!</h2>
+              <p className="text-sm text-[var(--ink-2)] mt-1">
+                Guardaste {saved} de {queue.length} reviews.
+              </p>
+              <p className="text-xs text-[var(--ink-3)] mt-2">
+                Buena racha. Vuelve mañana a revisar tu progreso.
+              </p>
+            </div>
+            <Button variant="primary" onClick={handleClose}>Cerrar</Button>
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <div className="flex items-center justify-between gap-3">
+                <DialogTitle className="text-base">
+                  {index + 1} de {queue.length}
+                </DialogTitle>
+                <span className="text-[10px] text-[var(--ink-3)]">Sesión de reviews</span>
+              </div>
+              <p className="font-semibold text-[var(--ink)] text-sm leading-snug mt-1">
+                {current?.title}
+              </p>
+            </DialogHeader>
+
+            <div className="overflow-y-auto flex-1 flex flex-col gap-4 pr-1">
+
+              {/* Previous review context */}
+              {mostRecent && (
+                <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+                    onClick={() => setCtxExpanded((v) => !v)}
+                  >
+                    <span>Último review · Maestría: {mostRecent.masteryLevel}/5</span>
+                    {ctxExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                  {ctxExpanded && mostRecent.learned && (
+                    <p className="px-3 pb-3 text-xs text-[var(--ink-2)] italic">
+                      &ldquo;{mostRecent.learned.slice(0, 200)}{mostRecent.learned.length > 200 ? "…" : ""}&rdquo;
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Quick note */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">
+                  💬 ¿Algo que añadir? (opcional)
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  placeholder="Un insight clave, algo que recordar..."
+                  value={quickNote}
+                  onChange={(e) => setQuickNote(e.target.value)}
+                />
+              </div>
+
+              {/* Mastery level */}
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">
+                  🧩 Nivel de maestría
+                </label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <button
+                      key={level}
+                      onClick={() => setMastery(level)}
+                      className={cn(
+                        "flex-1 h-8 rounded-[var(--radius-sm)] text-xs font-medium transition-colors border",
+                        masteryLevel === level
+                          ? "bg-[var(--accent)] text-white border-[var(--accent)]"
+                          : "bg-[var(--panel-2)] text-[var(--ink-2)] border-[var(--line)] hover:border-[var(--accent)]"
+                      )}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--ink-3)] mt-1">
+                  {MASTERY_LABELS[masteryLevel]} · Próximo review: {calcPreviewNextReview(current?.reviewInterval, masteryLevel)}
+                </p>
+              </div>
+
+            </div>
+
+            <DialogFooter className="flex gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => advance(false)}
+                className="shrink-0"
+              >
+                Saltar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                disabled={createReview.isPending}
+                className="flex-1"
+              >
+                <Check size={13} className="mr-1" />
+                Guardar y siguiente →
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Setup Impact Modal ───────────────────────────────────────────────────────
 
 function SetupImpactModal({
@@ -669,6 +858,7 @@ export default function AprendizajePage() {
   const [linkSetupTarget, setLinkSetupTarget]   = useState<ResourceFromDB | null>(null)
   const [impactTarget, setImpactTarget]         = useState<ResourceFromDB | null>(null)
   const [drawerResource, setDrawerResource]     = useState<ResourceFromDB | null>(null)
+  const [sessionOpen, setSessionOpen]           = useState(false)
   const [goalEditing, setGoalEditing]           = useState(false)
   const [goalInput, setGoalInput]               = useState("")
 
@@ -1001,9 +1191,19 @@ export default function AprendizajePage() {
         {/* 3. Reviews urgentes */}
         {stats && stats.urgentReviews.length > 0 && (
           <section>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
-              ⚠️ Reviews vencidas
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)]">
+                ⚠️ Reviews vencidas
+              </p>
+              {stats.urgentReviews.length >= 2 && (
+                <button
+                  onClick={() => setSessionOpen(true)}
+                  className="text-[10px] font-medium px-2 py-0.5 rounded bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
+                >
+                  ▶ Iniciar sesión
+                </button>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               {stats.urgentReviews.map((r) => (
                 <div
@@ -1355,6 +1555,16 @@ export default function AprendizajePage() {
         resource={impactTarget}
         open={impactTarget !== null}
         onOpenChange={(v) => { if (!v) setImpactTarget(null) }}
+      />
+
+      {/* ── Session Review Modal (L026) ─────────────────────────────────── */}
+      <SessionReviewModal
+        queue={(stats?.urgentReviews ?? []).map(r => {
+          const match = rawResources.find(x => x.id === r.id)
+          return { id: r.id, title: r.title, type: r.type, reviewInterval: match?.reviewInterval ?? null }
+        })}
+        open={sessionOpen}
+        onClose={() => setSessionOpen(false)}
       />
 
       {/* ── Resource Drawer (L023) ───────────────────────────────────────── */}
