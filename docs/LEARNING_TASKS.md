@@ -647,7 +647,7 @@ Opción "Vincular a setup" en el menú `···`. Abre selector de setups del usu
 
 ### TASK-L014
 **Prioridad:** 🟡 MEDIA  
-**Estado:** `[ ]`  
+**Estado:** `[x]`  
 **Fase:** 6  
 **Activado por:** P16-E (el usuario define sus propias metas — NO metas predefinidas)
 

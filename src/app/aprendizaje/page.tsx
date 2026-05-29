@@ -554,6 +554,8 @@ export default function AprendizajePage() {
   const [editTarget, setEditTarget]             = useState<ResourceFromDB | null>(null)
   const [linkSetupTarget, setLinkSetupTarget]   = useState<ResourceFromDB | null>(null)
   const [impactTarget, setImpactTarget]         = useState<ResourceFromDB | null>(null)
+  const [goalEditing, setGoalEditing]           = useState(false)
+  const [goalInput, setGoalInput]               = useState("")
 
   const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
@@ -598,6 +600,10 @@ export default function AprendizajePage() {
 
   const unlinkSetup = trpc.learningResources.unlinkSetup.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+  })
+
+  const updateGoal = trpc.learningResources.updateGoal.useMutation({
+    onSuccess: () => utils.learningResources.stats.invalidate(),
   })
 
   const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])
@@ -758,6 +764,82 @@ export default function AprendizajePage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* 1b. Meta semanal — TASK-L014 (P16-E configurable) */}
+        <section>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
+            Meta semanal
+          </p>
+          {(() => {
+            const goal = stats?.weeklyGoalMinutes ?? 300
+            const done = stats?.minutesThisWeek ?? 0
+            const pct  = Math.min(100, Math.round((done / goal) * 100))
+            const fmtMin = (m: number) => {
+              const h = Math.floor(m / 60); const min = m % 60
+              if (h === 0) return `${min}min`
+              if (min === 0) return `${h}h`
+              return `${h}h ${min}m`
+            }
+            return (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[var(--ink-2)] font-medium">{fmtMin(done)}</span>
+                  {goalEditing ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={30}
+                        max={10080}
+                        autoFocus
+                        className="w-16 h-6 px-1.5 text-xs rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[var(--ink)] focus:outline-none"
+                        value={goalInput}
+                        onChange={(e) => setGoalInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const v = parseInt(goalInput, 10)
+                            if (!isNaN(v) && v >= 30) updateGoal.mutate(v)
+                            setGoalEditing(false); setGoalInput("")
+                          }
+                          if (e.key === "Escape") { setGoalEditing(false); setGoalInput("") }
+                        }}
+                      />
+                      <span className="text-[10px] text-[var(--ink-3)]">min</span>
+                      <button
+                        className="text-[10px] text-[var(--accent)] hover:opacity-75"
+                        onClick={() => {
+                          const v = parseInt(goalInput, 10)
+                          if (!isNaN(v) && v >= 30) updateGoal.mutate(v)
+                          setGoalEditing(false); setGoalInput("")
+                        }}
+                      >
+                        ✓
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="text-[10px] text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors"
+                      onClick={() => { setGoalInput(String(goal)); setGoalEditing(true) }}
+                    >
+                      Meta: {fmtMin(goal)}
+                    </button>
+                  )}
+                </div>
+                <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width:      `${pct}%`,
+                      background: pct >= 100 ? "var(--win)" : pct >= 60 ? "#f59e0b" : "var(--accent)",
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] text-[var(--ink-3)]">
+                  {pct >= 100 ? "🎉 ¡Meta alcanzada esta semana!" : `${pct}% completado · lunes a domingo`}
+                </p>
+              </div>
+            )
+          })()}
         </section>
 
         {/* 2. Foco del día */}

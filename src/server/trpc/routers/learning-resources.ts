@@ -332,6 +332,16 @@ export const learningResourcesRouter = router({
       })
     }),
 
+  // TASK-L014: Update weekly learning goal (P16-E configurable)
+  updateGoal: protectedProcedure
+    .input(z.number().int().min(1).max(10080))  // 1 min … 7 days in minutes
+    .mutation(({ ctx, input }) =>
+      ctx.prisma.user.update({
+        where: { id: ctx.userId },
+        data:  { weeklyGoalMinutes: input },
+      })
+    ),
+
   // TASK-L013: Many-to-many LearningResource ↔ Setup
   linkSetup: protectedProcedure
     .input(z.object({ resourceId: z.string().uuid(), setupId: z.string().uuid() }))
@@ -417,7 +427,7 @@ export const learningResourcesRouter = router({
       const weekStart  = new Date(todayStart)
       weekStart.setDate(weekStart.getDate() - daysToMon)
 
-      const [resources, urgentReviews, minuteResources, reviewTimestamps] = await Promise.all([
+      const [resources, urgentReviews, minuteResources, reviewTimestamps, user] = await Promise.all([
         ctx.prisma.learningResource.findMany({
           where:  { userId: ctx.userId, status: { not: "ABANDONED" } },
           select: {
@@ -444,6 +454,10 @@ export const learningResourcesRouter = router({
           where:   { userId: ctx.userId },
           select:  { createdAt: true },
           orderBy: { createdAt: "desc" },
+        }),
+        ctx.prisma.user.findUniqueOrThrow({
+          where:  { id: ctx.userId },
+          select: { weeklyGoalMinutes: true },
         }),
       ])
 
@@ -517,6 +531,9 @@ export const learningResourcesRouter = router({
         nextReviewAt: r.nextReviewAt ? r.nextReviewAt.toISOString().slice(0, 10) : null,
       })
 
+      const weeklyGoalMinutes = user.weeklyGoalMinutes ?? 300
+      const minutesThisWeek = minuteResources.reduce((sum, r) => sum + (r.currentUnits ?? 0), 0)
+
       return {
         totalResources:          resources.length,
         completedThisMonth,
@@ -527,6 +544,8 @@ export const learningResourcesRouter = router({
         currentStreak,
         bestStreak,
         focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
+        weeklyGoalMinutes,
+        minutesThisWeek,
       }
     }),
 })
