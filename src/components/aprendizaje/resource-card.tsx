@@ -26,6 +26,17 @@ const STATUS_CONFIG: Record<ResourceStatus, { label: string; bg: string; text: s
   ABANDONED:   { label: "Archivado",   bg: "var(--chip)",     text: "var(--ink-3)" },
 }
 
+function relativeTime(isoDate: string): string {
+  const diffMs   = Date.now() - new Date(isoDate).getTime()
+  const diffDays = Math.floor(diffMs / 86_400_000)
+  if (diffDays === 0) return "hoy"
+  if (diffDays === 1) return "ayer"
+  if (diffDays < 7)  return `hace ${diffDays}d`
+  const diffWeeks = Math.floor(diffDays / 7)
+  if (diffWeeks < 5) return `hace ${diffWeeks}sem`
+  return `hace ${Math.floor(diffDays / 30)}mes`
+}
+
 function progressColor(pct: number): string {
   if (pct >= 80) return "var(--win)"
   if (pct >= 40) return "#f59e0b"
@@ -161,8 +172,12 @@ export function ResourceCard({
   const showSource  = resource.source && resource.source !== resource.author
   const isCompleted = resource.status === "COMPLETED" || resource.status === "MASTERED"
   const isAbandoned = resource.status === "ABANDONED"
-  const canMaster   = resource.status === "COMPLETED" || resource.status === "IN_REVIEW"
-  const canComplete = !isCompleted && !isAbandoned
+  const canMaster    = resource.status === "COMPLETED" || resource.status === "IN_REVIEW"
+  const canComplete  = !isCompleted && !isAbandoned
+  const isStale      = resource.status === "IN_PROGRESS" && (
+    !resource.lastReviewAt ||
+    Date.now() - new Date(resource.lastReviewAt).getTime() > 30 * 86_400_000
+  )
 
   function closeMenu() {
     setMenuOpen(false)
@@ -195,10 +210,10 @@ export function ResourceCard({
         className
       )}
     >
-      {/* Left accent bar */}
+      {/* Left accent bar — dimmed for stale IN_PROGRESS */}
       <div
         className="shrink-0 w-[3px] rounded-l-[var(--radius)]"
-        style={{ background: accentColor }}
+        style={{ background: isStale ? "var(--line)" : accentColor }}
       />
 
       {/* Card body */}
@@ -490,12 +505,19 @@ export function ResourceCard({
             </button>
           )}
 
-          <span className="text-[10px] text-[var(--ink-3)] ml-auto shrink-0">
-            {new Date(resource.createdAt).toLocaleDateString("es-ES", {
-              day:   "numeric",
-              month: "short",
-              year:  "numeric",
-            })}
+          <span className="text-[10px] text-[var(--ink-3)] ml-auto shrink-0 text-right leading-tight">
+            <span className={cn(isStale ? "text-[var(--ink-3)]" : "")}>
+              {resource.lastReviewAt
+                ? `Revisado ${relativeTime(resource.lastReviewAt)}`
+                : "Sin reviews aún"}
+            </span>
+            <span className="block opacity-60">
+              {new Date(resource.createdAt).toLocaleDateString("es-ES", {
+                day:   "numeric",
+                month: "short",
+                year:  "numeric",
+              })}
+            </span>
           </span>
         </div>
 

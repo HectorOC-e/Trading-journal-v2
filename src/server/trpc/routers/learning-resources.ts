@@ -37,7 +37,10 @@ const LearningResourceInput = z.object({
 
 type LinkedSetup = { id: string; name: string }
 
-type ResourceInput = LearningResource & { linkedSetups?: LinkedSetup[] }
+type ResourceInput = LearningResource & {
+  linkedSetups?: LinkedSetup[]
+  reviews?: { createdAt: Date }[]
+}
 
 type SerializedResource = Omit<
   LearningResource,
@@ -50,10 +53,11 @@ type SerializedResource = Omit<
   nextReviewAt: string | null
   completedAt:  string | null
   linkedSetups: LinkedSetup[]
+  lastReviewAt: string | null
 }
 
 function serializeResource(r: ResourceInput): SerializedResource {
-  const { avgScore, nextReviewAt, completedAt, date, createdAt, updatedAt, linkedSetups, ...rest } = r
+  const { avgScore, nextReviewAt, completedAt, date, createdAt, updatedAt, linkedSetups, reviews, ...rest } = r
   return {
     ...rest,
     date:         date.toISOString().slice(0, 10),
@@ -63,6 +67,7 @@ function serializeResource(r: ResourceInput): SerializedResource {
     nextReviewAt: nextReviewAt ? nextReviewAt.toISOString().slice(0, 10) : null,
     completedAt:  completedAt ? completedAt.toISOString() : null,
     linkedSetups: linkedSetups ?? [],
+    lastReviewAt: reviews && reviews.length > 0 ? reviews[0].createdAt.toISOString() : null,
   }
 }
 
@@ -125,7 +130,10 @@ export const learningResourcesRouter = router({
           ...(input?.status ? { status: input.status } : {}),
         },
         orderBy: { date: "desc" },
-        include: { linkedSetups: { select: { id: true, name: true } } },
+        include: {
+          linkedSetups: { select: { id: true, name: true } },
+          reviews: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
+        },
       })
       return resources.map(serializeResource)
     }),
