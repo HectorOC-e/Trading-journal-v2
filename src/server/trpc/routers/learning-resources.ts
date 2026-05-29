@@ -612,4 +612,91 @@ export const learningResourcesRouter = router({
       const dayIndex = Math.floor(Date.now() / 86_400_000)
       return allInsights[dayIndex % allInsights.length]
     }),
+
+  // TASK-L028: rank completed resources by WR delta (post - pre completedAt) per linked setup
+  resourceImpactRanking: protectedProcedure
+    .query(async ({ ctx }) => {
+      const resources = await ctx.prisma.learningResource.findMany({
+        where: {
+          userId:      ctx.userId,
+          completedAt: { not: null },
+          linkedSetups: { some: {} },
+        },
+        select: {
+          id:           true,
+          title:        true,
+          type:         true,
+          completedAt:  true,
+          linkedSetups: { select: { id: true, name: true } },
+        },
+      })
+
+      function winRate(trades: { rMultiple: { toNumber(): number } | null; pnl: { toNumber(): number } | null }[]): number | null {
+        if (trades.length === 0) return null
+        const wins = trades.filter(
+          t => (t.rMultiple ? t.rMultiple.toNumber() > 0 : (t.pnl ? t.pnl.toNumber() > 0 : false))
+        ).length
+        return Math.round((wins / trades.length) * 100)
+      }
+
+      const rows: {
+        resourceId:    string
+        resourceTitle: string
+        resourceType:  string
+        setupId:       string
+        setupName:     string
+        preWinRate:    number | null
+        postWinRate:   number | null
+        delta:         number | null
+        preTrades:     number
+        postTrades:    number
+        lowConfidence: boolean
+      }[] = []
+
+      for (const resource of resources) {
+        if (!resource.completedAt) continue
+        const completedAt = resource.completedAt
+
+        for (const setup of resource.linkedSetups) {
+          const [pre, post] = await Promise.all([
+            ctx.prisma.trade.findMany({
+              where:  { userId: ctx.userId, setupId: setup.id, date: { lt: completedAt }, status: "CLOSED" },
+              select: { rMultiple: true, pnl: true },
+            }),
+            ctx.prisma.trade.findMany({
+              where:  { userId: ctx.userId, setupId: setup.id, date: { gte: completedAt }, status: "CLOSED" },
+              select: { rMultiple: true, pnl: true },
+            }),
+          ])
+
+          if (post.length < 5) continue
+
+          const preWR  = winRate(pre)
+          const postWR = winRate(post)
+          const delta  = postWR !== null && preWR !== null ? postWR - preWR : null
+
+          rows.push({
+            resourceId:    resource.id,
+            resourceTitle: resource.title,
+            resourceType:  resource.type,
+            setupId:       setup.id,
+            setupName:     setup.name,
+            preWinRate:    preWR,
+            postWinRate:   postWR,
+            delta,
+            preTrades:     pre.length,
+            postTrades:    post.length,
+            lowConfidence: post.length < 10,
+          })
+        }
+      }
+
+      // Sort: known delta desc, then null-delta (no pre-data) last
+      return rows.sort((a, b) => {
+        if (a.delta === null && b.delta === null) return 0
+        if (a.delta === null) return 1
+        if (b.delta === null) return -1
+        return b.delta - a.delta
+      })
+    }),
 })

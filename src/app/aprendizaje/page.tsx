@@ -866,6 +866,7 @@ export default function AprendizajePage() {
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
   const { data: stats }                        = trpc.learningResources.stats.useQuery()
   const { data: dailyInsight }                 = trpc.learningResources.dailyInsight.useQuery()
+  const { data: impactRanking = [] }           = trpc.learningResources.resourceImpactRanking.useQuery()
   const utils = trpc.useUtils()
 
   // Safe cast: router validates type against the same ResourceType enum values
@@ -1162,6 +1163,57 @@ export default function AprendizajePage() {
               <p className="text-[10px] text-[var(--ink-3)] mt-2 text-right">
                 — {dailyInsight.resourceTitle}
               </p>
+            </div>
+          </section>
+        )}
+
+        {/* 1d. Impacto en trading — TASK-L028 */}
+        {impactRanking.length > 0 && (
+          <section>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">
+              📊 Impacto en trading
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {impactRanking.slice(0, 5).map((row) => (
+                <div
+                  key={`${row.resourceId}-${row.setupId}`}
+                  className="flex items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] px-2.5 py-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium text-[var(--ink)] truncate leading-snug">
+                      {row.resourceTitle}
+                    </p>
+                    <p className="text-[9px] text-[var(--ink-3)] truncate">{row.setupName}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {row.lowConfidence ? (
+                      <div>
+                        <p className="text-[10px] font-mono text-[var(--ink-2)]">
+                          {row.postWinRate}% WR
+                        </p>
+                        <p className="text-[9px] text-[var(--ink-3)]">pocos datos</p>
+                      </div>
+                    ) : row.delta !== null ? (
+                      <p
+                        className="text-xs font-mono font-bold"
+                        style={{ color: row.delta >= 0 ? "var(--win)" : "var(--loss)" }}
+                      >
+                        {row.delta >= 0 ? "+" : ""}{row.delta}% {row.delta >= 0 ? "↑" : "↓"}
+                        <span className="block text-[9px] font-normal text-[var(--ink-3)]">
+                          n={row.postTrades}
+                        </span>
+                      </p>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] font-mono text-[var(--ink-2)]">
+                          {row.postWinRate}% WR
+                        </p>
+                        <p className="text-[9px] text-[var(--ink-3)]">sin datos previos</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
