@@ -266,6 +266,16 @@ Deno.serve(async (req: Request) => {
   const lastSunday = new Date(lastMonday)
   lastSunday.setDate(lastMonday.getDate() + 6)
 
+  // TASK-L031: idempotence key — ISO week string "YYYY-WW"
+  function isoWeekKey(date: Date): string {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7))
+    const year = d.getUTCFullYear()
+    const week = Math.ceil(((d.getTime() - Date.UTC(year, 0, 1)) / 86_400_000 + 1) / 7)
+    return `${year}-${String(week).padStart(2, "0")}`
+  }
+  const weekKey = isoWeekKey(now)
+
   for (const user of users) {
     try {
       const tz = (user.timezone as string | null) ?? "UTC"
@@ -274,6 +284,20 @@ Deno.serve(async (req: Request) => {
       if (!force && !shouldSendNow(tz, TARGET_HOUR)) {
         skipped++
         continue
+      }
+
+      // TASK-L031: deduplicate — skip if already sent this week
+      const { error: logError } = await supabase
+        .from("email_log")
+        .insert({ user_id: user.id, email_type: type, week_key: weekKey })
+      if (logError) {
+        // 23505 = unique_violation → already sent
+        if ((logError as { code?: string }).code === "23505") {
+          skipped++
+          continue
+        }
+        // other error → log but still try to send
+        console.warn(`email_log insert error for ${user.id}:`, logError.message)
       }
 
       if (type === "inactivity") {

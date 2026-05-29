@@ -249,6 +249,27 @@ export const learningResourcesRouter = router({
           },
         })
 
+        // TASK-L030: update materialized streak on User
+        const today = new Date(); today.setHours(0, 0, 0, 0)
+        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
+        const u = await tx.user.findUniqueOrThrow({
+          where:  { id: ctx.userId },
+          select: { currentStreak: true, bestStreak: true, lastReviewDate: true },
+        })
+        const isConsecutive = u.lastReviewDate !== null &&
+          u.lastReviewDate.getTime() >= yesterday.getTime()
+        const isSameDay = u.lastReviewDate !== null &&
+          u.lastReviewDate.getTime() === today.getTime()
+        const newStreak = isSameDay ? u.currentStreak : (isConsecutive ? u.currentStreak + 1 : 1)
+        await tx.user.update({
+          where: { id: ctx.userId },
+          data: {
+            currentStreak: newStreak,
+            bestStreak:    Math.max(u.bestStreak, newStreak),
+            lastReviewDate: today,
+          },
+        })
+
         return newReview
       })
 
@@ -465,13 +486,13 @@ export const learningResourcesRouter = router({
       const weekStart  = new Date(todayStart)
       weekStart.setDate(weekStart.getDate() - daysToMon)
 
-      const [resources, urgentReviews, minuteResources, reviewTimestamps, user] = await Promise.all([
+      const [resources, urgentReviews, minuteResources, user] = await Promise.all([
         ctx.prisma.learningResource.findMany({
           where:  { userId: ctx.userId, status: { not: "ABANDONED" } },
           select: {
             id: true, title: true, type: true, status: true,
             progressPct: true, currentUnits: true, progressType: true,
-            nextReviewAt: true, completedAt: true,
+            nextReviewAt: true, completedAt: true, reviewInterval: true,
           },
         }),
         ctx.prisma.learningResource.findMany({
@@ -488,14 +509,9 @@ export const learningResourcesRouter = router({
           where:  { userId: ctx.userId, progressType: "minutes" },
           select: { weekDeltaMinutes: true, weekDeltaResetAt: true },
         }),
-        ctx.prisma.resourceReview.findMany({
-          where:   { userId: ctx.userId },
-          select:  { createdAt: true },
-          orderBy: { createdAt: "desc" },
-        }),
         ctx.prisma.user.findUniqueOrThrow({
           where:  { id: ctx.userId },
-          select: { weeklyGoalMinutes: true },
+          select: { weeklyGoalMinutes: true, currentStreak: true, bestStreak: true },
         }),
       ])
 
@@ -518,45 +534,10 @@ export const learningResourcesRouter = router({
       }, 0)
       const estimatedHoursThisWeek = Math.round(minutesThisWeekRaw / 60 * 10) / 10
 
-      // P15-E: streak = consecutive calendar days going back from today with ≥1 review
-      const uniqueReviewDays = new Set(
-        reviewTimestamps.map(r => {
-          const d = r.createdAt
-          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-        })
-      )
-
-      let currentStreak = 0
-      const cursor = new Date(todayStart)
-      for (let i = 0; i < 365; i++) {
-        const key = `${cursor.getFullYear()}-${cursor.getMonth()}-${cursor.getDate()}`
-        if (uniqueReviewDays.has(key)) {
-          currentStreak++
-          cursor.setDate(cursor.getDate() - 1)
-        } else {
-          break
-        }
-      }
-
-      // P15-E: bestStreak = longest consecutive run in all-time review days
-      const sortedDayMs = Array.from(uniqueReviewDays)
-        .map(key => {
-          const [y, m, d] = key.split("-").map(Number)
-          return new Date(y, m, d).getTime()
-        })
-        .sort((a, b) => a - b)
-      let bestStreak = 0
-      let tempStreak = sortedDayMs.length > 0 ? 1 : 0
+      // TASK-L030: use materialized streak from User (O(1) instead of O(n) review scan)
       const DAY_MS = 24 * 60 * 60 * 1000
-      for (let i = 1; i < sortedDayMs.length; i++) {
-        if (sortedDayMs[i] - sortedDayMs[i - 1] === DAY_MS) {
-          tempStreak++
-        } else {
-          bestStreak = Math.max(bestStreak, tempStreak)
-          tempStreak = 1
-        }
-      }
-      bestStreak = Math.max(bestStreak, tempStreak)
+      const currentStreak = user.currentStreak
+      const bestStreak    = user.bestStreak
 
       // Focus resource: overdue review > highest-progress IN_PROGRESS > oldest PENDING
       const inProgress = resources
@@ -573,6 +554,19 @@ export const learningResourcesRouter = router({
       const weeklyGoalMinutes = user.weeklyGoalMinutes ?? 300
       const minutesThisWeek = minutesThisWeekRaw
 
+      // TASK-L029: auto-transition MASTERED → IN_REVIEW when nextReviewAt exceeded by 2× reviewInterval
+      const decayed = resources.filter(r =>
+        r.status === "MASTERED" &&
+        r.nextReviewAt !== null &&
+        (todayStart.getTime() - r.nextReviewAt.getTime()) > (r.reviewInterval ?? 7) * 2 * DAY_MS
+      )
+      if (decayed.length > 0) {
+        await ctx.prisma.learningResource.updateMany({
+          where: { id: { in: decayed.map(r => r.id) } },
+          data:  { status: "IN_REVIEW" },
+        })
+      }
+
       return {
         totalResources:          resources.length,
         completedThisMonth,
@@ -585,6 +579,7 @@ export const learningResourcesRouter = router({
         focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
         weeklyGoalMinutes,
         minutesThisWeek,
+        decayedCount:            decayed.length,
       }
     }),
 

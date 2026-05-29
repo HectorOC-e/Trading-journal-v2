@@ -1240,6 +1240,15 @@ export default function AprendizajePage() {
           </section>
         )}
 
+        {/* 2b. Decay notification — TASK-L029 */}
+        {stats && stats.decayedCount > 0 && (
+          <div className="rounded-[var(--radius-sm)] border border-[#f59e0b] bg-[#fef3c7] px-3 py-2">
+            <p className="text-[11px] font-medium text-[#92400e] leading-snug">
+              ⚠️ {stats.decayedCount} recurso{stats.decayedCount !== 1 ? "s" : ""} marcado{stats.decayedCount !== 1 ? "s" : ""} como <strong>Dominado</strong> volvieron a <strong>Revisar</strong> por inactividad.
+            </p>
+          </div>
+        )}
+
         {/* 3. Reviews urgentes */}
         {stats && stats.urgentReviews.length > 0 && (
           <section>

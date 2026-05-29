@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react"
+import { Search, ChevronDown, ChevronUp, SlidersHorizontal, LayoutGrid, List } from "lucide-react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { ResourceCard } from "@/components/aprendizaje/resource-card"
+import { ResourceListRow } from "@/components/aprendizaje/resource-list-row"
 import { cn } from "@/lib/utils"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
@@ -77,6 +78,17 @@ export function ResourceGrid({
   onViewImpact,
   onViewDetail,
 }: ResourceGridProps) {
+  // View mode — persisted in localStorage (TASK-L032)
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    if (typeof window === "undefined") return "grid"
+    return (localStorage.getItem("resource-view-mode") as "grid" | "list") ?? "grid"
+  })
+
+  function switchView(mode: "grid" | "list") {
+    setViewMode(mode)
+    localStorage.setItem("resource-view-mode", mode)
+  }
+
   // Basic filters
   const [search, setSearch]             = useState("")
   const [category, setCategory]         = useState("TODOS")
@@ -205,6 +217,25 @@ export function ResourceGrid({
           {advancedOpen ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
         </button>
 
+        {/* View mode toggle */}
+        <div className="flex rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden shrink-0">
+          {(["grid", "list"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => switchView(mode)}
+              title={mode === "grid" ? "Vista grid" : "Vista lista"}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center transition-colors",
+                viewMode === mode
+                  ? "bg-[var(--accent)] text-white"
+                  : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+              )}
+            >
+              {mode === "grid" ? <LayoutGrid size={12} /> : <List size={12} />}
+            </button>
+          ))}
+        </div>
+
         {/* Sort dropdown */}
         <div className="relative ml-auto">
           <select
@@ -315,28 +346,48 @@ export function ResourceGrid({
         {isFiltered ? " (filtrado)" : ""}
       </p>
 
-      {/* Grid: single col on mobile, 2-col on md+ */}
+      {/* Resource display */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-[var(--ink-3)]">
           No hay recursos con estos filtros.
         </div>
+      ) : viewMode === "list" ? (
+        /* List view — compact 36px rows (TASK-L032) */
+        <div className="flex flex-col">
+          {/* Header row */}
+          <div className="flex items-center gap-2 h-7 px-3 mb-1">
+            <span className="w-[52px] shrink-0" />
+            <span className="flex-1 text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)]">Título</span>
+            <span className="w-14 shrink-0" />
+            <span className="w-[64px] text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] text-right">Estado</span>
+            <span className="w-[52px] text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] text-right">Review</span>
+          </div>
+          {filtered.map((r) => (
+            <ResourceListRow
+              key={r.id}
+              resource={r}
+              onClick={() => onViewDetail?.(r)}
+            />
+          ))}
+        </div>
       ) : (
+        /* Grid view — 1-col mobile, 2-col md+ */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((r) => (
             <ResourceCard
-                key={r.id}
-                resource={r}
-                onReview={onReview}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onUpdateStatus={onUpdateStatus}
-                onToggleFavorite={onToggleFavorite}
-                onUpdateProgress={onUpdateProgress}
-                onLinkSetup={onLinkSetup}
-                onUnlinkSetup={onUnlinkSetup}
-                onViewImpact={onViewImpact}
-                onViewDetail={onViewDetail}
-              />
+              key={r.id}
+              resource={r}
+              onReview={onReview}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onUpdateStatus={onUpdateStatus}
+              onToggleFavorite={onToggleFavorite}
+              onUpdateProgress={onUpdateProgress}
+              onLinkSetup={onLinkSetup}
+              onUnlinkSetup={onUnlinkSetup}
+              onViewImpact={onViewImpact}
+              onViewDetail={onViewDetail}
+            />
           ))}
         </div>
       )}
