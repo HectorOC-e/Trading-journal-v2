@@ -106,6 +106,7 @@ export interface ResourceCardProps {
   onUpdateProgress?:  (id: string, currentUnits: number) => void
   onLinkSetup?:       (resource: LearningResource) => void
   onUnlinkSetup?:     (resourceId: string, setupId: string) => void
+  onViewImpact?:      (resource: LearningResource) => void
 }
 
 export function ResourceCard({
@@ -119,6 +120,7 @@ export function ResourceCard({
   onUpdateProgress,
   onLinkSetup,
   onUnlinkSetup,
+  onViewImpact,
 }: ResourceCardProps) {
   const [menuOpen,        setMenuOpen]        = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
@@ -444,6 +446,15 @@ export function ResourceCard({
                 +progreso
               </button>
             )
+          )}
+
+          {onViewImpact && resource.linkedSetups && resource.linkedSetups.length > 0 && (
+            <button
+              className="text-[10px] text-[var(--ink-3)] hover:text-[var(--accent)] px-1.5 py-0.5 rounded hover:bg-[var(--chip)] transition-colors shrink-0"
+              onClick={() => onViewImpact(resource)}
+            >
+              📊 Impacto
+            </button>
           )}
 
           <span className="text-[10px] text-[var(--ink-3)] ml-auto shrink-0">

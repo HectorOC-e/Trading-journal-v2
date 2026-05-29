@@ -723,7 +723,7 @@ Implementar resumen semanal por email y alerta de inactividad. Las notificacione
 
 ### TASK-L016
 **Prioridad:** 🟠 ALTA  
-**Estado:** `[x]`  
+**Estado:** `[x]` *(UI añadida: SetupImpactModal + botón 📊 Impacto en footer del card)*  
 **Fase:** 5 — Conexión Aprendizaje↔Trading  
 **Activado por:** P13-A ("Setup 72% WR desde que estudiaste X" — killer feature) + P18 (aprendizaje no separado del trading real)
 
