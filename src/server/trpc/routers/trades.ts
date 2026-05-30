@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import { calcExpectancyR, calcProfitFactor, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
+import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -798,14 +799,10 @@ export const tradesRouter = router({
       const trade = await ctx.prisma.trade.findUniqueOrThrow({
         where: { id: input.id, userId: ctx.userId },
       })
-      const entry     = Number(trade.entry)
-      const size      = Number(trade.size)
-      const rawPnl    = trade.direction === "LONG"
-        ? (input.closePrice - entry) * size
-        : (entry - input.closePrice) * size
-      const risk      = Math.abs(entry - Number(trade.stop)) * size
-      const rMultiple = risk > 0 ? rawPnl / risk : null
-      const netPnl    = rawPnl - input.commission
+      const entry               = Number(trade.entry)
+      const size                = Number(trade.size)
+      const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission)
+      const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size)
 
       const updated = await ctx.prisma.trade.update({
         where:   { id: input.id, userId: ctx.userId },
@@ -883,13 +880,9 @@ export const tradesRouter = router({
         tradeUpdate.target = input.price
       }
       if (input.type === "SCALE_IN" && input.price != null && input.contracts != null) {
-        const oldSize     = Number(trade.size)
-        const newSize     = oldSize + input.contracts
-        const newAvgEntry = newSize > 0
-          ? (Number(trade.entry) * oldSize + input.price * input.contracts) / newSize
-          : Number(trade.entry)
-        tradeUpdate.entry = newAvgEntry
-        tradeUpdate.size  = newSize
+        const oldSize = Number(trade.size)
+        tradeUpdate.entry = computeScaleInAvgEntry(Number(trade.entry), oldSize, input.price, input.contracts)
+        tradeUpdate.size  = oldSize + input.contracts
       }
       if (input.type === "PARTIAL_CLOSE" && input.contracts != null) {
         tradeUpdate.size = Math.max(0, Number(trade.size) - input.contracts)
