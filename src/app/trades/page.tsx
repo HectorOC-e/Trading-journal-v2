@@ -16,6 +16,8 @@ export default function TradesPage() {
   const [modalOpen, setModalOpen]    = useState(false)
   const [editingTrade, setEditingTrade]         = useState<string | null>(null)
   const [positionLogTrade, setPositionLogTrade] = useState<string | null>(null)
+  const [propFirmError, setPropFirmError]       = useState<string | null>(null)
+  const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
 
   const utils = trpc.useUtils()
 
@@ -41,8 +43,18 @@ export default function TradesPage() {
   const { data: markets = [] } =
     trpc.markets.list.useQuery()
 
+  const PROP_FIRM_MESSAGES: Record<string, string> = {
+    PROP_FIRM_DAILY_LOSS_LIMIT:   "Has alcanzado el límite de pérdida diaria para esta cuenta.",
+    PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",
+    PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
+  }
+
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: () => utils.trades.list.invalidate(),
+    onError: (err) => {
+      const msg = PROP_FIRM_MESSAGES[err.message]
+      if (msg) setPropFirmError(msg)
+    },
   })
 
   const deleteTrade = trpc.trades.delete.useMutation({
@@ -60,7 +72,14 @@ export default function TradesPage() {
   })
 
   const closeTrade = trpc.trades.close.useMutation({
-    onSuccess: () => utils.trades.list.invalidate(),
+    onSuccess: (result) => {
+      utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
+      if (result.accountDeactivated) {
+        const acct = accounts.find(a => a.id === result.trade.accountId)
+        setDeactivatedAccount(acct?.name ?? "tu cuenta")
+      }
+    },
   })
 
   const addEvent = trpc.trades.addEvent.useMutation({
@@ -195,6 +214,22 @@ export default function TradesPage() {
   // ── Render ────────────────────────────────────────────
   return (
     <>
+      {/* Prop firm error banner */}
+      {propFirmError && (
+        <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)] px-4 py-3 text-sm text-[var(--loss)]">
+          <span className="flex-1">{propFirmError}</span>
+          <button onClick={() => setPropFirmError(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
+      {/* Account auto-deactivated banner */}
+      {deactivatedAccount && (
+        <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)] px-4 py-3 text-sm text-[var(--loss)]">
+          <span className="flex-1">
+            La cuenta <strong>{deactivatedAccount}</strong> ha sido desactivada automáticamente por superar el drawdown total máximo.
+          </span>
+          <button onClick={() => setDeactivatedAccount(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
       <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
         {/* Main column */}
         <div className="flex-1" style={{ padding: "28px 32px", minWidth: 0 }}>

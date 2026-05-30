@@ -854,10 +854,11 @@ export const tradesRouter = router({
               },
             },
           })
+          return { trade: serializeTrade(updated), accountDeactivated: true }
         }
       }
 
-      return serializeTrade(updated)
+      return { trade: serializeTrade(updated), accountDeactivated: false }
     }),
 
   addEvent: protectedProcedure
