@@ -14,7 +14,7 @@ import type { RouterOutputs } from "@/server/trpc/root"
 type ReviewFromDB   = RouterOutputs["weeklyReviews"]["list"][number]
 type AccountFromDB  = RouterOutputs["accounts"]["list"][number]
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
-type TradeFromDB    = RouterOutputs["trades"]["list"][number]
+type TradeFromDB    = RouterOutputs["trades"]["list"]["items"][number]
 
 // ── Week generation ────────────────────────────────────────────────────────
 const MONTH_SHORT = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
@@ -644,7 +644,8 @@ function NuevaReviewModal({
   const [linkedResources, setLinkedResources] = useState<string[]>([])
 
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
-  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+  const { data: rawTrades } = trpc.trades.list.useQuery()
+  const allTrades: TradeFromDB[] = rawTrades?.items ?? []
   const utils = trpc.useUtils()
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
@@ -1030,7 +1031,8 @@ export default function ReviewsPage() {
   const { data: reviews = [], isLoading }          = trpc.weeklyReviews.list.useQuery()
   const { data: accounts = [] }                    = trpc.accounts.list.useQuery()
   const { data: reviewResources = [] }             = trpc.learningResources.list.useQuery({ markedForReview: true })
-  const { data: allTrades = [] }                   = trpc.trades.list.useQuery()
+  const { data: rawPageTrades }                    = trpc.trades.list.useQuery()
+  const allTrades: TradeFromDB[]                   = rawPageTrades?.items ?? []
 
   const accountName = (id: string | null) => {
     if (!id) return "—"

@@ -1180,7 +1180,8 @@ export default function CuentasPage() {
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const { data: markets = [] } = trpc.markets.list.useQuery()
-  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+  const { data: rawTradesData } = trpc.trades.list.useQuery()
+  const allTrades = rawTradesData?.items ?? []
   const utils = trpc.useUtils()
 
   const accountStats = useMemo(() => {

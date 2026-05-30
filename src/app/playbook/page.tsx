@@ -893,7 +893,8 @@ export default function PlaybookPage() {
   const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
     { includeDiscarded: showDiscarded },
   )
-  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+  const { data: rawTradesData } = trpc.trades.list.useQuery()
+  const allTrades = rawTradesData?.items ?? []
 
   const setupStats = useMemo(() => {
     const map: Record<string, SetupStats> = {}

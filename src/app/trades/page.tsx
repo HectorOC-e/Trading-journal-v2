@@ -20,8 +20,17 @@ export default function TradesPage() {
   const utils = trpc.useUtils()
 
   // ── Data ──────────────────────────────────────────────
-  const { data: trades = [], isLoading: tradesLoading } =
-    trpc.trades.list.useQuery()
+  const {
+    data: tradePages,
+    isLoading: tradesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = trpc.trades.list.useInfiniteQuery(
+    { limit: 50 },
+    { getNextPageParam: (last) => last.nextCursor ?? undefined },
+  )
+  const trades = tradePages?.pages.flatMap(p => p.items) ?? []
 
   const { data: accounts = [] } =
     trpc.accounts.list.useQuery()
@@ -207,6 +216,17 @@ export default function TradesPage() {
             selectedId={selectedId ?? undefined}
             onSelect={(t) => setSelectedId(t ? t.id : null)}
           />
+          {hasNextPage && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-4 py-2 text-sm font-medium text-[var(--ink-2)] border border-[var(--line)] rounded-[var(--radius-sm)] hover:text-[var(--ink)] hover:border-[var(--line-2)] transition-colors disabled:opacity-50"
+              >
+                {isFetchingNextPage ? "Cargando…" : "Cargar más"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right rail — desktop only, lives inside layout */}

@@ -9,10 +9,10 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
-import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, BookOpen, Award } from "lucide-react"
-import { calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
+import { TrendingUp, TrendingDown, Target, BarChart2, Shield, CheckCircle2, Percent, Activity, Award } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { KpiCard } from "@/components/ui/kpi-card"
+import type { RouterOutputs } from "@/server/trpc/root"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -23,7 +23,10 @@ const TABS = [
   { value: "playbook",   label: "Playbook" },
 ]
 
-/* ── TYPE_META ── */
+type DashboardStats  = RouterOutputs["trades"]["dashboardStats"]
+type AccountMeta     = RouterOutputs["accounts"]["list"][number]
+
+/* ── Shared helpers ────────────────────────────────────────────────────── */
 const TYPE_META: Record<string, { color: string; label: string; icon: string }> = {
   PROP_FIRM:      { color: "#4f6ef7", label: "PROP FIRM",  icon: "🏢" },
   PERSONAL:       { color: "#22c55e", label: "PERSONAL",   icon: "👤" },
@@ -34,13 +37,11 @@ const TYPE_META: Record<string, { color: string; label: string; icon: string }> 
 }
 
 const MONTHS_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
-
 function fmtDate(iso: string) {
   const [, m, d] = iso.split("-")
   return `${parseInt(d)} ${MONTHS_ES[parseInt(m) - 1]}`
 }
 
-/* ── Card wrapper ── */
 function Card({ title, sub, children, className }: {
   title?: string; sub?: string; children: React.ReactNode; className?: string
 }) {
@@ -57,8 +58,6 @@ function Card({ title, sub, children, className }: {
   )
 }
 
-
-/* ── Tooltip ── */
 interface TooltipPayload { dataKey: string; name: string; value: number; color: string }
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
   if (!active || !payload?.length) return null
@@ -75,22 +74,10 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 }
 
 /* ═══════════════════════════════════════════
-   PROP FIRM RULES WIDGET
+   TAB PORTFOLIO
 ═══════════════════════════════════════════ */
-
-type PropAccountItem = {
-  id: string
-  name: string
-  status: "OK" | "ALERTA"
-  drawdownPct: number
-  dailyLossPct: number
-  tradesUsed: number
-  tradesMax: number
-  symbols: string
-}
-
-function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
-  if (propAccounts.length === 0) return null
+function PropFirmRules({ propFirmStatus }: { propFirmStatus: DashboardStats["propFirmStatus"] }) {
+  if (propFirmStatus.length === 0) return null
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
       <p className="text-[13px] font-semibold text-[var(--ink)]">Reglas Prop Firm · progreso</p>
@@ -98,11 +85,10 @@ function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
         Risk engine evalúa estos límites antes de aceptar cada nuevo trade.
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {propAccounts.map(a => (
-          <div key={a.id}
+        {propFirmStatus.map(a => (
+          <div key={a.accountId}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-3"
             style={{ borderLeft: `3px solid ${a.status === "OK" ? "var(--win)" : "var(--loss)"}` }}>
-            {/* Header */}
             <div className="flex items-center justify-between">
               <p className="text-[13px] font-semibold text-[var(--ink)]">{a.name}</p>
               <span className="text-[10px] font-bold tracking-wider"
@@ -110,10 +96,8 @@ function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
                 {a.status}
               </span>
             </div>
-            {/* Bars */}
-            <RuleBar label="Max drawdown total" usedPct={a.drawdownPct} displayRight={`${a.drawdownPct.toFixed(1)}%`} />
+            <RuleBar label="Max drawdown total" usedPct={a.ddPctUsed} displayRight={`${a.ddPctUsed.toFixed(1)}%`} />
             <RuleBar label="Pérdida diaria"      usedPct={a.dailyLossPct} displayRight={`${a.dailyLossPct.toFixed(1)}%`} />
-            {/* Trades counter */}
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] text-[var(--ink-2)]">Trades / día</span>
@@ -132,9 +116,10 @@ function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
                 </div>
               )}
             </div>
-            {/* Symbols */}
             <p className="text-[10px] text-[var(--ink-3)]">
-              Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">{a.symbols || "—"}</span>
+              Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">
+                {(a as { accountId: string; name: string; ddPctUsed: number; dailyLossPct: number; tradesUsed: number; tradesMax: number; status: "OK" | "ALERTA" } & { allowedSymbols?: string[] }).allowedSymbols?.join(", ") || "—"}
+              </span>
             </p>
           </div>
         ))}
@@ -143,226 +128,60 @@ function PropFirmRules({ propAccounts }: { propAccounts: PropAccountItem[] }) {
   )
 }
 
-/* ═══════════════════════════════════════════
-   TAB PORTFOLIO
-═══════════════════════════════════════════ */
-const HEAT_COLORS: Record<string, string> = {
-  "null": "var(--panel-2)",
-  "0": "var(--win)",
-  "1": "var(--be)",
-  "2": "var(--loss)",
-}
-
-type Trade = {
-  id: string
-  symbol: string
-  direction: string
-  status: string
-  pnl: number | null
-  rMultiple: number | null
-  date: string
-  session: string | null
-  tags: string[]
-  setupId: string | null
-  accountId: string
-  setup: { name: string; abbreviation: string; color?: string } | null
-  account: {
-    id: string
-    name: string
-    type: string
-    initialBalance: number
-    ddDailyPct: number | null
-    ddTotalPct: number | null
-    maxTradesPerDay: number | null
-    allowedSymbols: string[]
-  } | null
-  openTime: string | null
-  closeTime: string | null
-  entry: number | null
-  stop: number | null
-  target: number | null
-  size: number | null
-  createdAt: string
-}
-
-type AccountRow = {
-  id: string
-  name: string
-  type: string
-  initialBalance: number | string
-  ddDailyPct: number | null | string
-  ddTotalPct: number | null | string
-  maxTradesPerDay: number | null
-  allowedSymbols: string[]
-  status: string
-}
-
-function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accounts: AccountRow[] }) {
-  const today = new Date().toISOString().slice(0, 10)
-  const nowMonth = new Date()
-  const monthStart = new Date(nowMonth.getFullYear(), nowMonth.getMonth(), 1).toISOString().slice(0, 10)
-
-  const netPnl = useMemo(() => closedTrades.reduce((s, t) => s + (t.pnl ?? 0), 0), [closedTrades])
-  const wins = useMemo(() => closedTrades.filter(t => (t.pnl ?? 0) > 0).length, [closedTrades])
-  const winRate = closedTrades.length > 0 ? ((wins / closedTrades.length) * 100).toFixed(1) : "0.0"
-  const avgR = useMemo(() => {
-    const rs = closedTrades.filter(t => t.rMultiple != null)
-    return rs.length > 0 ? rs.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / rs.length : 0
-  }, [closedTrades])
-
-  const grossWin = useMemo(() => closedTrades.filter(t => (t.pnl ?? 0) > 0).reduce((s, t) => s + (t.pnl ?? 0), 0), [closedTrades])
-  const grossLoss = useMemo(() => Math.abs(closedTrades.filter(t => (t.pnl ?? 0) < 0).reduce((s, t) => s + (t.pnl ?? 0), 0)), [closedTrades])
-  const pf = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? 999 : 0
-
-  // Sharpe ratio (mean R / sample stdDev R — Bessel correction n-1)
-  const sharpe = useMemo(() => {
-    const rs = closedTrades.filter(t => t.rMultiple != null).map(t => t.rMultiple!)
-    return calcSharpeRatio(rs)
-  }, [closedTrades])
-
-  // Expectancy in $
-  const expectancyDollar = useMemo(() => {
-    if (closedTrades.length === 0) return null
-    const winsT   = closedTrades.filter(t => (t.pnl ?? 0) > 0)
-    const lossesT = closedTrades.filter(t => (t.pnl ?? 0) < 0)
-    const avgWin  = winsT.length   > 0 ? winsT.reduce((s, t) => s + (t.pnl ?? 0), 0)   / winsT.length   : 0
-    const avgLoss = lossesT.length > 0 ? Math.abs(lossesT.reduce((s, t) => s + (t.pnl ?? 0), 0) / lossesT.length) : 0
-    const wr = winsT.length / closedTrades.length
-    const lr = lossesT.length / closedTrades.length
-    return avgWin * wr - avgLoss * lr
-  }, [closedTrades])
-
-  // Best / worst day
-  const { bestDay, worstDay } = useMemo(() => {
-    const byDate: Record<string, number> = {}
-    for (const t of closedTrades) byDate[t.date] = (byDate[t.date] ?? 0) + (t.pnl ?? 0)
-    const entries = Object.entries(byDate)
-    if (entries.length === 0) return { bestDay: null, worstDay: null }
-    const best  = entries.reduce((a, b) => b[1] > a[1] ? b : a)
-    const worst = entries.reduce((a, b) => b[1] < a[1] ? b : a)
-    return { bestDay: { date: best[0], pnl: best[1] }, worstDay: { date: worst[0], pnl: worst[1] } }
-  }, [closedTrades])
-
-  // Current consecutive win/loss streak
-  const streak = useMemo(() => {
-    const sorted = [...closedTrades].sort((a, b) => b.date.localeCompare(a.date))
-    if (sorted.length === 0) return null
-    const first = sorted[0].pnl ?? 0
-    if (first === 0) return null
-    const isWin = first > 0
-    let count = 0
-    for (const t of sorted) {
-      const p = t.pnl ?? 0
-      if (isWin ? p > 0 : p < 0) count++
-      else break
-    }
-    return { count, isWin }
-  }, [closedTrades])
-
-  // Donut: allocation by account initialBalance
-  const totalInitial = useMemo(() => accounts.reduce((s, a) => s + Number(a.initialBalance), 0), [accounts])
+function TabPortfolio({
+  kpis, pnlByDate, propFirmStatus, accountStats, accounts,
+}: {
+  kpis:           DashboardStats["kpis"]
+  pnlByDate:      DashboardStats["pnlByDate"]
+  propFirmStatus: DashboardStats["propFirmStatus"]
+  accountStats:   DashboardStats["accountStats"]
+  accounts:       AccountMeta[]
+}) {
+  const totalInitial = useMemo(
+    () => accounts.reduce((s, a) => s + Number(a.initialBalance), 0),
+    [accounts],
+  )
   const donutData = useMemo(() => accounts.map(a => {
     const meta = TYPE_META[a.type] ?? { color: "#6b7280" }
-    const pct = totalInitial > 0 ? (Number(a.initialBalance) / totalInitial) * 100 : 0
+    const pct  = totalInitial > 0 ? (Number(a.initialBalance) / totalInitial) * 100 : 0
     return { name: a.name, value: parseFloat(pct.toFixed(1)), color: meta.color }
   }), [accounts, totalInitial])
 
-  // Bar chart: group by date + accountId (last 15 sessions)
   const barData = useMemo(() => {
     const byDate: Record<string, Record<string, number>> = {}
-    for (const t of closedTrades) {
-      if (!byDate[t.date]) byDate[t.date] = {}
-      const acctName = t.account?.name ?? t.accountId
-      byDate[t.date][acctName] = (byDate[t.date][acctName] ?? 0) + (t.pnl ?? 0)
+    for (const entry of pnlByDate) {
+      const name = accounts.find(a => a.id === entry.accountId)?.name ?? entry.accountId
+      if (!byDate[entry.date]) byDate[entry.date] = {}
+      byDate[entry.date][name] = (byDate[entry.date][name] ?? 0) + entry.pnl
     }
-    const sorted = Object.entries(byDate)
+    return Object.entries(byDate)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-15)
-    return sorted.map(([date, vals]) => ({ date: fmtDate(date), ...vals }))
-  }, [closedTrades])
+      .map(([date, vals]) => ({ date: fmtDate(date), ...vals }))
+  }, [pnlByDate, accounts])
 
   const barAccountNames = useMemo(() => {
     const names = new Set<string>()
-    for (const t of closedTrades) names.add(t.account?.name ?? t.accountId)
+    for (const entry of pnlByDate) names.add(accounts.find(a => a.id === entry.accountId)?.name ?? entry.accountId)
     return Array.from(names)
-  }, [closedTrades])
+  }, [pnlByDate, accounts])
 
-  // Prop firm accounts
-  const propAccounts = useMemo((): PropAccountItem[] => {
-    return accounts
-      .filter(a => a.type === "PROP_FIRM" || a.type === "DEMO_PROP")
-      .map(a => {
-        const acctTrades = closedTrades.filter(t => t.accountId === a.id)
-        const balance = Number(a.initialBalance)
-
-        // Peak drawdown
-        let cum = 0, peak = 0, maxDd = 0
-        for (const t of [...acctTrades].sort((x, y) => x.date.localeCompare(y.date))) {
-          cum += (t.pnl ?? 0)
-          if (cum > peak) peak = cum
-          const dd = peak - cum
-          if (dd > maxDd) maxDd = dd
-        }
-        const ddTotalLimit = Number(a.ddTotalPct ?? 5)
-        const ddPctUsed = balance > 0 && ddTotalLimit > 0
-          ? (maxDd / balance) / (ddTotalLimit / 100) * 100
-          : 0
-
-        // Daily loss
-        const todayTrades = acctTrades.filter(t => t.date === today)
-        const todayLoss = Math.abs(Math.min(0, todayTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)))
-        const ddDailyLimit = Number(a.ddDailyPct ?? 1)
-        const dailyLossPct = balance > 0 && ddDailyLimit > 0
-          ? (todayLoss / balance) / (ddDailyLimit / 100) * 100
-          : 0
-
-        const tradesUsed = todayTrades.length
-        const tradesMax = a.maxTradesPerDay ?? 0
-        const status: "OK" | "ALERTA" = ddPctUsed >= 70 || dailyLossPct >= 80 ? "ALERTA" : "OK"
-
-        return {
-          id: a.id,
-          name: a.name,
-          status,
-          drawdownPct: parseFloat(ddPctUsed.toFixed(1)),
-          dailyLossPct: parseFloat(dailyLossPct.toFixed(1)),
-          tradesUsed,
-          tradesMax,
-          symbols: (a.allowedSymbols as string[]).join(", "),
-        }
-      })
-  }, [accounts, closedTrades, today])
-
-  // Accounts table
-  const accountsWithStats = useMemo(() => {
-    return accounts.map(a => {
-      const acctTrades = closedTrades.filter(t => t.accountId === a.id)
-      const monthTrades = acctTrades.filter(t => t.date >= monthStart)
-      const pnlMonth = monthTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-      const acctWins = acctTrades.filter(t => (t.pnl ?? 0) > 0).length
-      const wr = acctTrades.length > 0 ? ((acctWins / acctTrades.length) * 100).toFixed(2) : "0.00"
-      const netPnlAcct = acctTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-      const balance = Number(a.initialBalance) + netPnlAcct
-
-      // Drawdown
-      let cum = 0, peak = 0, maxDd = 0
-      for (const t of [...acctTrades].sort((x, y) => x.date.localeCompare(y.date))) {
-        cum += (t.pnl ?? 0)
-        if (cum > peak) peak = cum
-        const dd = peak - cum
-        if (dd > maxDd) maxDd = dd
-      }
-      const ddPct = Number(a.initialBalance) > 0 ? (maxDd / Number(a.initialBalance)) * 100 : 0
-      return { ...a, balance, pnlMonth, wr, ddPct }
+  const accountsTable = useMemo(() => {
+    return accountStats.map(s => {
+      const a = accounts.find(acc => acc.id === s.accountId)
+      return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", status: a?.status ?? "ACTIVE" }
     })
-  }, [accounts, closedTrades, monthStart])
+  }, [accountStats, accounts])
+
+  const pf = kpis.profitFactor
+  const { netPnl, wins, total, winRate, avgR, sharpeRatio, expectancyDollar, bestDay, worstDay, tradeStreak } = kpis
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Net P&L total"
           value={`${netPnl >= 0 ? "+" : "-"}$${Math.abs(netPnl).toFixed(2)}`}
-          sub={`${closedTrades.length} operaciones cerradas`}
+          sub={`${total} operaciones cerradas`}
           color={netPnl >= 0 ? "var(--win)" : "var(--loss)"}
           icon={netPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />} />
         <KpiCard label="Profit Factor"
@@ -370,8 +189,8 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
           sub="todas las cuentas"
           icon={<Activity size={15} />} />
         <KpiCard label="Win Rate"
-          value={`${(closedTrades.length > 0 ? (wins / closedTrades.length * 100) : 0).toFixed(2)}%`}
-          sub={`${wins} / ${closedTrades.length} operaciones`}
+          value={`${winRate.toFixed(2)}%`}
+          sub={`${wins} / ${total} operaciones`}
           icon={<Percent size={15} />} />
         <KpiCard label="Avg R"
           value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(4)}R`}
@@ -379,14 +198,14 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
           color={avgR >= 0 ? "var(--win)" : "var(--loss)"}
           icon={<Target size={15} />} />
         <KpiCard label="Sharpe Ratio"
-          value={sharpe != null ? sharpe.toFixed(4) : "—"}
+          value={sharpeRatio != null ? sharpeRatio.toFixed(4) : "—"}
           sub="avgR / desv. estándar R"
-          color={sharpe != null && sharpe >= 1 ? "var(--win)" : sharpe != null && sharpe < 0 ? "var(--loss)" : undefined}
+          color={sharpeRatio != null && sharpeRatio >= 1 ? "var(--win)" : sharpeRatio != null && sharpeRatio < 0 ? "var(--loss)" : undefined}
           icon={<BarChart2 size={15} />} />
         <KpiCard label="Expectancy $"
-          value={expectancyDollar != null ? `${expectancyDollar >= 0 ? "+" : "-"}$${Math.abs(expectancyDollar).toFixed(2)}` : "—"}
+          value={`${expectancyDollar >= 0 ? "+" : "-"}$${Math.abs(expectancyDollar).toFixed(2)}`}
           sub="por trade promedio"
-          color={expectancyDollar != null ? (expectancyDollar >= 0 ? "var(--win)" : "var(--loss)") : undefined}
+          color={expectancyDollar >= 0 ? "var(--win)" : "var(--loss)"}
           icon={<CheckCircle2 size={15} />} />
         <KpiCard label="Mejor día"
           value={bestDay ? `+$${bestDay.pnl.toFixed(2)}` : "—"}
@@ -398,17 +217,16 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
           sub={worstDay && worstDay.pnl < 0 ? fmtDate(worstDay.date) : "sin datos"}
           color="var(--loss)"
           icon={<TrendingDown size={15} />} />
-        {streak && (
+        {tradeStreak && (
           <KpiCard label="Racha actual"
-            value={`${streak.count}${streak.isWin ? "W" : "L"}`}
-            sub={streak.isWin ? "victorias consecutivas" : "pérdidas consecutivas"}
-            color={streak.isWin ? "var(--win)" : "var(--loss)"}
+            value={`${tradeStreak.count}${tradeStreak.isWin ? "W" : "L"}`}
+            sub={tradeStreak.isWin ? "victorias consecutivas" : "pérdidas consecutivas"}
+            color={tradeStreak.isWin ? "var(--win)" : "var(--loss)"}
             icon={<Award size={15} />} />
         )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Donut */}
         <Card title="Asignación por cuenta" sub="Ponderación por balance inicial">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <div style={{ width: 120, flexShrink: 0 }}>
@@ -436,7 +254,6 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
           </div>
         </Card>
 
-        {/* Bar chart */}
         <Card title="P&L diario por cuenta" sub="Últimas 15 sesiones · USD">
           {barData.length > 0 ? (
             <>
@@ -475,10 +292,8 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
         </Card>
       </div>
 
-      {/* Prop Firm rules progress */}
-      <PropFirmRules propAccounts={propAccounts} />
+      <PropFirmRules propFirmStatus={propFirmStatus} />
 
-      {/* Accounts table */}
       <Card title="Comparación de cuentas">
         <div className="overflow-x-auto -mx-1">
           <table className="w-full min-w-[480px]">
@@ -490,16 +305,16 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
               </tr>
             </thead>
             <tbody>
-              {accountsWithStats.map(a => (
-                <tr key={a.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+              {accountsTable.map(a => (
+                <tr key={a.accountId} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
                   <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
                   <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.balance.toFixed(2)}</td>
                   <td className={cn("py-3 font-mono text-sm font-semibold", a.pnlMonth >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
                     {a.pnlMonth >= 0 ? "+" : "-"}${Math.abs(a.pnlMonth).toFixed(2)}
                   </td>
-                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.wr}%</td>
-                  <td className={cn("py-3 font-mono text-sm", a.ddPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
-                    {a.ddPct > 0 ? `-${a.ddPct.toFixed(1)}%` : "0.0%"}
+                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</td>
+                  <td className={cn("py-3 font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
+                    {a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}
                   </td>
                   <td className="py-3">
                     <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
@@ -512,7 +327,7 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
                   </td>
                 </tr>
               ))}
-              {accountsWithStats.length === 0 && (
+              {accountsTable.length === 0 && (
                 <tr><td colSpan={6} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin cuentas registradas</td></tr>
               )}
             </tbody>
@@ -528,155 +343,70 @@ function TabPortfolio({ closedTrades, accounts }: { closedTrades: Trade[]; accou
 ═══════════════════════════════════════════ */
 const TRADE_FILTERS = ["Todos", "A+", "Plan seguido", "Off-plan", "Con violación"]
 
-function TabOperador({ allTrades, closedTrades, accounts }: {
-  allTrades: Trade[]; closedTrades: Trade[]; accounts: AccountRow[]
+function TabOperador({
+  kpis, accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts,
+}: {
+  kpis:           DashboardStats["kpis"]
+  accountStats:   DashboardStats["accountStats"]
+  equityCurve:    DashboardStats["equityCurve"]
+  sessionStats:   DashboardStats["sessionStats"]
+  pnlBySymbol:    DashboardStats["pnlBySymbol"]
+  hourStats:      DashboardStats["hourStats"]
+  recentTrades:   DashboardStats["recentTrades"]
+  executionStats: DashboardStats["executionStats"]
+  accounts:       AccountMeta[]
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [tradeFilter, setTradeFilter] = useState("Todos")
-  const today = new Date().toISOString().slice(0, 10)
 
-  // Account cards
   const accountCards = useMemo(() => {
-    return accounts.map(a => {
-      const meta = TYPE_META[a.type] ?? { color: "#6b7280", label: a.type, icon: "📊" }
-      const acctTrades = closedTrades.filter(t => t.accountId === a.id)
-      const netPnl = acctTrades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-      const balance = Number(a.initialBalance) + netPnl
-      const todayPnl = closedTrades
-        .filter(t => t.accountId === a.id && t.date === today)
-        .reduce((s, t) => s + (t.pnl ?? 0), 0)
-      return { ...a, balance, deltaToday: todayPnl, color: meta.color, typeLabel: meta.label, typeIcon: meta.icon }
+    return accountStats.map(s => {
+      const a    = accounts.find(acc => acc.id === s.accountId)
+      const meta = TYPE_META[a?.type ?? "PERSONAL"] ?? { color: "#6b7280", label: "—", icon: "📊" }
+      return {
+        ...s,
+        name:      a?.name   ?? s.accountId,
+        type:      a?.type   ?? "PERSONAL",
+        color:     meta.color,
+        typeLabel: meta.label,
+        typeIcon:  meta.icon,
+      }
     })
-  }, [accounts, closedTrades, today])
+  }, [accountStats, accounts])
 
-  const totalPortfolio = useMemo(() => accountCards.reduce((s, a) => s + a.balance, 0), [accountCards])
+  const totalPortfolio = accountCards.reduce((s, a) => s + a.balance, 0)
+  const activeId       = selectedAccountId ?? accountCards[0]?.accountId ?? null
+  const activeCard     = accountCards.find(a => a.accountId === activeId) ?? accountCards[0]
 
-  const activeAccountId = selectedAccountId ?? accountCards[0]?.id ?? null
-  const activeAccount = accountCards.find(a => a.id === activeAccountId) ?? accountCards[0]
-
-  // Equity curve for selected account
   const equityData = useMemo(() => {
-    if (!activeAccountId) return []
-    const acctTrades = closedTrades
-      .filter(t => t.accountId === activeAccountId)
-      .sort((a, b) => a.date.localeCompare(b.date))
-    const initialBalance = Number(activeAccount?.initialBalance ?? 0)
-    let cum = 0
-    const result: { date: string; balance: number }[] = []
-    for (const t of acctTrades) {
-      cum += (t.pnl ?? 0)
-      result.push({ date: fmtDate(t.date), balance: parseFloat((initialBalance + cum).toFixed(2)) })
-    }
-    return result
-  }, [activeAccountId, closedTrades, activeAccount])
+    if (!activeId) return []
+    return equityCurve
+      .filter(p => p.accountId === activeId)
+      .map(p => ({ date: fmtDate(p.date), balance: p.balance }))
+  }, [activeId, equityCurve])
 
-  // Recent trades (filtered)
-  const recentTrades = useMemo(() => {
-    let trades = [...closedTrades].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 20)
-    if (tradeFilter === "A+") trades = trades.filter(t => t.tags.includes("A+"))
-    else if (tradeFilter === "Plan seguido") trades = trades.filter(t => t.setupId != null)
-    else if (tradeFilter === "Off-plan") trades = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))
-    else if (tradeFilter === "Con violación") trades = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan") || t.tags.includes("Revanche"))
-    return trades.slice(0, 10)
-  }, [closedTrades, tradeFilter])
+  const equityStart      = equityData[0]?.balance ?? Number(activeCard?.sparkline?.[0] ?? 0)
+  const equityEnd        = equityData[equityData.length - 1]?.balance ?? equityStart
+  const equityChangePct  = equityStart > 0 ? ((equityEnd - equityStart) / equityStart) * 100 : 0
 
-  // Session performance
-  const sessionData = useMemo(() => {
-    const bySession: Record<string, { trades: number; wins: number; rSum: number }> = {}
-    for (const t of closedTrades) {
-      const s = t.session ?? "Sin sesión"
-      if (!bySession[s]) bySession[s] = { trades: 0, wins: 0, rSum: 0 }
-      bySession[s].trades++
-      if ((t.pnl ?? 0) > 0) bySession[s].wins++
-      bySession[s].rSum += (t.rMultiple ?? 0)
-    }
-    return Object.entries(bySession).map(([session, v]) => ({
-      session,
-      trades: v.trades,
-      winRate: v.trades > 0 ? parseFloat(((v.wins / v.trades) * 100).toFixed(1)) : 0,
-      avgR: v.trades > 0 ? parseFloat((v.rSum / v.trades).toFixed(2)) : 0,
-    })).sort((a, b) => b.trades - a.trades)
-  }, [closedTrades])
+  const filteredTrades = useMemo(() => {
+    let list = [...recentTrades]
+    if (tradeFilter === "A+")            list = list.filter(t => t.tags.includes("A+"))
+    if (tradeFilter === "Plan seguido")  list = list.filter(t => t.setupId != null)
+    if (tradeFilter === "Off-plan")      list = list.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))
+    if (tradeFilter === "Con violación") list = list.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan") || t.tags.includes("Revanche"))
+    return list.slice(0, 10)
+  }, [recentTrades, tradeFilter])
 
-  const equityStart = equityData[0]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
-  const equityEnd = equityData[equityData.length - 1]?.balance ?? Number(activeAccount?.initialBalance ?? 0)
-  const equityChangePct = equityStart > 0 ? ((equityEnd - equityStart) / equityStart) * 100 : 0
-
-  // P&L por símbolo
-  const pnlBySymbol = useMemo(() => {
-    const map: Record<string, { pnl: number; trades: number; wins: number }> = {}
-    for (const t of closedTrades) {
-      if (!map[t.symbol]) map[t.symbol] = { pnl: 0, trades: 0, wins: 0 }
-      map[t.symbol].pnl    += t.pnl ?? 0
-      map[t.symbol].trades++
-      if ((t.pnl ?? 0) > 0) map[t.symbol].wins++
-    }
-    return Object.entries(map)
-      .map(([symbol, v]) => ({ symbol, pnl: v.pnl, trades: v.trades, winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0 }))
-      .sort((a, b) => b.pnl - a.pnl)
-      .slice(0, 8)
-  }, [closedTrades])
-
-  // Horario óptimo (by openTime hour)
-  const horarioOptimo = useMemo(() => {
-    const map: Record<number, { trades: number; wins: number; rSum: number }> = {}
-    for (const t of closedTrades) {
-      if (!t.openTime) continue
-      const hour = parseInt(t.openTime.split(":")[0])
-      if (isNaN(hour)) continue
-      if (!map[hour]) map[hour] = { trades: 0, wins: 0, rSum: 0 }
-      map[hour].trades++
-      if ((t.pnl ?? 0) > 0) map[hour].wins++
-      map[hour].rSum += t.rMultiple ?? 0
-    }
-    return Object.entries(map)
-      .map(([h, v]) => ({
-        hora: `${h.padStart(2, "0")}:00`,
-        trades: v.trades,
-        winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
-        avgR: v.trades > 0 ? v.rSum / v.trades : 0,
-      }))
-      .sort((a, b) => b.avgR - a.avgR)
-      .slice(0, 8)
-  }, [closedTrades])
-
-  // Tiempo promedio en trade (minutos)
-  const tiempoPromedio = useMemo(() => {
-    const durations: number[] = []
-    for (const t of closedTrades) {
-      if (!t.openTime || !t.closeTime) continue
-      const [oh, om] = t.openTime.split(":").map(Number)
-      const [ch, cm] = t.closeTime.split(":").map(Number)
-      const mins = (ch * 60 + cm) - (oh * 60 + om)
-      if (mins > 0) durations.push(mins)
-    }
-    if (durations.length === 0) return null
-    const avg = durations.reduce((a, b) => a + b, 0) / durations.length
-    return avg
-  }, [closedTrades])
-
-  // MAE / MFE estimado
-  const maeMfe = useMemo(() => {
-    const maes: number[] = [], mfes: number[] = []
-    for (const t of closedTrades) {
-      if (t.entry == null || t.stop == null || t.target == null || t.size == null) continue
-      const risk   = Math.abs(t.entry - t.stop)   * t.size
-      const reward = Math.abs(t.target - t.entry) * t.size
-      if (risk   > 0) maes.push(risk)
-      if (reward > 0) mfes.push(reward)
-    }
-    const mae = maes.length > 0 ? maes.reduce((a, b) => a + b, 0) / maes.length : null
-    const mfe = mfes.length > 0 ? mfes.reduce((a, b) => a + b, 0) / mfes.length : null
-    return { mae, mfe }
-  }, [closedTrades])
+  const { avgDurationMinutes, avgPlannedRisk, avgPlannedReward, riskRewardRatio } = executionStats
 
   return (
     <div className="flex flex-col gap-4">
-      {/* ── Hero: equity number + inline metrics ── */}
+      {/* ── Equity hero ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-6 py-5">
         <div className="flex items-start justify-between mb-1">
           <div>
-            <p className="text-eyebrow mb-2">Equity · {activeAccount?.name ?? "—"}</p>
+            <p className="text-eyebrow mb-2">Equity · {activeCard?.name ?? "—"}</p>
             <div className="flex items-baseline gap-3">
               <p style={{ fontSize: 36, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>
                 ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -687,8 +417,6 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
             </div>
           </div>
         </div>
-
-        {/* Equity Curve */}
         <div className="mt-4">
           {equityData.length > 1 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -735,9 +463,9 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {accountCards.map(a => {
-            const active = (selectedAccountId ?? accountCards[0]?.id) === a.id
+            const active = (selectedAccountId ?? accountCards[0]?.accountId) === a.accountId
             return (
-              <button key={a.id} onClick={() => setSelectedAccountId(a.id)}
+              <button key={a.accountId} onClick={() => setSelectedAccountId(a.accountId)}
                 className="text-left rounded-[var(--radius-sm)] p-3 border transition-all"
                 style={{
                   border: active ? `1.5px solid ${a.color}` : "1.5px solid var(--line)",
@@ -755,8 +483,8 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
                   ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className={cn("text-[10px] font-semibold mt-1 font-mono",
-                  a.deltaToday > 0 ? "text-[var(--win)]" : a.deltaToday < 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
-                  {a.deltaToday > 0 ? "+" : ""}{a.deltaToday === 0 ? "0.00" : a.deltaToday.toFixed(2)} USD hoy
+                  a.pnlToday > 0 ? "text-[var(--win)]" : a.pnlToday < 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
+                  {a.pnlToday > 0 ? "+" : ""}{a.pnlToday === 0 ? "0.00" : a.pnlToday.toFixed(2)} USD hoy
                 </p>
               </button>
             )
@@ -784,7 +512,6 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
             ))}
           </div>
         </div>
-
         <div className="overflow-x-auto -mx-1">
           <table className="w-full min-w-[480px]">
             <thead>
@@ -795,7 +522,7 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
               </tr>
             </thead>
             <tbody>
-              {recentTrades.map(t => (
+              {filteredTrades.map(t => (
                 <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
                   <td className="py-3">
                     <div className="flex items-center gap-2">
@@ -804,23 +531,22 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
                       </span>
                       <div>
                         <p className="font-mono font-bold text-[var(--ink)] text-sm">
-                          {t.symbol}
-                          <span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.direction}</span>
+                          {t.symbol}<span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.direction}</span>
                         </p>
-                        <p className="text-[10px] text-[var(--ink-3)]">{t.setup?.name ?? "—"}</p>
+                        <p className="text-[10px] text-[var(--ink-3)]">{t.setupName ?? "—"}</p>
                       </div>
                     </div>
                   </td>
                   <td className={cn("py-3 font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
                     {(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R
                   </td>
-                  <td className={cn("py-3 font-mono font-bold text-sm", (t.pnl ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {(t.pnl ?? 0) >= 0 ? "+" : ""}${Math.abs(t.pnl ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <td className={cn("py-3 font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                    {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   <td className="py-3">
                     <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
                     <div className="flex gap-1 flex-wrap">
-                      {(t.tags as string[]).map(tag => (
+                      {t.tags.map(tag => (
                         <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
                           style={{
                             background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)",
@@ -834,7 +560,7 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
                   <td className="py-3 text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</td>
                 </tr>
               ))}
-              {recentTrades.length === 0 && (
+              {filteredTrades.length === 0 && (
                 <tr><td colSpan={5} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin trades</td></tr>
               )}
             </tbody>
@@ -854,19 +580,19 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
               </tr>
             </thead>
             <tbody>
-              {sessionData.map(s => (
+              {sessionStats.map(s => (
                 <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
                   <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
                   <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
                   <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.winRate}%
+                    {s.winRate.toFixed(1)}%
                   </td>
                   <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.avgR > 0 ? "+" : ""}{s.avgR}R
+                    {s.avgR > 0 ? "+" : ""}{s.avgR.toFixed(2)}R
                   </td>
                 </tr>
               ))}
-              {sessionData.length === 0 && (
+              {sessionStats.length === 0 && (
                 <tr><td colSpan={4} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin datos de sesiones</td></tr>
               )}
             </tbody>
@@ -874,7 +600,6 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
         </div>
       </Card>
 
-      {/* ── P&L por símbolo + Horario óptimo ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="P&L por símbolo" sub="Rendimiento neto acumulado por instrumento">
           {pnlBySymbol.length === 0 ? (
@@ -907,7 +632,7 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
         </Card>
 
         <Card title="Horario óptimo" sub="Por hora de apertura · avg R desc.">
-          {horarioOptimo.length === 0 ? (
+          {hourStats.length === 0 ? (
             <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos de openTime</p>
           ) : (
             <table className="w-full">
@@ -919,9 +644,9 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
                 </tr>
               </thead>
               <tbody>
-                {horarioOptimo.map(h => (
-                  <tr key={h.hora} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{h.hora}</td>
+                {hourStats.slice(0, 8).map(h => (
+                  <tr key={h.hour} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
+                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{String(h.hour).padStart(2, "0")}:00</td>
                     <td className="py-2 font-mono text-sm text-[var(--ink-2)]">{h.trades}</td>
                     <td className={cn("py-2 font-mono text-sm font-semibold", h.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
                       {h.winRate.toFixed(2)}%
@@ -937,34 +662,21 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
         </Card>
       </div>
 
-      {/* ── Métricas de ejecución ── */}
       <Card title="Métricas de ejecución" sub="Tiempo en posición y riesgo/objetivo planificado">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             {
               label: "Tiempo prom. en trade",
-              value: tiempoPromedio != null
-                ? tiempoPromedio >= 60
-                  ? `${Math.floor(tiempoPromedio / 60)}h ${Math.round(tiempoPromedio % 60)}m`
-                  : `${tiempoPromedio.toFixed(1)} min`
+              value: avgDurationMinutes != null
+                ? avgDurationMinutes >= 60
+                  ? `${Math.floor(avgDurationMinutes / 60)}h ${Math.round(avgDurationMinutes % 60)}m`
+                  : `${avgDurationMinutes.toFixed(1)} min`
                 : "—",
               sub: "entre openTime y closeTime",
             },
-            {
-              label: "Riesgo Planificado prom.",
-              value: maeMfe.mae != null ? `$${maeMfe.mae.toFixed(2)}` : "—",
-              sub: "riesgo en $ al abrir el trade",
-            },
-            {
-              label: "Reward Planificado prom.",
-              value: maeMfe.mfe != null ? `$${maeMfe.mfe.toFixed(2)}` : "—",
-              sub: "objetivo en $ al abrir el trade",
-            },
-            {
-              label: "Ratio Reward/Riesgo",
-              value: maeMfe.mae && maeMfe.mfe ? (maeMfe.mfe / maeMfe.mae).toFixed(4) : "—",
-              sub: "objetivo / riesgo planificado",
-            },
+            { label: "Riesgo Planificado prom.", value: avgPlannedRisk   != null ? `$${avgPlannedRisk.toFixed(2)}`   : "—", sub: "riesgo en $ al abrir el trade"       },
+            { label: "Reward Planificado prom.", value: avgPlannedReward != null ? `$${avgPlannedReward.toFixed(2)}` : "—", sub: "objetivo en $ al abrir el trade"      },
+            { label: "Ratio Reward/Riesgo",      value: riskRewardRatio  != null ? riskRewardRatio.toFixed(4)        : "—", sub: "objetivo / riesgo planificado"         },
           ].map(({ label, value, sub }) => (
             <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4">
               <p className="text-[10px] uppercase tracking-wider text-[var(--ink-3)] font-semibold mb-2">{label}</p>
@@ -981,41 +693,35 @@ function TabOperador({ allTrades, closedTrades, accounts }: {
 /* ═══════════════════════════════════════════
    TAB DISCIPLINA
 ═══════════════════════════════════════════ */
-type HeatVal = null | 0 | 1 | 2
-const DAYS = ["L","M","X","J","V","S","D"]
+const HEAT_COLORS: Record<string, string> = {
+  "null": "var(--panel-2)",
+  "0": "var(--win)",
+  "1": "var(--be)",
+  "2": "var(--loss)",
+}
+const DAYS  = ["L","M","X","J","V","S","D"]
 const WEEKS = 12
 
-function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
-  const today = new Date()
+type HeatVal = null | 0 | 1 | 2
+
+function TabDisciplina({ kpis, discipline }: {
+  kpis:       DashboardStats["kpis"]
+  discipline: DashboardStats["discipline"]
+}) {
+  const today    = new Date()
   const todayISO = today.toISOString().slice(0, 10)
 
-  // Heatmap: last 12 calendar weeks
   const heatmap = useMemo((): HeatVal[][] => {
-    // Build a map of date -> severity
     const dateMap: Record<string, HeatVal> = {}
-    for (const t of closedTrades) {
-      const tags = t.tags as string[]
-      const isOffPlan = tags.includes("Impulsivo") || tags.includes("Off-plan")
-      const isLoss = (t.pnl ?? 0) < 0
-      const current = dateMap[t.date] ?? null
-      let severity: HeatVal = 0
-      if (isOffPlan) severity = 2
-      else if (isLoss) severity = 1
-      // Take max severity
-      if (current === null) dateMap[t.date] = severity
-      else if (severity > current) dateMap[t.date] = severity as HeatVal
+    for (const { date, severity } of discipline.heatmapData) {
+      dateMap[date] = severity as HeatVal
     }
-
-    // Build 12-week grid: rows = days of week (Mon=0..Sun=6), cols = weeks (oldest first)
     const grid: HeatVal[][] = DAYS.map(() => Array(WEEKS).fill(null))
-    // Find start: 12 weeks ago, Monday
     const endDate = new Date(today)
-    // Go to most recent Monday
-    const dayOfWeek = (endDate.getDay() + 6) % 7 // Mon=0
-    endDate.setDate(endDate.getDate() - dayOfWeek + 6) // Sunday of current week
+    const dayOfWeek = (endDate.getDay() + 6) % 7
+    endDate.setDate(endDate.getDate() - dayOfWeek + 6)
     const startDate = new Date(endDate)
     startDate.setDate(startDate.getDate() - (WEEKS * 7 - 1))
-
     for (let w = 0; w < WEEKS; w++) {
       for (let d = 0; d < 7; d++) {
         const cellDate = new Date(startDate)
@@ -1026,122 +732,25 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
       }
     }
     return grid
-  }, [closedTrades, todayISO])
+  }, [discipline.heatmapData, todayISO])
 
-  // R distribution
-  const rDist = useMemo(() => {
-    const buckets: Record<string, number> = {
-      "-3R": 0, "-2R": 0, "-1R": 0, "0R": 0, "+1R": 0, "+2R": 0, "+3R": 0, "+4R+": 0
-    }
-    for (const t of closedTrades) {
-      const r = t.rMultiple ?? 0
-      if (r <= -2.5) buckets["-3R"]++
-      else if (r <= -1.5) buckets["-2R"]++
-      else if (r <= -0.5) buckets["-1R"]++
-      else if (r <= 0.5) buckets["0R"]++
-      else if (r <= 1.5) buckets["+1R"]++
-      else if (r <= 2.5) buckets["+2R"]++
-      else if (r <= 3.5) buckets["+3R"]++
-      else buckets["+4R+"]++
-    }
-    return [
-      { r: "-3R",  count: buckets["-3R"],  color: "var(--loss)" },
-      { r: "-2R",  count: buckets["-2R"],  color: "var(--loss)" },
-      { r: "-1R",  count: buckets["-1R"],  color: "var(--loss)" },
-      { r: "0R",   count: buckets["0R"],   color: "var(--be)"   },
-      { r: "+1R",  count: buckets["+1R"],  color: "var(--win)"  },
-      { r: "+2R",  count: buckets["+2R"],  color: "var(--win)"  },
-      { r: "+3R",  count: buckets["+3R"],  color: "var(--win)"  },
-      { r: "+4R+", count: buckets["+4R+"], color: "var(--win)"  },
-    ]
-  }, [closedTrades])
+  const { composition, aplusStats, violations, weeklyScore, rDistribution, costoIndisciplina, rachaDiasLimpios } = discipline
+  const { tradesCountToday } = kpis
+  const total = kpis.total
 
-  // Violations
-  const violations = useMemo(() => {
-    const impulsivoCount = closedTrades.filter(t => (t.tags as string[]).includes("Impulsivo")).length
-    const offPlanCount = closedTrades.filter(t => (t.tags as string[]).includes("Off-plan")).length
-    const revanCheCount = closedTrades.filter(t => (t.tags as string[]).includes("Revanche")).length
-    const noSetupCount = closedTrades.filter(t => !t.setupId).length
-    return [
-      { rule: "Flag impulsivo manual",    count: impulsivoCount, severity: "mayor" },
-      { rule: "Off-plan",                 count: offPlanCount,   severity: "mayor" },
-      { rule: "Revanche / revenge trade", count: revanCheCount,  severity: "mayor" },
-      { rule: "Sin setup asignado",       count: noSetupCount,   severity: "menor" },
-    ].filter(v => v.count > 0)
-  }, [closedTrades])
+  const disciplineScore = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
+  const planSeguidoPct  = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
+  const totalViolations = violations.reduce((s, v) => s + v.count, 0)
+  const sinViolacionPct = total > 0 ? (((total - totalViolations) / total) * 100).toFixed(2) : "0.00"
 
-  // Comp data
-  const compData = useMemo(() => {
-    const planSeguido = closedTrades.filter(t => t.setupId != null && !(t.tags as string[]).includes("Impulsivo") && !(t.tags as string[]).includes("Off-plan")).length
-    const offPlan = closedTrades.filter(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan")).length
-    const partial = closedTrades.length - planSeguido - offPlan
-    return [
-      { name: "Plan seguido", value: planSeguido, color: "var(--win)"  },
-      { name: "Plan parcial",  value: Math.max(0, partial), color: "var(--be)"  },
-      { name: "Off-plan",      value: offPlan,    color: "var(--loss)" },
-    ]
-  }, [closedTrades])
-
-  const total = closedTrades.length
-  const planSeguidoPct = total > 0 ? ((compData[0].value / total) * 100).toFixed(2) : "0.00"
-  const sinViolacionPct = total > 0 ? (((total - violations.reduce((s, v) => s + v.count, 0)) / total) * 100).toFixed(2) : "0.00"
-  const disciplineScore = total > 0 ? ((compData[0].value / total) * 100).toFixed(2) : "0.00"
-
-  // Today's trades count
-  const todayTradesCount = closedTrades.filter(t => t.date === todayISO).length
-
-  // Costo de indisciplina
-  const costoIndisciplina = useMemo(() =>
-    closedTrades
-      .filter(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan"))
-      .reduce((s, t) => s + (t.pnl ?? 0), 0),
-    [closedTrades])
-
-  // Racha de días limpios
-  const rachaDiasLimpios = useMemo(() => {
-    const tradingDays = [...new Set(closedTrades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
-    let streak = 0
-    for (const day of tradingDays) {
-      const dayTrades = closedTrades.filter(t => t.date === day)
-      const hasViolation = dayTrades.some(t => (t.tags as string[]).includes("Impulsivo") || (t.tags as string[]).includes("Off-plan"))
-      if (hasViolation) break
-      streak++
-    }
-    return streak
-  }, [closedTrades])
-
-  // A+ vs estándar
-  const aplusStats = useMemo(() => {
-    const aplus = closedTrades.filter(t => (t.tags as string[]).includes("A+"))
-    const std   = closedTrades.filter(t => !(t.tags as string[]).includes("A+"))
-    const aplusWr  = aplus.length > 0 ? aplus.filter(t => (t.pnl ?? 0) > 0).length / aplus.length * 100 : null
-    const stdWr    = std.length   > 0 ? std.filter(t => (t.pnl ?? 0) > 0).length   / std.length   * 100 : null
-    const aplusAvgR = aplus.length > 0 ? aplus.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / aplus.length : null
-    const stdAvgR   = std.length   > 0 ? std.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / std.length   : null
-    return { aplusWr, stdWr, aplusAvgR, stdAvgR, aplusCount: aplus.length, stdCount: std.length }
-  }, [closedTrades])
-
-  // Score semanal (last 12 ISO weeks)
-  const weeklyScore = useMemo(() => {
-    const byWeek: Record<string, { plan: number; total: number }> = {}
-    for (const t of closedTrades) {
-      const d   = new Date(t.date)
-      const key = getISOWeekKey(d)
-      if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
-      byWeek[key].total++
-      const isOk = t.setupId != null && !(t.tags as string[]).includes("Impulsivo") && !(t.tags as string[]).includes("Off-plan")
-      if (isOk) byWeek[key].plan++
-    }
-    return Object.entries(byWeek)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
-      .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
-  }, [closedTrades])
+  const compData = [
+    { name: "Plan seguido", value: composition.planSeguido, color: "var(--win)"  },
+    { name: "Plan parcial",  value: composition.partial,    color: "var(--be)"   },
+    { name: "Off-plan",      value: composition.offPlan,    color: "var(--loss)" },
+  ]
 
   return (
     <div className="flex flex-col gap-4">
-
-      {/* ── New KPI row ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Costo indisciplina"
           value={`${costoIndisciplina >= 0 ? "+" : "-"}$${Math.abs(costoIndisciplina).toFixed(2)}`}
@@ -1165,7 +774,6 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
           icon={<Target size={15} />} />
       </div>
 
-      {/* ── Score semanal ── */}
       {weeklyScore.length > 1 && (
         <Card title="Discipline Score semanal" sub="% trades plan seguido por semana · últimas 12 semanas">
           <ResponsiveContainer width="100%" height={120}>
@@ -1187,14 +795,13 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
         </Card>
       )}
 
-      {/* ── DO-NOT-TAKE banner ── */}
-      {todayTradesCount >= 3 && (
+      {tradesCountToday >= 3 && (
         <div className="rounded-[var(--radius)] border border-[var(--loss)] px-4 py-3 flex items-center justify-between gap-3"
           style={{ background: "rgba(180,40,40,0.12)" }}>
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--loss)] flex items-center justify-center text-white text-sm font-bold shrink-0">!</div>
             <div>
-              <p className="text-sm font-bold text-[var(--loss)]">DO-NOT-TAKE · {todayTradesCount} trades hoy</p>
+              <p className="text-sm font-bold text-[var(--loss)]">DO-NOT-TAKE · {tradesCountToday} trades hoy</p>
               <p className="text-xs text-[var(--ink-3)] mt-0.5">Verifica los límites de tu plan operativo antes de continuar.</p>
             </div>
           </div>
@@ -1204,9 +811,7 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
         </div>
       )}
 
-      {/* ── Score + Composición ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Score panel */}
         <div className="col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
           <p className="text-eyebrow mb-3">Discipline Score · acumulado</p>
           <div className="flex items-baseline gap-3 mb-1">
@@ -1215,9 +820,9 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
-              { label: "Sin violación",   value: `${sinViolacionPct}%`, sub: `${total} trades total`,   color: "var(--win)"  },
-              { label: "Plan seguido",    value: `${planSeguidoPct}%`,  sub: `${compData[0].value} / ${total}`, color: "#4f6ef7" },
-              { label: "Off-plan count",  value: `${compData[2].value}`, sub: "trades off-plan",         color: "var(--loss)" },
+              { label: "Sin violación",   value: `${sinViolacionPct}%`,  sub: `${total} trades total`,          color: "var(--win)"  },
+              { label: "Plan seguido",    value: `${planSeguidoPct}%`,   sub: `${composition.planSeguido} / ${total}`, color: "#4f6ef7" },
+              { label: "Off-plan count",  value: `${composition.offPlan}`, sub: "trades off-plan",              color: "var(--loss)" },
             ].map(m => (
               <div key={m.label} className="border-l-2 pl-3" style={{ borderColor: m.color }}>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-1">{m.label}</p>
@@ -1228,7 +833,6 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
           </div>
         </div>
 
-        {/* Composición donut */}
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5 flex flex-col">
           <p className="text-eyebrow mb-4">Composición global</p>
           <div className="flex-1 flex items-center gap-4">
@@ -1259,7 +863,6 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
         </div>
       </div>
 
-      {/* ── Heatmap ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-start justify-between mb-1">
           <div>
@@ -1274,7 +877,6 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
             ))}
           </div>
         </div>
-
         <div className="mt-4 overflow-x-auto">
           <div className="flex mb-1 pl-5">
             {Array.from({ length: WEEKS }).map((_, w) => (
@@ -1301,19 +903,19 @@ function TabDisciplina({ closedTrades }: { closedTrades: Trade[] }) {
         </div>
       </div>
 
-      {/* ── R Distribution + Violations ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="Distribución de R · acumulado" sub="Frecuencia de outcomes vs. expectativa.">
           <div className="flex items-end gap-1.5 h-32 mt-2">
-            {rDist.map(d => {
-              const maxCount = Math.max(...rDist.map(x => x.count), 1)
+            {rDistribution.map(d => {
+              const maxCount = Math.max(...rDistribution.map(x => x.count), 1)
               const h = (d.count / maxCount) * 100
+              const isNeg = d.bucket.startsWith("-")
               return (
-                <div key={d.r} className="flex-1 flex flex-col items-center gap-1">
+                <div key={d.bucket} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[9px] font-mono font-bold text-[var(--ink-3)]">{d.count}</span>
                   <div className="w-full rounded-t-sm transition-all"
-                    style={{ height: `${h}%`, background: d.color, minHeight: 4 }} />
-                  <span className="text-[9px] text-[var(--ink-3)]">{d.r}</span>
+                    style={{ height: `${h}%`, background: isNeg ? "var(--loss)" : d.bucket === "0R" ? "var(--be)" : "var(--win)", minHeight: 4 }} />
+                  <span className="text-[9px] text-[var(--ink-3)]">{d.bucket}</span>
                 </div>
               )
             })}
@@ -1350,155 +952,67 @@ function sessionCellColor(pct: number) {
   if (pct >= 50) return { bg: "rgba(232,150,42,0.20)", text: "var(--be)"  }
   return           { bg: "rgba(224,85,85,0.20)",  text: "var(--loss)" }
 }
-
 function checklistColor(pct: number) {
   if (pct >= 80) return "var(--win)"
   if (pct >= 65) return "var(--be)"
   return "var(--loss)"
 }
 
-type SetupData = {
-  id: string
-  abbr: string
-  name: string
-  market: string
-  color: string
-  trades: number
-  wr: number
-  avgR: number
-  cumR: number
-  netPnl: number
-  equityCurve: number[]
-}
-
-function TabPlaybook({ closedTrades, setups }: {
-  closedTrades: Trade[]
-  setups: { id: string; name: string; abbreviation: string; market: string; color: string; status: string }[]
+function TabPlaybook({
+  setupStats, sessionMatrix, directionStats,
+}: {
+  setupStats:     DashboardStats["setupStats"]
+  sessionMatrix:  DashboardStats["sessionMatrix"]
+  directionStats: DashboardStats["directionStats"]
 }) {
-  const setupData = useMemo((): SetupData[] => {
-    return setups
-      .filter(s => s.status !== "DESCARTADO")
-      .map(s => {
-        const sTrades = closedTrades.filter(t => t.setupId === s.id)
-        const wins = sTrades.filter(t => (t.pnl ?? 0) > 0).length
-        const wr = sTrades.length > 0 ? (wins / sTrades.length) * 100 : 0
-        const avgR = sTrades.length > 0
-          ? sTrades.reduce((sum, t) => sum + (t.rMultiple ?? 0), 0) / sTrades.length
-          : 0
-        const netPnl = sTrades.reduce((sum, t) => sum + (t.pnl ?? 0), 0)
-        const cumR = sTrades.reduce((sum, t) => sum + (t.rMultiple ?? 0), 0)
-
-        // Build equity curve (sorted by date)
-        const sorted = [...sTrades].sort((a, b) => a.date.localeCompare(b.date))
-        let cum = 0
-        const equityCurve = sorted.map(t => { cum += (t.pnl ?? 0); return cum })
-        // Pad with at least 2 points for sparkline
-        if (equityCurve.length === 0) equityCurve.push(0, 0)
-        else if (equityCurve.length === 1) equityCurve.unshift(0)
-
-        return {
-          id: s.id,
-          abbr: s.abbreviation,
-          name: s.name,
-          market: s.market,
-          color: s.color || "#4f6ef7",
-          trades: sTrades.length,
-          wr: parseFloat(wr.toFixed(1)),
-          avgR: parseFloat(avgR.toFixed(2)),
-          cumR: parseFloat(cumR.toFixed(1)),
-          netPnl,
-          equityCurve,
-        }
-      })
-      .sort((a, b) => b.trades - a.trades)
-  }, [closedTrades, setups])
-
-  // Summary chips
   const playbookSummary = useMemo(() => {
-    if (setupData.length === 0) return null
-    const mostUsed      = setupData.reduce((a, b) => b.trades > a.trades ? b : a)
-    const mostProfitable = setupData.reduce((a, b) => b.netPnl > a.netPnl ? b : a)
-    // Best A+ rate
-    const withAplus = setupData.map(s => {
-      const sTrades = closedTrades.filter(t => t.setupId === s.id)
-      const aplusCount = sTrades.filter(t => (t.tags as string[]).includes("A+")).length
-      const rate = sTrades.length > 0 ? aplusCount / sTrades.length * 100 : 0
-      return { ...s, aplusRate: rate }
-    })
-    const bestAplus = withAplus.reduce((a, b) => b.aplusRate > a.aplusRate ? b : a)
-    // Setup en racha (most consecutive recent wins)
-    const setupInStreak = setupData.map(s => {
-      const sorted = closedTrades.filter(t => t.setupId === s.id).sort((a, b) => b.date.localeCompare(a.date))
-      let streak = 0
-      for (const t of sorted) {
-        if ((t.pnl ?? 0) > 0) streak++
-        else break
-      }
-      return { ...s, streak }
-    }).reduce((a, b) => b.streak > a.streak ? b : a)
-    return { mostUsed, mostProfitable, bestAplus, setupInStreak }
-  }, [setupData, closedTrades])
+    if (setupStats.length === 0) return null
+    const mostUsed       = setupStats.reduce((a, b) => b.trades > a.trades ? b : a)
+    const mostProfitable = setupStats.reduce((a, b) => b.netPnl > a.netPnl ? b : a)
+    const bestAplus      = setupStats.reduce((a, b) =>
+      (b.aplusCount / Math.max(b.trades, 1)) > (a.aplusCount / Math.max(a.trades, 1)) ? b : a,
+    )
+    const setupInStreak  = setupStats.reduce((a, b) => b.currentStreak > a.currentStreak ? b : a)
+    return {
+      mostUsed,
+      mostProfitable,
+      bestAplus: { ...bestAplus, aplusRate: bestAplus.trades > 0 ? bestAplus.aplusCount / bestAplus.trades * 100 : 0 },
+      setupInStreak,
+    }
+  }, [setupStats])
 
-  // Direction breakdown per setup
-  const directionData = useMemo(() => {
-    return setupData.filter(s => {
-      const sTrades = closedTrades.filter(t => t.setupId === s.id)
-      const hasLong  = sTrades.some(t => t.direction === "LONG")
-      const hasShort = sTrades.some(t => t.direction === "SHORT")
-      return hasLong && hasShort
-    }).map(s => {
-      const longs  = closedTrades.filter(t => t.setupId === s.id && t.direction === "LONG")
-      const shorts = closedTrades.filter(t => t.setupId === s.id && t.direction === "SHORT")
-      const wr = (arr: Trade[]) => arr.length > 0 ? arr.filter(t => (t.pnl ?? 0) > 0).length / arr.length * 100 : 0
-      const ar = (arr: Trade[]) => arr.length > 0 ? arr.reduce((a, t) => a + (t.rMultiple ?? 0), 0) / arr.length : 0
+  // Reshape sessionMatrix for the grid component
+  const sessionGrid = useMemo(() => {
+    const SESSIONS = ["New York", "London Close", "London", "Asia"] as const
+    return setupStats.slice(0, 6).map(s => {
+      const rows = sessionMatrix.filter(r => r.setupId === s.setupId)
+      const wr = (sess: string) => rows.find(r => r.session === sess)?.winRate ?? null
       return {
-        id: s.id, abbr: s.abbr, name: s.name, color: s.color,
-        longWr: wr(longs), longAvgR: ar(longs), longCount: longs.length,
-        shortWr: wr(shorts), shortAvgR: ar(shorts), shortCount: shorts.length,
-      }
-    })
-  }, [setupData, closedTrades])
-
-  // Session × Setup matrix
-  const sessionMatrix = useMemo(() => {
-    const sessions = ["New York", "London", "Asia", "London Close"]
-    return setupData.slice(0, 6).map(s => {
-      const sTrades = closedTrades.filter(t => t.setupId === s.id)
-      const bySession: Record<string, { total: number; wins: number }> = {}
-      for (const t of sTrades) {
-        const sess = t.session ?? "Sin sesión"
-        if (!bySession[sess]) bySession[sess] = { total: 0, wins: 0 }
-        bySession[sess].total++
-        if ((t.pnl ?? 0) > 0) bySession[sess].wins++
-      }
-      const wr = (sess: string) => {
-        const d = bySession[sess]
-        return d && d.total > 0 ? parseFloat((d.wins / d.total * 100).toFixed(2)) : null
-      }
-      return {
-        setup: s.id,
-        abbr: s.abbr,
-        color: s.color,
-        name: s.name,
-        nyam: wr("New York"),
-        nypm: wr("London Close"),
+        setup:  s.setupId,
+        abbr:   s.abbr,
+        color:  s.color,
+        name:   s.name,
+        nyam:   wr("New York"),
+        nypm:   wr("London Close"),
         london: wr("London"),
-        asia: wr("Asia"),
+        asia:   wr("Asia"),
       }
     })
-  }, [setupData, closedTrades])
+  }, [setupStats, sessionMatrix])
+
+  const directionMap = useMemo(() => {
+    return new Map(directionStats.map(d => [d.setupId, d]))
+  }, [directionStats])
 
   return (
     <div className="flex flex-col gap-4">
-
-      {/* ── Summary chips ── */}
       {playbookSummary && (
         <div className="flex flex-wrap gap-2">
           {[
-            { icon: "📊", label: "Más usado",     text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
-            { icon: "💰", label: "Más rentable",   text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
-            { icon: "🔥", label: "En racha",        text: playbookSummary.setupInStreak.streak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.streak}W` : "—", color: "var(--be)" },
-            { icon: "⭐", label: "Mejor A+",        text: `${playbookSummary.bestAplus.abbr} · ${(playbookSummary.bestAplus as typeof playbookSummary.bestAplus & { aplusRate: number }).aplusRate.toFixed(2)}%`, color: "var(--accent)" },
+            { icon: "📊", label: "Más usado",    text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
+            { icon: "💰", label: "Más rentable",  text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
+            { icon: "🔥", label: "En racha",       text: playbookSummary.setupInStreak.currentStreak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.currentStreak}W` : "—", color: "var(--be)" },
+            { icon: "⭐", label: "Mejor A+",       text: `${playbookSummary.bestAplus.abbr} · ${playbookSummary.bestAplus.aplusRate.toFixed(2)}%`, color: "var(--accent)" },
           ].map(({ icon, label, text, color }) => (
             <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel)] border border-[var(--line)]">
               <span className="text-sm">{icon}</span>
@@ -1509,7 +1023,6 @@ function TabPlaybook({ closedTrades, setups }: {
         </div>
       )}
 
-      {/* ── Setup cards ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -1517,27 +1030,26 @@ function TabPlaybook({ closedTrades, setups }: {
             <p className="text-[11px] text-[var(--ink-3)] mt-0.5">Métricas agregadas desde tu registro de trades.</p>
           </div>
         </div>
-
-        {setupData.length === 0 ? (
+        {setupStats.length === 0 ? (
           <p className="text-center text-[var(--ink-3)] text-sm py-8">Sin setups registrados. Crea setups en la sección Playbook.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {setupData.map(s => {
-              const win = s.wr >= 50
+            {setupStats.map(s => {
+              const win       = s.winRate >= 50
               const lineColor = win ? "#22c55e" : "#e05555"
               const W = 240, H = 64
-              const max = Math.max(...s.equityCurve)
-              const min = Math.min(...s.equityCurve)
+              const max   = Math.max(...s.equityCurve)
+              const min   = Math.min(...s.equityCurve)
               const range = max - min || 1
-              const pts = s.equityCurve.map((v, i) => ({
+              const pts   = s.equityCurve.map((v, i) => ({
                 x: (i / (s.equityCurve.length - 1)) * W,
                 y: H - 6 - ((v - min) / range) * (H - 16),
               }))
               const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
               const areaPath = linePath + ` L${W},${H} L0,${H} Z`
-              const fillId = `pf-${s.abbr}`
+              const fillId   = `pf-${s.abbr}`
               return (
-                <div key={s.id}
+                <div key={s.setupId}
                   className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
                   style={{ background: "var(--panel-2)" }}>
                   <div className="flex items-center gap-2.5 p-3 pb-2">
@@ -1545,10 +1057,9 @@ function TabPlaybook({ closedTrades, setups }: {
                       style={{ background: s.color }}>{s.abbr}</span>
                     <div className="min-w-0">
                       <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
-                      <p className="text-[10px] text-[var(--ink-3)]">{s.market || "—"} · {s.trades} trades</p>
+                      <p className="text-[10px] text-[var(--ink-3)]">{s.trades} trades</p>
                     </div>
                   </div>
-
                   <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
                     <defs>
                       <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
@@ -1560,12 +1071,11 @@ function TabPlaybook({ closedTrades, setups }: {
                     <path d={linePath} fill="none" stroke={lineColor} strokeWidth="1.8"
                       strokeLinejoin="round" strokeLinecap="round" />
                   </svg>
-
-                  <div className="px-3 pt-2 pb-1 grid grid-cols-2 sm:grid-cols-3 gap-1">
+                  <div className="px-3 pt-2 pb-1 grid grid-cols-3 gap-1">
                     {[
-                      ["Win", `${s.wr}%`, win ? "var(--win)" : "var(--loss)"],
+                      ["Win", `${s.winRate}%`, win ? "var(--win)" : "var(--loss)"],
                       ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
-                      ["Cum", `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
+                      ["Cum",  `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
                     ].map(([l, v, c]) => (
                       <div key={l}>
                         <p className="text-[9px] text-[var(--ink-3)] uppercase tracking-wider">{l}</p>
@@ -1573,7 +1083,6 @@ function TabPlaybook({ closedTrades, setups }: {
                       </div>
                     ))}
                   </div>
-
                   <div className="px-3 pb-2.5 flex justify-between text-[10px] text-[var(--ink-3)]">
                     <span>P&amp;L: <span className={s.netPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}>
                       {s.netPnl >= 0 ? "+" : ""}${Math.abs(s.netPnl).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -1586,13 +1095,11 @@ function TabPlaybook({ closedTrades, setups }: {
         )}
       </div>
 
-      {/* ── Session matrix + No-data placeholder ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
           <p className="text-[13px] font-semibold text-[var(--ink)]">Setup × Sesión · win rate</p>
           <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-4">Identifica el contexto donde cada setup performa mejor.</p>
-
-          {sessionMatrix.length === 0 ? (
+          {sessionGrid.length === 0 ? (
             <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos suficientes</p>
           ) : (
             <div className="grid gap-1.5" style={{ gridTemplateColumns: "180px repeat(4, 1fr)" }}>
@@ -1600,7 +1107,7 @@ function TabPlaybook({ closedTrades, setups }: {
               {["NY","LDN CL","LONDON","ASIA"].map(s => (
                 <div key={s} className="text-center text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider pb-1">{s}</div>
               ))}
-              {sessionMatrix.flatMap(row => [
+              {sessionGrid.flatMap(row => [
                 <div key={`${row.setup}-label`} className="flex items-center gap-2 py-1">
                   <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
                     style={{ background: row.color }}>{row.abbr}</span>
@@ -1624,8 +1131,7 @@ function TabPlaybook({ closedTrades, setups }: {
           )}
         </div>
 
-        {/* Rendimiento por dirección */}
-        {directionData.length > 0 && (
+        {directionStats.length > 0 && (
           <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
             <p className="text-[13px] font-semibold text-[var(--ink)] mb-0.5">Rendimiento por dirección</p>
             <p className="text-[11px] text-[var(--ink-3)] mb-4">Long vs Short por setup · solo setups con ambas direcciones.</p>
@@ -1634,49 +1140,50 @@ function TabPlaybook({ closedTrades, setups }: {
                 <thead>
                   <tr className="text-[var(--ink-3)] text-[11px] uppercase tracking-wider">
                     <th className="text-left pb-2 font-semibold">Setup</th>
-                    <th className="text-right pb-2 font-semibold">Long trades</th>
+                    <th className="text-right pb-2 font-semibold">Long</th>
                     <th className="text-right pb-2 font-semibold">Long WR%</th>
                     <th className="text-right pb-2 font-semibold">Long avgR</th>
-                    <th className="text-right pb-2 font-semibold">Short trades</th>
+                    <th className="text-right pb-2 font-semibold">Short</th>
                     <th className="text-right pb-2 font-semibold">Short WR%</th>
                     <th className="text-right pb-2 font-semibold">Short avgR</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--line)]">
-                  {directionData.map(d => (
-                    <tr key={d.id}>
-                      <td className="py-2">
-                        <div className="flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: d.color }}>{d.abbr}</span>
-                          <span className="text-[var(--ink)]">{d.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.longCount}</td>
-                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</td>
-                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</td>
-                      <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.shortCount}</td>
-                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</td>
-                      <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</td>
-                    </tr>
-                  ))}
+                  {directionStats.map(d => {
+                    const setup = setupStats.find(s => s.setupId === d.setupId)
+                    return (
+                      <tr key={d.setupId}>
+                        <td className="py-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
+                              style={{ background: setup?.color ?? "#4f6ef7" }}>{setup?.abbr ?? "?"}</span>
+                            <span className="text-[var(--ink)]">{setup?.name ?? d.setupId}</span>
+                          </div>
+                        </td>
+                        <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.longCount}</td>
+                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</td>
+                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</td>
+                        <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.shortCount}</td>
+                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</td>
+                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* A+ Checklist — static until checklist data is in DB */}
         <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
           <p className="text-[13px] font-semibold text-[var(--ink)]">A+ Checklist · cumplimiento</p>
           <p className="text-[11px] text-[var(--ink-3)] mt-0.5 mb-5">% de trades con tag A+ por setup.</p>
           <div className="flex flex-col gap-4">
-            {setupData.slice(0, 6).map(s => {
-              const sTrades = closedTrades.filter(t => t.setupId === s.id)
-              const aPlusTrades = sTrades.filter(t => (t.tags as string[]).includes("A+")).length
-              const pct = sTrades.length > 0 ? (aPlusTrades / sTrades.length * 100) : 0
+            {setupStats.slice(0, 6).map(s => {
+              const pct   = s.trades > 0 ? (s.aplusCount / s.trades * 100) : 0
               const color = checklistColor(pct)
               return (
-                <div key={s.id}>
+                <div key={s.setupId}>
                   <div className="flex justify-between items-center mb-1.5">
                     <div className="flex items-center gap-2">
                       <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
@@ -1691,7 +1198,7 @@ function TabPlaybook({ closedTrades, setups }: {
                 </div>
               )
             })}
-            {setupData.length === 0 && <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin setups</p>}
+            {setupStats.length === 0 && <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin setups</p>}
           </div>
         </div>
       </div>
@@ -1705,42 +1212,57 @@ function TabPlaybook({ closedTrades, setups }: {
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("portfolio")
 
-  const { data: allTrades = [] } = trpc.trades.list.useQuery()
-  const { data: rawAccounts = [] } = trpc.accounts.list.useQuery()
-  const { data: rawSetups = [] } = trpc.setups.list.useQuery()
+  const { data: stats }    = trpc.trades.dashboardStats.useQuery()
+  const { data: accounts = [] } = trpc.accounts.list.useQuery()
 
-  // Normalize accounts (Prisma Decimal → number)
-  const accounts = useMemo(() => rawAccounts.map(a => ({
-    ...a,
-    initialBalance: Number(a.initialBalance),
-    ddDailyPct: a.ddDailyPct != null ? Number(a.ddDailyPct) : null,
-    ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null,
-    allowedSymbols: (a.allowedSymbols as string[]) ?? [],
-  })), [rawAccounts])
-
-  // Normalize setups
-  const setups = useMemo(() => rawSetups.map(s => ({
-    id: s.id,
-    name: s.name,
-    abbreviation: s.abbreviation,
-    market: s.market ?? "",
-    color: s.color ?? "#4f6ef7",
-    status: s.status,
-  })), [rawSetups])
-
-  // Cast trades to our Trade type
-  const trades = allTrades as unknown as Trade[]
-
-  const closedTrades = useMemo(() => trades.filter(t => t.status === "CLOSED"), [trades])
+  if (!stats) {
+    return (
+      <div>
+        <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
+        <div className="flex items-center justify-center h-64 text-[var(--ink-3)] text-sm">Cargando…</div>
+      </div>
+    )
+  }
 
   return (
     <div>
       <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
       <FilterBar options={TABS} value={tab} onChange={(v) => setTab(v as Tab)} className="mb-6" />
-      {tab === "portfolio"  && <TabPortfolio closedTrades={closedTrades} accounts={accounts} />}
-      {tab === "operador"   && <TabOperador allTrades={trades} closedTrades={closedTrades} accounts={accounts} />}
-      {tab === "disciplina" && <TabDisciplina closedTrades={closedTrades} />}
-      {tab === "playbook"   && <TabPlaybook closedTrades={closedTrades} setups={setups} />}
+      {tab === "portfolio" && (
+        <TabPortfolio
+          kpis={stats.kpis}
+          pnlByDate={stats.pnlByDate}
+          propFirmStatus={stats.propFirmStatus}
+          accountStats={stats.accountStats}
+          accounts={accounts}
+        />
+      )}
+      {tab === "operador" && (
+        <TabOperador
+          kpis={stats.kpis}
+          accountStats={stats.accountStats}
+          equityCurve={stats.equityCurve}
+          sessionStats={stats.sessionStats}
+          pnlBySymbol={stats.pnlBySymbol}
+          hourStats={stats.hourStats}
+          recentTrades={stats.recentTrades}
+          executionStats={stats.executionStats}
+          accounts={accounts}
+        />
+      )}
+      {tab === "disciplina" && (
+        <TabDisciplina
+          kpis={stats.kpis}
+          discipline={stats.discipline}
+        />
+      )}
+      {tab === "playbook" && (
+        <TabPlaybook
+          setupStats={stats.setupStats}
+          sessionMatrix={stats.sessionMatrix}
+          directionStats={stats.directionStats}
+        />
+      )}
     </div>
   )
 }
