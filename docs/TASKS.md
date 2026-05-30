@@ -501,7 +501,7 @@ Account lifecycle events belong in the Finance domain. Using `AccountLog` for th
 **Domain:** `[ANALYTICS]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -557,7 +557,7 @@ Mirrors the established pattern in `src/components/trades/` (register-trade-moda
 **Domain:** `[ANALYTICS]`  
 **Priority:** P2  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -608,7 +608,7 @@ The hook pattern â€” one custom hook per domain-level data dependency per page â
 **Domain:** `[INFRA]`  
 **Priority:** P2  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -676,7 +676,7 @@ Next.js App Router's segment-level `loading.tsx` and `error.tsx` are the framewo
 **Domain:** `[LEARNING]`  
 **Priority:** P2  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -739,7 +739,7 @@ Follows the established `components/trades/` pattern already in the codebase. Af
 **Domain:** `[FINANCE]`  
 **Priority:** P2  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -790,7 +790,7 @@ Consistent with the extraction pattern established in Phase II.
 **Domain:** `[PSYCHOLOGY]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 

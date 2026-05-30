@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
-import { trpc } from "@/lib/trpc/client"
+import { useDashboardStats } from "./hooks/use-dashboard-stats"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
 import { TabOperador }   from "./tabs/tab-operador"
 import { TabDisciplina } from "./tabs/tab-disciplina"
@@ -20,11 +20,9 @@ const TABS = [
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>("portfolio")
+  const { stats, accounts, isLoading } = useDashboardStats()
 
-  const { data: stats }         = trpc.trades.dashboardStats.useQuery()
-  const { data: accounts = [] } = trpc.accounts.list.useQuery()
-
-  if (!stats) {
+  if (isLoading || !stats) {
     return (
       <div>
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
