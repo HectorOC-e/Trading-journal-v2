@@ -6,6 +6,16 @@ export type SerializedAccount = RouterOutputs["accounts"]["list"][number]
 export type SerializedSetup   = RouterOutputs["setups"]["list"][number]
 export type DashboardStats    = RouterOutputs["trades"]["dashboardStats"]
 
+// ── AccountLog typed payloads (T-I-004) ──
+export type AccountLogPayload =
+  | { event: "CREATED";            initialBalance: number; currency: string; name?: string; type?: string }
+  | { event: "PHASE_CHANGE";       from: string; to: string; note?: string; objectiveMet?: boolean; manualOverride?: boolean; prevRules?: Record<string, unknown>; newRules?: Record<string, unknown> | null }
+  | { event: "WITHDRAWAL";         amount: number; currency: string; status?: string; withdrawalId?: string; reference?: string }
+  | { event: "WITHDRAWAL_STATUS";  withdrawalId: string; status: string; reference?: string }
+  | { event: "STATUS_CHANGE";      from: string; to: string; note: string }
+  | { event: "NOTE";               text: string }
+  | { event: "BALANCE_CORRECTION"; variance: number; note: string }
+
 // ── Derived from design-spec modal fields and anatomy sections ──
 
 export type MarketCategory = "FUTUROS" | "FX" | "CRIPTO" | "EQUITIES"

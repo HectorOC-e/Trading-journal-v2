@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import { calcExpectancyR, calcProfitFactor, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
+import type { AccountLogPayload } from "@/types"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -842,17 +843,14 @@ export const tradesRouter = router({
             where: { id: trade.accountId },
             data:  { status: "INACTIVE" },
           })
+          const ddPayload: AccountLogPayload = {
+            event: "STATUS_CHANGE",
+            from:  "ACTIVE",
+            to:    "INACTIVE",
+            note:  `Drawdown total ${ddPct.toFixed(2)}% superó límite de ${Number(acct.ddTotalPct)}%`,
+          }
           await ctx.prisma.accountLog.create({
-            data: {
-              userId:    ctx.userId,
-              accountId: trade.accountId,
-              event:     "STATUS_CHANGE",
-              payload:   {
-                from: "ACTIVE",
-                to:   "INACTIVE",
-                note: `Drawdown total ${ddPct.toFixed(2)}% superó límite de ${Number(acct.ddTotalPct)}%`,
-              },
-            },
+            data: { userId: ctx.userId, accountId: trade.accountId, event: "STATUS_CHANGE", payload: ddPayload },
           })
           return { trade: serializeTrade(updated), accountDeactivated: true }
         }

@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
-import type { Account, AccountType } from "@/types"
+import type { Account, AccountType, AccountLogPayload } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
@@ -1389,11 +1389,13 @@ export default function CuentasPage() {
    ACCOUNT HISTORY MODAL
 ══════════════════════════════════════ */
 const EVENT_META: Record<string, { label: string; color: string }> = {
-  CREATED:       { label: "Cuenta creada",     color: "#22c55e" },
-  PHASE_CHANGE:  { label: "Cambio de fase",    color: "#4f6ef7" },
-  STATUS_CHANGE: { label: "Cambio de estado",  color: "#f59e0b" },
-  WITHDRAWAL:    { label: "Retiro",            color: "#a78bfa" },
-  NOTE:          { label: "Nota",              color: "#6b7280" },
+  CREATED:            { label: "Cuenta creada",     color: "#22c55e" },
+  PHASE_CHANGE:       { label: "Cambio de fase",    color: "#4f6ef7" },
+  STATUS_CHANGE:      { label: "Cambio de estado",  color: "#f59e0b" },
+  WITHDRAWAL:         { label: "Retiro",            color: "#a78bfa" },
+  WITHDRAWAL_STATUS:  { label: "Estado de retiro",  color: "#c084fc" },
+  NOTE:               { label: "Nota",              color: "#6b7280" },
+  BALANCE_CORRECTION: { label: "Corrección de saldo", color: "#fb923c" },
 }
 
 function AccountHistoryModal({ accountId, accountName, onClose }: {
@@ -1428,8 +1430,7 @@ function AccountHistoryModal({ accountId, accountName, onClose }: {
               <div className="absolute left-[9px] top-3 bottom-3 w-px bg-[var(--line)]" />
               {(logs as { id: string; event: string; payload: unknown; createdAt: Date | string }[]).map((log) => {
                 const meta = EVENT_META[log.event] ?? { label: log.event, color: "#6b7280" }
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const payload = log.payload as any
+                const p = log.payload as AccountLogPayload
                 const date = new Date(log.createdAt)
                 const dateStr = date.toLocaleDateString("es", { day: "2-digit", month: "short", year: "2-digit" })
                 const timeStr = date.toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" })
@@ -1442,22 +1443,43 @@ function AccountHistoryModal({ accountId, accountName, onClose }: {
                         <span className="text-[11px] font-bold" style={{ color: meta.color }}>{meta.label}</span>
                         <span className="text-[10px] text-[var(--ink-3)]">{dateStr} · {timeStr}</span>
                       </div>
-                      {log.event === "PHASE_CHANGE" && (
+                      {p.event === "PHASE_CHANGE" && (
                         <p className="text-[11px] text-[var(--ink-2)] mt-1">
-                          {payload.from} → {payload.to}
-                          {payload.manualOverride && <span className="ml-2 text-[var(--ink-3)]">(manual)</span>}
-                          {payload.note && <span className="ml-2 italic text-[var(--ink-3)]">"{payload.note}"</span>}
+                          {p.from} → {p.to}
+                          {p.manualOverride && <span className="ml-2 text-[var(--ink-3)]">(manual)</span>}
+                          {p.note && <span className="ml-2 italic text-[var(--ink-3)]">"{p.note}"</span>}
                         </p>
                       )}
-                      {log.event === "STATUS_CHANGE" && (
+                      {p.event === "STATUS_CHANGE" && (
                         <p className="text-[11px] text-[var(--ink-2)] mt-1">
-                          {payload.from} → {payload.to}
-                          {payload.note && <span className="ml-2 italic text-[var(--ink-3)]">"{payload.note}"</span>}
+                          {p.from} → {p.to}
+                          {p.note && <span className="ml-2 italic text-[var(--ink-3)]">"{p.note}"</span>}
                         </p>
                       )}
-                      {log.event === "CREATED" && (
+                      {p.event === "CREATED" && (
                         <p className="text-[11px] text-[var(--ink-2)] mt-1">
-                          {payload.type} · ${Number(payload.initialBalance).toLocaleString()}
+                          {p.type} · ${Number(p.initialBalance).toLocaleString()} {p.currency}
+                        </p>
+                      )}
+                      {p.event === "WITHDRAWAL" && (
+                        <p className="text-[11px] text-[var(--ink-2)] mt-1">
+                          ${Number(p.amount).toLocaleString()} {p.currency}
+                          {p.reference && <span className="ml-2 text-[var(--ink-3)]">ref: {p.reference}</span>}
+                        </p>
+                      )}
+                      {p.event === "WITHDRAWAL_STATUS" && (
+                        <p className="text-[11px] text-[var(--ink-2)] mt-1">
+                          Estado: {p.status}
+                          {p.reference && <span className="ml-2 text-[var(--ink-3)]">ref: {p.reference}</span>}
+                        </p>
+                      )}
+                      {p.event === "NOTE" && (
+                        <p className="text-[11px] text-[var(--ink-2)] mt-1 italic">"{p.text}"</p>
+                      )}
+                      {p.event === "BALANCE_CORRECTION" && (
+                        <p className="text-[11px] text-[var(--ink-2)] mt-1">
+                          {p.variance >= 0 ? "+" : ""}{p.variance.toLocaleString()}
+                          {p.note && <span className="ml-2 italic text-[var(--ink-3)]">"{p.note}"</span>}
                         </p>
                       )}
                     </div>

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import type { AccountLogPayload } from "@/types"
 
 const ACCOUNT_TYPES = ["PERSONAL", "PROP_FIRM", "DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] as const
 const ACCOUNT_STATUSES = ["ACTIVE", "PAUSED", "INACTIVE", "LOST"] as const
@@ -51,17 +52,15 @@ export const accountsRouter = router({
           phase: isPropFirmType(input.type) ? (input.phase ?? "PHASE_1") : "NONE",
         },
       })
+      const createdPayload: AccountLogPayload = {
+        event:          "CREATED",
+        initialBalance: Number(account.initialBalance),
+        currency:       account.currency,
+        name:           account.name,
+        type:           account.type,
+      }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: account.id,
-          event:     "CREATED",
-          payload:   {
-            name:           account.name,
-            type:           account.type,
-            initialBalance: Number(account.initialBalance),
-          },
-        },
+        data: { userId: ctx.userId, accountId: account.id, event: "CREATED", payload: createdPayload },
       })
       return account
     }),
@@ -91,12 +90,15 @@ export const accountsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  { status: input.status, statusNote: input.statusNote ?? "" },
       })
+      const changeStatusPayload: AccountLogPayload = {
+        event: "STATUS_CHANGE", from: prev.status, to: input.status, note: input.statusNote ?? "",
+      }
       await ctx.prisma.accountLog.create({
         data: {
           userId:    ctx.userId,
           accountId: input.id,
           event:     "STATUS_CHANGE",
-          payload:   { from: prev.status, to: input.status, note: input.statusNote ?? "" },
+          payload:   changeStatusPayload,
         },
       })
       return account
@@ -139,28 +141,26 @@ export const accountsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  updateData,
       })
+      const phasePayload: AccountLogPayload = {
+        event:          "PHASE_CHANGE",
+        from:           prev.phase ?? "NONE",
+        to:             input.phase,
+        note:           input.note ?? "",
+        objectiveMet:   input.objectiveMet,
+        manualOverride: input.manualOverride,
+        prevRules: {
+          initialBalance: Number(prev.initialBalance),
+          ddDailyPct:     prev.ddDailyPct   != null ? Number(prev.ddDailyPct)   : null,
+          ddWeeklyPct:    prev.ddWeeklyPct  != null ? Number(prev.ddWeeklyPct)  : null,
+          ddMonthlyPct:   prev.ddMonthlyPct != null ? Number(prev.ddMonthlyPct) : null,
+          ddTotalPct:     prev.ddTotalPct   != null ? Number(prev.ddTotalPct)   : null,
+          targetPct:      prev.targetPct    != null ? Number(prev.targetPct)    : null,
+        } as Record<string, unknown>,
+        newRules: (input.newRules as Record<string, unknown>) ?? null,
+      }
+      // Prisma's InputJsonValue doesn't accept Record<string, unknown> structurally; cast is safe at runtime
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input.id,
-          event:     "PHASE_CHANGE",
-          payload:   {
-            from:           prev.phase,
-            to:             input.phase,
-            note:           input.note ?? "",
-            objectiveMet:   input.objectiveMet,
-            manualOverride: input.manualOverride,
-            prevRules: {
-              initialBalance: Number(prev.initialBalance),
-              ddDailyPct:     prev.ddDailyPct   != null ? Number(prev.ddDailyPct)   : null,
-              ddWeeklyPct:    prev.ddWeeklyPct  != null ? Number(prev.ddWeeklyPct)  : null,
-              ddMonthlyPct:   prev.ddMonthlyPct != null ? Number(prev.ddMonthlyPct) : null,
-              ddTotalPct:     prev.ddTotalPct   != null ? Number(prev.ddTotalPct)   : null,
-              targetPct:      prev.targetPct    != null ? Number(prev.targetPct)    : null,
-            },
-            newRules: input.newRules ?? null,
-          },
-        },
+        data: { userId: ctx.userId, accountId: input.id, event: "PHASE_CHANGE", payload: phasePayload as never },
       })
       return account
     }),
@@ -172,13 +172,9 @@ export const accountsRouter = router({
         where: { id: input, userId: ctx.userId },
         data:  { status: "INACTIVE" },
       })
+      const archivePayload: AccountLogPayload = { event: "STATUS_CHANGE", from: account.status, to: "INACTIVE", note: "Archivada" }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input,
-          event:     "STATUS_CHANGE",
-          payload:   { from: account.status, to: "INACTIVE", note: "Archivada" },
-        },
+        data: { userId: ctx.userId, accountId: input, event: "STATUS_CHANGE", payload: archivePayload },
       })
       return account
     }),

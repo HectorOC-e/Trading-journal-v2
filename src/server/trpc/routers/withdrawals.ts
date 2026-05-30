@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import type { AccountLogPayload } from "@/types"
 
 const WithdrawalStatus = z.enum(["SOLICITADO", "EN_PROCESO", "PAGADO", "RECHAZADO"])
 
@@ -39,13 +40,12 @@ export const withdrawalsRouter = router({
           status:    "SOLICITADO",
         },
       })
+      const withdrawalPayload: AccountLogPayload = {
+        event: "WITHDRAWAL", amount: input.amount, currency: input.currency,
+        status: "SOLICITADO", withdrawalId: withdrawal.id, reference: input.reference || undefined,
+      }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input.accountId,
-          event:     "WITHDRAWAL",
-          payload:   { amount: input.amount, currency: input.currency, status: "SOLICITADO", withdrawalId: withdrawal.id },
-        },
+        data: { userId: ctx.userId, accountId: input.accountId, event: "WITHDRAWAL", payload: withdrawalPayload },
       })
       return withdrawal
     }),
@@ -61,13 +61,12 @@ export const withdrawalsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  { status: input.status, reference: input.reference ?? undefined },
       })
+      const withdrawalStatusPayload: AccountLogPayload = {
+        event: "WITHDRAWAL_STATUS", withdrawalId: input.id, status: input.status,
+        reference: input.reference,
+      }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: withdrawal.accountId,
-          event:     "STATUS_CHANGE",
-          payload:   { entity: "withdrawal", id: input.id, status: input.status },
-        },
+        data: { userId: ctx.userId, accountId: withdrawal.accountId, event: "WITHDRAWAL_STATUS", payload: withdrawalStatusPayload },
       })
       return withdrawal
     }),
