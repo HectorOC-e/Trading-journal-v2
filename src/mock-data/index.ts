@@ -2,7 +2,7 @@
 
 import type { Trade, Account, Setup, LearningResource, Rule, WeeklyReview, Market, RulesSeverity } from "@/types"
 
-export const mockAccounts: Account[] = [
+export const mockAccounts = [
   {
     id: "acc-1",
     name: "FXify 100K — Phase 2",
@@ -33,9 +33,9 @@ export const mockAccounts: Account[] = [
     timezone: "America/New_York",
     createdAt: "2026-03-01T00:00:00Z",
   },
-]
+] as unknown as Account[]
 
-export const mockSetups: Setup[] = [
+export const mockSetups = [
   {
     id: "setup-1",
     name: "Opening Range Break",
@@ -105,9 +105,9 @@ export const mockSetups: Setup[] = [
     ],
     createdAt: "2026-01-01T00:00:00Z",
   },
-]
+] as unknown as Setup[]
 
-export const mockTrades: Trade[] = [
+export const mockTrades = [
   {
     id: "trade-1",
     direction: "LONG",
@@ -259,7 +259,7 @@ export const mockTrades: Trade[] = [
     pnl: -600,
     createdAt: "2026-05-21T09:40:00Z",
   },
-]
+] as unknown as Trade[]
 
 export const mockResources: LearningResource[] = [
   {

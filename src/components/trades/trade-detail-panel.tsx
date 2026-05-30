@@ -145,9 +145,9 @@ export function TradeDetailPanel({
             </span>
             <span className={cn(
               "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
-              SESSION_COLOR[trade.session]
+              SESSION_COLOR[trade.session as TradeSession]
             )}>
-              {SESSION_SHORT[trade.session]}
+              {SESSION_SHORT[trade.session as TradeSession]}
             </span>
           </div>
           <p className="text-xs text-[var(--ink-3)]">{trade.date} · {trade.openTime}</p>
@@ -412,33 +412,31 @@ export function TradeDetailPanel({
             <p className="text-[10px] text-[var(--ink-3)] font-mono">
               ${account.initialBalance.toLocaleString()}
             </p>
-            {account.propFirmRules && (
+            {(account.ddTotalPct != null || account.ddDailyPct != null) && (
               <div className="mt-2 pt-2 border-t border-[var(--line)]">
                 <div className="flex gap-3">
-                  <div className="flex-1">
-                    <p className="text-[9px] text-[var(--ink-3)] mb-1">DD máx</p>
-                    <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[var(--loss)]"
-                        style={{ width: "20%" }}
-                      />
+                  {account.ddTotalPct != null && (
+                    <div className="flex-1">
+                      <p className="text-[9px] text-[var(--ink-3)] mb-1">DD máx</p>
+                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--loss)]" style={{ width: "20%" }} />
+                      </div>
+                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
+                        2% / {account.ddTotalPct}%
+                      </p>
                     </div>
-                    <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                      2% / {account.propFirmRules.maxDrawdownPct}%
-                    </p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[9px] text-[var(--ink-3)] mb-1">Pérd. diaria</p>
-                    <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[var(--be)]"
-                        style={{ width: "10%" }}
-                      />
+                  )}
+                  {account.ddDailyPct != null && (
+                    <div className="flex-1">
+                      <p className="text-[9px] text-[var(--ink-3)] mb-1">Pérd. diaria</p>
+                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--be)]" style={{ width: "10%" }} />
+                      </div>
+                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
+                        0.5% / {account.ddDailyPct}%
+                      </p>
                     </div>
-                    <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                      0.5% / {account.propFirmRules.dailyLossPct}%
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -523,8 +521,8 @@ export function TradeDetailPanel({
         <div>
           <p className="text-eyebrow mb-2">Tags</p>
           <div className="flex gap-1 flex-wrap">
-            {trade.tags.map((tag) => (
-              <Badge key={tag} variant={TAG_VARIANT[tag]}>{tag}</Badge>
+            {(trade.tags as string[]).map((tag) => (
+              <Badge key={tag} variant={TAG_VARIANT[tag as TradeTag] ?? "default"}>{tag}</Badge>
             ))}
           </div>
         </div>

@@ -1,3 +1,11 @@
+// ── Router-derived types (T-I-003) ──
+import type { RouterOutputs } from "@/server/trpc/root"
+
+export type SerializedTrade   = RouterOutputs["trades"]["list"]["items"][number]
+export type SerializedAccount = RouterOutputs["accounts"]["list"][number]
+export type SerializedSetup   = RouterOutputs["setups"]["list"][number]
+export type DashboardStats    = RouterOutputs["trades"]["dashboardStats"]
+
 // ── Derived from design-spec modal fields and anatomy sections ──
 
 export type MarketCategory = "FUTUROS" | "FX" | "CRIPTO" | "EQUITIES"
@@ -23,62 +31,12 @@ export type AccountStatus = "ACTIVE" | "PAUSED" | "INACTIVE" | "LOST"
 export type RulesSeverity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
 export type ResourceType = "LIBRO" | "VIDEO" | "NOTA" | "BACKTEST" | "PODCAST" | "DRILL" | "HERRAMIENTA"
 export type SetupDirection = "LONG" | "SHORT" | "AMBAS"
-export type SetupStatus = "ACTIVO" | "PAUSADO"
+export type SetupStatus = "ACTIVO" | "PAUSADO" | "EN_PRUEBA" | "DESCARTADO"
 
-export interface Trade {
-  id: string
-  direction: TradeDirection
-  symbol: string
-  accountId: string
-  setupId: string
-  entry: number
-  stop: number
-  target: number
-  size: number
-  date: string          // ISO date
-  openTime: string      // HH:MM
-  session: TradeSession
-  tags: TradeTag[]
-  notes?: string
-  screenshotUrls?: string[]
-  status?: string   // OPEN | CLOSED
-  // computed
-  rMultiple?: number
-  pnl?: number
-  createdAt: string
-}
-
-export interface Account {
-  id: string
-  name: string
-  broker: string
-  type: AccountType
-  initialBalance: number
-  currency: string
-  timezone: string
-  // Prop firm rules (only when type === PROP_FIRM)
-  propFirmRules?: {
-    maxDrawdownPct: number
-    dailyLossPct: number
-    maxTradesPerDay: number
-    targetPct: number
-    allowedSymbols: string[]
-  }
-  createdAt: string
-}
-
-export interface Setup {
-  id: string
-  name: string
-  abbreviation: string
-  market: string
-  direction: SetupDirection
-  status: SetupStatus
-  description: string
-  aplusChecklist: string[]
-  standardChecklist: string[]
-  createdAt: string
-}
+// Backwards-compat aliases — the RouterOutputs-derived types above are the source of truth
+export type Trade   = SerializedTrade
+export type Account = SerializedAccount
+export type Setup   = SerializedSetup
 
 export type ResourceStatus =
   | "PENDING"

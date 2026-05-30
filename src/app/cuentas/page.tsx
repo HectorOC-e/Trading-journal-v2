@@ -267,10 +267,10 @@ function AccountDetailPanel({ account, rawAccount, onClose, onDelete, deleting, 
   const [lostModal, setLostModal] = useState(false)
   const [lostNote, setLostNote] = useState("")
 
-  const tm  = TYPE_META[account.type]
+  const tm  = TYPE_META[account.type as AccountType]
   const acctStatus = (rawAccount?.status as string) ?? "ACTIVE"
   const sm  = ACCOUNT_STATUS_META[acctStatus] ?? ACCOUNT_STATUS_META.ACTIVE
-  const isPF = isPropFirmLike(account.type)
+  const isPF = isPropFirmLike(account.type as AccountType)
   const phase = (rawAccount?.phase as string) ?? "NONE"
   const initialBalance = Number(rawAccount?.initialBalance ?? account.initialBalance)
   const flatLine = Array(10).fill(initialBalance)
@@ -1339,23 +1339,7 @@ export default function CuentasPage() {
                 overflowY: "auto",
               }}>
                 <AccountDetailPanel
-                  account={{
-                    id: selected.id,
-                    name: selected.name,
-                    broker: selected.broker,
-                    type: selected.type as AccountType,
-                    initialBalance: Number(selected.initialBalance),
-                    currency: selected.currency,
-                    timezone: selected.timezone,
-                    createdAt: String(selected.createdAt),
-                    propFirmRules: (selected.type === "PROP_FIRM" || selected.type === "DEMO_PROP") && selected.ddTotalPct != null ? {
-                      maxDrawdownPct: Number(selected.ddTotalPct),
-                      dailyLossPct: Number(selected.ddDailyPct ?? 5),
-                      maxTradesPerDay: selected.maxTradesPerDay ?? 3,
-                      targetPct: Number(selected.targetPct ?? 8),
-                      allowedSymbols: selected.allowedSymbols,
-                    } : undefined,
-                  }}
+                  account={selected}
                   rawAccount={selected}
                   onClose={() => setSelectedId(null)}
                   onEdit={() => setEditingId(selected.id)}
