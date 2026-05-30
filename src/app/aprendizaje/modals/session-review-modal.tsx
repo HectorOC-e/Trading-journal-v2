@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
-import { MASTERY_LABELS, calcPreviewNextReview, fmtRelativeTime } from "./revisar-recurso-modal"
+import { MASTERY_LABELS, calcPreviewNextReview, fmtRelativeTime } from "../utils/review-helpers"
 
 type SessionResource = { id: string; title: string; type: string; reviewInterval?: number | null }
 

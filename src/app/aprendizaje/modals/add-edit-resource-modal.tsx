@@ -7,66 +7,13 @@ import {
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
-import type { ResourceType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
+import {
+  TYPE_EMOJIS, ALL_TYPES, PROGRESS_TYPES, PROGRESS_LABELS,
+  type FormState, emptyForm,
+} from "../utils/resource-form"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
-
-const TYPE_EMOJIS: Record<ResourceType, string> = {
-  LIBRO:       "📚",
-  VIDEO:       "🎬",
-  NOTA:        "📝",
-  BACKTEST:    "📊",
-  PODCAST:     "🎙",
-  DRILL:       "🏋",
-  HERRAMIENTA: "🔧",
-}
-
-const ALL_TYPES: ResourceType[] = [
-  "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
-]
-
-const PROGRESS_TYPES: ResourceType[] = ["LIBRO", "VIDEO", "PODCAST", "DRILL", "BACKTEST"]
-
-const PROGRESS_LABELS: Record<ResourceType, { current: string; total: string } | null> = {
-  VIDEO:       { current: "Minutos vistos",        total: "Duración total (min)" },
-  PODCAST:     { current: "Minutos escuchados",    total: "Duración total (min)" },
-  LIBRO:       { current: "Página actual",         total: "Total páginas" },
-  DRILL:       { current: "Sesiones completadas",  total: "Sesiones objetivo" },
-  BACKTEST:    { current: "Sesiones completadas",  total: "Sesiones objetivo" },
-  NOTA:        null,
-  HERRAMIENTA: null,
-}
-
-interface FormState {
-  type:            ResourceType
-  title:           string
-  author:          string
-  source:          string
-  date:            string
-  notes:           string
-  tags:            string
-  markedForReview: boolean
-  totalUnits:      number | null
-  currentUnits:    number | null
-  reviewInterval:  number
-}
-
-function emptyForm(): FormState {
-  return {
-    type:            "LIBRO",
-    title:           "",
-    author:          "",
-    source:          "",
-    date:            new Date().toISOString().slice(0, 10),
-    notes:           "",
-    tags:            "",
-    markedForReview: false,
-    totalUnits:      null,
-    currentUnits:    null,
-    reviewInterval:  7,
-  }
-}
 
 export function AddEditResourceModal({
   open,
@@ -83,7 +30,7 @@ export function AddEditResourceModal({
   useEffect(() => {
     if (editTarget) {
       setForm({
-        type:            editTarget.type as ResourceType,
+        type:            editTarget.type as FormState["type"],
         title:           editTarget.title,
         author:          editTarget.author,
         source:          editTarget.source ?? "",

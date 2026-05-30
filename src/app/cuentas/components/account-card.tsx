@@ -42,6 +42,25 @@ export const ACCOUNT_STATUS_META: Record<string, { label: string; color: string;
 
 export const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
+export function KpiBox({ label, value, sub, positive, icon }: {
+  label: string; value: string; sub: string; positive?: boolean; icon: React.ReactNode
+}) {
+  return (
+    <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3 flex gap-3 items-start">
+      <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--panel-2)] flex items-center justify-center shrink-0 mt-0.5">
+        {icon}
+      </div>
+      <div>
+        <p className="text-eyebrow mb-0.5">{label}</p>
+        <p className={`text-[20px] font-mono font-bold leading-none ${positive === undefined ? "text-[var(--ink)]" : positive ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
+          {value}
+        </p>
+        <p className="text-[11px] text-[var(--ink-3)] mt-0.5">{sub}</p>
+      </div>
+    </div>
+  )
+}
+
 export function AccountCard({ rawAccount, selected, onClick, stats }: {
   rawAccount: RawAccount
   selected: boolean

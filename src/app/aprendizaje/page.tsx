@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 import { Plus } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
@@ -14,17 +14,21 @@ import { SetupImpactModal } from "./modals/impact-modal"
 import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
 import { ResourceRightRail } from "./components/resource-right-rail"
+import { useResourceActions } from "./hooks/use-resource-actions"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
 
 export default function AprendizajePage() {
-  const [modalOpen,       setModalOpen]       = useState(false)
-  const [revisarResource, setRevisarResource] = useState<ResourceFromDB | null>(null)
-  const [editTarget,      setEditTarget]      = useState<ResourceFromDB | null>(null)
-  const [linkSetupTarget, setLinkSetupTarget] = useState<ResourceFromDB | null>(null)
-  const [impactTarget,    setImpactTarget]    = useState<ResourceFromDB | null>(null)
-  const [drawerResource,  setDrawerResource]  = useState<ResourceFromDB | null>(null)
-  const [sessionOpen,     setSessionOpen]     = useState(false)
+  const {
+    modalOpen, setModalOpen,
+    editTarget, setEditTarget,
+    revisarResource, setRevisarResource,
+    linkSetupTarget, setLinkSetupTarget,
+    impactTarget, setImpactTarget,
+    drawerResource, setDrawerResource,
+    sessionOpen, setSessionOpen,
+    handleOpen, handleEditOpen,
+  } = useResourceActions()
 
   const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
@@ -56,19 +60,8 @@ export default function AprendizajePage() {
   const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])
   const completed     = useMemo(() => resources.filter((r) => (r.progressPct ?? 0) >= 100), [resources])
 
-  function handleOpen() {
-    setEditTarget(null)
-    setModalOpen(true)
-  }
-
-  function handleEditOpen(resource: ResourceFromDB) {
-    setEditTarget(resource)
-    setModalOpen(true)
-  }
-
   return (
     <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
-      {/* Main column */}
       <div className="flex-1 overflow-y-auto min-w-0" style={{ padding: "28px 32px" }}>
         <TopBar
           title="Aprendizaje"
@@ -99,7 +92,6 @@ export default function AprendizajePage() {
         )}
       </div>
 
-      {/* Right rail */}
       <ResourceRightRail
         resources={resources}
         rawResources={rawResources}
@@ -109,7 +101,6 @@ export default function AprendizajePage() {
         onRevisarResource={(r) => setRevisarResource(r)}
       />
 
-      {/* Modals */}
       <AddEditResourceModal
         open={modalOpen}
         onOpenChange={(v) => { setModalOpen(v); if (!v) setEditTarget(null) }}
