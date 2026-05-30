@@ -1,156 +1,236 @@
 # Domain Map — Trading Journal v2
 
-> This document defines domain boundaries, entity ownership, and cross-domain relationships.
+> Last updated: 2026-05-30
 
 ---
 
 ## Domain Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                         User (root aggregate)                    │
-└────────┬──────────────┬──────────────┬──────────────┬───────────┘
-         │              │              │              │
-    ┌────▼────┐   ┌─────▼─────┐  ┌────▼────┐  ┌────▼────┐
-    │ TRADING │   │ LEARNING  │  │ FINANCE │  │REFLECTION│
-    └────┬────┘   └─────┬─────┘  └────┬────┘  └────┬────┘
-         │              │              │              │
-    ┌────▼────┐   ┌─────▼─────┐  ┌────▼────┐  ┌────▼────┐
-    │ANALYTICS│   │ANALYTICS  │  │ (local) │  │ (local) │
-    │(shared) │   │  (local)  │  └─────────┘  └─────────┘
-    └─────────┘   └───────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         User (root aggregate)                       │
+│  currentStreak · bestStreak · lastReviewDate · weeklyGoalMinutes    │
+└───────┬──────────────┬──────────────┬──────────────┬───────────────┘
+        │              │              │              │
+   ┌────▼────┐   ┌─────▼─────┐  ┌────▼────┐  ┌────▼──────┐
+   │ TRADING │   │ LEARNING  │  │ FINANCE │  │ REFLECTION│
+   └────┬────┘   └─────┬─────┘  └────┬────┘  └────┬──────┘
+        │              │              │              │
+   ┌────▼─────────────────────────────────────────────────┐
+   │                   ANALYTICS (cross-cutting)           │
+   │  dashboardStats · resourceImpactRanking · propFirm    │
+   └──────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Domain: Trading
 
-**Purpose:** Capture, validate, and aggregate trade execution data.
+**Purpose:** Capture, validate, and aggregate trade execution reality.
 
-### Entities
+### Entities & Aggregates
 
-| Entity | Table | Key Fields |
+| Entity | Table | Role |
 |---|---|---|
-| Account | `accounts` | type, status, initialBalance, currency, ddDailyPct, ddTotalPct, phase |
-| Trade | `trades` | accountId, setupId, direction, entryPrice, exitPrice, pnl, riskR |
-| TradeEvent | `trade_events` | tradeId, type, price, notes, timestamp |
-| Setup | `setups` | name, description, conditions, linked rules |
-| Market | `markets` | symbol, category, timezone |
-| Rule | `rules` | title, description, type, linked setups |
+| **Account** | `accounts` | Aggregate root. Owns all trades, reviews, and withdrawals. Carries prop firm constraints. |
+| **Trade** | `trades` | Owned by Account. The primary unit of financial record. |
+| **TradeEvent** | `trade_events` | Owned by Trade. Immutable event log of trade lifecycle changes. |
+| **Setup** | `setups` | User-level aggregate. Defines a repeatable trading edge. Linked to LearningResource (cross-domain). |
+| **Market** | `markets` | Reference data. Symbol metadata, session info. |
+| **Rule** | `rules` | User-level behavioral constraints. `isSystem` marks system defaults vs. custom rules. |
 
-### Aggregates
+### Trade Lifecycle
 
-- **Account** is the primary aggregate; `Trade` is owned by Account
-- **Setup** is a User-level aggregate shared across accounts
-- **Rule** belongs to Setup (or globally to User — current implementation is User-level)
+```
+OPEN → (optional TradeEvents) → CLOSED | CANCELLED
 
-### Business Rules
+TradeEvent types:
+  OPEN             → created automatically with every Trade.create
+  STOP_MOVE        → mutates Trade.stop
+  TRAIL_STOP       → mutates Trade.stop (trailing variant)
+  TAKE_PROFIT_MOVE → mutates Trade.target
+  SCALE_IN         → mutates Trade.entry (weighted avg) + Trade.size
+  PARTIAL_CLOSE    → mutates Trade.size
+  NOTE             → no Trade mutation, pure record
+```
 
-- P&L is computed from `TradeEvent` entries (entry/exit prices × lots)
-- Drawdown is checked against `ddDailyPct`, `ddWeeklyPct`, `ddMonthlyPct`, `ddTotalPct`
-- Prop firm accounts track `phase` (PHASE_1 → PHASE_2 → FUNDED)
-- Account type `LOST` is a terminal state triggered when total drawdown is breached
+### Account Types and Constraints
 
-### Cross-Domain Dependencies
+| Type | Prop Firm Fields Active |
+|---|---|
+| PERSONAL | none |
+| PROP_FIRM | ddDailyPct, ddWeeklyPct, ddMonthlyPct, ddTotalPct, targetPct, ddModel, phase, maxTradesPerDay, allowedSymbols, minTradingDays |
+| DEMO_PERSONAL | none |
+| DEMO_PROP | ddDailyPct, ddTotalPct, maxTradesPerDay |
+| BACKTEST | none |
+| QA | none |
 
-- **→ Learning:** `Setup` is linked to `LearningResource` via M2M (`_ResourceSetups`)
-- **→ Analytics:** Trades are the primary data source for performance metrics
+### Prop Firm Phase Lifecycle
+
+```
+PHASE_1 → PHASE_2 → FUNDED
+```
+
+Each phase transition creates an `AccountLog` event of type `PHASE_CHANGE`.
+
+### Business Rules (Existing)
+
+- P&L = `(closePrice - entry) × size` (LONG) or `(entry - closePrice) × size` (SHORT), minus commission
+- R-Multiple = `rawPnl / (|entry - stop| × size)`, null if stop distance is 0
+- SCALE_IN: new avg entry = `(oldEntry × oldSize + newPrice × addedSize) / newSize`
+- Account status `LOST` requires a `statusNote` explaining the loss
+
+### Business Rules (Proposed — Phase 2)
+
+- Before `trades.create` on PROP_FIRM: check daily loss %, trade count, allowed symbols
+- On `trades.close`: check if total drawdown breached → auto-set account `INACTIVE`
+- Rule violations: behavioral tags on trades (`Impulsivo`, `Off-plan`) increment `Rule.violationsThisMonth`
 
 ---
 
 ## Domain: Learning
 
-**Purpose:** Track knowledge acquisition and enforce spaced repetition to convert study into durable edge.
+**Purpose:** Convert study time into durable knowledge through spaced repetition, tracking, and cross-domain correlation.
 
-### Entities
+### Entities & Aggregates
 
-| Entity | Table | Key Fields |
+| Entity | Table | Role |
 |---|---|---|
-| LearningResource | `learning_resources` | type, status, progressType, currentUnits, totalUnits, weekDeltaMinutes, nextReviewAt, reviewInterval |
-| ResourceReview | `resource_reviews` | resourceId, masteryLevel, learned, nextReviewAt, reviewInterval |
+| **LearningResource** | `learning_resources` | Aggregate root. A book, video, drill, etc. Owns all reviews. |
+| **ResourceReview** | `resource_reviews` | A spaced-repetition review event. Immutable once created. |
 
-### Aggregates
+### Spaced Repetition Logic
 
-- **LearningResource** owns all reviews; review scheduling state lives on the resource, not on reviews
+```
+On ResourceReview creation:
+  interval = resource.reviewInterval ?? 7 days
+  
+  masteryLevel scaling:
+    ≤2  → Math.max(1, ceil(interval / 2))    — struggled, review sooner
+    3   → interval                            — neutral, same interval
+    ≥4  → round(interval * 1.5)              — confident, space out
+  
+  resource.nextReviewAt = today + scaled_interval
+  resource.status = "IN_REVIEW" (if was COMPLETED)
+  resource.rating = masteryLevel rating from this review
+```
 
-### Business Rules
+### Decay Detection
 
-- `nextReviewAt` = `createdAt` + `reviewInterval` days (recalculated on each review based on mastery)
-- `reviewInterval` scales with `masteryLevel` (1→1d, 2→3d, 3→7d, 4→14d, 5→30d)
-- Decay: if `now - nextReviewAt > reviewInterval × 2`, status transitions `MASTERED → IN_REVIEW` automatically
-- Streak: `currentStreak` is materialized on `User`, updated atomically in `createReview`
-- `weekDeltaMinutes` tracks weekly study time increment; reset each Monday
+```
+On stats query:
+  If resource.status === "MASTERED"
+  AND (today - resource.nextReviewAt) > resource.reviewInterval × 2
+  → update status to "IN_REVIEW"
+  → decayedCount++ (returned in stats response)
+```
 
-### Cross-Domain Dependencies
+### Progress Tracking by Type
 
-- **→ Trading:** `LearningResource` linked to `Setup` via `_ResourceSetups` M2M
-- **→ Analytics:** `resourceImpactRanking` correlates completed resources with setup win-rate delta
+| Resource Type | progressType | Unit |
+|---|---|---|
+| VIDEO, PODCAST | minutes | minutes watched |
+| LIBRO | pages | pages read |
+| DRILL, BACKTEST | sessions | session count |
+| NOTA, HERRAMIENTA | null | manual % only |
+
+### Materialized Streak (on User)
+
+```
+On each ResourceReview create (in transaction):
+  if lastReviewDate === today     → streak unchanged
+  if lastReviewDate === yesterday → streak + 1
+  else                            → streak = 1
+  bestStreak = max(bestStreak, newStreak)
+  lastReviewDate = today
+```
+
+### Cross-Domain Link
+
+`LearningResource ↔ Setup` (M2M via `_ResourceSetups`)
+
+This link powers `resourceImpactRanking`: for each linked setup, compute win rate on trades before and after `resource.completedAt`. The delta is the resource's measurable impact on trading performance.
 
 ---
 
 ## Domain: Finance
 
-**Purpose:** Track capital movements and account balance changes with an audit trail.
+**Purpose:** Track capital movements and maintain an immutable audit trail of account state changes.
 
 ### Entities
 
-| Entity | Table | Key Fields |
+| Entity | Table | Role |
 |---|---|---|
-| Withdrawal | `withdrawals` | accountId, amount, currency, status, date |
-| AccountLog | `account_logs` | accountId, type, amount, balance, note |
+| **Withdrawal** | `withdrawals` | A capital withdrawal request. Status-tracked. |
+| **AccountLog** | `account_logs` | Append-only audit trail. One record per account state change. |
 
-### Business Rules
+### Withdrawal Status Lifecycle
 
-- Withdrawal statuses: `SOLICITADO → EN_PROCESO → PAGADO | RECHAZADO`
-- `AccountLog` is append-only; records every balance change with reason
-- Balance is computed from `AccountLog` entries, not stored directly on Account
+```
+SOLICITADO → EN_PROCESO → PAGADO
+                        → RECHAZADO
+```
 
-### Cross-Domain Dependencies
+Each status change creates an `AccountLog` event.
 
-- **→ Trading:** Withdrawals reduce Account balance and are logged in AccountLog
+### AccountLog Event Types
+
+| Event | Triggered By | Payload |
+|---|---|---|
+| CREATED | Account creation | `{ initialBalance, currency }` |
+| PHASE_CHANGE | `accounts.updatePhase` | `{ from, to }` |
+| WITHDRAWAL | `withdrawals.create` | `{ amount, currency }` |
+| STATUS_CHANGE | `accounts.changeStatus` | `{ from, to, note }` |
+| NOTE | Manual entry | `{ text }` |
+
+*(Payload is `Json {}` — see TASK-TYPE-002 for typed payload proposal)*
 
 ---
 
 ## Domain: Reflection
 
-**Purpose:** Weekly structured review ritual; qualitative assessment of trading behavior.
+**Purpose:** Structured weekly review ritual to close the feedback loop between performance and psychology.
 
 ### Entities
 
-| Entity | Table | Key Fields |
+| Entity | Table | Role |
 |---|---|---|
-| WeeklyReview | `weekly_reviews` | accountId, weekStart, weekEnd, discipline, mentalState, notes, topSetup |
+| **WeeklyReview** | `weekly_reviews` | One review per account per week. Contains performance context and written reflection. |
 
-### Business Rules
+### WeeklyReview Fields
 
-- One review per account per week (enforced by `UNIQUE(account_id, week_start)`)
-- `discipline` is a 1–5 score; surfaces in dashboard behavioral trends
-
-### Cross-Domain Dependencies
-
-- **→ Trading:** Reviews reference an Account and its weekly performance context
+| Field | Type | Source |
+|---|---|---|
+| `tradeCount` | int | Computed from trades in week range |
+| `netPnl` | Decimal | Computed from trades in week range |
+| `winRate` | Decimal | Computed from trades in week range |
+| `disciplineScore` | int (0–100) | **Currently: manual entry** (see TASK-RULES-002 for automation) |
+| `executiveSummary` | text | Freeform written by trader |
+| `whatWorked` | text | Freeform |
+| `toImprove` | text | Freeform |
 
 ---
 
 ## Domain: Analytics (Cross-Cutting)
 
-**Purpose:** Derived insights across Trading + Learning data. No owned entities — reads only.
-
-### Computed Outputs
-
-| Metric | Source Domain | Description |
-|---|---|---|
-| Setup win rate | Trading | Wins / total trades per setup |
-| Resource impact delta | Trading + Learning | WR difference pre/post resource completion date |
-| Account drawdown status | Finance + Trading | Current DD% vs. limits |
-| Learning streak | Learning | `currentStreak` / `bestStreak` from User |
-| Weekly study progress | Learning | `weekDeltaMinutes` vs. `weeklyGoalMinutes` |
-| Pending reviews | Learning | Resources where `nextReviewAt` ≤ today |
+**Purpose:** Derived intelligence across Trading + Learning data. Read-only — owns no entities.
 
 ### Current Implementation
 
-Analytics are computed inside tRPC procedures (`stats`, `resourceImpactRanking`).  
-Target: isolated `AnalyticsService` that can be queried independently by both tRPC and a future AI layer.
+Analytics are computed in two places, creating duplication:
+
+| Computation | Server (tRPC) | Client (useMemo in dashboard) |
+|---|---|---|
+| Win rate, net P&L, profit factor | `trades.stats` | `TabPortfolio` useMemo |
+| Expectancy | `trades.stats` (in R) | `TabPortfolio` useMemo (in $) |
+| Equity curve | ❌ not on server | `TabOperador` useMemo |
+| Setup win rate | `learningResources.resourceImpactRanking` | `TabPlaybook` useMemo |
+| Session breakdown | ❌ not on server | `TabOperador` useMemo |
+| Prop firm status | ❌ not on server | `TabPortfolio` useMemo |
+
+### Target: Single Server Procedure
+
+`trades.dashboardStats` (proposed in TASK-DASH-001) consolidates all of the above into one server-computed response. The client receives pre-aggregated objects and renders them — no computation in `useMemo`.
 
 ---
 
@@ -158,31 +238,38 @@ Target: isolated `AnalyticsService` that can be queried independently by both tR
 
 ```
 User
- ├── owns → Account → Trade → TradeEvent
- ├── owns → Setup ←──────────────────────── LearningResource (M2M: _ResourceSetups)
- ├── owns → LearningResource → ResourceReview
- ├── owns → Market
- ├── owns → Rule
- ├── owns → WeeklyReview (per Account)
- ├── owns → Withdrawal (per Account)
- └── owns → AccountLog (per Account)
+ │
+ ├── Account ──────────────────── WeeklyReview (per account)
+ │    │
+ │    └── Trade ─────────────────── Setup (n:1)
+ │         │                              │
+ │         └── TradeEvent (immutable)     └── LearningResource (M2M)
+ │                                                │
+ │                                                └── ResourceReview (spaced repetition)
+ │
+ ├── Rule (behavioral constraints, per user)
+ │
+ ├── Market (reference data, per user)
+ │
+ └── AccountLog (audit trail, per account)
 
-Analytics reads:
- Trade + LearningResource → resourceImpactRanking
- Trade + Account         → drawdown status, equity curve
- ResourceReview          → streak, pending reviews
- WeeklyReview            → behavioral trend
+Analytics reads across:
+  Trade + Account          → dashboardStats (equity, P&L, drawdown, session)
+  Trade + Setup            → setupStats (win rate, avg R per setup)
+  Trade + LearningResource → resourceImpactRanking (study → edge correlation)
+  WeeklyReview + Trade     → disciplineScore (planned automation)
+  ResourceReview + User    → currentStreak (materialized)
 ```
 
 ---
 
-## Module Ownership (Source Code)
+## Source Code Ownership Map
 
-| Domain | Router | Page | Components |
+| Domain | Router(s) | Page(s) | Component Dir |
 |---|---|---|---|
-| Trading | `routers/trades.ts`, `setups.ts`, `markets.ts` | `/trades`, `/playbook` | `components/trades/` |
-| Learning | `routers/learning-resources.ts` | `/aprendizaje` | `components/aprendizaje/` |
-| Finance | `routers/withdrawals.ts`, `account-logs.ts` | `/retiros`, `/cuentas` | `components/finance/` (TBD) |
-| Reflection | `routers/weekly-reviews.ts` | `/reviews` | — |
-| Analytics | (inline in stats procedures) | `/dashboard` | `components/dashboard/` (TBD) |
-| Auth/Profile | — | `/perfil` | — |
+| Trading | `trades.ts`, `setups.ts`, `markets.ts`, `rules.ts` | `/trades`, `/playbook`, `/mercados`, `/reglas` | `components/trades/` |
+| Learning | `learning-resources.ts` | `/aprendizaje` | `components/aprendizaje/` |
+| Finance | `withdrawals.ts`, `account-logs.ts` | `/retiros`, `/cuentas` | (no separate dir) |
+| Reflection | `weekly-reviews.ts` | `/reviews` | (no separate dir) |
+| Analytics | (inline in procedures + dashboard page) | `/dashboard` | (no separate dir — target: `domains/analytics/`) |
+| Auth/Profile | — | `/perfil`, `/login` | — |
