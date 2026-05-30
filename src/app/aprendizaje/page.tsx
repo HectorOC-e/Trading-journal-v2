@@ -573,7 +573,7 @@ function SessionReviewModal({
           <div className="flex flex-col items-center gap-4 py-6 text-center">
             <span className="text-4xl">🎉</span>
             <div>
-              <h2 className="text-lg font-bold text-[var(--ink)]">¡Sesión completada!</h2>
+              <DialogTitle className="text-lg font-bold text-[var(--ink)]">¡Sesión completada!</DialogTitle>
               <p className="text-sm text-[var(--ink-2)] mt-1">
                 Guardaste {saved} de {queue.length} reviews.
               </p>
