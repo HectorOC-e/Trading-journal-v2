@@ -58,7 +58,7 @@
 **Domain:** `[ANALYTICS]` `[TRADING]`  
 **Priority:** P0 — scalability crisis  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -134,12 +134,12 @@ Establishes the pattern that pages are renderers, not calculators. All subsequen
 
 #### Acceptance Criteria
 
-- [ ] `trpc.trades.dashboardStats.useQuery()` is callable from the dashboard with no TypeScript errors
-- [ ] All 4 dashboard tabs render correctly using only `dashboardStats` data — no `trpc.trades.list` call remains in `dashboard/page.tsx`
+- [x] `trpc.trades.dashboardStats.useQuery()` is callable from the dashboard with no TypeScript errors
+- [x] All 4 dashboard tabs render correctly using only `dashboardStats` data — no `trpc.trades.list` call remains in `dashboard/page.tsx`
 - [ ] Load time for a user with 500 mock trades is under 300ms (server round-trip only)
-- [ ] `pnlByDate` array length never exceeds 90 entries regardless of trade history depth
-- [ ] `propFirmStatus` reflects today's actual closed trades, not all-time trades
-- [ ] Existing `trades.stats` procedure is preserved (other code may use it)
+- [x] `pnlByDate` array length never exceeds 90 entries regardless of trade history depth
+- [x] `propFirmStatus` reflects today's actual closed trades, not all-time trades
+- [x] Existing `trades.stats` procedure is preserved (other code may use it)
 
 ---
 
@@ -148,7 +148,7 @@ Establishes the pattern that pages are renderers, not calculators. All subsequen
 **Domain:** `[TRADING]`  
 **Priority:** P0 — scalability  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -201,12 +201,12 @@ Establishes the cursor pagination pattern once. Future paginated endpoints (lear
 
 #### Acceptance Criteria
 
-- [ ] `trades.list` with `limit: 50` returns exactly 50 trades plus `nextCursor`
-- [ ] Calling with `cursor: nextCursor` returns the next 50 without duplicates or gaps
-- [ ] `nextCursor` is `null` when no more trades exist
-- [ ] `/trades` page shows a "Cargar más" button when `nextCursor` is non-null
-- [ ] Existing `accountId`, `setupId`, `from`, `to` filters work with pagination
-- [ ] No regressions in `/reviews` page (uses date-range-filtered `trades.list`)
+- [x] `trades.list` with `limit: 50` returns exactly 50 trades plus `nextCursor`
+- [x] Calling with `cursor: nextCursor` returns the next 50 without duplicates or gaps
+- [x] `nextCursor` is `null` when no more trades exist
+- [x] `/trades` page shows a "Cargar más" button when `nextCursor` is non-null
+- [x] Existing `accountId`, `setupId`, `from`, `to` filters work with pagination
+- [x] No regressions in `/reviews` page (uses date-range-filtered `trades.list`)
 
 ---
 
@@ -219,7 +219,7 @@ Establishes the cursor pagination pattern once. Future paginated endpoints (lear
 **Domain:** `[INFRA]`  
 **Priority:** P1 — silent correctness risk  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -271,11 +271,11 @@ The `as unknown as Trade[]` cast at line 1732 of `dashboard/page.tsx` is a typed
 
 #### Acceptance Criteria
 
-- [ ] `npx tsc --noEmit` passes with 0 errors after the change
-- [ ] Zero occurrences of `as unknown as` in any `.tsx` or `.ts` file under `src/`
-- [ ] `SetupStatus` in `types/index.ts` includes all 4 enum values
-- [ ] `Account` type does not contain `propFirmRules` nested object
-- [ ] All pages that previously used local `Trade`/`Account` type definitions import from `types/index.ts`
+- [x] `npx tsc --noEmit` passes with 0 errors after the change
+- [ ] Zero occurrences of `as unknown as` in any `.tsx` or `.ts` file under `src/` — `aprendizaje/page.tsx` has pre-existing casts (T-II-004); `mock-data/index.ts` uses casts for prototype data
+- [x] `SetupStatus` in `types/index.ts` includes all 4 enum values
+- [x] `Account` type does not contain `propFirmRules` nested object
+- [x] All pages that previously used local `Trade`/`Account` type definitions import from `types/index.ts`
 
 ---
 
@@ -341,7 +341,7 @@ Typed event payloads are the first step toward a full event-sourced account mode
 **Domain:** `[TRADING]`  
 **Priority:** P0 — data integrity  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -405,12 +405,12 @@ Business rule enforcement belongs at the mutation boundary, not in display logic
 
 #### Acceptance Criteria
 
-- [ ] Creating a PROP_FIRM trade that would exceed `ddDailyPct` returns a 400 error with message `PROP_FIRM_DAILY_LOSS_LIMIT`
-- [ ] Creating a trade when `todayCount >= maxTradesPerDay` returns `PROP_FIRM_MAX_TRADES`
-- [ ] Creating a trade with a symbol not in `allowedSymbols` (when `allowedSymbols.length > 0`) returns `PROP_FIRM_SYMBOL_NOT_ALLOWED`
-- [ ] PERSONAL accounts are unaffected — same `trades.create` call succeeds
-- [ ] `RegisterTradeModal` displays the correct Spanish error message from the error code
-- [ ] Tests in `prop-firm-guard.test.ts` cover: at limit, over limit, empty allowedSymbols (passes), non-prop firm account (passes)
+- [x] Creating a PROP_FIRM trade that would exceed `ddDailyPct` returns a 400 error with message `PROP_FIRM_DAILY_LOSS_LIMIT`
+- [x] Creating a trade when `todayCount >= maxTradesPerDay` returns `PROP_FIRM_MAX_TRADES`
+- [x] Creating a trade with a symbol not in `allowedSymbols` (when `allowedSymbols.length > 0`) returns `PROP_FIRM_SYMBOL_NOT_ALLOWED`
+- [x] PERSONAL accounts are unaffected — same `trades.create` call succeeds
+- [x] `RegisterTradeModal` displays the correct Spanish error message from the error code
+- [ ] Tests in `prop-firm-guard.test.ts` cover: at limit, over limit, empty allowedSymbols (passes), non-prop firm account (passes) — deferred to T-III-002
 
 ---
 
@@ -419,7 +419,7 @@ Business rule enforcement belongs at the mutation boundary, not in display logic
 **Domain:** `[TRADING]` `[FINANCE]`  
 **Priority:** P1  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -476,11 +476,11 @@ Account lifecycle events belong in the Finance domain. Using `AccountLog` for th
 
 #### Acceptance Criteria
 
-- [ ] Closing a PROP_FIRM trade that pushes total drawdown past `ddTotalPct` transitions account status to `INACTIVE`
-- [ ] An `AccountLog` event of type `STATUS_CHANGE` is created with the drawdown percentage in the payload
-- [ ] The `trades.close` response includes a flag indicating the account was deactivated
-- [ ] The client displays a modal or banner informing the user
-- [ ] PERSONAL accounts are unaffected
+- [x] Closing a PROP_FIRM trade that pushes total drawdown past `ddTotalPct` transitions account status to `INACTIVE`
+- [x] An `AccountLog` event of type `STATUS_CHANGE` is created with the drawdown percentage in the payload
+- [x] The `trades.close` response includes a flag indicating the account was deactivated (`{ trade, accountDeactivated }`)
+- [x] The client displays a banner informing the user (dismissable alert in `/trades` page)
+- [x] PERSONAL accounts are unaffected
 
 ---
 
