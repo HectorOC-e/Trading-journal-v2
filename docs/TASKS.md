@@ -284,7 +284,7 @@ The `as unknown as Trade[]` cast at line 1732 of `dashboard/page.tsx` is a typed
 **Domain:** `[INFRA]` `[FINANCE]`  
 **Priority:** P2  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -325,10 +325,10 @@ Typed event payloads are the first step toward a full event-sourced account mode
 
 #### Acceptance Criteria
 
-- [ ] `AccountLogPayload` discriminated union defined in `types/index.ts`
-- [ ] All `accountLog.create` calls pass a payload matching the union
-- [ ] `cuentas/page.tsx` timeline render uses typed field access with no raw index notation
-- [ ] `tsc --noEmit` passes
+- [x] `AccountLogPayload` discriminated union defined in `types/index.ts`
+- [x] All `accountLog.create` calls pass a payload matching the union
+- [x] `cuentas/page.tsx` timeline render uses typed field access with no raw index notation
+- [x] `tsc --noEmit` passes
 
 ---
 
