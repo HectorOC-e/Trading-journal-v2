@@ -1,8 +1,65 @@
 # Technical Debt Register — Trading Journal v2
 
-> **Generated:** 2026-05-31  
-> **Sources:** repository-audit-report · product-gap-analysis · feature-opportunities · ai-architecture-recommendations  
-> **Debt items:** TD-001 – TD-024
+> **Last Updated: 2026-05-31**  
+> Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
+
+---
+
+## Summary Table
+
+| ID | Severity | Category | Title | Effort | Task | Status |
+|---|---|---|---|---|---|---|
+| TD-001 | CRITICAL | Formula | Win Rate: 8 inline implementations | M | TASK-027, TASK-005 | Open |
+| TD-002 | CRITICAL | Formula | Discipline Score: 3 independent implementations | S | TASK-011 | Open |
+| TD-003 | CRITICAL | Functionality | Profile page entirely disconnected from backend | L | TASK-006 | Open |
+| TD-004 | CRITICAL | Data | KPIs calculated over paginated data (max 50 trades) | S | TASK-001, TASK-009 | Open |
+| TD-005 | CRITICAL | Logic | Phase promotion `objectiveMet = false` hardcoded | XS | TASK-002 | Open |
+| TD-006 | CRITICAL | Security | CRON_SECRET security bypass in edge function | XS | TASK-016 | Open |
+| TD-007 | HIGH | Data | `rMultiple` not calculated on CSV import | XS | TASK-004 | Open |
+| TD-008 | HIGH | Performance | N+1 query in `resourceImpactRanking` | M | TASK-039 | Open |
+| TD-009 | HIGH | Architecture | `learningResources.stats` CQRS violation | S | TASK-038 | Open |
+| TD-010 | HIGH | Schema | `notes_embedding` and `email_log` outside Prisma schema | S | TASK-019 | Open |
+| TD-011 | HIGH | Formula | Sharpe Ratio duplicated with different formula | XS | TASK-027 | Open |
+| TD-012 | MEDIUM | Type Safety | `phasePayload as never` in accounts router | XS | — | Open |
+| TD-013 | MEDIUM | Type Safety | 15+ `as never` casts in `trades/page.tsx` | M | TASK-013 | Open |
+| TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | Open |
+| TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | Open |
+| TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | Open |
+| TD-017 | MEDIUM | Formula | Review modal discipline score uses simplified frontend formula | S | TASK-011 | Open |
+| TD-018 | MEDIUM | Architecture | Inline business logic in router files (924-line trades.ts) | L | Ongoing | Open |
+| TD-019 | MEDIUM | Performance | tRPC context recreates Supabase client per request | M | — | Open |
+| TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | — | Open |
+| TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | Open |
+| TD-022 | MEDIUM | Security | AI API keys as plaintext env vars (no per-user encryption) | L | TASK-033 | Open |
+| TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
+| TD-024 | LOW | Documentation | No `.env.example`, no variables documentation | XS | Sprint 1 | Open |
+| TD-025 | MEDIUM | Data | Drawdown label on trades page shows "peor día" not drawdown | XS | TASK-028 | Open |
+| TD-026 | MEDIUM | Data | `use-account-stats.ts` shows current-DD from ATH, not max-DD | XS | TASK-029 | Open |
+| TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-032 | Open |
+| TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | Open |
+
+**Total estimated effort: ~19 engineer-days to close all open items**
+
+---
+
+## Debt Index
+
+- [Critical Debt](#critical-technical-debt-must-fix)
+  - [TD-001](#td-001--win-rate-8-inline-implementations) · [TD-002](#td-002--discipline-score-3-independent-implementations) · [TD-003](#td-003--profile-page-entirely-disconnected-from-backend) · [TD-004](#td-004--kpis-calculated-over-paginated-data-max-50-trades) · [TD-005](#td-005--phase-promotion-objectivemet--false-hardcoded) · [TD-006](#td-006--cron_secret-security-bypass-in-edge-function)
+- [High Debt](#high-technical-debt)
+  - [TD-007](#td-007--rmultiple-not-calculated-on-csv-import) · [TD-008](#td-008--n1-query-in-resourceimpactranking) · [TD-009](#td-009--learningresourcesstats-cqrs-violation) · [TD-010](#td-010--notes_embedding-and-email_log-outside-prisma-schema) · [TD-011](#td-011--sharpe-ratio-duplicated-with-different-formula) · [TD-023](#td-023--zero-component-or-integration-tests)
+- [Code Quality Debt](#code-quality-debt)
+  - [TD-012](#td-012--phasepayload-as-never-in-accounts-router) · [TD-013](#td-013--15-as-never-casts-in-tradespagetsx) · [TD-014](#td-014--manual-learningresource-type-duplicates-routeroutputs) · [TD-015](#td-015--tradesstats-dead-code) · [TD-016](#td-016--market-any-and-amount-any-props) · [TD-017](#td-017--discipline-score-in-review-modal-uses-simplified-frontend-formula)
+- [Architecture Debt](#architecture-debt)
+  - [TD-018](#td-018--inline-business-logic-in-router-files) · [TD-019](#td-019--trpc-context-recreates-supabase-client-per-request) · [TD-020](#td-020--fire-and-forget-embedding-in-same-nodejs-worker)
+- [Security Debt](#security-debt)
+  - [TD-021](#td-021--setup-images-uploaded-directly-from-client-without-server-validation) · [TD-022](#td-022--ai-api-keys-stored-as-plaintext-in-environment-no-per-user-encryption)
+- [Data Debt](#data-debt-new)
+  - [TD-025](#td-025--drawdown-label-mismatch) · [TD-026](#td-026--use-account-stats-current-dd-not-max-dd)
+- [Config Debt](#config-debt-new)
+  - [TD-027](#td-027--stale-ai-model-ids) · [TD-028](#td-028--generatesummary-http-200-on-failure)
+- [Documentation Debt](#documentation-debt)
+  - [TD-024](#td-024--no-envexample-no-variables-documentation)
 
 ---
 
@@ -23,11 +80,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
   - `src/domains/analytics/services/trading-sessions.ts:94`
   - `src/server/trpc/routers/learning-resources.ts:447`
   - `src/app/cuentas/hooks/use-account-stats.ts:39`
-- **Root cause:** No shared `calcWinRate` function in `lib/formulas.ts` (only `calcSharpeRatio`, `calcProfitFactor`, `calcExpectancyR` exist). Each site re-implements the formula inline.
+- **Root cause:** No shared `calcWinRate` function in `lib/formulas.ts`. Each site re-implements the formula inline.
 - **Known inconsistency:** `/trades/page.tsx` uses `rMultiple > 0`; `dashboard-analytics.ts` uses `pnl > 0`. Same user sees different win rates on two screens.
-- **Fix:** Create `src/lib/trading-formulas.ts` exporting `calcWinRate(wins: number, total: number): number` and `isWin(trade): boolean` using `pnl > 0` as canonical criterion. Replace all 8 sites. Unit-test the helper.
-- **Effort:** M | **Risk if not fixed:** Any business rule change (e.g., treat break-even as loss) requires updating 8 files; at least one inconsistency already ships to users.
-- **TASK-027, TASK-005**
+- **Fix:** Create `src/lib/trading-formulas.ts` exporting `calcWinRate(wins, total)` and `isWin(trade)` using `pnl > 0` as canonical criterion. Replace all 8 sites.
+- **Effort:** M | **Risk if not fixed:** Silently wrong win rate on at least one screen today. Any business rule change requires 8 updates.
+- **Tasks:** TASK-027, TASK-005
 
 ---
 
@@ -36,20 +93,20 @@ These items produce incorrect data, broken features, or security vulnerabilities
 - **Locations:**
   - `src/server/trpc/routers/weekly-reviews.ts` (`computedDisciplineScore` — server, weighted multi-factor)
   - `src/server/trpc/routers/weekly-reviews.ts` (`prefill` — server, duplicated inline)
-  - `src/components/modals/create-review-modal.tsx:103` (frontend — simplified tag-count formula)
-- **Root cause:** No shared `computeDisciplineScore` function. The frontend modal uses a simplified `disciplinedCount / total * 100`; the server uses a weighted formula (execution 50pts + learning 30pts + adherence 20pts).
-- **Impact:** Score shown in the review creation modal can differ from the server-computed score for the same week. Traders track this metric for behavioral improvement — inconsistency erodes trust.
-- **Fix:** Extract `computeDisciplineScore(params: DisciplineParams): DisciplineBreakdown` into `lib/trading-formulas.ts`. Frontend calls server-provided value only (no local recalculation). Remove `prefill` duplication.
-- **Effort:** S | **Risk if not fixed:** UI shows score A, saved review has score B. Weekly progress tracking is unreliable.
-- **TASK-011**
+  - `src/components/modals/create-review-modal.tsx:103` (frontend — simplified tag-count formula `disciplinedCount / total * 100`)
+- **Root cause:** No shared `computeDisciplineScore` function. Frontend uses simplified formula; server uses weighted formula (execution 50pts + learning 30pts + adherence 20pts).
+- **Impact:** Score shown in review creation modal can differ from the server-computed score for the same week. Traders track this metric for behavioral improvement — inconsistency erodes trust.
+- **Fix:** Extract `computeDisciplineScore(params)` into `lib/trading-formulas.ts`. Frontend calls server-provided value only.
+- **Effort:** S | **Risk if not fixed:** UI shows score A, saved review has score B.
+- **Task:** TASK-011
 
 ---
 
 ### TD-003 — Profile Page: Entirely Disconnected from Backend
 
 - **Location:** `src/app/perfil/page.tsx` — entire file
-- **Root cause:** All 14 form fields use `useState` with hardcoded defaults. Zero tRPC calls or `fetch` calls in the file. "Guardar cambios", "Cambiar contraseña", "Exportar datos", "Cerrar sesión", "Borrar cuenta" have no `onClick` handlers.
-- **DB fields that exist but are never read/written from the UI:**
+- **Root cause:** All 14 form fields use `useState` with hardcoded defaults. Zero tRPC calls. "Guardar cambios", "Cambiar contraseña", "Exportar datos", "Cerrar sesión", "Borrar cuenta" have no `onClick` handlers.
+- **DB fields that exist but are never read/written:**
   - `User.timezone` (shown but not saved — session classification ignores it)
   - `User.baseCurrency` (not shown)
   - `User.language` (shown but not saved)
@@ -57,114 +114,111 @@ These items produce incorrect data, broken features, or security vulnerabilities
   - `User.emailNotifications` (toggle shown but not saved)
   - `User.currentStreak`, `User.bestStreak` (not shown on profile)
 - **Missing procedures:** `profile.get`, `profile.update`, `profile.changePassword`, `profile.exportData`, `profile.deleteAccount`
-- **Impact:** Profile-to-App propagation score = 0/14. Legal risk: "Borrar cuenta" is a GDPR-equivalent requirement in regulated markets.
+- **Impact:** Profile-to-App propagation score = 0/14. Legal risk: "Borrar cuenta" is a GDPR-equivalent requirement.
 - **Fix:** New `src/server/trpc/routers/profile.ts` with 5 procedures; connect all UI fields.
-- **Effort:** L | **Risk if not fixed:** Users lose all settings on reload. Legal exposure for deployments in regulated jurisdictions.
-- **TASK-006**
+- **Effort:** L | **Risk if not fixed:** Users lose all settings on reload. Legal exposure in regulated jurisdictions.
+- **Task:** TASK-006
 
 ---
 
 ### TD-004 — KPIs Calculated Over Paginated Data (Max 50 Trades)
 
 - **Locations:**
-  - `src/app/trades/page.tsx:124–130` — KPI strip over paginated `tradePages`
+  - `src/app/trades/page.tsx:124–130` — KPI strip over `tradePages` first page
   - `src/app/reviews/page.tsx` — `weekTrades` filtered from `trades.list` (max 50)
   - `src/app/cuentas/page.tsx` — `useAccountStats` using non-infinite `trades.list`
 - **Root cause:** Client-side KPI computation from the first page of the infinite query instead of a server aggregate.
-- **Impact:** Any user with >50 trades sees incorrect Win Rate, Net P&L, Avg R, weekly review statistics, and account KPIs. The bug worsens silently as users log more trades.
-- **Fix:** Route KPI computation through `trades.dashboardStats` (already exists) or a dedicated `trades.aggregates` endpoint. Pass date-range parameters for week-specific queries.
-- **Effort:** S | **Risk if not fixed:** Metrics become more wrong over time; active users are the most affected.
-- **TASK-001, TASK-009**
+- **Impact:** Any user with >50 trades sees incorrect Win Rate, Net P&L, Avg R, weekly review statistics, and account KPIs. Worsens silently as users log more trades.
+- **Fix:** Route KPI computation through `trades.dashboardStats` or a dedicated `trades.aggregates` endpoint.
+- **Effort:** S | **Tasks:** TASK-001, TASK-009
 
 ---
 
 ### TD-005 — Phase Promotion: `objectiveMet = false` Hardcoded
 
 - **Location:** `src/app/cuentas/modals/promote-phase-modal.tsx:41`
-- **Root cause:** TODO left in production code — `objectiveMet = false` was never replaced with real logic.
-- **Impact:** Every prop-firm trader advancing phases always sees "objective not met." They must ignore a false warning to proceed.
-- **Fix:** Compare `account.netPnl` against `account.targetPct * initialBalance`. One conditional.
-- **Effort:** XS | **Risk if not fixed:** Constant user friction; erodes trust in the tool for prop-firm use cases.
-- **TASK-002**
+- **Root cause:** TODO left in production code. `objectiveMet = false` never replaced with real comparison logic.
+- **Impact:** Every prop-firm trader advancing phases always sees "objective not met."
+- **Fix:** Compare `account.netPnl` against `account.targetPct * initialBalance`.
+- **Effort:** XS | **Task:** TASK-002
 
 ---
 
-### TD-006 — `CRON_SECRET` Security Bypass in Edge Function
+### TD-006 — CRON_SECRET Security Bypass in Edge Function
 
 - **Location:** `src/supabase/functions/weekly-learning-summary/index.ts:~30`
-- **Root cause:** If `CRON_SECRET` env var is absent or empty string, all requests are accepted. This "bypass mode" intended for dev but can reach production if the env var is not configured.
-- **Impact:** Any external party can trigger the edge function (which sends emails to all users) by sending a request without authentication.
-- **Fix:** Reject with 401 if the env var is missing OR empty. No default bypass behavior.
-- **Effort:** XS | **Risk if not fixed:** Unauthorized email spam to all users; potential for abuse.
-- **TASK-016**
+- **Root cause:** If `CRON_SECRET` env var is absent or empty string, all requests are accepted.
+- **Impact:** Any external party can trigger the edge function (which sends emails to all users) without authentication.
+- **Fix:** Reject with 401 if env var is missing OR empty. No default bypass behavior.
+- **Effort:** XS | **Task:** TASK-016
 
 ---
 
 ## High Technical Debt
-
-These items cause significant ongoing friction or block future work.
 
 ---
 
 ### TD-007 — `rMultiple` Not Calculated on CSV Import
 
 - **Location:** `src/app/api/import/mt4/route.ts`
-- **Root cause:** Import handler sets `rMultiple: null` for all trades. Calculating it requires entry, stop, and closePrice from the CSV row — all present but not used.
-- **Impact:** All imported trades have null R-multiple. Avg R, Expectancy R, and Sharpe Ratio are corrupted for any user relying on CSV import. Silent corruption — no warning shown.
-- **Fix:** `rMultiple = (closePrice - entry) / Math.abs(entry - stop)` for LONG; negate for SHORT. Fallback to null only if stop is absent.
-- **Effort:** XS | **TASK-004**
+- **Root cause:** Import handler sets `rMultiple: null` for all trades. Entry, stop, and closePrice are present in the CSV but not used for R calculation.
+- **Impact:** All imported trades have null R-multiple. Avg R, Expectancy R, and Sharpe Ratio corrupted for CSV import users.
+- **Fix:** `rMultiple = (closePrice - entry) / Math.abs(entry - stop)` for LONG; negate for SHORT.
+- **Effort:** XS | **Task:** TASK-004
 
 ---
 
 ### TD-008 — N+1 Query in `resourceImpactRanking`
 
 - **Location:** `src/server/trpc/routers/learning-resources.ts:~350`
-- **Root cause:** Iterates resources × setups, issuing 2 Prisma queries per pair. For 20 resources × 10 setups = 400 DB round-trips per request.
+- **Root cause:** Iterates resources × setups, issuing 2 Prisma queries per pair. 20 resources × 10 setups = 400 DB round-trips.
 - **Impact:** Severe performance degradation for users with populated catalogs. Latency grows quadratically.
-- **Fix:** Single aggregated query using `prisma.resourceReview.groupBy()` or raw SQL with `JOIN`. Must be O(1) queries regardless of catalog size.
-- **Effort:** M | **TASK-039**
+- **Fix:** Single aggregated query using `prisma.resourceReview.groupBy()` or raw SQL with JOIN.
+- **Effort:** M | **Task:** TASK-039
 
 ---
 
 ### TD-009 — `learningResources.stats` CQRS Violation
 
 - **Location:** `src/server/trpc/routers/learning-resources.ts:~400`
-- **Root cause:** The `stats` query procedure auto-transitions resources from `MASTERED` → `IN_REVIEW` as a side effect. A read operation that mutates state.
-- **Impact:** Calling `stats` (which happens on page load) triggers state changes. Makes caching the response unsafe. Violates the principle of least surprise.
-- **Fix:** Move the transition logic to a `processDecayTransitions` mutation. Call it explicitly from the client on a schedule or on user action.
-- **Effort:** S | **TASK-038**
+- **Root cause:** `stats` query procedure auto-transitions resources from `MASTERED` → `IN_REVIEW` as a side effect.
+- **Impact:** Read operation triggers state changes. Makes caching unsafe. Unpredictable behavior.
+- **Fix:** Move transition logic to a `processDecayTransitions` mutation.
+- **Effort:** S | **Task:** TASK-038
 
 ---
 
 ### TD-010 — `notes_embedding` and `email_log` Outside Prisma Schema
 
 - **Locations:**
-  - `notes_embedding vector(1536)` — managed via `prisma.$executeRaw` in `src/server/trpc/routers/trades.ts`
-  - `email_log` — used for idempotency by `src/supabase/functions/weekly-learning-summary/index.ts`; not in `schema.prisma`
-- **Root cause:** Both were added as raw SQL migrations without updating `schema.prisma`. Prisma does not track or manage these columns.
-- **Impact:** New environment provisioning (staging, CI, developer onboarding) will not create these tables/columns. Silent failures in embedding and email deduplication on fresh deployments.
-- **Fix:** Add `model EmailLog` to `schema.prisma`. Add `TradeEmbedding` model or at minimum document the raw SQL migration in a README section with an `.sql` file in `supabase/migrations/`.
-- **Effort:** S | **TASK-019**
+  - `notes_embedding vector(1536)` — raw SQL via `prisma.$executeRaw` in `routers/trades.ts`
+  - `email_log` — used by edge function for idempotency; not in `schema.prisma`
+- **Root cause:** Both added as raw SQL migrations without updating `schema.prisma`.
+- **Impact:** New environment provisioning will not create these. Silent failures in embedding and email deduplication.
+- **Fix:** Add `model EmailLog` to `schema.prisma`. Add `TradeEmbedding` model or document raw SQL migration in `supabase/migrations/`.
+- **Effort:** S | **Task:** TASK-019
 
 ---
 
 ### TD-011 — Sharpe Ratio Duplicated with Different Formula
 
 - **Location:** `src/domains/analytics/ai-context.ts:185–191`
-- **Root cause:** `ai-context.ts` implements Sharpe Ratio inline using **population** std dev. `src/lib/formulas.ts:42` (`calcSharpeRatio`) uses **Bessel-corrected sample** std dev. Both exist in the same codebase producing different values.
-- **Impact:** AI coach receives a different Sharpe Ratio than the one displayed in the dashboard. Data the AI uses for coaching is inconsistent with data the user sees.
-- **Fix:** Replace the inline implementation in `ai-context.ts` with a call to `calcSharpeRatio` from `lib/formulas.ts`.
-- **Effort:** XS | **TASK-027**
+- **Root cause:** `ai-context.ts` implements Sharpe Ratio inline using **population** std dev. `src/lib/formulas.ts:42` (`calcSharpeRatio`) uses **Bessel-corrected sample** std dev.
+- **Impact:** AI coach receives a different Sharpe Ratio than dashboard displays. Coaching insights based on inconsistent data.
+- **Fix:** Replace inline implementation in `ai-context.ts` with call to `calcSharpeRatio` from `lib/formulas.ts`.
+- **Effort:** XS | **Task:** TASK-027
 
 ---
 
-### TD-012 — `phasePayload as never` in Accounts Router
+### TD-023 — Zero Component or Integration Tests
 
-- **Location:** `src/server/trpc/routers/accounts.ts:163`
-- **Root cause:** `payload: phasePayload as never` used to bypass Prisma's `Json` type. The actual shape of `phasePayload` is known but not typed as a proper interface.
-- **Impact:** Type safety loss around phase promotion payload. Any shape change to the payload silently breaks without compile-time error.
-- **Fix:** Define `PhasePayload` interface; use it explicitly rather than `as never`. `Json` accepts any object; cast is unnecessary.
-- **Effort:** XS
+- **Current state:** 11 unit test files in `src/__tests__/`, all mocking Prisma. No React Testing Library tests. No Playwright or Cypress e2e tests. No CI/CD pipeline.
+- **Coverage gaps:** Trade creation/closing, weekly review form, phase promotion, formula calculations
+- **Fix:**
+  1. RTL tests: register-trade-modal, close-trade-modal, create-review-modal, phase promotion (TASK-024)
+  2. Playwright smoke tests: login, create trade, navigate dashboard (TASK-025)
+  3. GitHub Actions CI with lint + typecheck + unit tests on every PR
+- **Effort:** L + S | **Tasks:** TASK-024, TASK-025
 
 ---
 
@@ -172,50 +226,60 @@ These items cause significant ongoing friction or block future work.
 
 ---
 
+### TD-012 — `phasePayload as never` in Accounts Router
+
+- **Location:** `src/server/trpc/routers/accounts.ts:163`
+- **Root cause:** `payload: phasePayload as never` used to bypass Prisma's `Json` type.
+- **Impact:** Type safety loss around phase promotion payload. Shape changes silently break.
+- **Fix:** Define `PhasePayload` interface; remove `as never`. Prisma's `Json` accepts any object.
+- **Effort:** XS
+
+---
+
 ### TD-013 — 15+ `as never` Casts in `trades/page.tsx`
 
 - **Location:** `src/app/trades/page.tsx:227–371`
-- **Root cause:** `SerializedTrade` type is not aligned with the props expected by `TradeDetailPanel`, `EditTradeModal`, and other components. The `as never` workaround masks the mismatch.
-- **Impact:** TypeScript provides no protection over trade-related prop changes. Refactors silently break.
-- **Fix:** Replace `SerializedTrade` usages with `RouterOutputs["trades"]["list"]["items"][0]`. Align component props accordingly.
-- **Effort:** M | **TASK-013**
+- **Root cause:** `SerializedTrade` type not aligned with props expected by `TradeDetailPanel`, `EditTradeModal`.
+- **Impact:** TypeScript provides no protection over trade-related prop changes.
+- **Fix:** Replace `SerializedTrade` usages with `RouterOutputs["trades"]["list"]["items"][0]`.
+- **Effort:** M | **Task:** TASK-013
 
 ---
 
 ### TD-014 — Manual `LearningResource` Type Duplicates RouterOutputs
 
 - **Location:** `src/types/index.ts:~90`
-- **Root cause:** `LearningResource` interface was defined manually and now partially diverges from `RouterOutputs["learningResources"]["list"][0]`. Forces `as unknown as LearningResource[]` casts in `aprendizaje/page.tsx`.
-- **Fix:** Delete the manual interface. Export `type LearningResource = RouterOutputs["learningResources"]["list"][0]` instead.
-- **Effort:** S | **TASK-014**
+- **Root cause:** `LearningResource` interface defined manually, now diverges from `RouterOutputs["learningResources"]["list"][0]`.
+- **Impact:** Forces `as unknown as LearningResource[]` casts in `aprendizaje/page.tsx`.
+- **Fix:** Delete manual interface. Export `type LearningResource = RouterOutputs["learningResources"]["list"][0]`.
+- **Effort:** S | **Task:** TASK-014
 
 ---
 
 ### TD-015 — `trades.stats` Dead Code
 
 - **Location:** `src/server/trpc/routers/trades.ts` — `stats` procedure
-- **Root cause:** `stats` was the original KPI procedure. `dashboardStats` superseded it. `stats` remains with no visible consumers but is still maintained (any bug in `dashboardStats` would tempt someone to switch back to `stats`).
-- **Impact:** Maintenance burden; diverging implementations risk being re-used for the wrong purpose.
-- **Fix:** Audit consumers with `grep -r "trades.stats"`. If none, deprecate with a JSDoc comment and add a TODO to remove in next major version.
-- **Effort:** XS | **TASK-018**
+- **Root cause:** `stats` was the original KPI procedure. `dashboardStats` superseded it but `stats` remains.
+- **Fix:** Audit consumers with `grep -r "trades\.stats"`. If none, deprecate with JSDoc comment and TODO.
+- **Effort:** XS | **Task:** TASK-018
 
 ---
 
 ### TD-016 — `market: any` and `amount: any` Props
 
 - **Locations:**
-  - `src/app/mercados/page.tsx:68` — `market: any` with `eslint-disable` comment
+  - `src/app/mercados/page.tsx:68` — `market: any` with eslint-disable
   - `src/app/retiros/page.tsx:116–117` — inline type `{ amount: any; date: any }`
-- **Fix:** Use `RouterOutputs["markets"]["list"][0]` and `RouterOutputs["withdrawals"]["list"][0]` respectively.
-- **Effort:** XS | **TASK-023**
+- **Fix:** Use `RouterOutputs["markets"]["list"][0]` and `RouterOutputs["withdrawals"]["list"][0]`.
+- **Effort:** XS | **Task:** TASK-023
 
 ---
 
 ### TD-017 — Discipline Score in Review Modal Uses Simplified Frontend Formula
 
 - **Location:** `src/components/modals/create-review-modal.tsx:103`
-- **Root cause:** Modal computes `disciplinedCount / total * 100` locally for live preview. Server computes weighted multi-factor score. They diverge whenever the server formula changes.
-- **Fix:** Remove local computation. Fetch the score from the server via `prefill` before showing the modal. Display a loading state while fetching.
+- **Root cause:** Modal computes `disciplinedCount / total * 100` locally. Server computes weighted multi-factor score. Diverge when server formula changes.
+- **Fix:** Remove local computation. Fetch from server via `prefill`. Show loading state.
 - **Effort:** S | Covered by **TASK-011**
 
 ---
@@ -227,9 +291,9 @@ These items cause significant ongoing friction or block future work.
 ### TD-018 — Inline Business Logic in Router Files
 
 - **Location:** `src/server/trpc/routers/trades.ts` (924 lines), `src/server/trpc/routers/learning-resources.ts` (680 lines)
-- **Root cause:** Core business logic lives in router files instead of the `src/domains/` services layer. `src/domains/trading/trade-service.ts` exists but is not used consistently.
-- **Impact:** Routers are difficult to test in isolation. Business rules cannot be reused from edge functions or batch jobs.
-- **Fix (incremental):** Extract the `dashboardStats` computation into `src/domains/analytics/services/dashboard-analytics.ts` (partially done). Extract trade creation/close logic into `trade-service.ts`. Routers become thin orchestration layers.
+- **Root cause:** Business logic in router files instead of `src/domains/` services layer. `domains/trading/trade-service.ts` exists but not used consistently.
+- **Impact:** Routers untestable in isolation. Business rules not reusable from edge functions or batch jobs.
+- **Fix (incremental):** Extract dashboardStats computation into `dashboard-analytics.ts` (partially done). Extract trade creation/close logic into `trade-service.ts`. Routers become thin orchestration.
 - **Effort:** L (ongoing refactor)
 
 ---
@@ -237,19 +301,19 @@ These items cause significant ongoing friction or block future work.
 ### TD-019 — tRPC Context Recreates Supabase Client Per Request
 
 - **Location:** `src/server/trpc/init.ts` — `createTRPCContext()`
-- **Root cause:** Every tRPC request creates a new Supabase client and calls `supabase.auth.getUser()`. On high-traffic routes this is a network round-trip per request.
-- **Impact:** Latency overhead on every authenticated request. At scale this becomes a bottleneck.
-- **Fix:** Extract `userId` from the JWT in the Next.js middleware and pass as a request header. `createTRPCContext` reads the header instead of calling auth API.
+- **Root cause:** Every tRPC request creates a new Supabase client and calls `supabase.auth.getUser()`. One auth API round-trip per request.
+- **Impact:** Latency overhead on every authenticated request. Bottleneck at scale.
+- **Fix:** Extract `userId` from JWT in Next.js middleware and pass as request header. `createTRPCContext` reads the header.
 - **Effort:** M
 
 ---
 
 ### TD-020 — Fire-and-Forget Embedding in Same Node.js Worker
 
-- **Location:** `src/server/trpc/routers/trades.ts` — `scheduleEmbedding()` function
-- **Root cause:** `scheduleEmbedding()` calls `fetch("/api/ai-embed")` in background within the same Node.js process. No guarantee the fetch completes before the connection closes in serverless environments.
-- **Impact:** Embeddings may silently not be created for some trades in serverless deployments (Vercel, Supabase Edge).
-- **Fix:** Move embedding to a Supabase Edge Function triggered by a database webhook on `trades.update`, or use a queue (Upstash QStash).
+- **Location:** `src/server/trpc/routers/trades.ts` — `scheduleEmbedding()`
+- **Root cause:** `scheduleEmbedding()` calls `fetch("/api/ai-embed")` in background within the same process. No guarantee fetch completes before connection closes in serverless environments (Vercel).
+- **Impact:** Embeddings may silently not be created for some trades in serverless deployments.
+- **Fix:** Move embedding to a Supabase Edge Function triggered by DB webhook, or use Upstash QStash.
 - **Effort:** M
 
 ---
@@ -261,40 +325,68 @@ These items cause significant ongoing friction or block future work.
 ### TD-021 — Setup Images Uploaded Directly from Client Without Server Validation
 
 - **Location:** `src/app/playbook/page.tsx` — Supabase Storage client-side upload
-- **Root cause:** Image uploads bypass any server-side handler. No MIME type or file size validation. Supabase anon key is used directly from the browser.
+- **Root cause:** Image uploads bypass any server-side handler. No MIME type or file size validation.
 - **Impact:** Arbitrary file types and unlimited file sizes accepted. Potential storage abuse.
-- **Fix:** Route uploads through a Next.js Route Handler (`/api/upload/setup-image`) that validates MIME type (jpeg/png/webp) and max size (5 MB) before proxying to Supabase Storage.
-- **Effort:** S | **TASK-017**
+- **Fix:** Route uploads through `/api/upload/setup-image` Route Handler with MIME (jpeg/png/webp) and size (5 MB) validation.
+- **Effort:** S | **Task:** TASK-017
 
 ---
 
 ### TD-022 — AI API Keys Stored as Plaintext in Environment (No Per-User Encryption)
 
 - **Location:** `src/lib/ai/config.ts` — all keys read from `process.env`
-- **Root cause:** Multi-tenant key storage was not part of the initial design. No `UserAiConfig` table exists.
-- **Impact:** All users share the same API key and cost center. Per-user BYOK is impossible without this architecture.
-- **Fix:** Add `UserAiConfig` model with AES-256-GCM encrypted key storage. Implement `src/lib/ai/key-encryption.ts`. Keys resolved per-user at request time with env-var fallback.
-- **Effort:** L | **TASK-033**
+- **Root cause:** Multi-tenant key storage was not part of initial design. No `UserAiConfig` table.
+- **Impact:** All users share the same API key and cost center. Per-user BYOK impossible.
+- **Fix:** Add `UserAiConfig` model with AES-256-GCM encrypted key storage. `key-encryption.ts`. Keys resolved per-user at request time.
+- **Effort:** L | **Task:** TASK-033
 
 ---
 
-## Testing Debt
+## Data Debt (New)
 
 ---
 
-### TD-023 — Zero Component or Integration Tests
+### TD-025 — Drawdown Label Mismatch
 
-- **Current state:** 11 unit test files in `src/__tests__/`, all unit tests mocking Prisma. No React Testing Library tests. No Playwright or Cypress e2e tests. No CI/CD pipeline.
-- **Coverage gaps:**
-  - Trade creation and closing flows (most critical user path)
-  - Weekly review form and submission
-  - Phase promotion modal logic
-  - Formula calculations (partial coverage via unit tests)
-- **Fix:**
-  1. Add RTL tests for: register-trade-modal, close-trade-modal, create-review-modal, phase promotion (TASK-024)
-  2. Add Playwright smoke tests for: login, create trade, navigate dashboard (TASK-025)
-  3. Set up GitHub Actions CI with lint + typecheck + unit tests on every PR
-- **Effort:** L (tests) + S (CI setup) | **TASK-024, TASK-025**
+- **Location:** `src/app/trades/page.tsx:131–170`
+- **Root cause:** "Drawdown" KPI is labeled "peor día" but actually shows `minDay` = minimum single-day P&L sum. Not a drawdown metric.
+- **Impact:** Prop-firm traders relying on drawdown tracking see wrong data.
+- **Fix:** Rename to "Peor día". Add real drawdown metric using `computeMaxDrawdown`.
+- **Effort:** XS | **Task:** TASK-028
+
+---
+
+### TD-026 — `use-account-stats.ts` Current-DD Not Max-DD
+
+- **Location:** `src/app/cuentas/hooks/use-account-stats.ts:50`
+- **Root cause:** Computes current drawdown from ATH (resets to zero after new equity high), not historical max drawdown.
+- **Impact:** Account cards show misleadingly low drawdown after any new equity high. Prop-firm traders misled about their risk exposure.
+- **Fix:** Use `computeMaxDrawdown` from domain service. Label current-DD separately if needed.
+- **Effort:** XS | **Task:** TASK-029
+
+---
+
+## Config Debt (New)
+
+---
+
+### TD-027 — Stale AI Model IDs
+
+- **Location:** `src/lib/ai/config.ts:~40`
+- **Root cause:** `getCoachModel()` returns `claude-sonnet-4-5` (current: `claude-sonnet-4-6`). `getWeeklySummaryModel()` returns `claude-haiku-4-5-20251001` — date suffix is non-standard.
+- **Impact:** AI coach runs on older model. Summary model ID may fail silently.
+- **Fix:** Update to `claude-sonnet-4-6`. Verify haiku ID against Anthropic API.
+- **Effort:** XS | **Task:** TASK-032
+
+---
+
+### TD-028 — `generateSummary` HTTP 200 on Failure
+
+- **Location:** `src/server/trpc/routers/weekly-reviews.ts:232–317`
+- **Root cause:** On generation failure, procedure returns `{ error: "GENERATION_FAILED" }` with HTTP 200. Standard tRPC error handling doesn't catch it.
+- **Impact:** Error states in weekly review UI are unreliable. `onError` callback never fires.
+- **Fix:** Throw `TRPCError({ code: "INTERNAL_SERVER_ERROR" })` on failure. Client `onError` handler shows toast.
+- **Effort:** XS | **Task:** TASK-037
 
 ---
 
@@ -304,18 +396,22 @@ These items cause significant ongoing friction or block future work.
 
 ### TD-024 — No `.env.example`, No Variables Documentation
 
-- **Current state:** No `.env.example` exists. Variables required to run the application are undocumented. A new developer cannot determine which keys are required vs. optional.
-- **Required variables (currently undocumented):**
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-  - `OPENROUTER_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` (at least one)
-  - `ANALYTICS_CACHE_ENABLED` (optional, defaults false)
-  - `CRON_SECRET` (required in production, never leave empty)
-  - `RESEND_API_KEY`
-  - `FROM_EMAIL` (must be verified domain, not `noreply@resend.dev`)
-  - `AI_KEY_ENCRYPTION_KEY` (32-byte hex — required when per-user AI keys are enabled)
-- **Fix:** Create `.env.example` in project root with all variables, comments indicating required vs. optional, and security notes. Update `README.md` or `ARCHITECTURE.md` with setup instructions.
+- **Current state:** No `.env.example` exists. Variables required to run the application are undocumented.
+- **Required variables:**
+  ```
+  NEXT_PUBLIC_SUPABASE_URL=
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=
+  SUPABASE_SERVICE_ROLE_KEY=
+  OPENROUTER_API_KEY=        # at least one AI key required
+  ANTHROPIC_API_KEY=
+  OPENAI_API_KEY=
+  ANALYTICS_CACHE_ENABLED=false  # set true in production
+  CRON_SECRET=               # REQUIRED in production, never leave empty
+  RESEND_API_KEY=
+  FROM_EMAIL=                # must be verified domain, not noreply@resend.dev
+  AI_KEY_ENCRYPTION_KEY=     # 32-byte hex, required when per-user AI keys enabled
+  ```
+- **Fix:** Create `.env.example` in project root with all variables and security notes.
 - **Effort:** XS
 
 ---
@@ -338,6 +434,10 @@ These items cause significant ongoing friction or block future work.
 | TD-011 Sharpe Duplicate | TASK-027 | Consistent Sharpe Ratio everywhere |
 | TD-021 Storage Security | TASK-017 | Server-validated uploads only |
 | TD-024 .env.example | Sprint 1 | Documented environment setup |
+| TD-025 Drawdown Label | TASK-028 | Accurate metric labels |
+| TD-026 Current-DD | TASK-029 | Accurate drawdown in account cards |
+| TD-027 Model IDs | TASK-032 | Current model IDs in production |
+| TD-028 HTTP 200 error | TASK-037 | Reliable error handling in reviews |
 
 ### Q3 2026 (Weeks 9–18) — Code Quality + Architecture Debt
 
