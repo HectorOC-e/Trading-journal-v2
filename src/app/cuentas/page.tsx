@@ -16,6 +16,7 @@ import { NuevaCuentaModal } from "./modals/create-account-modal"
 import { EditarCuentaModal } from "./modals/edit-account-modal"
 import { AccountHistoryModal } from "./modals/account-history-modal"
 import { PromotePhaseModal } from "./modals/promote-phase-modal"
+import { SyncBalanceModal } from "./modals/sync-balance-modal"
 import { useAccountStats } from "./hooks/use-account-stats"
 
 export default function CuentasPage() {
@@ -24,6 +25,7 @@ export default function CuentasPage() {
   const [editingId,  setEditingId]  = useState<string | null>(null)
   const [historyId,  setHistoryId]  = useState<string | null>(null)
   const [promoteId,  setPromoteId]  = useState<string | null>(null)
+  const [syncId,     setSyncId]     = useState<string | null>(null)
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const { data: markets = [] }             = trpc.markets.list.useQuery()
@@ -107,6 +109,7 @@ export default function CuentasPage() {
                   selected={selectedId === a.id}
                   onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
                   stats={accountStats[a.id]}
+                  onSyncBalance={(e) => { e.stopPropagation(); setSyncId(a.id) }}
                 />
               ))}
             </div>
@@ -166,6 +169,17 @@ export default function CuentasPage() {
           markets={markets as never}
         />
       )}
+
+      {syncId && (() => {
+        const syncAccount = accounts.find(a => a.id === syncId)
+        return syncAccount ? (
+          <SyncBalanceModal
+            accountId={syncId}
+            accountName={syncAccount.name}
+            onClose={() => setSyncId(null)}
+          />
+        ) : null
+      })()}
     </>
   )
 }

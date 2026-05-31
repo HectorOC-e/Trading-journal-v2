@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
-import { Plus, TrendingUp, Percent, Zap, Shield, Activity } from "lucide-react"
+import { Plus, TrendingUp, Percent, Zap, Shield, Activity, Upload } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -10,6 +10,7 @@ import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
 import { LogSessionPopover } from "@/components/trades/log-session-popover"
+import { ImportCsvModal } from "./components/import-csv-modal"
 import { trpc } from "@/lib/trpc/client"
 
 export default function TradesPage() {
@@ -20,6 +21,7 @@ export default function TradesPage() {
   const [propFirmError, setPropFirmError]       = useState<string | null>(null)
   const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen]       = useState(false)
 
   const pendingChecklistRef = useRef<{ setupId?: string; items: string[]; total: number } | null>(null)
 
@@ -268,6 +270,12 @@ export default function TradesPage() {
                 onClick: () => setSessionPopoverOpen(true),
               },
               {
+                label: "Importar CSV",
+                icon: <Upload size={14} />,
+                variant: "ghost" as const,
+                onClick: () => setImportModalOpen(true),
+              },
+              {
                 label: "Registrar trade",
                 icon: <Plus size={14} />,
                 variant: "primary" as const,
@@ -368,6 +376,11 @@ export default function TradesPage() {
       <LogSessionPopover
         open={sessionPopoverOpen}
         onOpenChange={setSessionPopoverOpen}
+      />
+
+      <ImportCsvModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
       />
     </>
   )

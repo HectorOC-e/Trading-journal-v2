@@ -2,12 +2,13 @@
 
 import {
   Target, Shield, BarChart3, ChevronRight,
-  CheckCircle2, PauseCircle, Archive, XCircle,
+  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown,
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { trpc } from "@/lib/trpc/client"
 
 export type RawAccount = RouterOutputs["accounts"]["list"][number]
 
@@ -61,12 +62,16 @@ export function KpiBox({ label, value, sub, positive, icon }: {
   )
 }
 
-export function AccountCard({ rawAccount, selected, onClick, stats }: {
-  rawAccount: RawAccount
-  selected: boolean
-  onClick: () => void
-  stats?: TradeStats
+export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalance }: {
+  rawAccount:     RawAccount
+  selected:       boolean
+  onClick:        () => void
+  stats?:         TradeStats
+  onSyncBalance?: (e: React.MouseEvent) => void
 }) {
+  const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(rawAccount.id)
+  const variance = varianceData?.totalVariance ?? null
+
   const type   = rawAccount.type as AccountType
   const tm     = TYPE_META[type] ?? TYPE_META.PERSONAL
   const status = (rawAccount.status as string) ?? "ACTIVE"
@@ -214,9 +219,30 @@ export function AccountCard({ rawAccount, selected, onClick, stats }: {
           </div>
         </div>
 
-        <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors">
-          Ver detalle <ChevronRight size={11} />
-        </button>
+        {/* ── Balance variance (if any corrections logged) ── */}
+        {variance != null && variance !== 0 && (
+          <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--line)]">
+            <span className="text-[var(--ink-3)]">Diferencia acumulada</span>
+            <span className={`font-mono font-semibold ${variance >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
+              {variance >= 0 ? "+" : ""}${variance.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-1 border-t border-[var(--line)]">
+          {onSyncBalance && (
+            <button
+              onClick={onSyncBalance}
+              className="flex items-center gap-1 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors"
+            >
+              <ArrowUpDown size={11} />
+              Sincronizar balance
+            </button>
+          )}
+          <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors ml-auto">
+            Ver detalle <ChevronRight size={11} />
+          </button>
+        </div>
       </div>
     </div>
   )

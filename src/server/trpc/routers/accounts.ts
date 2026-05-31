@@ -184,4 +184,68 @@ export const accountsRouter = router({
     .mutation(({ ctx, input }) =>
       ctx.prisma.account.delete({ where: { id: input, userId: ctx.userId } })
     ),
+
+  syncBalance: protectedProcedure
+    .input(z.object({
+      accountId:     z.string().uuid(),
+      actualBalance: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const account = await ctx.prisma.account.findUniqueOrThrow({
+        where: { id: input.accountId, userId: ctx.userId },
+        select: { id: true, initialBalance: true },
+      })
+
+      const trades = await ctx.prisma.trade.findMany({
+        where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+        select: { pnl: true, date: true },
+        orderBy: { date: "asc" },
+      })
+
+      const { computeRunningBalance } = await import("@/domains/trading/services/account-service")
+      const computedBalance = computeRunningBalance(
+        Number(account.initialBalance),
+        trades.map(t => ({
+          pnl:  t.pnl != null ? Number(t.pnl) : null,
+          date: (t.date as Date).toISOString().slice(0, 10),
+        })),
+      )
+
+      const variance = input.actualBalance - computedBalance
+
+      const payload: AccountLogPayload = {
+        event:    "BALANCE_CORRECTION",
+        variance,
+        note:     "Manual sync",
+      }
+
+      await ctx.prisma.accountLog.create({
+        data: {
+          userId:    ctx.userId,
+          accountId: input.accountId,
+          event:     "BALANCE_CORRECTION",
+          payload:   payload as object,
+        },
+      })
+
+      return {
+        computedBalance: parseFloat(computedBalance.toFixed(2)),
+        actualBalance:   input.actualBalance,
+        variance:        parseFloat(variance.toFixed(2)),
+      }
+    }),
+
+  getBalanceVariance: protectedProcedure
+    .input(z.string().uuid())
+    .query(async ({ ctx, input }) => {
+      const logs = await ctx.prisma.accountLog.findMany({
+        where:   { accountId: input, userId: ctx.userId, event: "BALANCE_CORRECTION" },
+        select:  { payload: true },
+      })
+      const totalVariance = logs.reduce((sum, log) => {
+        const p = log.payload as { variance?: number }
+        return sum + (typeof p.variance === "number" ? p.variance : 0)
+      }, 0)
+      return { totalVariance: parseFloat(totalVariance.toFixed(2)) }
+    }),
 })
