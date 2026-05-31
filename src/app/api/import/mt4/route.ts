@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { parseMt4Statement, parseCtraderStatement, detectFormat } from "@/domains/trading/services/csv-import"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
+import { calcRMultiple } from "@/lib/formulas"
 import type { ParsedTrade } from "@/domains/trading/services/csv-import"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -133,11 +134,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const dateStr  = openDate.toISOString().slice(0, 10)
         const openTimeStr = openDate.toISOString().slice(11, 16) // "HH:MM"
 
+        const direction = toDirection(row.type)
+        const rMultiple = (row.sl != null && row.openPrice != null && row.closePrice != null)
+          ? calcRMultiple(direction, row.openPrice, row.sl, row.closePrice)
+          : null
+
         const trade = await tx.trade.create({
           data: {
             userId,
             accountId,
-            direction:   toDirection(row.type),
+            direction,
             symbol:      row.symbol,
             entry:       row.openPrice,
             stop:        row.sl,
@@ -151,6 +157,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             closeTime:    new Date(row.closeTime).toISOString().slice(11, 16),
             commission:   row.commission,
             pnl:          row.profit,
+            rMultiple,
             importTicket: row.ticket || null,
           },
         })
