@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Check, ChevronDown, ChevronUp } from "lucide-react"
+import { Check, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -219,6 +219,24 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
   const createReview = trpc.weeklyReviews.create.useMutation({
     onSuccess: () => { utils.weeklyReviews.list.invalidate(); onOpenChange(false); resetState() },
   })
+
+  const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({
+    onSuccess: (data) => {
+      if ("error" in data) return
+      if (data.executiveSummary) setExecutiveSummary(data.executiveSummary)
+      if (data.whatWorked)       setWhatWorked(data.whatWorked)
+      if (data.toImprove)        setToImprove(data.toImprove)
+      setAutoFields(prev => new Set([...prev, "executiveSummary", "whatWorked", "toImprove"]))
+    },
+  })
+
+  function handleAiGenerate() {
+    generateAiSummary.mutate({
+      weekStart:  week.start,
+      weekEnd:    week.end,
+      accountId:  effectiveAccountId || null,
+    })
+  }
 
   function resetState() {
     setStep("config"); setSelectedWeek(0); setGenerated(null); setAutoFields(new Set())
@@ -488,6 +506,16 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
           ) : (
             <>
               <Button variant="ghost" onClick={() => setStep("config")}>← Atrás</Button>
+              <Button
+                variant="ghost"
+                onClick={handleAiGenerate}
+                disabled={generateAiSummary.isPending}
+                className="flex items-center gap-1.5"
+              >
+                {generateAiSummary.isPending
+                  ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
+                  : <><Sparkles size={13} /> Resumen con IA</>}
+              </Button>
               <Button variant="ghost" onClick={() => handleSave("draft")} disabled={createReview.isPending}>
                 {createReview.isPending ? "Guardando…" : "Guardar borrador"}
               </Button>

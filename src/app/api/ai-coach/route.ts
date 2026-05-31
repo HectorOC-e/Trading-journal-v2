@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import Anthropic from "@anthropic-ai/sdk"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { buildTraderContext } from "@/domains/analytics/ai-context"
+import { streamChat } from "@/lib/ai/chat"
+import { isAnyKeyConfigured, getCoachModel } from "@/lib/ai/config"
 
 type MessageParam = { role: "user" | "assistant"; content: string }
 
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── API key check ───────────────────────────────────────────────────────────
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!isAnyKeyConfigured()) {
     return NextResponse.json({ error: "NO_API_KEY" }, { status: 200 })
   }
 
@@ -86,41 +87,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const traderCtx = await buildTraderContext(user.id, prisma)
   const systemPrompt = buildSystemPrompt(traderCtx)
 
-  // ── Stream from Anthropic ───────────────────────────────────────────────────
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  // ── Stream via provider abstraction ────────────────────────────────────────
+  try {
+    const readable = await streamChat({
+      model:    getCoachModel(),
+      messages,
+      system:   systemPrompt,
+    })
 
-  const stream = await client.messages.stream({
-    model:      "claude-sonnet-4-5",
-    max_tokens: 1024,
-    system:     systemPrompt,
-    messages:   messages.map(m => ({ role: m.role, content: m.content })),
-  })
-
-  const encoder = new TextEncoder()
-
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text))
-          }
-        }
-        controller.close()
-      } catch (err) {
-        controller.error(err)
-      }
-    },
-  })
-
-  return new NextResponse(readable, {
-    headers: {
-      "Content-Type":  "text/plain; charset=utf-8",
-      "Cache-Control": "no-cache",
-      "X-Accel-Buffering": "no",
-    },
-  })
+    return new NextResponse(readable, {
+      headers: {
+        "Content-Type":      "text/plain; charset=utf-8",
+        "Cache-Control":     "no-cache",
+        "X-Accel-Buffering": "no",
+      },
+    })
+  } catch {
+    return NextResponse.json({ error: "BAD_REQUEST" }, { status: 500 })
+  }
 }

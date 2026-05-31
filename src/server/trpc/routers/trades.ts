@@ -19,6 +19,26 @@ import type {
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
+import { isEmbeddingAvailable } from "@/lib/ai/config"
+import { embedText } from "@/lib/ai/embeddings"
+
+/** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
+function scheduleEmbedding(tradeId: string, notes: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
+  if (!isEmbeddingAvailable() || !notes.trim()) return
+  void (async () => {
+    try {
+      const vector = await embedText(notes)
+      if (!vector) return
+      await prismaClient.$executeRaw`
+        UPDATE trades
+        SET notes_embedding = ${`[${vector.join(",")}]`}::vector
+        WHERE id = ${tradeId}::uuid
+      `
+    } catch {
+      // best-effort, never throw
+    }
+  })()
+}
 
 type DashboardOutput = {
   kpis:           KpiSummary
@@ -545,7 +565,7 @@ export const tradesRouter = router({
       })
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      // TODO: await embedTradeNotes(trade.id, input.notes, ctx.prisma)  (T-VI-004)
+      scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
       return serializeTrade(full)
     }),
 
@@ -571,7 +591,7 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
-      // TODO: await embedTradeNotes(trade.id, input.notes, ctx.prisma)  (T-VI-004)
+      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
       return serializeTrade(trade)
     }),
 
@@ -869,15 +889,36 @@ export const tradesRouter = router({
       limit: z.number().int().min(1).max(20).default(10),
     }))
     .query(async ({ ctx, input }) => {
-      if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+      if (!isEmbeddingAvailable()) {
         return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
       }
-      // TODO: generate embedding for input.query and run vector similarity search:
-      // SELECT id, 1 - (notes_embedding <=> $1::vector) AS similarity
-      // FROM trades WHERE user_id = $2 AND notes_embedding IS NOT NULL
-      // ORDER BY notes_embedding <=> $1::vector LIMIT $3
-      void ctx
-      void input
-      return { trades: [], similarity: [], error: "NOT_IMPLEMENTED" as const }
+      const queryVector = await embedText(input.query)
+      if (!queryVector) {
+        return { trades: [], similarity: [], error: "EMBED_FAILED" as const }
+      }
+
+      type SearchRow = { id: string; similarity: number }
+      const rows = await ctx.prisma.$queryRaw<SearchRow[]>`
+        SELECT id, (1 - (notes_embedding <=> ${`[${queryVector.join(",")}]`}::vector)) AS similarity
+        FROM trades
+        WHERE user_id = ${ctx.userId}::uuid
+          AND notes_embedding IS NOT NULL
+        ORDER BY notes_embedding <=> ${`[${queryVector.join(",")}]`}::vector
+        LIMIT ${input.limit}
+      `
+      if (!rows.length) return { trades: [], similarity: [] }
+
+      const tradeIds = rows.map(r => r.id)
+      const found = await ctx.prisma.trade.findMany({
+        where:   { id: { in: tradeIds }, userId: ctx.userId },
+        include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
+      })
+      const ordered = tradeIds
+        .map(id => found.find(t => t.id === id))
+        .filter((t): t is NonNullable<typeof t> => !!t)
+      return {
+        trades:     ordered.map(serializeTrade),
+        similarity: rows.map(r => r.similarity),
+      }
     }),
 })

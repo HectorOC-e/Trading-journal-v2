@@ -2,6 +2,8 @@ import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { VIOLATION_TAGS } from "@/types"
+import { streamChat } from "@/lib/ai/chat"
+import { isAnyKeyConfigured, getWeeklySummaryModel } from "@/lib/ai/config"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -223,6 +225,94 @@ export const weeklyReviewsRouter = router({
         disciplineScore: computedScore.score,
         topSetupId,
         worstSetupId,
+      }
+    }),
+
+  // T-IX: Auto-generate weekly review narrative from trade data
+  generateSummary: protectedProcedure
+    .input(z.object({
+      weekStart:  z.string(),
+      weekEnd:    z.string(),
+      accountId:  z.string().uuid().optional().nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (!isAnyKeyConfigured()) {
+        return { error: "NO_API_KEY" as const }
+      }
+
+      const start = new Date(input.weekStart)
+      const end   = new Date(input.weekEnd)
+
+      const trades = await ctx.prisma.trade.findMany({
+        where: {
+          userId:    ctx.userId,
+          status:    "CLOSED",
+          date:      { gte: start, lte: end },
+          ...(input.accountId ? { accountId: input.accountId } : {}),
+        },
+        select: {
+          symbol: true, direction: true, pnl: true, rMultiple: true,
+          tags: true, notes: true, session: true,
+          setup: { select: { name: true } },
+        },
+        orderBy: { date: "asc" },
+      })
+
+      if (!trades.length) {
+        return {
+          executiveSummary: "Sin trades registrados esta semana.",
+          whatWorked:       "",
+          toImprove:        "",
+        }
+      }
+
+      const netPnl  = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const wins    = trades.filter(t => Number(t.pnl ?? 0) > 0).length
+      const winRate = Math.round(wins / trades.length * 100)
+      const tradeLines = trades.slice(0, 15).map(t =>
+        `  • ${t.symbol} ${t.direction} ${Number(t.pnl ?? 0) >= 0 ? "+" : ""}$${Number(t.pnl ?? 0).toFixed(2)}` +
+        `${t.rMultiple != null ? ` (${Number(t.rMultiple).toFixed(2)}R)` : ""}` +
+        `${t.tags.length ? ` [${(t.tags as string[]).join(", ")}]` : ""}` +
+        `${t.notes ? ` | "${t.notes.slice(0, 60)}"` : ""}`
+      ).join("\n")
+
+      const prompt = `Eres un coach de trading. Basándote en los siguientes trades de la semana, genera un resumen ejecutivo breve (2-3 oraciones), qué funcionó bien, y qué mejorar. Responde SOLO con JSON con las claves: executiveSummary, whatWorked, toImprove.
+
+Trades (${trades.length} total, WR ${winRate}%, P&L neto $${netPnl.toFixed(2)}):
+${tradeLines}
+
+JSON:`
+
+      try {
+        // Collect full streamed response (summary is short)
+        const stream = await streamChat({
+          model:    getWeeklySummaryModel(),
+          messages: [{ role: "user", content: prompt }],
+        })
+        const reader  = stream.getReader()
+        const decoder = new TextDecoder()
+        let   raw     = ""
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          raw += decoder.decode(value, { stream: true })
+        }
+
+        // Extract JSON from response
+        const match = raw.match(/\{[\s\S]*\}/)
+        if (!match) throw new Error("no JSON in response")
+        const parsed = JSON.parse(match[0]) as {
+          executiveSummary?: string
+          whatWorked?: string
+          toImprove?: string
+        }
+        return {
+          executiveSummary: parsed.executiveSummary ?? "",
+          whatWorked:       parsed.whatWorked       ?? "",
+          toImprove:        parsed.toImprove        ?? "",
+        }
+      } catch {
+        return { error: "GENERATION_FAILED" as const }
       }
     }),
 })
