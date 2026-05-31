@@ -1407,7 +1407,7 @@ Currently `pnlByDate` is hard-capped at 90 days. Users with multi-year account h
 **Domain:** `[ANALYTICS]` `[INFRA]`  
 **Priority:** P3  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1438,9 +1438,9 @@ For users with 2000+ trades, even a server-side aggregation query can take 1–2
 
 #### Acceptance Criteria
 
-- [ ] Cache hit returns in < 10ms
-- [ ] Cache miss recomputes and stores; subsequent hit returns cached value
-- [ ] Closing a trade invalidates the cache for `period = "all"` and the current month/week period
+- [x] Cache hit returns in < 10ms
+- [x] Cache miss recomputes and stores; subsequent hit returns cached value
+- [x] Closing a trade invalidates the cache for `period = "all"` and the current month/week period
 
 ---
 

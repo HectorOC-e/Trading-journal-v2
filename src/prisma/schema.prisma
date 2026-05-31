@@ -34,6 +34,7 @@ model User {
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
   tradeEvents       TradeEvent[]
+  tradeStatsCache   TradeStatsCache[]
 
   @@map("users")
 }
@@ -328,4 +329,26 @@ model Market {
 
   @@unique([userId, symbol])
   @@map("markets")
+}
+
+// ─────────────────────────────────────────────
+// TRADE STATS CACHE
+// Materialized analytics cache (T-IV-004).
+// Keyed by (user_id, period) where period is
+// the dashboardStats period enum value.
+// TTL enforced at application layer (5 min).
+// Feature-flagged via ANALYTICS_CACHE_ENABLED=true.
+// ─────────────────────────────────────────────
+model TradeStatsCache {
+  userId     String   @map("user_id") @db.Uuid
+  period     String
+  accountId  String?  @map("account_id") @db.Uuid
+  statsJson  Json     @map("stats_json")
+  computedAt DateTime @default(now()) @map("computed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, period])
+  @@index([userId])
+  @@map("trade_stats_cache")
 }

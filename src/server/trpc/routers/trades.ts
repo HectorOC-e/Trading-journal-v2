@@ -14,6 +14,7 @@ import {
 import type { MinimalTrade, AccountBalance, AccountWithLimits, Grain } from "@/domains/analytics/services/dashboard-analytics"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
+import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -143,6 +144,14 @@ export const tradesRouter = router({
       const queryTo    = input?.to
       const grainMap: Record<string, Grain> = { "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
       const grain      = grainMap[period]
+
+      // ── Cache lookup (feature-flagged) ────────────────────────────────────
+      const cacheKey = `${period}:${input?.accountId ?? "all"}`
+      if (isCacheEnabled()) {
+        const hit = await getCachedStats(ctx.prisma, ctx.userId, cacheKey)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (hit) return hit as any
+      }
 
       // ── Fetch ─────────────────────────────────────────────────────────────
       const [tradeRows, accounts, setupRows] = await Promise.all([
@@ -364,7 +373,7 @@ export const tradesRouter = router({
         rachaDiasLimpios,
       }
 
-      return {
+      const result = {
         kpis,
         accountStats,
         equityCurve,
@@ -380,6 +389,12 @@ export const tradesRouter = router({
         executionStats,
         discipline,
       }
+
+      if (isCacheEnabled()) {
+        await setCachedStats(ctx.prisma, ctx.userId, cacheKey, result)
+      }
+
+      return result
     }),
 
   create: protectedProcedure
@@ -463,6 +478,8 @@ export const tradesRouter = router({
         where:   { id: trade.id },
         include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
       })
+
+      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       return serializeTrade(full)
     }),
 
@@ -546,10 +563,12 @@ export const tradesRouter = router({
           await ctx.prisma.accountLog.create({
             data: { userId: ctx.userId, accountId: trade.accountId, event: "STATUS_CHANGE", payload: ddPayload },
           })
+              if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
           return { trade: serializeTrade(updated), accountDeactivated: true }
         }
       }
 
+      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       return { trade: serializeTrade(updated), accountDeactivated: false }
     }),
 
@@ -657,6 +676,8 @@ export const tradesRouter = router({
   delete: protectedProcedure
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.trade.delete({ where: { id: input, userId: ctx.userId } })
+      const result = await ctx.prisma.trade.delete({ where: { id: input, userId: ctx.userId } })
+      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
+      return result
     }),
 })
