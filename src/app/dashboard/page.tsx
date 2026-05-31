@@ -23,13 +23,30 @@ const TABS = [
 export default function DashboardPage() {
   const [tab, setTab]       = useState<Tab>("portfolio")
   const [period, setPeriod] = useState<Period>("3M")
-  const { stats, accounts, isLoading } = useDashboardStats(period)
+  const { stats, accounts, isLoading, isError } = useDashboardStats(period)
 
-  if (isLoading || !stats) {
+  if (isLoading) {
     return (
       <div>
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
         <div className="flex items-center justify-center h-64 text-[var(--ink-3)] text-sm">Cargando…</div>
+      </div>
+    )
+  }
+
+  if (isError || !stats) {
+    return (
+      <div>
+        <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <p className="text-[var(--ink-3)] text-sm">No se pudo cargar el dashboard.</p>
+          <button
+            className="text-[12px] px-4 py-1.5 rounded border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            onClick={() => window.location.reload()}
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     )
   }

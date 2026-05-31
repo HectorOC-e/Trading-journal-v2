@@ -10,5 +10,7 @@ export function useDashboardStats(period: Period = "3M") {
     stats:     statsQuery.data,
     accounts:  accountsQuery.data ?? [],
     isLoading: statsQuery.isLoading || accountsQuery.isLoading,
+    isError:   statsQuery.isError   || accountsQuery.isError,
+    error:     statsQuery.error     ?? accountsQuery.error,
   }
 }
