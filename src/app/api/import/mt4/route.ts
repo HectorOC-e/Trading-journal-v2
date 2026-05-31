@@ -113,7 +113,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   let created = 0
   for (const row of toCreate) {
     try {
-      await prisma.$transaction(async (tx: typeof prisma) => {
+      await prisma.$transaction(async (tx) => {
         // Parse the openTime as a Date for the trade `date` field
         const openDate = new Date(row.openTime)
         const dateStr  = openDate.toISOString().slice(0, 10)
