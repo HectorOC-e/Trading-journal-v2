@@ -146,12 +146,19 @@ model Setup {
   images            String[] @default([])
   aplusChecklist    String[] @map("aplus_checklist")
   standardChecklist String[] @map("standard_checklist")
+  // ── Edge definition fields (T-VIII-002) ──────
+  expectedWr        Decimal? @map("expected_wr")    @db.Decimal(5,2)
+  expectedAvgR      Decimal? @map("expected_avg_r") @db.Decimal(5,3)
+  minR              Decimal? @map("min_r")          @db.Decimal(5,3)
+  maxR              Decimal? @map("max_r")          @db.Decimal(5,3)
+  edgeUpdatedAt     DateTime? @map("edge_updated_at") @db.Timestamptz(6)
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades Trade[]
   linkedResources LearningResource[] @relation("ResourceSetups")
+  versions SetupVersion[]
 
   @@map("setups")
 }
@@ -212,20 +219,38 @@ model TradeEvent {
 }
 
 model Rule {
-  id                  String   @id @default(uuid()) @db.Uuid
-  userId              String   @map("user_id") @db.Uuid
-  name                String
-  description         String   @default("")
-  severity            String   @default("CRÍTICA")
-  isSystem            Boolean  @default(false) @map("is_system")
-  enabled             Boolean  @default(true)
-  violationsThisMonth Int      @default(0) @map("violations_this_month")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  description String   @default("")
+  severity    String   @default("CRÍTICA")
+  isSystem    Boolean  @default(false) @map("is_system")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("rules")
+}
+
+// ─────────────────────────────────────────────
+// SETUP VERSION (T-VIII-004)
+// Immutable snapshot of a setup before edits to
+// versioned fields (aplusChecklist, standardChecklist, direction).
+// ─────────────────────────────────────────────
+model SetupVersion {
+  id        String   @id @default(uuid()) @db.Uuid
+  setupId   String   @map("setup_id") @db.Uuid
+  version   Int
+  snapshot  Json
+  reason    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  setup Setup @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  @@unique([setupId, version])
+  @@map("setup_versions")
 }
 
 model WeeklyReview {

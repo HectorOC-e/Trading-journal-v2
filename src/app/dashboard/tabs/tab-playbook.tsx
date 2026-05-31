@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 
@@ -14,6 +14,80 @@ function checklistColor(pct: number) {
   if (pct >= 80) return "var(--win)"
   if (pct >= 65) return "var(--be)"
   return "var(--loss)"
+}
+
+/** Returns Monday of the current ISO week as "YYYY-Www" for stable weekly dismiss keys. */
+function getWeekKey(): string {
+  const d = new Date()
+  const day = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86_400_000) + 1) / 7)
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`
+}
+
+// ── Lifecycle Suggestions (T-VIII-003) ─────────────────────────────────────
+
+function LifecycleSuggestions() {
+  const { data: suggestions } = trpc.setups.lifecycleCheck.useQuery(undefined, { staleTime: 300_000 })
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+
+  // Load dismissals from localStorage on mount
+  useEffect(() => {
+    const weekKey = getWeekKey()
+    const stored  = Object.keys(localStorage)
+      .filter(k => k.startsWith("dismissed_suggestion_") && k.endsWith(`_${weekKey}`))
+      .map(k => k.replace(`dismissed_suggestion_`, "").replace(`_${weekKey}`, ""))
+    setDismissed(new Set(stored))
+  }, [])
+
+  const visible = (suggestions ?? []).filter(s => !dismissed.has(s.setupId))
+  if (visible.length === 0) return null
+
+  const dismiss = (setupId: string) => {
+    const weekKey = getWeekKey()
+    localStorage.setItem(`dismissed_suggestion_${setupId}_${weekKey}`, "1")
+    setDismissed(prev => new Set([...prev, setupId]))
+  }
+
+  return (
+    <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+      <p className="text-[13px] font-semibold text-[var(--ink)] mb-3">Sugerencias del sistema</p>
+      <div className="flex flex-col gap-2">
+        {visible.map(s => {
+          const isPause = s.suggestion === "PAUSE"
+          const borderColor = isPause ? "var(--loss)" : "var(--be)"
+          const badgeBg     = isPause ? "var(--loss)" : "#f59e0b"
+          return (
+            <div
+              key={s.setupId}
+              className="flex items-start gap-3 px-4 py-3 rounded-[var(--radius-sm)] border"
+              style={{ borderColor, background: isPause ? "rgba(224,85,85,0.06)" : "rgba(245,158,11,0.06)" }}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-[11px] font-bold text-[var(--ink)]">{s.setupAbbr}</span>
+                  <span className="text-[11px] text-[var(--ink-2)]">{s.setupName}</span>
+                  <span className="text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full text-white"
+                    style={{ background: badgeBg }}>
+                    {s.suggestion}
+                  </span>
+                </div>
+                <p className="text-[12px] text-[var(--ink-2)] font-medium">{s.reason}</p>
+                <p className="text-[11px] text-[var(--ink-3)] italic mt-0.5">{s.evidence}</p>
+              </div>
+              <button
+                onClick={() => dismiss(s.setupId)}
+                className="shrink-0 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors border border-[var(--line)] rounded-[var(--radius-sm)] px-2 py-1"
+              >
+                Descartar
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function TabPlaybook() {
@@ -48,6 +122,9 @@ export function TabPlaybook() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* T-VIII-003: Lifecycle suggestions section */}
+      <LifecycleSuggestions />
+
       {playbookSummary && (
         <div className="flex flex-wrap gap-2">
           {[
@@ -90,6 +167,16 @@ export function TabPlaybook() {
               const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")
               const areaPath = linePath + ` L${W},${H} L0,${H} Z`
               const fillId   = `pf-${s.abbr}`
+
+              // T-VIII-002: expected WR color coding
+              const actualWr      = s.winRate
+              const expectedWr    = s.expectedWr
+              const wrColor: string = expectedWr != null
+                ? actualWr >= expectedWr - 5  ? "var(--win)"
+                : actualWr >= expectedWr - 10 ? "var(--be)"
+                : "var(--loss)"
+                : win ? "var(--win)" : "var(--loss)"
+
               return (
                 <div key={s.setupId}
                   className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
@@ -115,7 +202,7 @@ export function TabPlaybook() {
                   </svg>
                   <div className="px-3 pt-2 pb-1 grid grid-cols-3 gap-1">
                     {[
-                      ["Win", `${s.winRate}%`, win ? "var(--win)" : "var(--loss)"],
+                      ["Win", `${s.winRate}%`, wrColor],
                       ["Avg R", `${s.avgR > 0 ? "+" : ""}${s.avgR.toFixed(2)}`, s.avgR > 0 ? "var(--win)" : "var(--loss)"],
                       ["Cum",  `${s.cumR > 0 ? "+" : ""}${s.cumR.toFixed(1)}R`, s.cumR > 0 ? "var(--win)" : "var(--loss)"],
                     ].map(([l, v, c]) => (
@@ -125,11 +212,31 @@ export function TabPlaybook() {
                       </div>
                     ))}
                   </div>
-                  <div className="px-3 pb-2.5 flex justify-between text-[10px] text-[var(--ink-3)]">
+                  <div className="px-3 pb-1 flex justify-between text-[10px] text-[var(--ink-3)]">
                     <span>P&amp;L: <span className={s.netPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}>
                       {s.netPnl >= 0 ? "+" : ""}${Math.abs(s.netPnl).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </span></span>
                   </div>
+                  {/* T-VIII-002: actual vs expected WR color coding */}
+                  {expectedWr != null && (
+                    <div className="px-3 pb-1 text-[10px]">
+                      <span style={{ color: wrColor }}>
+                        WR {actualWr.toFixed(0)}%
+                      </span>
+                      <span className="text-[var(--ink-3)]"> / esperado {expectedWr.toFixed(0)}%</span>
+                    </div>
+                  )}
+                  {/* T-VIII-001: bestSession / bestDayOfWeek row */}
+                  {(s.bestSession != null || s.bestDayOfWeek != null) && (
+                    <div className="px-3 pb-2 flex gap-3 text-[10px] text-[var(--ink-3)]">
+                      {s.bestSession != null && (
+                        <span>Sesión: <span className="text-[var(--be)] font-semibold">{s.bestSession}</span></span>
+                      )}
+                      {s.bestDayOfWeek != null && (
+                        <span>Día: <span className="text-[var(--be)] font-semibold">{["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"][s.bestDayOfWeek]}</span></span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
