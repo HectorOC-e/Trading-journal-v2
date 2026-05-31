@@ -4,6 +4,8 @@ import { useState } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
 import { useDashboardStats } from "./hooks/use-dashboard-stats"
+
+type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
 import { TabOperador }   from "./tabs/tab-operador"
 import { TabDisciplina } from "./tabs/tab-disciplina"
@@ -19,8 +21,9 @@ const TABS = [
 ]
 
 export default function DashboardPage() {
-  const [tab, setTab] = useState<Tab>("portfolio")
-  const { stats, accounts, isLoading } = useDashboardStats()
+  const [tab, setTab]       = useState<Tab>("portfolio")
+  const [period, setPeriod] = useState<Period>("3M")
+  const { stats, accounts, isLoading } = useDashboardStats(period)
 
   if (isLoading || !stats) {
     return (
@@ -42,6 +45,8 @@ export default function DashboardPage() {
           propFirmStatus={stats.propFirmStatus}
           accountStats={stats.accountStats}
           accounts={accounts}
+          period={period}
+          onPeriodChange={setPeriod}
         />
       )}
       {tab === "operador" && (
@@ -55,6 +60,8 @@ export default function DashboardPage() {
           recentTrades={stats.recentTrades}
           executionStats={stats.executionStats}
           accounts={accounts}
+          period={period}
+          onPeriodChange={setPeriod}
         />
       )}
       {tab === "disciplina" && (
@@ -63,13 +70,7 @@ export default function DashboardPage() {
           discipline={stats.discipline}
         />
       )}
-      {tab === "playbook" && (
-        <TabPlaybook
-          setupStats={stats.setupStats}
-          sessionMatrix={stats.sessionMatrix}
-          directionStats={stats.directionStats}
-        />
-      )}
+      {tab === "playbook" && <TabPlaybook />}
     </div>
   )
 }

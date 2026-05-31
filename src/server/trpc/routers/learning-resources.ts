@@ -4,6 +4,8 @@ import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/cl
 import { calcNextReviewAt, computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
 import { computeNewStreak } from "@/domains/learning/services/streak-service"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
+import { computeSetupStats } from "@/domains/analytics/services/setup-analytics"
+import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 
 const RESOURCE_TYPES = [
   "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
@@ -595,14 +597,6 @@ export const learningResourcesRouter = router({
         },
       })
 
-      function winRate(trades: { rMultiple: { toNumber(): number } | null; pnl: { toNumber(): number } | null }[]): number | null {
-        if (trades.length === 0) return null
-        const wins = trades.filter(
-          t => (t.rMultiple ? t.rMultiple.toNumber() > 0 : (t.pnl ? t.pnl.toNumber() > 0 : false))
-        ).length
-        return Math.round((wins / trades.length) * 100)
-      }
-
       const rows: {
         resourceId:    string
         resourceTitle: string
@@ -616,6 +610,24 @@ export const learningResourcesRouter = router({
         postTrades:    number
         lowConfidence: boolean
       }[] = []
+
+      function normalizeTrades(raw: { rMultiple: { toNumber(): number } | null; pnl: { toNumber(): number } | null; id?: string }[], setupId: string): MinimalTrade[] {
+        return raw.map((t, i) => ({
+          id:        `${setupId}-${i}`,
+          accountId: "",
+          symbol:    "",
+          direction: "LONG",
+          session:   null,
+          openTime:  null,
+          closeTime: null,
+          pnl:       t.pnl       != null ? t.pnl.toNumber()       : 0,
+          rMultiple: t.rMultiple != null ? t.rMultiple.toNumber() : null,
+          tags:      [],
+          date:      "2000-01-01",
+          setupId,
+          entry:  0, stop: 0, target: 0, size: 1,
+        }))
+      }
 
       for (const resource of resources) {
         if (!resource.completedAt) continue
@@ -635,8 +647,10 @@ export const learningResourcesRouter = router({
 
           if (post.length < 5) continue
 
-          const preWR  = winRate(pre)
-          const postWR = winRate(post)
+          const preStats  = computeSetupStats(setup.id, normalizeTrades(pre,  setup.id))
+          const postStats = computeSetupStats(setup.id, normalizeTrades(post, setup.id))
+          const preWR  = pre.length  > 0 ? preStats.winRate  : null
+          const postWR = post.length > 0 ? postStats.winRate : null
           const delta  = postWR !== null && preWR !== null ? postWR - preWR : null
 
           rows.push({

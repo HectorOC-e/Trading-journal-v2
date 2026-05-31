@@ -14,14 +14,19 @@ import type { RouterOutputs } from "@/server/trpc/root"
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
 type AccountMeta    = RouterOutputs["accounts"]["list"][number]
 
+type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
+const PERIODS: Period[] = ["1M", "3M", "6M", "1Y", "ALL"]
+
 export function TabPortfolio({
-  kpis, pnlByDate, propFirmStatus, accountStats, accounts,
+  kpis, pnlByDate, propFirmStatus, accountStats, accounts, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   pnlByDate:      DashboardStats["pnlByDate"]
   propFirmStatus: DashboardStats["propFirmStatus"]
   accountStats:   DashboardStats["accountStats"]
   accounts:       AccountMeta[]
+  period:         Period
+  onPeriodChange: (p: Period) => void
 }) {
   const totalInitial = useMemo(
     () => accounts.reduce((s, a) => s + Number(a.initialBalance), 0),
@@ -64,6 +69,19 @@ export function TabPortfolio({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <div className="flex gap-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-sm)] p-0.5">
+          {PERIODS.map(p => (
+            <button key={p} onClick={() => onPeriodChange(p)}
+              className={cn(
+                "px-3 py-1 text-[11px] font-semibold rounded-[4px] transition-colors",
+                period === p ? "bg-[var(--accent)] text-white" : "text-[var(--ink-3)] hover:text-[var(--ink)]",
+              )}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Net P&L total"
           value={`${netPnl >= 0 ? "+" : "-"}$${Math.abs(netPnl).toFixed(2)}`}

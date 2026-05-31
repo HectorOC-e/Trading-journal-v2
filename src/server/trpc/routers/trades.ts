@@ -2,11 +2,18 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { calcExpectancyR, calcProfitFactor, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
+import { getISOWeekKey, calcProfitFactor, calcExpectancyR } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
-import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
+import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
+import {
+  buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
+  buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
+} from "@/domains/analytics/services/dashboard-analytics"
+import type { MinimalTrade, AccountBalance, AccountWithLimits, Grain } from "@/domains/analytics/services/dashboard-analytics"
+import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
+import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -121,72 +128,62 @@ export const tradesRouter = router({
       accountId: z.string().uuid().optional(),
       from:      z.string().optional(),
       to:        z.string().optional(),
+      period:    z.enum(["1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
     }).optional())
     .query(async ({ ctx, input }) => {
       const now        = new Date()
       const today      = now.toISOString().slice(0, 10)
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const ninety     = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)
+      const period     = input?.period ?? "3M"
 
-      // ── Closed trades with all analytics fields ──────────────────────────
-      const tradeRows = await ctx.prisma.trade.findMany({
-        where: {
-          userId: ctx.userId,
-          status: "CLOSED",
-          ...(input?.accountId && { accountId: input.accountId }),
-          ...((input?.from || input?.to) ? {
-            date: {
-              ...(input?.from && { gte: new Date(input.from) }),
-              ...(input?.to   && { lte: new Date(input.to)   }),
-            },
-          } : {}),
-        },
-        select: {
-          id:        true,
-          accountId: true,
-          symbol:    true,
-          direction: true,
-          session:   true,
-          openTime:  true,
-          closeTime: true,
-          pnl:       true,
-          rMultiple: true,
-          tags:      true,
-          date:      true,
-          setupId:   true,
-          entry:     true,
-          stop:      true,
-          target:    true,
-          size:      true,
-        },
-        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-      })
+      const periodDays: Record<string, number | null> = { "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
+      const days       = periodDays[period]
+      const periodFrom = days != null ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : undefined
+      const queryFrom  = input?.from ?? periodFrom
+      const queryTo    = input?.to
+      const grainMap: Record<string, Grain> = { "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
+      const grain      = grainMap[period]
 
-      // ── Accounts ─────────────────────────────────────────────────────────
-      const accounts = await ctx.prisma.account.findMany({
-        where: { userId: ctx.userId },
-        select: {
-          id:              true,
-          name:            true,
-          type:            true,
-          status:          true,
-          initialBalance:  true,
-          ddDailyPct:      true,
-          ddTotalPct:      true,
-          maxTradesPerDay: true,
-          allowedSymbols:  true,
-        },
-      })
+      // ── Fetch ─────────────────────────────────────────────────────────────
+      const [tradeRows, accounts, setupRows] = await Promise.all([
+        ctx.prisma.trade.findMany({
+          where: {
+            userId: ctx.userId,
+            status: "CLOSED",
+            ...(input?.accountId && { accountId: input.accountId }),
+            ...((queryFrom || queryTo) ? {
+              date: {
+                ...(queryFrom && { gte: new Date(queryFrom) }),
+                ...(queryTo   && { lte: new Date(queryTo)   }),
+              },
+            } : {}),
+          },
+          select: {
+            id: true, accountId: true, symbol: true, direction: true,
+            session: true, openTime: true, closeTime: true,
+            pnl: true, rMultiple: true, tags: true, date: true,
+            setupId: true, entry: true, stop: true, target: true, size: true,
+          },
+          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+        }),
+        ctx.prisma.account.findMany({
+          where: { userId: ctx.userId },
+          select: {
+            id: true, name: true, type: true, status: true,
+            initialBalance: true, ddDailyPct: true, ddTotalPct: true,
+            maxTradesPerDay: true, allowedSymbols: true,
+          },
+        }),
+        ctx.prisma.setup.findMany({
+          where: { userId: ctx.userId },
+          select: { id: true, name: true, abbreviation: true, color: true },
+        }),
+      ])
 
-      // ── Setups ────────────────────────────────────────────────────────────
-      const setupRows = await ctx.prisma.setup.findMany({
-        where: { userId: ctx.userId },
-        select: { id: true, name: true, abbreviation: true, color: true },
-      })
       const setupMap = new Map(setupRows.map(s => [s.id, s]))
 
-      // ── Normalize ─────────────────────────────────────────────────────────
-      const trades = tradeRows.map(t => ({
+      // ── Normalize trades ──────────────────────────────────────────────────
+      const trades: MinimalTrade[] = tradeRows.map(t => ({
         id:        t.id,
         accountId: t.accountId,
         symbol:    t.symbol,
@@ -205,298 +202,59 @@ export const tradesRouter = router({
         size:      Number(t.size),
       }))
 
-      // ── Global KPIs ───────────────────────────────────────────────────────
-      const total   = trades.length
-      const wins    = trades.filter(t => t.pnl > 0).length
-      const losses  = trades.filter(t => t.pnl < 0).length
-      const be      = total - wins - losses
-      const netPnl  = trades.reduce((s, t) => s + t.pnl, 0)
-      const winRate = total > 0 ? (wins / total) * 100 : 0
+      const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) }))
+      const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
+        id:              a.id,
+        name:            a.name,
+        type:            a.type,
+        initialBalance:  Number(a.initialBalance),
+        ddDailyPct:      a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
+        ddTotalPct:      a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
+        maxTradesPerDay: a.maxTradesPerDay,
+      }))
 
-      const withR   = trades.filter(t => t.rMultiple != null)
-      const avgR    = withR.length > 0 ? withR.reduce((s, t) => s + t.rMultiple!, 0) / withR.length : 0
+      // ── Core analytics (service delegation) ──────────────────────────────
+      const kpis         = buildKpis(trades, today, monthStart)
+      const accountStats = buildAccountStats(trades, acctBalances, today, monthStart)
+      const equityCurve  = buildEquityCurve(trades, acctBalances)
+      const pnlByDate    = buildPnlByDate(trades, grain)
+      const pnlBySymbol  = buildPnlBySymbol(trades, 10)
+      const sessionStats = buildSessionStats(trades)
+      const hourStats    = buildHourStats(trades)
 
-      const grossWin  = trades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0)
-      const grossLoss = Math.abs(trades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0))
-      const profitFactor  = calcProfitFactor(grossWin, grossLoss)
-      const expectancyR   = calcExpectancyR(trades.map(t => ({ rMultiple: t.rMultiple, pnl: t.pnl })))
-      const sharpeRatio   = calcSharpeRatio(withR.map(t => t.rMultiple!))
-
-      const winsT   = trades.filter(t => t.pnl > 0)
-      const lossesT = trades.filter(t => t.pnl < 0)
-      const avgWin  = winsT.length   > 0 ? winsT.reduce((s, t) => s + t.pnl, 0) / winsT.length : 0
-      const avgLoss = lossesT.length > 0 ? Math.abs(lossesT.reduce((s, t) => s + t.pnl, 0) / lossesT.length) : 0
-      const wr      = total > 0 ? winsT.length / total : 0
-      const expectancyDollar = avgWin * wr - avgLoss * (1 - wr)
-
-      const pnlMonth = trades.filter(t => t.date >= monthStart).reduce((s, t) => s + t.pnl, 0)
-      const pnlToday = trades.filter(t => t.date === today).reduce((s, t) => s + t.pnl, 0)
-      const tradesCountToday = trades.filter(t => t.date === today).length
-
-      const pnlByDateMap: Record<string, number> = {}
-      for (const t of trades) pnlByDateMap[t.date] = (pnlByDateMap[t.date] ?? 0) + t.pnl
-      const dateEntries = Object.entries(pnlByDateMap)
-      const bestDay  = dateEntries.length > 0 ? dateEntries.reduce((a, b) => b[1] > a[1] ? b : a) : null
-      const worstDay = dateEntries.length > 0 ? dateEntries.reduce((a, b) => b[1] < a[1] ? b : a) : null
-
-      const sorted = [...trades].sort((a, b) =>
-        b.date.localeCompare(a.date) || b.id.localeCompare(a.id),
-      )
-      let tradeStreak: { count: number; isWin: boolean } | null = null
-      if (sorted.length > 0 && sorted[0].pnl !== 0) {
-        const isWin = sorted[0].pnl > 0
-        let count = 0
-        for (const t of sorted) {
-          if (isWin ? t.pnl > 0 : t.pnl < 0) count++
-          else break
-        }
-        tradeStreak = { count, isWin }
-      }
-
-      // ── Account stats ─────────────────────────────────────────────────────
-      const accountStats = accounts.map(a => {
-        const at = trades.filter(t => t.accountId === a.id)
-        const initBal    = Number(a.initialBalance)
-        const acctNetPnl = at.reduce((s, t) => s + t.pnl, 0)
-        const acctWins   = at.filter(t => t.pnl > 0).length
-        const acctWithR  = at.filter(t => t.rMultiple != null)
-
-        const monthT  = at.filter(t => t.date >= monthStart)
-        const todayT  = at.filter(t => t.date === today)
-
-        const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
-        const sparkline = [initBal, ...computeEquityCurve(initBal, at).map(c => parseFloat(c.balance.toFixed(2)))]
-
-        return {
-          accountId:   a.id,
-          balance:     parseFloat((initBal + acctNetPnl).toFixed(2)),
-          netPnl:      parseFloat(acctNetPnl.toFixed(2)),
-          pnlMonth:    parseFloat(monthT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
-          pnlToday:    parseFloat(todayT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
-          tradesToday: todayT.length,
-          winRate:     at.length > 0 ? (acctWins / at.length) * 100 : 0,
-          avgR:        acctWithR.length > 0 ? acctWithR.reduce((s, t) => s + t.rMultiple!, 0) / acctWithR.length : 0,
-          drawdownPct: initBal > 0 ? (maxDd / initBal) * 100 : 0,
-          sparkline,
-        }
+      // ── Setup analytics ───────────────────────────────────────────────────
+      const setupIds   = [...new Set(trades.filter(t => t.setupId).map(t => t.setupId!))]
+      const setupMetas = setupIds.map(id => {
+        const s = setupMap.get(id)
+        return { id, name: s?.name ?? id, abbr: s?.abbreviation ?? "??", color: s?.color ?? "#4f6ef7" }
       })
-
-      // ── Equity curve per account ──────────────────────────────────────────
-      const equityCurve: { date: string; balance: number; accountId: string }[] = []
-      for (const a of accounts) {
-        const at = trades.filter(t => t.accountId === a.id)
-        for (const point of computeEquityCurve(Number(a.initialBalance), at)) {
-          equityCurve.push({ date: point.date, balance: parseFloat(point.balance.toFixed(2)), accountId: a.id })
-        }
-      }
-
-      // ── P&L by date — last 90 days ────────────────────────────────────────
-      const pnlByDateAcct: Record<string, Record<string, number>> = {}
-      for (const t of trades.filter(t => t.date >= ninety)) {
-        if (!pnlByDateAcct[t.accountId]) pnlByDateAcct[t.accountId] = {}
-        pnlByDateAcct[t.accountId][t.date] = (pnlByDateAcct[t.accountId][t.date] ?? 0) + t.pnl
-      }
-      const pnlByDate: { date: string; pnl: number; accountId: string }[] = []
-      for (const [accountId, dates] of Object.entries(pnlByDateAcct)) {
-        for (const [date, pnl] of Object.entries(dates)) {
-          pnlByDate.push({ date, pnl: parseFloat(pnl.toFixed(2)), accountId })
-        }
-      }
-      pnlByDate.sort((a, b) => a.date.localeCompare(b.date))
-
-      // ── P&L by symbol — top 10 ────────────────────────────────────────────
-      const bySymbol: Record<string, { pnl: number; trades: number; wins: number }> = {}
-      for (const t of trades) {
-        if (!bySymbol[t.symbol]) bySymbol[t.symbol] = { pnl: 0, trades: 0, wins: 0 }
-        bySymbol[t.symbol].pnl += t.pnl
-        bySymbol[t.symbol].trades++
-        if (t.pnl > 0) bySymbol[t.symbol].wins++
-      }
-      const pnlBySymbol = Object.entries(bySymbol)
-        .map(([symbol, v]) => ({
-          symbol,
-          pnl:     parseFloat(v.pnl.toFixed(2)),
-          trades:  v.trades,
-          winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
-        }))
-        .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
-        .slice(0, 10)
-
-      // ── Session stats ────────────────────────────────────────────────────
-      const bySession: Record<string, { trades: number; wins: number; rSum: number }> = {}
-      for (const t of trades) {
-        const s = t.session ?? "Sin sesión"
-        if (!bySession[s]) bySession[s] = { trades: 0, wins: 0, rSum: 0 }
-        bySession[s].trades++
-        if (t.pnl > 0) bySession[s].wins++
-        bySession[s].rSum += t.rMultiple ?? 0
-      }
-      const sessionStats = Object.entries(bySession)
-        .map(([session, v]) => ({
-          session,
-          trades:  v.trades,
-          winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
-          avgR:    v.trades > 0 ? v.rSum / v.trades : 0,
-        }))
-        .sort((a, b) => b.trades - a.trades)
-
-      // ── Hour stats ───────────────────────────────────────────────────────
-      const byHour: Record<number, { trades: number; wins: number; rSum: number }> = {}
-      for (const t of trades) {
-        if (!t.openTime) continue
-        const hour = parseInt(t.openTime.split(":")[0])
-        if (isNaN(hour)) continue
-        if (!byHour[hour]) byHour[hour] = { trades: 0, wins: 0, rSum: 0 }
-        byHour[hour].trades++
-        if (t.pnl > 0) byHour[hour].wins++
-        byHour[hour].rSum += t.rMultiple ?? 0
-      }
-      const hourStats = Object.entries(byHour)
-        .map(([h, v]) => ({
-          hour:    parseInt(h),
-          trades:  v.trades,
-          winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
-          avgR:    v.trades > 0 ? v.rSum / v.trades : 0,
-        }))
-        .sort((a, b) => b.avgR - a.avgR)
-
-      // ── Setup stats ──────────────────────────────────────────────────────
-      const bySetup: Record<string, typeof trades> = {}
-      for (const t of trades) {
-        if (!t.setupId) continue
-        if (!bySetup[t.setupId]) bySetup[t.setupId] = []
-        bySetup[t.setupId].push(t)
-      }
-      const setupStats = Object.entries(bySetup).map(([setupId, st]) => {
-        const setup    = setupMap.get(setupId)
-        const sWins    = st.filter(t => t.pnl > 0).length
-        const sWithR   = st.filter(t => t.rMultiple != null)
-        const sAvgR    = sWithR.length > 0 ? sWithR.reduce((s, t) => s + t.rMultiple!, 0) / sWithR.length : 0
-        const cumR     = st.reduce((s, t) => s + (t.rMultiple ?? 0), 0)
-        const netPnlS  = st.reduce((s, t) => s + t.pnl, 0)
-        const aplusCount = st.filter(t => t.tags.includes("A+")).length
-
-        let cum = 0
-        const curve = st.map(t => { cum += t.pnl; return parseFloat(cum.toFixed(2)) })
-        if (curve.length === 0) { curve.push(0, 0) } else if (curve.length === 1) { curve.unshift(0) }
-
-        const descSorted = [...st].sort((a, b) => b.date.localeCompare(a.date))
-        let currentStreak = 0
-        for (const t of descSorted) { if (t.pnl > 0) currentStreak++; else break }
-
-        return {
-          setupId,
-          name:       setup?.name         ?? setupId,
-          abbr:       setup?.abbreviation ?? "??",
-          color:      setup?.color        ?? "#4f6ef7",
-          trades:     st.length,
-          winRate:    parseFloat((st.length > 0 ? sWins / st.length * 100 : 0).toFixed(1)),
-          avgR:       parseFloat(sAvgR.toFixed(2)),
-          cumR:       parseFloat(cumR.toFixed(1)),
-          netPnl:     parseFloat(netPnlS.toFixed(2)),
-          equityCurve: curve,
-          aplusCount,
-          currentStreak,
-        }
-      }).sort((a, b) => b.trades - a.trades)
-
-      // ── Session × Setup matrix ────────────────────────────────────────────
-      const SESSIONS = ["New York", "London", "Asia", "London Close"] as const
-      const sessionMatrix: { setupId: string; session: string; trades: number; winRate: number | null }[] = []
-      for (const ss of setupStats.slice(0, 6)) {
-        const sTrades = trades.filter(t => t.setupId === ss.setupId)
-        for (const sess of SESSIONS) {
-          const sessT = sTrades.filter(t => t.session === sess)
-          sessionMatrix.push({
-            setupId:  ss.setupId,
-            session:  sess,
-            trades:   sessT.length,
-            winRate:  sessT.length > 0
-              ? parseFloat((sessT.filter(t => t.pnl > 0).length / sessT.length * 100).toFixed(2))
-              : null,
-          })
-        }
-      }
-
-      // ── Direction stats ───────────────────────────────────────────────────
-      const directionStats = setupStats
-        .filter(ss => {
-          const st = trades.filter(t => t.setupId === ss.setupId)
-          return st.some(t => t.direction === "LONG") && st.some(t => t.direction === "SHORT")
-        })
-        .map(ss => {
-          const longs  = trades.filter(t => t.setupId === ss.setupId && t.direction === "LONG")
-          const shorts = trades.filter(t => t.setupId === ss.setupId && t.direction === "SHORT")
-          const dWr = (arr: typeof trades) => arr.length > 0 ? arr.filter(t => t.pnl > 0).length / arr.length * 100 : 0
-          const dAr = (arr: typeof trades) => arr.length > 0 ? arr.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / arr.length : 0
-          return {
-            setupId:    ss.setupId,
-            longCount:  longs.length,  longWr:  dWr(longs),  longAvgR:  dAr(longs),
-            shortCount: shorts.length, shortWr: dWr(shorts), shortAvgR: dAr(shorts),
-          }
-        })
+      const setupStats     = setupIds.map((id, i) => computeSetupStats(id, trades, setupMetas[i])).sort((a, b) => b.trades - a.trades)
+      const sessionMatrix  = computeSessionMatrix(setupMetas, trades)
+      const directionStats = setupIds.map(id => computeDirectionBreakdown(id, trades)).filter((d): d is DirectionStats => d !== null)
 
       // ── Prop firm status ──────────────────────────────────────────────────
-      const todayAllTrades = await ctx.prisma.trade.findMany({
-        where: {
-          userId: ctx.userId,
-          date:   new Date(today),
-        },
+      const todayRaw = await ctx.prisma.trade.findMany({
+        where:  { userId: ctx.userId, date: new Date(today) },
         select: { accountId: true, pnl: true, status: true },
       })
+      const propFirmStatus = buildPropFirmStatus(
+        acctWithLimits,
+        trades,
+        todayRaw.map(t => ({ accountId: t.accountId, pnl: t.pnl != null ? Number(t.pnl) : null, status: t.status })),
+      )
 
-      const propFirmStatus = accounts
-        .filter(a => a.type === "PROP_FIRM" || a.type === "DEMO_PROP")
-        .map(a => {
-          const at       = trades.filter(t => t.accountId === a.id)
-          const initBal  = Number(a.initialBalance)
-
-          const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
-          const ddTotalLimit = Number(a.ddTotalPct ?? 5)
-          const ddPctUsed = initBal > 0 && ddTotalLimit > 0
-            ? (maxDd / initBal) / (ddTotalLimit / 100) * 100
-            : 0
-
-          const todayAt    = todayAllTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
-          const todayLoss  = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
-          const ddDailyLim = Number(a.ddDailyPct ?? 1)
-          const dailyLossPct = initBal > 0 && ddDailyLim > 0
-            ? (todayLoss / initBal) / (ddDailyLim / 100) * 100
-            : 0
-
-          const tradesUsed = todayAllTrades.filter(t => t.accountId === a.id).length
-          const tradesMax  = a.maxTradesPerDay ?? 0
-          const status: "OK" | "ALERTA" = ddPctUsed >= 70 || dailyLossPct >= 80 ? "ALERTA" : "OK"
-
-          return {
-            accountId:   a.id,
-            name:        a.name,
-            ddPctUsed:   parseFloat(ddPctUsed.toFixed(1)),
-            dailyLossPct: parseFloat(dailyLossPct.toFixed(1)),
-            tradesUsed,
-            tradesMax,
-            status,
-          }
-        })
-
-      // ── Recent trades (last 20 for TabOperador list) ──────────────────────
+      // ── Recent trades ─────────────────────────────────────────────────────
       const recentTrades = [...trades]
         .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
         .slice(0, 20)
         .map(t => {
           const setup = t.setupId ? setupMap.get(t.setupId) : null
           return {
-            id:         t.id,
-            symbol:     t.symbol,
-            direction:  t.direction,
-            pnl:        t.pnl,
-            rMultiple:  t.rMultiple,
-            session:    t.session,
-            tags:       t.tags,
-            date:       t.date,
-            setupId:    t.setupId,
-            setupName:  setup?.name         ?? null,
-            setupAbbr:  setup?.abbreviation ?? null,
+            id: t.id, symbol: t.symbol, direction: t.direction,
+            pnl: t.pnl, rMultiple: t.rMultiple, session: t.session,
+            tags: t.tags, date: t.date, setupId: t.setupId,
+            setupName: setup?.name         ?? null,
+            setupAbbr: setup?.abbreviation ?? null,
           }
         })
 
@@ -532,13 +290,11 @@ export const tradesRouter = router({
       for (const t of trades) {
         const isOffPlan = t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")
         const isLoss    = t.pnl < 0
-        let sev: 0 | 1 | 2 = isOffPlan ? 2 : isLoss ? 1 : 0
+        const sev: 0 | 1 | 2 = isOffPlan ? 2 : isLoss ? 1 : 0
         const cur = dateMap[t.date]
         if (cur === undefined || sev > cur) dateMap[t.date] = sev
       }
-      for (const [date, severity] of Object.entries(dateMap)) {
-        heatmapData.push({ date, severity })
-      }
+      for (const [date, severity] of Object.entries(dateMap)) heatmapData.push({ date, severity })
 
       const BUCKETS = ["-3R","-2R","-1R","0R","+1R","+2R","+3R","+4R+"] as const
       const bucketMap: Record<string, number> = Object.fromEntries(BUCKETS.map(b => [b, 0]))
@@ -571,16 +327,12 @@ export const tradesRouter = router({
         const key = getISOWeekKey(new Date(t.date))
         if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
         byWeek[key].total++
-        const isOk = t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")
-        if (isOk) byWeek[key].plan++
+        if (t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")) byWeek[key].plan++
       }
       const weeklyScore = Object.entries(byWeek)
         .sort(([a], [b]) => a.localeCompare(b))
         .slice(-12)
-        .map(([week, v]) => ({
-          week:  week.replace(/^\d{4}-/, ""),
-          score: parseFloat((v.plan / v.total * 100).toFixed(2)),
-        }))
+        .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
 
       const aplusTrades = trades.filter(t => t.tags.includes("A+"))
       const stdTrades   = trades.filter(t => !t.tags.includes("A+"))
@@ -593,56 +345,27 @@ export const tradesRouter = router({
         stdAvgR:    stdTrades.length   > 0 ? stdTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / stdTrades.length   : null,
       }
 
+      const total       = kpis.total
       const planSeguido = trades.filter(t => t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")).length
       const offPlan2    = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).length
-      const partial     = Math.max(0, total - planSeguido - offPlan2)
-      const composition = { planSeguido, offPlan: offPlan2, partial }
-
-      const costoIndisciplina = trades
-        .filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))
-        .reduce((s, t) => s + t.pnl, 0)
+      const composition = { planSeguido, offPlan: offPlan2, partial: Math.max(0, total - planSeguido - offPlan2) }
+      const costoIndisciplina = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).reduce((s, t) => s + t.pnl, 0)
 
       const tradingDays = [...new Set(trades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
       let rachaDiasLimpios = 0
       for (const day of tradingDays) {
-        const hasV = trades.filter(t => t.date === day).some(t =>
-          t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"),
-        )
-        if (hasV) break
+        if (trades.filter(t => t.date === day).some(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))) break
         rachaDiasLimpios++
       }
 
       const discipline = {
-        heatmapData,
-        rDistribution,
-        violations,
-        weeklyScore,
-        aplusStats,
-        composition,
+        heatmapData, rDistribution, violations, weeklyScore, aplusStats, composition,
         costoIndisciplina: parseFloat(costoIndisciplina.toFixed(2)),
         rachaDiasLimpios,
       }
 
       return {
-        kpis: {
-          total,
-          wins,
-          losses,
-          be,
-          winRate:          parseFloat(winRate.toFixed(2)),
-          avgR:             parseFloat(avgR.toFixed(4)),
-          netPnl:           parseFloat(netPnl.toFixed(2)),
-          pnlMonth:         parseFloat(pnlMonth.toFixed(2)),
-          pnlToday:         parseFloat(pnlToday.toFixed(2)),
-          tradesCountToday,
-          expectancyR:      parseFloat(expectancyR.toFixed(4)),
-          expectancyDollar: parseFloat(expectancyDollar.toFixed(2)),
-          profitFactor:     parseFloat(profitFactor.toFixed(4)),
-          sharpeRatio:      sharpeRatio != null ? parseFloat(sharpeRatio.toFixed(4)) : null,
-          bestDay:  bestDay  ? { date: bestDay[0],  pnl: parseFloat(bestDay[1].toFixed(2))  } : null,
-          worstDay: worstDay ? { date: worstDay[0], pnl: parseFloat(worstDay[1].toFixed(2)) } : null,
-          tradeStreak,
-        },
+        kpis,
         accountStats,
         equityCurve,
         pnlByDate,

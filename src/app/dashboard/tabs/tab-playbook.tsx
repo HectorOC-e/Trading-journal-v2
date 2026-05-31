@@ -2,9 +2,7 @@
 
 import { useMemo } from "react"
 import { cn } from "@/lib/utils"
-import type { RouterOutputs } from "@/server/trpc/root"
-
-type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
+import { trpc } from "@/lib/trpc/client"
 
 function sessionCellColor(pct: number) {
   if (pct >= 65) return { bg: "rgba(34,197,94,0.20)",  text: "var(--win)"  }
@@ -18,28 +16,13 @@ function checklistColor(pct: number) {
   return "var(--loss)"
 }
 
-export function TabPlaybook({
-  setupStats, sessionMatrix, directionStats,
-}: {
-  setupStats:     DashboardStats["setupStats"]
-  sessionMatrix:  DashboardStats["sessionMatrix"]
-  directionStats: DashboardStats["directionStats"]
-}) {
-  const playbookSummary = useMemo(() => {
-    if (setupStats.length === 0) return null
-    const mostUsed       = setupStats.reduce((a, b) => b.trades > a.trades ? b : a)
-    const mostProfitable = setupStats.reduce((a, b) => b.netPnl > a.netPnl ? b : a)
-    const bestAplus      = setupStats.reduce((a, b) =>
-      (b.aplusCount / Math.max(b.trades, 1)) > (a.aplusCount / Math.max(a.trades, 1)) ? b : a,
-    )
-    const setupInStreak  = setupStats.reduce((a, b) => b.currentStreak > a.currentStreak ? b : a)
-    return {
-      mostUsed,
-      mostProfitable,
-      bestAplus: { ...bestAplus, aplusRate: bestAplus.trades > 0 ? bestAplus.aplusCount / bestAplus.trades * 100 : 0 },
-      setupInStreak,
-    }
-  }, [setupStats])
+export function TabPlaybook() {
+  const { data, isLoading } = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
+
+  const setupStats     = data?.setupStats     ?? []
+  const sessionMatrix  = data?.sessionMatrix  ?? []
+  const directionStats = data?.directionStats ?? []
+  const playbookSummary = data?.playbookSummary ?? null
 
   const sessionGrid = useMemo(() => {
     const SESSIONS = ["New York", "London Close", "London", "Asia"] as const
@@ -59,9 +42,9 @@ export function TabPlaybook({
     })
   }, [setupStats, sessionMatrix])
 
-  const directionMap = useMemo(() => {
-    return new Map(directionStats.map(d => [d.setupId, d]))
-  }, [directionStats])
+  if (isLoading) {
+    return <div className="flex items-center justify-center h-64 text-[var(--ink-3)] text-sm">Cargando…</div>
+  }
 
   return (
     <div className="flex flex-col gap-4">

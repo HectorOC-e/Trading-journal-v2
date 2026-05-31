@@ -16,8 +16,11 @@ type AccountMeta    = RouterOutputs["accounts"]["list"][number]
 
 const TRADE_FILTERS = ["Todos", "A+", "Plan seguido", "Off-plan", "Con violación"]
 
+type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
+const PERIODS: Period[] = ["1M", "3M", "6M", "1Y", "ALL"]
+
 export function TabOperador({
-  kpis, accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts,
+  kpis, accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   accountStats:   DashboardStats["accountStats"]
@@ -28,6 +31,8 @@ export function TabOperador({
   recentTrades:   DashboardStats["recentTrades"]
   executionStats: DashboardStats["executionStats"]
   accounts:       AccountMeta[]
+  period:         Period
+  onPeriodChange: (p: Period) => void
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [tradeFilter, setTradeFilter] = useState("Todos")
@@ -75,6 +80,19 @@ export function TabOperador({
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
+        <div className="flex gap-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-sm)] p-0.5">
+          {PERIODS.map(p => (
+            <button key={p} onClick={() => onPeriodChange(p)}
+              className={cn(
+                "px-3 py-1 text-[11px] font-semibold rounded-[4px] transition-colors",
+                period === p ? "bg-[var(--accent)] text-white" : "text-[var(--ink-3)] hover:text-[var(--ink)]",
+              )}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
       {/* ── Equity hero ── */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-6 py-5">
         <div className="flex items-start justify-between mb-1">
