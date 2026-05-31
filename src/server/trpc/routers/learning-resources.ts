@@ -1,6 +1,9 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
+import { calcNextReviewAt, computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
+import { computeNewStreak } from "@/domains/learning/services/streak-service"
+import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 
 const RESOURCE_TYPES = [
   "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
@@ -84,33 +87,6 @@ function serializeReview(r: ResourceReview): SerializedReview {
   }
 }
 
-// P11-D: interval is per-resource, not a fixed global map.
-// masteryLevel adjusts: ≤2 → shorter, ≥4 → longer, else → exact interval.
-function calcNextReviewAt(reviewInterval: number, masteryLevel: number): Date {
-  let days: number
-  if (masteryLevel <= 2) {
-    days = Math.max(1, Math.ceil(reviewInterval / 2))
-  } else if (masteryLevel >= 4) {
-    days = Math.round(reviewInterval * 1.5)
-  } else {
-    days = reviewInterval
-  }
-  const date = new Date()
-  date.setDate(date.getDate() + days)
-  return date
-}
-
-function computeProgressPct(currentUnits: number, totalUnits: number | null): number | null {
-  if (!totalUnits || totalUnits === 0) return null
-  return Math.min(100, Math.round((currentUnits / totalUnits) * 100))
-}
-
-function computeStatus(currentUnits: number, totalUnits: number | null): string {
-  if (!totalUnits || totalUnits === 0) return currentUnits > 0 ? "IN_PROGRESS" : "PENDING"
-  if (currentUnits >= totalUnits) return "COMPLETED"
-  if (currentUnits > 0) return "IN_PROGRESS"
-  return "PENDING"
-}
 
 export const learningResourcesRouter = router({
   list: protectedProcedure
@@ -224,7 +200,7 @@ export const learningResourcesRouter = router({
         })
 
         const interval = resource.reviewInterval ?? 7
-        const nextReviewAt = calcNextReviewAt(interval, masteryLevel)
+        const nextReviewAt = calcNextReviewAt(interval, masteryLevel as 1 | 2 | 3 | 4 | 5)
 
         const newReview = await tx.resourceReview.create({
           data: {
@@ -250,23 +226,21 @@ export const learningResourcesRouter = router({
         })
 
         // TASK-L030: update materialized streak on User
-        const today = new Date(); today.setHours(0, 0, 0, 0)
-        const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1)
         const u = await tx.user.findUniqueOrThrow({
           where:  { id: ctx.userId },
           select: { currentStreak: true, bestStreak: true, lastReviewDate: true },
         })
-        const isConsecutive = u.lastReviewDate !== null &&
-          u.lastReviewDate.getTime() >= yesterday.getTime()
-        const isSameDay = u.lastReviewDate !== null &&
-          u.lastReviewDate.getTime() === today.getTime()
-        const newStreak = isSameDay ? u.currentStreak : (isConsecutive ? u.currentStreak + 1 : 1)
+        const { newStreak, lastReviewDate: newLastReviewDate } = computeNewStreak(
+          u.lastReviewDate,
+          u.currentStreak,
+          new Date(),
+        )
         await tx.user.update({
           where: { id: ctx.userId },
           data: {
-            currentStreak: newStreak,
-            bestStreak:    Math.max(u.bestStreak, newStreak),
-            lastReviewDate: today,
+            currentStreak:  newStreak,
+            bestStreak:     Math.max(u.bestStreak, newStreak),
+            lastReviewDate: newLastReviewDate,
           },
         })
 
@@ -298,7 +272,7 @@ export const learningResourcesRouter = router({
 
       const effectiveTotalUnits = totalUnits ?? existing.totalUnits
       const progressPct = computeProgressPct(currentUnits, effectiveTotalUnits)
-      const newStatus = computeStatus(currentUnits, effectiveTotalUnits)
+      const newStatus = computeResourceStatus(currentUnits, effectiveTotalUnits)
       const isNowCompleted = newStatus === "COMPLETED"
       const wasAlreadyCompleted = existing.completedAt !== null
 
@@ -535,7 +509,6 @@ export const learningResourcesRouter = router({
       const estimatedHoursThisWeek = Math.round(minutesThisWeekRaw / 60 * 10) / 10
 
       // TASK-L030: use materialized streak from User (O(1) instead of O(n) review scan)
-      const DAY_MS = 24 * 60 * 60 * 1000
       const currentStreak = user.currentStreak
       const bestStreak    = user.bestStreak
 
@@ -555,14 +528,10 @@ export const learningResourcesRouter = router({
       const minutesThisWeek = minutesThisWeekRaw
 
       // TASK-L029: auto-transition MASTERED → IN_REVIEW when nextReviewAt exceeded by 2× reviewInterval
-      const decayed = resources.filter(r =>
-        r.status === "MASTERED" &&
-        r.nextReviewAt !== null &&
-        (todayStart.getTime() - r.nextReviewAt.getTime()) > (r.reviewInterval ?? 7) * 2 * DAY_MS
-      )
-      if (decayed.length > 0) {
+      const decayedIds = detectDecayedResources(resources, todayStart)
+      if (decayedIds.length > 0) {
         await ctx.prisma.learningResource.updateMany({
-          where: { id: { in: decayed.map(r => r.id) } },
+          where: { id: { in: decayedIds } },
           data:  { status: "IN_REVIEW" },
         })
       }
@@ -579,7 +548,7 @@ export const learningResourcesRouter = router({
         focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
         weeklyGoalMinutes,
         minutesThisWeek,
-        decayedCount:            decayed.length,
+        decayedCount:            decayedIds.length,
       }
     }),
 

@@ -5,6 +5,8 @@ import type { Prisma } from "@/lib/generated/prisma/client"
 import { calcExpectancyR, calcProfitFactor, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
+import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
+import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -715,28 +717,21 @@ export const tradesRouter = router({
             where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: tradeDate },
             select: { pnl: true },
           })
-          const todayLoss    = todayTrades.reduce((s, t) => s + Math.min(0, Number(t.pnl ?? 0)), 0)
-          const todayLossPct = Number(account.initialBalance) > 0
-            ? Math.abs(todayLoss) / Number(account.initialBalance) * 100
-            : 0
-          if (todayLossPct >= Number(account.ddDailyPct)) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_DAILY_LOSS_LIMIT" })
-          }
+          const todayLoss = todayTrades.reduce((s, t) => s + Math.min(0, Number(t.pnl ?? 0)), 0)
+          const violation = checkDailyLossLimit(todayLoss, Number(account.initialBalance), Number(account.ddDailyPct))
+          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_DAILY_LOSS_LIMIT" })
         }
 
         if (account.maxTradesPerDay != null) {
           const todayCount = await ctx.prisma.trade.count({
             where: { accountId: input.accountId, userId: ctx.userId, date: tradeDate },
           })
-          if (todayCount >= account.maxTradesPerDay) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
-          }
+          const violation = checkTradeCountLimit(todayCount, account.maxTradesPerDay)
+          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
         }
 
-        const allowed = account.allowedSymbols as string[]
-        if (allowed.length > 0 && !allowed.includes(input.symbol)) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
-        }
+        const violation = checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])
+        if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
       }
 
       const trade = await ctx.prisma.trade.create({
@@ -826,13 +821,7 @@ export const tradesRouter = router({
           select:  { pnl: true },
           orderBy: [{ date: "asc" }, { createdAt: "asc" }],
         })
-        let cum = 0, peak = 0, maxDd = 0
-        for (const t of allClosed) {
-          cum += Number(t.pnl ?? 0)
-          if (cum > peak) peak = cum
-          const dd = peak - cum
-          if (dd > maxDd) maxDd = dd
-        }
+        const maxDd   = computeMaxDrawdown(allClosed.map(t => Number(t.pnl ?? 0)))
         const initBal = Number(acct.initialBalance)
         const ddPct   = initBal > 0 ? (maxDd / initBal) * 100 : 0
         if (ddPct >= Number(acct.ddTotalPct)) {
