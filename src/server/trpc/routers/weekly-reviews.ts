@@ -143,4 +143,86 @@ export const weeklyReviewsRouter = router({
         },
       }
     }),
+
+  // T-IX-004: Auto pre-fill data for a new weekly review
+  prefill: protectedProcedure
+    .input(z.object({
+      weekStart: z.string(),
+      weekEnd:   z.string(),
+      accountId: z.string().uuid().optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.userId
+      const from   = new Date(input.weekStart)
+      const to     = new Date(input.weekEnd)
+      to.setDate(to.getDate() + 1) // make end inclusive
+
+      const [trades, computedScore] = await Promise.all([
+        ctx.prisma.trade.findMany({
+          where: {
+            userId,
+            status: "CLOSED",
+            ...(input.accountId ? { accountId: input.accountId } : {}),
+            date: { gte: from, lt: to },
+          },
+          select: { pnl: true, rMultiple: true, setupId: true, tags: true },
+        }),
+        // Compute discipline score inline (same formula as computedDisciplineScore)
+        (async () => {
+          const [violations, reviews, pending] = await Promise.all([
+            ctx.prisma.trade.findMany({
+              where:  { userId, date: { gte: from, lt: to }, status: "CLOSED" },
+              select: { tags: true },
+            }),
+            ctx.prisma.resourceReview.findMany({
+              where:  { userId, createdAt: { gte: from, lt: to } },
+              select: { id: true },
+            }),
+            ctx.prisma.learningResource.count({
+              where: {
+                userId,
+                nextReviewAt: { lte: from },
+                status: { notIn: ["ABANDONED", "MASTERED"] },
+              },
+            }),
+          ])
+          const violCount = violations.filter(t =>
+            (t.tags as string[]).some(tag => VIOLATION_TAGS.includes(tag as typeof VIOLATION_TAGS[number]))
+          ).length
+          const totTrades = violations.length
+          const execution = totTrades > 0 ? (totTrades - violCount) / totTrades : 1
+          const learning  = pending > 0 ? Math.min(1, reviews.length / pending) : 1
+          const adherence = violCount === 0 ? 1 : Math.max(0, 1 - violCount / Math.max(totTrades, 1))
+          return { score: Math.round(execution * 50 + learning * 30 + adherence * 20) }
+        })(),
+      ])
+
+      const tradeCount = trades.length
+      const netPnl     = parseFloat(trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0).toFixed(2))
+      const wins       = trades.filter(t => Number(t.pnl ?? 0) > 0).length
+      const winRate    = tradeCount > 0 ? parseFloat((wins / tradeCount * 100).toFixed(2)) : 0
+
+      // Find best and worst setup by total P&L
+      const bySetup: Record<string, number> = {}
+      for (const t of trades) {
+        if (!t.setupId) continue
+        bySetup[t.setupId] = (bySetup[t.setupId] ?? 0) + Number(t.pnl ?? 0)
+      }
+      const setupEntries = Object.entries(bySetup)
+      const topSetupId   = setupEntries.length > 0
+        ? setupEntries.reduce((a, b) => b[1] > a[1] ? b : a)[0]
+        : null
+      const worstSetupId = setupEntries.length > 0
+        ? setupEntries.reduce((a, b) => b[1] < a[1] ? b : a)[0]
+        : null
+
+      return {
+        tradeCount,
+        netPnl,
+        winRate,
+        disciplineScore: computedScore.score,
+        topSetupId,
+        worstSetupId,
+      }
+    }),
 })

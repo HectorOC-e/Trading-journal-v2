@@ -232,6 +232,27 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
     { weekStart: week.start, weekEnd: week.end },
   )
 
+  // T-IX-004: Pre-fill query — loads trade stats for the selected week/account from the server
+  const { data: prefillData } = trpc.weeklyReviews.prefill.useQuery(
+    {
+      weekStart: week.start,
+      weekEnd:   week.end,
+      ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}),
+    },
+    { staleTime: 60_000 },
+  )
+
+  // When prefill data arrives and the summary fields have not been manually edited,
+  // apply the server-computed stats so the modal opens with accurate trade data.
+  useEffect(() => {
+    if (!prefillData) return
+    if (!generated) {
+      // No manual generate yet — apply all auto fields
+      setAutoFields(prev => new Set([...prev, "disciplineScore"]))
+      setDisciplineScore(prefillData.disciplineScore)
+    }
+  }, [prefillData])
+
   useEffect(() => {
     if (serverScore && autoFields.has("disciplineScore")) {
       setDisciplineScore(serverScore.score)
@@ -263,11 +284,14 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
 
   function handleSave(status: "draft" | "submitted") {
     if (!week) return
+    // Prefer locally generated stats; fall back to server prefill; default to 0
+    const tradeCount = generated?.tradeCount ?? prefillData?.tradeCount ?? 0
+    const netPnl     = generated?.netPnl     ?? prefillData?.netPnl     ?? 0
+    const winRate    = generated?.winRate     ?? prefillData?.winRate    ?? 0
     createReview.mutate({
       accountId: effectiveAccountId || null,
       weekLabel: week.label, weekRange: week.range, weekStart: week.start, weekEnd: week.end,
-      tradeCount: generated?.tradeCount ?? 0, netPnl: generated?.netPnl ?? 0,
-      winRate: generated?.winRate ?? 0, disciplineScore,
+      tradeCount, netPnl, winRate, disciplineScore,
       executiveSummary, whatWorked, toImprove, status,
     })
   }
@@ -315,6 +339,36 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
                     <WeekSelectorCard key={w.label} week={w} selected={selectedWeek === i} onClick={() => handleSelectWeek(i)} generated={generated && selectedWeek === i ? generated : undefined} />
                   ))}
                 </div>
+                {/* T-IX-004: Server-sourced week summary row */}
+                {prefillData && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-3)" }}>Esta semana:</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
+                      {prefillData.tradeCount} trades
+                    </span>
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded font-mono font-bold"
+                      style={{
+                        color:       prefillData.netPnl >= 0 ? "var(--win)" : "var(--loss)",
+                        background:  prefillData.netPnl >= 0 ? "var(--win-soft)" : "var(--loss-soft)",
+                      }}
+                    >
+                      {prefillData.netPnl >= 0 ? "+" : ""}${prefillData.netPnl.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
+                      {prefillData.winRate.toFixed(0)}% WR
+                    </span>
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                      style={{
+                        background: disciplineBg(prefillData.disciplineScore),
+                        color:      disciplineColor(prefillData.disciplineScore),
+                      }}
+                    >
+                      {prefillData.disciplineScore}/100 disc.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-[var(--radius-sm)] p-4" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>

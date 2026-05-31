@@ -86,7 +86,7 @@ async function sendWeeklySummary(
   const weekStartISO = weekStart.toISOString()
   const weekEndISO   = new Date(weekEnd.getTime() + 86_400_000).toISOString()
 
-  const [completedRes, pendingRes, minuteRes] = await Promise.all([
+  const [completedRes, pendingRes, minuteRes, weekTradesRes] = await Promise.all([
     supabase
       .from("learning_resources")
       .select("title, type")
@@ -110,6 +110,15 @@ async function sendWeeklySummary(
       .select("week_delta_minutes, week_delta_reset_at")
       .eq("user_id", userId)
       .eq("progress_type", "minutes"),
+
+    // T-IX-002: Fetch trades for the week
+    supabase
+      .from("trades")
+      .select("pnl, r_multiple, setup_id, tags")
+      .eq("user_id", userId)
+      .eq("status", "CLOSED")
+      .gte("date", weekStartISO.slice(0, 10))
+      .lt("date", weekEndISO.slice(0, 10)),
   ])
 
   const completed     = completedRes.data ?? []
@@ -124,6 +133,13 @@ async function sendWeeklySummary(
 
   const goalPct = Math.min(100, Math.round((minutesThisWeek / goalMinutes) * 100))
 
+  // T-IX-002: Compute trading performance section
+  const weekTrades = weekTradesRes.data ?? []
+  const tradeCount = weekTrades.length
+  const netPnl     = weekTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+  const wins       = weekTrades.filter(t => Number(t.pnl ?? 0) > 0).length
+  const winRate    = tradeCount > 0 ? Math.round(wins / tradeCount * 100) : null
+
   const weekRange = `${fmtDate(weekStart.toISOString())} – ${fmtDate(weekEnd.toISOString())}`
   const greeting  = name ? `Hola ${name}` : "Hola"
 
@@ -137,6 +153,11 @@ async function sendWeeklySummary(
 
   const progressBarWidth = `${goalPct}%`
   const progressColor    = goalPct >= 100 ? "#22c55e" : goalPct >= 60 ? "#f59e0b" : "#4f6ef7"
+
+  // T-IX-002: Trading section HTML
+  const tradingHtml = tradeCount === 0
+    ? '<p style="color: #6b7280;">Sin trades registrados esta semana.</p>'
+    : `<p>${tradeCount} trades · <strong style="color: ${netPnl >= 0 ? '#16a34a' : '#dc2626'}">${netPnl >= 0 ? '+' : ''}$${netPnl.toFixed(0)}</strong> · ${winRate ?? '—'}% WR</p>`
 
   await sendEmail(
     email,
@@ -159,6 +180,10 @@ async function sendWeeklySummary(
     <div style="height:8px;border-radius:999px;width:${progressBarWidth};background:${progressColor}"></div>
   </div>
   <p style="color:#6b7280;font-size:12px;margin-top:6px">${goalPct}% de tu meta semanal${goalPct >= 100 ? " 🎉" : ""}</p>
+
+  <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
+  <h3 style="font-size: 15px; margin-bottom: 8px;">📈 Tu semana de trading</h3>
+  ${tradingHtml}
 
   <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
   <p style="font-size:11px;color:#9ca3af">Para desactivar estos emails ve a <strong>Perfil → Notificaciones</strong>.</p>
@@ -219,6 +244,199 @@ async function sendInactivityAlert(
   return true
 }
 
+// ─── T-IX-001: Decay notification ────────────────────────────────────────────
+
+async function sendDecayNotification(
+  email: string,
+  name: string,
+  userId: string,
+): Promise<void> {
+  const now = Date.now()
+
+  // 1. Find MASTERED resources where (now - nextReviewAt) > reviewInterval * 2 * 86400000
+  const { data: masteredResources } = await supabase
+    .from("learning_resources")
+    .select("id, title, next_review_at, review_interval")
+    .eq("user_id", userId)
+    .eq("status", "MASTERED")
+    .not("next_review_at", "is", null)
+
+  const decayedResources = (masteredResources ?? []).filter(r => {
+    if (!r.next_review_at) return false
+    const nextReview     = new Date(r.next_review_at).getTime()
+    const intervalMs     = Number(r.review_interval ?? 0) * 2 * 86_400_000
+    return (now - nextReview) > intervalMs
+  })
+
+  if (decayedResources.length === 0) return
+
+  // 2. Skip if already sent a decay email in the last 7 days for this user
+  const sevenDaysAgo = new Date(now - 7 * 86_400_000).toISOString()
+  const { data: recentLog } = await supabase
+    .from("email_log")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("email_type", "decay")
+    .gte("created_at", sevenDaysAgo)
+    .limit(1)
+
+  if (recentLog && recentLog.length > 0) return
+
+  // 3. Compute days overdue for the most-overdue resource (for email copy)
+  const maxOverdueMs  = Math.max(...decayedResources.map(r => now - new Date(r.next_review_at).getTime()))
+  const days          = Math.floor(maxOverdueMs / 86_400_000)
+
+  await sendEmail(
+    email,
+    `📚 Recursos que necesitan revisión — ${decayedResources.length} recurso${decayedResources.length > 1 ? "s" : ""}`,
+    `<!DOCTYPE html>
+<html>
+<body style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#111">
+  <h2>📚 Recursos que necesitan revisión</h2>
+  <p>Hola ${name},</p>
+  <p>Llevas más de ${days} días sin repasar estos recursos:</p>
+  <ul>
+    ${decayedResources.slice(0, 5).map(r => `<li><strong>${r.title}</strong> — venció el ${fmtDate(r.next_review_at)}</li>`).join("")}
+  </ul>
+  <p>El olvido es normal. Vuelve hoy para mantener tu ventaja.</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+  <p style="font-size:11px;color:#9ca3af">Para desactivar estos emails ve a <strong>Perfil → Notificaciones</strong>.</p>
+</body>
+</html>`
+  )
+
+  // 4. Log to email_log
+  await supabase.from("email_log").insert({
+    user_id:    userId,
+    email_type: "decay",
+    week_key:   new Date().toISOString().slice(0, 10),
+  })
+}
+
+// ─── T-IX-003: Prop firm health alert ────────────────────────────────────────
+
+async function sendPropFirmHealthAlert(
+  email: string,
+  name: string,
+  userId: string,
+  today: string,  // YYYY-MM-DD
+): Promise<void> {
+  // Get all ACTIVE PROP_FIRM accounts for the user
+  const { data: accounts } = await supabase
+    .from("accounts")
+    .select("id, name, initial_balance, dd_daily_pct, dd_total_pct")
+    .eq("user_id", userId)
+    .eq("status", "ACTIVE")
+    .eq("type", "PROP_FIRM")
+
+  for (const account of accounts ?? []) {
+    const initialBal  = Number(account.initial_balance)
+    const dailyLimPct = Number(account.dd_daily_pct ?? 0)
+    const totalLimPct = Number(account.dd_total_pct ?? 0)
+
+    // ── Daily loss check ──
+    if (dailyLimPct > 0) {
+      const { data: todayTrades } = await supabase
+        .from("trades")
+        .select("pnl")
+        .eq("account_id", account.id)
+        .eq("date", today)
+        .eq("status", "CLOSED")
+
+      const todayPnl     = (todayTrades ?? []).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const todayLoss    = Math.abs(Math.min(0, todayPnl))
+      const todayLossPct = initialBal > 0 ? todayLoss / initialBal * 100 : 0
+
+      // Alert at 80% of daily limit
+      if (todayLossPct >= dailyLimPct * 0.8) {
+        const alertKey = `prop_firm_daily_${account.id}_${today}`
+        const { data: existing } = await supabase
+          .from("email_log")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("email_type", alertKey)
+          .limit(1)
+
+        if (!existing || existing.length === 0) {
+          const usedPct = ((todayLossPct / dailyLimPct) * 100).toFixed(0)
+          await sendEmail(
+            email,
+            `⚠️ Alerta: cerca del límite diario — ${account.name}`,
+            `<!DOCTYPE html>
+<html>
+<body style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#111">
+  <h2>⚠️ Límite diario al ${usedPct}%</h2>
+  <p>Hola ${name},</p>
+  <p>Tu cuenta <strong>${account.name}</strong> ha utilizado el
+    <strong>${usedPct}%</strong> de su límite de pérdida diaria
+    ($${todayLoss.toFixed(2)} de $${(initialBal * dailyLimPct / 100).toFixed(2)}).</p>
+  <p>Revisa si debes seguir operando hoy.</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+  <p style="font-size:11px;color:#9ca3af">Para desactivar estos emails ve a <strong>Perfil → Notificaciones</strong>.</p>
+</body>
+</html>`
+          )
+          await supabase.from("email_log").insert({
+            user_id:    userId,
+            email_type: alertKey,
+            week_key:   today,
+          })
+        }
+      }
+    }
+
+    // ── Total drawdown check ──
+    if (totalLimPct > 0) {
+      const { data: allTrades } = await supabase
+        .from("trades")
+        .select("pnl")
+        .eq("account_id", account.id)
+        .eq("status", "CLOSED")
+
+      const totalPnl     = (allTrades ?? []).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const totalLoss    = Math.abs(Math.min(0, totalPnl))
+      const totalLossPct = initialBal > 0 ? totalLoss / initialBal * 100 : 0
+
+      // Alert at 90% of total drawdown limit
+      if (totalLossPct >= totalLimPct * 0.9) {
+        const alertKey = `prop_firm_total_${account.id}_${today}`
+        const { data: existing } = await supabase
+          .from("email_log")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("email_type", alertKey)
+          .limit(1)
+
+        if (!existing || existing.length === 0) {
+          const usedPct = ((totalLossPct / totalLimPct) * 100).toFixed(0)
+          await sendEmail(
+            email,
+            `🚨 Alerta: drawdown total al ${usedPct}% — ${account.name}`,
+            `<!DOCTYPE html>
+<html>
+<body style="font-family:system-ui,sans-serif;max-width:500px;margin:0 auto;padding:24px;color:#111">
+  <h2>🚨 Límite de drawdown total al ${usedPct}%</h2>
+  <p>Hola ${name},</p>
+  <p>Tu cuenta <strong>${account.name}</strong> ha utilizado el
+    <strong>${usedPct}%</strong> de su límite de drawdown total
+    ($${totalLoss.toFixed(2)} de $${(initialBal * totalLimPct / 100).toFixed(2)}).</p>
+  <p>Considera detener las operaciones para proteger tu cuenta.</p>
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0"/>
+  <p style="font-size:11px;color:#9ca3af">Para desactivar estos emails ve a <strong>Perfil → Notificaciones</strong>.</p>
+</body>
+</html>`
+          )
+          await supabase.from("email_log").insert({
+            user_id:    userId,
+            email_type: alertKey,
+            week_key:   today,
+          })
+        }
+      }
+    }
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
@@ -231,6 +449,42 @@ Deno.serve(async (req: Request) => {
   }
 
   const body = await req.json().catch(() => ({})) as { type?: string; force?: boolean }
+
+  // ── T-IX-001: Decay notification handler ──
+  if (body.type === "decay") {
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, email, name, email_notifications")
+    let sent = 0
+    for (const u of users ?? []) {
+      if (!u.email_notifications) continue
+      await sendDecayNotification(u.email, u.name ?? "Trader", u.id)
+      sent++
+    }
+    return new Response(JSON.stringify({ ok: true, processed: sent }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
+  // ── T-IX-003: Prop firm health handler ──
+  if (body.type === "prop_firm_health") {
+    const today = new Date().toISOString().slice(0, 10)
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, email, name, email_notifications")
+      .eq("email_notifications", true)
+    let processed = 0
+    for (const u of users ?? []) {
+      await sendPropFirmHealthAlert(u.email, u.name ?? "Trader", u.id, today)
+      processed++
+    }
+    return new Response(JSON.stringify({ ok: true, processed }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
   const type  = body.type === "inactivity" ? "inactivity" : "weekly"
   const force = body.force === true  // bypass timezone filter (for manual testing)
 
@@ -325,3 +579,34 @@ Deno.serve(async (req: Request) => {
     { headers: { "Content-Type": "application/json" } },
   )
 })
+
+// ─── pg_cron setup (run once manually in Supabase SQL editor) ────────────────
+//
+// Enable pg_cron:
+//   CREATE EXTENSION IF NOT EXISTS pg_cron;
+//
+// T-IX-001: Daily decay check at 08:00 UTC
+//   SELECT cron.schedule(
+//     'decay-check',
+//     '0 8 * * *',
+//     $$
+//     SELECT net.http_post(
+//       url := current_setting('app.supabase_url') || '/functions/v1/weekly-learning-summary',
+//       body := '{"type":"decay"}'::jsonb,
+//       headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.cron_secret', true))
+//     )
+//     $$
+//   );
+//
+// T-IX-003: Prop firm health check at 22:00 UTC
+//   SELECT cron.schedule(
+//     'prop-firm-health',
+//     '0 22 * * *',
+//     $$
+//     SELECT net.http_post(
+//       url := current_setting('app.supabase_url') || '/functions/v1/weekly-learning-summary',
+//       body := '{"type":"prop_firm_health"}'::jsonb,
+//       headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.cron_secret', true))
+//     )
+//     $$
+//   );
