@@ -1736,7 +1736,7 @@ Mood tracking with trade outcome correlation provides the trader with evidence-b
 **Domain:** `[AI]` `[ANALYTICS]`  
 **Priority:** P3  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1767,8 +1767,8 @@ This is the RAG context builder for the Claude AI Coach (T-VI-003). It is determ
 
 #### Acceptance Criteria
 
-- [ ] `buildTraderContext` returns a typed `TraderContext` object
-- [ ] Function is callable from a Next.js API route without tRPC
+- [x] `buildTraderContext` returns a typed `TraderContext` object
+- [x] Function is callable from a Next.js API route without tRPC
 - [ ] All sub-functions are independently testable with mock Prisma data
 
 ---
@@ -1778,7 +1778,7 @@ This is the RAG context builder for the Claude AI Coach (T-VI-003). It is determ
 **Domain:** `[AI]` `[PSYCHOLOGY]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1813,9 +1813,9 @@ Patterns surface in `TabDisciplina` as an "Insights" section. No LLM required �
 
 #### Acceptance Criteria
 
-- [ ] Each detector returns `null` when insufficient data (< 20 trades)
-- [ ] `detectRevengeTradingPattern` fires when ≥30% of trades tagged Impulsivo follow a losing trade
-- [ ] Patterns display in `TabDisciplina` with confidence label and evidence string
+- [x] Each detector returns `null` when insufficient data (< 20 trades)
+- [x] `detectRevengeTradingPattern` fires when ≥30% of trades tagged Impulsivo follow a losing trade
+- [x] Patterns display in `TabDisciplina` with confidence label and evidence string
 
 ---
 
@@ -1824,7 +1824,7 @@ Patterns surface in `TabDisciplina` as an "Insights" section. No LLM required �
 **Domain:** `[AI]`  
 **Priority:** P3  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1868,11 +1868,11 @@ Rules:
 
 #### Acceptance Criteria
 
-- [ ] Chat interface renders in a drawer accessible from all pages
-- [ ] Server builds `TraderContext` before every call
-- [ ] Responses stream token-by-token
-- [ ] If API key is not configured, chat shows "Configuración pendiente" gracefully
-- [ ] No trade data is stored in any AI provider's logs (verify by inspecting request body)
+- [x] Chat interface renders in a drawer accessible from all pages
+- [x] Server builds `TraderContext` before every call
+- [x] Responses stream token-by-token
+- [x] If API key is not configured, chat shows "Configuración pendiente" gracefully
+- [x] No trade data is stored in any AI provider's logs (verify by inspecting request body)
 
 ---
 
@@ -1881,7 +1881,7 @@ Rules:
 **Domain:** `[AI]`  
 **Priority:** P3  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[/]`
 
 #### Description
 
@@ -1912,7 +1912,7 @@ A user with 500 trades cannot find "the trade where I noted I was uncertain abou
 
 #### Acceptance Criteria
 
-- [ ] `pgvector` extension enabled on Supabase project
+- [x] `pgvector` extension enabled on Supabase project
 - [ ] New trades get their notes embedded asynchronously (does not block `trades.create` response)
 - [ ] `trades.semanticSearch("uncertain about entry")` returns trades with semantically similar notes
 - [ ] Search results are scoped to the authenticated user's trades only
@@ -1936,7 +1936,7 @@ A user with 500 trades cannot find "the trade where I noted I was uncertain abou
 **Domain:** `[INTEGRATION]` `[TRADING]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1993,11 +1993,11 @@ The parser is pure (no DB access). The router applies the import using the exist
 
 #### Acceptance Criteria
 
-- [ ] Parsing a valid MT4 CSV returns correctly typed `ParsedTrade[]`
-- [ ] Duplicate detection skips trades that already exist (by ticker hash)
-- [ ] Dry-run returns the count of trades to create and any warnings before committing
-- [ ] A confirmed import creates Trade + TradeEvent records and is visible in `/trades`
-- [ ] RLS prevents importing trades to an account owned by another user
+- [x] Parsing a valid MT4 CSV returns correctly typed `ParsedTrade[]`
+- [x] Duplicate detection skips trades that already exist (by ticker hash)
+- [x] Dry-run returns the count of trades to create and any warnings before committing
+- [x] A confirmed import creates Trade + TradeEvent records and is visible in `/trades`
+- [x] RLS prevents importing trades to an account owned by another user
 
 ---
 
@@ -2006,7 +2006,7 @@ The parser is pure (no DB access). The router applies the import using the exist
 **Domain:** `[FINANCE]`  
 **Priority:** P3  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2045,10 +2045,10 @@ Swap fees, broker commissions not logged as trades, and weekend charges create a
 
 #### Acceptance Criteria
 
-- [ ] "Sincronizar balance" button appears on account cards
-- [ ] Entering an actual balance creates a `BALANCE_CORRECTION` log entry
-- [ ] The variance is displayed in the account card as "Diferencia: $X"
-- [ ] Historical corrections accumulate correctly (multiple corrections per account are summed)
+- [x] "Sincronizar balance" button appears on account cards
+- [x] Entering an actual balance creates a `BALANCE_CORRECTION` log entry
+- [x] The variance is displayed in the account card as "Diferencia: $X"
+- [x] Historical corrections accumulate correctly (multiple corrections per account are summed)
 
 ---
 
@@ -2057,7 +2057,7 @@ Swap fees, broker commissions not logged as trades, and weekend charges create a
 **Domain:** `[INTEGRATION]` `[TRADING]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2090,11 +2090,11 @@ Upload to `trade-screenshots/{userId}/{tradeId}/{filename}`. Append public URL t
 
 #### Acceptance Criteria
 
-- [ ] Supabase Storage bucket `trade-screenshots` created with per-user RLS policy
-- [ ] Drag-drop upload works in RegisterTradeModal and EditTradeModal
-- [ ] Files are stored under `{userId}/{tradeId}/` path
-- [ ] Trade detail panel shows thumbnail grid with lightbox
-- [ ] Deleting a trade deletes its screenshots from Storage (via DB trigger or mutation cleanup)
+- [x] Supabase Storage bucket `trade-screenshots` created with per-user RLS policy
+- [x] Drag-drop upload works in RegisterTradeModal and EditTradeModal
+- [x] Files are stored under `{userId}/{tradeId}/` path
+- [x] Trade detail panel shows thumbnail grid with lightbox
+- [x] Deleting a trade deletes its screenshots from Storage (via DB trigger or mutation cleanup)
 
 ---
 
@@ -2103,7 +2103,7 @@ Upload to `trade-screenshots/{userId}/{tradeId}/{filename}`. Append public URL t
 **Domain:** `[INTEGRATION]` `[TRADING]`  
 **Priority:** P3  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[/]`
 
 #### Description
 
@@ -2117,8 +2117,8 @@ cTrader key columns: `Position ID`, `Symbol`, `Direction`, `Volume`, `Entry Pric
 
 #### Acceptance Criteria
 
-- [ ] cTrader CSV parses correctly with LONG/SHORT direction mapping
-- [ ] Gross Profit + Commission → netPnl in the Trade record
+- [x] cTrader CSV parses correctly with LONG/SHORT direction mapping
+- [x] Gross Profit + Commission → netPnl in the Trade record
 - [ ] Duplicate detection uses `Position ID` as the idempotency key
 
 ---
@@ -2140,7 +2140,7 @@ cTrader key columns: `Position ID`, `Symbol`, `Direction`, `Volume`, `Entry Pric
 **Domain:** `[SETUP]` `[ANALYTICS]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2172,9 +2172,9 @@ Setup stats are currently the largest client-side computation in `TabPlaybook`. 
 
 #### Acceptance Criteria
 
-- [ ] `setups.performanceStats` returns identical values to the current client-side useMemo computation for a known dataset
-- [ ] `TabPlaybook` uses the procedure; no setup analytics `useMemo` remains
-- [ ] `resourceImpactRanking` reuses `SetupAnalyticsService.computeSetupStats`
+- [x] `setups.performanceStats` returns identical values to the current client-side useMemo computation for a known dataset
+- [x] `TabPlaybook` uses the procedure; no setup analytics `useMemo` remains
+- [x] `resourceImpactRanking` reuses `SetupAnalyticsService.computeSetupStats`
 
 ---
 
@@ -2183,7 +2183,7 @@ Setup stats are currently the largest client-side computation in `TabPlaybook`. 
 **Domain:** `[SETUP]`  
 **Priority:** P3  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2217,9 +2217,9 @@ Without a defined expected edge, a setup's performance has no benchmark. A trade
 
 #### Acceptance Criteria
 
-- [ ] Migration applied; setup edit modal shows optional edge fields
-- [ ] `setups.performanceStats` returns `expectedWr` and `expectedAvgR` alongside actual values
-- [ ] Setup cards apply color coding based on divergence from expected WR
+- [x] Migration applied; setup edit modal shows optional edge fields
+- [x] `setups.performanceStats` returns `expectedWr` and `expectedAvgR` alongside actual values
+- [x] Setup cards apply color coding based on divergence from expected WR
 
 ---
 
@@ -2228,7 +2228,7 @@ Without a defined expected edge, a setup's performance has no benchmark. A trade
 **Domain:** `[SETUP]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2258,10 +2258,10 @@ Suggestions appear as amber banners in `TabPlaybook` and the `/playbook` page. M
 
 #### Acceptance Criteria
 
-- [ ] Suggestion for a setup with actual WR 15pp below expected (with 25+ trades) correctly fires "PAUSE"
-- [ ] No suggestion fires with < 20 trades (insufficient evidence)
-- [ ] Dismissed suggestions do not reappear for 7 days
-- [ ] The evidence string cites the number of trades and the time period analyzed
+- [x] Suggestion for a setup with actual WR 15pp below expected (with 25+ trades) correctly fires "PAUSE"
+- [x] No suggestion fires with < 20 trades (insufficient evidence)
+- [x] Dismissed suggestions do not reappear for 7 days
+- [x] The evidence string cites the number of trades and the time period analyzed
 
 ---
 
@@ -2270,7 +2270,7 @@ Suggestions appear as amber banners in `TabPlaybook` and the `/playbook` page. M
 **Domain:** `[SETUP]`  
 **Priority:** P3  
 **Complexity:** L  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2301,10 +2301,10 @@ A setup evolved over time is not the same strategy. Analyzing a setup's total hi
 
 #### Acceptance Criteria
 
-- [ ] `setup_versions` table created; Prisma model available
-- [ ] Editing `aplusChecklist` creates a new version snapshot before applying the edit
-- [ ] `setups.performanceStats({ setupId, versionId })` scopes analysis to trades after that version's `created_at`
-- [ ] Setup detail view shows version history with date and reason
+- [x] `setup_versions` table created; Prisma model available
+- [x] Editing `aplusChecklist` creates a new version snapshot before applying the edit
+- [x] `setups.performanceStats({ setupId, versionId })` scopes analysis to trades after that version's `created_at`
+- [x] Setup detail view shows version history with date and reason
 
 ---
 
@@ -2325,7 +2325,7 @@ A setup evolved over time is not the same strategy. Analyzing a setup's total hi
 **Domain:** `[AUTOMATION]` `[LEARNING]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2374,10 +2374,10 @@ Reuses the existing edge function structure, idempotence table, and timezone-awa
 
 #### Acceptance Criteria
 
-- [ ] Edge function `type=decay` sends emails for users with decayed MASTERED resources
-- [ ] Idempotence: same user does not receive more than one decay email per 7-day window
-- [ ] Email lists up to 5 decayed resources with dates
-- [ ] pg_cron schedule fires daily at 08:00 UTC
+- [x] Edge function `type=decay` sends emails for users with decayed MASTERED resources
+- [x] Idempotence: same user does not receive more than one decay email per 7-day window
+- [x] Email lists up to 5 decayed resources with dates
+- [x] pg_cron schedule fires daily at 08:00 UTC
 
 ---
 
@@ -2386,7 +2386,7 @@ Reuses the existing edge function structure, idempotence table, and timezone-awa
 **Domain:** `[AUTOMATION]` `[ANALYTICS]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2423,10 +2423,10 @@ If `tradeCount === 0`, the section reads: "Sin trades registrados esta semana."
 
 #### Acceptance Criteria
 
-- [ ] Weekly email includes trading performance section when `tradeCount > 0`
-- [ ] Net P&L sign is correct (+ for positive weeks)
-- [ ] Section is omitted gracefully when no trades exist for the week
-- [ ] Section respects `email_notifications = false` (already handled by existing fan-out)
+- [x] Weekly email includes trading performance section when `tradeCount > 0`
+- [x] Net P&L sign is correct (+ for positive weeks)
+- [x] Section is omitted gracefully when no trades exist for the week
+- [x] Section respects `email_notifications = false` (already handled by existing fan-out)
 
 ---
 
@@ -2435,7 +2435,7 @@ If `tradeCount === 0`, the section reads: "Sin trades registrados esta semana."
 **Domain:** `[AUTOMATION]` `[TRADING]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2487,7 +2487,7 @@ Revisa si debes seguir operando hoy.
 **Domain:** `[AUTOMATION]` `[PSYCHOLOGY]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2523,10 +2523,10 @@ Pre-filled values are shown as editable defaults. The trader writes narrative ov
 
 #### Acceptance Criteria
 
-- [ ] Opening "New weekly review" shows pre-filled trade count, P&L, win rate, discipline score
-- [ ] Pre-filled values match actual trade data for the selected week
-- [ ] All pre-filled fields are editable before saving
-- [ ] Opening the modal for a week with no trades shows 0s (not empty)
+- [x] Opening "New weekly review" shows pre-filled trade count, P&L, win rate, discipline score
+- [x] Pre-filled values match actual trade data for the selected week
+- [x] All pre-filled fields are editable before saving
+- [x] Opening the modal for a week with no trades shows 0s (not empty)
 
 ---
 
@@ -2535,7 +2535,7 @@ Pre-filled values are shown as editable defaults. The trader writes narrative ov
 **Domain:** `[AUTOMATION]` `[PSYCHOLOGY]`  
 **Priority:** P2  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2556,7 +2556,7 @@ SELECT cron.schedule(
 
 #### Acceptance Criteria
 
-- **Option A:** `violations_this_month` column removed from schema; `TabDisciplina` uses `ruleViolationStats` query
+- [x] **Option A:** `violations_this_month` column removed from schema; `TabDisciplina` uses `ruleViolationStats` query
 - **Option B:** pg_cron job exists and fires on the 1st of each month
 
 ---
