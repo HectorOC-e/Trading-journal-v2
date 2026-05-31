@@ -6,7 +6,7 @@ import { calcExpectancyR, calcProfitFactor, calcSharpeRatio, getISOWeekKey } fro
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
-import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
+import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -264,15 +264,8 @@ export const tradesRouter = router({
         const monthT  = at.filter(t => t.date >= monthStart)
         const todayT  = at.filter(t => t.date === today)
 
-        let cum = 0, peak = 0, maxDd = 0
-        const sparkline: number[] = [initBal]
-        for (const t of at) {
-          cum += t.pnl
-          sparkline.push(parseFloat((initBal + cum).toFixed(2)))
-          if (cum > peak) peak = cum
-          const dd = peak - cum
-          if (dd > maxDd) maxDd = dd
-        }
+        const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
+        const sparkline = [initBal, ...computeEquityCurve(initBal, at).map(c => parseFloat(c.balance.toFixed(2)))]
 
         return {
           accountId:   a.id,
@@ -292,10 +285,8 @@ export const tradesRouter = router({
       const equityCurve: { date: string; balance: number; accountId: string }[] = []
       for (const a of accounts) {
         const at = trades.filter(t => t.accountId === a.id)
-        let bal = Number(a.initialBalance)
-        for (const t of at) {
-          bal = parseFloat((bal + t.pnl).toFixed(2))
-          equityCurve.push({ date: t.date, balance: bal, accountId: a.id })
+        for (const point of computeEquityCurve(Number(a.initialBalance), at)) {
+          equityCurve.push({ date: point.date, balance: parseFloat(point.balance.toFixed(2)), accountId: a.id })
         }
       }
 
@@ -460,13 +451,7 @@ export const tradesRouter = router({
           const at       = trades.filter(t => t.accountId === a.id)
           const initBal  = Number(a.initialBalance)
 
-          let cum = 0, peak = 0, maxDd = 0
-          for (const t of at) {
-            cum += t.pnl
-            if (cum > peak) peak = cum
-            const dd = peak - cum
-            if (dd > maxDd) maxDd = dd
-          }
+          const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
           const ddTotalLimit = Number(a.ddTotalPct ?? 5)
           const ddPctUsed = initBal > 0 && ddTotalLimit > 0
             ? (maxDd / initBal) / (ddTotalLimit / 100) * 100

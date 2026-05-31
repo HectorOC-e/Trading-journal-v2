@@ -176,4 +176,8 @@ describe("getISOWeekKey", () => {
     const key = getISOWeekKey(new Date("2026-01-05"))
     expect(key).toMatch(/W\d{2}$/)
   })
+
+  it("2026-12-28 → 2026-W53 (year starting on Thursday has 53 ISO weeks)", () => {
+    expect(getISOWeekKey(new Date("2026-12-28"))).toBe("2026-W53")
+  })
 })
