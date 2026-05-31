@@ -390,14 +390,14 @@ export const mockResources: LearningResource[] = [
 ]
 
 export const mockRules: Rule[] = [
-  { id: "rule-sys-1", name: "Operar fuera de sesión", description: "Trade abierto fuera de las killzones permitidas.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 2 },
-  { id: "rule-sys-2", name: "Exceder máximo de trades", description: "Más trades en un día del límite de la cuenta.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 3 },
-  { id: "rule-sys-3", name: "Pérdida diaria sobre límite", description: "La pérdida del día superó el límite diario configurado.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-sys-4", name: "Operar símbolo no permitido", description: "Se operó un instrumento fuera de la lista permitida.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-cus-1", name: "Promediar en pérdida", description: "Agregar posición a un trade en pérdida para bajar el precio promedio.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-cus-2", name: "Operar en noticias", description: "Abrir trade 15 min antes o durante publicación de noticia de alto impacto.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 2 },
-  { id: "rule-cus-3", name: "Sin checklist completado", description: "Abrir trade sin haber marcado todos los ítems del checklist del setup.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 0 },
-  { id: "rule-cus-4", name: "Trade de venganza", description: "Abrir trade inmediatamente tras pérdida sin pausa mínima de 15 minutos.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: false, violationsThisMonth: 3 },
+  { id: "rule-sys-1", name: "Operar fuera de sesión",      description: "Trade abierto fuera de las killzones permitidas.",                                         severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-2", name: "Exceder máximo de trades",    description: "Más trades en un día del límite de la cuenta.",                                            severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-3", name: "Pérdida diaria sobre límite", description: "La pérdida del día superó el límite diario configurado.",                                  severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-4", name: "Operar símbolo no permitido", description: "Se operó un instrumento fuera de la lista permitida.",                                     severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-cus-1", name: "Promediar en pérdida",        description: "Agregar posición a un trade en pérdida para bajar el precio promedio.",                    severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-2", name: "Operar en noticias",          description: "Abrir trade 15 min antes o durante publicación de noticia de alto impacto.",               severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-3", name: "Sin checklist completado",    description: "Abrir trade sin haber marcado todos los ítems del checklist del setup.",                   severity: "MENOR"   as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-4", name: "Trade de venganza",           description: "Abrir trade inmediatamente tras pérdida sin pausa mínima de 15 minutos.",                  severity: "MENOR"   as RulesSeverity, isSystem: false, enabled: false },
 ]
 
 export const mockMarkets: Market[] = [

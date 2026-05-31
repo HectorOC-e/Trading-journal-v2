@@ -99,7 +99,6 @@ export interface Rule {
   severity: RulesSeverity
   isSystem: boolean     // true = AUTO badge, false = CUSTOM
   enabled: boolean
-  violationsThisMonth: number
 }
 
 export interface WeeklyReview {

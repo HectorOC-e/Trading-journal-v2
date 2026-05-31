@@ -21,6 +21,10 @@ export type SetupStats = {
   aplusCount:          number
   currentStreak:       number
   aplusComplianceRate: number | null  // % trades with all checklist items checked
+  maxConsecutiveLosses: number        // longest losing streak
+  avgHoldTimeMinutes:   number | null // avg minutes between openTime and closeTime
+  bestSession:          string | null // session with highest WR (min 3 trades)
+  bestDayOfWeek:        number | null // 0=Mon..6=Sun with highest WR (min 3 trades)
 }
 
 export type SessionMatrixRow = {
@@ -38,6 +42,16 @@ export type DirectionStats = {
   shortCount: number
   shortWr:    number
   shortAvgR:  number
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+/** Parse "HH:MM" string and return minutes from midnight, or null if invalid. */
+function parseTimeMinutes(s: string | null | undefined): number | null {
+  if (!s) return null
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim())
+  if (!m) return null
+  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
 }
 
 // ── computeSetupStats ─────────────────────────────────────────────────────────
@@ -78,6 +92,71 @@ export function computeSetupStats(
     }
   }
 
+  // ── maxConsecutiveLosses ──────────────────────────────────────────────────
+  // iterate chronological order (st is already sorted asc by date from router)
+  let maxConsecLosses = 0
+  let curLossStreak   = 0
+  for (const t of st) {
+    if (t.pnl < 0) {
+      curLossStreak++
+      if (curLossStreak > maxConsecLosses) maxConsecLosses = curLossStreak
+    } else {
+      curLossStreak = 0
+    }
+  }
+
+  // ── avgHoldTimeMinutes ────────────────────────────────────────────────────
+  let holdSum   = 0
+  let holdCount = 0
+  for (const t of st) {
+    const open  = parseTimeMinutes(t.openTime)
+    const close = parseTimeMinutes(t.closeTime)
+    if (open !== null && close !== null) {
+      // handle overnight: if close < open, add 1440 (24h)
+      const diff = close >= open ? close - open : close - open + 1440
+      holdSum  += diff
+      holdCount++
+    }
+  }
+  const avgHoldTimeMinutes = holdCount > 0 ? parseFloat((holdSum / holdCount).toFixed(1)) : null
+
+  // ── bestSession ───────────────────────────────────────────────────────────
+  const sessionMap = new Map<string, { wins: number; total: number }>()
+  for (const t of st) {
+    if (!t.session) continue
+    const row = sessionMap.get(t.session) ?? { wins: 0, total: 0 }
+    row.total++
+    if (t.pnl > 0) row.wins++
+    sessionMap.set(t.session, row)
+  }
+  let bestSession: string | null = null
+  let bestSessionWr = -Infinity
+  for (const [sess, { wins, total }] of sessionMap.entries()) {
+    if (total < 3) continue
+    const wr = wins / total
+    if (wr > bestSessionWr) { bestSessionWr = wr; bestSession = sess }
+  }
+
+  // ── bestDayOfWeek ─────────────────────────────────────────────────────────
+  // date field is "YYYY-MM-DD"; JS Date.getDay() returns 0=Sun..6=Sat, remap to 0=Mon..6=Sun
+  const dowMap = new Map<number, { wins: number; total: number }>()
+  for (const t of st) {
+    const d = new Date(t.date + "T12:00:00Z") // noon UTC avoids DST off-by-one
+    const jsDay = d.getUTCDay()               // 0=Sun
+    const monBased = jsDay === 0 ? 6 : jsDay - 1  // 0=Mon..6=Sun
+    const row = dowMap.get(monBased) ?? { wins: 0, total: 0 }
+    row.total++
+    if (t.pnl > 0) row.wins++
+    dowMap.set(monBased, row)
+  }
+  let bestDayOfWeek: number | null = null
+  let bestDowWr = -Infinity
+  for (const [dow, { wins, total }] of dowMap.entries()) {
+    if (total < 3) continue
+    const wr = wins / total
+    if (wr > bestDowWr) { bestDowWr = wr; bestDayOfWeek = dow }
+  }
+
   return {
     setupId,
     name:          meta?.name  ?? setupId,
@@ -92,6 +171,10 @@ export function computeSetupStats(
     aplusCount,
     currentStreak,
     aplusComplianceRate,
+    maxConsecutiveLosses: maxConsecLosses,
+    avgHoldTimeMinutes,
+    bestSession,
+    bestDayOfWeek,
   }
 }
 
