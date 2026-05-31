@@ -15,6 +15,7 @@ import type { MinimalTrade, AccountBalance, AccountWithLimits, Grain } from "@/d
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
+import { VIOLATION_TAGS } from "@/types"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -154,7 +155,7 @@ export const tradesRouter = router({
       }
 
       // ── Fetch ─────────────────────────────────────────────────────────────
-      const [tradeRows, accounts, setupRows] = await Promise.all([
+      const [tradeRows, accounts, setupRows, checklistRows] = await Promise.all([
         ctx.prisma.trade.findMany({
           where: {
             userId: ctx.userId,
@@ -187,9 +188,14 @@ export const tradesRouter = router({
           where: { userId: ctx.userId },
           select: { id: true, name: true, abbreviation: true, color: true },
         }),
+        ctx.prisma.tradeChecklistResult.findMany({
+          where:  { userId: ctx.userId },
+          select: { tradeId: true, itemsChecked: true, itemsTotal: true },
+        }),
       ])
 
-      const setupMap = new Map(setupRows.map(s => [s.id, s]))
+      const setupMap      = new Map(setupRows.map(s => [s.id, s]))
+      const checklistMap  = new Map(checklistRows.map(r => [r.tradeId, { checked: r.itemsChecked.length, total: r.itemsTotal }]))
 
       // ── Normalize trades ──────────────────────────────────────────────────
       const trades: MinimalTrade[] = tradeRows.map(t => ({
@@ -237,7 +243,7 @@ export const tradesRouter = router({
         const s = setupMap.get(id)
         return { id, name: s?.name ?? id, abbr: s?.abbreviation ?? "??", color: s?.color ?? "#4f6ef7" }
       })
-      const setupStats     = setupIds.map((id, i) => computeSetupStats(id, trades, setupMetas[i])).sort((a, b) => b.trades - a.trades)
+      const setupStats     = setupIds.map((id, i) => computeSetupStats(id, trades, setupMetas[i], checklistMap)).sort((a, b) => b.trades - a.trades)
       const sessionMatrix  = computeSessionMatrix(setupMetas, trades)
       const directionStats = setupIds.map(id => computeDirectionBreakdown(id, trades)).filter((d): d is DirectionStats => d !== null)
 
@@ -679,5 +685,69 @@ export const tradesRouter = router({
       const result = await ctx.prisma.trade.delete({ where: { id: input, userId: ctx.userId } })
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       return result
+    }),
+
+  ruleViolationStats: protectedProcedure
+    .input(z.object({
+      from: z.string().optional(),
+      to:   z.string().optional(),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const trades = await ctx.prisma.trade.findMany({
+        where: {
+          userId: ctx.userId,
+          tags:   { hasSome: [...VIOLATION_TAGS] },
+          ...((input?.from || input?.to) ? {
+            date: {
+              ...(input?.from && { gte: new Date(input.from) }),
+              ...(input?.to   && { lte: new Date(input.to)   }),
+            },
+          } : {}),
+        },
+        select: { tags: true, date: true },
+      })
+
+      const byTag = VIOLATION_TAGS.reduce((acc, tag) => ({
+        ...acc,
+        [tag]: trades.filter(t => (t.tags as string[]).includes(tag)).length,
+      }), {} as Record<string, number>)
+
+      const byMonthMap: Record<string, number> = {}
+      for (const t of trades) {
+        const monthKey = (t.date as Date).toISOString().slice(0, 7)
+        byMonthMap[monthKey] = (byMonthMap[monthKey] ?? 0) + 1
+      }
+      const byMonth = Object.entries(byMonthMap)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, count]) => ({ month, count }))
+
+      return { total: trades.length, byTag, byMonth }
+    }),
+
+  saveChecklistResult: protectedProcedure
+    .input(z.object({
+      tradeId:      z.string().uuid(),
+      setupId:      z.string().uuid().optional(),
+      itemsChecked: z.array(z.string()),
+      itemsTotal:   z.number().int().min(0),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.trade.findUniqueOrThrow({
+        where: { id: input.tradeId, userId: ctx.userId },
+      })
+      return ctx.prisma.tradeChecklistResult.upsert({
+        where:  { tradeId: input.tradeId },
+        create: {
+          userId:       ctx.userId,
+          tradeId:      input.tradeId,
+          setupId:      input.setupId,
+          itemsChecked: input.itemsChecked,
+          itemsTotal:   input.itemsTotal,
+        },
+        update: {
+          itemsChecked: input.itemsChecked,
+          itemsTotal:   input.itemsTotal,
+        },
+      })
     }),
 })

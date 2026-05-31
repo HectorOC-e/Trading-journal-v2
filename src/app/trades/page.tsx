@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Plus, TrendingUp, Percent, Zap, Shield } from "lucide-react"
+import { useState, useMemo, useEffect, useRef } from "react"
+import { Plus, TrendingUp, Percent, Zap, Shield, Activity } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -9,6 +9,7 @@ import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
+import { LogSessionPopover } from "@/components/trades/log-session-popover"
 import { trpc } from "@/lib/trpc/client"
 
 export default function TradesPage() {
@@ -18,6 +19,9 @@ export default function TradesPage() {
   const [positionLogTrade, setPositionLogTrade] = useState<string | null>(null)
   const [propFirmError, setPropFirmError]       = useState<string | null>(null)
   const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
+  const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
+
+  const pendingChecklistRef = useRef<{ setupId?: string; items: string[]; total: number } | null>(null)
 
   const utils = trpc.useUtils()
 
@@ -49,8 +53,17 @@ export default function TradesPage() {
     PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
   }
 
+  const saveChecklist = trpc.trades.saveChecklistResult.useMutation()
+
   const createTrade = trpc.trades.create.useMutation({
-    onSuccess: () => utils.trades.list.invalidate(),
+    onSuccess: (trade) => {
+      utils.trades.list.invalidate()
+      const pc = pendingChecklistRef.current
+      if (pc && pc.total > 0) {
+        saveChecklist.mutate({ tradeId: trade.id, setupId: pc.setupId, itemsChecked: pc.items, itemsTotal: pc.total })
+        pendingChecklistRef.current = null
+      }
+    },
     onError: (err) => {
       const msg = PROP_FIRM_MESSAGES[err.message]
       if (msg) setPropFirmError(msg)
@@ -162,7 +175,18 @@ export default function TradesPage() {
     symbol: string; entry: string; stop: string; target: string; size: string
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
     tags: string[]; notes: string; screenshots: string[]
+    checklistItems: Record<string, boolean>
   }) => {
+    // Capture checklist before mutation fires
+    const setup = setups.find(s => s.id === form.setupId)
+    if (setup) {
+      const allItems = [...(setup as { aplusChecklist: string[] }).aplusChecklist, ...(setup as { standardChecklist: string[] }).standardChecklist]
+      const checked  = allItems.filter(item => form.checklistItems[item])
+      pendingChecklistRef.current = { setupId: form.setupId || undefined, items: checked, total: allItems.length }
+    } else {
+      pendingChecklistRef.current = null
+    }
+
     const entry  = parseFloat(form.entry)
     const stop   = parseFloat(form.stop)
     const target = parseFloat(form.target)
@@ -236,12 +260,20 @@ export default function TradesPage() {
           <TopBar
             title="Trades"
             subtitle={tradesLoading ? "Cargando…" : `${trades.length} operaciones`}
-            actions={[{
-              label: "Registrar trade",
-              icon: <Plus size={14} />,
-              variant: "primary",
-              onClick: () => setModalOpen(true),
-            }]}
+            actions={[
+              {
+                label: "Log sesión",
+                icon: <Activity size={14} />,
+                variant: "ghost" as const,
+                onClick: () => setSessionPopoverOpen(true),
+              },
+              {
+                label: "Registrar trade",
+                icon: <Plus size={14} />,
+                variant: "primary" as const,
+                onClick: () => setModalOpen(true),
+              },
+            ]}
           />
           <KpiStrip items={kpiItems} className="mb-6" />
           <TradesTable
@@ -332,6 +364,11 @@ export default function TradesPage() {
           adding={addEvent.isPending}
         />
       )}
+
+      <LogSessionPopover
+        open={sessionPopoverOpen}
+        onOpenChange={setSessionPopoverOpen}
+      />
     </>
   )
 }

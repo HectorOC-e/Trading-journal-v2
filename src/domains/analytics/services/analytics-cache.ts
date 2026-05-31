@@ -1,9 +1,18 @@
-import type { PrismaClient } from "@/lib/generated/prisma/client"
-
 // 5-minute TTL enforced at application layer
 export const CACHE_TTL_MS = 5 * 60 * 1000
 
-type CacheDb = Pick<PrismaClient, "tradeStatsCache">
+type CacheRow = { userId: string; period: string; statsJson: unknown; computedAt: unknown }
+
+interface CacheDelegate {
+  findUnique(args: { where: { userId_period: { userId: string; period: string } } }): Promise<CacheRow | null>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  upsert(args: any): Promise<CacheRow>
+  deleteMany(args: { where: { userId: string } }): Promise<unknown>
+}
+
+interface CacheDb {
+  tradeStatsCache: CacheDelegate
+}
 
 export function isCacheEnabled(): boolean {
   return process.env.ANALYTICS_CACHE_ENABLED === "true"

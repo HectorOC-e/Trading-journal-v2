@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import {
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { Shield, CheckCircle2, Award, Target } from "lucide-react"
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
 import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
+import { trpc } from "@/lib/trpc/client"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
@@ -31,6 +32,12 @@ export function TabDisciplina({ kpis, discipline }: {
 }) {
   const today    = new Date()
   const todayISO = today.toISOString().slice(0, 10)
+
+  // ── Live rule violation stats (T-V-001) ────────────────────────────────────
+  const { data: violationStats } = trpc.trades.ruleViolationStats.useQuery(undefined, { staleTime: 60_000 })
+
+  // ── Mood correlation (T-V-004) ────────────────────────────────────────────
+  const { data: moodCorr } = trpc.tradingSessions.moodCorrelation.useQuery(undefined, { staleTime: 60_000 })
 
   const heatmap = useMemo((): HeatVal[][] => {
     const dateMap: Record<string, HeatVal> = {}
@@ -62,7 +69,7 @@ export function TabDisciplina({ kpis, discipline }: {
 
   const disciplineScore = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
   const planSeguidoPct  = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
-  const totalViolations = violations.reduce((s, v) => s + v.count, 0)
+  const totalViolations = violations.reduce((s: number, v: { rule: string; count: number }) => s + v.count, 0)
   const sinViolacionPct = total > 0 ? (((total - totalViolations) / total) * 100).toFixed(2) : "0.00"
 
   const compData = [
@@ -70,6 +77,18 @@ export function TabDisciplina({ kpis, discipline }: {
     { name: "Plan parcial",  value: composition.partial,    color: "var(--be)"   },
     { name: "Off-plan",      value: composition.offPlan,    color: "var(--loss)" },
   ]
+
+  type ViolationRow = { rule: string; count: number; severity: "mayor" | "menor" }
+
+  // Live violations display (T-V-001): use live query counts, fall back to dashboard data
+  const liveViolations: ViolationRow[] = violationStats
+    ? [
+        { rule: "Flag impulsivo manual",    count: violationStats.byTag["Impulsivo"] ?? 0, severity: "mayor" as const },
+        { rule: "Off-plan",                 count: violationStats.byTag["Off-plan"]  ?? 0, severity: "mayor" as const },
+        { rule: "Revanche / revenge trade", count: violationStats.byTag["Revanche"]  ?? 0, severity: "mayor" as const },
+        { rule: "Sin setup asignado",       count: violations.find((v: { rule: string; count: number }) => v.rule === "Sin setup asignado")?.count ?? 0, severity: "menor" as const },
+      ].filter((v: { count: number }) => v.count > 0)
+    : (violations as ViolationRow[])
 
   return (
     <div className="flex flex-col gap-4">
@@ -228,8 +247,8 @@ export function TabDisciplina({ kpis, discipline }: {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="Distribución de R · acumulado" sub="Frecuencia de outcomes vs. expectativa.">
           <div className="flex items-end gap-1.5 h-32 mt-2">
-            {rDistribution.map(d => {
-              const maxCount = Math.max(...rDistribution.map(x => x.count), 1)
+            {rDistribution.map((d: { bucket: string; count: number }) => {
+              const maxCount = Math.max(...rDistribution.map((x: { count: number }) => x.count), 1)
               const h = (d.count / maxCount) * 100
               const isNeg = d.bucket.startsWith("-")
               return (
@@ -244,24 +263,79 @@ export function TabDisciplina({ kpis, discipline }: {
           </div>
         </Card>
 
+        {/* Violations by tag — live query (T-V-001) */}
         <Card title="Violaciones por tag">
-          <div className="flex justify-end mb-3">
-            <button className="text-[11px] font-semibold text-[var(--accent)] hover:underline">Ver registro →</button>
-          </div>
           <div className="flex flex-col gap-0">
-            {violations.map(v => (
+            {liveViolations.map(v => (
               <div key={v.rule} className="flex items-center gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
                 <div className="w-1 h-4 rounded-full shrink-0" style={{ background: v.severity === "mayor" ? "var(--loss)" : "var(--be)" }} />
                 <p className="flex-1 text-sm text-[var(--ink)]">{v.rule}</p>
                 <span className="font-mono font-bold text-[var(--ink)] text-sm shrink-0">{v.count}</span>
               </div>
             ))}
-            {violations.length === 0 && (
+            {liveViolations.length === 0 && (
               <p className="py-4 text-center text-[var(--ink-3)] text-sm">Sin violaciones registradas</p>
             )}
           </div>
         </Card>
       </div>
+
+      {/* Monthly violation chart (T-V-001) */}
+      {violationStats && violationStats.byMonth.length > 1 && (
+        <Card title="Violaciones por mes" sub="Conteo total de trades con tag de violación">
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={violationStats.byMonth} barSize={16}>
+              <XAxis dataKey="month" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} allowDecimals={false} width={20} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
+              <Bar dataKey="count" name="Violaciones" fill="var(--loss)" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Mood vs win rate correlation (T-V-004) */}
+      {moodCorr && moodCorr.rows.some(r => r.sessions > 0) && (
+        <Card
+          title="Estado de ánimo vs. Win Rate"
+          sub={`Basado en ${moodCorr.totalSessions} sesiones con datos de estado`}
+        >
+          <div className="flex flex-col gap-3 mt-1">
+            {moodCorr.rows.map(row => (
+              <div key={row.label} className="flex items-center gap-3">
+                <span className="text-xs text-[var(--ink-2)] w-36 shrink-0">{row.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-[var(--panel-2)]">
+                  {row.winRate != null && (
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{
+                        width: `${row.winRate}%`,
+                        background: row.winRate >= 55 ? "var(--win)" : row.winRate >= 45 ? "var(--be)" : "var(--loss)",
+                      }}
+                    />
+                  )}
+                </div>
+                <span className="text-xs font-mono font-bold text-[var(--ink)] w-12 text-right shrink-0">
+                  {row.winRate != null ? `${row.winRate}%` : "—"}
+                </span>
+                <span className="text-[10px] text-[var(--ink-3)] w-14 shrink-0">{row.sessions} ses.</span>
+              </div>
+            ))}
+          </div>
+          {(() => {
+            const high = moodCorr.rows.find(r => r.label.includes("alto"))
+            const low  = moodCorr.rows.find(r => r.label.includes("bajo"))
+            if (high?.winRate != null && low?.winRate != null && Math.abs(high.winRate - low.winRate) >= 5) {
+              return (
+                <p className="text-[11px] text-[var(--ink-3)] mt-3 border-t border-[var(--line)] pt-3">
+                  Rindes mejor cuando tu estado de ánimo es alto ({high.winRate}% WR vs {low.winRate}% cuando bajo).
+                </p>
+              )
+            }
+            return null
+          })()}
+        </Card>
+      )}
     </div>
   )
 }

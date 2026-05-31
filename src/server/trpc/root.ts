@@ -8,7 +8,8 @@ import { marketsRouter }          from "./routers/markets"
 import { setupsRouter }           from "./routers/setups"
 import { rulesRouter }            from "./routers/rules"
 import { weeklyReviewsRouter }    from "./routers/weekly-reviews"
-import { learningResourcesRouter } from "./routers/learning-resources"
+import { learningResourcesRouter }  from "./routers/learning-resources"
+import { tradingSessionsRouter }    from "./routers/trading-sessions"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -20,6 +21,7 @@ export const appRouter = router({
   rules:            rulesRouter,
   weeklyReviews:    weeklyReviewsRouter,
   learningResources: learningResourcesRouter,
+  tradingSessions:   tradingSessionsRouter,
 })
 
 export type AppRouter     = typeof appRouter

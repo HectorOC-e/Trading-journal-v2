@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -228,6 +228,16 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
 
   const week = WEEK_OPTIONS[selectedWeek]
 
+  const { data: serverScore } = trpc.weeklyReviews.computedDisciplineScore.useQuery(
+    { weekStart: week.start, weekEnd: week.end },
+  )
+
+  useEffect(() => {
+    if (serverScore && autoFields.has("disciplineScore")) {
+      setDisciplineScore(serverScore.score)
+    }
+  }, [serverScore])
+
   function runAutoGenerate(weekIdx: number, accountId: string) {
     if (!accountId) return
     const w   = WEEK_OPTIONS[weekIdx]
@@ -396,6 +406,19 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
                 />
                 <p className="text-[11px] mt-3" style={{ color: "var(--ink-3)" }}>0 = caos total · 100 = ejecución perfecta</p>
                 <div className="mt-3"><DisciplineBar score={disciplineScore} /></div>
+                {serverScore?.breakdown && (
+                  <div className="mt-3 flex items-center justify-center gap-3 flex-wrap">
+                    {[
+                      { label: "Ejecución", value: Math.round(serverScore.breakdown.execution), max: 50 },
+                      { label: "Aprendizaje", value: Math.round(serverScore.breakdown.learning), max: 30 },
+                      { label: "Reglas", value: Math.round(serverScore.breakdown.adherence), max: 20 },
+                    ].map(({ label, value, max }) => (
+                      <span key={label} className="text-[10px] px-2 py-1 rounded" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
+                        {label}: <span className="font-semibold font-mono" style={{ color: "var(--ink)" }}>{value}/{max}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

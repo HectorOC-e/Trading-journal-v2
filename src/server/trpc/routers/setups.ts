@@ -88,7 +88,7 @@ export const setupsRouter = router({
       const days     = periodDays[period]
       const fromDate = days != null ? new Date(Date.now() - days * 86_400_000) : undefined
 
-      const [setupRows, tradeRows] = await Promise.all([
+      const [setupRows, tradeRows, checklistRows] = await Promise.all([
         ctx.prisma.setup.findMany({
           where: { userId: ctx.userId, status: { not: "DESCARTADO" } },
           select: { id: true, name: true, abbreviation: true, color: true },
@@ -108,6 +108,10 @@ export const setupsRouter = router({
             setupId: true, entry: true, stop: true, target: true, size: true,
           },
           orderBy: [{ date: "asc" }],
+        }),
+        ctx.prisma.tradeChecklistResult.findMany({
+          where:  { userId: ctx.userId },
+          select: { tradeId: true, itemsChecked: true, itemsTotal: true },
         }),
       ])
 
@@ -131,11 +135,12 @@ export const setupsRouter = router({
       }))
 
       const setupMap    = new Map(setupRows.map(s => [s.id, { id: s.id, name: s.name, abbr: s.abbreviation, color: s.color }]))
+      const checklistMap = new Map(checklistRows.map(r => [r.tradeId, { checked: r.itemsChecked.length, total: r.itemsTotal }]))
       const setupIds    = input?.setupId
         ? [input.setupId]
         : [...new Set(trades.filter(t => t.setupId).map(t => t.setupId!))]
       const setupMetas  = setupIds.map(id => setupMap.get(id) ?? { id, name: id, abbr: "??", color: "#4f6ef7" })
-      const setupStats  = setupIds.map((id, i) => computeSetupStats(id, trades, setupMetas[i])).sort((a, b) => b.trades - a.trades)
+      const setupStats  = setupIds.map((id, i) => computeSetupStats(id, trades, setupMetas[i], checklistMap)).sort((a, b) => b.trades - a.trades)
       const sessionMatrix  = computeSessionMatrix(setupMetas, trades)
       const directionStats = setupIds.map(id => computeDirectionBreakdown(id, trades)).filter((d): d is DirectionStats => d !== null)
 

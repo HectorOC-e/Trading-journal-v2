@@ -36,6 +36,10 @@ export interface Market {
 export type TradeDirection = "LONG" | "SHORT"
 export type TradeSession = "London" | "New York" | "Asia" | "London Close"
 export type TradeTag = "A+" | "A" | "B" | "Plan" | "Off-plan" | "Impulsivo" | "BE"
+
+// Shared violation tag list — must match tags used in RegisterTradeModal (T-V-001 risk mitigation)
+export const VIOLATION_TAGS = ["Impulsivo", "Off-plan", "Revanche"] as const
+export type ViolationTag = typeof VIOLATION_TAGS[number]
 export type AccountType = "PERSONAL" | "PROP_FIRM" | "DEMO_PERSONAL" | "DEMO_PROP" | "BACKTEST" | "QA"
 export type AccountStatus = "ACTIVE" | "PAUSED" | "INACTIVE" | "LOST"
 export type RulesSeverity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"

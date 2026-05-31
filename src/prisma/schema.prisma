@@ -34,7 +34,9 @@ model User {
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
   tradeEvents       TradeEvent[]
-  tradeStatsCache   TradeStatsCache[]
+  tradeStatsCache      TradeStatsCache[]
+  checklistResults     TradeChecklistResult[]
+  tradingSessionLogs   TradingSessionLog[]
 
   @@map("users")
 }
@@ -188,6 +190,8 @@ model Trade {
   @@index([userId, date(sort: Desc)])
   @@index([accountId])
   @@map("trades")
+
+  checklistResult TradeChecklistResult?
 }
 
 model TradeEvent {
@@ -351,4 +355,47 @@ model TradeStatsCache {
   @@id([userId, period])
   @@index([userId])
   @@map("trade_stats_cache")
+}
+
+// ─────────────────────────────────────────────
+// TRADE CHECKLIST RESULT (T-V-003)
+// Stores which A+/standard checklist items were
+// checked before entering a trade.
+// ─────────────────────────────────────────────
+model TradeChecklistResult {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  tradeId      String   @unique @map("trade_id") @db.Uuid
+  setupId      String?  @map("setup_id") @db.Uuid
+  itemsChecked String[] @map("items_checked")
+  itemsTotal   Int      @map("items_total")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trade_checklist_results")
+}
+
+// ─────────────────────────────────────────────
+// TRADING SESSION LOG (T-V-004)
+// Pre-session mood and energy ratings (1-5).
+// Unique per (user, date, session).
+// ─────────────────────────────────────────────
+model TradingSessionLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  date        DateTime @db.Date
+  session     String
+  preMood     Int?     @map("pre_mood")
+  energyLevel Int?     @map("energy_level")
+  notes       String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, session])
+  @@index([userId])
+  @@map("trading_sessions")
 }

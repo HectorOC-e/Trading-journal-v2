@@ -8,18 +8,19 @@ export type SetupMeta = {
 }
 
 export type SetupStats = {
-  setupId:      string
-  name:         string
-  abbr:         string
-  color:        string
-  trades:       number
-  winRate:      number
-  avgR:         number
-  cumR:         number
-  netPnl:       number
-  equityCurve:  number[]
-  aplusCount:   number
-  currentStreak: number
+  setupId:             string
+  name:                string
+  abbr:                string
+  color:               string
+  trades:              number
+  winRate:             number
+  avgR:                number
+  cumR:                number
+  netPnl:              number
+  equityCurve:         number[]
+  aplusCount:          number
+  currentStreak:       number
+  aplusComplianceRate: number | null  // % trades with all checklist items checked
 }
 
 export type SessionMatrixRow = {
@@ -41,10 +42,12 @@ export type DirectionStats = {
 
 // ── computeSetupStats ─────────────────────────────────────────────────────────
 
+// checklistMap: tradeId → { checked: number; total: number }
 export function computeSetupStats(
-  setupId: string,
-  trades:  MinimalTrade[],
-  meta?:   SetupMeta,
+  setupId:      string,
+  trades:       MinimalTrade[],
+  meta?:        SetupMeta,
+  checklistMap?: Map<string, { checked: number; total: number }>,
 ): SetupStats {
   const st     = trades.filter(t => t.setupId === setupId)
   const sWins  = st.filter(t => t.pnl > 0).length
@@ -63,6 +66,18 @@ export function computeSetupStats(
   let currentStreak = 0
   for (const t of descSorted) { if (t.pnl > 0) currentStreak++; else break }
 
+  let aplusComplianceRate: number | null = null
+  if (checklistMap && checklistMap.size > 0) {
+    const withChecklist = st.filter(t => checklistMap.has(t.id))
+    if (withChecklist.length > 0) {
+      const compliant = withChecklist.filter(t => {
+        const r = checklistMap.get(t.id)!
+        return r.total > 0 && r.checked === r.total
+      })
+      aplusComplianceRate = parseFloat((compliant.length / withChecklist.length * 100).toFixed(1))
+    }
+  }
+
   return {
     setupId,
     name:          meta?.name  ?? setupId,
@@ -76,6 +91,7 @@ export function computeSetupStats(
     equityCurve,
     aplusCount,
     currentStreak,
+    aplusComplianceRate,
   }
 }
 

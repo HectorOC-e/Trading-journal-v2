@@ -1461,7 +1461,7 @@ For users with 2000+ trades, even a server-side aggregation query can take 1–2
 **Domain:** `[PSYCHOLOGY]` `[TRADING]`  
 **Priority:** P1 — product integrity  
 **Complexity:** S  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1526,9 +1526,9 @@ Computed-on-demand is preferable to materialized for infrequently-read data. Vio
 
 #### Acceptance Criteria
 
-- [ ] `trpc.trades.ruleViolationStats.useQuery()` returns correct counts for a user with known tagged trades
-- [ ] `TabDisciplina` renders violation counts from this query, not from `Rule.violationsThisMonth`
-- [ ] Monthly breakdown renders a chart of violation count per month
+- [x] `trpc.trades.ruleViolationStats.useQuery()` returns correct counts for a user with known tagged trades
+- [x] `TabDisciplina` renders violation counts from this query, not from `Rule.violationsThisMonth`
+- [x] Monthly breakdown renders a chart of violation count per month
 
 ---
 
@@ -1537,7 +1537,7 @@ Computed-on-demand is preferable to materialized for infrequently-read data. Vio
 **Domain:** `[PSYCHOLOGY]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1595,10 +1595,10 @@ The formula is intentionally transparent: traders can see exactly why they score
 
 #### Acceptance Criteria
 
-- [ ] `computedDisciplineScore` returns correct values for a week with known trades and reviews
-- [ ] Weekly review create/edit modal shows pre-filled score + breakdown
-- [ ] Trader can increment or decrement the score before saving
-- [ ] Score breakdown is visible (not just the final number)
+- [x] `computedDisciplineScore` returns correct values for a week with known trades and reviews
+- [x] Weekly review create/edit modal shows pre-filled score + breakdown
+- [x] Trader can increment or decrement the score before saving
+- [x] Score breakdown is visible (not just the final number)
 
 ---
 
@@ -1607,7 +1607,7 @@ The formula is intentionally transparent: traders can see exactly why they score
 **Domain:** `[PSYCHOLOGY]` `[TRADING]`  
 **Priority:** P2  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1666,11 +1666,11 @@ The A+ rate in `TabPlaybook` currently measures trades tagged "A+" — a manual 
 
 #### Acceptance Criteria
 
-- [ ] Migration applied; `trade_checklist_results` table exists with RLS
-- [ ] Prisma schema regenerated; `TradeChecklistResult` model available
-- [ ] When a setup is selected in RegisterTradeModal, its `aplusChecklist` items render as checkboxes
-- [ ] Completing all items auto-tags the trade `A+`; unchecking any item removes the auto-tag
-- [ ] `SetupAnalyticsService` returns `aplusComplianceRate` for each setup with a checklist
+- [x] Migration applied; `trade_checklist_results` table exists with RLS
+- [x] Prisma schema regenerated; `TradeChecklistResult` model available
+- [x] When a setup is selected in RegisterTradeModal, its `aplusChecklist` items render as checkboxes
+- [x] Completing all items auto-tags the trade `A+`; unchecking any item removes the auto-tag
+- [x] `SetupAnalyticsService` returns `aplusComplianceRate` for each setup with a checklist
 
 ---
 
@@ -1679,7 +1679,7 @@ The A+ rate in `TabPlaybook` currently measures trades tagged "A+" — a manual 
 **Domain:** `[PSYCHOLOGY]`  
 **Priority:** P3  
 **Complexity:** M  
-**Status:** `[ ]`
+**Status:** `[x]`
 
 #### Description
 
@@ -1712,10 +1712,10 @@ Mood tracking with trade outcome correlation provides the trader with evidence-b
 
 #### Acceptance Criteria
 
-- [ ] `trading_sessions` table created with RLS
-- [ ] "Log sesión" button visible but non-intrusive in trades page
-- [ ] Saving a session records mood + energy for the given date + session slot
-- [ ] `TabDisciplina` shows mood vs. win rate correlation when ≥ 10 sessions with mood data exist
+- [x] `trading_sessions` table created with RLS
+- [x] "Log sesión" button visible but non-intrusive in trades page
+- [x] Saving a session records mood + energy for the given date + session slot
+- [x] `TabDisciplina` shows mood vs. win rate correlation when ≥ 10 sessions with mood data exist
 
 ---
 
