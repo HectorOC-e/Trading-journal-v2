@@ -2103,7 +2103,7 @@ Upload to `trade-screenshots/{userId}/{tradeId}/{filename}`. Append public URL t
 **Domain:** `[INTEGRATION]` `[TRADING]`  
 **Priority:** P3  
 **Complexity:** S  
-**Status:** `[/]`
+**Status:** `[x]`
 
 #### Description
 
@@ -2119,7 +2119,7 @@ cTrader key columns: `Position ID`, `Symbol`, `Direction`, `Volume`, `Entry Pric
 
 - [x] cTrader CSV parses correctly with LONG/SHORT direction mapping
 - [x] Gross Profit + Commission → netPnl in the Trade record
-- [ ] Duplicate detection uses `Position ID` as the idempotency key
+- [x] Duplicate detection uses `Position ID` as the idempotency key
 
 ---
 

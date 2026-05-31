@@ -73,12 +73,24 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const detectedFormat = format === "unknown" ? "mt4" : format
 
   // 5. Duplicate detection — find existing trades for this account
+  // For cTrader: check by importTicket (Position ID) for exact match.
+  // Fallback for MT4 and missing tickets: check by (symbol, openTime, size).
   const existingTrades = await prisma.trade.findMany({
     where:  { accountId, userId },
-    select: { symbol: true, openTime: true, size: true },
+    select: { symbol: true, openTime: true, size: true, importTicket: true },
   })
 
-  type ExistingTrade = { symbol: string; openTime: string; size: { toNumber?: () => number } | number | string }
+  type ExistingTrade = {
+    symbol: string
+    openTime: string
+    size: { toNumber?: () => number } | number | string
+    importTicket: string | null
+  }
+  const existingTickets = new Set(
+    (existingTrades as ExistingTrade[])
+      .map(t => t.importTicket)
+      .filter((t): t is string => !!t)
+  )
   const existingKeys = new Set(
     (existingTrades as ExistingTrade[]).map(t => {
       const openTimeStr = t.openTime ?? ""
@@ -92,7 +104,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const toCreate: ParsedTrade[] = []
   let skipped = 0
   for (const row of rows) {
-    if (existingKeys.has(dupKey(row))) {
+    const isDup = (row.ticket && existingTickets.has(row.ticket)) ||
+                  existingKeys.has(dupKey(row))
+    if (isDup) {
       skipped++
     } else {
       toCreate.push(row)
@@ -131,12 +145,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             size:        row.size,
             date:        openDate,
             openTime:    openTimeStr,
-            session:     "New York", // default session for imports
-            status:      "CLOSED",
-            closePrice:  row.closePrice,
-            closeTime:   new Date(row.closeTime).toISOString().slice(11, 16),
-            commission:  row.commission,
-            pnl:         row.profit,
+            session:      "New York", // default session for imports
+            status:       "CLOSED",
+            closePrice:   row.closePrice,
+            closeTime:    new Date(row.closeTime).toISOString().slice(11, 16),
+            commission:   row.commission,
+            pnl:          row.profit,
+            importTicket: row.ticket || null,
           },
         })
 

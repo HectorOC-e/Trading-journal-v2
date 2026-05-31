@@ -186,6 +186,7 @@ model Trade {
   closePrice     Decimal? @map("close_price") @db.Decimal(16, 5)
   closeTime      String?  @map("close_time")
   commission     Decimal? @db.Decimal(10, 2)
+  importTicket   String?  @map("import_ticket")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
