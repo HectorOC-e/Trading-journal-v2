@@ -743,7 +743,22 @@ export const tradesRouter = router({
   delete: protectedProcedure
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
+      // Fetch first to get screenshot URLs for storage cleanup
+      const trade = await ctx.prisma.trade.findUniqueOrThrow({
+        where:  { id: input, userId: ctx.userId },
+        select: { screenshotUrls: true },
+      })
       const result = await ctx.prisma.trade.delete({ where: { id: input, userId: ctx.userId } })
+      // Delete screenshots from Supabase Storage (best-effort, non-blocking)
+      if (trade.screenshotUrls.length > 0) {
+        const paths = trade.screenshotUrls.map(url => {
+          try { return new URL(url).pathname.replace(/^\/storage\/v1\/object\/public\/trade-screenshots\//, "") }
+          catch { return null }
+        }).filter((p): p is string => p !== null)
+        if (paths.length > 0) {
+          await ctx.supabase.storage.from("trade-screenshots").remove(paths).catch(() => undefined)
+        }
+      }
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       return result
     }),
