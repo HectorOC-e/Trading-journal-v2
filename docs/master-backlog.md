@@ -29,6 +29,31 @@
 | TASK-017 | Server-side validation for Storage image uploads | security | P0 | S | — | TODO |
 | TASK-018 | Deprecate dead `trades.stats` procedure | trades | P2 | XS | — | TODO |
 | TASK-019 | Add `notes_embedding` and `email_log` to Prisma schema | infra | P3 | S | — | TODO |
+| TASK-054 | Fix SQL injection pattern in `ai-embed/route.ts` (use `Prisma.sql`) | security | P0 | XS | — | TODO |
+| TASK-055 | Add rate limiting to all AI endpoints (AiUsageLog token bucket) | security | P1 | M | — | TODO |
+| TASK-056 | Implement `useCurrency()` hook to propagate `baseCurrency` across app | formulas | P1 | S | TASK-006 | TODO |
+| TASK-057 | Fix hardcoded "New York" timezone in CSV import session | trades | P1 | XS | — | TODO |
+| TASK-058 | Replace fire-and-forget embedding with reliable DB webhook or queue | ai | P1 | M | — | TODO |
+| TASK-059 | Create `.env.example` with all required variable names and descriptions | infra | P1 | XS | — | TODO |
+| TASK-060 | Structured logger (`lib/logger.ts`) replacing all `console.error` calls | infra | P1 | S | — | TODO |
+| TASK-061 | Auto-save with debounce in weekly review modal | reviews | P2 | S | — | TODO |
+| TASK-062 | Surface Sharpe Ratio as KPI card on analytics dashboard | analytics | P2 | S | TASK-027 | TODO |
+| TASK-063 | Psychology summary widget inside weekly review modal | psychology | P2 | M | TASK-034 | TODO |
+| TASK-064 | Setup health score indicator in Playbook (green/yellow/red signal) | playbook | P2 | S | — | TODO |
+| TASK-065 | Extract coach-service.ts from route handler to `domains/ai/services/` | ai | P2 | M | — | TODO |
+| TASK-066 | Fix `phasePayload as never` type cast in accounts router (TD-012) | types | P2 | XS | — | TODO |
+| TASK-067 | Optimize tRPC per-request JWT header parsing (TD-019) | infra | P2 | S | — | TODO |
+| TASK-068 | CSV import column-mapping preferences UI | trades | P2 | M | TASK-030 | TODO |
+| TASK-069 | Week selector date picker for review periods older than 6 weeks | reviews | P2 | XS | — | TODO |
+| TASK-070 | Accessibility pass: `prefers-reduced-motion`, `aria-live`, `role="radiogroup"`, WCAG contrast | ux | P2 | M | — | TODO |
+| TASK-071 | Monthly review model + `createMonthly` tRPC procedure | reviews | P2 | L | TASK-006 | TODO |
+| TASK-072 | Calendar heatmap for daily P&L (recharts, analytics page) | analytics | P2 | M | — | TODO |
+| TASK-073 | Rolling metrics dashboard (7d / 30d / 90d windows) | analytics | P2 | M | — | TODO |
+| TASK-074 | Pre-trade planning field (`planNotes`) on Trade model and form | psychology | P2 | S | — | TODO |
+| TASK-075 | Daily loss limit push/email alert via Resend | accounts | P1 | S | TASK-006 | TODO |
+| TASK-076 | CI/CD GitHub Actions pipeline (lint → typecheck → test → deploy) | infra | P2 | M | — | TODO |
+| TASK-077 | PWA: manifest.json + basic service worker (offline shell) | mobile | P3 | M | — | TODO |
+| TASK-078 | PDF performance report export | infra | P3 | L | — | TODO |
 | TASK-020 | Implement cursor pagination in `accountLogs.list` | accounts | P3 | S | — | TODO |
 | TASK-021 | Activate and document `ANALYTICS_CACHE_ENABLED` for production | infra | P3 | XS | — | TODO |
 | TASK-022 | Configure verified email domain in Resend | infra | P3 | XS | — | TODO |
@@ -272,3 +297,97 @@ Automated test coverage.
 | TASK-024 — RTL component tests | L | QA |
 | TASK-025 — Playwright e2e tests | L | QA |
 | TASK-053 — Portfolio dashboard (start) | XL | BE/FE |
+
+---
+
+### Sprint 8 (Weeks 23–25) — Security Hardening and Observability
+
+**Goal:** Close the SQL injection gap in the AI embed route; add rate limiting so AI API costs are bounded; install structured logging so future debugging is possible.
+
+| Task | Effort | Owner |
+|---|---|---|
+| TASK-054 — Fix SQL injection in ai-embed route | XS | BE |
+| TASK-055 — Rate limiting on AI endpoints | M | BE |
+| TASK-059 — Create `.env.example` | XS | DevOps |
+| TASK-060 — Structured logger `lib/logger.ts` | S | BE |
+| TASK-058 — Reliable embedding via DB webhook/queue | M | BE |
+| TASK-076 — CI/CD GitHub Actions pipeline | M | DevOps |
+
+**Sprint 8 exit criteria:** Zero unparameterized raw SQL in AI paths. All AI endpoints enforce per-user token quotas. Deployment pipeline runs lint + typecheck + test before merge.
+
+---
+
+### Sprint 9 (Weeks 26–28) — Data Correctness: Currency, Timezone, Formula Additions
+
+**Goal:** Fix international trader blockers; add missing KPIs; close TD-012 and TD-019.
+
+| Task | Effort | Owner |
+|---|---|---|
+| TASK-057 — Fix hardcoded "New York" timezone in CSV import | XS | BE |
+| TASK-056 — `useCurrency()` hook for baseCurrency propagation | S | FE |
+| TASK-062 — Sharpe Ratio KPI card on analytics dashboard | S | BE/FE |
+| TASK-072 — Calendar heatmap (daily P&L) | M | FE |
+| TASK-073 — Rolling metrics 7d/30d/90d dashboard | M | BE/FE |
+| TASK-066 — Fix `phasePayload as never` (TD-012) | XS | BE |
+| TASK-067 — Optimize tRPC per-request JWT parsing (TD-019) | S | BE |
+
+---
+
+### Sprint 10 (Weeks 29–32) — Psychology Depth, Reviews, Accessibility
+
+**Goal:** Complete the psychology data model; add review UX improvements; close the accessibility deficit.
+
+| Task | Effort | Owner |
+|---|---|---|
+| TASK-074 — Pre-trade planning field on Trade model | S | BE/FE |
+| TASK-063 — Psychology widget in weekly review modal | M | FE |
+| TASK-061 — Auto-save with debounce in review modal | S | FE |
+| TASK-069 — Week selector date picker for old review periods | XS | FE |
+| TASK-071 — Monthly review model + createMonthly procedure | L | BE/FE |
+| TASK-070 — Accessibility pass (WCAG, aria, reduced-motion) | M | FE |
+
+---
+
+### Sprint 11 (Weeks 33–36) — Playbook Intelligence and AI Extraction
+
+**Goal:** Raise Playbook from display to actionable intelligence; refactor AI code to domain layer.
+
+| Task | Effort | Owner |
+|---|---|---|
+| TASK-064 — Setup health score in Playbook | S | BE/FE |
+| TASK-065 — Extract coach-service.ts to domains/ai/services/ | M | BE |
+| TASK-068 — CSV import column-mapping preferences | M | BE/FE |
+| TASK-075 — Daily loss limit push/email alert | S | BE |
+
+---
+
+### Sprint 12 (Weeks 37–40) — P3 Features and Long-horizon Items
+
+**Goal:** PWA baseline; data export; portfolio view; tax groundwork.
+
+| Task | Effort | Owner |
+|---|---|---|
+| TASK-077 — PWA manifest.json + service worker | M | FE |
+| TASK-078 — PDF performance report export | L | BE/FE |
+| TASK-053 — Multi-account portfolio dashboard (continue) | XL | BE/FE |
+
+---
+
+## EXECUTION_TASKS Reconciliation Note
+
+`docs/EXECUTION_TASKS.md` uses an independent TASK-001–032 numbering scheme that **does not align** with this file's TASK-001–078 sequence. The mapping below resolves the conflict for the items that were unique to EXECUTION_TASKS and are now promoted to this backlog.
+
+| EXECUTION_TASKS ID | Description | master-backlog equivalent |
+|---|---|---|
+| EXEC TASK-001 | Canonical formulas module | TASK-027 |
+| EXEC TASK-005 | SQL injection in ai-embed | **TASK-054** (new) |
+| EXEC TASK-008 | useCurrency() hook | **TASK-056** (new) |
+| EXEC TASK-021 | Auto-save debounce in review modal | **TASK-061** (new) |
+| EXEC TASK-026 | Sharpe Ratio in analytics | **TASK-062** (new) |
+| EXEC TASK-027 | Rate limiting on AI endpoints | **TASK-055** (new) |
+| EXEC TASK-028 | Psychology widget in weekly review | **TASK-063** (new) |
+| EXEC TASK-030 | PWA manifest + service worker | **TASK-077** (new) |
+| EXEC TASK-031 | Setup health score in Playbook | **TASK-064** (new) |
+| EXEC TASK-032 | Extract coach-service.ts | **TASK-065** (new) |
+
+All other EXECUTION_TASKS items (EXEC TASK-002, 003, 004, 006, 007, 009–020, 022–025, 029) map to existing TASK-001–053 entries. EXECUTION_TASKS.md should be considered superseded by this file for sprint planning purposes.
