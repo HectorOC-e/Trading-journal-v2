@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { isWin, calcWinRate } from "@/lib/formulas"
 import type { RawAccount, TradeStats } from "../components/account-card"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -35,8 +36,8 @@ export function useAccountStats(
         .filter(t => t.accountId === aid && t.status === "CLOSED")
         .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt))
       if (trades.length === 0) continue
-      const wins = trades.filter(t => (t.pnl ?? 0) > 0).length
-      map[aid].winRate = (wins / trades.length) * 100
+      const wins = trades.filter(t => isWin({ pnl: t.pnl ?? 0 })).length
+      map[aid].winRate = calcWinRate(wins, trades.length)
       map[aid].avgR    = trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
 
       let cumPnl = 0, peakCumPnl = 0

@@ -1,3 +1,4 @@
+import { isWin, calcWinRate } from "@/lib/formulas"
 import type { MinimalTrade } from "./dashboard-analytics"
 
 export type SetupMeta = {
@@ -64,7 +65,7 @@ export function computeSetupStats(
   checklistMap?: Map<string, { checked: number; total: number }>,
 ): SetupStats {
   const st     = trades.filter(t => t.setupId === setupId)
-  const sWins  = st.filter(t => t.pnl > 0).length
+  const sWins  = st.filter(t => isWin({ pnl: t.pnl })).length
   const sWithR = st.filter(t => t.rMultiple != null)
   const sAvgR  = sWithR.length > 0 ? sWithR.reduce((s, t) => s + t.rMultiple!, 0) / sWithR.length : 0
   const cumR   = st.reduce((s, t) => s + (t.rMultiple ?? 0), 0)
@@ -163,7 +164,7 @@ export function computeSetupStats(
     abbr:          meta?.abbr  ?? "??",
     color:         meta?.color ?? "#4f6ef7",
     trades:        st.length,
-    winRate:       parseFloat((st.length > 0 ? sWins / st.length * 100 : 0).toFixed(1)),
+    winRate:       parseFloat(calcWinRate(sWins, st.length).toFixed(1)),
     avgR:          parseFloat(sAvgR.toFixed(2)),
     cumR:          parseFloat(cumR.toFixed(1)),
     netPnl:        parseFloat(netPnl.toFixed(2)),
@@ -196,7 +197,7 @@ export function computeSessionMatrix(
         session:  sess,
         trades:   sessT.length,
         winRate:  sessT.length > 0
-          ? parseFloat((sessT.filter(t => t.pnl > 0).length / sessT.length * 100).toFixed(2))
+          ? parseFloat(calcWinRate(sessT.filter(t => isWin({ pnl: t.pnl })).length, sessT.length).toFixed(2))
           : null,
       })
     }
@@ -214,7 +215,7 @@ export function computeDirectionBreakdown(
   const shorts = trades.filter(t => t.setupId === setupId && t.direction === "SHORT")
   if (longs.length === 0 || shorts.length === 0) return null
 
-  const dWr = (arr: MinimalTrade[]) => arr.length > 0 ? arr.filter(t => t.pnl > 0).length / arr.length * 100 : 0
+  const dWr = (arr: MinimalTrade[]) => calcWinRate(arr.filter(t => isWin({ pnl: t.pnl })).length, arr.length)
   const dAr = (arr: MinimalTrade[]) => arr.length > 0 ? arr.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / arr.length : 0
 
   return {

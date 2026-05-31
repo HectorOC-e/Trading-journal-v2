@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import { Plus, TrendingUp, Percent, Zap, Shield, Activity, Upload } from "lucide-react"
+import { isWin, calcWinRate } from "@/lib/formulas"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -122,8 +123,8 @@ export default function TradesPage() {
 
   // KPIs from all loaded trades
   const netPnl = trades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-  const wins   = trades.filter(t => (t.rMultiple ?? 0) > 0).length
-  const wr     = trades.length ? Math.round((wins / trades.length) * 100) : 0
+  const wins   = trades.filter(t => isWin({ pnl: t.pnl ?? 0 })).length
+  const wr     = Math.round(calcWinRate(wins, trades.length))
   const avgR   = trades.length
     ? trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
     : 0

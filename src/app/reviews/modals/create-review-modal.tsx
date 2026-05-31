@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { isWin, calcWinRate } from "@/lib/formulas"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -95,8 +96,8 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   }
 
   const netPnl  = filtered.reduce((s, t) => s + (t.pnl ?? 0), 0)
-  const winners = filtered.filter((t) => (t.pnl ?? 0) > 0)
-  const winRate = Math.round((winners.length / filtered.length) * 100)
+  const winners = filtered.filter((t) => isWin({ pnl: t.pnl ?? 0 }))
+  const winRate = Math.round(calcWinRate(winners.length, filtered.length))
 
   const disciplinedCount = filtered.filter((t) => t.tags.some((tag: string) => tag === "A+" || tag === "Plan")).length
   const offPlanCount     = filtered.filter((t) => t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo")).length

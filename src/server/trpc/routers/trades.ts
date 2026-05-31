@@ -2,7 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { getISOWeekKey, calcProfitFactor, calcExpectancyR } from "@/lib/formulas"
+import { isWin, calcWinRate, getISOWeekKey, calcProfitFactor, calcExpectancyR } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
@@ -433,8 +433,8 @@ export const tradesRouter = router({
       const aplusStats = {
         aplusCount: aplusTrades.length,
         stdCount:   stdTrades.length,
-        aplusWr:    aplusTrades.length > 0 ? aplusTrades.filter(t => t.pnl > 0).length / aplusTrades.length * 100 : null,
-        stdWr:      stdTrades.length   > 0 ? stdTrades.filter(t => t.pnl > 0).length   / stdTrades.length   * 100 : null,
+        aplusWr:    aplusTrades.length > 0 ? calcWinRate(aplusTrades.filter(t => isWin({ pnl: t.pnl })).length, aplusTrades.length) : null,
+        stdWr:      stdTrades.length   > 0 ? calcWinRate(stdTrades.filter(t => isWin({ pnl: t.pnl })).length, stdTrades.length) : null,
         aplusAvgR:  aplusTrades.length > 0 ? aplusTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / aplusTrades.length : null,
         stdAvgR:    stdTrades.length   > 0 ? stdTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / stdTrades.length   : null,
       }

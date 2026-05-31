@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
+import { isWin, calcWinRate } from "@/lib/formulas"
 import { VIOLATION_TAGS } from "@/types"
 import { streamChat } from "@/lib/ai/chat"
 import { isAnyKeyConfigured, getWeeklySummaryModel } from "@/lib/ai/config"
@@ -201,8 +202,8 @@ export const weeklyReviewsRouter = router({
 
       const tradeCount = trades.length
       const netPnl     = parseFloat(trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0).toFixed(2))
-      const wins       = trades.filter(t => Number(t.pnl ?? 0) > 0).length
-      const winRate    = tradeCount > 0 ? parseFloat((wins / tradeCount * 100).toFixed(2)) : 0
+      const wins       = trades.filter(t => isWin({ pnl: Number(t.pnl ?? 0) })).length
+      const winRate    = parseFloat(calcWinRate(wins, tradeCount).toFixed(2))
 
       // Find best and worst setup by total P&L
       const bySetup: Record<string, number> = {}
@@ -267,8 +268,8 @@ export const weeklyReviewsRouter = router({
       }
 
       const netPnl  = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const wins    = trades.filter(t => Number(t.pnl ?? 0) > 0).length
-      const winRate = Math.round(wins / trades.length * 100)
+      const wins    = trades.filter(t => isWin({ pnl: Number(t.pnl ?? 0) })).length
+      const winRate = Math.round(calcWinRate(wins, trades.length))
       const tradeLines = trades.slice(0, 15).map(t =>
         `  • ${t.symbol} ${t.direction} ${Number(t.pnl ?? 0) >= 0 ? "+" : ""}$${Number(t.pnl ?? 0).toFixed(2)}` +
         `${t.rMultiple != null ? ` (${Number(t.rMultiple).toFixed(2)}R)` : ""}` +

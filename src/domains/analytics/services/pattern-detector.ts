@@ -1,3 +1,4 @@
+import { isWin, calcWinRate } from "@/lib/formulas"
 import type { MinimalTrade } from "./dashboard-analytics"
 
 export type DetectedPattern = {
@@ -114,8 +115,8 @@ function detectFridayBias(trades: MinimalTrade[]): DetectedPattern | null {
 
   if (fridayTrades.length < 5 || nonFridayTrades.length === 0) return null
 
-  const fridayWr    = fridayTrades.filter(t => t.pnl > 0).length / fridayTrades.length * 100
-  const nonFridayWr = nonFridayTrades.filter(t => t.pnl > 0).length / nonFridayTrades.length * 100
+  const fridayWr    = calcWinRate(fridayTrades.filter(t => isWin({ pnl: t.pnl })).length, fridayTrades.length)
+  const nonFridayWr = calcWinRate(nonFridayTrades.filter(t => isWin({ pnl: t.pnl })).length, nonFridayTrades.length)
 
   const drop = nonFridayWr - fridayWr
 
@@ -213,8 +214,8 @@ function detectSessionFatigue(trades: MinimalTrade[]): DetectedPattern | null {
 
   if (lateTradesArr.length < 10 || earlyTradesArr.length === 0) return null
 
-  const lateWr  = lateTradesArr.filter(t => t.pnl > 0).length / lateTradesArr.length * 100
-  const earlyWr = earlyTradesArr.filter(t => t.pnl > 0).length / earlyTradesArr.length * 100
+  const lateWr  = calcWinRate(lateTradesArr.filter(t => isWin({ pnl: t.pnl })).length, lateTradesArr.length)
+  const earlyWr = calcWinRate(earlyTradesArr.filter(t => isWin({ pnl: t.pnl })).length, earlyTradesArr.length)
   const drop    = earlyWr - lateWr
 
   if (drop < 10) return null

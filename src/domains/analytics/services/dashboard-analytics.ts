@@ -1,4 +1,4 @@
-import { calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
+import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
 
 export type MinimalTrade = {
@@ -94,11 +94,11 @@ export function buildKpis(
   monthStart: string,
 ): KpiSummary {
   const total   = trades.length
-  const wins    = trades.filter(t => t.pnl > 0).length
+  const wins    = trades.filter(t => isWin({ pnl: t.pnl })).length
   const losses  = trades.filter(t => t.pnl < 0).length
   const be      = total - wins - losses
   const netPnl  = trades.reduce((s, t) => s + t.pnl, 0)
-  const winRate = total > 0 ? (wins / total) * 100 : 0
+  const winRate = calcWinRate(wins, total)
 
   const withR      = trades.filter(t => t.rMultiple != null)
   const avgR       = withR.length > 0 ? withR.reduce((s, t) => s + t.rMultiple!, 0) / withR.length : 0
@@ -187,7 +187,7 @@ export function buildAccountStats(
       pnlMonth:    parseFloat(monthT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
       pnlToday:    parseFloat(todayT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
       tradesToday: todayT.length,
-      winRate:     at.length > 0 ? (acctWins / at.length) * 100 : 0,
+      winRate:     calcWinRate(acctWins, at.length),
       avgR:        acctWithR.length > 0 ? acctWithR.reduce((s, t) => s + t.rMultiple!, 0) / acctWithR.length : 0,
       drawdownPct: initBal > 0 ? (maxDd / initBal) * 100 : 0,
       sparkline,
@@ -247,14 +247,14 @@ export function buildSessionStats(trades: MinimalTrade[]): SessionStat[] {
     const s = t.session ?? "Sin sesión"
     if (!bySession[s]) bySession[s] = { trades: 0, wins: 0, rSum: 0 }
     bySession[s].trades++
-    if (t.pnl > 0) bySession[s].wins++
+    if (isWin({ pnl: t.pnl })) bySession[s].wins++
     bySession[s].rSum += t.rMultiple ?? 0
   }
   return Object.entries(bySession)
     .map(([session, v]) => ({
       session,
       trades:  v.trades,
-      winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
+      winRate: calcWinRate(v.wins, v.trades),
       avgR:    v.trades > 0 ? v.rSum / v.trades : 0,
     }))
     .sort((a, b) => b.trades - a.trades)
@@ -270,14 +270,14 @@ export function buildHourStats(trades: MinimalTrade[]): HourStat[] {
     if (isNaN(hour)) continue
     if (!byHour[hour]) byHour[hour] = { trades: 0, wins: 0, rSum: 0 }
     byHour[hour].trades++
-    if (t.pnl > 0) byHour[hour].wins++
+    if (isWin({ pnl: t.pnl })) byHour[hour].wins++
     byHour[hour].rSum += t.rMultiple ?? 0
   }
   return Object.entries(byHour)
     .map(([h, v]) => ({
       hour:    parseInt(h),
       trades:  v.trades,
-      winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
+      winRate: calcWinRate(v.wins, v.trades),
       avgR:    v.trades > 0 ? v.rSum / v.trades : 0,
     }))
     .sort((a, b) => b.avgR - a.avgR)
@@ -291,14 +291,14 @@ export function buildPnlBySymbol(trades: MinimalTrade[], limit: number): SymbolS
     if (!bySymbol[t.symbol]) bySymbol[t.symbol] = { pnl: 0, trades: 0, wins: 0 }
     bySymbol[t.symbol].pnl += t.pnl
     bySymbol[t.symbol].trades++
-    if (t.pnl > 0) bySymbol[t.symbol].wins++
+    if (isWin({ pnl: t.pnl })) bySymbol[t.symbol].wins++
   }
   return Object.entries(bySymbol)
     .map(([symbol, v]) => ({
       symbol,
       pnl:     parseFloat(v.pnl.toFixed(2)),
       trades:  v.trades,
-      winRate: v.trades > 0 ? v.wins / v.trades * 100 : 0,
+      winRate: calcWinRate(v.wins, v.trades),
     }))
     .sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl))
     .slice(0, limit)

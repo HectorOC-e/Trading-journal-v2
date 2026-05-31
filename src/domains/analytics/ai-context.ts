@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
+import { isWin, calcWinRate } from "@/lib/formulas"
 import { VIOLATION_TAGS } from "@/types"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
@@ -167,8 +168,8 @@ export async function buildTraderContext(
 
   // ── Performance ───────────────────────────────────────────────────────────
   const total   = trades.length
-  const wins    = trades.filter((t: MinimalTrade) => t.pnl > 0).length
-  const winRate = total > 0 ? parseFloat(((wins / total) * 100).toFixed(2)) : 0
+  const wins    = trades.filter((t: MinimalTrade) => isWin({ pnl: t.pnl })).length
+  const winRate = parseFloat(calcWinRate(wins, total).toFixed(2))
   const withR   = trades.filter((t: MinimalTrade) => t.rMultiple != null)
   const avgR    = withR.length > 0
     ? parseFloat((withR.reduce((s: number, t: MinimalTrade) => s + t.rMultiple!, 0) / withR.length).toFixed(4))
@@ -198,7 +199,7 @@ export async function buildTraderContext(
     if (!t.setupId) continue
     const s = setupStats.get(t.setupId) ?? { wins: 0, trades: 0 }
     s.trades++
-    if (t.pnl > 0) s.wins++
+    if (isWin({ pnl: t.pnl })) s.wins++
     setupStats.set(t.setupId, s)
   }
 
@@ -207,7 +208,7 @@ export async function buildTraderContext(
 
   for (const [id, s] of setupStats) {
     if (s.trades < 3) continue
-    const wr   = s.wins / s.trades * 100
+    const wr   = calcWinRate(s.wins, s.trades)
     const name: string = setupMap.get(id) ?? id
     if (!bestSetup  || wr > bestSetup.winRate)  bestSetup  = { name, winRate: parseFloat(wr.toFixed(1)), trades: s.trades }
     if (!worstSetup || wr < worstSetup.winRate) worstSetup = { name, winRate: parseFloat(wr.toFixed(1)), trades: s.trades }
