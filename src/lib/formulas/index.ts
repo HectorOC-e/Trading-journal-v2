@@ -24,10 +24,11 @@ export { calcRMultiple, calcAvgR, calcExpectancyR } from './risk'
 // Performance
 export { calcSharpeRatio, calcProfitFactor, calcNetPnl } from './performance'
 
+// Utilities
+export { getISOWeekKey } from './utils'
+
 // Types
 export type {
-  DisciplineParams,
-  DisciplineBreakdown,
   WinRateOutput,
   RiskRewardMetrics,
   KpiSummary,
@@ -44,4 +45,5 @@ export type {
   AiUsageLog,
   TradeForKpi,
   FormulasInput,
+  PsychCorrelation,
 } from './types'

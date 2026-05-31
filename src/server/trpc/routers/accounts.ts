@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { AccountLogPayload } from "@/types"
 
@@ -80,7 +81,7 @@ export const accountsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       if (input.status === "LOST" && !input.statusNote?.trim()) {
-        throw new Error("Se requiere una nota al marcar la cuenta como PERDIDA")
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Se requiere una nota al marcar la cuenta como PERDIDA" })
       }
       const prev = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.id, userId: ctx.userId },

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/lib/generated/prisma/client"
 import { embedText } from "@/lib/ai/embeddings"
 import { isEmbeddingAvailable } from "@/lib/ai/config"
 
@@ -40,13 +41,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const vector = await embedText(notes)
   if (!vector) return NextResponse.json({ ok: false, reason: "EMBED_FAILED" })
 
-  // Store via raw SQL since Prisma doesn't support vector type natively
-  await prisma.$executeRaw`
-    UPDATE trades
-    SET notes_embedding = ${`[${vector.join(",")}]`}::vector
-    WHERE id = ${tradeId}::uuid
-      AND user_id = ${user.id}::uuid
-  `
+  // Store via raw SQL since Prisma doesn't support vector type natively.
+  // Prisma.sql ensures parameterized binding; the vector string is user-data-derived
+  // and must be kept as a typed parameter, not interpolated into the query string.
+  const vectorStr = `[${vector.join(",")}]`
+  await prisma.$executeRaw(
+    Prisma.sql`
+      UPDATE trades
+      SET notes_embedding = ${vectorStr}::vector
+      WHERE id = ${tradeId}::uuid
+        AND user_id = ${user.id}::uuid
+    `,
+  )
 
   return NextResponse.json({ ok: true })
 }

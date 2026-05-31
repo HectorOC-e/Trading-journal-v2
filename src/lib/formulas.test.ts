@@ -10,8 +10,8 @@ describe("calcExpectancyR", () => {
 
   it("returns 0 when all rMultiple values are null (open trades)", () => {
     expect(calcExpectancyR([
-      { rMultiple: null, pnl: 100 },
-      { rMultiple: null, pnl: -50 },
+      { rMultiple: null },
+      { rMultiple: null },
     ])).toBe(0)
   })
 
@@ -20,11 +20,11 @@ describe("calcExpectancyR", () => {
     // avgWinR = 2, avgLossR = 1, winRate = 3/5 = 0.6
     // E = 0.6 * 2 - 0.4 * 1 = 1.2 - 0.4 = 0.8
     const trades = [
-      { rMultiple: 2, pnl: 200 },
-      { rMultiple: 2, pnl: 200 },
-      { rMultiple: 2, pnl: 200 },
-      { rMultiple: -1, pnl: -100 },
-      { rMultiple: -1, pnl: -100 },
+      { rMultiple: 2 },
+      { rMultiple: 2 },
+      { rMultiple: 2 },
+      { rMultiple: -1 },
+      { rMultiple: -1 },
     ]
     expect(calcExpectancyR(trades)).toBeCloseTo(0.8, 10)
   })
@@ -32,8 +32,8 @@ describe("calcExpectancyR", () => {
   it("uses real avgLossR (not hardcoded 1)", () => {
     // 1 win of 3R, 1 loss of -2R → E = 0.5*3 - 0.5*2 = 0.5
     const trades = [
-      { rMultiple: 3, pnl: 300 },
-      { rMultiple: -2, pnl: -200 },
+      { rMultiple: 3 },
+      { rMultiple: -2 },
     ]
     expect(calcExpectancyR(trades)).toBeCloseTo(0.5, 10)
   })
@@ -42,8 +42,8 @@ describe("calcExpectancyR", () => {
     // 2 wins of 1.5R → winRate = 1, avgWinR = 1.5, avgLossR = 1 (fallback)
     // E = 1 * 1.5 - 0 * 1 = 1.5
     const trades = [
-      { rMultiple: 1.5, pnl: 150 },
-      { rMultiple: 1.5, pnl: 150 },
+      { rMultiple: 1.5 },
+      { rMultiple: 1.5 },
     ]
     expect(calcExpectancyR(trades)).toBeCloseTo(1.5, 10)
   })
@@ -52,8 +52,8 @@ describe("calcExpectancyR", () => {
     // 2 losses of -1R → winRate = 0, avgLossR = 1
     // E = 0 * 0 - 1 * 1 = -1
     const trades = [
-      { rMultiple: -1, pnl: -100 },
-      { rMultiple: -1, pnl: -100 },
+      { rMultiple: -1 },
+      { rMultiple: -1 },
     ]
     expect(calcExpectancyR(trades)).toBeCloseTo(-1, 10)
   })
@@ -62,9 +62,9 @@ describe("calcExpectancyR", () => {
     // null entries are excluded; only 2R win and -1R loss contribute
     // E = 0.5*2 - 0.5*1 = 0.5
     const trades = [
-      { rMultiple: 2, pnl: 200 },
-      { rMultiple: -1, pnl: -100 },
-      { rMultiple: null, pnl: null },   // open trade — excluded
+      { rMultiple: 2 },
+      { rMultiple: -1 },
+      { rMultiple: null },   // open trade — excluded
     ]
     expect(calcExpectancyR(trades)).toBeCloseTo(0.5, 10)
   })

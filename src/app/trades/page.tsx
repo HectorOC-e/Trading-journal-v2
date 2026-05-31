@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import { Plus, TrendingUp, Percent, Zap, Shield, Activity, Upload } from "lucide-react"
-import { isWin, calcWinRate } from "@/lib/formulas"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -121,27 +120,23 @@ export default function TradesPage() {
   const todayStr = new Date().toISOString().slice(0, 10)
   const tradeCountToday = trades.filter(t => t.date === todayStr).length
 
-  // KPIs from all loaded trades
-  const netPnl = trades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-  const wins   = trades.filter(t => isWin({ pnl: t.pnl ?? 0 })).length
-  const wr     = Math.round(calcWinRate(wins, trades.length))
-  const avgR   = trades.length
-    ? trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
-    : 0
-
-  // Simple max daily drawdown approximation
-  const dailyPnl = trades.reduce((map, t) => {
-    const prev = map.get(t.date) ?? 0
-    map.set(t.date, prev + (t.pnl ?? 0))
-    return map
-  }, new Map<string, number>())
-  const minDay = Math.min(0, ...(Array.from(dailyPnl.values()) as number[]))
+  // KPIs from server-side aggregation (all trades, not just loaded page)
+  const { data: statsData } = trpc.trades.dashboardStats.useQuery(
+    { period: "ALL" },
+    { staleTime: 60_000 },
+  )
+  const kpisAll = statsData?.kpis
+  const netPnl  = kpisAll?.netPnl  ?? 0
+  const wins    = kpisAll?.wins    ?? 0
+  const wr      = kpisAll ? Math.round(kpisAll.winRate) : 0
+  const avgR    = kpisAll?.avgR    ?? 0
+  const totalCount = kpisAll?.total ?? trades.length
 
   const kpiItems = [
     {
       label: "Net P&L",
       value: netPnl >= 0 ? `+$${netPnl.toLocaleString()}` : `-$${Math.abs(netPnl).toLocaleString()}`,
-      sub: `${trades.length} trades`,
+      sub: `${totalCount} trades`,
       trend: netPnl >= 0 ? "up" as const : "down" as const,
       mono: true,
       icon: <TrendingUp size={15} />,
@@ -163,12 +158,12 @@ export default function TradesPage() {
       icon: <Zap size={15} />,
     },
     {
-      label: "Drawdown",
-      value: minDay < 0 ? `-$${Math.abs(minDay).toLocaleString()}` : "$0",
-      sub: "peor día",
-      trend: "neutral" as const,
+      label: "Sharpe",
+      value: kpisAll?.sharpeRatio != null ? kpisAll.sharpeRatio.toFixed(2) : "—",
+      sub: "consistencia",
+      trend: (kpisAll?.sharpeRatio ?? 0) >= 1 ? "up" as const : "neutral" as const,
       mono: true,
-      icon: <Shield size={15} />,
+      icon: <Activity size={15} />,
     },
   ]
 

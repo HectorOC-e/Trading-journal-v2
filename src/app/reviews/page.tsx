@@ -23,7 +23,7 @@ export default function ReviewsPage() {
   const { data: reviews = [], isLoading } = trpc.weeklyReviews.list.useQuery()
   const { data: accounts = [] }           = trpc.accounts.list.useQuery()
   const { data: reviewResources = [] }    = trpc.learningResources.list.useQuery({ markedForReview: true })
-  const { data: rawPageTrades }           = trpc.trades.list.useQuery()
+  const { data: rawPageTrades }           = trpc.trades.list.useQuery({ limit: 200 })
   const allTrades: TradeFromDB[]          = rawPageTrades?.items ?? []
 
   const accountName = (id: string | null) => {

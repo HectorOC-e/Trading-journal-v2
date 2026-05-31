@@ -205,6 +205,8 @@ export interface TimeOfDayMatrix {
   data: number[][] // [session][hour] = avg P&L or win rate
 }
 
+export type PsychCorrelation = "FOMO" | "REVENGE" | "OVERCONFIDENCE" | "FEAR" | "FATIGUE"
+
 /**
  * Detected behavioral or performance pattern.
  */

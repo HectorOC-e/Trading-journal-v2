@@ -18,7 +18,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE)
 // ─── Auth check ──────────────────────────────────────────────────────────────
 
 function isAuthorized(req: Request): boolean {
-  if (!CRON_SECRET) return true  // no secret configured → allow (dev mode)
+  // Reject immediately if CRON_SECRET is not configured — never allow bypass
+  if (!CRON_SECRET) return false
   const auth = req.headers.get("authorization") ?? ""
   return auth === `Bearer ${CRON_SECRET}` || auth === `Bearer ${SUPABASE_SERVICE_ROLE}`
 }

@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn }        from "@/lib/utils"
 import { trpc }           from "@/lib/trpc/client"
-import { createClient }   from "@/lib/supabase/client"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -649,20 +648,19 @@ function SetupModal({ open, onOpenChange, editSetup }: {
 
   const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
 
-  /* ── Image upload via Supabase Storage ── */
+  /* ── Image upload via validated Route Handler ── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
-    const supabase = createClient()
     const urls: string[] = []
     for (const file of files) {
-      const ext  = file.name.split(".").pop()
-      const path = `setups/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from("setup-images").upload(path, file, { upsert: false })
-      if (!error) {
-        const { data } = supabase.storage.from("setup-images").getPublicUrl(path)
-        urls.push(data.publicUrl)
+      const body = new FormData()
+      body.append("file", file)
+      const res = await fetch("/api/upload/setup-image", { method: "POST", body })
+      if (res.ok) {
+        const json = await res.json() as { ok: boolean; url?: string }
+        if (json.ok && json.url) urls.push(json.url)
       }
     }
     setForm(f => ({ ...f, images: [...f.images, ...urls] }))
@@ -1022,34 +1020,26 @@ export default function PlaybookPage() {
   const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
     { includeDiscarded: showDiscarded },
   )
-  const { data: rawTradesData }   = trpc.trades.list.useQuery()
   const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
-  const allTrades = rawTradesData?.items ?? []
+  const { data: dashStats }        = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
 
-  const setupStats = useMemo(() => {
+  // Setup stats from server-side aggregation (all trades, not paginated 50)
+  const setupStats = useMemo<Record<string, SetupStats>>(() => {
     const map: Record<string, SetupStats> = {}
-    for (const t of allTrades) {
-      if (t.status !== "CLOSED" || !t.setupId) continue
-      const sid = t.setupId
-      if (!map[sid]) map[sid] = { total: 0, wins: 0, netPnl: 0, avgR: 0, aplusRate: 0, expectancy: 0 }
-      const s = map[sid]
-      s.total++
-      const pnl = t.pnl ?? 0
-      if (pnl > 0) s.wins++
-      s.netPnl += pnl
-      s.avgR   += t.rMultiple ?? 0
-    }
-    for (const sid of Object.keys(map)) {
-      const s = map[sid]
-      if (s.total === 0) continue
-      s.avgR /= s.total
-      const wr = s.wins / s.total
-      s.expectancy = s.avgR * wr - (1 - wr)
-      const aplusTrades = allTrades.filter(t => t.setupId === sid && t.status === "CLOSED" && (t.tags as string[]).includes("A+")).length
-      s.aplusRate = Math.round((aplusTrades / s.total) * 100)
+    for (const s of dashStats?.setupStats ?? []) {
+      if (!s.setupId) continue
+      const wr = s.trades > 0 ? s.winRate / 100 : 0
+      map[s.setupId] = {
+        total:      s.trades,
+        wins:       Math.round(s.winRate / 100 * s.trades),
+        netPnl:     s.netPnl,
+        avgR:       s.avgR,
+        aplusRate:  s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
+        expectancy: s.avgR * wr - (1 - wr),
+      }
     }
     return map
-  }, [allTrades])
+  }, [dashStats])
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },

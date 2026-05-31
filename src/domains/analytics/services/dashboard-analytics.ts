@@ -56,16 +56,18 @@ export type KpiSummary = {
 }
 
 export type AccountStat = {
-  accountId:   string
-  balance:     number
-  netPnl:      number
-  pnlMonth:    number
-  pnlToday:    number
-  tradesToday: number
-  winRate:     number
-  avgR:        number
-  drawdownPct: number
-  sparkline:   number[]
+  accountId:    string
+  balance:      number
+  netPnl:       number
+  pnlMonth:     number
+  pnlToday:     number
+  tradesToday:  number
+  tradesMonth:  number
+  tradesTotal:  number
+  winRate:      number
+  avgR:         number
+  drawdownPct:  number
+  sparkline:    number[]
 }
 
 export type EquityCurvePoint  = { date: string; balance: number; accountId: string }
@@ -187,6 +189,8 @@ export function buildAccountStats(
       pnlMonth:    parseFloat(monthT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
       pnlToday:    parseFloat(todayT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
       tradesToday: todayT.length,
+      tradesMonth: monthT.length,
+      tradesTotal: at.length,
       winRate:     calcWinRate(acctWins, at.length),
       avgR:        acctWithR.length > 0 ? acctWithR.reduce((s, t) => s + t.rMultiple!, 0) / acctWithR.length : 0,
       drawdownPct: initBal > 0 ? (maxDd / initBal) * 100 : 0,

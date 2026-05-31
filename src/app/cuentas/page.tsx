@@ -11,13 +11,13 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { AccountCard, KpiBox } from "./components/account-card"
+import type { TradeStats } from "./components/account-card"
 import { AccountDetailPanel } from "./components/account-detail-panel"
 import { NuevaCuentaModal } from "./modals/create-account-modal"
 import { EditarCuentaModal } from "./modals/edit-account-modal"
 import { AccountHistoryModal } from "./modals/account-history-modal"
 import { PromotePhaseModal } from "./modals/promote-phase-modal"
 import { SyncBalanceModal } from "./modals/sync-balance-modal"
-import { useAccountStats } from "./hooks/use-account-stats"
 
 export default function CuentasPage() {
   const [modalOpen,  setModalOpen]  = useState(false)
@@ -29,11 +29,24 @@ export default function CuentasPage() {
 
   const { data: accounts = [], isLoading } = trpc.accounts.list.useQuery()
   const { data: markets = [] }             = trpc.markets.list.useQuery()
-  const { data: rawTradesData }            = trpc.trades.list.useQuery()
-  const allTrades = rawTradesData?.items ?? []
+  const { data: dashStats }                = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
   const utils = trpc.useUtils()
 
-  const accountStats = useAccountStats(accounts, allTrades)
+  // Build accountStats from server-side aggregation (all trades, not just paginated)
+  const accountStats: Record<string, TradeStats> = Object.fromEntries(
+    (dashStats?.accountStats ?? []).map(s => [s.accountId, {
+      netPnl:      s.netPnl,
+      pnlMonth:    s.pnlMonth,
+      pnlToday:    s.pnlToday,
+      winRate:     s.winRate,
+      avgR:        s.avgR,
+      tradesMonth: s.tradesMonth,
+      tradesToday: s.tradesToday,
+      tradesTotal: s.tradesTotal,
+      drawdownPct: s.drawdownPct,
+      sparkline:   s.sparkline,
+    }]),
+  )
 
   const invalidate = () => utils.accounts.list.invalidate()
 
