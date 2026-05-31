@@ -30,6 +30,7 @@ export type AccountWithLimits = {
   ddDailyPct:      number | null
   ddTotalPct:      number | null
   maxTradesPerDay: number | null
+  allowedSymbols:  string[]
 }
 
 export type TodayTrade = { accountId: string; pnl: number | null; status: string }
@@ -73,13 +74,14 @@ export type SessionStat       = { session: string; trades: number; winRate: numb
 export type HourStat          = { hour: number;   trades: number; winRate: number; avgR: number }
 export type SymbolStat        = { symbol: string; pnl: number; trades: number; winRate: number }
 export type PropFirmStatus    = {
-  accountId:    string
-  name:         string
-  ddPctUsed:    number
-  dailyLossPct: number
-  tradesUsed:   number
-  tradesMax:    number
-  status:       "OK" | "ALERTA"
+  accountId:      string
+  name:           string
+  ddPctUsed:      number
+  dailyLossPct:   number
+  tradesUsed:     number
+  tradesMax:      number
+  status:         "OK" | "ALERTA"
+  allowedSymbols: string[]
 }
 
 export type Grain = "daily" | "weekly" | "monthly"
@@ -333,13 +335,14 @@ export function buildPropFirmStatus(
       const status: "OK" | "ALERTA" = ddPctUsed >= 70 || dailyLossPct >= 80 ? "ALERTA" : "OK"
 
       return {
-        accountId:    a.id,
-        name:         a.name,
-        ddPctUsed:    parseFloat(ddPctUsed.toFixed(1)),
-        dailyLossPct: parseFloat(dailyLossPct.toFixed(1)),
+        accountId:      a.id,
+        name:           a.name,
+        ddPctUsed:      parseFloat(ddPctUsed.toFixed(1)),
+        dailyLossPct:   parseFloat(dailyLossPct.toFixed(1)),
         tradesUsed,
         tradesMax,
         status,
+        allowedSymbols: a.allowedSymbols,
       }
     })
 }

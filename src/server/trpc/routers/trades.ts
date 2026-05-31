@@ -11,9 +11,67 @@ import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
-import type { MinimalTrade, AccountBalance, AccountWithLimits, Grain } from "@/domains/analytics/services/dashboard-analytics"
+import type {
+  MinimalTrade, AccountBalance, AccountWithLimits, Grain,
+  KpiSummary, AccountStat, EquityCurvePoint, PnlByDatePoint,
+  SessionStat, HourStat, SymbolStat, PropFirmStatus,
+} from "@/domains/analytics/services/dashboard-analytics"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
-import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
+import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
+
+type DashboardOutput = {
+  kpis:           KpiSummary
+  accountStats:   AccountStat[]
+  equityCurve:    EquityCurvePoint[]
+  pnlByDate:      PnlByDatePoint[]
+  pnlBySymbol:    SymbolStat[]
+  sessionStats:   SessionStat[]
+  hourStats:      HourStat[]
+  setupStats:     SetupStats[]
+  sessionMatrix:  SessionMatrixRow[]
+  directionStats: DirectionStats[]
+  propFirmStatus: PropFirmStatus[]
+  recentTrades: Array<{
+    id:        string
+    symbol:    string
+    direction: string
+    pnl:       number
+    rMultiple: number | null
+    session:   string | null
+    tags:      string[]
+    date:      string
+    setupId:   string | null
+    setupName: string | null
+    setupAbbr: string | null
+  }>
+  executionStats: {
+    avgDurationMinutes: number | null
+    avgPlannedRisk:     number | null
+    avgPlannedReward:   number | null
+    riskRewardRatio:    number | null
+  }
+  discipline: {
+    heatmapData:   { date: string; severity: 0 | 1 | 2 }[]
+    rDistribution: { bucket: string; count: number }[]
+    violations:    { rule: string; count: number; severity: "mayor" | "menor" }[]
+    weeklyScore:   { week: string; score: number }[]
+    aplusStats: {
+      aplusCount: number
+      stdCount:   number
+      aplusWr:    number | null
+      stdWr:      number | null
+      aplusAvgR:  number | null
+      stdAvgR:    number | null
+    }
+    composition: {
+      planSeguido: number
+      offPlan:     number
+      partial:     number
+    }
+    costoIndisciplina: number
+    rachaDiasLimpios:  number
+  }
+}
 import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { VIOLATION_TAGS } from "@/types"
 
@@ -149,9 +207,8 @@ export const tradesRouter = router({
       // ── Cache lookup (feature-flagged) ────────────────────────────────────
       const cacheKey = `${period}:${input?.accountId ?? "all"}`
       if (isCacheEnabled()) {
-        const hit = await getCachedStats(ctx.prisma, ctx.userId, cacheKey)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (hit) return hit as any
+        const hit = await getCachedStats<DashboardOutput>(ctx.prisma, ctx.userId, cacheKey)
+        if (hit) return hit
       }
 
       // ── Fetch ─────────────────────────────────────────────────────────────
@@ -226,6 +283,7 @@ export const tradesRouter = router({
         ddDailyPct:      a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
         ddTotalPct:      a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
         maxTradesPerDay: a.maxTradesPerDay,
+        allowedSymbols:  a.allowedSymbols as string[],
       }))
 
       // ── Core analytics (service delegation) ──────────────────────────────
@@ -379,7 +437,7 @@ export const tradesRouter = router({
         rachaDiasLimpios,
       }
 
-      const result = {
+      const result: DashboardOutput = {
         kpis,
         accountStats,
         equityCurve,

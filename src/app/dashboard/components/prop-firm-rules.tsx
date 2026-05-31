@@ -45,7 +45,7 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
             </div>
             <p className="text-[10px] text-[var(--ink-3)]">
               Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">
-                {(a as typeof a & { allowedSymbols?: string[] }).allowedSymbols?.join(", ") || "—"}
+                {a.allowedSymbols.join(", ") || "—"}
               </span>
             </p>
           </div>
