@@ -5,7 +5,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts"
-import { Shield, CheckCircle2, Award, Target } from "lucide-react"
+import { Shield, CheckCircle2, Award, Target, Brain } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
 import { Card } from "../components/card"
@@ -38,6 +38,9 @@ export function TabDisciplina({ kpis, discipline }: {
 
   // ── Mood correlation (T-V-004) ────────────────────────────────────────────
   const { data: moodCorr } = trpc.tradingSessions.moodCorrelation.useQuery(undefined, { staleTime: 60_000 })
+
+  // ── Behavioral pattern insights (T-VI-002) ───────────────────────────────
+  const { data: patterns, isLoading: patternsLoading } = trpc.trades.patternInsights.useQuery(undefined, { staleTime: 120_000 })
 
   const heatmap = useMemo((): HeatVal[][] => {
     const dateMap: Record<string, HeatVal> = {}
@@ -336,6 +339,66 @@ export function TabDisciplina({ kpis, discipline }: {
           })()}
         </Card>
       )}
+
+      {/* Insights detectados (T-VI-002) */}
+      <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Brain size={16} className="text-[#4f6ef7]" />
+          <p className="text-[13px] font-semibold text-[var(--ink)]">Insights detectados</p>
+          <p className="text-[11px] text-[var(--ink-3)] ml-1">Patrones de comportamiento basados en tu historial</p>
+        </div>
+
+        {patternsLoading && (
+          <div className="flex flex-col gap-3">
+            {[1, 2].map(i => (
+              <div key={i} className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] h-20 animate-pulse" />
+            ))}
+          </div>
+        )}
+
+        {!patternsLoading && (!patterns || patterns.length === 0) && (
+          <p className="text-sm text-[var(--ink-3)] text-center py-4">
+            No se detectaron patrones con suficientes datos.
+          </p>
+        )}
+
+        {!patternsLoading && patterns && patterns.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {patterns.map(p => {
+              const badgeColor =
+                p.confidence === "high"   ? "var(--loss)" :
+                p.confidence === "medium" ? "var(--be)"   : "var(--win)"
+              const badgeLabel =
+                p.confidence === "high"   ? "Alta"   :
+                p.confidence === "medium" ? "Media"  : "Baja"
+
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-2"
+                  style={{ borderLeftWidth: 3, borderLeftColor: badgeColor }}
+                >
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--ink)] flex-1">{p.title}</p>
+                    <span
+                      className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5"
+                      style={{ background: badgeColor, color: "white" }}
+                    >
+                      {badgeLabel}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--ink-2)]">{p.description}</p>
+                  <p className="text-[10px] text-[var(--ink-3)] italic">{p.evidence}</p>
+                  <div className="flex items-start gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#4f6ef7] shrink-0 mt-0.5">Acción</span>
+                    <p className="text-[11px] text-[var(--ink-2)]">{p.actionable}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -18,6 +18,7 @@ import type {
 } from "@/domains/analytics/services/dashboard-analytics"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
+import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
 
 type DashboardOutput = {
   kpis:           KpiSummary
@@ -544,6 +545,7 @@ export const tradesRouter = router({
       })
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
+      // TODO: await embedTradeNotes(trade.id, input.notes, ctx.prisma)  (T-VI-004)
       return serializeTrade(full)
     }),
 
@@ -569,6 +571,7 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
+      // TODO: await embedTradeNotes(trade.id, input.notes, ctx.prisma)  (T-VI-004)
       return serializeTrade(trade)
     }),
 
@@ -807,5 +810,59 @@ export const tradesRouter = router({
           itemsTotal:   input.itemsTotal,
         },
       })
+    }),
+
+  // T-VI-002: Behavioral pattern insights
+  patternInsights: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tradeRows = await ctx.prisma.trade.findMany({
+        where: { userId: ctx.userId, status: "CLOSED" },
+        select: {
+          id: true, accountId: true, symbol: true, direction: true,
+          session: true, openTime: true, closeTime: true,
+          pnl: true, rMultiple: true, tags: true, date: true,
+          setupId: true, entry: true, stop: true, target: true, size: true,
+        },
+        orderBy: [{ date: "asc" }],
+        take: 500,
+      })
+      const trades: MinimalTrade[] = tradeRows.map(t => ({
+        id:        t.id,
+        accountId: t.accountId,
+        symbol:    t.symbol,
+        direction: t.direction,
+        session:   t.session as string | null,
+        openTime:  t.openTime as string | null,
+        closeTime: t.closeTime as string | null,
+        pnl:       t.pnl        != null ? Number(t.pnl)        : 0,
+        rMultiple: t.rMultiple  != null ? Number(t.rMultiple)  : null,
+        tags:      t.tags        as string[],
+        date:      (t.date as Date).toISOString().slice(0, 10),
+        setupId:   t.setupId,
+        entry:     Number(t.entry),
+        stop:      Number(t.stop),
+        target:    Number(t.target),
+        size:      Number(t.size),
+      }))
+      return detectPatterns(trades)
+    }),
+
+  // T-VI-004: Semantic search (pgvector)
+  semanticSearch: protectedProcedure
+    .input(z.object({
+      query: z.string().min(1).max(500),
+      limit: z.number().int().min(1).max(20).default(10),
+    }))
+    .query(async ({ ctx, input }) => {
+      if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+        return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
+      }
+      // TODO: generate embedding for input.query and run vector similarity search:
+      // SELECT id, 1 - (notes_embedding <=> $1::vector) AS similarity
+      // FROM trades WHERE user_id = $2 AND notes_embedding IS NOT NULL
+      // ORDER BY notes_embedding <=> $1::vector LIMIT $3
+      void ctx
+      void input
+      return { trades: [], similarity: [], error: "NOT_IMPLEMENTED" as const }
     }),
 })
