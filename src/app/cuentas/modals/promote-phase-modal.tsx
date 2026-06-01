@@ -9,8 +9,9 @@ import type { RouterOutputs } from "@/server/trpc/root"
 
 type RawAccount = RouterOutputs["accounts"]["list"][number]
 
-export function PromotePhaseModal({ account, onClose, onConfirm, saving, markets = [] }: {
+export function PromotePhaseModal({ account, netPnl = 0, onClose, onConfirm, saving, markets = [] }: {
   account: RawAccount
+  netPnl?: number
   onClose: () => void
   onConfirm: (input: {
     id: string; phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
@@ -38,7 +39,9 @@ export function PromotePhaseModal({ account, onClose, onConfirm, saving, markets
   const [minDays,       setMinDays]       = useState(account.minTradingDays  != null ? String(account.minTradingDays)  : "")
   const [symbols,       setSymbols]       = useState<string[]>(account.allowedSymbols ?? [])
 
-  const objectiveMet   = false // TODO: compare real trade PnL vs targetPct
+  const objectiveMet   = account.targetPct != null
+    ? netPnl >= Number(account.targetPct) / 100 * Number(account.initialBalance)
+    : false
   const needsOverride  = !objectiveMet
 
   function handleConfirm() {

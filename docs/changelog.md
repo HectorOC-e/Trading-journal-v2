@@ -5,6 +5,92 @@
 
 ---
 
+## [Sprint 2 — Learning Pipeline Correctness & UX Foundations] — 2026-06-01
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 246/246 passing (+14 new tests) | **TypeScript:** clean (`tsc --noEmit`)
+
+### Fixed (P0 deferred from Sprint 1)
+
+- **Phase promotion objectiveMet** (TASK-002) — `src/app/cuentas/modals/promote-phase-modal.tsx`
+  - `objectiveMet = false` (hardcoded) → computed from `netPnl >= (targetPct / 100) * initialBalance`
+  - `netPnl` sourced from `dashboardStats.accountStats` and passed as prop to modal
+  - Prop-firm traders promoting phases now see accurate objective status
+- **AI coach error status** (TASK-026) — `src/app/api/ai-coach/route.ts`
+  - `NO_API_KEY` response changed from status 200 → 503 (Service Unavailable)
+  - Streaming error response message changed from "BAD_REQUEST" → "STREAM_ERROR" (matches 500 status)
+- **"Peor día" KPI on trades page** (TASK-028) — `src/app/trades/page.tsx`
+  - Added "Peor día" KPI card (worst daily P&L) using `kpisAll.worstDay` from dashboardStats
+  - Correctly labeled (was previously mislabeled "Drawdown" in Sprint 1 planning; now added with correct name)
+- **Sharpe formula consistency** (TD-011) — `src/domains/analytics/ai-context.ts`
+  - Replaced inline population std dev formula with `calcSharpeRatio()` from centralized formulas module
+  - AI coach now uses Bessel-corrected sample std dev — matches dashboard calculation
+
+### Fixed (Learning Pipeline — CQRS violation)
+
+- **MASTERED→IN_REVIEW out of stats query** (TASK-007/038) — `src/server/trpc/routers/learning-resources.ts`
+  - Removed `detectDecayedResources` + `updateMany` side effect from `learningResources.stats` query
+  - Added `processDecayTransitions` mutation (explicit CQRS-compliant call)
+  - `decayedCount` returned by `stats` is now always 0 (decay only tracked via mutation)
+  - `aprendizaje/page.tsx` wired to call `processDecayTransitions.mutate()` on page load
+
+- **N+1 query in resourceImpactRanking** (TASK-008/039) — `src/server/trpc/routers/learning-resources.ts`
+  - Replaced per-resource-per-setup query loop with single batched `trade.findMany` for all affected setups
+  - O(N×S×2) queries → O(2) queries (1 resources fetch + 1 trades batch)
+  - In-memory grouping by `setupId` for O(1) lookup per pair
+
+### Added (UX Feedback System)
+
+- **Sonner toast system** (TASK-035) — `src/app/layout.tsx`, `src/lib/use-toast.ts`
+  - Installed `sonner@^2.0.7`
+  - `<Toaster position="bottom-right" richColors closeButton />` added to root layout
+  - `src/lib/use-toast.ts` re-exports `{ toast }` from sonner as the canonical toast API
+- **generateSummary error toast** (TASK-037) — `src/server/trpc/routers/weekly-reviews.ts`, `create-review-modal.tsx`
+  - `generateSummary` now throws `TRPCError` instead of returning `{ error: "..." }` (fixes HTTP 200 on failure)
+  - `NO_API_KEY` → `PRECONDITION_FAILED` (412) with user-friendly message
+  - Stream failure → `INTERNAL_SERVER_ERROR` (500) with retry prompt
+  - Client-side `onError` handler uses `toast.error(err.message)`
+
+### Added (Mobile & Form UX)
+
+- **Mobile back button on detail panels** (TASK-040) — trade-detail-panel.tsx, account-detail-panel.tsx, review-detail-panel.tsx
+  - "← Volver" button visible on screens <768px (`flex md:hidden`)
+  - Escape key closes panels on desktop (via `useEffect` keydown listener)
+- **inputmode="decimal" on price inputs** (TASK-041) — register-trade-modal.tsx, edit-trade-modal.tsx
+  - All entry/stop/target/size/riskPct inputs now show numeric decimal keypad on iOS/Android
+- **"Ver registro →" button wired** (TASK-036) — `src/app/dashboard/tabs/tab-disciplina.tsx`
+  - Button now navigates to `/trades?tag=DO-NOT-TAKE` on click (was inert before)
+  - Uses `useRouter().push()` from Next.js navigation
+
+### Technical Debt
+
+- **AI model IDs updated** (TASK-015) — `src/lib/ai/config.ts`
+  - `claude-sonnet-4-5` → `claude-sonnet-4-6` for Anthropic direct (coach model)
+- **Dead `trades.stats` procedure deprecated** (TASK-018) — `src/server/trpc/routers/trades.ts`
+  - Replaced 40+ line implementation with stub returning empty result
+  - Added `@deprecated` comment (replaced by `dashboardStats` in Sprint 1)
+  - Removed unused `calcProfitFactor` and `calcExpectancyR` imports
+- **TradeEmbedding and EmailLog models** (TASK-019) — `src/prisma/schema.prisma`
+  - `TradeEmbedding` model: tracks embedding state per trade (Phase XIII prep)
+  - `EmailLog` model: prevents duplicate weekly email sends (Phase XII prep)
+  - Both models include proper relations, unique constraints, and indexes
+  - Comment in schema: TradeEmbedding requires Phase XI (UserAiConfig) for key resolution
+- **`.env.example` created** (TASK-059) — `/.env.example`
+  - All 15 required environment variables documented with comments
+  - Includes: DATABASE_URL, Supabase keys, AI provider keys, model overrides, edge function secrets
+
+### Tests
+
+- **Flaky timing test fixed** — `analytics-cache.test.ts`
+  - 1ms TTL boundary margin → 5,000ms (5s) safe margin — eliminates intermittent CI failure
+- **14 new Sprint 2 tests** — `__tests__/sprint2/sprint2-deliverables.test.ts`
+  - `calcSharpeRatio` Bessel-corrected formula (4 tests, TD-011)
+  - `objectiveMet` calculation logic (6 tests, TASK-002)
+  - CQRS fix: `detectDecayedResources` called from mutation (1 test, TASK-007)
+  - N+1 fix: batching logic verified (2 tests, TASK-008)
+
+---
+
 ## [Sprint 1 — Stability & Foundations] — 2026-06-01
 
 **Branch:** `claude/epic-darwin-1XZTX` | **Commits:** `a83aa41` → `09d480e` (8 commits)  

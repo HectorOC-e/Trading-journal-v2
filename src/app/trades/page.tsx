@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
-import { Plus, TrendingUp, Percent, Zap, Shield, Activity, Upload } from "lucide-react"
+import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -164,6 +164,14 @@ export default function TradesPage() {
       trend: (kpisAll?.sharpeRatio ?? 0) >= 1 ? "up" as const : "neutral" as const,
       mono: true,
       icon: <Activity size={15} />,
+    },
+    {
+      label: "Peor día",
+      value: kpisAll?.worstDay && kpisAll.worstDay.pnl < 0 ? `-$${Math.abs(kpisAll.worstDay.pnl).toLocaleString()}` : "—",
+      sub: kpisAll?.worstDay && kpisAll.worstDay.pnl < 0 ? kpisAll.worstDay.date : "sin datos",
+      trend: "down" as const,
+      mono: true,
+      icon: <AlertTriangle size={15} />,
     },
   ]
 

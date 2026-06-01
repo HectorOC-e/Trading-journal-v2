@@ -176,6 +176,7 @@ export default function CuentasPage() {
       {promoteId && promoteAccount && (
         <PromotePhaseModal
           account={promoteAccount}
+          netPnl={accountStats[promoteAccount.id]?.netPnl ?? 0}
           onClose={() => setPromoteId(null)}
           onConfirm={(input) => changePhase.mutate(input)}
           saving={changePhase.isPending}

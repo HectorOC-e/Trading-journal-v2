@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useEffect } from "react"
 import { Plus } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
@@ -34,6 +34,21 @@ export default function AprendizajePage() {
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
   const { data: stats }                        = trpc.learningResources.stats.useQuery()
   const utils = trpc.useUtils()
+
+  const processDecay = trpc.learningResources.processDecayTransitions.useMutation({
+    onSuccess: ({ transitioned }) => {
+      if (transitioned > 0) {
+        utils.learningResources.list.invalidate()
+        utils.learningResources.stats.invalidate()
+      }
+    },
+  })
+
+  // Fire decay transition check on page load (CQRS fix: moved from stats query)
+  useEffect(() => {
+    processDecay.mutate()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const resources = rawResources as unknown as LearningResource[]
 

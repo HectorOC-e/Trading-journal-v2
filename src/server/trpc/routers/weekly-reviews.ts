@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
@@ -238,7 +239,7 @@ export const weeklyReviewsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       if (!isAnyKeyConfigured()) {
-        return { error: "NO_API_KEY" as const }
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay clave de API configurada. Añade ANTHROPIC_API_KEY o OPENROUTER_API_KEY en la configuración." })
       }
 
       const start = new Date(input.weekStart)
@@ -313,7 +314,7 @@ JSON:`
           toImprove:        parsed.toImprove        ?? "",
         }
       } catch {
-        return { error: "GENERATION_FAILED" as const }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el resumen. Inténtalo de nuevo." })
       }
     }),
 })

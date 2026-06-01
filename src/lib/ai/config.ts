@@ -45,7 +45,7 @@ function resolveModel(envVar: string, anthropicDefault: string, openrouterDefaul
 export function getCoachModel(): string {
   return resolveModel(
     "AI_COACH_MODEL",
-    "claude-sonnet-4-5",
+    "claude-sonnet-4-6",
     "anthropic/claude-sonnet-4-6",
   )
 }

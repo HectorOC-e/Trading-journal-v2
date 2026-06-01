@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   X, Shield, BarChart3,
   Pencil, Archive, Loader2, Trash2, XCircle,
-  History, ArrowUpCircle,
+  History, ArrowUpCircle, ArrowLeft,
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
@@ -30,6 +30,13 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const [lostModal,     setLostModal]     = useState(false)
   const [lostNote,      setLostNote]      = useState("")
 
+  // Escape key to close on desktop
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose])
+
   const type         = account.type as AccountType
   const tm           = TYPE_META[type] ?? TYPE_META.PERSONAL
   const acctStatus   = (account.status as string) ?? "ACTIVE"
@@ -41,6 +48,13 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
+      {/* Mobile back button */}
+      <button
+        onClick={onClose}
+        className="flex md:hidden items-center gap-1 text-xs text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors px-5 pt-3 -mb-1"
+      >
+        <ArrowLeft size={13} /> Volver
+      </button>
       {/* Header */}
       <div className="p-5 border-b border-[var(--line)] sticky top-0 bg-[var(--panel)] z-10">
         <div className="flex items-start justify-between">

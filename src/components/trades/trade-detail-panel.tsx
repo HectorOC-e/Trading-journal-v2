@@ -2,11 +2,11 @@
 // Header: symbol + direction + date/time + session pill
 // P&L hero, account section, setup+checklist, metrics, notes, actions
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft } from "lucide-react"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
@@ -76,6 +76,14 @@ export function TradeDetailPanel({
 }: TradeDetailPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [closeFormOpen, setCloseFormOpen] = useState(false)
+
+  // Escape key to close on desktop
+  useEffect(() => {
+    if (!onClose) return
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose])
   const [closePrice, setClosePrice]   = useState("")
   const [closeTime, setCloseTime]     = useState(() => {
     const now = new Date()
@@ -129,6 +137,14 @@ export function TradeDetailPanel({
     <div className={cn("flex flex-col min-h-full bg-[var(--panel)] p-4 gap-4 pb-8", className)}>
 
       {/* ── Header ── */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="flex md:hidden items-center gap-1 text-xs text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors -mt-1 mb-1"
+        >
+          <ArrowLeft size={13} /> Volver
+        </button>
+      )}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">

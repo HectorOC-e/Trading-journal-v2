@@ -70,7 +70,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── API key check ───────────────────────────────────────────────────────────
   if (!isAnyKeyConfigured()) {
-    return NextResponse.json({ error: "NO_API_KEY" }, { status: 200 })
+    return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
   }
 
   // ── Parse body ──────────────────────────────────────────────────────────────
@@ -103,6 +103,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       },
     })
   } catch {
-    return NextResponse.json({ error: "BAD_REQUEST" }, { status: 500 })
+    return NextResponse.json({ error: "STREAM_ERROR" }, { status: 500 })
   }
 }

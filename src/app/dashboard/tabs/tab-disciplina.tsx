@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { useRouter } from "next/navigation"
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -30,6 +31,7 @@ export function TabDisciplina({ kpis, discipline }: {
   kpis:       DashboardStats["kpis"]
   discipline: DashboardStats["discipline"]
 }) {
+  const router   = useRouter()
   const today    = new Date()
   const todayISO = today.toISOString().slice(0, 10)
 
@@ -149,7 +151,10 @@ export function TabDisciplina({ kpis, discipline }: {
               <p className="text-xs text-[var(--ink-3)] mt-0.5">Verifica los límites de tu plan operativo antes de continuar.</p>
             </div>
           </div>
-          <button className="text-xs font-semibold text-[var(--ink-3)] border border-[var(--line)] rounded-[var(--radius-sm)] px-3 py-1.5 whitespace-nowrap hover:text-[var(--ink)] transition-colors shrink-0">
+          <button
+            onClick={() => router.push("/trades?tag=DO-NOT-TAKE")}
+            className="text-xs font-semibold text-[var(--ink-3)] border border-[var(--line)] rounded-[var(--radius-sm)] px-3 py-1.5 whitespace-nowrap hover:text-[var(--ink)] transition-colors shrink-0"
+          >
             Ver registro →
           </button>
         </div>

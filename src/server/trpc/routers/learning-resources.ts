@@ -529,15 +529,6 @@ export const learningResourcesRouter = router({
       const weeklyGoalMinutes = user.weeklyGoalMinutes ?? 300
       const minutesThisWeek = minutesThisWeekRaw
 
-      // TASK-L029: auto-transition MASTERED → IN_REVIEW when nextReviewAt exceeded by 2× reviewInterval
-      const decayedIds = detectDecayedResources(resources, todayStart)
-      if (decayedIds.length > 0) {
-        await ctx.prisma.learningResource.updateMany({
-          where: { id: { in: decayedIds } },
-          data:  { status: "IN_REVIEW" },
-        })
-      }
-
       return {
         totalResources:          resources.length,
         completedThisMonth,
@@ -550,8 +541,34 @@ export const learningResourcesRouter = router({
         focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
         weeklyGoalMinutes,
         minutesThisWeek,
-        decayedCount:            decayedIds.length,
+        decayedCount:            0,
       }
+    }),
+
+  // TASK-L029: explicit mutation to transition MASTERED → IN_REVIEW for overdue resources.
+  // Extracted from `stats` query to fix CQRS violation (queries must not modify state).
+  // Call this on page load or tab focus — not on every stats read.
+  processDecayTransitions: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const now        = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+      const resources = await ctx.prisma.learningResource.findMany({
+        where:  { userId: ctx.userId, status: { not: "ABANDONED" } },
+        select: {
+          id: true, status: true, nextReviewAt: true, reviewInterval: true,
+        },
+      })
+
+      const decayedIds = detectDecayedResources(resources, todayStart)
+      if (decayedIds.length > 0) {
+        await ctx.prisma.learningResource.updateMany({
+          where: { id: { in: decayedIds } },
+          data:  { status: "IN_REVIEW" },
+        })
+      }
+
+      return { transitioned: decayedIds.length }
     }),
 
   dailyInsight: protectedProcedure
@@ -579,7 +596,8 @@ export const learningResourcesRouter = router({
       return allInsights[dayIndex % allInsights.length]
     }),
 
-  // TASK-L028: rank completed resources by WR delta (post - pre completedAt) per linked setup
+  // TASK-L028: rank completed resources by WR delta (post - pre completedAt) per linked setup.
+  // Uses batched queries (O(2) DB calls regardless of resource/setup count) to avoid N+1.
   resourceImpactRanking: protectedProcedure
     .query(async ({ ctx }) => {
       const resources = await ctx.prisma.learningResource.findMany({
@@ -597,6 +615,76 @@ export const learningResourcesRouter = router({
         },
       })
 
+      if (resources.length === 0) return []
+
+      // Build (setupId, completedAt) pairs for all resource-setup combinations
+      type RankedPair = {
+        resourceId:    string
+        resourceTitle: string
+        resourceType:  string
+        setupId:       string
+        setupName:     string
+        completedAt:   Date
+      }
+
+      const pairs: RankedPair[] = []
+      for (const r of resources) {
+        if (!r.completedAt) continue
+        for (const s of r.linkedSetups) {
+          pairs.push({
+            resourceId:    r.id,
+            resourceTitle: r.title,
+            resourceType:  r.type,
+            setupId:       s.id,
+            setupName:     s.name,
+            completedAt:   r.completedAt,
+          })
+        }
+      }
+
+      if (pairs.length === 0) return []
+
+      // Single batched query: all closed trades for affected setups
+      const setupIds = [...new Set(pairs.map(p => p.setupId))]
+      const allTrades = await ctx.prisma.trade.findMany({
+        where: {
+          userId:  ctx.userId,
+          setupId: { in: setupIds },
+          status:  "CLOSED",
+        },
+        select: { setupId: true, date: true, pnl: true, rMultiple: true },
+      })
+
+      // Group trades by setupId for O(1) lookup
+      const bySetup = new Map<string, { date: Date; pnl: number; rMultiple: number | null }[]>()
+      for (const t of allTrades) {
+        const list = bySetup.get(t.setupId!) ?? []
+        list.push({
+          date:      t.date as Date,
+          pnl:       t.pnl != null ? Number(t.pnl) : 0,
+          rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
+        })
+        bySetup.set(t.setupId!, list)
+      }
+
+      function normalizeTrades(raw: { pnl: number; rMultiple: number | null }[], setupId: string): MinimalTrade[] {
+        return raw.map((t, i) => ({
+          id:        `${setupId}-${i}`,
+          accountId: "",
+          symbol:    "",
+          direction: "LONG",
+          session:   null,
+          openTime:  null,
+          closeTime: null,
+          pnl:       t.pnl,
+          rMultiple: t.rMultiple,
+          tags:      [],
+          date:      "2000-01-01",
+          setupId,
+          entry: 0, stop: 0, target: 0, size: 1,
+        }))
+      }
+
       const rows: {
         resourceId:    string
         resourceTitle: string
@@ -611,62 +699,32 @@ export const learningResourcesRouter = router({
         lowConfidence: boolean
       }[] = []
 
-      function normalizeTrades(raw: { rMultiple: { toNumber(): number } | null; pnl: { toNumber(): number } | null; id?: string }[], setupId: string): MinimalTrade[] {
-        return raw.map((t, i) => ({
-          id:        `${setupId}-${i}`,
-          accountId: "",
-          symbol:    "",
-          direction: "LONG",
-          session:   null,
-          openTime:  null,
-          closeTime: null,
-          pnl:       t.pnl       != null ? t.pnl.toNumber()       : 0,
-          rMultiple: t.rMultiple != null ? t.rMultiple.toNumber() : null,
-          tags:      [],
-          date:      "2000-01-01",
-          setupId,
-          entry:  0, stop: 0, target: 0, size: 1,
-        }))
-      }
+      for (const pair of pairs) {
+        const setupTrades = bySetup.get(pair.setupId) ?? []
+        const pre  = setupTrades.filter(t => t.date < pair.completedAt)
+        const post = setupTrades.filter(t => t.date >= pair.completedAt)
 
-      for (const resource of resources) {
-        if (!resource.completedAt) continue
-        const completedAt = resource.completedAt
+        if (post.length < 5) continue
 
-        for (const setup of resource.linkedSetups) {
-          const [pre, post] = await Promise.all([
-            ctx.prisma.trade.findMany({
-              where:  { userId: ctx.userId, setupId: setup.id, date: { lt: completedAt }, status: "CLOSED" },
-              select: { rMultiple: true, pnl: true },
-            }),
-            ctx.prisma.trade.findMany({
-              where:  { userId: ctx.userId, setupId: setup.id, date: { gte: completedAt }, status: "CLOSED" },
-              select: { rMultiple: true, pnl: true },
-            }),
-          ])
+        const preStats  = computeSetupStats(pair.setupId, normalizeTrades(pre,  pair.setupId))
+        const postStats = computeSetupStats(pair.setupId, normalizeTrades(post, pair.setupId))
+        const preWR  = pre.length  > 0 ? preStats.winRate  : null
+        const postWR = post.length > 0 ? postStats.winRate : null
+        const delta  = postWR !== null && preWR !== null ? postWR - preWR : null
 
-          if (post.length < 5) continue
-
-          const preStats  = computeSetupStats(setup.id, normalizeTrades(pre,  setup.id))
-          const postStats = computeSetupStats(setup.id, normalizeTrades(post, setup.id))
-          const preWR  = pre.length  > 0 ? preStats.winRate  : null
-          const postWR = post.length > 0 ? postStats.winRate : null
-          const delta  = postWR !== null && preWR !== null ? postWR - preWR : null
-
-          rows.push({
-            resourceId:    resource.id,
-            resourceTitle: resource.title,
-            resourceType:  resource.type,
-            setupId:       setup.id,
-            setupName:     setup.name,
-            preWinRate:    preWR,
-            postWinRate:   postWR,
-            delta,
-            preTrades:     pre.length,
-            postTrades:    post.length,
-            lowConfidence: post.length < 10,
-          })
-        }
+        rows.push({
+          resourceId:    pair.resourceId,
+          resourceTitle: pair.resourceTitle,
+          resourceType:  pair.resourceType,
+          setupId:       pair.setupId,
+          setupName:     pair.setupName,
+          preWinRate:    preWR,
+          postWinRate:   postWR,
+          delta,
+          preTrades:     pre.length,
+          postTrades:    post.length,
+          lowConfidence: post.length < 10,
+        })
       }
 
       // Sort: known delta desc, then null-delta (no pre-data) last

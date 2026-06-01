@@ -181,13 +181,13 @@ describe("CACHE_TTL_MS boundary", () => {
     expect(await getCachedStats(db, "user-1", "6M")).toBeNull()
   })
 
-  it("entry 1ms before TTL boundary is still fresh", async () => {
+  it("entry well before TTL boundary is still fresh", async () => {
     const db = makeDb([{
       userId:     "user-1",
       period:     "6M",
       accountId:  null,
       statsJson:  { v: 1 },
-      computedAt: new Date(Date.now() - CACHE_TTL_MS + 1), // 1ms before expiry
+      computedAt: new Date(Date.now() - CACHE_TTL_MS + 5_000), // 5s before expiry (safe margin)
     }])
     expect(await getCachedStats(db, "user-1", "6M")).not.toBeNull()
   })

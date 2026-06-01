@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { isWin, calcWinRate } from "@/lib/formulas"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type AccountFromDB  = RouterOutputs["accounts"]["list"][number]
@@ -223,11 +224,13 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
 
   const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({
     onSuccess: (data) => {
-      if ("error" in data) return
       if (data.executiveSummary) setExecutiveSummary(data.executiveSummary)
       if (data.whatWorked)       setWhatWorked(data.whatWorked)
       if (data.toImprove)        setToImprove(data.toImprove)
       setAutoFields(prev => new Set([...prev, "executiveSummary", "whatWorked", "toImprove"]))
+    },
+    onError: (err) => {
+      toast.error(err.message || "Error al generar resumen")
     },
   })
 

@@ -37,6 +37,8 @@ model User {
   tradeStatsCache      TradeStatsCache[]
   checklistResults     TradeChecklistResult[]
   tradingSessionLogs   TradingSessionLog[]
+  tradeEmbeddings      TradeEmbedding[]
+  emailLogs            EmailLog[]
 
   @@map("users")
 }
@@ -194,6 +196,7 @@ model Trade {
   account Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   setup   Setup?       @relation(fields: [setupId], references: [id], onDelete: SetNull)
   events  TradeEvent[]
+  embedding TradeEmbedding?
 
   @@index([userId, date(sort: Desc)])
   @@index([accountId])
@@ -424,4 +427,41 @@ model TradingSessionLog {
   @@unique([userId, date, session])
   @@index([userId])
   @@map("trading_sessions")
+}
+
+// ─────────────────────────────────────────────
+// TRADE EMBEDDING (Phase XIII)
+// Tracks embedding vector state per trade. Actual vector stored in pgvector.
+// Deferred: EmbeddingService requires UserAiConfig (Phase XI) for key resolution.
+// ─────────────────────────────────────────────
+model TradeEmbedding {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  tradeId     String   @unique @map("trade_id") @db.Uuid
+  model       String
+  notesHash   String   @map("notes_hash")
+  embeddedAt  DateTime @default(now()) @map("embedded_at")
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trade_embeddings")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL LOG (Phase XII)
+// Prevents duplicate weekly email sends per user/type/week.
+// ─────────────────────────────────────────────
+model EmailLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emailType String   @map("email_type")
+  weekKey   String   @map("week_key")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, emailType, weekKey])
+  @@map("email_logs")
 }

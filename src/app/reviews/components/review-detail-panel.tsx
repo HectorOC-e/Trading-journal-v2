@@ -1,6 +1,7 @@
 "use client"
 
-import { X } from "lucide-react"
+import { useEffect } from "react"
+import { X, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -59,11 +60,25 @@ export function ReviewDetailPanel({
 }) {
   const isDraft = review.status === "draft"
 
+  // Escape key to close on desktop
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose])
+
   return (
     <div
       className="flex flex-col overflow-hidden detail-panel-mobile"
       style={{ width: 380, background: "var(--panel)", borderLeft: "1px solid var(--line)", position: "sticky", top: 0, maxHeight: "100vh" }}
     >
+      <button
+        onClick={onClose}
+        className="flex md:hidden items-center gap-1 text-xs px-5 pt-3 -mb-1 transition-colors"
+        style={{ color: "var(--ink-3)" }}
+      >
+        <ArrowLeft size={13} /> Volver
+      </button>
       <div className="flex items-start justify-between px-5 py-4" style={{ borderBottom: "1px solid var(--line)" }}>
         <div>
           <p className="font-mono font-bold text-2xl" style={{ color: "var(--ink)" }}>{review.weekLabel}</p>

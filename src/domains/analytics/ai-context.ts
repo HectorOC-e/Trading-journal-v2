@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { isWin, calcWinRate } from "@/lib/formulas"
+import { isWin, calcWinRate, calcSharpeRatio } from "@/lib/formulas"
 import { VIOLATION_TAGS } from "@/types"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
@@ -182,15 +182,10 @@ export async function buildTraderContext(
       .reduce((s: number, t: MinimalTrade) => s + t.pnl, 0).toFixed(2),
   )
 
-  // Sharpe (simplified: mean/std of R multiples)
-  let sharpeRatio: number | null = null
-  if (withR.length >= 5) {
-    const rValues = withR.map((t: MinimalTrade) => t.rMultiple!)
-    const mean    = rValues.reduce((s: number, r: number) => s + r, 0) / rValues.length
-    const variance = rValues.reduce((s: number, r: number) => s + (r - mean) ** 2, 0) / rValues.length
-    const std     = Math.sqrt(variance)
-    sharpeRatio   = std > 0 ? parseFloat((mean / std).toFixed(4)) : null
-  }
+  // Sharpe (Bessel-corrected sample std dev — matches dashboard calculation)
+  const rValues = withR.map((t: MinimalTrade) => t.rMultiple!)
+  const sharpeRaw = rValues.length >= 5 ? calcSharpeRatio(rValues) : null
+  const sharpeRatio = sharpeRaw != null ? parseFloat(sharpeRaw.toFixed(4)) : null
 
   // Best / worst setup
   const setupMap = new Map<string, string>(setupRows.map((s: RawSetupRow) => [s.id, s.name]))
