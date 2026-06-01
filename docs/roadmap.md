@@ -31,10 +31,10 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 ### Known Production Issues as of 2026-06-01
 
 - Profile page entirely non-functional (0/14 fields saved) — TASK-006 (Sprint 3)
-- Phase promotion modal always shows "objective not met" (hardcoded false) — TASK-002 (Sprint 2)
-- Drawdown KPI label on `/trades` mislabeled "Drawdown" (actually shows min daily P&L) — TASK-028 (Sprint 2)
-- AI coach model ID stale (`claude-sonnet-4-5` → should be `claude-sonnet-4-6`) — TASK-032 (Sprint 2)
-- Sharpe Ratio in `ai-context.ts` uses population std dev vs Bessel-corrected in dashboard — TD-011 (Sprint 2)
+- ~~Phase promotion modal always shows "objective not met" (hardcoded false)~~ ✅ Fixed Sprint 2 (TASK-002)
+- ~~Drawdown KPI label on `/trades` mislabeled "Drawdown"~~ ✅ Fixed Sprint 2 (TASK-028; now shows "Peor día")
+- ~~AI coach model ID stale~~ ✅ Fixed Sprint 2 (TASK-015: updated to `claude-sonnet-4-6`)
+- ~~Sharpe Ratio in `ai-context.ts` uses population std dev~~ ✅ Fixed Sprint 2 (TD-011: now uses Bessel-corrected formula)
 - ~~KPIs on `/trades`, `/reviews`, and `/cuentas` calculated over max 50 trades~~ ✅ Fixed Sprint 1
 - ~~8 separate win-rate implementations, 3 discipline-score implementations~~ ✅ Fixed Sprint 1 (win rate); discipline score deferred to Sprint 4
 - ~~CRON_SECRET security bypass in edge function~~ ✅ Fixed Sprint 1
@@ -46,7 +46,7 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 
 **Objective:** Eliminate all data-integrity bugs, security risks, and formula inconsistencies. No incorrect metrics anywhere in the application.
 
-**Result:** 9/12 planned tasks completed. 3 deferred to Sprint 2 (TASK-002, TASK-026, TASK-028). TASK-001 and TASK-009 pulled forward from Sprint 2 and completed. QA audit identified and fixed 1 Blocking bug (B-001), 3 Major issues (M-001–003), 3 Minor issues (N-001–003), 3 Nitpicks (NP-001–003). Test suite: 229/232 → 232/232.  
+**Result:** 9/12 planned tasks completed. 3 deferred to Sprint 2 (TASK-002, TASK-026, TASK-028, completed in Sprint 2). TASK-001 and TASK-009 pulled forward from Sprint 2 and completed in Sprint 1. QA audit identified and fixed 1 Blocking bug (B-001), 3 Major issues (M-001–003), 3 Minor issues (N-001–003), 3 Nitpicks (NP-001–003). Test suite: 229/232 → 232/232.  
 **Docs:** `docs/SPRINT_1_QA_REPORT.md` · `docs/SPRINT_1_FIX_REPORT.md` · `docs/SPRINT_1_RETROSPECTIVE.md`
 
 ### X-A — Formula Unification
@@ -92,7 +92,7 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 
 ---
 
-## Phase XI — Profile & AI Config (P1) [~4 weeks] ← Active after Sprint 2
+## Phase XI — Profile & AI Config (P1) [~4 weeks] ← Active (Sprint 3+)
 
 **Objective:** Make the profile page fully functional and unblock all personalization and AI configuration features.
 

@@ -9,14 +9,15 @@
 
 | Priority | Count | Open | Done | Estimated Remaining |
 |---|---|---|---|---|
-| P0 | 12 | 3 | 9 | ~4 days |
-| P1 | 17 | 17 | 0 | ~28 days |
+| P0 | 12 | 1 | 11 | ~2 days |
+| P1 | 17 | 10 | 7 | ~18 days |
 | P2 | 16 | 16 | 0 | ~34 days |
 | P3 | 10 | 10 | 0 | ~50+ days |
-| **Total** | **55** | **46** | **9** | **~116+ days** |
+| **Total** | **55** | **37** | **18** | **~104+ days** |
 
-> **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks — 7 from P0 + 2 pulled early from Sprint 2).  
-> **P0 remaining:** TASK-002, TASK-006, TASK-028.
+> **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
+> **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044, TASK-059 (16 tasks — plus TASK-044 verified pre-done).  
+> **P0 remaining:** TASK-006 (unblocks 7 downstream tasks).
 
 **Critical path:** TASK-006 (profile backend) unblocks 7 downstream tasks. TASK-027 (formula centralization) must precede any formula fixes. Fix P0 data-integrity bugs first, then unblock profile.
 
@@ -27,49 +28,49 @@
 | ID | Title | Module | Priority | Effort | Dependencies | Status |
 |---|---|---|---|---|---|---|
 | TASK-001 | Fix KPI strip calculated over paginated trade data | analytics | P0 | S | — | DONE |
-| TASK-002 | Fix `objectiveMet = false` hardcoded in phase promotion | accounts | P0 | XS | — | TODO |
+| TASK-002 | Fix `objectiveMet = false` hardcoded in phase promotion | accounts | P0 | XS | — | DONE |
 | TASK-003 | Replace `throw new Error()` with `TRPCError` in accounts.changeStatus | accounts | P0 | XS | — | DONE |
 | TASK-004 | Calculate `rMultiple` in MT4/cTrader CSV import | trades | P0 | XS | — | DONE |
 | TASK-005 | Unify win criterion (`pnl > 0`) across all calculation sites | formulas | P0 | XS | TASK-027 | DONE |
 | TASK-006 | Implement profile backend (tRPC router + page) | profile | P0 | L | — | TODO |
-| TASK-007 | Move MASTERED→IN_REVIEW side-effect from `stats` query to mutation | learning | P1 | S | — | TODO |
-| TASK-008 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | TODO |
+| TASK-007 | Move MASTERED→IN_REVIEW side-effect from `stats` query to mutation | learning | P1 | S | — | DONE |
+| TASK-008 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | DONE |
 | TASK-009 | Fix weekTrades and account stats based on first 50 trades only | analytics | P0 | S | — | DONE |
-| TASK-010 | Connect "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | TODO |
+| TASK-010 | Connect "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
 | TASK-011 | Extract `computeDisciplineScore` as shared function | formulas | P2 | S | TASK-027 | TODO |
 | TASK-012 | Implement sparklines of equity per setup in Playbook | playbook | P2 | M | — | TODO |
 | TASK-013 | Eliminate 15+ `as never` casts in trades/page.tsx | types | P2 | M | — | TODO |
 | TASK-014 | Unify `LearningResource` type with RouterOutputs | types | P2 | S | — | TODO |
-| TASK-015 | Update stale AI model IDs in config | ai | P1 | XS | — | TODO |
+| TASK-015 | Update stale AI model IDs in config | ai | P1 | XS | — | DONE |
 | TASK-016 | Harden CRON_SECRET check in edge function | security | P0 | XS | — | DONE |
 | TASK-017 | Server-side validation for Storage image uploads | security | P0 | S | — | DONE |
-| TASK-018 | Deprecate dead `trades.stats` procedure | trades | P2 | XS | — | TODO |
-| TASK-019 | Add `notes_embedding` and `email_log` to Prisma schema | infra | P3 | S | — | TODO |
+| TASK-018 | Deprecate dead `trades.stats` procedure | trades | P2 | XS | — | DONE |
+| TASK-019 | Add `notes_embedding` and `email_log` to Prisma schema | infra | P3 | S | — | DONE |
 | TASK-020 | Implement cursor pagination in `accountLogs.list` | accounts | P3 | S | — | TODO |
 | TASK-021 | Activate and document `ANALYTICS_CACHE_ENABLED` for production | infra | P3 | XS | — | TODO |
 | TASK-022 | Configure verified email domain in Resend | infra | P3 | XS | — | TODO |
 | TASK-023 | Type `market: any` in MarketCard and `amount: any` in Retiros | types | P3 | XS | — | TODO |
 | TASK-024 | Add React Testing Library component tests | testing | P3 | L | — | TODO |
 | TASK-025 | Add Playwright e2e smoke tests | testing | P3 | L | — | TODO |
-| TASK-026 | Fix error message mismatch in `ai-coach/route.ts:106` | ai | P3 | XS | — | TODO |
+| TASK-026 | Fix error message mismatch in `ai-coach/route.ts:106` | ai | P0 | XS | — | DONE |
 | TASK-027 | Centralize financial formulas in `lib/trading-formulas.ts` | formulas | P0 | M | — | DONE |
-| TASK-028 | Fix misleading "Drawdown" label on trades KPI strip | formulas | P0 | XS | — | TODO |
+| TASK-028 | Fix misleading "Drawdown" label on trades KPI strip | formulas | P0 | XS | — | DONE |
 | TASK-029 | Fix inconsistent drawdown calculation in `use-account-stats.ts` | formulas | P0 | XS | — | DONE |
 | TASK-030 | Implement `UserPreferences` table and router | profile | P1 | M | TASK-006 | TODO |
 | TASK-031 | Add Edit and Delete buttons to ReviewDetailPanel | reviews | P1 | M | — | TODO |
-| TASK-032 | Update stale AI model IDs in config (coach + summary) | ai | P1 | XS | — | TODO |
+| TASK-032 | Update stale AI model IDs in config (coach + summary) | ai | P1 | XS | — | DONE |
 | TASK-033 | Implement AI configuration UI and `UserAiConfig` table | ai | P1 | L | TASK-006, TASK-032 | TODO |
 | TASK-034 | Add per-trade psychology fields to Trade model | psychology | P1 | M | — | TODO |
-| TASK-035 | Implement toast notification system | ux | P1 | M | — | TODO |
-| TASK-036 | Fix dead "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | TODO |
-| TASK-037 | Fix `generateSummary` HTTP 200 on failure | reviews | P1 | XS | TASK-035 | TODO |
-| TASK-038 | Fix `learningResources.stats` CQRS violation | learning | P1 | S | — | TODO |
-| TASK-039 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | TODO |
-| TASK-040 | Add mobile back navigation to detail panels | mobile | P1 | S | — | TODO |
-| TASK-041 | Add `inputmode="decimal"` to price inputs in trade form | mobile | P2 | XS | — | TODO |
+| TASK-035 | Implement toast notification system | ux | P1 | M | — | DONE |
+| TASK-036 | Fix dead "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
+| TASK-037 | Fix `generateSummary` HTTP 200 on failure | reviews | P1 | XS | TASK-035 | DONE |
+| TASK-038 | Fix `learningResources.stats` CQRS violation | learning | P1 | S | — | DONE |
+| TASK-039 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | DONE |
+| TASK-040 | Add mobile back navigation to detail panels | mobile | P1 | S | — | DONE |
+| TASK-041 | Add `inputmode="decimal"` to price inputs in trade form | mobile | P2 | XS | — | DONE |
 | TASK-042 | Add skeleton screens for KPI strip, trade table, account cards | ux | P2 | M | — | TODO |
 | TASK-043 | Add empty states for Cuentas, Trades, Playbook, Mercados | ux | P2 | M | — | TODO |
-| TASK-044 | Fix `window.location.reload()` in error boundaries | ux | P2 | XS | — | TODO |
+| TASK-044 | Fix `window.location.reload()` in error boundaries | ux | P2 | XS | — | DONE |
 | TASK-045 | Three-way theme toggle (add "system" mode) | personalization | P2 | S | TASK-006 | TODO |
 | TASK-046 | Accent color picker and colorblind mode | personalization | P2 | M | TASK-006 | TODO |
 | TASK-047 | Persist dashboard tab and chart grain | personalization | P2 | XS | — | TODO |
