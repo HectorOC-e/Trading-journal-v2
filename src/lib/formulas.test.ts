@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { calcExpectancyR, calcSharpeRatio, calcProfitFactor, getISOWeekKey } from "./formulas"
+import { calcExpectancyR, calcSharpeRatio, calcProfitFactor, getISOWeekKey } from "@/lib/formulas"
 
 // ── calcExpectancyR ────────────────────────────────────────────────────────
 

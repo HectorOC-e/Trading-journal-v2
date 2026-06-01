@@ -29,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const ext  = file.type === "image/jpeg" ? "jpg" : file.type === "image/webp" ? "webp" : "png"
-  const path = `setups/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `setups/${user.id}/${crypto.randomUUID()}.${ext}`
 
   const arrayBuffer = await file.arrayBuffer()
   const { error } = await supabase.storage

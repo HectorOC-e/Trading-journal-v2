@@ -52,7 +52,7 @@ describe("accounts router", () => {
     const result = await caller.accounts.list()
 
     expect(mockPrisma.account.findMany).toHaveBeenCalledWith({
-      where: { userId: USER_ID },
+      where: { userId: USER_ID, status: { in: ["ACTIVE", "PAUSED"] } },
       orderBy: { createdAt: "asc" },
     })
     expect(result).toEqual(fakeAccounts)

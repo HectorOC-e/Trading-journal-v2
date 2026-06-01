@@ -36,7 +36,7 @@ describe('calcDisciplineScore()', () => {
     expect(result.executionScore).toBeCloseTo(37.5, 5) // (20-5)/20 * 50
     expect(result.learningScore).toBeCloseTo(9, 5) // 3/10 * 30
     expect(result.adherenceScore).toBeCloseTo(16, 5) // (5-1)/5 * 20
-    expect(result.score).toBe(62) // Math.round(37.5 + 9 + 16)
+    expect(result.score).toBe(63) // Math.round(37.5 + 9 + 16) = Math.round(62.5) = 63
   })
 
   it('defaults all to maximum when zero trades/reviews/rules', () => {

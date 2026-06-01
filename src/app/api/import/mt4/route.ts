@@ -135,7 +135,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         const openTimeStr = openDate.toISOString().slice(11, 16) // "HH:MM"
 
         const direction = toDirection(row.type)
-        const rMultiple = (row.sl != null && row.openPrice != null && row.closePrice != null)
+        // sl=0 is the parser sentinel for "no stop loss recorded" in both MT4 and cTrader exports
+        const rMultiple = (row.sl != null && row.sl !== 0 && row.openPrice != null && row.closePrice != null)
           ? calcRMultiple(direction, row.openPrice, row.sl, row.closePrice)
           : null
 

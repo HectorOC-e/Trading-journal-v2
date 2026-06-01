@@ -138,7 +138,7 @@ describe("withdrawals router", () => {
       data: expect.objectContaining({
         userId: USER_ID,
         accountId: ACCOUNT_ID,
-        event: "STATUS_CHANGE",
+        event: "WITHDRAWAL_STATUS",
         payload: expect.objectContaining({ status: "PAGADO" }),
       }),
     })

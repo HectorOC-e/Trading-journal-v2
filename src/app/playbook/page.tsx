@@ -609,7 +609,8 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   const utils  = trpc.useUtils()
   const [form,        setForm]        = useState<SetupForm>(FORM_INIT)
   const [tab,         setTab]         = useState<"info" | "checklist" | "edge">("info")
-  const [uploading,   setUploading]   = useState(false)
+  const [uploading,     setUploading]     = useState(false)
+  const [uploadError,   setUploadError]   = useState<string | null>(null)
 
   /* ── Populate or clear form whenever the modal opens/closes ── */
   useEffect(() => {
@@ -653,19 +654,33 @@ function SetupModal({ open, onOpenChange, editSetup }: {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
+    setUploadError(null)
     const urls: string[] = []
+    let failed = 0
     for (const file of files) {
       const body = new FormData()
       body.append("file", file)
-      const res = await fetch("/api/upload/setup-image", { method: "POST", body })
-      if (res.ok) {
-        const json = await res.json() as { ok: boolean; url?: string }
-        if (json.ok && json.url) urls.push(json.url)
+      try {
+        const res  = await fetch("/api/upload/setup-image", { method: "POST", body })
+        const json = await res.json() as { ok: boolean; url?: string; reason?: string }
+        if (res.ok && json.ok && json.url) {
+          urls.push(json.url)
+        } else {
+          const reason = json.reason === "INVALID_MIME"    ? "Tipo de archivo no permitido (usa JPG, PNG o WebP)"
+                       : json.reason === "FILE_TOO_LARGE"  ? "Archivo demasiado grande (máx. 5 MB)"
+                       : "No se pudo subir la imagen"
+          setUploadError(reason)
+          failed++
+        }
+      } catch {
+        setUploadError("Error de red al subir la imagen")
+        failed++
       }
     }
     setForm(f => ({ ...f, images: [...f.images, ...urls] }))
     setUploading(false)
     e.target.value = ""
+    if (failed === 0) setUploadError(null)
   }
 
   const removeImage = (idx: number) =>
@@ -841,6 +856,9 @@ function SetupModal({ open, onOpenChange, editSetup }: {
                   disabled={uploading}
                 />
               </label>
+              {uploadError && (
+                <p className="text-[11px] text-[var(--loss)] mt-1">{uploadError}</p>
+              )}
             </div>
 
             <button onClick={() => setTab("checklist")}
@@ -1028,14 +1046,14 @@ export default function PlaybookPage() {
     const map: Record<string, SetupStats> = {}
     for (const s of dashStats?.setupStats ?? []) {
       if (!s.setupId) continue
-      const wr = s.trades > 0 ? s.winRate / 100 : 0
       map[s.setupId] = {
         total:      s.trades,
         wins:       Math.round(s.winRate / 100 * s.trades),
         netPnl:     s.netPnl,
         avgR:       s.avgR,
         aplusRate:  s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
-        expectancy: s.avgR * wr - (1 - wr),
+        // avgR is the arithmetic mean of all R multiples (= E[R] per trade)
+        expectancy: s.avgR,
       }
     }
     return map

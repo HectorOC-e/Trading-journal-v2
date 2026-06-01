@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import { isWin } from "@/lib/formulas"
 
 export const tradingSessionsRouter = router({
   log: protectedProcedure
@@ -65,7 +66,7 @@ export const tradingSessionsRouter = router({
         const key = `${(t.date as Date).toISOString().slice(0, 10)}::${t.session}`
         const cur = tradeMap.get(key) ?? { wins: 0, total: 0 }
         cur.total++
-        if (Number(t.pnl ?? 0) > 0) cur.wins++
+        if (isWin({ pnl: Number(t.pnl ?? 0) })) cur.wins++
         tradeMap.set(key, cur)
       }
 

@@ -107,7 +107,7 @@ export function buildKpis(
   const grossWin   = trades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0)
   const grossLoss  = Math.abs(trades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0))
   const profitFactor  = calcProfitFactor(grossWin, grossLoss)
-  const expectancyR   = calcExpectancyR(trades.map(t => ({ rMultiple: t.rMultiple, pnl: t.pnl })))
+  const expectancyR   = calcExpectancyR(trades.map(t => ({ rMultiple: t.rMultiple })))
   const sharpeRatio   = calcSharpeRatio(withR.map(t => t.rMultiple!))
 
   const winsT   = trades.filter(t => t.pnl > 0)
@@ -132,13 +132,13 @@ export function buildKpis(
   )
   let tradeStreak: { count: number; isWin: boolean } | null = null
   if (sorted.length > 0 && sorted[0].pnl !== 0) {
-    const isWin = sorted[0].pnl > 0
+    const streakIsWin = isWin({ pnl: sorted[0].pnl })
     let count = 0
     for (const t of sorted) {
-      if (isWin ? t.pnl > 0 : t.pnl < 0) count++
+      if (streakIsWin ? isWin({ pnl: t.pnl }) : t.pnl < 0) count++
       else break
     }
-    tradeStreak = { count, isWin }
+    tradeStreak = { count, isWin: streakIsWin }
   }
 
   return {
@@ -174,7 +174,7 @@ export function buildAccountStats(
     const at = trades.filter(t => t.accountId === a.id)
     const initBal    = a.initialBalance
     const acctNetPnl = at.reduce((s, t) => s + t.pnl, 0)
-    const acctWins   = at.filter(t => t.pnl > 0).length
+    const acctWins   = at.filter(t => isWin({ pnl: t.pnl })).length
     const acctWithR  = at.filter(t => t.rMultiple != null)
     const monthT     = at.filter(t => t.date >= monthStart)
     const todayT     = at.filter(t => t.date === today)
