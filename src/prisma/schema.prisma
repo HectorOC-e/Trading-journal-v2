@@ -8,15 +8,20 @@ datasource db {
 }
 
 model User {
-  id           String   @id @db.Uuid
-  email        String   @unique
-  name         String   @default("")
-  role         String   @default("Single-trader")
-  timezone     String   @default("America/Tegucigalpa")
-  baseCurrency String   @default("USD") @map("base_currency")
-  language     String   @default("es")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                 String   @id @db.Uuid
+  email              String   @unique
+  name               String   @default("")
+  role               String   @default("Single-trader")
+  timezone           String   @default("America/Tegucigalpa")
+  baseCurrency       String   @default("USD") @map("base_currency")
+  language           String   @default("es")
+  weeklyGoalMinutes  Int?     @default(300) @map("weekly_goal_minutes")
+  emailNotifications Boolean  @default(true) @map("email_notifications")
+  currentStreak      Int      @default(0) @map("current_streak")
+  bestStreak         Int      @default(0) @map("best_streak")
+  lastReviewDate     DateTime? @map("last_review_date") @db.Date
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   accounts          Account[]
   setups            Setup[]
@@ -24,10 +29,16 @@ model User {
   rules             Rule[]
   weeklyReviews     WeeklyReview[]
   learningResources LearningResource[]
+  resourceReviews   ResourceReview[]
   markets           Market[]
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
   tradeEvents       TradeEvent[]
+  tradeStatsCache      TradeStatsCache[]
+  checklistResults     TradeChecklistResult[]
+  tradingSessionLogs   TradingSessionLog[]
+  tradeEmbeddings      TradeEmbedding[]
+  emailLogs            EmailLog[]
 
   @@map("users")
 }
@@ -137,11 +148,19 @@ model Setup {
   images            String[] @default([])
   aplusChecklist    String[] @map("aplus_checklist")
   standardChecklist String[] @map("standard_checklist")
+  // ── Edge definition fields (T-VIII-002) ──────
+  expectedWr        Decimal? @map("expected_wr")    @db.Decimal(5,2)
+  expectedAvgR      Decimal? @map("expected_avg_r") @db.Decimal(5,3)
+  minR              Decimal? @map("min_r")          @db.Decimal(5,3)
+  maxR              Decimal? @map("max_r")          @db.Decimal(5,3)
+  edgeUpdatedAt     DateTime? @map("edge_updated_at") @db.Timestamptz(6)
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   trades Trade[]
+  linkedResources LearningResource[] @relation("ResourceSetups")
+  versions SetupVersion[]
 
   @@map("setups")
 }
@@ -169,6 +188,7 @@ model Trade {
   closePrice     Decimal? @map("close_price") @db.Decimal(16, 5)
   closeTime      String?  @map("close_time")
   commission     Decimal? @db.Decimal(10, 2)
+  importTicket   String?  @map("import_ticket")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -176,10 +196,13 @@ model Trade {
   account Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   setup   Setup?       @relation(fields: [setupId], references: [id], onDelete: SetNull)
   events  TradeEvent[]
+  embedding TradeEmbedding?
 
   @@index([userId, date(sort: Desc)])
   @@index([accountId])
   @@map("trades")
+
+  checklistResult TradeChecklistResult?
 }
 
 model TradeEvent {
@@ -200,20 +223,38 @@ model TradeEvent {
 }
 
 model Rule {
-  id                  String   @id @default(uuid()) @db.Uuid
-  userId              String   @map("user_id") @db.Uuid
-  name                String
-  description         String   @default("")
-  severity            String   @default("CRÍTICA")
-  isSystem            Boolean  @default(false) @map("is_system")
-  enabled             Boolean  @default(true)
-  violationsThisMonth Int      @default(0) @map("violations_this_month")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  description String   @default("")
+  severity    String   @default("CRÍTICA")
+  isSystem    Boolean  @default(false) @map("is_system")
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("rules")
+}
+
+// ─────────────────────────────────────────────
+// SETUP VERSION (T-VIII-004)
+// Immutable snapshot of a setup before edits to
+// versioned fields (aplusChecklist, standardChecklist, direction).
+// ─────────────────────────────────────────────
+model SetupVersion {
+  id        String   @id @default(uuid()) @db.Uuid
+  setupId   String   @map("setup_id") @db.Uuid
+  version   Int
+  snapshot  Json
+  reason    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  setup Setup @relation(fields: [setupId], references: [id], onDelete: Cascade)
+
+  @@unique([setupId, version])
+  @@map("setup_versions")
 }
 
 model WeeklyReview {
@@ -243,24 +284,62 @@ model WeeklyReview {
 }
 
 model LearningResource {
-  id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
   title           String
   type            String
-  author          String   @default("")
-  source          String   @default("")
-  date            DateTime @db.Date
-  notes           String   @default("")
+  author          String    @default("")
+  source          String    @default("")
+  date            DateTime  @db.Date
+  notes           String    @default("")
   tags            String[]
-  markedForReview Boolean  @default(false) @map("marked_for_review")
-  progressPct     Int?     @map("progress_pct")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  markedForReview Boolean   @default(false) @map("marked_for_review")
+  progressPct     Int?      @map("progress_pct")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // New fields (TASK-L003)
+  status          String    @default("PENDING") // PENDING | IN_PROGRESS | COMPLETED | IN_REVIEW | MASTERED | ABANDONED
+  progressType    String?   @map("progress_type") // manual | pages | minutes | sessions
+  totalUnits      Int?      @map("total_units")
+  currentUnits    Int?      @map("current_units")
+  avgScore        Decimal?  @map("avg_score") @db.Decimal(5, 2)
+  nextReviewAt    DateTime? @map("next_review_at") @db.Date
+  reviewInterval  Int?      @map("review_interval")
+  isFavorite      Boolean   @default(false) @map("is_favorite")
+  rating          Int?
+  completedAt     DateTime? @map("completed_at")
+  weekDeltaMinutes Int      @default(0) @map("week_delta_minutes")
+  weekDeltaResetAt DateTime? @map("week_delta_reset_at")
+  archiveReason   String?   @map("archive_reason") // "irrelevant" | "mastered" | "no_time"
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews      ResourceReview[]
+  linkedSetups Setup[]          @relation("ResourceSetups")
 
   @@index([userId, date(sort: Desc)])
   @@map("learning_resources")
+}
+
+model ResourceReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  resourceId   String   @map("resource_id") @db.Uuid
+  learned      String   @default("")
+  howToApply   String   @default("") @map("how_to_apply")
+  insights     String[]
+  rating       Int      @default(0)
+  masteryLevel Int      @default(1) @map("mastery_level")
+  reviewType   String   @default("manual") @map("review_type")
+  nextReviewAt DateTime @db.Date @map("next_review_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextReviewAt])
+  @@index([resourceId])
+  @@map("resource_reviews")
 }
 
 model Market {
@@ -283,4 +362,106 @@ model Market {
 
   @@unique([userId, symbol])
   @@map("markets")
+}
+
+// ─────────────────────────────────────────────
+// TRADE STATS CACHE
+// Materialized analytics cache (T-IV-004).
+// Keyed by (user_id, period) where period is
+// the dashboardStats period enum value.
+// TTL enforced at application layer (5 min).
+// Feature-flagged via ANALYTICS_CACHE_ENABLED=true.
+// ─────────────────────────────────────────────
+model TradeStatsCache {
+  userId     String   @map("user_id") @db.Uuid
+  period     String
+  accountId  String?  @map("account_id") @db.Uuid
+  statsJson  Json     @map("stats_json")
+  computedAt DateTime @default(now()) @map("computed_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, period])
+  @@index([userId])
+  @@map("trade_stats_cache")
+}
+
+// ─────────────────────────────────────────────
+// TRADE CHECKLIST RESULT (T-V-003)
+// Stores which A+/standard checklist items were
+// checked before entering a trade.
+// ─────────────────────────────────────────────
+model TradeChecklistResult {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  tradeId      String   @unique @map("trade_id") @db.Uuid
+  setupId      String?  @map("setup_id") @db.Uuid
+  itemsChecked String[] @map("items_checked")
+  itemsTotal   Int      @map("items_total")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trade_checklist_results")
+}
+
+// ─────────────────────────────────────────────
+// TRADING SESSION LOG (T-V-004)
+// Pre-session mood and energy ratings (1-5).
+// Unique per (user, date, session).
+// ─────────────────────────────────────────────
+model TradingSessionLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  date        DateTime @db.Date
+  session     String
+  preMood     Int?     @map("pre_mood")
+  energyLevel Int?     @map("energy_level")
+  notes       String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, session])
+  @@index([userId])
+  @@map("trading_sessions")
+}
+
+// ─────────────────────────────────────────────
+// TRADE EMBEDDING (Phase XIII)
+// Tracks embedding vector state per trade. Actual vector stored in pgvector.
+// Deferred: EmbeddingService requires UserAiConfig (Phase XI) for key resolution.
+// ─────────────────────────────────────────────
+model TradeEmbedding {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  tradeId     String   @unique @map("trade_id") @db.Uuid
+  model       String
+  notesHash   String   @map("notes_hash")
+  embeddedAt  DateTime @default(now()) @map("embedded_at")
+
+  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
+  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trade_embeddings")
+}
+
+// ─────────────────────────────────────────────
+// EMAIL LOG (Phase XII)
+// Prevents duplicate weekly email sends per user/type/week.
+// ─────────────────────────────────────────────
+model EmailLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  emailType String   @map("email_type")
+  weekKey   String   @map("week_key")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, emailType, weekKey])
+  @@map("email_logs")
 }

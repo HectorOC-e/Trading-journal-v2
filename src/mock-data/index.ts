@@ -2,7 +2,7 @@
 
 import type { Trade, Account, Setup, LearningResource, Rule, WeeklyReview, Market, RulesSeverity } from "@/types"
 
-export const mockAccounts: Account[] = [
+export const mockAccounts = [
   {
     id: "acc-1",
     name: "FXify 100K — Phase 2",
@@ -11,13 +11,6 @@ export const mockAccounts: Account[] = [
     initialBalance: 100000,
     currency: "USD",
     timezone: "America/New_York",
-    propFirmRules: {
-      maxDrawdownPct: 10,
-      dailyLossPct: 5,
-      maxTradesPerDay: 3,
-      targetPct: 8,
-      allowedSymbols: ["NQ", "ES", "MNQ"],
-    },
     createdAt: "2026-01-01T00:00:00Z",
   },
   {
@@ -28,13 +21,6 @@ export const mockAccounts: Account[] = [
     initialBalance: 50000,
     currency: "USD",
     timezone: "America/New_York",
-    propFirmRules: {
-      maxDrawdownPct: 10,
-      dailyLossPct: 5,
-      maxTradesPerDay: 5,
-      targetPct: 10,
-      allowedSymbols: ["NQ", "ES", "GC", "CL", "MNQ", "MES"],
-    },
     createdAt: "2026-02-01T00:00:00Z",
   },
   {
@@ -47,9 +33,9 @@ export const mockAccounts: Account[] = [
     timezone: "America/New_York",
     createdAt: "2026-03-01T00:00:00Z",
   },
-]
+] as unknown as Account[]
 
-export const mockSetups: Setup[] = [
+export const mockSetups = [
   {
     id: "setup-1",
     name: "Opening Range Break",
@@ -119,9 +105,9 @@ export const mockSetups: Setup[] = [
     ],
     createdAt: "2026-01-01T00:00:00Z",
   },
-]
+] as unknown as Setup[]
 
-export const mockTrades: Trade[] = [
+export const mockTrades = [
   {
     id: "trade-1",
     direction: "LONG",
@@ -273,7 +259,7 @@ export const mockTrades: Trade[] = [
     pnl: -600,
     createdAt: "2026-05-21T09:40:00Z",
   },
-]
+] as unknown as Trade[]
 
 export const mockResources: LearningResource[] = [
   {
@@ -288,6 +274,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: true,
     progressPct: 60,
     createdAt: "2026-05-16T00:00:00Z",
+    updatedAt: "2026-05-16T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-2",
@@ -301,6 +290,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: true,
     progressPct: 67,
     createdAt: "2026-05-14T00:00:00Z",
+    updatedAt: "2026-05-14T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-3",
@@ -314,6 +306,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 80,
     createdAt: "2026-05-12T00:00:00Z",
+    updatedAt: "2026-05-12T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: true,
   },
   {
     id: "res-4",
@@ -326,6 +321,9 @@ export const mockResources: LearningResource[] = [
     tags: ["psicologia", "disciplina"],
     markedForReview: true,
     createdAt: "2026-05-10T00:00:00Z",
+    updatedAt: "2026-05-10T00:00:00Z",
+    status: "COMPLETED",
+    isFavorite: false,
   },
   {
     id: "res-5",
@@ -338,6 +336,9 @@ export const mockResources: LearningResource[] = [
     tags: ["FX", "reversal"],
     markedForReview: false,
     createdAt: "2026-05-08T00:00:00Z",
+    updatedAt: "2026-05-08T00:00:00Z",
+    status: "COMPLETED",
+    isFavorite: false,
   },
   {
     id: "res-6",
@@ -351,6 +352,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 80,
     createdAt: "2026-05-05T00:00:00Z",
+    updatedAt: "2026-05-05T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-7",
@@ -364,6 +368,9 @@ export const mockResources: LearningResource[] = [
     markedForReview: false,
     progressPct: 50,
     createdAt: "2026-05-03T00:00:00Z",
+    updatedAt: "2026-05-03T00:00:00Z",
+    status: "IN_PROGRESS",
+    isFavorite: false,
   },
   {
     id: "res-8",
@@ -376,18 +383,21 @@ export const mockResources: LearningResource[] = [
     tags: ["risk"],
     markedForReview: false,
     createdAt: "2026-05-01T00:00:00Z",
+    updatedAt: "2026-05-01T00:00:00Z",
+    status: "PENDING",
+    isFavorite: false,
   },
 ]
 
 export const mockRules: Rule[] = [
-  { id: "rule-sys-1", name: "Operar fuera de sesión", description: "Trade abierto fuera de las killzones permitidas.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 2 },
-  { id: "rule-sys-2", name: "Exceder máximo de trades", description: "Más trades en un día del límite de la cuenta.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 3 },
-  { id: "rule-sys-3", name: "Pérdida diaria sobre límite", description: "La pérdida del día superó el límite diario configurado.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-sys-4", name: "Operar símbolo no permitido", description: "Se operó un instrumento fuera de la lista permitida.", severity: "CRÍTICA", isSystem: true, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-cus-1", name: "Promediar en pérdida", description: "Agregar posición a un trade en pérdida para bajar el precio promedio.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 1 },
-  { id: "rule-cus-2", name: "Operar en noticias", description: "Abrir trade 15 min antes o durante publicación de noticia de alto impacto.", severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 2 },
-  { id: "rule-cus-3", name: "Sin checklist completado", description: "Abrir trade sin haber marcado todos los ítems del checklist del setup.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: true, violationsThisMonth: 0 },
-  { id: "rule-cus-4", name: "Trade de venganza", description: "Abrir trade inmediatamente tras pérdida sin pausa mínima de 15 minutos.", severity: "MENOR" as RulesSeverity, isSystem: false, enabled: false, violationsThisMonth: 3 },
+  { id: "rule-sys-1", name: "Operar fuera de sesión",      description: "Trade abierto fuera de las killzones permitidas.",                                         severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-2", name: "Exceder máximo de trades",    description: "Más trades en un día del límite de la cuenta.",                                            severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-3", name: "Pérdida diaria sobre límite", description: "La pérdida del día superó el límite diario configurado.",                                  severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-sys-4", name: "Operar símbolo no permitido", description: "Se operó un instrumento fuera de la lista permitida.",                                     severity: "CRÍTICA",        isSystem: true,  enabled: true  },
+  { id: "rule-cus-1", name: "Promediar en pérdida",        description: "Agregar posición a un trade en pérdida para bajar el precio promedio.",                    severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-2", name: "Operar en noticias",          description: "Abrir trade 15 min antes o durante publicación de noticia de alto impacto.",               severity: "CRÍTICA" as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-3", name: "Sin checklist completado",    description: "Abrir trade sin haber marcado todos los ítems del checklist del setup.",                   severity: "MENOR"   as RulesSeverity, isSystem: false, enabled: true  },
+  { id: "rule-cus-4", name: "Trade de venganza",           description: "Abrir trade inmediatamente tras pérdida sin pausa mínima de 15 minutos.",                  severity: "MENOR"   as RulesSeverity, isSystem: false, enabled: false },
 ]
 
 export const mockMarkets: Market[] = [

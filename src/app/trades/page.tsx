@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
-import { Plus, TrendingUp, Percent, Zap, Shield } from "lucide-react"
+import { useState, useMemo, useEffect, useRef } from "react"
+import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { TradesTable } from "@/components/trades/trades-table"
@@ -9,6 +9,8 @@ import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
+import { LogSessionPopover } from "@/components/trades/log-session-popover"
+import { ImportCsvModal } from "./components/import-csv-modal"
 import { trpc } from "@/lib/trpc/client"
 
 export default function TradesPage() {
@@ -16,12 +18,27 @@ export default function TradesPage() {
   const [modalOpen, setModalOpen]    = useState(false)
   const [editingTrade, setEditingTrade]         = useState<string | null>(null)
   const [positionLogTrade, setPositionLogTrade] = useState<string | null>(null)
+  const [propFirmError, setPropFirmError]       = useState<string | null>(null)
+  const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
+  const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
+  const [importModalOpen, setImportModalOpen]       = useState(false)
+
+  const pendingChecklistRef = useRef<{ setupId?: string; items: string[]; total: number } | null>(null)
 
   const utils = trpc.useUtils()
 
   // ── Data ──────────────────────────────────────────────
-  const { data: trades = [], isLoading: tradesLoading } =
-    trpc.trades.list.useQuery()
+  const {
+    data: tradePages,
+    isLoading: tradesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = trpc.trades.list.useInfiniteQuery(
+    { limit: 50 },
+    { getNextPageParam: (last) => last.nextCursor ?? undefined },
+  )
+  const trades = tradePages?.pages.flatMap(p => p.items) ?? []
 
   const { data: accounts = [] } =
     trpc.accounts.list.useQuery()
@@ -32,8 +49,27 @@ export default function TradesPage() {
   const { data: markets = [] } =
     trpc.markets.list.useQuery()
 
+  const PROP_FIRM_MESSAGES: Record<string, string> = {
+    PROP_FIRM_DAILY_LOSS_LIMIT:   "Has alcanzado el límite de pérdida diaria para esta cuenta.",
+    PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",
+    PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
+  }
+
+  const saveChecklist = trpc.trades.saveChecklistResult.useMutation()
+
   const createTrade = trpc.trades.create.useMutation({
-    onSuccess: () => utils.trades.list.invalidate(),
+    onSuccess: (trade) => {
+      utils.trades.list.invalidate()
+      const pc = pendingChecklistRef.current
+      if (pc && pc.total > 0) {
+        saveChecklist.mutate({ tradeId: trade.id, setupId: pc.setupId, itemsChecked: pc.items, itemsTotal: pc.total })
+        pendingChecklistRef.current = null
+      }
+    },
+    onError: (err) => {
+      const msg = PROP_FIRM_MESSAGES[err.message]
+      if (msg) setPropFirmError(msg)
+    },
   })
 
   const deleteTrade = trpc.trades.delete.useMutation({
@@ -51,7 +87,14 @@ export default function TradesPage() {
   })
 
   const closeTrade = trpc.trades.close.useMutation({
-    onSuccess: () => utils.trades.list.invalidate(),
+    onSuccess: (result) => {
+      utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
+      if (result.accountDeactivated) {
+        const acct = accounts.find(a => a.id === result.trade.accountId)
+        setDeactivatedAccount(acct?.name ?? "tu cuenta")
+      }
+    },
   })
 
   const addEvent = trpc.trades.addEvent.useMutation({
@@ -77,27 +120,23 @@ export default function TradesPage() {
   const todayStr = new Date().toISOString().slice(0, 10)
   const tradeCountToday = trades.filter(t => t.date === todayStr).length
 
-  // KPIs from all loaded trades
-  const netPnl = trades.reduce((s, t) => s + (t.pnl ?? 0), 0)
-  const wins   = trades.filter(t => (t.rMultiple ?? 0) > 0).length
-  const wr     = trades.length ? Math.round((wins / trades.length) * 100) : 0
-  const avgR   = trades.length
-    ? trades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / trades.length
-    : 0
-
-  // Simple max daily drawdown approximation
-  const dailyPnl = trades.reduce((map, t) => {
-    const prev = map.get(t.date) ?? 0
-    map.set(t.date, prev + (t.pnl ?? 0))
-    return map
-  }, new Map<string, number>())
-  const minDay = Math.min(0, ...(Array.from(dailyPnl.values()) as number[]))
+  // KPIs from server-side aggregation (all trades, not just loaded page)
+  const { data: statsData } = trpc.trades.dashboardStats.useQuery(
+    { period: "ALL" },
+    { staleTime: 60_000 },
+  )
+  const kpisAll = statsData?.kpis
+  const netPnl  = kpisAll?.netPnl  ?? 0
+  const wins    = kpisAll?.wins    ?? 0
+  const wr      = kpisAll ? Math.round(kpisAll.winRate) : 0
+  const avgR    = kpisAll?.avgR    ?? 0
+  const totalCount = kpisAll?.total ?? trades.length
 
   const kpiItems = [
     {
       label: "Net P&L",
       value: netPnl >= 0 ? `+$${netPnl.toLocaleString()}` : `-$${Math.abs(netPnl).toLocaleString()}`,
-      sub: `${trades.length} trades`,
+      sub: `${totalCount} trades`,
       trend: netPnl >= 0 ? "up" as const : "down" as const,
       mono: true,
       icon: <TrendingUp size={15} />,
@@ -119,12 +158,20 @@ export default function TradesPage() {
       icon: <Zap size={15} />,
     },
     {
-      label: "Drawdown",
-      value: minDay < 0 ? `-$${Math.abs(minDay).toLocaleString()}` : "$0",
-      sub: "peor día",
-      trend: "neutral" as const,
+      label: "Sharpe",
+      value: kpisAll?.sharpeRatio != null ? kpisAll.sharpeRatio.toFixed(2) : "—",
+      sub: "consistencia",
+      trend: (kpisAll?.sharpeRatio ?? 0) >= 1 ? "up" as const : "neutral" as const,
       mono: true,
-      icon: <Shield size={15} />,
+      icon: <Activity size={15} />,
+    },
+    {
+      label: "Peor día",
+      value: kpisAll?.worstDay && kpisAll.worstDay.pnl < 0 ? `-$${Math.abs(kpisAll.worstDay.pnl).toLocaleString()}` : "—",
+      sub: kpisAll?.worstDay && kpisAll.worstDay.pnl < 0 ? kpisAll.worstDay.date : "sin datos",
+      trend: "down" as const,
+      mono: true,
+      icon: <AlertTriangle size={15} />,
     },
   ]
 
@@ -134,31 +181,37 @@ export default function TradesPage() {
     symbol: string; entry: string; stop: string; target: string; size: string
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
     tags: string[]; notes: string; screenshots: string[]
+    checklistItems: Record<string, boolean>
   }) => {
+    // Capture checklist before mutation fires
+    const setup = setups.find(s => s.id === form.setupId)
+    if (setup) {
+      const allItems = [...(setup as { aplusChecklist: string[] }).aplusChecklist, ...(setup as { standardChecklist: string[] }).standardChecklist]
+      const checked  = allItems.filter(item => form.checklistItems[item])
+      pendingChecklistRef.current = { setupId: form.setupId || undefined, items: checked, total: allItems.length }
+    } else {
+      pendingChecklistRef.current = null
+    }
+
     const entry  = parseFloat(form.entry)
     const stop   = parseFloat(form.stop)
     const target = parseFloat(form.target)
     const size   = parseFloat(form.size)
 
-    const risk   = Math.abs(entry - stop)
-    const reward = Math.abs(target - entry)
-    const rr     = risk > 0 ? reward / risk : null
-
     createTrade.mutate({
-      accountId:     form.accountId,
-      setupId:       form.setupId || undefined,
-      direction:     form.direction,
-      symbol:        form.symbol.toUpperCase(),
+      accountId:      form.accountId,
+      setupId:        form.setupId || undefined,
+      direction:      form.direction,
+      symbol:         form.symbol.toUpperCase(),
       entry,
       stop,
       target,
       size,
-      date:          form.date,
-      openTime:      form.openTime,
-      session:       form.session,
-      tags:          form.tags,
-      notes:         form.notes,
-      rMultiple:     rr ?? undefined,
+      date:           form.date,
+      openTime:       form.openTime,
+      session:        form.session,
+      tags:           form.tags,
+      notes:          form.notes,
       screenshotUrls: form.screenshots,
     })
   }
@@ -191,18 +244,48 @@ export default function TradesPage() {
   // ── Render ────────────────────────────────────────────
   return (
     <>
+      {/* Prop firm error banner */}
+      {propFirmError && (
+        <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)] px-4 py-3 text-sm text-[var(--loss)]">
+          <span className="flex-1">{propFirmError}</span>
+          <button onClick={() => setPropFirmError(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
+      {/* Account auto-deactivated banner */}
+      {deactivatedAccount && (
+        <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)] px-4 py-3 text-sm text-[var(--loss)]">
+          <span className="flex-1">
+            La cuenta <strong>{deactivatedAccount}</strong> ha sido desactivada automáticamente por superar el drawdown total máximo.
+          </span>
+          <button onClick={() => setDeactivatedAccount(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
       <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
         {/* Main column */}
         <div className="flex-1" style={{ padding: "28px 32px", minWidth: 0 }}>
           <TopBar
             title="Trades"
             subtitle={tradesLoading ? "Cargando…" : `${trades.length} operaciones`}
-            actions={[{
-              label: "Registrar trade",
-              icon: <Plus size={14} />,
-              variant: "primary",
-              onClick: () => setModalOpen(true),
-            }]}
+            actions={[
+              {
+                label: "Log sesión",
+                icon: <Activity size={14} />,
+                variant: "ghost" as const,
+                onClick: () => setSessionPopoverOpen(true),
+              },
+              {
+                label: "Importar CSV",
+                icon: <Upload size={14} />,
+                variant: "ghost" as const,
+                onClick: () => setImportModalOpen(true),
+              },
+              {
+                label: "Registrar trade",
+                icon: <Plus size={14} />,
+                variant: "primary" as const,
+                onClick: () => setModalOpen(true),
+              },
+            ]}
           />
           <KpiStrip items={kpiItems} className="mb-6" />
           <TradesTable
@@ -212,6 +295,17 @@ export default function TradesPage() {
             selectedId={selectedId ?? undefined}
             onSelect={(t) => setSelectedId(t ? t.id : null)}
           />
+          {hasNextPage && (
+            <div className="mt-4 flex justify-center">
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="px-4 py-2 text-sm font-medium text-[var(--ink-2)] border border-[var(--line)] rounded-[var(--radius-sm)] hover:text-[var(--ink)] hover:border-[var(--line-2)] transition-colors disabled:opacity-50"
+              >
+                {isFetchingNextPage ? "Cargando…" : "Cargar más"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right rail — desktop only, lives inside layout */}
@@ -282,6 +376,16 @@ export default function TradesPage() {
           adding={addEvent.isPending}
         />
       )}
+
+      <LogSessionPopover
+        open={sessionPopoverOpen}
+        onOpenChange={setSessionPopoverOpen}
+      />
+
+      <ImportCsvModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+      />
     </>
   )
 }

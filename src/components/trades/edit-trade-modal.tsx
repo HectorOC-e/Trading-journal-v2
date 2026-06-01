@@ -136,6 +136,7 @@ export function EditTradeModal({
                 <label className="text-[10px] text-[var(--ink-3)] font-medium">{label}</label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-sm font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
                   value={value}
                   onChange={e => set(e.target.value)}

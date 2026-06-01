@@ -1,3 +1,21 @@
+// ── Router-derived types (T-I-003) ──
+import type { RouterOutputs } from "@/server/trpc/root"
+
+export type SerializedTrade   = RouterOutputs["trades"]["list"]["items"][number]
+export type SerializedAccount = RouterOutputs["accounts"]["list"][number]
+export type SerializedSetup   = RouterOutputs["setups"]["list"][number]
+export type DashboardStats    = RouterOutputs["trades"]["dashboardStats"]
+
+// ── AccountLog typed payloads (T-I-004) ──
+export type AccountLogPayload =
+  | { event: "CREATED";            initialBalance: number; currency: string; name?: string; type?: string }
+  | { event: "PHASE_CHANGE";       from: string; to: string; note?: string; objectiveMet?: boolean; manualOverride?: boolean; prevRules?: Record<string, unknown>; newRules?: Record<string, unknown> | null }
+  | { event: "WITHDRAWAL";         amount: number; currency: string; status?: string; withdrawalId?: string; reference?: string }
+  | { event: "WITHDRAWAL_STATUS";  withdrawalId: string; status: string; reference?: string }
+  | { event: "STATUS_CHANGE";      from: string; to: string; note: string }
+  | { event: "NOTE";               text: string }
+  | { event: "BALANCE_CORRECTION"; variance: number; note: string }
+
 // ── Derived from design-spec modal fields and anatomy sections ──
 
 export type MarketCategory = "FUTUROS" | "FX" | "CRIPTO" | "EQUITIES"
@@ -18,67 +36,29 @@ export interface Market {
 export type TradeDirection = "LONG" | "SHORT"
 export type TradeSession = "London" | "New York" | "Asia" | "London Close"
 export type TradeTag = "A+" | "A" | "B" | "Plan" | "Off-plan" | "Impulsivo" | "BE"
+
+// Shared violation tag list — must match tags used in RegisterTradeModal (T-V-001 risk mitigation)
+export const VIOLATION_TAGS = ["Impulsivo", "Off-plan", "Revanche"] as const
+export type ViolationTag = typeof VIOLATION_TAGS[number]
 export type AccountType = "PERSONAL" | "PROP_FIRM" | "DEMO_PERSONAL" | "DEMO_PROP" | "BACKTEST" | "QA"
 export type AccountStatus = "ACTIVE" | "PAUSED" | "INACTIVE" | "LOST"
 export type RulesSeverity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
 export type ResourceType = "LIBRO" | "VIDEO" | "NOTA" | "BACKTEST" | "PODCAST" | "DRILL" | "HERRAMIENTA"
 export type SetupDirection = "LONG" | "SHORT" | "AMBAS"
-export type SetupStatus = "ACTIVO" | "PAUSADO"
+export type SetupStatus = "ACTIVO" | "PAUSADO" | "EN_PRUEBA" | "DESCARTADO"
 
-export interface Trade {
-  id: string
-  direction: TradeDirection
-  symbol: string
-  accountId: string
-  setupId: string
-  entry: number
-  stop: number
-  target: number
-  size: number
-  date: string          // ISO date
-  openTime: string      // HH:MM
-  session: TradeSession
-  tags: TradeTag[]
-  notes?: string
-  screenshotUrls?: string[]
-  status?: string   // OPEN | CLOSED
-  // computed
-  rMultiple?: number
-  pnl?: number
-  createdAt: string
-}
+// Backwards-compat aliases — the RouterOutputs-derived types above are the source of truth
+export type Trade   = SerializedTrade
+export type Account = SerializedAccount
+export type Setup   = SerializedSetup
 
-export interface Account {
-  id: string
-  name: string
-  broker: string
-  type: AccountType
-  initialBalance: number
-  currency: string
-  timezone: string
-  // Prop firm rules (only when type === PROP_FIRM)
-  propFirmRules?: {
-    maxDrawdownPct: number
-    dailyLossPct: number
-    maxTradesPerDay: number
-    targetPct: number
-    allowedSymbols: string[]
-  }
-  createdAt: string
-}
-
-export interface Setup {
-  id: string
-  name: string
-  abbreviation: string
-  market: string
-  direction: SetupDirection
-  status: SetupStatus
-  description: string
-  aplusChecklist: string[]
-  standardChecklist: string[]
-  createdAt: string
-}
+export type ResourceStatus =
+  | "PENDING"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "IN_REVIEW"
+  | "MASTERED"
+  | "ABANDONED"
 
 export interface LearningResource {
   id: string
@@ -86,12 +66,30 @@ export interface LearningResource {
   type: ResourceType
   author: string
   source: "Propio" | "Externa" | string
-  date: string          // ISO date
+  date: string
   notes: string
   tags: string[]
   markedForReview: boolean
-  progressPct?: number  // 0-100, undefined if N/A
+  progressPct?: number | null
   createdAt: string
+  updatedAt: string
+  // Fields added in TASK-L003
+  status: ResourceStatus
+  progressType?: string | null
+  totalUnits?: number | null
+  currentUnits?: number | null
+  avgScore?: number | null
+  nextReviewAt?: string | null
+  reviewInterval?: number | null
+  isFavorite: boolean
+  rating?: number | null
+  completedAt?: string | null
+  // Fields added in TASK-L013
+  linkedSetups?: { id: string; name: string }[]
+  // Fields added in TASK-L019
+  archiveReason?: string | null
+  // Fields added in TASK-L020
+  lastReviewAt?: string | null
 }
 
 export interface Rule {
@@ -101,7 +99,6 @@ export interface Rule {
   severity: RulesSeverity
   isSystem: boolean     // true = AUTO badge, false = CUSTOM
   enabled: boolean
-  violationsThisMonth: number
 }
 
 export interface WeeklyReview {

@@ -2,11 +2,11 @@
 // Header: symbol + direction + date/time + session pill
 // P&L hero, account section, setup+checklist, metrics, notes, actions
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft } from "lucide-react"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
@@ -76,6 +76,14 @@ export function TradeDetailPanel({
 }: TradeDetailPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [closeFormOpen, setCloseFormOpen] = useState(false)
+
+  // Escape key to close on desktop
+  useEffect(() => {
+    if (!onClose) return
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", handleKey)
+    return () => window.removeEventListener("keydown", handleKey)
+  }, [onClose])
   const [closePrice, setClosePrice]   = useState("")
   const [closeTime, setCloseTime]     = useState(() => {
     const now = new Date()
@@ -129,6 +137,14 @@ export function TradeDetailPanel({
     <div className={cn("flex flex-col min-h-full bg-[var(--panel)] p-4 gap-4 pb-8", className)}>
 
       {/* ── Header ── */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="flex md:hidden items-center gap-1 text-xs text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors -mt-1 mb-1"
+        >
+          <ArrowLeft size={13} /> Volver
+        </button>
+      )}
       <div className="flex items-start justify-between">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -145,9 +161,9 @@ export function TradeDetailPanel({
             </span>
             <span className={cn(
               "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
-              SESSION_COLOR[trade.session]
+              SESSION_COLOR[trade.session as TradeSession]
             )}>
-              {SESSION_SHORT[trade.session]}
+              {SESSION_SHORT[trade.session as TradeSession]}
             </span>
           </div>
           <p className="text-xs text-[var(--ink-3)]">{trade.date} · {trade.openTime}</p>
@@ -412,33 +428,31 @@ export function TradeDetailPanel({
             <p className="text-[10px] text-[var(--ink-3)] font-mono">
               ${account.initialBalance.toLocaleString()}
             </p>
-            {account.propFirmRules && (
+            {(account.ddTotalPct != null || account.ddDailyPct != null) && (
               <div className="mt-2 pt-2 border-t border-[var(--line)]">
                 <div className="flex gap-3">
-                  <div className="flex-1">
-                    <p className="text-[9px] text-[var(--ink-3)] mb-1">DD máx</p>
-                    <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[var(--loss)]"
-                        style={{ width: "20%" }}
-                      />
+                  {account.ddTotalPct != null && (
+                    <div className="flex-1">
+                      <p className="text-[9px] text-[var(--ink-3)] mb-1">DD máx</p>
+                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--loss)]" style={{ width: "20%" }} />
+                      </div>
+                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
+                        2% / {account.ddTotalPct}%
+                      </p>
                     </div>
-                    <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                      2% / {account.propFirmRules.maxDrawdownPct}%
-                    </p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-[9px] text-[var(--ink-3)] mb-1">Pérd. diaria</p>
-                    <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[var(--be)]"
-                        style={{ width: "10%" }}
-                      />
+                  )}
+                  {account.ddDailyPct != null && (
+                    <div className="flex-1">
+                      <p className="text-[9px] text-[var(--ink-3)] mb-1">Pérd. diaria</p>
+                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--be)]" style={{ width: "10%" }} />
+                      </div>
+                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
+                        0.5% / {account.ddDailyPct}%
+                      </p>
                     </div>
-                    <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                      0.5% / {account.propFirmRules.dailyLossPct}%
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -523,8 +537,8 @@ export function TradeDetailPanel({
         <div>
           <p className="text-eyebrow mb-2">Tags</p>
           <div className="flex gap-1 flex-wrap">
-            {trade.tags.map((tag) => (
-              <Badge key={tag} variant={TAG_VARIANT[tag]}>{tag}</Badge>
+            {(trade.tags as string[]).map((tag) => (
+              <Badge key={tag} variant={TAG_VARIANT[tag as TradeTag] ?? "default"}>{tag}</Badge>
             ))}
           </div>
         </div>

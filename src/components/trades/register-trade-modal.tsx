@@ -413,6 +413,7 @@ export function RegisterTradeModal({
                     set(key)(e.target.value)
                     setSizeManual(false)
                   }}
+                  inputMode="decimal"
                   mono
                 />
               </div>
@@ -432,6 +433,7 @@ export function RegisterTradeModal({
                   placeholder="1"
                   value={form.riskPct}
                   onChange={e => { set("riskPct")(e.target.value); setSizeManual(false) }}
+                  inputMode="decimal"
                   mono
                 />
               </div>
@@ -449,6 +451,7 @@ export function RegisterTradeModal({
                     set("size")(e.target.value)
                     setSizeManual(true)
                   }}
+                  inputMode="decimal"
                   mono
                 />
               </div>

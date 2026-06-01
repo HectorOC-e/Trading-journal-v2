@@ -14,7 +14,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn }        from "@/lib/utils"
 import { trpc }           from "@/lib/trpc/client"
-import { createClient }   from "@/lib/supabase/client"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -25,6 +24,11 @@ interface DbSetup {
   direction: string; status: string; description: string; color: string
   images: string[]
   aplusChecklist: string[]; standardChecklist: string[]
+  // T-VIII-002 edge fields (nullable Decimal from Prisma comes as string | null via JSON)
+  expectedWr?:    string | number | null
+  expectedAvgR?:  string | number | null
+  minR?:          string | number | null
+  maxR?:          string | number | null
   createdAt: Date | string; updatedAt: Date | string
 }
 
@@ -75,7 +79,9 @@ function DirectionChip({ direction }: { direction: string }) {
 ═══════════════════════════════════════════════ */
 type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number }
 
-function SetupCard({ setup, selected, onClick, stats }: { setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats }) {
+function SetupCard({ setup, selected, onClick, stats, versionCount }: {
+  setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats; versionCount?: number
+}) {
   const isInactive  = setup.status === "PAUSADO" || setup.status === "DESCARTADO"
   const isDiscarded = setup.status === "DESCARTADO"
   const sparkColor  = isDiscarded ? "var(--ink-3)"
@@ -142,7 +148,7 @@ function SetupCard({ setup, selected, onClick, stats }: { setup: DbSetup; select
           <p className="text-[11px] text-[var(--ink-3)] leading-relaxed line-clamp-2">{setup.description}</p>
         )}
 
-        {/* Checklist counts */}
+        {/* Checklist counts + version history */}
         <div className="flex items-center gap-3 pt-0.5 border-t border-[var(--line)]">
           {setup.aplusChecklist.filter(Boolean).length > 0 && (
             <div className="flex items-center gap-1">
@@ -154,6 +160,11 @@ function SetupCard({ setup, selected, onClick, stats }: { setup: DbSetup; select
             <div className="flex items-center gap-1">
               <Circle size={9} className="text-[var(--ink-3)]" />
               <span className="text-[10px] text-[var(--ink-3)]">{setup.standardChecklist.filter(Boolean).length} std</span>
+            </div>
+          )}
+          {versionCount != null && versionCount > 0 && (
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-[var(--ink-3)]">v{versionCount + 1}</span>
             </div>
           )}
           <span className="ml-auto text-[10px] text-[var(--accent)] font-medium">Ver detalle →</span>
@@ -181,8 +192,18 @@ function SetupDrawer({
   const [confirmingDel,  setConfirmingDel]  = useState(false)
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const [lightboxImg,    setLightboxImg]    = useState<string | null>(null)
+  const [showVersions,   setShowVersions]   = useState(false)
 
-  useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false); setLightboxImg(null) }, [setup?.id])
+  // T-VIII-004: version history for the selected setup
+  type VersionRow = { id: string; version: number; reason: string; createdAt: Date | string }
+  const { data: versionsRaw } = trpc.setups.getVersions.useQuery(
+    setup?.id ?? "",
+    { enabled: !!setup?.id, staleTime: 30_000 },
+  )
+  // Cast to a simple type to avoid deep instantiation in JSX
+  const versions = versionsRaw as VersionRow[] | undefined
+
+  useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false); setLightboxImg(null); setShowVersions(false) }, [setup?.id])
 
   const isOpen = !!setup
 
@@ -320,6 +341,33 @@ function SetupDrawer({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* T-VIII-004: Version history */}
+          {versions && versions.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowVersions(v => !v)}
+                className="flex items-center gap-2 text-eyebrow hover:text-[var(--ink)] transition-colors"
+              >
+                Historial de versiones
+                <span className="text-[10px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full">{versions.length}</span>
+                <span className="text-[10px] text-[var(--ink-3)]">{showVersions ? "▲" : "▼"}</span>
+              </button>
+              {showVersions && (
+                <div className="flex flex-col gap-1.5 mt-2">
+                  {versions.map(v => (
+                    <div key={v.id} className="flex items-start gap-2.5 py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                      <span className="text-[9px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">v{v.version}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] text-[var(--ink-2)]">{v.reason}</p>
+                        <p className="text-[10px] text-[var(--ink-3)]">{new Date(v.createdAt).toLocaleDateString("es-HN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -539,6 +587,11 @@ interface SetupForm {
   description: string; color: string
   images: string[]
   aplusChecklist: string[]; standardChecklist: string[]
+  // T-VIII-002 edge definition fields (stored as strings for input, converted on save)
+  expectedWr:   string
+  expectedAvgR: string
+  minR:         string
+  maxR:         string
 }
 const FORM_INIT: SetupForm = {
   name: "", abbr: "", market: "NQ Futures", direction: "AMBAS", status: "ACTIVO",
@@ -546,6 +599,7 @@ const FORM_INIT: SetupForm = {
   images: [],
   aplusChecklist: ["", "", ""],
   standardChecklist: ["Setup #1 o #2 del día", "Risk ≤ 1R", "RR mínimo 2:1", ""],
+  expectedWr: "", expectedAvgR: "", minR: "", maxR: "",
 }
 
 function SetupModal({ open, onOpenChange, editSetup }: {
@@ -554,8 +608,9 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   const isEdit = !!editSetup
   const utils  = trpc.useUtils()
   const [form,        setForm]        = useState<SetupForm>(FORM_INIT)
-  const [tab,         setTab]         = useState<"info" | "checklist">("info")
-  const [uploading,   setUploading]   = useState(false)
+  const [tab,         setTab]         = useState<"info" | "checklist" | "edge">("info")
+  const [uploading,     setUploading]     = useState(false)
+  const [uploadError,   setUploadError]   = useState<string | null>(null)
 
   /* ── Populate or clear form whenever the modal opens/closes ── */
   useEffect(() => {
@@ -572,6 +627,10 @@ function SetupModal({ open, onOpenChange, editSetup }: {
           images:           editSetup.images ?? [],
           aplusChecklist:   editSetup.aplusChecklist.length    ? editSetup.aplusChecklist    : ["", "", ""],
           standardChecklist: editSetup.standardChecklist.length ? editSetup.standardChecklist : [""],
+          expectedWr:   editSetup.expectedWr   != null ? String(editSetup.expectedWr)   : "",
+          expectedAvgR: editSetup.expectedAvgR != null ? String(editSetup.expectedAvgR) : "",
+          minR:         editSetup.minR         != null ? String(editSetup.minR)         : "",
+          maxR:         editSetup.maxR         != null ? String(editSetup.maxR)         : "",
         })
       } else {
         setForm(FORM_INIT)
@@ -590,31 +649,48 @@ function SetupModal({ open, onOpenChange, editSetup }: {
 
   const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
 
-  /* ── Image upload via Supabase Storage ── */
+  /* ── Image upload via validated Route Handler ── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     setUploading(true)
-    const supabase = createClient()
+    setUploadError(null)
     const urls: string[] = []
+    let failed = 0
     for (const file of files) {
-      const ext  = file.name.split(".").pop()
-      const path = `setups/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-      const { error } = await supabase.storage.from("setup-images").upload(path, file, { upsert: false })
-      if (!error) {
-        const { data } = supabase.storage.from("setup-images").getPublicUrl(path)
-        urls.push(data.publicUrl)
+      const body = new FormData()
+      body.append("file", file)
+      try {
+        const res  = await fetch("/api/upload/setup-image", { method: "POST", body })
+        const json = await res.json() as { ok: boolean; url?: string; reason?: string }
+        if (res.ok && json.ok && json.url) {
+          urls.push(json.url)
+        } else {
+          const reason = json.reason === "INVALID_MIME"    ? "Tipo de archivo no permitido (usa JPG, PNG o WebP)"
+                       : json.reason === "FILE_TOO_LARGE"  ? "Archivo demasiado grande (máx. 5 MB)"
+                       : "No se pudo subir la imagen"
+          setUploadError(reason)
+          failed++
+        }
+      } catch {
+        setUploadError("Error de red al subir la imagen")
+        failed++
       }
     }
     setForm(f => ({ ...f, images: [...f.images, ...urls] }))
     setUploading(false)
     e.target.value = ""
+    if (failed === 0) setUploadError(null)
   }
 
   const removeImage = (idx: number) =>
     setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
 
   const handleSave = () => {
+    const toNum = (s: string): number | undefined => {
+      const n = parseFloat(s)
+      return isNaN(n) ? undefined : n
+    }
     const payload = {
       name: form.name.trim(), abbreviation: form.abbr.trim().toUpperCase(),
       market: form.market, direction: form.direction, status: form.status,
@@ -622,6 +698,10 @@ function SetupModal({ open, onOpenChange, editSetup }: {
       images: form.images,
       aplusChecklist: form.aplusChecklist.filter(Boolean),
       standardChecklist: form.standardChecklist.filter(Boolean),
+      expectedWr:   toNum(form.expectedWr),
+      expectedAvgR: toNum(form.expectedAvgR),
+      minR:         toNum(form.minR),
+      maxR:         toNum(form.maxR),
     }
     if (!payload.name || !payload.abbreviation) return
     if (isEdit && editSetup) updateMut.mutate({ id: editSetup.id, ...payload })
@@ -647,11 +727,11 @@ function SetupModal({ open, onOpenChange, editSetup }: {
         </DialogHeader>
 
         <div className="flex gap-1 p-1 bg-[var(--panel-2)] rounded-[var(--radius-sm)] mb-1">
-          {(["info", "checklist"] as const).map(t => (
+          {(["info", "checklist", "edge"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]")}>
-              {t === "info" ? "📋 Información" : "✓ Checklists"}
+              {t === "info" ? "📋 Información" : t === "checklist" ? "✓ Checklists" : "📈 Edge"}
             </button>
           ))}
         </div>
@@ -776,6 +856,9 @@ function SetupModal({ open, onOpenChange, editSetup }: {
                   disabled={uploading}
                 />
               </label>
+              {uploadError && (
+                <p className="text-[11px] text-[var(--loss)] mt-1">{uploadError}</p>
+              )}
             </div>
 
             <button onClick={() => setTab("checklist")}
@@ -838,9 +921,71 @@ function SetupModal({ open, onOpenChange, editSetup }: {
           </div>
         )}
 
+        {tab === "edge" && (
+          <div className="flex flex-col gap-5">
+            <div className="flex items-center gap-3 px-4 py-3 rounded-[var(--radius-sm)]"
+              style={{ background: "rgba(79,110,247,0.08)", border: "1px solid rgba(79,110,247,0.25)" }}>
+              <div>
+                <p className="text-[12px] font-semibold text-[var(--accent)]">Edge esperado (opcional)</p>
+                <p className="text-[11px] text-[var(--ink-3)]">Define los parámetros teóricos de tu setup para detectar degradación.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-eyebrow block mb-1.5">Win Rate esperado (%)</label>
+                <Input
+                  type="number" min={0} max={100} step={0.1}
+                  placeholder="Ej. 55"
+                  value={form.expectedWr}
+                  onChange={e => set("expectedWr", e.target.value)}
+                />
+                <p className="text-[10px] text-[var(--ink-3)] mt-1">% de trades ganadores esperado.</p>
+              </div>
+              <div>
+                <label className="text-eyebrow block mb-1.5">Avg R esperado</label>
+                <Input
+                  type="number" step={0.01}
+                  placeholder="Ej. 1.5"
+                  value={form.expectedAvgR}
+                  onChange={e => set("expectedAvgR", e.target.value)}
+                />
+                <p className="text-[10px] text-[var(--ink-3)] mt-1">R promedio por trade.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-eyebrow block mb-1.5">Mínimo R aceptable</label>
+                <Input
+                  type="number" step={0.01}
+                  placeholder="Ej. 1.0"
+                  value={form.minR}
+                  onChange={e => set("minR", e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-eyebrow block mb-1.5">Máximo R objetivo</label>
+                <Input
+                  type="number" step={0.01}
+                  placeholder="Ej. 3.0"
+                  value={form.maxR}
+                  onChange={e => set("maxR", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {(form.expectedWr || form.expectedAvgR) && (
+              <div className="bg-[var(--panel-2)] border border-[var(--line)] rounded-[var(--radius-sm)] px-4 py-3 text-[11px] text-[var(--ink-3)]">
+                El sistema comparará tu WR real vs el esperado. Si cae más de 10pp, recibirás una sugerencia de PAUSE.
+              </div>
+            )}
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          {tab === "checklist" && <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>}
+          {(tab === "checklist" || tab === "edge") && <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>}
           <Button variant="primary" onClick={handleSave} disabled={isSaving || !form.name.trim() || !form.abbr.trim()}>
             {isSaving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear setup"}
           </Button>
@@ -893,32 +1038,26 @@ export default function PlaybookPage() {
   const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
     { includeDiscarded: showDiscarded },
   )
-  const { data: allTrades = [] } = trpc.trades.list.useQuery()
+  const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
+  const { data: dashStats }        = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
 
-  const setupStats = useMemo(() => {
+  // Setup stats from server-side aggregation (all trades, not paginated 50)
+  const setupStats = useMemo<Record<string, SetupStats>>(() => {
     const map: Record<string, SetupStats> = {}
-    for (const t of allTrades) {
-      if (t.status !== "CLOSED" || !t.setupId) continue
-      const sid = t.setupId
-      if (!map[sid]) map[sid] = { total: 0, wins: 0, netPnl: 0, avgR: 0, aplusRate: 0, expectancy: 0 }
-      const s = map[sid]
-      s.total++
-      const pnl = t.pnl ?? 0
-      if (pnl > 0) s.wins++
-      s.netPnl += pnl
-      s.avgR   += t.rMultiple ?? 0
-    }
-    for (const sid of Object.keys(map)) {
-      const s = map[sid]
-      if (s.total === 0) continue
-      s.avgR /= s.total
-      const wr = s.wins / s.total
-      s.expectancy = s.avgR * wr - (1 - wr)
-      const aplusTrades = allTrades.filter(t => t.setupId === sid && t.status === "CLOSED" && (t.tags as string[]).includes("A+")).length
-      s.aplusRate = Math.round((aplusTrades / s.total) * 100)
+    for (const s of dashStats?.setupStats ?? []) {
+      if (!s.setupId) continue
+      map[s.setupId] = {
+        total:      s.trades,
+        wins:       Math.round(s.winRate / 100 * s.trades),
+        netPnl:     s.netPnl,
+        avgR:       s.avgR,
+        aplusRate:  s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
+        // avgR is the arithmetic mean of all R multiples (= E[R] per trade)
+        expectancy: s.avgR,
+      }
     }
     return map
-  }, [allTrades])
+  }, [dashStats])
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
@@ -1033,6 +1172,7 @@ export default function PlaybookPage() {
               selected={drawerSetup?.id === s.id}
               onClick={() => setDrawerSetup(sel => sel?.id === s.id ? null : s)}
               stats={setupStats[s.id]}
+              versionCount={versionCountsMap?.[s.id]}
             />
           ))}
         </div>
