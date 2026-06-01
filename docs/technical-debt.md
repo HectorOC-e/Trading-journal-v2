@@ -1,7 +1,8 @@
 # Technical Debt Register — Trading Journal v2
 
-> **Last Updated: 2026-05-31**  
+> **Last Updated: 2026-06-01**  
 > Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
+> **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).
 
 ---
 
@@ -9,13 +10,13 @@
 
 | ID | Severity | Category | Title | Effort | Task | Status |
 |---|---|---|---|---|---|---|
-| TD-001 | CRITICAL | Formula | Win Rate: 8 inline implementations | M | TASK-027, TASK-005 | Open |
+| TD-001 | CRITICAL | Formula | Win Rate: 8 inline implementations | M | TASK-027, TASK-005 | **Closed** Sprint 1 |
 | TD-002 | CRITICAL | Formula | Discipline Score: 3 independent implementations | S | TASK-011 | Open |
 | TD-003 | CRITICAL | Functionality | Profile page entirely disconnected from backend | L | TASK-006 | Open |
-| TD-004 | CRITICAL | Data | KPIs calculated over paginated data (max 50 trades) | S | TASK-001, TASK-009 | Open |
+| TD-004 | CRITICAL | Data | KPIs calculated over paginated data (max 50 trades) | S | TASK-001, TASK-009 | **Closed** Sprint 1 |
 | TD-005 | CRITICAL | Logic | Phase promotion `objectiveMet = false` hardcoded | XS | TASK-002 | Open |
-| TD-006 | CRITICAL | Security | CRON_SECRET security bypass in edge function | XS | TASK-016 | Open |
-| TD-007 | HIGH | Data | `rMultiple` not calculated on CSV import | XS | TASK-004 | Open |
+| TD-006 | CRITICAL | Security | CRON_SECRET security bypass in edge function | XS | TASK-016 | **Closed** Sprint 1 |
+| TD-007 | HIGH | Data | `rMultiple` not calculated on CSV import | XS | TASK-004 | **Closed** Sprint 1 |
 | TD-008 | HIGH | Performance | N+1 query in `resourceImpactRanking` | M | TASK-039 | Open |
 | TD-009 | HIGH | Architecture | `learningResources.stats` CQRS violation | S | TASK-038 | Open |
 | TD-010 | HIGH | Schema | `notes_embedding` and `email_log` outside Prisma schema | S | TASK-019 | Open |
@@ -29,16 +30,17 @@
 | TD-018 | MEDIUM | Architecture | Inline business logic in router files (924-line trades.ts) | L | Ongoing | Open |
 | TD-019 | MEDIUM | Performance | tRPC context recreates Supabase client per request | M | — | Open |
 | TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | — | Open |
-| TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | Open |
+| TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | **Closed** Sprint 1 |
 | TD-022 | MEDIUM | Security | AI API keys as plaintext env vars (no per-user encryption) | L | TASK-033 | Open |
 | TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
 | TD-024 | LOW | Documentation | No `.env.example`, no variables documentation | XS | Sprint 1 | Open |
 | TD-025 | MEDIUM | Data | Drawdown label on trades page shows "peor día" not drawdown | XS | TASK-028 | Open |
-| TD-026 | MEDIUM | Data | `use-account-stats.ts` shows current-DD from ATH, not max-DD | XS | TASK-029 | Open |
+| TD-026 | MEDIUM | Data | `use-account-stats.ts` shows current-DD from ATH, not max-DD | XS | TASK-029 | **Closed** Sprint 1 |
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-032 | Open |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | Open |
 
-**Total estimated effort: ~19 engineer-days to close all open items**
+**Open items: 22 of 28 | Sprint 1 closed: 6 (TD-001, TD-004, TD-006, TD-007, TD-021, TD-026)**  
+**Remaining estimated effort: ~16 engineer-days to close all open items**
 
 ---
 
@@ -69,22 +71,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-001 — Win Rate: 8 Inline Implementations
+### ~~TD-001 — Win Rate: 8 Inline Implementations~~ ✅ Closed Sprint 1
 
-- **Locations:**
-  - `src/domains/analytics/services/dashboard-analytics.ts:101`
-  - `src/server/trpc/routers/trades.ts:736`
-  - `src/server/trpc/routers/weekly-reviews.ts:205`
-  - `src/server/trpc/routers/weekly-reviews.ts:271`
-  - `src/components/modals/create-review-modal.tsx:99`
-  - `src/domains/analytics/services/trading-sessions.ts:94`
-  - `src/server/trpc/routers/learning-resources.ts:447`
-  - `src/app/cuentas/hooks/use-account-stats.ts:39`
-- **Root cause:** No shared `calcWinRate` function in `lib/formulas.ts`. Each site re-implements the formula inline.
-- **Known inconsistency:** `/trades/page.tsx` uses `rMultiple > 0`; `dashboard-analytics.ts` uses `pnl > 0`. Same user sees different win rates on two screens.
-- **Fix:** Create `src/lib/trading-formulas.ts` exporting `calcWinRate(wins, total)` and `isWin(trade)` using `pnl > 0` as canonical criterion. Replace all 8 sites.
-- **Effort:** M | **Risk if not fixed:** Silently wrong win rate on at least one screen today. Any business rule change requires 8 updates.
-- **Tasks:** TASK-027, TASK-005
+- **Resolution:** `src/lib/formulas/` barrel module created (Phase 1). `isWin({ pnl })` and `calcWinRate()` exported as canonical functions. All 8 call sites migrated to `isWin()` (Phase 2). `trading-sessions.ts` migrated in QA fix commit.
+- **Commit:** `c423f63` (fix commit) and `0b8d76a` (Phase 2 migration)
+- **Tasks:** TASK-027 ✅, TASK-005 ✅
 
 ---
 
@@ -121,16 +112,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-004 — KPIs Calculated Over Paginated Data (Max 50 Trades)
+### ~~TD-004 — KPIs Calculated Over Paginated Data (Max 50 Trades)~~ ✅ Closed Sprint 1
 
-- **Locations:**
-  - `src/app/trades/page.tsx:124–130` — KPI strip over `tradePages` first page
-  - `src/app/reviews/page.tsx` — `weekTrades` filtered from `trades.list` (max 50)
-  - `src/app/cuentas/page.tsx` — `useAccountStats` using non-infinite `trades.list`
-- **Root cause:** Client-side KPI computation from the first page of the infinite query instead of a server aggregate.
-- **Impact:** Any user with >50 trades sees incorrect Win Rate, Net P&L, Avg R, weekly review statistics, and account KPIs. Worsens silently as users log more trades.
-- **Fix:** Route KPI computation through `trades.dashboardStats` or a dedicated `trades.aggregates` endpoint.
-- **Effort:** S | **Tasks:** TASK-001, TASK-009
+- **Resolution:** All three pages (`trades`, `reviews`, `cuentas`) migrated to `trpc.trades.dashboardStats.useQuery({ period: "ALL" })`. KPIs now computed server-side over the full trade history regardless of pagination. `useAccountStats` hook deleted (dead code after migration).
+- **Commits:** `cb6cdc6` (Phase 3 analytics correctness)
+- **Tasks:** TASK-001 ✅, TASK-009 ✅
 
 ---
 
@@ -144,13 +130,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-006 — CRON_SECRET Security Bypass in Edge Function
+### ~~TD-006 — CRON_SECRET Security Bypass in Edge Function~~ ✅ Closed Sprint 1
 
-- **Location:** `src/supabase/functions/weekly-learning-summary/index.ts:~30`
-- **Root cause:** If `CRON_SECRET` env var is absent or empty string, all requests are accepted.
-- **Impact:** Any external party can trigger the edge function (which sends emails to all users) without authentication.
-- **Fix:** Reject with 401 if env var is missing OR empty. No default bypass behavior.
-- **Effort:** XS | **Task:** TASK-016
+- **Resolution:** `isAuthorized()` now returns `false` immediately when `CRON_SECRET` is absent or empty string. Unauthenticated calls receive HTTP 401. The alternative `Bearer ${SUPABASE_SERVICE_ROLE}` path is intentional (Supabase scheduler) and documented in `docs/SPRINT_1_QA_REPORT.md`.
+- **Commit:** `cb6cdc6` (Phase 4 security hardening)
+- **Task:** TASK-016 ✅
 
 ---
 
@@ -158,13 +142,12 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-007 — `rMultiple` Not Calculated on CSV Import
+### ~~TD-007 — `rMultiple` Not Calculated on CSV Import~~ ✅ Closed Sprint 1
 
-- **Location:** `src/app/api/import/mt4/route.ts`
-- **Root cause:** Import handler sets `rMultiple: null` for all trades. Entry, stop, and closePrice are present in the CSV but not used for R calculation.
-- **Impact:** All imported trades have null R-multiple. Avg R, Expectancy R, and Sharpe Ratio corrupted for CSV import users.
-- **Fix:** `rMultiple = (closePrice - entry) / Math.abs(entry - stop)` for LONG; negate for SHORT.
-- **Effort:** XS | **Task:** TASK-004
+- **Resolution:** `calcRMultiple()` from `@/lib/formulas` now called during import. Guard includes `row.sl !== 0` to handle the parser sentinel for "no stop loss recorded" (both MT4 and cTrader parsers return `sl=0` when no stop exists). Trades without a stop receive `rMultiple = null`.
+- **Critical fix (B-001):** The initial implementation missed the `sl=0` sentinel; the QA audit caught it before production.
+- **Commit:** `9bdf47f` (Phase 5) + `c423f63` (B-001 fix)
+- **Task:** TASK-004 ✅
 
 ---
 
@@ -322,13 +305,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-021 — Setup Images Uploaded Directly from Client Without Server Validation
+### ~~TD-021 — Setup Images Uploaded Directly from Client Without Server Validation~~ ✅ Closed Sprint 1
 
-- **Location:** `src/app/playbook/page.tsx` — Supabase Storage client-side upload
-- **Root cause:** Image uploads bypass any server-side handler. No MIME type or file size validation.
-- **Impact:** Arbitrary file types and unlimited file sizes accepted. Potential storage abuse.
-- **Fix:** Route uploads through `/api/upload/setup-image` Route Handler with MIME (jpeg/png/webp) and size (5 MB) validation.
-- **Effort:** S | **Task:** TASK-017
+- **Resolution:** `src/app/api/upload/setup-image/route.ts` Route Handler added. Validates MIME type (jpeg/png/webp allowlist), file size (5 MB max). Returns structured error reasons (`INVALID_MIME`, `FILE_TOO_LARGE`). Playbook page migrated from direct Supabase Storage client upload to Route Handler. Upload errors now surface to the user. Path generation uses `crypto.randomUUID()`.
+- **Commit:** `cb6cdc6` (Phase 4) + `c423f63` (M-002 error feedback fix)
+- **Task:** TASK-017 ✅
 
 ---
 
@@ -356,13 +337,11 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-026 — `use-account-stats.ts` Current-DD Not Max-DD
+### ~~TD-026 — `use-account-stats.ts` Current-DD Not Max-DD~~ ✅ Closed Sprint 1
 
-- **Location:** `src/app/cuentas/hooks/use-account-stats.ts:50`
-- **Root cause:** Computes current drawdown from ATH (resets to zero after new equity high), not historical max drawdown.
-- **Impact:** Account cards show misleadingly low drawdown after any new equity high. Prop-firm traders misled about their risk exposure.
-- **Fix:** Use `computeMaxDrawdown` from domain service. Label current-DD separately if needed.
-- **Effort:** XS | **Task:** TASK-029
+- **Resolution:** `use-account-stats.ts` deleted (dead code — only caller removed in Phase 3). `cuentas/page.tsx` now reads `drawdownPct` from `dashboardStats`, which uses `computeMaxDrawdown()` from `account-service.ts` — the canonical max-DD computation over full trade history.
+- **Commit:** `cb6cdc6` (Phase 3) + `c423f63` (N-003 deletion)
+- **Task:** TASK-029 ✅
 
 ---
 

@@ -1,7 +1,86 @@
 # Changelog — Trading Journal v2
 
-> **Last Updated: 2026-05-31**  
+> **Last Updated: 2026-06-01**  
 > Git-style changelog organized by development phase. Based on TASKS.md, audit findings, and codebase analysis. Dates are approximate development windows.
+
+---
+
+## [Sprint 1 — Stability & Foundations] — 2026-06-01
+
+**Branch:** `claude/epic-darwin-1XZTX` | **Commits:** `a83aa41` → `09d480e` (8 commits)  
+**Test result:** 232/232 passing | **TypeScript:** clean (`tsc --noEmit`)
+
+### Fixed (data integrity)
+
+- **rMultiple in CSV import** — `src/app/api/import/mt4/route.ts`
+  - `calcRMultiple()` now called during MT4/cTrader import
+  - Guard `row.sl !== 0` prevents garbage R from `sl=0` sentinel (B-001 — would have corrupted avgR, expectancyR, Sharpe for all stop-less imports)
+  - Trades without a recorded stop now receive `rMultiple = null` (correct)
+- **KPI strip over paginated data** — `src/app/trades/page.tsx`, `src/app/reviews/page.tsx`, `src/app/cuentas/page.tsx`
+  - All three pages now use `trpc.trades.dashboardStats.useQuery({ period: "ALL" })` for aggregate KPIs
+  - Users with >50 trades previously saw incorrect Win Rate, Net P&L, Avg R, and account stats
+- **Expectancy formula in Playbook** — `src/app/playbook/page.tsx`
+  - Corrected `s.avgR * wr - (1 - wr)` → `s.avgR` (M-001 — formula was 5–20× wrong; `avgR` IS the per-trade E[R])
+- **`isWin` import shadow in `buildKpis`** — `src/domains/analytics/services/dashboard-analytics.ts`
+  - `const isWin = sorted[0].pnl > 0` (boolean) renamed to `streakIsWin`; streak loop uses canonical `isWin({ pnl })` (M-003)
+- **`acctWins` canonical win function** — `dashboard-analytics.ts:177`
+  - `t.pnl > 0` → `isWin({ pnl: t.pnl })` (N-001)
+- **`trading-sessions.ts` win criterion** — `src/server/trpc/routers/trading-sessions.ts`
+  - Last file using inline win check migrated to `isWin()` (N-002)
+
+### Added
+
+- **Formula centralization** — `src/lib/formulas/` barrel module
+  - Modules: `win-rate.ts`, `risk.ts`, `performance.ts`, `drawdown.ts`, `discipline.ts`, `utils.ts`, `types.ts`
+  - Single source of truth for `isWin`, `calcWinRate`, `calcRMultiple`, `calcAvgR`, `calcExpectancyR`, `calcSharpeRatio`, `calcProfitFactor`, `calcNetPnl`, `computeMaxDrawdown`, `calcDrawdownPct`, `calcDisciplineScore`, `getISOWeekKey`
+  - Resolved module resolution conflict: deleted `src/lib/formulas.ts` (was shadowing `formulas/` directory)
+- **Server-side upload validation** — `src/app/api/upload/setup-image/route.ts`
+  - MIME allowlist: `image/jpeg`, `image/png`, `image/webp`
+  - Max size: 5 MB
+  - Returns structured error reasons: `INVALID_MIME`, `FILE_TOO_LARGE`
+  - Path uses `crypto.randomUUID()` (collision-resistant)
+- **Upload error feedback** — `src/app/playbook/page.tsx`
+  - Upload failures now surface localized error messages below the upload button (M-002)
+  - Playbook migrated from direct Supabase Storage client upload to Route Handler
+- **`tradesMonth` and `tradesTotal` in `AccountStat`** — `dashboard-analytics.ts`
+- **`TRPCError` in accounts router** — `src/server/trpc/routers/accounts.ts`
+  - `throw new Error()` → `throw new TRPCError({ code: "BAD_REQUEST" })` in `changeStatus`
+
+### Fixed (security)
+
+- **CRON_SECRET bypass** — `supabase/functions/weekly-learning-summary/index.ts`
+  - `isAuthorized()` now returns `false` immediately when `CRON_SECRET` is absent or empty string
+  - Eliminates unauthenticated edge function invocation by any external party
+
+### Fixed (tests)
+
+- `src/__tests__/routers/accounts.test.ts` — updated `where` clause to include `status: { in: ["ACTIVE", "PAUSED"] }` default filter
+- `src/__tests__/routers/withdrawals.test.ts` — corrected `event` to `"WITHDRAWAL_STATUS"` (was `"STATUS_CHANGE"`)
+- `src/__tests__/lib/formulas/discipline.test.ts` — corrected `score: 62` → `63` (`Math.round(62.5) = 63` per ES spec)
+- Test suite: 229/232 → **232/232**
+
+### Removed
+
+- `src/lib/formulas.ts` — deleted; replaced by `src/lib/formulas/index.ts` barrel
+- `src/app/cuentas/hooks/use-account-stats.ts` — deleted (dead code; only caller migrated to `dashboardStats`)
+
+### Improved
+
+- `src/app/api/upload/setup-image/route.ts` — `Math.random()` → `crypto.randomUUID()` for upload paths
+- `dashboard-analytics.ts:110` — removed unused `pnl` field from `calcExpectancyR` mapping
+- `src/lib/formulas.test.ts` — import changed from relative `"./formulas"` to alias `"@/lib/formulas"`
+
+### Deferred to Sprint 2
+
+- TASK-002 — `objectiveMet = false` hardcoded in phase promotion modal
+- TASK-026 — `ai-coach/route.ts:106` error message mismatch
+- TASK-028 — Misleading "Drawdown" label on trades KPI strip
+
+### Docs
+
+- `docs/SPRINT_1_QA_REPORT.md` — Independent staff engineer audit; 1 Blocking, 3 Major, 3 Minor, 3 Nitpick findings
+- `docs/SPRINT_1_FIX_REPORT.md` — Resolution of all audit findings
+- `docs/SPRINT_1_RETROSPECTIVE.md` — Sprint retrospective
 
 ---
 
