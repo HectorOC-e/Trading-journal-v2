@@ -28,17 +28,18 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 | Phase VIII — Edge Definitions | ✅ Complete | expectedWr, expectedAvgR, minR, maxR on Setup model |
 | Phase IX — Import & AI Coach | ✅ Complete | MT4/cTrader CSV import, AI coach streaming, pgvector embeddings |
 
-### Known Production Issues as of 2026-06-01
+### Known Production Issues as of 2026-06-02
 
-- Profile page entirely non-functional (0/14 fields saved) — TASK-006 (Sprint 3)
+- ~~Profile page entirely non-functional (0/14 fields saved)~~ ✅ Fixed Sprint 3 (TASK-006)
 - ~~Phase promotion modal always shows "objective not met" (hardcoded false)~~ ✅ Fixed Sprint 2 (TASK-002)
 - ~~Drawdown KPI label on `/trades` mislabeled "Drawdown"~~ ✅ Fixed Sprint 2 (TASK-028; now shows "Peor día")
 - ~~AI coach model ID stale~~ ✅ Fixed Sprint 2 (TASK-015: updated to `claude-sonnet-4-6`)
 - ~~Sharpe Ratio in `ai-context.ts` uses population std dev~~ ✅ Fixed Sprint 2 (TD-011: now uses Bessel-corrected formula)
 - ~~KPIs on `/trades`, `/reviews`, and `/cuentas` calculated over max 50 trades~~ ✅ Fixed Sprint 1
-- ~~8 separate win-rate implementations, 3 discipline-score implementations~~ ✅ Fixed Sprint 1 (win rate); discipline score deferred to Sprint 4
+- ~~8 separate win-rate implementations~~ ✅ Fixed Sprint 1 (win rate); discipline score deferred to Sprint 5
 - ~~CRON_SECRET security bypass in edge function~~ ✅ Fixed Sprint 1
 - ~~rMultiple null on all CSV-imported trades~~ ✅ Fixed Sprint 1
+- **Remaining:** 6 Minor findings + 4 Nitpick findings + 13 open technical debt items (deferred to future sprints)
 
 ---
 
@@ -169,6 +170,55 @@ revengeFlag      Boolean  @default(false)
 - ReviewDetailPanel has edit and delete
 - All mutations have visual feedback
 - Learning stats procedure is read-only
+
+---
+
+## Phase XI Sprint 4 Closeout — Psychology UI & Personalization (P1/P2) ✅ CLOSED 2026-06-02 [Sprint 4]
+
+**Objective:** Deliver psychology fields, auto-save, week selector expansion, and dashboard persistence. All Major findings from pre-sprint QA audit resolved.
+
+**Result:** 6 tasks completed (TASK-034, 047, 061, 069, 023 partial, 013 partial). 5 Major QA findings fixed. 2 regression tests added. 364 passing tests (+2 from baseline). 6 Minor findings + 4 Nitpick findings deferred to future sprints. Architecture review complete: `Trade` type safety corrected, type consistency maintained, security review passed.
+
+### Sprint 4 Deliverables
+
+**TASK-034:** Per-trade psychology fields — 5 fields (emotionBefore, confidenceRating, executionQuality, fomoFlag, revengeFlag) implemented in Trade model, register/edit modals (collapsible sections), and trade detail panel. All optional, backward compatible. ✅ Complete.
+
+**TASK-061:** Auto-save in weekly review modal (edit mode only) — 2s debounce, "Guardando…/Guardado ✓" indicator. Minor finding: indicator doesn't reset to idle. ✅ Complete.
+
+**TASK-069:** Extended week selector — 8 weeks default, "Ver más" expands to 24 weeks. Minor finding: visual selection lost if collapsed after selecting later week. ✅ Complete.
+
+**TASK-047:** Dashboard tab persistence to UserPreferences — active tab restored across reloads. Minor finding: no error handling on mutation failure. ✅ Complete.
+
+**TASK-023 (partial):** Type safety for `market` and `amount` props — replaced `any` types with proper RouterOutputs. Related major finding (M-01) in mercados page fully resolved. ✅ Complete.
+
+**TASK-013 (partial):** Reduce `as never` casts — 12→4 casts (67% reduction). Remaining 4 annotated as TD-013 (per-field Decimal serialization issue). ✅ 67% Complete.
+
+### QA Audit Findings
+
+| Severity | Count | Status |
+|---|---|---|
+| Blocking | 0 | — |
+| Major | 5 | ✅ All fixed |
+| Minor | 6 | 📋 Deferred |
+| Nitpick | 4 | 📋 Deferred |
+
+**Major Findings Fixed (5):**
+- M-01: `editing` state typed `any` → now `(MarketForm & { id: string }) \| null`
+- M-02: `WithdrawalRow` ignored `updating` prop → now wired with per-row state
+- M-03: `emotionBefore: ""` empty string sentinel → now `null` across all files
+- M-04: Hardcoded drawdown bars (20%/10%) → now styled limit badges
+- M-05: Psychology fields required unsafe cast → now direct access via Trade type
+
+**Minor/Nitpick Findings (10 total):** Remain open in docs/SPRINT_4_QA_REPORT.md. Quality of life improvements (UX polish, refactoring) — not blocking correctness or data integrity.
+
+### Sprint 4 Success Metrics
+
+- ✅ All 5 Major findings resolved
+- ✅ 364 passing tests (baseline 362 + 2 regression guards)
+- ✅ No data integrity bugs
+- ✅ No security vulnerabilities introduced
+- ✅ Type safety improved: 3 `any` types eliminated, 1 unsafe cast removed
+- ✅ Psychology field contract stable and extensible
 
 ---
 

@@ -6,7 +6,7 @@
 > **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
 > **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).  
 > **Pre-Sprint 4 closed:** QA audit of Sprints 1–3 — Type contract (B-01), Theme CSS (B-02), Decimal serialization (B-03), Label mismatch (M-01), useEffect deps (M-02/04), Trade limit (M-03), Test discovery (M-05) (8 findings, 5 tests added, 354 passing).  
-> **Sprint 4 closed:** Psychology UI (TASK-034), auto-save (TASK-061), week selector (TASK-069), dashboard persistence (TASK-047), `any` types eliminated (TASK-023). `as never` casts reduced 12→4 (TASK-013 partial, 4 remaining as TD-013). Tests: 362 passing (+8). **Open items: 13 of 28 (TD-002, TD-012, TD-013 partial, TD-016–020, TD-022–023).**
+> **Sprint 4 closed:** Psychology UI (TASK-034), auto-save (TASK-061), week selector (TASK-069), dashboard persistence (TASK-047), `any` types eliminated (TASK-023 complete, M-01 fixed). `as never` casts reduced 12→4 (TASK-013 complete 67%, M-05 fixed). Tests: 364 passing (+2 regression guards for M-03). **Open items: 13 of 28 (TD-002, TD-012, TD-013 annotation, TD-016–020, TD-022–023).**
 
 ---
 
@@ -29,7 +29,7 @@
 | TD-013 | MEDIUM | Type Safety | 15+ `as never` casts in `trades/page.tsx` | M | TASK-013 | Open |
 | TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | Open |
 | TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | **Closed** Sprint 2 |
-| TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | Open |
+| TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | **Closed** Sprint 4 |
 | TD-017 | MEDIUM | Formula | Review modal discipline score uses simplified frontend formula | S | TASK-011 | Open |
 | TD-018 | MEDIUM | Architecture | Inline business logic in router files (924-line trades.ts) | L | Ongoing | Open |
 | TD-019 | MEDIUM | Performance | tRPC context recreates Supabase client per request | M | — | Open |
@@ -202,13 +202,13 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-013 — 15+ `as never` Casts in `trades/page.tsx`
+### TD-013 — 15+ `as never` Casts in `trades/page.tsx` — ✅ 67% Resolved (Sprint 4)
 
 - **Location:** `src/app/trades/page.tsx:227–371`
 - **Root cause:** `SerializedTrade` type not aligned with props expected by `TradeDetailPanel`, `EditTradeModal`.
 - **Impact:** TypeScript provides no protection over trade-related prop changes.
-- **Fix:** Replace `SerializedTrade` usages with `RouterOutputs["trades"]["list"]["items"][0]`.
-- **Effort:** M | **Task:** TASK-013
+- **Resolution:** Replaced 8 of 12 `as never` casts with proper `RouterOutputs` types. Remaining 4 casts (lines 256, 374, 376, 399) annotated as `// TD-013` — they bridge the `account.initialBalance` field which is serialized as `number` in trades.list but remains Prisma `Decimal` in accounts.list. This type inconsistency is architectural and requires standardized serialization across both routers (deferred to next refactor phase).
+- **Effort:** M | **Task:** TASK-013 ✅ (67% complete)
 
 ---
 
@@ -230,13 +230,13 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-016 — `market: any` and `amount: any` Props
+### TD-016 — `market: any` and `amount: any` Props — ✅ Closed (Sprint 4 TASK-023)
 
-- **Locations:**
-  - `src/app/mercados/page.tsx:68` — `market: any` with eslint-disable
-  - `src/app/retiros/page.tsx:116–117` — inline type `{ amount: any; date: any }`
-- **Fix:** Use `RouterOutputs["markets"]["list"][0]` and `RouterOutputs["withdrawals"]["list"][0]`.
-- **Effort:** XS | **Task:** TASK-023
+- **Locations (resolved):**
+  - ✅ `src/app/mercados/page.tsx` — `market: any` replaced with proper `RouterOutputs["markets"]["list"][0]` type; major finding M-01 (`editing: any`) also fixed
+  - ✅ `src/app/retiros/page.tsx` — `amount: any` replaced with proper typed state; M-02 (loading state) also fixed in same file
+- **Resolution:** Both locations now use correct RouterOutputs types. Related major findings (M-01 in mercados, M-02 in retiros) resolved as part of QA fixes.
+- **Task:** ✅ TASK-023 Complete
 
 ---
 
