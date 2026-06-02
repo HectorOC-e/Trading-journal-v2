@@ -195,6 +195,11 @@ export default function TradesPage() {
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
     tags: string[]; notes: string; screenshots: string[]
     checklistItems: Record<string, boolean>
+    emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | ""
+    confidenceRating: number | null
+    executionQuality: number | null
+    fomoFlag: boolean
+    revengeFlag: boolean
   }) => {
     // Capture checklist before mutation fires
     const setup = setups.find(s => s.id === form.setupId)
@@ -212,20 +217,25 @@ export default function TradesPage() {
     const size   = parseFloat(form.size)
 
     createTrade.mutate({
-      accountId:      form.accountId,
-      setupId:        form.setupId || undefined,
-      direction:      form.direction,
-      symbol:         form.symbol.toUpperCase(),
+      accountId:        form.accountId,
+      setupId:          form.setupId || undefined,
+      direction:        form.direction,
+      symbol:           form.symbol.toUpperCase(),
       entry,
       stop,
       target,
       size,
-      date:           form.date,
-      openTime:       form.openTime,
-      session:        form.session,
-      tags:           form.tags,
-      notes:          form.notes,
-      screenshotUrls: form.screenshots,
+      date:             form.date,
+      openTime:         form.openTime,
+      session:          form.session,
+      tags:             form.tags,
+      notes:            form.notes,
+      screenshotUrls:   form.screenshots,
+      emotionBefore:    form.emotionBefore || undefined,
+      confidenceRating: form.confidenceRating,
+      executionQuality: form.executionQuality,
+      fomoFlag:         form.fomoFlag,
+      revengeFlag:      form.revengeFlag,
     })
   }
 
@@ -239,14 +249,12 @@ export default function TradesPage() {
     return () => { document.body.style.overflow = "" }
   }, [!!selected])
 
-  // NOTE: as never casts below bridge the gap between RouterOutputs types (Decimal serialized as
-  // string by tRPC's JSON transport) and the component prop interfaces (which expect number).
-  // Fixing these would require refactoring all component interfaces — tracked as TD future item.
+  // TD-013: account from serializeTrade (number) vs accounts.list (string) — Decimal serialization difference
   const detailPanel = selected ? (
     <TradeDetailPanel
-      trade={selected as never}
+      trade={selected}
       account={selected.account as never}
-      setup={selected.setup as never}
+      setup={selected.setup ?? undefined}
       onClose={() => setSelectedId(null)}
       onDelete={() => deleteTrade.mutate(selected.id)}
       deleting={deleteTrade.isPending}
@@ -305,9 +313,9 @@ export default function TradesPage() {
           />
           <KpiStrip items={kpiItems} className="mb-6" />
           <TradesTable
-            trades={trades as never}
-            accounts={accounts as never}
-            setups={setups as never}
+            trades={trades}
+            accounts={accounts}
+            setups={setups}
             selectedId={selectedId ?? undefined}
             onSelect={(t) => setSelectedId(t ? t.id : null)}
           />
@@ -364,19 +372,19 @@ export default function TradesPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         accounts={accounts as never}
-        setups={setups as never}
-        markets={markets as never}
+        setups={setups}
+        markets={markets}
         tradeCountToday={tradeCountToday}
-        onSubmit={handleModalSubmit as never}
+        onSubmit={handleModalSubmit}
       />
 
       {editTarget && (
         <EditTradeModal
           open={!!editingTrade}
           onOpenChange={(v) => { if (!v) setEditingTrade(null) }}
-          trade={editTarget as never}
-          setups={setups as never}
-          onSave={(data) => updateTrade.mutate({ id: editTarget.id, ...data } as never)}
+          trade={editTarget}
+          setups={setups}
+          onSave={(data) => updateTrade.mutate({ id: editTarget.id, ...data })}
           saving={updateTrade.isPending}
         />
       )}
@@ -385,9 +393,9 @@ export default function TradesPage() {
         <PositionLogModal
           open={!!positionLogTrade}
           onOpenChange={(v) => { if (!v) setPositionLogTrade(null) }}
-          trade={posLogTarget as never}
-          account={(posLogTarget as never as { account?: { initialBalance: number; ddDailyPct?: number | null; ddTotalPct?: number | null } }).account}
-          events={(posLogTarget as never as { events?: { id: string; type: string; price: number | null; contracts: number | null; notes: string; timestamp: string }[] }).events ?? []}
+          trade={posLogTarget}
+          account={posLogTarget.account as never}
+          events={posLogTarget.events}
           onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data } as never)}
           adding={addEvent.isPending}
         />

@@ -11,6 +11,9 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import type { MarketCategory } from "@/types"
+import type { RouterOutputs } from "@/server/trpc/root"
+
+type MarketItem = RouterOutputs["markets"]["list"][number]
 
 const CAT_LABELS: Record<MarketCategory, string> = {
   FUTUROS:  "Futuros",
@@ -64,10 +67,8 @@ function SessionChip({ s }: { s: string }) {
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function MarketCard({ market, onToggleWatch, onEdit, onDelete, toggling }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  market: any
+  market: MarketItem
   onToggleWatch: () => void
   onEdit: () => void
   onDelete: () => void

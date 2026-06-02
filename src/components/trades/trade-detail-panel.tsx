@@ -544,6 +544,60 @@ export function TradeDetailPanel({
         </div>
       )}
 
+      {/* ── Psicología ── */}
+      {(() => {
+        const t = trade as {
+          emotionBefore?: string | null
+          confidenceRating?: number | null
+          executionQuality?: number | null
+          fomoFlag?: boolean
+          revengeFlag?: boolean
+        }
+        const hasPsych = t.emotionBefore || t.confidenceRating != null || t.executionQuality != null || t.fomoFlag || t.revengeFlag
+        if (!hasPsych) return null
+        const EMOTION_LABELS: Record<string, string> = {
+          calm: "Tranquilo", anxious: "Ansioso", excited: "Eufórico",
+          fearful: "Temeroso", overconfident: "Sobreconfiado",
+        }
+        return (
+          <div>
+            <p className="text-eyebrow mb-2">Psicología</p>
+            <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-2">
+              {t.emotionBefore && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Estado emocional</span>
+                  <span className="text-xs font-medium text-[var(--ink)]">
+                    {EMOTION_LABELS[t.emotionBefore] ?? t.emotionBefore}
+                  </span>
+                </div>
+              )}
+              {t.confidenceRating != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Confianza</span>
+                  <span className="text-xs font-medium font-mono text-[var(--ink)]">{t.confidenceRating}/5</span>
+                </div>
+              )}
+              {t.executionQuality != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Calidad ejecución</span>
+                  <span className="text-xs font-medium font-mono text-[var(--ink)]">{t.executionQuality}/5</span>
+                </div>
+              )}
+              {(t.fomoFlag || t.revengeFlag) && (
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {t.fomoFlag && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">FOMO</span>
+                  )}
+                  {t.revengeFlag && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">Revanche</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* ── Notes ── */}
       {trade.notes && (
         <div>

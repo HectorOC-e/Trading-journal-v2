@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import type { RouterOutputs } from "@/server/trpc/root"
+
+type WithdrawalItem = RouterOutputs["withdrawals"]["list"][number]
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 
@@ -114,11 +117,7 @@ function StatusSelect({ current, onSelect, loading }: {
 
 /* ── Withdrawal row ── */
 function WithdrawalRow({ w, onStatusChange }: {
-  w: {
-    id: string; amount: any; currency: string; status: string
-    date: any; note: string; reference: string
-    account: { name: string; currency: string }
-  }
+  w: WithdrawalItem
   onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
   updating?: boolean
 }) {

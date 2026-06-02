@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp, Brain } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Dialog, DialogContent, DialogHeader,
@@ -14,6 +14,18 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
+
+// ── Psychology types ────────────────────────────────────────────────────────
+
+type EmotionBefore = "calm" | "anxious" | "excited" | "fearful" | "overconfident"
+
+const EMOTION_OPTIONS: { value: EmotionBefore; label: string }[] = [
+  { value: "calm",          label: "Tranquilo" },
+  { value: "anxious",       label: "Ansioso" },
+  { value: "excited",       label: "Eufórico" },
+  { value: "fearful",       label: "Temeroso" },
+  { value: "overconfident", label: "Sobreconfiado" },
+]
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -108,6 +120,12 @@ interface FormState {
   notes: string
   checklistItems: Record<string, boolean>
   screenshots: string[]
+  // Psychology fields (TASK-034)
+  emotionBefore: EmotionBefore | ""
+  confidenceRating: number | null
+  executionQuality: number | null
+  fomoFlag: boolean
+  revengeFlag: boolean
 }
 
 const INITIAL: FormState = {
@@ -127,6 +145,12 @@ const INITIAL: FormState = {
   notes: "",
   checklistItems: {},
   screenshots: [],
+  // Psychology fields
+  emotionBefore: "",
+  confidenceRating: null,
+  executionQuality: null,
+  fomoFlag: false,
+  revengeFlag: false,
 }
 
 // ── Auto quality tag ───────────────────────────────────────────────────────
@@ -145,6 +169,8 @@ function computeAutoTag(form: FormState, setup: SetupLike | undefined): TradeTag
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
+export type RegisterTradeFormData = FormState
+
 interface RegisterTradeModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -152,7 +178,7 @@ interface RegisterTradeModalProps {
   setups?: SetupLike[]
   markets?: MarketLike[]
   tradeCountToday?: number
-  onSubmit?: (data: FormState) => void
+  onSubmit?: (data: RegisterTradeFormData) => void
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -169,6 +195,7 @@ export function RegisterTradeModal({
   const [form, setForm] = useState<FormState>(INITIAL)
   const [sizeManual, setSizeManual] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [psychOpen, setPsychOpen] = useState(false)
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -711,6 +738,124 @@ export function RegisterTradeModal({
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
             />
+          </div>
+
+          {/* ── Psicología (collapsible) ── */}
+          <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--panel-2)] transition-colors"
+              onClick={() => setPsychOpen(v => !v)}
+            >
+              <Brain size={12} className="text-[var(--ink-3)]" />
+              <span className="text-eyebrow flex-1">Psicología</span>
+              <span className="text-[10px] text-[var(--ink-3)] mr-1">Opcional</span>
+              {psychOpen ? <ChevronUp size={12} className="text-[var(--ink-3)]" /> : <ChevronDown size={12} className="text-[var(--ink-3)]" />}
+            </button>
+
+            {psychOpen && (
+              <div className="px-3 pb-3 pt-1 flex flex-col gap-3 border-t border-[var(--line)] bg-[var(--panel-2)]">
+                {/* Emoción antes del trade */}
+                <div>
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Estado emocional</label>
+                  <div className="flex gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, emotionBefore: "" }))}
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                        !form.emotionBefore
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                      )}
+                    >
+                      —
+                    </button>
+                    {EMOTION_OPTIONS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, emotionBefore: value }))}
+                        className={cn(
+                          "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                          form.emotionBefore === value
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Confianza + Calidad de ejecución */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Confianza (1-5)</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, confidenceRating: f.confidenceRating === n ? null : n }))}
+                          className={cn(
+                            "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                            form.confidenceRating === n
+                              ? "bg-[var(--accent)] text-white"
+                              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Calidad de ejecución (1-5)</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, executionQuality: f.executionQuality === n ? null : n }))}
+                          className={cn(
+                            "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                            form.executionQuality === n
+                              ? "bg-[var(--accent)] text-white"
+                              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* FOMO + Revanche flags */}
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.fomoFlag}
+                      onChange={e => setForm(f => ({ ...f, fomoFlag: e.target.checked }))}
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-[var(--ink-2)]">¿FOMO?</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.revengeFlag}
+                      onChange={e => setForm(f => ({ ...f, revengeFlag: e.target.checked }))}
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-[var(--ink-2)]">¿Revanche?</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Screenshots ── */}

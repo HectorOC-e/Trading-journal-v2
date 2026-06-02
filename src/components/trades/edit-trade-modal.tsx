@@ -10,6 +10,16 @@ import { Button } from "@/components/ui/button"
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
 
+type EmotionBefore = "calm" | "anxious" | "excited" | "fearful" | "overconfident"
+
+const EMOTION_OPTIONS: { value: EmotionBefore; label: string }[] = [
+  { value: "calm",          label: "Tranquilo" },
+  { value: "anxious",       label: "Ansioso" },
+  { value: "excited",       label: "Eufórico" },
+  { value: "fearful",       label: "Temeroso" },
+  { value: "overconfident", label: "Sobreconfiado" },
+]
+
 interface Setup {
   id: string
   name: string
@@ -33,16 +43,27 @@ interface EditTradeModalProps {
     notes: string
     tags: string[]
     setupId?: string | null
+    // Psychology fields (TASK-034)
+    emotionBefore?: string | null
+    confidenceRating?: number | null
+    executionQuality?: number | null
+    fomoFlag?: boolean
+    revengeFlag?: boolean
   }
   setups?: Setup[]
   onSave?: (data: Partial<{
     entry: number; stop: number; target: number; size: number
     session: string; notes: string; tags: string[]; setupId: string
+    emotionBefore: EmotionBefore | null
+    confidenceRating: number | null
+    executionQuality: number | null
+    fomoFlag: boolean
+    revengeFlag: boolean
   }>) => void
   saving?: boolean
 }
 
-type Tab = "precios" | "detalles"
+type Tab = "precios" | "detalles" | "psicologia"
 
 export function EditTradeModal({
   open, onOpenChange, trade, setups = [], onSave, saving
@@ -58,6 +79,14 @@ export function EditTradeModal({
   const [tags,    setTags]    = useState<string[]>(trade.tags ?? [])
   const [setupId, setSetupId] = useState(trade.setupId ?? "")
   const [checklist, setChecklist] = useState<Record<string, boolean>>({})
+  // Psychology fields
+  const [emotionBefore,    setEmotionBefore]    = useState<EmotionBefore | "">(
+    (trade.emotionBefore as EmotionBefore | null | undefined) ?? ""
+  )
+  const [confidenceRating, setConfidenceRating] = useState<number | null>(trade.confidenceRating ?? null)
+  const [executionQuality, setExecutionQuality] = useState<number | null>(trade.executionQuality ?? null)
+  const [fomoFlag,         setFomoFlag]         = useState(trade.fomoFlag ?? false)
+  const [revengeFlag,      setRevengeFlag]      = useState(trade.revengeFlag ?? false)
 
   const activeSetup = setups.find(s => s.id === setupId)
   const stdItems  = activeSetup?.standardChecklist ?? []
@@ -96,6 +125,11 @@ export function EditTradeModal({
       notes,
       tags:    finalTags,
       setupId: setupId || undefined,
+      emotionBefore:    (emotionBefore as EmotionBefore) || null,
+      confidenceRating,
+      executionQuality,
+      fomoFlag,
+      revengeFlag,
     })
   }
 
@@ -108,7 +142,7 @@ export function EditTradeModal({
 
         {/* Tabs */}
         <div className="flex gap-1 mb-4 bg-[var(--chip)] rounded-[var(--radius-sm)] p-0.5">
-          {(["precios", "detalles"] as Tab[]).map(t => (
+          {(["precios", "detalles", "psicologia"] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -119,7 +153,7 @@ export function EditTradeModal({
                   : "text-[var(--ink-3)] hover:text-[var(--ink)]"
               )}
             >
-              {t === "precios" ? "Precios" : "Detalles"}
+              {t === "precios" ? "Precios" : t === "detalles" ? "Detalles" : "Psicología"}
             </button>
           ))}
         </div>
@@ -280,6 +314,106 @@ export function EditTradeModal({
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
               />
+            </div>
+          </div>
+        )}
+
+        {tab === "psicologia" && (
+          <div className="flex flex-col gap-4">
+            {/* Estado emocional */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-[var(--ink-3)] font-medium">Estado emocional</label>
+              <div className="flex gap-1 flex-wrap">
+                <button
+                  onClick={() => setEmotionBefore("")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                    !emotionBefore
+                      ? "bg-[var(--accent)] text-white"
+                      : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                  )}
+                >
+                  —
+                </button>
+                {EMOTION_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    onClick={() => setEmotionBefore(value)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                      emotionBefore === value
+                        ? "bg-[var(--accent)] text-white"
+                        : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Confianza */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-[var(--ink-3)] font-medium">Confianza (1-5)</label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setConfidenceRating(confidenceRating === n ? null : n)}
+                    className={cn(
+                      "w-9 h-9 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                      confidenceRating === n
+                        ? "bg-[var(--accent)] text-white"
+                        : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Calidad de ejecución */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-[var(--ink-3)] font-medium">Calidad de ejecución (1-5)</label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setExecutionQuality(executionQuality === n ? null : n)}
+                    className={cn(
+                      "w-9 h-9 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                      executionQuality === n
+                        ? "bg-[var(--accent)] text-white"
+                        : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* FOMO + Revanche */}
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fomoFlag}
+                  onChange={e => setFomoFlag(e.target.checked)}
+                  className="accent-[var(--accent)] w-3.5 h-3.5"
+                />
+                <span className="text-xs text-[var(--ink-2)]">¿FOMO?</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={revengeFlag}
+                  onChange={e => setRevengeFlag(e.target.checked)}
+                  className="accent-[var(--accent)] w-3.5 h-3.5"
+                />
+                <span className="text-xs text-[var(--ink-2)]">¿Revanche?</span>
+              </label>
             </div>
           </div>
         )}
