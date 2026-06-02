@@ -6,7 +6,9 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
-### Sprint 4 (2026-06-02) — QA Audit & Fixes
+### Pre-Sprint 4 (2026-06-02) — QA Audit & Fixes
+
+> **Note:** This is a pre-sprint QA audit of Sprints 1–3 before beginning Sprint 4. All 8 findings were critical blockers that would have caused production issues. Sprint 4 (Reviews, Psychology, Personalization) is scheduled as the next delivery phase.
 
 **Fixed — Blocking (3)**
 - **B-01:** Goal fields dropped by type cast in profile router — extended `UpdateProfileInput` interface to include `weeklyTradesGoal` and `weeklyPnlGoal`
@@ -25,9 +27,9 @@ All notable changes to this project are documented here. Format follows [Keep a 
 - Test suite: 354 passing, 0 failing (+5 from baseline)
 
 **Documentation**
-- Created `docs/SPRINT_4_QA_REPORT.md` — independent audit of all Sprint 4 implementations
-- Created `docs/SPRINT_4_FIX_REPORT.md` — detailed fix documentation for all 8 findings
-- Created `docs/SPRINT_4_RETROSPECTIVE.md` — lessons learned and recommendations for Sprint 5
+- Created `docs/PRE_SPRINT_4_QA_REPORT.md` — independent audit of all Sprints 1–3 implementations
+- Created `docs/PRE_SPRINT_4_FIX_REPORT.md` — detailed fix documentation for all 8 findings
+- Created `docs/PRE_SPRINT_4_RETROSPECTIVE.md` — lessons learned and recommendations for Sprint 4 onwards
 
 ---
 

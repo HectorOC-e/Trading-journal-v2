@@ -5,7 +5,7 @@
 > **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).  
 > **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
 > **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).  
-> **Sprint 4 closed:** QA audit findings fixed — Type contract (B-01), Theme CSS (B-02), Decimal serialization (B-03), Label mismatch (M-01), useEffect deps (M-02/04), Trade limit (M-03), Test discovery (M-05) (8 findings, 5 tests added, 354 passing).
+> **Pre-Sprint 4 closed:** QA audit of Sprints 1–3 — Type contract (B-01), Theme CSS (B-02), Decimal serialization (B-03), Label mismatch (M-01), useEffect deps (M-02/04), Trade limit (M-03), Test discovery (M-05) (8 findings, 5 tests added, 354 passing). Sprint 4 (Reviews, Psychology, Personalization) pending.
 
 ---
 

@@ -13,7 +13,8 @@
 | Sprint 1 | W1–W2 | Data integrity & security | ✅ Complete | 6 debt items closed | 232 passing |
 | Sprint 2 | W2–W3 | Formula fixes | ✅ Complete | 9 debt items closed | 232 passing |
 | Sprint 3 | W3–W4 | Profile backend | ✅ Complete | 1 debt item, +24 tests | 256 passing |
-| Sprint 4 | 2026-06-02 | QA audit & fixes | ✅ Complete | 8 QA findings fixed, +5 tests | 354 passing |
+| **Pre-Sprint 4** | 2026-06-02 | QA audit of Sprints 1–3 | ✅ Complete | 8 QA findings fixed, +5 tests | 354 passing |
+| Sprint 4 | Pending | Reviews, Psychology, Personalization | ⏳ Planned | 6 tasks (TASK-030, 031, 034, 047, 045, 011) | — |
 
 ---
 
