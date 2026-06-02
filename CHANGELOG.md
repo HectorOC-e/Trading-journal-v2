@@ -6,6 +6,28 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Sprint 4 (2026-06-02) — Personalization, Psychology & Review Management
+
+**Added**
+- **TASK-034:** Per-trade psychology fields — collapsible "Psicología" section in register/edit modals; display in trade detail panel; 5 fields: `emotionBefore`, `confidenceRating`, `executionQuality`, `fomoFlag`, `revengeFlag` (all optional, backward compatible)
+- **TASK-061:** Auto-save with 2s debounce in weekly review modal (edit mode only) — "Guardando…/Guardado ✓" indicator
+- **TASK-069:** Extended week selector — 8 weeks shown by default, "Ver más" expands to 24 weeks
+- **TASK-047:** Dashboard tab persisted to UserPreferences — active tab restored across page reloads
+
+**Fixed**
+- **TASK-023:** Replaced `market: any` in mercados page and `amount: any` in retiros page with proper `RouterOutputs` types
+- **TASK-013:** Reduced `as never` casts in `trades/page.tsx` from 12 to 4 (67% reduction); remaining 4 annotated as TD-013
+
+**Tests**
+- Added 8 new tests for psychology fields: create/update acceptance, optional handling, Zod validation enforcement
+- Test suite: 362 passing, 0 failing (+8 from baseline)
+
+**Documentation**
+- Created `docs/SPRINT_4_COMPLETION_REPORT.md` — full sprint delivery summary
+- Updated `docs/master-backlog.md` — Sprint 4 marked complete
+
+---
+
 ### Pre-Sprint 4 (2026-06-02) — QA Audit & Fixes
 
 > **Note:** This is a pre-sprint QA audit of Sprints 1–3 before beginning Sprint 4. All 8 findings were critical blockers that would have caused production issues. Sprint 4 (Reviews, Psychology, Personalization) is scheduled as the next delivery phase.
