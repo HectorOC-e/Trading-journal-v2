@@ -72,7 +72,6 @@ export function TabDisciplina({ kpis, discipline }: {
   const { tradesCountToday } = kpis
   const total = kpis.total
 
-  const disciplineScore = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
   const planSeguidoPct  = total > 0 ? ((composition.planSeguido / total) * 100).toFixed(2) : "0.00"
   const totalViolations = violations.reduce((s: number, v: { rule: string; count: number }) => s + v.count, 0)
   const sinViolacionPct = total > 0 ? (((total - totalViolations) / total) * 100).toFixed(2) : "0.00"
@@ -162,9 +161,9 @@ export function TabDisciplina({ kpis, discipline }: {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="col-span-2 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
-          <p className="text-eyebrow mb-3">Discipline Score · acumulado</p>
+          <p className="text-eyebrow mb-3">Adherencia al plan · acumulado</p>
           <div className="flex items-baseline gap-3 mb-1">
-            <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>{disciplineScore}</p>
+            <p style={{ fontSize: 52, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>{planSeguidoPct}</p>
             <p className="text-[var(--ink-3)] text-lg font-mono">/ 100.00</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">

@@ -220,7 +220,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
 
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
-  const { data: rawTrades } = trpc.trades.list.useQuery()
+  const { data: rawTrades } = trpc.trades.list.useQuery({ limit: 200 })
   const allTrades: TradeFromDB[] = rawTrades?.items ?? []
   const utils = trpc.useUtils()
 
@@ -276,6 +276,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
 
   const { data: serverScore } = trpc.weeklyReviews.computedDisciplineScore.useQuery(
     { weekStart: week.start, weekEnd: week.end },
+    { enabled: !isEditMode },
   )
 
   // T-IX-004: Pre-fill query — loads trade stats for the selected week/account from the server
@@ -285,25 +286,25 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
       weekEnd:   week.end,
       ...(effectiveAccountId ? { accountId: effectiveAccountId } : {}),
     },
-    { staleTime: 60_000 },
+    { staleTime: 60_000, enabled: !isEditMode },
   )
 
   // When prefill data arrives and the summary fields have not been manually edited,
   // apply the server-computed stats so the modal opens with accurate trade data.
   useEffect(() => {
-    if (!prefillData) return
+    if (!prefillData || isEditMode) return
     if (!generated) {
       // No manual generate yet — apply all auto fields
       setAutoFields(prev => new Set([...prev, "disciplineScore"]))
       setDisciplineScore(prefillData.disciplineScore)
     }
-  }, [prefillData])
+  }, [prefillData, generated, isEditMode])
 
   useEffect(() => {
     if (serverScore && autoFields.has("disciplineScore")) {
       setDisciplineScore(serverScore.score)
     }
-  }, [serverScore])
+  }, [serverScore, autoFields])
 
   function runAutoGenerate(weekIdx: number, accountId: string) {
     if (!accountId) return

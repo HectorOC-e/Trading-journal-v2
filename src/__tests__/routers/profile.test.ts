@@ -158,6 +158,24 @@ describe("profile.update — M-005 date serialization + M-004 cache gate", () =>
   it("throws BAD_REQUEST for invalid currency code", async () => {
     await expect(caller.profile.update({ baseCurrency: "US" })).rejects.toThrow(TRPCError)
   })
+
+  it("passes weeklyTradesGoal to Prisma update data (B-01 type-contract fix)", async () => {
+    await caller.profile.update({ weeklyTradesGoal: 10 })
+    const call = mockPrisma.user.update.mock.calls[0][0]
+    expect(call.data).toMatchObject({ weeklyTradesGoal: 10 })
+  })
+
+  it("passes weeklyPnlGoal to Prisma update data (B-01 type-contract fix)", async () => {
+    await caller.profile.update({ weeklyPnlGoal: 500 })
+    const call = mockPrisma.user.update.mock.calls[0][0]
+    expect(call.data).toMatchObject({ weeklyPnlGoal: 500 })
+  })
+
+  it("passes null weeklyTradesGoal to clear goal (B-01 type-contract fix)", async () => {
+    await caller.profile.update({ weeklyTradesGoal: null })
+    const call = mockPrisma.user.update.mock.calls[0][0]
+    expect(call.data).toMatchObject({ weeklyTradesGoal: null })
+  })
 })
 
 describe("profile.changePassword", () => {

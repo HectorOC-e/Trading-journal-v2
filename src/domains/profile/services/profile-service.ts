@@ -26,6 +26,8 @@ export interface UpdateProfileInput {
   language?:           "es" | "en"
   weeklyGoalMinutes?:  number
   emailNotifications?: boolean
+  weeklyTradesGoal?:   number | null
+  weeklyPnlGoal?:      number | null
 }
 
 function isValidIanaTimezone(tz: string): boolean {

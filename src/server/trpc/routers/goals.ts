@@ -8,7 +8,7 @@ export const goalsRouter = router({
       onboardingCompleted: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      return ctx.prisma.user.update({
+      const result = await ctx.prisma.user.update({
         where:  { id: ctx.userId },
         data:   input,
         select: {
@@ -18,5 +18,9 @@ export const goalsRouter = router({
           weeklyPnlGoal:       true,
         },
       })
+      return {
+        ...result,
+        weeklyPnlGoal: result.weeklyPnlGoal != null ? Number(result.weeklyPnlGoal) : null,
+      }
     }),
 })

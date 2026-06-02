@@ -66,6 +66,21 @@ describe("goals.set", () => {
   it("allows empty update (no fields)", async () => {
     await expect(caller.goals.set({})).resolves.not.toThrow()
   })
+
+  it("serializes weeklyPnlGoal as a plain number when Decimal-like (B-03 fix)", async () => {
+    // Prisma Decimal objects have toString() but serialize to strings in JSON.
+    // The fix explicitly converts via Number() before returning.
+    const decimalLike = { toString: () => "500.00" }
+    mockPrisma.user.update.mockResolvedValue({ ...GOAL_RESULT, weeklyPnlGoal: decimalLike })
+    const result = await caller.goals.set({ disciplineGoal: 75 })
+    expect(typeof result.weeklyPnlGoal).toBe("number")
+    expect(result.weeklyPnlGoal).toBe(500)
+  })
+
+  it("returns null for weeklyPnlGoal when null (B-03 fix)", async () => {
+    const result = await caller.goals.set({ disciplineGoal: 75 })
+    expect(result.weeklyPnlGoal).toBeNull()
+  })
 })
 
 describe("profile.update — weeklyTradesGoal validation", () => {

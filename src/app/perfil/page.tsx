@@ -499,10 +499,9 @@ export default function PerfilPage() {
                   onClick={() => {
                     setThemeState(t)
                     updatePrefsMut.mutate({ theme: t })
-                    document.documentElement.setAttribute("data-theme", t === "system"
-                      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-                      : t
-                    )
+                    const isDark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+                    document.documentElement.classList.toggle("dark", isDark)
+                    localStorage.setItem("tj-theme", isDark ? "dark" : "light")
                   }}
                   style={{
                     flex: 1, padding: "8px 12px", borderRadius: "var(--radius-sm)",
