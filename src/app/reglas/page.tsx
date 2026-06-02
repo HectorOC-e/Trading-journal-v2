@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc }   from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 /* ── Types ── */
 type Severity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
@@ -109,8 +111,8 @@ function RuleModal({ open, onOpenChange, editRule }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editRule?.id])
 
-  const createMut = trpc.rules.create.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
-  const updateMut = trpc.rules.update.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
+  const createMut = trpc.rules.create.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const updateMut = trpc.rules.update.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   const set = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => setForm(f => ({ ...f, [k]: v }))
   const isSaving = createMut.isPending || updateMut.isPending
@@ -244,9 +246,9 @@ export default function ReglasPage() {
   const [filter,     setFilter]     = useState<FilterType>("todas")
 
   const { data: rules = [], isLoading } = trpc.rules.list.useQuery()
-  const seedMut   = trpc.rules.seedDefaults.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
-  const toggleMut = trpc.rules.toggle.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
-  const deleteMut = trpc.rules.delete.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); setDeleteRule(null) } })
+  const seedMut   = trpc.rules.seedDefaults.useMutation({ onSuccess: () => utils.rules.list.invalidate(), onError: (err) => toast.error(formatErrorForUser(err)) })
+  const toggleMut = trpc.rules.toggle.useMutation({ onSuccess: () => utils.rules.list.invalidate(), onError: (err) => toast.error(formatErrorForUser(err)) })
+  const deleteMut = trpc.rules.delete.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); setDeleteRule(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   useEffect(() => {
     if (!isLoading && rules.length === 0) seedMut.mutate()

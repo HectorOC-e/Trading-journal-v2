@@ -7,6 +7,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import { MASTERY_LABELS, calcPreviewNextReview, fmtRelativeTime } from "../utils/review-helpers"
 
@@ -43,6 +45,7 @@ export function SessionReviewModal({
       utils.learningResources.stats.invalidate()
       advance(true)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   function advance(didSave: boolean) {

@@ -10,6 +10,8 @@ import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { AccountCard, KpiBox } from "./components/account-card"
 import type { TradeStats } from "./components/account-card"
 import { AccountDetailPanel } from "./components/account-detail-panel"
@@ -50,10 +52,10 @@ export default function CuentasPage() {
 
   const invalidate = () => utils.accounts.list.invalidate()
 
-  const deleteAccount  = trpc.accounts.delete.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) } })
-  const archiveAccount = trpc.accounts.archive.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) } })
-  const changeStatus   = trpc.accounts.changeStatus.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) } })
-  const changePhase    = trpc.accounts.changePhase.useMutation({ onSuccess: () => { invalidate() } })
+  const deleteAccount  = trpc.accounts.delete.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const archiveAccount = trpc.accounts.archive.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const changeStatus   = trpc.accounts.changeStatus.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const changePhase    = trpc.accounts.changePhase.useMutation({ onSuccess: () => { invalidate() }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   const selected       = accounts.find(a => a.id === selectedId) ?? null
   const historyAccount = accounts.find(a => a.id === historyId) ?? null

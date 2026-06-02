@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FilterBar } from "@/components/ui/filter-bar"
 import { cn }        from "@/lib/utils"
 import { trpc }           from "@/lib/trpc/client"
+import { toast }           from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -644,8 +646,8 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editSetup?.id])
 
-  const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
-  const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) } })
+  const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
 
@@ -1061,12 +1063,15 @@ export default function PlaybookPage() {
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
   const deleteMut = trpc.setups.delete.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
   const createMut = trpc.setups.create.useMutation({
     onSuccess: () => utils.setups.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const active = setups.filter(s => s.status === "ACTIVO")

@@ -6,6 +6,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import type { RouterOutputs } from "@/server/trpc/root"
 import {
@@ -52,6 +54,7 @@ export function AddEditResourceModal({
       utils.learningResources.list.invalidate()
       onOpenChange(false)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateResource = trpc.learningResources.update.useMutation({
@@ -59,6 +62,7 @@ export function AddEditResourceModal({
       utils.learningResources.list.invalidate()
       onOpenChange(false)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {

@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
@@ -66,6 +68,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
 
   const update = trpc.accounts.update.useMutation({
     onSuccess: () => { utils.accounts.list.invalidate(); onOpenChange(false) },
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   function handleSave() {

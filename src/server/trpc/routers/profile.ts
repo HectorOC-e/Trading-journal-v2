@@ -1,0 +1,102 @@
+import { z } from "zod"
+import { TRPCError } from "@trpc/server"
+import { router, protectedProcedure } from "../init"
+import {
+  PROFILE_PUBLIC_FIELDS,
+  validateProfileUpdate,
+  normalizeProfileInput,
+  invalidateAnalyticsCacheIfNeeded,
+  type UpdateProfileInput,
+} from "@/domains/profile/services/profile-service"
+
+export const profileRouter = router({
+  get: protectedProcedure
+    .query(async ({ ctx }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where:  { id: ctx.userId },
+        select: PROFILE_PUBLIC_FIELDS,
+      })
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Perfil no encontrado" })
+      return {
+        ...user,
+        lastReviewDate: user.lastReviewDate?.toISOString() ?? null,
+        createdAt:      user.createdAt.toISOString(),
+      }
+    }),
+
+  update: protectedProcedure
+    .input(z.object({
+      name:               z.string().optional(),
+      timezone:           z.string().optional(),
+      baseCurrency:       z.string().optional(),
+      language:           z.enum(["es", "en"]).optional(),
+      weeklyGoalMinutes:  z.number().int().min(0).max(10080).optional(),
+      emailNotifications: z.boolean().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const raw = input as UpdateProfileInput
+      validateProfileUpdate(raw)
+      const normalized = normalizeProfileInput(raw)
+      await invalidateAnalyticsCacheIfNeeded(ctx.prisma, ctx.userId, normalized)
+      return ctx.prisma.user.update({
+        where:  { id: ctx.userId },
+        data:   normalized,
+        select: PROFILE_PUBLIC_FIELDS,
+      })
+    }),
+
+  changePassword: protectedProcedure
+    .input(z.object({ newPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres") }))
+    .mutation(async ({ ctx, input }) => {
+      const { error } = await ctx.supabase.auth.updateUser({ password: input.newPassword })
+      if (error) throw new TRPCError({ code: "BAD_REQUEST", message: error.message })
+      return { ok: true }
+    }),
+
+  exportData: protectedProcedure
+    .query(async ({ ctx }) => {
+      const [user, trades, accounts, rules, weeklyReviews] = await Promise.all([
+        ctx.prisma.user.findUnique({
+          where:  { id: ctx.userId },
+          select: PROFILE_PUBLIC_FIELDS,
+        }),
+        ctx.prisma.trade.findMany({
+          where:   { userId: ctx.userId },
+          orderBy: { date: "desc" },
+          take:    5000,
+        }),
+        ctx.prisma.account.findMany({ where: { userId: ctx.userId } }),
+        ctx.prisma.rule.findMany({ where: { userId: ctx.userId } }),
+        ctx.prisma.weeklyReview.findMany({
+          where:   { userId: ctx.userId },
+          orderBy: { weekStart: "desc" },
+        }),
+      ])
+
+      return {
+        exportedAt: new Date().toISOString(),
+        user,
+        trades:        trades.map(t => ({ ...t, pnl: t.pnl?.toString() ?? null, rMultiple: t.rMultiple?.toString() ?? null })),
+        accounts:      accounts.map(a => ({ ...a, initialBalance: a.initialBalance.toString() })),
+        rules,
+        weeklyReviews: weeklyReviews.map(r => ({
+          ...r,
+          netPnl:   r.netPnl.toString(),
+          winRate:  r.winRate.toString(),
+        })),
+      }
+    }),
+
+  deleteAccount: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      // Delete all user data via cascade, then delete auth user
+      await ctx.prisma.user.delete({ where: { id: ctx.userId } })
+      const { error } = await ctx.supabase.auth.admin.deleteUser(ctx.userId)
+      if (error) {
+        // Prisma deletion succeeded but auth deletion failed — log and return
+        // The user row is already gone so the account is effectively unusable
+        console.error("Auth deletion failed after profile deletion:", error.message)
+      }
+      return { ok: true }
+    }),
+})

@@ -1,5 +1,4 @@
-import type { TRPCClientError } from "@trpc/client"
-import type { AppRouter } from "@/server/trpc/root"
+import type { TRPCClientErrorLike } from "@trpc/client"
 
 // Map TRPC error codes to user-friendly Spanish messages
 const ERROR_CODE_MESSAGES: Record<string, string> = {
@@ -47,7 +46,8 @@ function isGenericTrpcMessage(msg: string): boolean {
   return GENERIC_TRPC_MESSAGES.has(msg.toLowerCase())
 }
 
-export function formatErrorForUser(error: TRPCClientError<AppRouter>): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function formatErrorForUser(error: TRPCClientErrorLike<any>): string {
   const msg = error.message ?? ""
   const code = (error.data as { code?: string } | undefined)?.code
 

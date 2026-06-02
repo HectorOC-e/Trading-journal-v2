@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { TradeSession } from "@/types"
 
 const SESSION_OPTIONS: { value: TradeSession; label: string }[] = [
@@ -73,6 +75,7 @@ export function LogSessionPopover({
         setNotes("")
       }, 800)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const handleSave = () => {

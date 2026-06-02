@@ -3,9 +3,9 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
-import { VIOLATION_TAGS } from "@/types"
-import { streamChat } from "@/lib/ai/chat"
+import { streamChat }        from "@/lib/ai/chat"
 import { isAnyKeyConfigured, getWeeklySummaryModel } from "@/lib/ai/config"
+import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -105,46 +105,19 @@ export const weeklyReviewsRouter = router({
   computedDisciplineScore: protectedProcedure
     .input(z.object({ weekStart: z.string(), weekEnd: z.string() }))
     .query(async ({ ctx, input }) => {
-      const userId    = ctx.userId
-      const weekStart = new Date(input.weekStart)
-      const weekEnd   = new Date(input.weekEnd)
-
-      const [trades, reviews, pendingReviews] = await Promise.all([
-        ctx.prisma.trade.findMany({
-          where:  { userId, date: { gte: weekStart, lte: weekEnd }, status: "CLOSED" },
-          select: { tags: true },
-        }),
-        ctx.prisma.resourceReview.findMany({
-          where:  { userId, createdAt: { gte: weekStart, lte: weekEnd } },
-          select: { id: true },
-        }),
-        ctx.prisma.learningResource.count({
-          where: {
-            userId,
-            nextReviewAt: { lte: weekStart },
-            status: { notIn: ["ABANDONED", "MASTERED"] },
-          },
-        }),
-      ])
-
-      const violating  = trades.filter(t => (t.tags as string[]).some(tag => VIOLATION_TAGS.includes(tag as typeof VIOLATION_TAGS[number])))
-      const execution  = trades.length > 0 ? (trades.length - violating.length) / trades.length : 1
-      const learning   = pendingReviews > 0 ? Math.min(1, reviews.length / pendingReviews) : 1
-      const adherence  = violating.length === 0 ? 1 : Math.max(0, 1 - violating.length / trades.length)
-
+      const result = await computeDisciplineScore(
+        ctx.prisma,
+        ctx.userId,
+        { from: new Date(input.weekStart), to: new Date(input.weekEnd) },
+      )
       return {
-        score: Math.round(execution * 50 + learning * 30 + adherence * 20),
+        score:     result.score,
         breakdown: {
-          execution:  Math.round(execution * 50),
-          learning:   Math.round(learning * 30),
-          adherence:  Math.round(adherence * 20),
+          execution:  result.executionScore,
+          learning:   result.learningScore,
+          adherence:  result.adherenceScore,
         },
-        detail: {
-          tradeCount:      trades.length,
-          violatingTrades: violating.length,
-          reviewsDone:     reviews.length,
-          pendingReviews,
-        },
+        detail: result.detail,
       }
     }),
 
@@ -171,34 +144,7 @@ export const weeklyReviewsRouter = router({
           },
           select: { pnl: true, rMultiple: true, setupId: true, tags: true },
         }),
-        // Compute discipline score inline (same formula as computedDisciplineScore)
-        (async () => {
-          const [violations, reviews, pending] = await Promise.all([
-            ctx.prisma.trade.findMany({
-              where:  { userId, date: { gte: from, lt: to }, status: "CLOSED" },
-              select: { tags: true },
-            }),
-            ctx.prisma.resourceReview.findMany({
-              where:  { userId, createdAt: { gte: from, lt: to } },
-              select: { id: true },
-            }),
-            ctx.prisma.learningResource.count({
-              where: {
-                userId,
-                nextReviewAt: { lte: from },
-                status: { notIn: ["ABANDONED", "MASTERED"] },
-              },
-            }),
-          ])
-          const violCount = violations.filter(t =>
-            (t.tags as string[]).some(tag => VIOLATION_TAGS.includes(tag as typeof VIOLATION_TAGS[number]))
-          ).length
-          const totTrades = violations.length
-          const execution = totTrades > 0 ? (totTrades - violCount) / totTrades : 1
-          const learning  = pending > 0 ? Math.min(1, reviews.length / pending) : 1
-          const adherence = violCount === 0 ? 1 : Math.max(0, 1 - violCount / Math.max(totTrades, 1))
-          return { score: Math.round(execution * 50 + learning * 30 + adherence * 20) }
-        })(),
+        computeDisciplineScore(ctx.prisma, userId, { from, to }, input.accountId),
       ])
 
       const tradeCount = trades.length
@@ -224,7 +170,7 @@ export const weeklyReviewsRouter = router({
         tradeCount,
         netPnl,
         winRate,
-        disciplineScore: computedScore.score,
+        disciplineScore: computedScore.score ?? 0,
         topSetupId,
         worstSetupId,
       }

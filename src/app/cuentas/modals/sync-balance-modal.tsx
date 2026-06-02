@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { X, ArrowUpDown, Loader2 } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 interface SyncBalanceModalProps {
   accountId:   string
@@ -18,6 +20,7 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
     onSuccess: () => {
       utils.accounts.list.invalidate()
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const handleSubmit = () => {

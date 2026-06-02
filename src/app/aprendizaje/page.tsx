@@ -6,6 +6,8 @@ import { TopBar } from "@/components/layout/top-bar"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
 import { ResourceDrawer } from "@/components/aprendizaje/resource-drawer"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { LearningResource } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { RevisarRecursoModal } from "./modals/revisar-recurso-modal"
@@ -54,22 +56,27 @@ export default function AprendizajePage() {
 
   const deleteResource = trpc.learningResources.delete.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateStatus = trpc.learningResources.updateStatus.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const toggleFavorite = trpc.learningResources.toggleFavorite.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const unlinkSetup = trpc.learningResources.unlinkSetup.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateProgress = trpc.learningResources.updateProgress.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])

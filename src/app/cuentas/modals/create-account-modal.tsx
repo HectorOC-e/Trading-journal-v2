@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { AccountType } from "@/types"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
 
@@ -63,6 +65,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
       setForm(FORM_INIT)
       setTab("general")
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const creating = createAccount.isPending

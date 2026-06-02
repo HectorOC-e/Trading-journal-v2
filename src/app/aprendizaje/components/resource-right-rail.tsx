@@ -3,6 +3,8 @@
 import { useState } from "react"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { LearningResource, ResourceType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -54,6 +56,7 @@ export function ResourceRightRail({
 
   const updateGoal = trpc.learningResources.updateGoal.useMutation({
     onSuccess: () => utils.learningResources.stats.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   return (

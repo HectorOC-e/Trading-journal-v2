@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { MarketCategory } from "@/types"
 
 const CAT_LABELS: Record<MarketCategory, string> = {
@@ -273,14 +275,14 @@ export default function MercadosPage() {
   const utils = trpc.useUtils()
   const invalidate = () => utils.markets.list.invalidate()
 
-  const seedDefaults = trpc.markets.seedDefaults.useMutation({ onSuccess: invalidate })
-  const createMarket = trpc.markets.create.useMutation({ onSuccess: () => { invalidate(); setModalOpen(false) } })
-  const updateMarket = trpc.markets.update.useMutation({ onSuccess: () => { invalidate(); setEditing(null) } })
+  const seedDefaults = trpc.markets.seedDefaults.useMutation({ onSuccess: invalidate, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const createMarket = trpc.markets.create.useMutation({ onSuccess: () => { invalidate(); setModalOpen(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const updateMarket = trpc.markets.update.useMutation({ onSuccess: () => { invalidate(); setEditing(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
   const toggleWatch  = trpc.markets.toggleWatch.useMutation({
     onSuccess: () => { invalidate(); setTogglingId(null) },
-    onError:   () => setTogglingId(null),
+    onError:   (err) => { setTogglingId(null); toast.error(formatErrorForUser(err)) },
   })
-  const deleteMarket = trpc.markets.delete.useMutation({ onSuccess: invalidate })
+  const deleteMarket = trpc.markets.delete.useMutation({ onSuccess: invalidate, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   // Auto-seed on first load if empty
   useEffect(() => {

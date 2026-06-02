@@ -12,6 +12,8 @@ import { PositionLogModal } from "@/components/trades/position-log-modal"
 import { LogSessionPopover } from "@/components/trades/log-session-popover"
 import { ImportCsvModal } from "./components/import-csv-modal"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 export default function TradesPage() {
   const [selectedId, setSelectedId]  = useState<string | null>(null)
@@ -69,6 +71,7 @@ export default function TradesPage() {
     onError: (err) => {
       const msg = PROP_FIRM_MESSAGES[err.message]
       if (msg) setPropFirmError(msg)
+      else toast.error(formatErrorForUser(err))
     },
   })
 
@@ -77,6 +80,7 @@ export default function TradesPage() {
       setSelectedId(null)
       utils.trades.list.invalidate()
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateTrade = trpc.trades.update.useMutation({
@@ -84,6 +88,7 @@ export default function TradesPage() {
       setEditingTrade(null)
       utils.trades.list.invalidate()
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const closeTrade = trpc.trades.close.useMutation({
@@ -95,10 +100,12 @@ export default function TradesPage() {
         setDeactivatedAccount(acct?.name ?? "tu cuenta")
       }
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const addEvent = trpc.trades.addEvent.useMutation({
     onSuccess: () => utils.trades.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   // ── Derived state ──────────────────────────────────────

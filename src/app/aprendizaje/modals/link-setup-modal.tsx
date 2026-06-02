@@ -6,6 +6,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -25,9 +27,11 @@ export function LinkSetupModal({
 
   const linkSetup = trpc.learningResources.linkSetup.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
   const unlinkSetup = trpc.learningResources.unlinkSetup.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   if (!resource) return null

@@ -15,13 +15,17 @@ model User {
   timezone           String   @default("America/Tegucigalpa")
   baseCurrency       String   @default("USD") @map("base_currency")
   language           String   @default("es")
-  weeklyGoalMinutes  Int?     @default(300) @map("weekly_goal_minutes")
-  emailNotifications Boolean  @default(true) @map("email_notifications")
-  currentStreak      Int      @default(0) @map("current_streak")
-  bestStreak         Int      @default(0) @map("best_streak")
-  lastReviewDate     DateTime? @map("last_review_date") @db.Date
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  weeklyGoalMinutes   Int?     @default(300) @map("weekly_goal_minutes")
+  emailNotifications  Boolean  @default(true) @map("email_notifications")
+  currentStreak       Int      @default(0) @map("current_streak")
+  bestStreak          Int      @default(0) @map("best_streak")
+  lastReviewDate      DateTime? @map("last_review_date") @db.Date
+  weeklyTradesGoal    Int?     @map("weekly_trades_goal")
+  weeklyPnlGoal       Decimal? @map("weekly_pnl_goal") @db.Decimal(14, 2)
+  disciplineGoal      Int?     @map("discipline_goal")
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   accounts          Account[]
   setups            Setup[]

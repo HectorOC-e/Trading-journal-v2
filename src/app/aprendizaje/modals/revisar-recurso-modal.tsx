@@ -8,6 +8,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import type { ResourceType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -57,6 +59,7 @@ export function RevisarRecursoModal({
       onOpenChange(false)
       setForm(emptyRevisarState())
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   if (!resource) return null
