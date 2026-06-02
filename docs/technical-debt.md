@@ -1,9 +1,10 @@
 # Technical Debt Register — Trading Journal v2
 
-> **Last Updated: 2026-06-01**  
+> **Last Updated: 2026-06-02**  
 > Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
 > **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).  
-> **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).
+> **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
+> **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).
 
 ---
 
@@ -13,7 +14,7 @@
 |---|---|---|---|---|---|---|
 | TD-001 | CRITICAL | Formula | Win Rate: 8 inline implementations | M | TASK-027, TASK-005 | **Closed** Sprint 1 |
 | TD-002 | CRITICAL | Formula | Discipline Score: 3 independent implementations | S | TASK-011 | Open |
-| TD-003 | CRITICAL | Functionality | Profile page entirely disconnected from backend | L | TASK-006 | Open |
+| TD-003 | CRITICAL | Functionality | Profile page entirely disconnected from backend | L | TASK-006 | **Closed** Sprint 3 |
 | TD-004 | CRITICAL | Data | KPIs calculated over paginated data (max 50 trades) | S | TASK-001, TASK-009 | **Closed** Sprint 1 |
 | TD-005 | CRITICAL | Logic | Phase promotion `objectiveMet = false` hardcoded | XS | TASK-002 | **Closed** Sprint 2 |
 | TD-006 | CRITICAL | Security | CRON_SECRET security bypass in edge function | XS | TASK-016 | **Closed** Sprint 1 |
@@ -94,22 +95,13 @@ These items produce incorrect data, broken features, or security vulnerabilities
 
 ---
 
-### TD-003 — Profile Page: Entirely Disconnected from Backend
+### ~~TD-003 — Profile Page: Entirely Disconnected from Backend~~ ✅ Closed Sprint 3
 
-- **Location:** `src/app/perfil/page.tsx` — entire file
-- **Root cause:** All 14 form fields use `useState` with hardcoded defaults. Zero tRPC calls. "Guardar cambios", "Cambiar contraseña", "Exportar datos", "Cerrar sesión", "Borrar cuenta" have no `onClick` handlers.
-- **DB fields that exist but are never read/written:**
-  - `User.timezone` (shown but not saved — session classification ignores it)
-  - `User.baseCurrency` (not shown)
-  - `User.language` (shown but not saved)
-  - `User.weeklyGoalMinutes` (not shown)
-  - `User.emailNotifications` (toggle shown but not saved)
-  - `User.currentStreak`, `User.bestStreak` (not shown on profile)
-- **Missing procedures:** `profile.get`, `profile.update`, `profile.changePassword`, `profile.exportData`, `profile.deleteAccount`
-- **Impact:** Profile-to-App propagation score = 0/14. Legal risk: "Borrar cuenta" is a GDPR-equivalent requirement.
-- **Fix:** New `src/server/trpc/routers/profile.ts` with 5 procedures; connect all UI fields.
-- **Effort:** L | **Risk if not fixed:** Users lose all settings on reload. Legal exposure in regulated jurisdictions.
-- **Task:** TASK-006
+- **Resolution:** `src/server/trpc/routers/profile.ts` implemented with all 5 procedures. `src/app/perfil/page.tsx` fully connected with `useEffect` initialization from `profile.get` query. All mutations (update, changePassword, exportData, deleteAccount) wired with tRPC and error handling via `onError` callbacks. B-002 blocker fixed: `deleteAccount` now uses service-role `createAdminClient()` instead of anon client for `auth.admin.deleteUser()`. Cache invalidation gates on actual currency/timezone changes. All 14 fields persisted and restored on page load.
+- **Blocking bug (B-002):** `deleteAccount` was calling `ctx.supabase.auth.admin.deleteUser()` which returns 403 with anon key. Fixed with `src/lib/supabase/admin.ts` factory and service-role key. Prisma delete happens before auth delete (order guarantee).
+- **Tests:** `src/__tests__/routers/profile.test.ts` (18 tests) covering get, update (M-005 date serialization + M-004 cache gate), changePassword, deleteAccount (B-002 admin client verification).
+- **Commits:** Profile backend implementation + QA audit fixes
+- **Task:** TASK-006 ✅
 
 ---
 

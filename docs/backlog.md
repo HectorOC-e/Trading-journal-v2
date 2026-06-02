@@ -1,6 +1,6 @@
 # Backlog — Trading Journal v2
 
-> **Last Updated: 2026-06-01**  
+> **Last Updated: 2026-06-02**  
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
 
 ---
@@ -9,17 +9,17 @@
 
 | Priority | Count | Open | Done | Estimated Remaining |
 |---|---|---|---|---|
-| P0 | 12 | 1 | 11 | ~2 days |
+| P0 | 12 | 0 | 12 | — |
 | P1 | 17 | 10 | 7 | ~18 days |
 | P2 | 16 | 16 | 0 | ~34 days |
 | P3 | 10 | 10 | 0 | ~50+ days |
-| **Total** | **55** | **37** | **18** | **~104+ days** |
+| **Total** | **55** | **36** | **19** | **~90+ days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
-> **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044, TASK-059 (16 tasks — plus TASK-044 verified pre-done).  
-> **P0 remaining:** TASK-006 (unblocks 7 downstream tasks).
+> **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044, TASK-059 (16 tasks).  
+> **Sprint 3 closed:** TASK-006 (profile backend unblocks 7 downstream tasks) (1 task + QA audit fixes).
 
-**Critical path:** TASK-006 (profile backend) unblocks 7 downstream tasks. TASK-027 (formula centralization) must precede any formula fixes. Fix P0 data-integrity bugs first, then unblock profile.
+**Critical path:** All P0 items closed. Next phase: TASK-030 (UserPreferences) unblocks personalization features. TASK-011 (discipline score centralization) unblocks reviews refinement.
 
 ---
 
@@ -32,7 +32,7 @@
 | TASK-003 | Replace `throw new Error()` with `TRPCError` in accounts.changeStatus | accounts | P0 | XS | — | DONE |
 | TASK-004 | Calculate `rMultiple` in MT4/cTrader CSV import | trades | P0 | XS | — | DONE |
 | TASK-005 | Unify win criterion (`pnl > 0`) across all calculation sites | formulas | P0 | XS | TASK-027 | DONE |
-| TASK-006 | Implement profile backend (tRPC router + page) | profile | P0 | L | — | TODO |
+| TASK-006 | Implement profile backend (tRPC router + page) | profile | P0 | L | — | DONE |
 | TASK-007 | Move MASTERED→IN_REVIEW side-effect from `stats` query to mutation | learning | P1 | S | — | DONE |
 | TASK-008 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | DONE |
 | TASK-009 | Fix weekTrades and account stats based on first 50 trades only | analytics | P0 | S | — | DONE |
@@ -276,17 +276,18 @@ TASK-019 (schema sync) ─────────────────► TA
 
 **Exit criteria:** Zero open P0 bugs. Learning resources page is read-only. All mutations have correct error semantics.
 
-### Sprint 3 (Weeks 5–7) — Profile Backend (Unblocks 7 Tasks)
+### ~~Sprint 3 (Weeks 5–7) — Profile Backend (Unblocks 7 Tasks)~~ ✅ CLOSED 2026-06-02
 **Goal:** Ship the profile backend. Longest single task; unblocks all personalization.
 
-| Task | Effort | Owner |
-|---|---|---|
-| TASK-006 — Profile backend (tRPC router + page) | L | BE/FE |
-| TASK-035 — Toast notification system | M | FE |
-| TASK-040 — Mobile back navigation | S | FE |
-| TASK-041 — inputmode decimal on price inputs | XS | FE |
+| Task | Effort | Owner | Status |
+|---|---|---|---|
+| TASK-006 — Profile backend (tRPC router + page) | L | BE/FE | ✅ DONE |
+| TASK-035 — Toast notification system | M | FE | ✅ DONE (Sprint 2) |
+| TASK-040 — Mobile back navigation | S | FE | ✅ DONE (Sprint 2) |
+| TASK-041 — inputmode decimal on price inputs | XS | FE | ✅ DONE (Sprint 2) |
 
-**Exit criteria:** All profile fields saved and loaded. All mutations show toast feedback.
+**Exit criteria:** All profile fields saved and loaded. All mutations show toast feedback.  
+**QA audit:** 16 findings (2 Blocking, 7 Major, 4 Minor, 3 Nitpick) — 13 fixed, 3 deferred. Tests: 291 → 315 (+24 new). TypeScript: clean.
 
 ### Sprint 4 (Weeks 8–10) — Reviews, Psychology, Personalization Foundation
 **Goal:** High-value P1 features that depend on Sprint 3.

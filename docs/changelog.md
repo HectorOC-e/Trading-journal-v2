@@ -1,7 +1,96 @@
 # Changelog — Trading Journal v2
 
-> **Last Updated: 2026-06-01**  
+> **Last Updated: 2026-06-02**  
 > Git-style changelog organized by development phase. Based on TASKS.md, audit findings, and codebase analysis. Dates are approximate development windows.
+
+---
+
+## [Sprint 3 — Profile Backend & QA Audit Fixes] — 2026-06-02
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 315/315 passing (+24 new tests) | **TypeScript:** clean (`tsc --noEmit`)
+
+### Completed (Profile Backend — TASK-006)
+
+- **Profile backend implementation** — `src/server/trpc/routers/profile.ts`
+  - ✅ `profile.get` — fetches all User fields, serializes dates to ISO strings
+  - ✅ `profile.update` — mutation for name, timezone, language, baseCurrency, emailNotifications, weeklyGoalMinutes; diffs against server profile to avoid unnecessary cache invalidation
+  - ✅ `profile.changePassword` — calls `supabase.auth.updateUser({ password })`
+  - ✅ `profile.exportData` — JSON export of all user trades, accounts, reviews, resources
+  - ✅ `profile.deleteAccount` — deletes all user data; Prisma delete before auth delete (order guarantee)
+- **Profile UI fully connected** — `src/app/perfil/page.tsx`
+  - Form initialized from `profile.get` via `useEffect` (fixed M-007: moved from render body)
+  - All fields bound to mutations with proper error feedback
+  - "Cerrar sesión" now calls `supabase.auth.signOut()` + redirect (fixed M-006: was routing to non-existent `/api/auth/signout`)
+
+### Fixed (Blocking Bugs from QA Audit)
+
+- **B-001 · Date Range Regression in `computedDisciplineScore`** — `src/server/trpc/routers/weekly-reviews.ts`
+  - Root cause: `computedDisciplineScore` passed `weekEnd` directly to service's `lt: to` (exclusive). Last-day trades excluded.
+  - Fix: `to.setDate(to.getDate() + 1)` before calling service (calendar-day arithmetic, DST-safe)
+  - Tests: `weekly-reviews-date-range.test.ts` (6 tests)
+
+- **B-002 · `deleteAccount` Used Anon Client for Admin API** — `src/server/trpc/routers/profile.ts`, **NEW:** `src/lib/supabase/admin.ts`
+  - Root cause: `ctx.supabase` uses ANON_KEY; `auth.admin.deleteUser()` requires SERVICE_ROLE_KEY. 403 was silently caught, user could log back in.
+  - Fix: New `createAdminClient()` factory uses `SUPABASE_SERVICE_ROLE_KEY`. Prisma delete runs first (atomic).
+  - Tests: `profile.test.ts` includes B-002 verification (admin client called, not anon client)
+
+### Fixed (Major Issues from QA Audit)
+
+- **M-001 · `saveChecklist` Had No `onError` Handler** — `src/app/trades/page.tsx`
+  - Added `onError: (err) => toast.error(formatErrorForUser(err))`
+
+- **M-002 · `processDecay` Had No `onError` Handler** — `src/app/aprendizaje/page.tsx`
+  - Added `onError: (err) => console.error("Decay transition failed:", err.message)` (silent; auto background job)
+
+- **M-003 · `createReview` Had No `onError` Handler** — `src/app/reviews/modals/create-review-modal.tsx`
+  - Added `onError: (err) => toast.error(formatErrorForUser(err))` and import
+
+- **M-004 · `handleSaveProfile` Always Invalidated Analytics Cache** — `src/app/perfil/page.tsx`
+  - Root cause: Mutation sent all 6 fields; invalidation fired on every save
+  - Fix: Diff against server profile; only send changed fields. If no changes, show "Sin cambios" toast.
+
+- **M-005 · `profile.update` Returned Unserialized `Date` Objects** — `src/server/trpc/routers/profile.ts`
+  - Root cause: `profile.get` serialized dates; `profile.update` returned raw Prisma result
+  - Fix: Mirror serialization in `update` return value
+
+- **M-006 · `Cerrar sesión` Redirected to Non-Existent Route** — `src/app/perfil/page.tsx`
+  - Root cause: Button routed to `/api/auth/signout` (doesn't exist)
+  - Fix: Call `supabase.auth.signOut()` then `router.push("/login")` (matches `Sidebar.tsx` pattern)
+
+- **M-007 · Form State Initialized via Render-Body `setState` Calls** — `src/app/perfil/page.tsx`
+  - Root cause: Six `setState` calls in render body, guarded by condition
+  - Fix: Moved to `useEffect` with `[profile, formInitialized]` deps
+
+### Fixed (Minor Issues from QA Audit)
+
+- **m-001 · File Download Failed in Firefox** — `src/app/perfil/page.tsx`
+  - Fix: Append anchor to DOM before `.click()`, remove after
+
+- **m-002 · `exportData` Registered as `useQuery` on Mount** — `src/app/perfil/page.tsx`
+  - Root cause: `useQuery(undefined, { enabled: false })` still registers persistent cache subscription
+  - Fix: Removed hook; export button calls `utils.profile.exportData.fetch()` directly; local `exportLoading` state
+
+- **m-003 · `ProfileSkeleton` Used Inline CSS Animation** — `src/app/perfil/page.tsx`
+  - Fix: Replaced inline `animation: "pulse ..."` with Tailwind `animate-pulse` class
+
+### Fixed (Nitpick from QA Audit)
+
+- **n-001 · `generateAiSummary` onError Used Raw `err.message`** — `src/app/reviews/modals/create-review-modal.tsx`
+  - Standardized to `formatErrorForUser(err)` (consistent with all other 48 mutations)
+
+### Test Coverage
+
+- **New test files:**
+  - `src/__tests__/routers/profile.test.ts` — 18 tests (get, update date serialization M-005, cache gate M-004, changePassword, deleteAccount B-002)
+  - `src/__tests__/routers/weekly-reviews-date-range.test.ts` — 6 tests (B-001 date range, DST safety, prefill consistency)
+
+- **Test delta:** 291 → 315 (+24 new tests, all passing)
+
+### Docs
+
+- **Created:** `docs/SPRINT_3_FIX_REPORT.md` — comprehensive QA audit resolution report (13 fixes, 3 deferred items)
+- **Updated:** `docs/SPRINT_3_QA_REPORT.md` — added Status column to resolution table
 
 ---
 

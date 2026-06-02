@@ -1,6 +1,6 @@
 # Roadmap — Trading Journal v2
 
-> **Last Updated: 2026-06-01**  
+> **Last Updated: 2026-06-02**  
 > Merges the existing ROADMAP.md (Phases 0–5) with the master-remediation-plan phased execution plan and new feature initiatives through Phase XIV.
 
 ---
@@ -92,20 +92,22 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 
 ---
 
-## Phase XI — Profile & AI Config (P1) [~4 weeks] ← Active (Sprint 3+)
+## Phase XI — Profile & AI Config (P1) ✅ CLOSED 2026-06-02 [Sprint 3]
 
 **Objective:** Make the profile page fully functional and unblock all personalization and AI configuration features.
 
-### XI-A — Profile Backend
+**Result:** XI-A (Profile Backend) completed. All 14 user fields persisted. 5 tRPC procedures implemented. 2 Blocking bugs fixed, 7 Major fixes, 3 Minor fixes, 1 Nitpick fix. 24 new tests added (291 → 315). QA audit comprehensive. XI-B (AI Configuration) and XI-C (Learning) deferred to Sprint 4+.
 
-**TASK-006:** Implement `src/server/trpc/routers/profile.ts`:
-- `profile.get` — returns all User fields
-- `profile.update` — persists name, timezone, language, baseCurrency, emailNotifications, weeklyGoalMinutes
-- `profile.changePassword` — calls Supabase Auth
-- `profile.exportData` — returns JSON of all user data
-- `profile.deleteAccount` — confirmation dialog → delete all user data → logout
+### XI-A — Profile Backend ✅ CLOSED
 
-Connect all 14 fields in `src/app/perfil/page.tsx`. Timezone propagates to session classification.
+**TASK-006:** Implemented `src/server/trpc/routers/profile.ts`:
+- ✅ `profile.get` — returns all User fields (ISO serialized dates)
+- ✅ `profile.update` — persists name, timezone, language, baseCurrency, emailNotifications, weeklyGoalMinutes (B-002: fixed admin client for cache invalidation)
+- ✅ `profile.changePassword` — calls Supabase Auth
+- ✅ `profile.exportData` — returns JSON of all user data
+- ✅ `profile.deleteAccount` — Prisma delete before auth delete via service-role key (B-002 fix: was using anon client)
+
+All 14 fields in `src/app/perfil/page.tsx` connected. Page fully functional. Tests: `profile.test.ts` (18 tests).
 
 **TASK-030:** Implement `UserPreferences` table and `preferences` tRPC router:
 ```prisma
