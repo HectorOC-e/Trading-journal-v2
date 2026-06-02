@@ -268,8 +268,7 @@ export default function MercadosPage() {
   const [onlyWatch, setOnlyWatch] = useState(false)
   const [search, setSearch]     = useState("")
   const [modalOpen, setModalOpen] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [editing, setEditing]   = useState<any | null>(null)
+  const [editing, setEditing]   = useState<(MarketForm & { id: string }) | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const { data: markets = [], isLoading } = trpc.markets.list.useQuery()

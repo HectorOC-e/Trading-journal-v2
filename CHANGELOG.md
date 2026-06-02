@@ -6,6 +6,24 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Sprint 4 QA Fix (2026-06-02) — Major Finding Resolution
+
+**Fixed — Major (5)**
+- **M-01:** `editing` state typed `any` in mercados page — now `(MarketForm & { id: string }) | null`
+- **M-02:** `WithdrawalRow` ignored `updating` prop; per-row `updatingId` state added to `RetirosPage`; removed `setTimeout(800)` fake loading hack
+- **M-03:** `emotionBefore: ""` empty-string sentinel — changed to `null` across `FormState`, `INITIAL`, deselect handler, and `edit-trade-modal`; mutation coercion changed from `||` to `??`
+- **M-04:** Drawdown progress bars hardcoded to 20%/10% — replaced with styled limit badges showing actual `ddTotalPct`/`ddDailyPct` values
+- **M-05:** Removed unnecessary `as` cast for psychology fields in `trade-detail-panel` — Prisma-generated `Trade` type already includes all 5 fields
+
+**Tests**
+- Added 2 regression tests for M-03 null-sentinel contract
+- Test suite: 364 passing, 0 failing (+2 from baseline)
+
+**Documentation**
+- Created `docs/SPRINT_4_FIX_REPORT.md` — detailed fix documentation for all 5 major findings
+
+---
+
 ### Sprint 4 (2026-06-02) — Personalization, Psychology & Review Management
 
 **Added**

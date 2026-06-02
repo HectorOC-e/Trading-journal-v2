@@ -24,7 +24,7 @@ No blocking findings. The one suspected issue (`emotionBefore: ""` empty string)
 
 ---
 
-### MAJOR — 5
+### MAJOR — 5 ✅ All resolved (see `docs/SPRINT_4_FIX_REPORT.md`)
 
 #### M-01 · `editing` state is `any` in `mercados/page.tsx` — TASK-023 incomplete
 **File:** `src/app/mercados/page.tsx:272`
@@ -249,32 +249,31 @@ These casts bridge the `trade.account` field from `trades.list` (where `initialB
 
 ---
 
-## Recommended Fix Priority
+## Fix Status
 
-| Priority | Finding | Effort |
-|----------|---------|--------|
-| P1 | M-04 — Fix drawdown bar widths to use real data | S (1h) |
-| P1 | M-01 — Type `editing` state properly in mercados | XS (15m) |
-| P1 | M-02 — Wire `WithdrawalRow` to parent mutation state | S (30m) |
-| P2 | M-05 — Add psychology fields to `Trade` type | XS (15m) |
-| P2 | M-03 — Change `emotionBefore` sentinel from `""` to `null` | M (2h, touches 3 files) |
-| P3 | m-02 — Reset autoSaveStatus to idle after delay | XS (10m) |
-| P3 | m-03 — Move WEEK_OPTIONS into component/useMemo | XS (15m) |
-| P3 | m-06 — Show selected week when collapsing view | S (1h) |
-| P4 | n-01..n-04 — Code quality improvements | varies |
+| Finding | Status | Detail |
+|---------|--------|--------|
+| M-01 | ✅ Fixed | `editing` typed as `(MarketForm & { id: string }) \| null` |
+| M-02 | ✅ Fixed | Per-row `updatingId` in parent; `updating` prop wired correctly |
+| M-03 | ✅ Fixed | `null` sentinel across all 3 files; `??` coercion; +2 regression tests |
+| M-04 | ✅ Fixed | Hardcoded bars replaced with actual limit value badges |
+| M-05 | ✅ Fixed | `as` cast removed; `trade.*` accessed directly via `Trade` type |
+
+Minor and Nitpick findings remain open — deferred to next sprint quality pass.
+
+See `docs/SPRINT_4_FIX_REPORT.md` for full fix details.
 
 ---
 
 ## Test Suite
 
-**362 passing / 0 failing** at time of audit.
+**364 passing / 0 failing** after fixes (+2 from 362 at audit time).
 
-Test gaps identified:
-- No test for `emotionBefore: "" → undefined` client-side coercion (n-03)
+Remaining test gaps (minor findings):
 - No test for `autoSaveStatus` reset behavior
 - No test for week selector index consistency when toggling `showAllWeeks`
-- `WithdrawalRow` timeout-based loading is untestable as written
 
 ---
 
-*Audit performed against branch `claude/epic-darwin-1XZTX` as of 2026-06-02.*
+*Audit performed against branch `claude/epic-darwin-1XZTX` as of 2026-06-02.*  
+*Fixes applied same day — see `docs/SPRINT_4_FIX_REPORT.md`.*

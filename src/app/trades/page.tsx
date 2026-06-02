@@ -195,7 +195,7 @@ export default function TradesPage() {
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
     tags: string[]; notes: string; screenshots: string[]
     checklistItems: Record<string, boolean>
-    emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | ""
+    emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
     confidenceRating: number | null
     executionQuality: number | null
     fomoFlag: boolean
@@ -231,7 +231,7 @@ export default function TradesPage() {
       tags:             form.tags,
       notes:            form.notes,
       screenshotUrls:   form.screenshots,
-      emotionBefore:    form.emotionBefore || undefined,
+      emotionBefore:    form.emotionBefore ?? undefined,
       confidenceRating: form.confidenceRating,
       executionQuality: form.executionQuality,
       fomoFlag:         form.fomoFlag,

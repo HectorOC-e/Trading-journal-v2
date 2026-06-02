@@ -80,8 +80,8 @@ export function EditTradeModal({
   const [setupId, setSetupId] = useState(trade.setupId ?? "")
   const [checklist, setChecklist] = useState<Record<string, boolean>>({})
   // Psychology fields
-  const [emotionBefore,    setEmotionBefore]    = useState<EmotionBefore | "">(
-    (trade.emotionBefore as EmotionBefore | null | undefined) ?? ""
+  const [emotionBefore,    setEmotionBefore]    = useState<EmotionBefore | null>(
+    (trade.emotionBefore as EmotionBefore | null | undefined) ?? null
   )
   const [confidenceRating, setConfidenceRating] = useState<number | null>(trade.confidenceRating ?? null)
   const [executionQuality, setExecutionQuality] = useState<number | null>(trade.executionQuality ?? null)
@@ -125,7 +125,7 @@ export function EditTradeModal({
       notes,
       tags:    finalTags,
       setupId: setupId || undefined,
-      emotionBefore:    (emotionBefore as EmotionBefore) || null,
+      emotionBefore:    emotionBefore,
       confidenceRating,
       executionQuality,
       fomoFlag,
@@ -325,7 +325,7 @@ export function EditTradeModal({
               <label className="text-[10px] text-[var(--ink-3)] font-medium">Estado emocional</label>
               <div className="flex gap-1 flex-wrap">
                 <button
-                  onClick={() => setEmotionBefore("")}
+                  onClick={() => setEmotionBefore(null)}
                   className={cn(
                     "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
                     !emotionBefore

@@ -121,7 +121,7 @@ interface FormState {
   checklistItems: Record<string, boolean>
   screenshots: string[]
   // Psychology fields (TASK-034)
-  emotionBefore: EmotionBefore | ""
+  emotionBefore: EmotionBefore | null
   confidenceRating: number | null
   executionQuality: number | null
   fomoFlag: boolean
@@ -146,7 +146,7 @@ const INITIAL: FormState = {
   checklistItems: {},
   screenshots: [],
   // Psychology fields
-  emotionBefore: "",
+  emotionBefore: null,
   confidenceRating: null,
   executionQuality: null,
   fomoFlag: false,
@@ -761,7 +761,7 @@ export function RegisterTradeModal({
                   <div className="flex gap-1 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, emotionBefore: "" }))}
+                      onClick={() => setForm(f => ({ ...f, emotionBefore: null }))}
                       className={cn(
                         "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
                         !form.emotionBefore

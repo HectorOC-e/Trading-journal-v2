@@ -116,19 +116,16 @@ function StatusSelect({ current, onSelect, loading }: {
 }
 
 /* ── Withdrawal row ── */
-function WithdrawalRow({ w, onStatusChange }: {
+function WithdrawalRow({ w, onStatusChange, updating = false }: {
   w: WithdrawalItem
   onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
   updating?: boolean
 }) {
-  const [updating, setUpdating] = useState(false)
   const date = new Date(w.date)
   const dateStr = date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 
-  async function handleStatus(s: WithdrawalStatus) {
-    setUpdating(true)
+  function handleStatus(s: WithdrawalStatus) {
     onStatusChange(w.id, s)
-    setTimeout(() => setUpdating(false), 800)
   }
 
   return (
@@ -307,14 +304,15 @@ export default function RetirosPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [filterAccount, setFilterAccount] = useState<string>("all")
   const [filterStatus, setFilterStatus]   = useState<string>("all")
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const { data: withdrawals = [], isLoading } = trpc.withdrawals.list.useQuery({})
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
   const utils = trpc.useUtils()
 
   const updateStatus = trpc.withdrawals.updateStatus.useMutation({
-    onSuccess: () => utils.withdrawals.list.invalidate(),
-    onError:   (err) => toast.error(formatErrorForUser(err)),
+    onSuccess: () => { utils.withdrawals.list.invalidate(); setUpdatingId(null) },
+    onError:   (err) => { setUpdatingId(null); toast.error(formatErrorForUser(err)) },
   })
 
   // Filtered
@@ -449,8 +447,11 @@ export default function RetirosPage() {
           <WithdrawalRow
             key={w.id}
             w={w}
-            onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
-            updating={updateStatus.isPending}
+            onStatusChange={(id, status) => {
+              setUpdatingId(id)
+              updateStatus.mutate({ id, status })
+            }}
+            updating={updatingId === w.id && updateStatus.isPending}
           />
         ))}
       </div>

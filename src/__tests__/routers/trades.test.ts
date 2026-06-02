@@ -240,3 +240,38 @@ describe("trades.update — psychology fields", () => {
     expect(result).toBeDefined()
   })
 })
+
+// M-03 fix: emotionBefore null-sentinel — trades.create must accept undefined (not empty string)
+// The form now uses null as the "no emotion" sentinel, converted to undefined before mutation.
+describe("trades.create — emotionBefore null-sentinel contract (M-03)", () => {
+  let mockPrisma: ReturnType<typeof makeMockPrisma>
+  let caller: ReturnType<typeof appRouter.createCaller>
+
+  beforeEach(() => {
+    mockPrisma = makeMockPrisma()
+    caller = appRouter.createCaller({
+      prisma: mockPrisma as never,
+      supabase: {} as never,
+      userId: USER_ID,
+    })
+  })
+
+  it("accepts undefined emotionBefore (no emotion selected — null sentinel converted at call site)", async () => {
+    const trade = await caller.trades.create({
+      ...BASE_CREATE_INPUT,
+      emotionBefore: undefined,
+    })
+    expect(trade).toBeDefined()
+    expect(mockPrisma.trade.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ emotionBefore: "" }),
+      })
+    )
+  })
+
+  it("rejects empty string emotionBefore (form bug would reach server if coercion were removed)", async () => {
+    await expect(
+      caller.trades.create({ ...BASE_CREATE_INPUT, emotionBefore: "" as never })
+    ).rejects.toThrow()
+  })
+})
