@@ -87,6 +87,10 @@ interface GeneratedReview {
   executiveSummary: string; whatWorked: string; toImprove: string
 }
 
+// Generates a week review summary from local trade data.
+// disciplineScore is intentionally 0 here — the correct value comes from
+// the server via prefill.disciplineScore (which uses the authoritative
+// multi-factor formula in discipline-service.ts / lib/formulas/discipline.ts).
 function generateWeekReview(weekStart: string, weekEnd: string, accountId: string, trades: TradeFromDB[]): GeneratedReview {
   const filtered = trades.filter((t) => {
     const acctMatch = accountId === "ALL" || t.accountId === accountId
@@ -101,17 +105,14 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   const winners = filtered.filter((t) => isWin({ pnl: t.pnl ?? 0 }))
   const winRate = Math.round(calcWinRate(winners.length, filtered.length))
 
-  const disciplinedCount = filtered.filter((t) => t.tags.some((tag: string) => tag === "A+" || tag === "Plan")).length
-  const offPlanCount     = filtered.filter((t) => t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo")).length
-  const disciplineScore  = filtered.length > 0 ? Math.round((disciplinedCount / filtered.length) * 100) : 0
+  // Identify off-plan trades for the summary text (not for discipline score calculation)
+  const offPlanTrades = filtered.filter((t) => t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo" || tag === "Revanche"))
+  const offPlanCount  = offPlanTrades.length
 
   const pnlStr    = formatPnl(netPnl)
-  const sentiment = disciplineScore >= 80 && winRate >= 60 ? "Excelente semana"
-    : disciplineScore >= 60 && netPnl >= 0 ? "Semana positiva"
-    : netPnl < 0 ? "Semana difícil"
-    : "Semana regular"
+  const sentiment = winRate >= 60 && netPnl >= 0 ? "Semana positiva" : netPnl < 0 ? "Semana difícil" : "Semana regular"
 
-  const execSummary = `${sentiment}. ${filtered.length} trades ejecutados con un resultado neto de ${pnlStr} (${winRate}% win rate). Score de disciplina: ${disciplineScore}/100. ${
+  const execSummary = `${sentiment}. ${filtered.length} trades ejecutados con un resultado neto de ${pnlStr} (${winRate}% win rate). ${
     offPlanCount > 0
       ? `${offPlanCount} trade${offPlanCount > 1 ? "s" : ""} fuera del plan.`
       : "Todos los trades siguieron el plan."
@@ -122,12 +123,11 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   const whatWorkedLines: string[] = []
   if (aPlus.length > 0) whatWorkedLines.push(`Trades A+ en ${[...new Set(aPlus.map((t) => t.symbol))].join(", ")} ejecutados con alta confluencia`)
   if (winningTrades.length > 0) whatWorkedLines.push(`Mejores resultados en sesión ${[...new Set(winningTrades.map((t) => t.session))].join(", ")}`)
-  if (disciplinedCount === filtered.length) whatWorkedLines.push("100% de trades dentro del plan establecido")
+  if (offPlanCount === 0 && filtered.length > 0) whatWorkedLines.push("100% de trades dentro del plan establecido")
   if (winRate >= 60) whatWorkedLines.push(`Win rate de ${winRate}% por encima del objetivo`)
   if (whatWorkedLines.length === 0) whatWorkedLines.push("—")
 
   const toImproveLines: string[] = []
-  const offPlanTrades = filtered.filter((t) => t.tags.some((tag: string) => tag === "Off-plan" || tag === "Impulsivo"))
   if (offPlanTrades.length > 0) toImproveLines.push(`Revisar disciplina en ${[...new Set(offPlanTrades.map((t) => t.symbol))].join(", ")} — ${offPlanTrades.length} trade${offPlanTrades.length > 1 ? "s" : ""} fuera del plan`)
   if (winRate < 50) toImproveLines.push(`Mejorar selectividad — win rate de ${winRate}% por debajo del objetivo`)
   const losingTrades = filtered.filter((t) => (t.pnl ?? 0) < 0)
@@ -138,7 +138,9 @@ function generateWeekReview(weekStart: string, weekEnd: string, accountId: strin
   if (toImproveLines.length === 0) toImproveLines.push("Mantener consistencia la próxima semana")
 
   return {
-    tradeCount: filtered.length, netPnl, winRate, disciplineScore,
+    tradeCount: filtered.length, netPnl, winRate,
+    // disciplineScore intentionally 0: server value (prefill) is applied in runAutoGenerate
+    disciplineScore: 0,
     executiveSummary: execSummary,
     whatWorked: whatWorkedLines.map((l) => `• ${l}`).join("\n"),
     toImprove:  toImproveLines.map((l) => `• ${l}`).join("\n"),
@@ -195,11 +197,16 @@ function AccountSelectorCard({ account, selected, onClick }: { account: AccountF
   )
 }
 
-export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
+type ReviewFromDB = RouterOutputs["weeklyReviews"]["list"][number]
+
+export function NuevaReviewModal({ open, onOpenChange, reviewResources, editReview }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   reviewResources: ResourceFromDB[]
+  editReview?: ReviewFromDB | null
 }) {
+  const isEditMode = !!editReview
+
   const [step,              setStep]             = useState<"config" | "analisis">("config")
   const [selectedWeek,      setSelectedWeek]     = useState(0)
   const [generated,         setGenerated]        = useState<GeneratedReview | null>(null)
@@ -217,9 +224,26 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
   const allTrades: TradeFromDB[] = rawTrades?.items ?? []
   const utils = trpc.useUtils()
 
+  // Populate form from editReview when entering edit mode
+  useEffect(() => {
+    if (!editReview || !open) return
+    setStep("analisis")
+    setExecutiveSummary(editReview.executiveSummary)
+    setWhatWorked(editReview.whatWorked)
+    setToImprove(editReview.toImprove)
+    setDisciplineScore(editReview.disciplineScore)
+    setSelectedAccountId(editReview.accountId ?? "")
+    setAutoFields(new Set())
+  }, [editReview, open])
+
   const effectiveAccountId = selectedAccountId || accounts[0]?.id || ""
 
   const createReview = trpc.weeklyReviews.create.useMutation({
+    onSuccess: () => { utils.weeklyReviews.list.invalidate(); onOpenChange(false); resetState() },
+    onError:   (err) => toast.error(formatErrorForUser(err)),
+  })
+
+  const updateReview = trpc.weeklyReviews.update.useMutation({
     onSuccess: () => { utils.weeklyReviews.list.invalidate(); onOpenChange(false); resetState() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
@@ -289,7 +313,9 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
     setExecutiveSummary(gen.executiveSummary)
     setWhatWorked(gen.whatWorked)
     setToImprove(gen.toImprove)
-    setDisciplineScore(gen.disciplineScore)
+    // Use server-provided discipline score (prefill) if available; server useEffect will
+    // override anyway when query resolves. Local computation intentionally removed (TASK-011).
+    setDisciplineScore(prefillData?.disciplineScore ?? serverScore?.score ?? 0)
     setAutoFields(new Set(["executiveSummary", "whatWorked", "toImprove", "disciplineScore"]))
   }
 
@@ -305,6 +331,13 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
   }
 
   function handleSave(status: "draft" | "submitted") {
+    if (isEditMode && editReview) {
+      updateReview.mutate({
+        id: editReview.id,
+        executiveSummary, whatWorked, toImprove, disciplineScore, status,
+      })
+      return
+    }
     if (!week) return
     // Prefer locally generated stats; fall back to server prefill; default to 0
     const tradeCount = generated?.tradeCount ?? prefillData?.tradeCount ?? 0
@@ -318,6 +351,8 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
     })
   }
 
+  const isSaving = createReview.isPending || updateReview.isPending
+
   const discColor = disciplineColor(disciplineScore)
   const discBg    = disciplineBg(disciplineScore)
 
@@ -325,7 +360,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetState() }}>
       <DialogContent className="max-w-[640px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Nueva review semanal</DialogTitle>
+          <DialogTitle>{isEditMode ? `Editar review · ${editReview?.weekLabel}` : "Nueva review semanal"}</DialogTitle>
         </DialogHeader>
 
         <div className="flex gap-1 p-1 rounded-[var(--radius-sm)] mx-0" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
@@ -520,11 +555,11 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
                   ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
                   : <><Sparkles size={13} /> Resumen con IA</>}
               </Button>
-              <Button variant="ghost" onClick={() => handleSave("draft")} disabled={createReview.isPending}>
-                {createReview.isPending ? "Guardando…" : "Guardar borrador"}
+              <Button variant="ghost" onClick={() => handleSave("draft")} disabled={isSaving}>
+                {isSaving ? "Guardando…" : "Guardar borrador"}
               </Button>
-              <Button variant="primary" onClick={() => handleSave("submitted")} disabled={createReview.isPending}>
-                {createReview.isPending ? "Enviando…" : "Enviar review"}
+              <Button variant="primary" onClick={() => handleSave("submitted")} disabled={isSaving}>
+                {isSaving ? "Enviando…" : isEditMode ? "Guardar cambios" : "Enviar review"}
               </Button>
             </>
           )}

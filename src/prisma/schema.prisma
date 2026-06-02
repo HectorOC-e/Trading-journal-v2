@@ -43,6 +43,7 @@ model User {
   tradingSessionLogs   TradingSessionLog[]
   tradeEmbeddings      TradeEmbedding[]
   emailLogs            EmailLog[]
+  preferences          UserPreferences?
 
   @@map("users")
 }
@@ -193,6 +194,12 @@ model Trade {
   closeTime      String?  @map("close_time")
   commission     Decimal? @db.Decimal(10, 2)
   importTicket   String?  @map("import_ticket")
+  // ── Psychology fields (Sprint 4, TASK-034) ──────────────
+  emotionBefore    String?  @map("emotion_before")    // "calm" | "anxious" | "excited" | "fearful" | "overconfident"
+  confidenceRating Int?     @map("confidence_rating") // 1–5
+  executionQuality Int?     @map("execution_quality") // 1–5
+  fomoFlag         Boolean  @default(false) @map("fomo_flag")
+  revengeFlag      Boolean  @default(false) @map("revenge_flag")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -451,6 +458,31 @@ model TradeEmbedding {
 
   @@index([userId])
   @@map("trade_embeddings")
+}
+
+// ─────────────────────────────────────────────
+// USER PREFERENCES (Sprint 4, TASK-030)
+// Per-user UI preferences persisted server-side.
+// Created on first update via upsert.
+// ─────────────────────────────────────────────
+model UserPreferences {
+  userId       String   @id @map("user_id") @db.Uuid
+  theme        String   @default("system")      // "light" | "dark" | "system"
+  accentHue    Int?     @map("accent_hue")      // 0–360 OKLCH
+  colorScheme  String   @default("default")     @map("color_scheme") // "default" | "deuteranopia" | "mono"
+  defaultTab   String   @default("portfolio")   @map("default_tab")
+  kpiOrder     String[] @default([]) @map("kpi_order")
+  kpiHidden    String[] @default([]) @map("kpi_hidden")
+  defaultGrain String   @default("daily")       @map("default_grain")
+  tableDensity String   @default("comfortable") @map("table_density")
+  dateFormat   String   @default("DD/MM/YYYY")  @map("date_format")
+  numberLocale String   @default("es-HN")       @map("number_locale")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 // ─────────────────────────────────────────────

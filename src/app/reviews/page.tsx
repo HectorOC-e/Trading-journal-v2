@@ -19,6 +19,7 @@ type TradeFromDB   = RouterOutputs["trades"]["list"]["items"][number]
 export default function ReviewsPage() {
   const [modalOpen,      setModalOpen]      = useState(false)
   const [selectedReview, setSelectedReview] = useState<ReviewFromDB | null>(null)
+  const [editingReview,  setEditingReview]  = useState<ReviewFromDB | null>(null)
 
   const { data: reviews = [], isLoading } = trpc.weeklyReviews.list.useQuery()
   const { data: accounts = [] }           = trpc.accounts.list.useQuery()
@@ -132,14 +133,16 @@ export default function ReviewsPage() {
             onClose={() => setSelectedReview(null)}
             accountName={accountName}
             weekTrades={weekTrades}
+            onEdit={(r) => { setEditingReview(r); setModalOpen(true) }}
           />
         )}
       </div>
 
       <NuevaReviewModal
         open={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={(v) => { setModalOpen(v); if (!v) setEditingReview(null) }}
         reviewResources={reviewResources}
+        editReview={editingReview}
       />
     </>
   )

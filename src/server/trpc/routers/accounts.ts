@@ -142,8 +142,8 @@ export const accountsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  updateData,
       })
-      const phasePayload: AccountLogPayload = {
-        event:          "PHASE_CHANGE",
+      const phasePayload = {
+        event:          "PHASE_CHANGE" as const,
         from:           prev.phase ?? "NONE",
         to:             input.phase,
         note:           input.note ?? "",
@@ -156,12 +156,11 @@ export const accountsRouter = router({
           ddMonthlyPct:   prev.ddMonthlyPct != null ? Number(prev.ddMonthlyPct) : null,
           ddTotalPct:     prev.ddTotalPct   != null ? Number(prev.ddTotalPct)   : null,
           targetPct:      prev.targetPct    != null ? Number(prev.targetPct)    : null,
-        } as Record<string, unknown>,
-        newRules: (input.newRules as Record<string, unknown>) ?? null,
-      }
-      // Prisma's InputJsonValue doesn't accept Record<string, unknown> structurally; cast is safe at runtime
+        },
+        newRules: input.newRules ?? null,
+      } satisfies AccountLogPayload
       await ctx.prisma.accountLog.create({
-        data: { userId: ctx.userId, accountId: input.id, event: "PHASE_CHANGE", payload: phasePayload as never },
+        data: { userId: ctx.userId, accountId: input.id, event: "PHASE_CHANGE", payload: phasePayload },
       })
       return account
     }),

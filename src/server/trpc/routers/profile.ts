@@ -33,6 +33,9 @@ export const profileRouter = router({
       language:           z.enum(["es", "en"]).optional(),
       weeklyGoalMinutes:  z.number().int().min(0).max(10080).optional(),
       emailNotifications: z.boolean().optional(),
+      // Goal fields (TASK-050a)
+      weeklyTradesGoal:   z.number().int().min(1).max(500).nullable().optional(),
+      weeklyPnlGoal:      z.number().min(100).max(1_000_000).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const raw = input as UpdateProfileInput

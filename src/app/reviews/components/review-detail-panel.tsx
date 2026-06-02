@@ -1,9 +1,13 @@
 "use client"
 
-import { useEffect } from "react"
-import { X, ArrowLeft } from "lucide-react"
+import { useEffect, useState } from "react"
+import { X, ArrowLeft, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type ReviewFromDB = RouterOutputs["weeklyReviews"]["list"][number]
@@ -51,14 +55,26 @@ function SectionBlock({ emoji, title, text }: { emoji: string; title: string; te
 }
 
 export function ReviewDetailPanel({
-  review, onClose, accountName, weekTrades,
+  review, onClose, accountName, weekTrades, onEdit,
 }: {
   review:      ReviewFromDB
   onClose:     () => void
   accountName: (id: string | null) => string
   weekTrades:  TradeFromDB[]
+  onEdit?:     (review: ReviewFromDB) => void
 }) {
   const isDraft = review.status === "draft"
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const utils = trpc.useUtils()
+
+  const deleteMutation = trpc.weeklyReviews.delete.useMutation({
+    onSuccess: () => {
+      utils.weeklyReviews.list.invalidate()
+      onClose()
+      toast.success("Review eliminada correctamente")
+    },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
 
   // Escape key to close on desktop
   useEffect(() => {
@@ -92,10 +108,58 @@ export function ReviewDetailPanel({
             {isDraft ? "Borrador" : "Enviada"}
           </span>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--ink-3)" }}>
-          <X size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          {onEdit && (
+            <button
+              onClick={() => onEdit(review)}
+              title="Editar review"
+              className="p-1.5 rounded-lg transition-colors hover:bg-[var(--panel-2)]"
+              style={{ color: "var(--ink-3)" }}
+            >
+              <Pencil size={14} />
+            </button>
+          )}
+          <button
+            onClick={() => setConfirmDeleteOpen(true)}
+            title="Eliminar review"
+            className="p-1.5 rounded-lg transition-colors hover:bg-[var(--loss-soft)]"
+            style={{ color: "var(--ink-3)" }}
+          >
+            <Trash2 size={14} />
+          </button>
+          <button onClick={onClose} className="p-1.5 rounded-lg transition-colors" style={{ color: "var(--ink-3)" }}>
+            <X size={16} />
+          </button>
+        </div>
       </div>
+
+      {/* Confirm delete dialog */}
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar review</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm" style={{ color: "var(--ink-2)" }}>
+            ¿Estás seguro de que quieres eliminar la review de <strong>{review.weekLabel}</strong>? Esta acción no se puede deshacer.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmDeleteOpen(false)}>Cancelar</Button>
+            <button
+              onClick={() => deleteMutation.mutate(review.id)}
+              disabled={deleteMutation.isPending}
+              style={{
+                height: 36, padding: "0 16px", borderRadius: "var(--radius-sm)",
+                background: "var(--loss)", color: "white",
+                fontSize: 13, fontWeight: 600, border: "none",
+                cursor: deleteMutation.isPending ? "not-allowed" : "pointer",
+                opacity: deleteMutation.isPending ? 0.7 : 1,
+              }}
+            >
+              {deleteMutation.isPending ? "Eliminando…" : "Eliminar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-4 gap-0" style={{ borderBottom: "1px solid var(--line)" }}>
         {[

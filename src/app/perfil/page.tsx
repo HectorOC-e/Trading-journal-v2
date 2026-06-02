@@ -220,6 +220,7 @@ export default function PerfilPage() {
 
   /* ── Server data ── */
   const { data: profile, isLoading, isError } = trpc.profile.get.useQuery()
+  const { data: prefs } = trpc.preferences.get.useQuery()
 
   /* ── Local form state — initialized from server data ── */
   const [name,               setName]               = useState("")
@@ -229,6 +230,7 @@ export default function PerfilPage() {
   const [weeklyGoalMinutes,  setWeeklyGoalMinutes]  = useState(300)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [formInitialized,    setFormInitialized]    = useState(false)
+  const [theme,              setThemeState]         = useState<"light" | "dark" | "system">("system")
 
   // Initialize local state once on first data load (useEffect avoids calling setState during render)
   useEffect(() => {
@@ -241,6 +243,10 @@ export default function PerfilPage() {
     setEmailNotifications(profile.emailNotifications ?? true)
     setFormInitialized(true)
   }, [profile, formInitialized])
+
+  useEffect(() => {
+    if (prefs) setThemeState(prefs.theme as "light" | "dark" | "system")
+  }, [prefs])
 
   /* ── Password modal state ── */
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -273,6 +279,10 @@ export default function PerfilPage() {
       toast.success("Cuenta eliminada. Serás redirigido.")
       setTimeout(() => { window.location.href = "/login" }, 2000)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+
+  const updatePrefsMut = trpc.preferences.update.useMutation({
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
@@ -472,6 +482,41 @@ export default function PerfilPage() {
                 </p>
               </div>
             ))}
+          </div>
+        </Card>
+
+        {/* ── Apariencia ── */}
+        <Card>
+          <SectionTitle>Apariencia</SectionTitle>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 8 }}>
+              Tema
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(["light", "dark", "system"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => {
+                    setThemeState(t)
+                    updatePrefsMut.mutate({ theme: t })
+                    document.documentElement.setAttribute("data-theme", t === "system"
+                      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+                      : t
+                    )
+                  }}
+                  style={{
+                    flex: 1, padding: "8px 12px", borderRadius: "var(--radius-sm)",
+                    border: theme === t ? "2px solid var(--accent)" : "1px solid var(--line)",
+                    background: theme === t ? "var(--accent-soft)" : "var(--panel-2)",
+                    color: theme === t ? "var(--accent)" : "var(--ink-2)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {t === "light" ? "Claro" : t === "dark" ? "Oscuro" : "Sistema"}
+                </button>
+              ))}
+            </div>
           </div>
         </Card>
 

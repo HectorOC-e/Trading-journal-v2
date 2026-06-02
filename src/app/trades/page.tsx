@@ -14,6 +14,10 @@ import { ImportCsvModal } from "./components/import-csv-modal"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import type { RouterOutputs } from "@/server/trpc/root"
+import type { Trade, Account, Setup } from "@/types"
+
+type MarketItem = RouterOutputs["markets"]["list"][number]
 
 export default function TradesPage() {
   const [selectedId, setSelectedId]  = useState<string | null>(null)
@@ -235,6 +239,9 @@ export default function TradesPage() {
     return () => { document.body.style.overflow = "" }
   }, [!!selected])
 
+  // NOTE: as never casts below bridge the gap between RouterOutputs types (Decimal serialized as
+  // string by tRPC's JSON transport) and the component prop interfaces (which expect number).
+  // Fixing these would require refactoring all component interfaces — tracked as TD future item.
   const detailPanel = selected ? (
     <TradeDetailPanel
       trade={selected as never}
@@ -343,7 +350,7 @@ export default function TradesPage() {
             top: 52, left: 0, right: 0, bottom: 56,
             zIndex: 40,
             overflowY: "scroll",
-            WebkitOverflowScrolling: "touch" as never,
+            WebkitOverflowScrolling: "touch",
             overscrollBehavior: "contain",
             background: "var(--panel)",
             borderTop: "1px solid var(--line)",

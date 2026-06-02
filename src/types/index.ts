@@ -1,15 +1,16 @@
 // ── Router-derived types (T-I-003) ──
 import type { RouterOutputs } from "@/server/trpc/root"
 
-export type SerializedTrade   = RouterOutputs["trades"]["list"]["items"][number]
-export type SerializedAccount = RouterOutputs["accounts"]["list"][number]
-export type SerializedSetup   = RouterOutputs["setups"]["list"][number]
-export type DashboardStats    = RouterOutputs["trades"]["dashboardStats"]
+export type SerializedTrade        = RouterOutputs["trades"]["list"]["items"][number]
+export type SerializedAccount      = RouterOutputs["accounts"]["list"][number]
+export type SerializedSetup        = RouterOutputs["setups"]["list"][number]
+export type SerializedLearningResource = RouterOutputs["learningResources"]["list"][number]
+export type DashboardStats         = RouterOutputs["trades"]["dashboardStats"]
 
 // ── AccountLog typed payloads (T-I-004) ──
 export type AccountLogPayload =
   | { event: "CREATED";            initialBalance: number; currency: string; name?: string; type?: string }
-  | { event: "PHASE_CHANGE";       from: string; to: string; note?: string; objectiveMet?: boolean; manualOverride?: boolean; prevRules?: Record<string, unknown>; newRules?: Record<string, unknown> | null }
+  | { event: "PHASE_CHANGE";       from: string; to: string; note?: string; objectiveMet?: boolean; manualOverride?: boolean; prevRules?: Record<string, number | null>; newRules?: Record<string, number | string | boolean | string[] | null> | null }
   | { event: "WITHDRAWAL";         amount: number; currency: string; status?: string; withdrawalId?: string; reference?: string }
   | { event: "WITHDRAWAL_STATUS";  withdrawalId: string; status: string; reference?: string }
   | { event: "STATUS_CHANGE";      from: string; to: string; note: string }
@@ -60,6 +61,8 @@ export type ResourceStatus =
   | "MASTERED"
   | "ABANDONED"
 
+// Manual interface kept for components that depend on ResourceType narrowing.
+// SerializedLearningResource (above) is the RouterOutputs-derived canonical type.
 export interface LearningResource {
   id: string
   title: string
