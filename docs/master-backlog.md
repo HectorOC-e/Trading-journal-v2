@@ -1,8 +1,21 @@
 # Master Backlog — Trading Journal v2
 
-> **Generated:** 2026-05-31  
+> **Last Updated:** 2026-06-02  
 > **Sources:** repository-audit-report · product-gap-analysis · feature-opportunities · ai-architecture-recommendations · personalization-roadmap · ux-improvement-roadmap  
-> **ID range:** TASK-001 – TASK-053 (TASK-001–026 from audit report; TASK-027–053 are new)
+> **ID range:** TASK-001 – TASK-078 (TASK-001–026 from audit report; TASK-027–078 are new)
+
+---
+
+## Sprint Status
+
+| Sprint | Duration | Goal | Status | Findings | Tests |
+|---|---|---|---|---|---|
+| Sprint 1 | W1–W2 | Data integrity & security | ✅ Complete | 6 debt items closed | 232 passing |
+| Sprint 2 | W2–W3 | Formula fixes | ✅ Complete | 9 debt items closed | 232 passing |
+| Sprint 3 | W3–W4 | Profile backend | ✅ Complete | 1 debt item, +24 tests | 256 passing |
+| Sprint 4 | 2026-06-02 | QA audit & fixes | ✅ Complete | 8 QA findings fixed, +5 tests | 354 passing |
+
+---
 
 ---
 

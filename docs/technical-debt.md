@@ -4,7 +4,8 @@
 > Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
 > **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).  
 > **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
-> **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).
+> **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).  
+> **Sprint 4 closed:** QA audit findings fixed — Type contract (B-01), Theme CSS (B-02), Decimal serialization (B-03), Label mismatch (M-01), useEffect deps (M-02/04), Trade limit (M-03), Test discovery (M-05) (8 findings, 5 tests added, 354 passing).
 
 ---
 
@@ -41,7 +42,7 @@
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-015 | **Closed** Sprint 2 |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
-**Open items: 13 of 28 | Sprint 1 closed: 6 (TD-001, TD-004, TD-006, TD-007, TD-021, TD-026) | Sprint 2 closed: 9 (TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028)**  
+**Open items: 13 of 28 | Closed total: 6+9+1+8 = 24 items**  
 **Remaining estimated effort: ~9 engineer-days to close all open items**
 
 ---
