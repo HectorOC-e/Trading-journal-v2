@@ -1,8 +1,8 @@
 # Sprint 3 QA Report — Independent Audit
 
 > **Auditor:** Staff Engineer (independent review)
-> **Date:** 2026-06-02
-> **Branch:** `claude/epic-darwin-1XZTX` — commit `44255d3`
+> **Audit date:** 2026-06-02 — commit `44255d3`
+> **Fix date:** 2026-06-02 — commit `303e982` (B+M), see also SPRINT_3_FIX_REPORT.md
 > **Scope:** All 24 files added or modified in Sprint 3
 > **Methodology:** Static analysis, code tracing, date-range arithmetic verification, security model review, architecture conformance check. No assumptions about correctness were made.
 
@@ -344,21 +344,21 @@ The existing 291 tests cover the **service layer** correctly but provide no cove
 
 ## Summary of Required Actions Before Merge
 
-| ID    | Action | Severity |
-|-------|--------|----------|
-| B-001 | Add `+1 day` to `weekEnd` in `computedDisciplineScore` before calling `computeDisciplineScore()` | Blocking |
-| B-002 | Create `src/lib/supabase/admin.ts` with service role client; use in `deleteAccount` | Blocking |
-| M-001 | Add `onError` to `saveChecklist` mutation in `trades/page.tsx` | Major |
-| M-002 | Add `onError` to `processDecay` mutation in `aprendizaje/page.tsx` | Major |
-| M-003 | Add `onError` to `createReview` mutation in `create-review-modal.tsx` | Major |
-| M-004 | Fix cache invalidation to only trigger on actual value change | Major |
-| M-005 | Serialize `Date` fields in `profile.update` return value | Major |
-| M-006 | Replace `/api/auth/signout` with existing Supabase `signOut()` pattern | Major |
-| M-007 | Move form initialization to `useEffect` | Major |
-| m-001 | Append `<a>` to DOM before `.click()` in `handleExport` | Minor |
-| m-002 | Remove `exportData` from `useQuery`; use mutation or direct fetch | Minor |
-| m-003 | Replace `ProfileSkeleton` inline animation with `animate-pulse` class | Minor |
-| m-004 | Add write path for `weeklyTradesGoal`, `disciplineGoal`, `onboardingCompleted` or document as deferred | Minor |
-| n-001 | Standardize `generateAiSummary` error handler to use `formatErrorForUser` | Nitpick |
-| n-002 | Document the `profile.ts` vs `users.ts` naming decision in CLAUDE.md | Nitpick |
-| n-003 | Replace `ProfileSkeleton` with `Skeleton` components from `skeleton.tsx` | Nitpick |
+| ID    | Action | Severity | Status |
+|-------|--------|----------|--------|
+| B-001 | Add `+1 day` to `weekEnd` in `computedDisciplineScore` before calling `computeDisciplineScore()` | Blocking | ✅ Fixed |
+| B-002 | Create `src/lib/supabase/admin.ts` with service role client; use in `deleteAccount` | Blocking | ✅ Fixed |
+| M-001 | Add `onError` to `saveChecklist` mutation in `trades/page.tsx` | Major | ✅ Fixed |
+| M-002 | Add `onError` to `processDecay` mutation in `aprendizaje/page.tsx` | Major | ✅ Fixed |
+| M-003 | Add `onError` to `createReview` mutation in `create-review-modal.tsx` | Major | ✅ Fixed |
+| M-004 | Fix cache invalidation to only trigger on actual value change | Major | ✅ Fixed |
+| M-005 | Serialize `Date` fields in `profile.update` return value | Major | ✅ Fixed |
+| M-006 | Replace `/api/auth/signout` with existing Supabase `signOut()` pattern | Major | ✅ Fixed |
+| M-007 | Move form initialization to `useEffect` | Major | ✅ Fixed |
+| m-001 | Append `<a>` to DOM before `.click()` in `handleExport` | Minor | ✅ Fixed |
+| m-002 | Remove `exportData` from `useQuery`; use mutation or direct fetch | Minor | ✅ Fixed |
+| m-003 | Replace `ProfileSkeleton` inline animation with `animate-pulse` class | Minor | ✅ Fixed |
+| m-004 | Add write path for `weeklyTradesGoal`, `disciplineGoal`, `onboardingCompleted` or document as deferred | Minor | 📋 Deferred |
+| n-001 | Standardize `generateAiSummary` error handler to use `formatErrorForUser` | Nitpick | ✅ Fixed |
+| n-002 | Document the `profile.ts` vs `users.ts` naming decision in CLAUDE.md | Nitpick | 📋 Deferred |
+| n-003 | Replace `ProfileSkeleton` with `Skeleton` components from `skeleton.tsx` | Nitpick | 📋 Deferred |

@@ -231,9 +231,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
       if (data.toImprove)        setToImprove(data.toImprove)
       setAutoFields(prev => new Set([...prev, "executiveSummary", "whatWorked", "toImprove"]))
     },
-    onError: (err) => {
-      toast.error(err.message || "Error al generar resumen")
-    },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   function handleAiGenerate() {

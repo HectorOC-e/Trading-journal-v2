@@ -247,7 +247,8 @@ export default function PerfilPage() {
   const [newPassword,      setNewPassword]      = useState("")
 
   /* ── Delete confirmation ── */
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDelete,  setConfirmDelete]  = useState(false)
+  const [exportLoading,  setExportLoading]  = useState(false)
 
   /* ── Mutations ── */
   const updateMut = trpc.profile.update.useMutation({
@@ -265,10 +266,6 @@ export default function PerfilPage() {
       setNewPassword("")
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
-  })
-
-  const exportMut = trpc.profile.exportData.useQuery(undefined, {
-    enabled: false,
   })
 
   const deleteMut = trpc.profile.deleteAccount.useMutation({
@@ -307,18 +304,23 @@ export default function PerfilPage() {
   }
 
   async function handleExport() {
-    const result = await exportMut.refetch()
-    if (result.data) {
-      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: "application/json" })
+    setExportLoading(true)
+    try {
+      const data = await utils.profile.exportData.fetch()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement("a")
       a.href     = url
       a.download = `trading-journal-export-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
       toast.success("Datos exportados correctamente")
-    } else {
+    } catch {
       toast.error("Error al exportar datos")
+    } finally {
+      setExportLoading(false)
     }
   }
 
@@ -533,7 +535,7 @@ export default function PerfilPage() {
                 Cambiar contraseña
               </GhostBtn>
             )}
-            <GhostBtn onClick={handleExport} loading={exportMut.isFetching}>
+            <GhostBtn onClick={handleExport} loading={exportLoading}>
               Exportar datos (JSON)
             </GhostBtn>
             <GhostBtn onClick={handleSignOut}>
