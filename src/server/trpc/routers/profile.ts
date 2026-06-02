@@ -8,6 +8,7 @@ import {
   invalidateAnalyticsCacheIfNeeded,
   type UpdateProfileInput,
 } from "@/domains/profile/services/profile-service"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export const profileRouter = router({
   get: protectedProcedure
@@ -38,11 +39,16 @@ export const profileRouter = router({
       validateProfileUpdate(raw)
       const normalized = normalizeProfileInput(raw)
       await invalidateAnalyticsCacheIfNeeded(ctx.prisma, ctx.userId, normalized)
-      return ctx.prisma.user.update({
+      const user = await ctx.prisma.user.update({
         where:  { id: ctx.userId },
         data:   normalized,
         select: PROFILE_PUBLIC_FIELDS,
       })
+      return {
+        ...user,
+        lastReviewDate: user.lastReviewDate?.toISOString() ?? null,
+        createdAt:      user.createdAt.toISOString(),
+      }
     }),
 
   changePassword: protectedProcedure
@@ -91,10 +97,9 @@ export const profileRouter = router({
     .mutation(async ({ ctx }) => {
       // Delete all user data via cascade, then delete auth user
       await ctx.prisma.user.delete({ where: { id: ctx.userId } })
-      const { error } = await ctx.supabase.auth.admin.deleteUser(ctx.userId)
+      const admin = createAdminClient()
+      const { error } = await admin.auth.admin.deleteUser(ctx.userId)
       if (error) {
-        // Prisma deletion succeeded but auth deletion failed — log and return
-        // The user row is already gone so the account is effectively unusable
         console.error("Auth deletion failed after profile deletion:", error.message)
       }
       return { ok: true }

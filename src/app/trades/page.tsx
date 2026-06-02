@@ -57,7 +57,9 @@ export default function TradesPage() {
     PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
   }
 
-  const saveChecklist = trpc.trades.saveChecklistResult.useMutation()
+  const saveChecklist = trpc.trades.saveChecklistResult.useMutation({
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
 
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: (trade) => {

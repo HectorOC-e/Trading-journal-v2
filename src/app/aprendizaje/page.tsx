@@ -44,6 +44,7 @@ export default function AprendizajePage() {
         utils.learningResources.stats.invalidate()
       }
     },
+    onError: (err) => console.error("Decay transition failed:", err.message),
   })
 
   // Fire decay transition check on page load (CQRS fix: moved from stats query)

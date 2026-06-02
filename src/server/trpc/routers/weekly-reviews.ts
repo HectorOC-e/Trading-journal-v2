@@ -105,11 +105,10 @@ export const weeklyReviewsRouter = router({
   computedDisciplineScore: protectedProcedure
     .input(z.object({ weekStart: z.string(), weekEnd: z.string() }))
     .query(async ({ ctx, input }) => {
-      const result = await computeDisciplineScore(
-        ctx.prisma,
-        ctx.userId,
-        { from: new Date(input.weekStart), to: new Date(input.weekEnd) },
-      )
+      const from = new Date(input.weekStart)
+      const to   = new Date(input.weekEnd)
+      to.setDate(to.getDate() + 1) // make end inclusive (discipline-service uses lt: to)
+      const result = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to })
       return {
         score:     result.score,
         breakdown: {

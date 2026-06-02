@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
@@ -180,12 +182,11 @@ function ProfileSkeleton() {
   return (
     <div style={{ maxWidth: 780, display: "flex", flexDirection: "column", gap: 16 }}>
       {[120, 200, 100, 180, 120, 100].map((h, i) => (
-        <div key={i} style={{
+        <div key={i} className="animate-pulse" style={{
           height: h,
           background: "var(--panel)",
           border: "1px solid var(--line)",
           borderRadius: "var(--radius)",
-          animation: "pulse 1.5s ease-in-out infinite",
           opacity: 0.6,
         }} />
       ))}
@@ -214,7 +215,8 @@ const TIMEZONES = [
 ]
 
 export default function PerfilPage() {
-  const utils = trpc.useUtils()
+  const utils   = trpc.useUtils()
+  const router  = useRouter()
 
   /* ── Server data ── */
   const { data: profile, isLoading, isError } = trpc.profile.get.useQuery()
@@ -228,8 +230,9 @@ export default function PerfilPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [formInitialized,    setFormInitialized]    = useState(false)
 
-  // Initialize local state once on first data load
-  if (profile && !formInitialized) {
+  // Initialize local state once on first data load (useEffect avoids calling setState during render)
+  useEffect(() => {
+    if (!profile || formInitialized) return
     setName(profile.name ?? "")
     setTimezone(profile.timezone ?? "America/Tegucigalpa")
     setLanguage((profile.language as "es" | "en") ?? "es")
@@ -237,7 +240,7 @@ export default function PerfilPage() {
     setWeeklyGoalMinutes(profile.weeklyGoalMinutes ?? 300)
     setEmailNotifications(profile.emailNotifications ?? true)
     setFormInitialized(true)
-  }
+  }, [profile, formInitialized])
 
   /* ── Password modal state ── */
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -278,14 +281,29 @@ export default function PerfilPage() {
 
   /* ── Handlers ── */
   function handleSaveProfile() {
-    updateMut.mutate({
-      name,
-      timezone,
-      language,
-      baseCurrency,
-      weeklyGoalMinutes,
-      emailNotifications,
-    })
+    if (!profile) return
+    const patch: {
+      name?: string; timezone?: string; language?: "es" | "en"
+      baseCurrency?: string; weeklyGoalMinutes?: number; emailNotifications?: boolean
+    } = {}
+    if (name              !== (profile.name               ?? ""))    patch.name               = name
+    if (timezone          !== (profile.timezone            ?? ""))    patch.timezone           = timezone
+    if (language          !== (profile.language            ?? "es"))  patch.language           = language as "es" | "en"
+    if (baseCurrency      !== (profile.baseCurrency        ?? ""))    patch.baseCurrency       = baseCurrency
+    if (weeklyGoalMinutes !== (profile.weeklyGoalMinutes   ?? 300))   patch.weeklyGoalMinutes  = weeklyGoalMinutes
+    if (emailNotifications !== (profile.emailNotifications ?? true))  patch.emailNotifications = emailNotifications
+    if (Object.keys(patch).length === 0) {
+      toast.info("Sin cambios para guardar")
+      return
+    }
+    updateMut.mutate(patch)
+  }
+
+  async function handleSignOut() {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/login")
+    router.refresh()
   }
 
   async function handleExport() {
@@ -518,7 +536,7 @@ export default function PerfilPage() {
             <GhostBtn onClick={handleExport} loading={exportMut.isFetching}>
               Exportar datos (JSON)
             </GhostBtn>
-            <GhostBtn onClick={() => { window.location.href = "/api/auth/signout" }}>
+            <GhostBtn onClick={handleSignOut}>
               Cerrar sesión
             </GhostBtn>
             <DangerBtn onClick={() => setConfirmDelete(true)} loading={deleteMut.isPending}>

@@ -9,6 +9,7 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type AccountFromDB  = RouterOutputs["accounts"]["list"][number]
@@ -220,6 +221,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources }: {
 
   const createReview = trpc.weeklyReviews.create.useMutation({
     onSuccess: () => { utils.weeklyReviews.list.invalidate(); onOpenChange(false); resetState() },
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({
