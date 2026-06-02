@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Dialog, DialogContent, DialogHeader,
