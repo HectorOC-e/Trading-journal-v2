@@ -1,5 +1,7 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
+import type { AccountLogPayload } from "@/types"
 
 const ACCOUNT_TYPES = ["PERSONAL", "PROP_FIRM", "DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] as const
 const ACCOUNT_STATUSES = ["ACTIVE", "PAUSED", "INACTIVE", "LOST"] as const
@@ -51,17 +53,15 @@ export const accountsRouter = router({
           phase: isPropFirmType(input.type) ? (input.phase ?? "PHASE_1") : "NONE",
         },
       })
+      const createdPayload: AccountLogPayload = {
+        event:          "CREATED",
+        initialBalance: Number(account.initialBalance),
+        currency:       account.currency,
+        name:           account.name,
+        type:           account.type,
+      }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: account.id,
-          event:     "CREATED",
-          payload:   {
-            name:           account.name,
-            type:           account.type,
-            initialBalance: Number(account.initialBalance),
-          },
-        },
+        data: { userId: ctx.userId, accountId: account.id, event: "CREATED", payload: createdPayload },
       })
       return account
     }),
@@ -81,7 +81,7 @@ export const accountsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       if (input.status === "LOST" && !input.statusNote?.trim()) {
-        throw new Error("Se requiere una nota al marcar la cuenta como PERDIDA")
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Se requiere una nota al marcar la cuenta como PERDIDA" })
       }
       const prev = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.id, userId: ctx.userId },
@@ -91,12 +91,15 @@ export const accountsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  { status: input.status, statusNote: input.statusNote ?? "" },
       })
+      const changeStatusPayload: AccountLogPayload = {
+        event: "STATUS_CHANGE", from: prev.status, to: input.status, note: input.statusNote ?? "",
+      }
       await ctx.prisma.accountLog.create({
         data: {
           userId:    ctx.userId,
           accountId: input.id,
           event:     "STATUS_CHANGE",
-          payload:   { from: prev.status, to: input.status, note: input.statusNote ?? "" },
+          payload:   changeStatusPayload,
         },
       })
       return account
@@ -139,28 +142,25 @@ export const accountsRouter = router({
         where: { id: input.id, userId: ctx.userId },
         data:  updateData,
       })
-      await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input.id,
-          event:     "PHASE_CHANGE",
-          payload:   {
-            from:           prev.phase,
-            to:             input.phase,
-            note:           input.note ?? "",
-            objectiveMet:   input.objectiveMet,
-            manualOverride: input.manualOverride,
-            prevRules: {
-              initialBalance: Number(prev.initialBalance),
-              ddDailyPct:     prev.ddDailyPct   != null ? Number(prev.ddDailyPct)   : null,
-              ddWeeklyPct:    prev.ddWeeklyPct  != null ? Number(prev.ddWeeklyPct)  : null,
-              ddMonthlyPct:   prev.ddMonthlyPct != null ? Number(prev.ddMonthlyPct) : null,
-              ddTotalPct:     prev.ddTotalPct   != null ? Number(prev.ddTotalPct)   : null,
-              targetPct:      prev.targetPct    != null ? Number(prev.targetPct)    : null,
-            },
-            newRules: input.newRules ?? null,
-          },
+      const phasePayload = {
+        event:          "PHASE_CHANGE" as const,
+        from:           prev.phase ?? "NONE",
+        to:             input.phase,
+        note:           input.note ?? "",
+        objectiveMet:   input.objectiveMet,
+        manualOverride: input.manualOverride,
+        prevRules: {
+          initialBalance: Number(prev.initialBalance),
+          ddDailyPct:     prev.ddDailyPct   != null ? Number(prev.ddDailyPct)   : null,
+          ddWeeklyPct:    prev.ddWeeklyPct  != null ? Number(prev.ddWeeklyPct)  : null,
+          ddMonthlyPct:   prev.ddMonthlyPct != null ? Number(prev.ddMonthlyPct) : null,
+          ddTotalPct:     prev.ddTotalPct   != null ? Number(prev.ddTotalPct)   : null,
+          targetPct:      prev.targetPct    != null ? Number(prev.targetPct)    : null,
         },
+        newRules: input.newRules ?? null,
+      } satisfies AccountLogPayload
+      await ctx.prisma.accountLog.create({
+        data: { userId: ctx.userId, accountId: input.id, event: "PHASE_CHANGE", payload: phasePayload },
       })
       return account
     }),
@@ -172,13 +172,9 @@ export const accountsRouter = router({
         where: { id: input, userId: ctx.userId },
         data:  { status: "INACTIVE" },
       })
+      const archivePayload: AccountLogPayload = { event: "STATUS_CHANGE", from: account.status, to: "INACTIVE", note: "Archivada" }
       await ctx.prisma.accountLog.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input,
-          event:     "STATUS_CHANGE",
-          payload:   { from: account.status, to: "INACTIVE", note: "Archivada" },
-        },
+        data: { userId: ctx.userId, accountId: input, event: "STATUS_CHANGE", payload: archivePayload },
       })
       return account
     }),
@@ -188,4 +184,68 @@ export const accountsRouter = router({
     .mutation(({ ctx, input }) =>
       ctx.prisma.account.delete({ where: { id: input, userId: ctx.userId } })
     ),
+
+  syncBalance: protectedProcedure
+    .input(z.object({
+      accountId:     z.string().uuid(),
+      actualBalance: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const account = await ctx.prisma.account.findUniqueOrThrow({
+        where: { id: input.accountId, userId: ctx.userId },
+        select: { id: true, initialBalance: true },
+      })
+
+      const trades = await ctx.prisma.trade.findMany({
+        where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+        select: { pnl: true, date: true },
+        orderBy: { date: "asc" },
+      })
+
+      const { computeRunningBalance } = await import("@/domains/trading/services/account-service")
+      const computedBalance = computeRunningBalance(
+        Number(account.initialBalance),
+        trades.map(t => ({
+          pnl:  t.pnl != null ? Number(t.pnl) : null,
+          date: (t.date as Date).toISOString().slice(0, 10),
+        })),
+      )
+
+      const variance = input.actualBalance - computedBalance
+
+      const payload: AccountLogPayload = {
+        event:    "BALANCE_CORRECTION",
+        variance,
+        note:     "Manual sync",
+      }
+
+      await ctx.prisma.accountLog.create({
+        data: {
+          userId:    ctx.userId,
+          accountId: input.accountId,
+          event:     "BALANCE_CORRECTION",
+          payload:   payload as object,
+        },
+      })
+
+      return {
+        computedBalance: parseFloat(computedBalance.toFixed(2)),
+        actualBalance:   input.actualBalance,
+        variance:        parseFloat(variance.toFixed(2)),
+      }
+    }),
+
+  getBalanceVariance: protectedProcedure
+    .input(z.string().uuid())
+    .query(async ({ ctx, input }) => {
+      const logs = await ctx.prisma.accountLog.findMany({
+        where:   { accountId: input, userId: ctx.userId, event: "BALANCE_CORRECTION" },
+        select:  { payload: true },
+      })
+      const totalVariance = logs.reduce((sum, log) => {
+        const p = log.payload as { variance?: number }
+        return sum + (typeof p.variance === "number" ? p.variance : 0)
+      }, 0)
+      return { totalVariance: parseFloat(totalVariance.toFixed(2)) }
+    }),
 })

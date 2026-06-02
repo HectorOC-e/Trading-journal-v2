@@ -53,7 +53,7 @@ export function TradeRow({ trade, account, setup, selected = false, onClick }: T
   const resultCfg  = RESULT_CFG[result]
   const pnl        = trade.pnl ?? null
   const r          = trade.rMultiple ?? null
-  const session    = SESSION_CFG[trade.session]
+  const session    = SESSION_CFG[trade.session as TradeSession]
   const isOpen     = result === "OPEN"
 
   const qualityTag = trade.tags.find(t =>

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc }   from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 /* ── Types ── */
 type Severity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
@@ -11,7 +13,6 @@ type Severity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"
 interface DbRule {
   id: string; name: string; description: string
   severity: string; isSystem: boolean; enabled: boolean
-  violationsThisMonth: number
   createdAt: Date | string; updatedAt: Date | string
 }
 
@@ -70,12 +71,6 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: {
         )}
       </div>
       <div className="flex items-center gap-2.5 shrink-0">
-        {rule.violationsThisMonth > 0 && (
-          <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-full"
-            style={{ color: "var(--loss)", background: "var(--loss-soft)" }}>
-            {rule.violationsThisMonth} viol.
-          </span>
-        )}
         <Toggle on={rule.enabled} onChange={v => onToggle(rule.id, v)} />
         {!rule.isSystem && onEdit && (
           <button onClick={() => onEdit(rule)}
@@ -116,8 +111,8 @@ function RuleModal({ open, onOpenChange, editRule }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editRule?.id])
 
-  const createMut = trpc.rules.create.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
-  const updateMut = trpc.rules.update.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) } })
+  const createMut = trpc.rules.create.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const updateMut = trpc.rules.update.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   const set = <K extends keyof RuleForm>(k: K, v: RuleForm[K]) => setForm(f => ({ ...f, [k]: v }))
   const isSaving = createMut.isPending || updateMut.isPending
@@ -251,9 +246,9 @@ export default function ReglasPage() {
   const [filter,     setFilter]     = useState<FilterType>("todas")
 
   const { data: rules = [], isLoading } = trpc.rules.list.useQuery()
-  const seedMut   = trpc.rules.seedDefaults.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
-  const toggleMut = trpc.rules.toggle.useMutation({ onSuccess: () => utils.rules.list.invalidate() })
-  const deleteMut = trpc.rules.delete.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); setDeleteRule(null) } })
+  const seedMut   = trpc.rules.seedDefaults.useMutation({ onSuccess: () => utils.rules.list.invalidate(), onError: (err) => toast.error(formatErrorForUser(err)) })
+  const toggleMut = trpc.rules.toggle.useMutation({ onSuccess: () => utils.rules.list.invalidate(), onError: (err) => toast.error(formatErrorForUser(err)) })
+  const deleteMut = trpc.rules.delete.useMutation({ onSuccess: () => { utils.rules.list.invalidate(); setDeleteRule(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   useEffect(() => {
     if (!isLoading && rules.length === 0) seedMut.mutate()
@@ -262,7 +257,6 @@ export default function ReglasPage() {
 
   const systemRules = rules.filter(r => r.isSystem)
   const customRules = rules.filter(r => !r.isSystem)
-  const totalViol   = rules.reduce((s, r) => s + r.violationsThisMonth, 0)
   const activeCount = rules.filter(r => r.enabled).length
   const critActive  = rules.filter(r => r.severity === "CRÍTICA" && r.enabled).length
 
@@ -273,7 +267,7 @@ export default function ReglasPage() {
     <>
       <TopBar
         title="Reglas de conducta"
-        subtitle={`${systemRules.length} sistema · ${customRules.length} personalizadas · ${totalViol} violaciones este mes`}
+        subtitle={`${systemRules.length} sistema · ${customRules.length} personalizadas`}
         actions={[{
           label: "Nueva regla", icon: <Plus size={14} />, variant: "primary",
           onClick: () => { setEditRule(null); setModalOpen(true) },
@@ -283,10 +277,10 @@ export default function ReglasPage() {
       {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: "Reglas activas",   value: isLoading ? "…" : activeCount.toString(), color: "var(--ink)",  icon: <ShieldCheck size={14} /> },
-          { label: "Violaciones mes",  value: isLoading ? "…" : totalViol.toString(),   color: totalViol > 0 ? "var(--loss)" : "var(--win)", icon: <XCircle size={14} /> },
-          { label: "Críticas activas", value: isLoading ? "…" : critActive.toString(),  color: critActive > 0 ? "var(--loss)" : "var(--ink)", icon: <AlertTriangle size={14} /> },
-          { label: "Cumplimiento",     value: isLoading || rules.length === 0 ? "—" : `${Math.max(0, 100 - totalViol * 10)}%`, color: "var(--win)", icon: <CheckCircle2 size={14} /> },
+          { label: "Reglas activas",   value: isLoading ? "…" : activeCount.toString(),                        color: "var(--ink)",                                    icon: <ShieldCheck size={14} /> },
+          { label: "Reglas sistema",   value: isLoading ? "…" : systemRules.length.toString(),                 color: "var(--accent)",                                 icon: <XCircle size={14} /> },
+          { label: "Críticas activas", value: isLoading ? "…" : critActive.toString(),                         color: critActive > 0 ? "var(--loss)" : "var(--ink)",   icon: <AlertTriangle size={14} /> },
+          { label: "Personalizadas",   value: isLoading ? "…" : customRules.length.toString(),                 color: "var(--win)",                                    icon: <CheckCircle2 size={14} /> },
         ].map(k => (
           <div key={k.label} className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3">
             <div className="flex items-center justify-between mb-1">

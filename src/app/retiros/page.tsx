@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 /* ── Types ── */
 type WithdrawalStatus = "SOLICITADO" | "EN_PROCESO" | "PAGADO" | "RECHAZADO"
@@ -190,6 +192,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
       onOpenChange(false)
       setForm(FORM_INIT)
     },
+    onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
   const set = <K extends keyof WForm>(k: K, v: WForm[K]) => setForm(f => ({ ...f, [k]: v }))
@@ -312,6 +315,7 @@ export default function RetirosPage() {
 
   const updateStatus = trpc.withdrawals.updateStatus.useMutation({
     onSuccess: () => utils.withdrawals.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   // Filtered
