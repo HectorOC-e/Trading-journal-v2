@@ -4,7 +4,6 @@ import { useState } from "react"
 import {
   Plus, TrendingUp,
   Shield, CheckCircle2, BarChart3,
-  Loader2,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
@@ -12,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { SkeletonAccountCards } from "@/components/ui/skeleton"
 import { AccountCard, KpiBox } from "./components/account-card"
 import type { TradeStats } from "./components/account-card"
 import { AccountDetailPanel } from "./components/account-detail-panel"
@@ -92,12 +92,7 @@ export default function CuentasPage() {
             icon={<CheckCircle2 size={15} className="text-[var(--ink-3)]" />} />
         </div>
 
-        {isLoading && (
-          <div className="flex items-center justify-center py-16 gap-3 text-[var(--ink-3)]">
-            <Loader2 size={18} className="animate-spin" />
-            <span className="text-sm">Cargando cuentas…</span>
-          </div>
-        )}
+        {isLoading && <SkeletonAccountCards count={3} />}
 
         {!isLoading && accounts.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">

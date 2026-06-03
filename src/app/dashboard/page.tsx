@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
+import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
@@ -70,34 +71,44 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <main aria-label="Panel principal" aria-busy="true">
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
-        <div className="flex items-center justify-center h-64 text-[var(--ink-3)] text-sm">Cargando…</div>
-      </div>
+        <FilterBar options={TABS} value={tab} onChange={(v) => handleTabChange(v as Tab)} className="mb-6" ariaLabel="Secciones del dashboard" />
+        <SkeletonKpiStrip />
+        <div className="flex items-center justify-center h-40 text-[var(--ink-3)] text-sm" aria-live="polite">
+          Cargando…
+        </div>
+      </main>
     )
   }
 
   if (isError || !stats) {
     return (
-      <div>
+      <main aria-label="Panel principal">
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
-        <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="flex flex-col items-center justify-center h-64 gap-3" role="alert">
           <p className="text-[var(--ink-3)] text-sm">No se pudo cargar el dashboard.</p>
           <button
-            className="text-[12px] px-4 py-1.5 rounded border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
+            className="text-[12px] px-4 py-1.5 rounded border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             onClick={() => window.location.reload()}
           >
             Reintentar
           </button>
         </div>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div>
+    <main aria-label="Panel principal">
       <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
-      <FilterBar options={TABS} value={tab} onChange={(v) => handleTabChange(v as Tab)} className="mb-6" />
+      <FilterBar
+        options={TABS}
+        value={tab}
+        onChange={(v) => handleTabChange(v as Tab)}
+        className="mb-6"
+        ariaLabel="Secciones del dashboard"
+      />
       {tab === "portfolio" && (
         <TabPortfolio
           kpis={stats.kpis}
@@ -131,6 +142,6 @@ export default function DashboardPage() {
         />
       )}
       {tab === "playbook" && <TabPlaybook />}
-    </div>
+    </main>
   )
 }

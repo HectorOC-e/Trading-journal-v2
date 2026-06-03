@@ -10,7 +10,8 @@
 > **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
 > **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**  
 > **Sprint 7 closed:** TD-002/TD-017 (discipline score centralization — already implemented, verified canonical formula in `lib/formulas/discipline.ts`), TD-020 (embedding now webhook-triggered, not fire-and-forget), TD-029 (`CYCLE.includes` guard on DB prefs), TD-030 (`>=` boundary in `InMemoryRateLimiter`), TD-031 (`serializeAccount` on all 5 mutation endpoints), TD-032 (`Prisma.Decimal` in accounts test mock), TD-033 (rate-limit tests import real `InMemoryRateLimiter`). Tests: 407 → 430 (+23).  
-> **Sprint 7 QA fixed (post-ship):** B-01 IDOR in `ai-embed` (direct path userId filter + scoped UPDATE), B-02 unbounded body DoS (Content-Length cap 16 KB), M-01 stale `from` in `archive` audit log (`findUniqueOrThrow` before update), M-02 unguarded `localStorage` calls (try/catch), M-03 indistinguishable webhook errors (503/401 split + `crypto.timingSafeEqual`), M-04 unbounded tag input (`z.string().min(1).max(30)` + array `.max(20)`). Tests: 430 → 438 (+8 new + 2 updated). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**
+> **Sprint 7 QA fixed (post-ship):** B-01 IDOR in `ai-embed` (direct path userId filter + scoped UPDATE), B-02 unbounded body DoS (Content-Length cap 16 KB), M-01 stale `from` in `archive` audit log (`findUniqueOrThrow` before update), M-02 unguarded `localStorage` calls (try/catch), M-03 indistinguishable webhook errors (503/401 split + `crypto.timingSafeEqual`), M-04 unbounded tag input (`z.string().min(1).max(30)` + array `.max(20)`). Tests: 430 → 438 (+8 new + 2 updated). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**  
+> **Sprint 8 closed:** TD-012 (`phasePayload` verified — already uses `satisfies AccountLogPayload`, not `as never`; formally closed), TD-023 (RTL component tests added: 15 tests across FilterBar, KpiCard, localStorage; Playwright e2e skeleton configured; CI now runs tests on every push). Tests: 438 → 467 (+29). **Open items: 2 of 33 (TD-018, TD-019).**
 
 ---
 
@@ -29,7 +30,7 @@
 | TD-009 | HIGH | Architecture | `learningResources.stats` CQRS violation | S | TASK-038 | **Closed** Sprint 2 |
 | TD-010 | HIGH | Schema | `notes_embedding` and `email_log` outside Prisma schema | S | TASK-019 | **Closed** Sprint 2 |
 | TD-011 | HIGH | Formula | Sharpe Ratio duplicated with different formula | XS | TASK-027 | **Closed** Sprint 2 |
-| TD-012 | MEDIUM | Type Safety | `phasePayload as never` in accounts router | XS | — | Open |
+| TD-012 | MEDIUM | Type Safety | `phasePayload as never` in accounts router | XS | — | **Closed** Sprint 8 (was already using `satisfies AccountLogPayload`) |
 | TD-013 | MEDIUM | Type Safety | 15+ `as never` casts in `trades/page.tsx` | M | TASK-013 | **Closed** Sprint 6 |
 | TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | **Closed** Sprint 6 |
 | TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | **Closed** Sprint 2 |
@@ -40,7 +41,7 @@
 | TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | TASK-058 | **Closed** Sprint 7 |
 | TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | **Closed** Sprint 1 |
 | TD-022 | MEDIUM | Security | AI API keys encryption + per-user isolation | L | TASK-033 | **Closed** Sprint 5 (partial: per-user encryption implemented; env vars still at risk) |
-| TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
+| TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | **Closed** Sprint 8 (15 RTL tests + Playwright scaffold + CI test step) |
 | TD-029 | LOW | Type Safety | `prefs.theme` DB cast lacks `CYCLE.includes` guard | XS | — | **Closed** Sprint 7 |
 | TD-030 | LOW | Reliability | Rate limiter window boundary off-by-one (`>` vs `>=`) | XS | — | **Closed** Sprint 7 |
 | TD-031 | MEDIUM | Type Safety | Accounts mutations return unserialized `Decimal` over the wire | XS | — | **Closed** Sprint 7 |
@@ -52,9 +53,9 @@
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-015 | **Closed** Sprint 2 |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
-**Open items: 4 of 33 | Closed total: 29 items**  
-**Remaining estimated effort: ~4 engineer-days to close all open items**  
-**Test baseline: 438 passing (post Sprint 7 + Sprint 7 QA fixes)**
+**Open items: 2 of 33 | Closed total: 31 items**  
+**Remaining estimated effort: ~3 engineer-days to close all open items (TD-018 + TD-019)**  
+**Test baseline: 467 passing (post Sprint 8)**
 
 ---
 

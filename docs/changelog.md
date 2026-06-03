@@ -5,6 +5,123 @@
 
 ---
 
+## [Sprint 8 — Testing Infrastructure, Accessibility, Monthly Reviews & CI/CD] — 2026-06-03
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 438 → 467 passing (+29: 15 RTL component tests + 8 router tests + 5 coach-service tests + 1 localStorage regression guard) | **TypeScript:** clean (`tsc --noEmit`) | **Vercel fix:** `serverExternalPackages` for optional `@upstash/*` peer deps (Turbopack static analysis)
+
+### Completed (Core Features — 10 Tasks)
+
+- **TASK-076 — CI/CD Pipeline** — `.github/workflows/ci.yml`
+  - ✅ `claude/*` branch pattern added to `on.push.branches` and `on.pull_request.branches`
+  - ✅ Required env vars injected into CI environment for test runner
+  - ✅ `pnpm test -- --reporter=verbose` step added before `next build` (type check + unit tests gate)
+  - ✅ Job renamed to "Type check, Tests & Build"
+
+- **TASK-024 — React Testing Library component tests** — `src/__tests__/components/`
+  - ✅ `filter-bar.test.tsx` — 5 tests: tablist role, aria-selected, onChange, ariaLabel, multiSelect aria-pressed
+  - ✅ `kpi-card.test.tsx` — 4 tests: combined aria-label, sub in label, icon aria-hidden, value visible
+  - ✅ `localStorage-fallback.test.tsx` — 6 tests: M-02 regression guard (SecurityError, QuotaExceededError, invalid saved values)
+  - ✅ Vitest environment via `@vitest-environment jsdom` docblock (compatible with vitest v4)
+  - ✅ `vitest.setup.ts` + `vitest.d.ts` for jest-dom type augmentation
+
+- **TASK-025 — Playwright E2E scaffold** — `src/playwright.config.ts`, `src/__tests__/e2e/smoke.test.ts`
+  - ✅ Playwright config with `testDir`, retries (2 on CI), 30s timeout, Chromium
+  - ✅ 3 smoke test suites: Login→Dashboard, Create Trade visibility, Reviews tab toggle
+  - ✅ All tests guarded with `test.skip(!EMAIL || !PASSWORD, ...)` — safe to run without credentials
+  - ✅ `pnpm e2e` and `pnpm e2e:ui` scripts added to `package.json`
+
+- **TASK-065 — AI Coach service extraction** — `src/lib/ai/coach-service.ts`, `src/app/api/ai-coach/route.ts`
+  - ✅ `buildSystemPrompt()` and `streamCoachReply()` extracted from route handler
+  - ✅ `CoachStreamOptions` interface with `userId`, `messages`, `prisma`
+  - ✅ `ai-coach/route.ts` reduced from 109 → 42 lines (pure orchestration)
+  - ✅ 5 coach-service tests: context building, model selection, stream return type
+
+- **TASK-070 — Accessibility (ARIA)** — `src/components/ui/filter-bar.tsx`, `src/components/ui/kpi-card.tsx`, `src/app/dashboard/page.tsx`
+  - ✅ `FilterBar`: `role="tablist"`, `aria-label`, buttons get `role="tab"` / `aria-selected` / `aria-pressed`
+  - ✅ `KpiCard`: composite `aria-label` (label + value + sub); icon wrapper `aria-hidden="true"`
+  - ✅ Dashboard: `<main aria-label="Panel principal">`, `aria-busy`/`aria-live` on loading, `role="alert"` on error, skeleton on loading
+  - ✅ Focus ring added to FilterBar buttons (`focus-visible:ring-2`)
+
+- **TASK-071 — Monthly Reviews** — `src/prisma/schema.prisma`, `src/server/trpc/routers/monthly-reviews.ts`, `src/app/reviews/`
+  - ✅ `MonthlyReview` Prisma model: id, userId, year, month, summary, keyThemes[], goalsSet[], goalsMet[], overallScore, weeklyIds[]
+  - ✅ Supabase migration applied: `monthly_reviews` table with RLS policy
+  - ✅ `monthlyReviewsRouter`: `list`, `get`, `upsert`, `delete`, `update`, `prefill` procedures
+  - ✅ `prefill` aggregates weekly reviews: avg discipline score, total trades, net P&L, what-worked themes
+  - ✅ `NuevaMensualModal` with TagInput for keyThemes/goalsSet/goalsMet fields
+  - ✅ `MonthlyReviewCard` with `ScoreBadge` (green ≥75, yellow ≥50, red <50)
+  - ✅ Reviews page: Semanales/Mensuales tab toggle (`role="tablist"` aria-label)
+  - ✅ 8 router tests covering all procedures
+
+- **TASK-042 — Skeleton screens** — `src/app/trades/page.tsx`, `src/app/cuentas/page.tsx`
+  - ✅ `SkeletonTableRows` shown when `tradesLoading` in trades page
+  - ✅ `SkeletonAccountCards` replaces inline spinner in accounts page
+  - ✅ Dashboard already had `SkeletonKpiStrip` (applied earlier in sprint)
+
+- **TASK-043 — Empty states** — `src/app/trades/page.tsx`
+  - ✅ `EmptyState` with CTA "Registrar trade" when no trades and not loading
+  - ✅ Accounts page, Playbook page: retained existing inline empty states (already descriptive)
+
+- **TASK-021 — Analytics cache documentation** — `src/.env.example`
+  - ✅ `ANALYTICS_CACHE_ENABLED=true` documented as opt-in with 5-minute TTL explanation
+  - ✅ Upstash Redis rate-limiter env vars also documented (UPSTASH_REDIS_REST_URL/TOKEN)
+
+- **TASK-022 — Email setup documentation** — `docs/EMAIL_SETUP.md`, `src/.env.example`
+  - ✅ DNS records table for Resend domain verification
+  - ✅ Step-by-step Resend setup guide
+  - ✅ Supabase Auth SMTP integration instructions
+  - ✅ `RESEND_API_KEY`, `RESEND_FROM_DOMAIN`, `RESEND_FROM_ADDRESS` documented in `.env.example`
+
+### Fixed (Vercel Build Failure)
+
+- **Turbopack `@upstash/*` module resolution** — `src/next.config.ts`
+  - Root cause: Turbopack statically analyzes all `require()` calls, including those inside `try/catch` blocks — fails at build time when `@upstash/ratelimit` and `@upstash/redis` are not installed
+  - Fix: `serverExternalPackages: ["@upstash/ratelimit", "@upstash/redis"]` — Turbopack skips bundling; Node resolves at runtime; existing `try/catch` in `UpstashRateLimiter` falls back to `InMemoryRateLimiter`
+
+### Technical Debt Closed (2 items)
+
+| ID | What |
+|---|---|
+| TD-012 | `satisfies AccountLogPayload` already in use (confirmed, not `as never`) |
+| TD-023 | RTL + Playwright test infrastructure fully bootstrapped |
+
+### New Infrastructure Files
+
+| File | Purpose |
+|---|---|
+| `src/vitest.config.ts` | Updated: `setupFiles`, e2e excluded, component tests included |
+| `src/vitest.setup.ts` | Conditional jest-dom import (node + jsdom compatible) |
+| `src/vitest.d.ts` | jest-dom type augmentation for Vitest assertions |
+| `src/playwright.config.ts` | Playwright config with CI retries and base URL |
+| `src/lib/ai/coach-service.ts` | Extracted AI coach business logic |
+| `src/server/trpc/routers/monthly-reviews.ts` | Monthly reviews tRPC router |
+| `src/app/reviews/modals/create-monthly-review-modal.tsx` | Monthly review create/edit modal |
+| `src/app/reviews/components/monthly-review-card.tsx` | Monthly review card with score badge |
+| `docs/EMAIL_SETUP.md` | Resend DNS setup guide |
+| `docs/QUALITY_GATES.md` | 5-gate definition-of-done (Gate 5 new: API auth data-flow) |
+
+### Test Coverage
+
+- **New test files:**
+  - `src/__tests__/components/filter-bar.test.tsx` — 5 RTL tests
+  - `src/__tests__/components/kpi-card.test.tsx` — 4 RTL tests
+  - `src/__tests__/components/localStorage-fallback.test.tsx` — 6 RTL tests (M-02 regression)
+  - `src/__tests__/routers/monthly-reviews.test.ts` — 8 tRPC router tests
+  - `src/__tests__/lib/coach-service.test.ts` — 5 service unit tests
+
+- **Test delta:** 438 → 467 (+29 total)
+
+### Docs
+
+- **Created:** `docs/EMAIL_SETUP.md` — Resend transactional email setup
+- **Created:** `docs/QUALITY_GATES.md` — 5-gate definition-of-done process
+- **Updated:** `docs/backlog.md` — Sprint 8 CLOSED; TASK-021/022/024/025/042/043/065/070/071/076 marked DONE
+- **Updated:** `docs/technical-debt.md` — TD-012 + TD-023 closed; test baseline 467
+- **Updated:** `src/.env.example` — analytics cache, Upstash Redis, Resend, E2E env vars documented
+- **Updated:** `docs/changelog.md` — this entry
+
+---
+
 ## [Sprint 7 — Reviews, Discipline, Infrastructure Hardening & QA Cascade] — 2026-06-03
 
 **Branch:** `claude/epic-darwin-1XZTX`  

@@ -2,23 +2,31 @@
 
 // TASK-048: Review filtering and search
 // Sprint 7: Filter state synced to URL params for persistence across navigation
+// Sprint 8 (TASK-071): Monthly reviews tab added
 
-import { useMemo, useState, useCallback, useEffect } from "react"
+import { useMemo, useState } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { Plus, TrendingUp, Percent, Award, ClipboardCheck, Search, X } from "lucide-react"
+import { Plus, TrendingUp, Percent, Award, ClipboardCheck, Search, X, Calendar } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { ReviewDetailPanel } from "./components/review-detail-panel"
 import { NuevaReviewModal } from "./modals/create-review-modal"
+import { NuevaMensualModal } from "./modals/create-monthly-review-modal"
 import { ReviewCard } from "./components/review-card"
+import { MonthlyReviewCard } from "./components/monthly-review-card"
 
-type ReviewFromDB  = RouterOutputs["weeklyReviews"]["list"][number]
-type AccountFromDB = RouterOutputs["accounts"]["list"][number]
-type TradeFromDB   = RouterOutputs["trades"]["list"]["items"][number]
+type ReviewFromDB        = RouterOutputs["weeklyReviews"]["list"][number]
+type MonthlyReviewFromDB = RouterOutputs["monthlyReviews"]["list"][number]
+type AccountFromDB       = RouterOutputs["accounts"]["list"][number]
+type TradeFromDB         = RouterOutputs["trades"]["list"]["items"][number]
+
+type ReviewTab = "weekly" | "monthly"
 
 type OutcomeFilter = "ALL" | "WIN" | "LOSS" | "NEUTRAL"
 type StatusFilter  = "ALL" | "draft" | "submitted"
@@ -106,9 +114,17 @@ function useReviewFilters() {
 }
 
 export default function ReviewsPage() {
-  const [modalOpen,      setModalOpen]      = useState(false)
-  const [selectedReview, setSelectedReview] = useState<ReviewFromDB | null>(null)
-  const [editingReview,  setEditingReview]  = useState<ReviewFromDB | null>(null)
+  const [activeTab,         setActiveTab]         = useState<ReviewTab>("weekly")
+  const [modalOpen,         setModalOpen]          = useState(false)
+  const [selectedReview,    setSelectedReview]     = useState<ReviewFromDB | null>(null)
+  const [editingReview,     setEditingReview]      = useState<ReviewFromDB | null>(null)
+  const [monthlyModalOpen,  setMonthlyModalOpen]   = useState(false)
+  const [editingMonthly,    setEditingMonthly]     = useState<MonthlyReviewFromDB | null>(null)
+  const [selectedMonthlyId, setSelectedMonthlyId] = useState<string | null>(null)
+
+  const now   = new Date()
+  const [monthlyYear,  setMonthlyYear]  = useState(now.getFullYear())
+  const [monthlyMonth, setMonthlyMonth] = useState(now.getMonth() + 1)
 
   const {
     searchQuery, setSearchQuery,
@@ -118,11 +134,18 @@ export default function ReviewsPage() {
     clearFilters, hasFilters,
   } = useReviewFilters()
 
-  const { data: reviews = [], isLoading } = trpc.weeklyReviews.list.useQuery()
-  const { data: accounts = [] }           = trpc.accounts.list.useQuery()
-  const { data: reviewResources = [] }    = trpc.learningResources.list.useQuery({ markedForReview: true })
-  const { data: rawPageTrades }           = trpc.trades.list.useQuery({ limit: 200 })
-  const allTrades: TradeFromDB[]          = rawPageTrades?.items ?? []
+  const { data: reviews = [], isLoading }        = trpc.weeklyReviews.list.useQuery()
+  const { data: monthlyReviews = [], isLoading: monthlyLoading } = trpc.monthlyReviews.list.useQuery()
+  const { data: accounts = [] }                 = trpc.accounts.list.useQuery()
+  const { data: reviewResources = [] }          = trpc.learningResources.list.useQuery({ markedForReview: true })
+  const { data: rawPageTrades }                 = trpc.trades.list.useQuery({ limit: 200 })
+  const allTrades: TradeFromDB[]                = rawPageTrades?.items ?? []
+
+  const utils = trpc.useUtils()
+  const deleteMonthly = trpc.monthlyReviews.delete.useMutation({
+    onSuccess: () => utils.monthlyReviews.list.invalidate(),
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
 
   const accountName = (id: string | null) => {
     if (!id) return "—"
@@ -217,12 +240,81 @@ export default function ReviewsPage() {
         <div className={cn("flex-1 min-w-0", selectedReview ? "px-8 py-7" : "")}>
           <TopBar
             title="Reviews"
-            subtitle="Semanas analizadas y aprendizajes"
-            actions={[{ label: "Nueva review", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
+            subtitle="Semanas y meses analizados"
+            actions={[{
+              label: activeTab === "weekly" ? "Nueva review" : "Nueva review mensual",
+              icon: activeTab === "weekly" ? <Plus size={14} /> : <Calendar size={14} />,
+              variant: "primary",
+              onClick: () => activeTab === "weekly" ? setModalOpen(true) : setMonthlyModalOpen(true),
+            }]}
           />
+
+          {/* Semanales / Mensuales tab toggle */}
+          <div className="flex items-center gap-1 mb-5" role="tablist" aria-label="Tipo de review">
+            {(["weekly", "monthly"] as ReviewTab[]).map(tab => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "h-7 px-3 rounded-full text-xs font-medium transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+                  activeTab === tab
+                    ? "bg-[var(--accent)] text-white"
+                    : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                )}
+              >
+                {tab === "weekly" ? "Semanales" : "Mensuales"}
+              </button>
+            ))}
+          </div>
 
           <KpiStrip items={kpis} className="mb-5" />
 
+          {/* ── Monthly reviews tab ── */}
+          {activeTab === "monthly" && (
+            <>
+              {monthlyLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <p className="text-sm text-[var(--ink-3)]">Cargando reviews mensuales…</p>
+                </div>
+              ) : monthlyReviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <p className="text-sm text-[var(--ink-3)]">No hay reviews mensuales todavía.</p>
+                  <Button variant="primary" onClick={() => setMonthlyModalOpen(true)}>
+                    <Plus size={14} className="mr-1" /> Crear primera review mensual
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {monthlyReviews.map((review: MonthlyReviewFromDB) => (
+                    <MonthlyReviewCard
+                      key={review.id}
+                      review={review}
+                      isSelected={selectedMonthlyId === review.id}
+                      onClick={() => setSelectedMonthlyId(s => s === review.id ? null : review.id)}
+                      onEdit={() => {
+                        setEditingMonthly(review)
+                        setMonthlyYear(review.year)
+                        setMonthlyMonth(review.month)
+                        setMonthlyModalOpen(true)
+                      }}
+                      onDelete={() => {
+                        if (confirm("¿Eliminar esta review mensual?")) {
+                          deleteMonthly.mutate(review.id)
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Weekly reviews tab ── */}
+          {activeTab === "weekly" && (
+            <>
           {/* TASK-048 + Sprint 7 URL persistence: Filter bar */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="relative flex-1 min-w-[180px] max-w-[280px]">
@@ -307,6 +399,8 @@ export default function ReviewsPage() {
               ))}
             </div>
           )}
+            </>
+          )}
         </div>
 
         {selectedReview && (
@@ -325,6 +419,14 @@ export default function ReviewsPage() {
         onOpenChange={(v) => { setModalOpen(v); if (!v) setEditingReview(null) }}
         reviewResources={reviewResources}
         editReview={editingReview}
+      />
+
+      <NuevaMensualModal
+        open={monthlyModalOpen}
+        onOpenChange={(v) => { setMonthlyModalOpen(v); if (!v) setEditingMonthly(null) }}
+        year={monthlyYear}
+        month={monthlyMonth}
+        editReview={editingMonthly}
       />
     </>
   )

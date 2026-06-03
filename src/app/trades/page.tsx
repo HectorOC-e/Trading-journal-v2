@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
+import { SkeletonTableRows } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
@@ -311,13 +313,24 @@ export default function TradesPage() {
             ]}
           />
           <KpiStrip items={kpiItems} className="mb-6" />
-          <TradesTable
-            trades={trades}
-            accounts={accounts}
-            setups={setups}
-            selectedId={selectedId ?? undefined}
-            onSelect={(t) => setSelectedId(t ? t.id : null)}
-          />
+          {tradesLoading ? (
+            <SkeletonTableRows rows={8} />
+          ) : trades.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="Sin trades registrados"
+              subtitle="Registra tu primer trade o importa un historial CSV para comenzar."
+              action={{ label: "Registrar trade", onClick: () => setModalOpen(true) }}
+            />
+          ) : (
+            <TradesTable
+              trades={trades}
+              accounts={accounts}
+              setups={setups}
+              selectedId={selectedId ?? undefined}
+              onSelect={(t) => setSelectedId(t ? t.id : null)}
+            />
+          )}
           {hasNextPage && (
             <div className="mt-4 flex justify-center">
               <button

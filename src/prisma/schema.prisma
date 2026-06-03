@@ -45,6 +45,7 @@ model User {
   emailLogs            EmailLog[]
   preferences          UserPreferences?
   aiConfigs            UserAiConfig[]
+  monthlyReviews       MonthlyReview[]
 
   @@map("users")
 }
@@ -502,6 +503,32 @@ model EmailLog {
 
   @@unique([userId, emailType, weekKey])
   @@map("email_logs")
+}
+
+// ─────────────────────────────────────────────
+// MONTHLY REVIEW (Sprint 8, TASK-071)
+// One review per (user, year, month).
+// Aggregates across weekly reviews of that month.
+// ─────────────────────────────────────────────
+model MonthlyReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  year         Int
+  month        Int      // 1–12
+  summary      String   @default("") @db.Text
+  keyThemes    String[] @map("key_themes")
+  goalsSet     String[] @map("goals_set")
+  goalsMet     String[] @map("goals_met")
+  overallScore Int?     @map("overall_score") // 0–100, avg of weekly discipline scores
+  weeklyIds    String[] @map("weekly_ids")    // soft refs to WeeklyReview.id
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month])
+  @@index([userId, year])
+  @@map("monthly_reviews")
 }
 
 // ─────────────────────────────────────────────

@@ -5,6 +5,7 @@
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 389 tests, 4 Blocking QA findings fixed pre-ship).
 > **Sprint 6 closed:** TASK-045 (system theme), TASK-048 (review filters), TASK-049+TASK-012 (sparklines), TASK-013 (type safety), TASK-014 (LearningResource type) + P0.1 (quality gates), P3.1 (key rotation), P3.3 (rate limiting). 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
 > **Sprint 7 closed:** TASK-031 (review edit/delete), TASK-011 (discipline score), TASK-051 (custom tags), TASK-073 (7d rolling window), TASK-064 (setup health), TASK-058 (webhook embedding), TASK-060 (structured logger) + rate-limiter abstraction + review URL persistence + TD-029–TD-033 (Sprint 6 deferred). 438 tests (+31). QA: 2 Blocking + 4 Major fixed post-ship.
+> **Sprint 8 closed:** TASK-021 (analytics cache docs), TASK-022 (email setup docs), TASK-024 (RTL component tests), TASK-025 (Playwright scaffold), TASK-042 (skeleton screens), TASK-043 (empty states), TASK-065 (coach service extraction), TASK-070 (accessibility ARIA), TASK-071 (monthly reviews), TASK-076 (CI/CD). 467 tests (+29). TD-012 + TD-023 closed.
 
 ---
 
@@ -14,9 +15,9 @@
 |---|---|---|---|---|
 | P0 | 12 | 0 | 12 | — |
 | P1 | 17 | 0 | 17 | — |
-| P2 | 17 | 3 | 14 | ~9 days |
-| P3 | 10 | 7 | 3 | ~50+ days |
-| **Total** | **56** | **10** | **46** | **~60+ days** |
+| P2 | 17 | 1 | 16 | ~3 days |
+| P3 | 10 | 3 | 7 | ~20 days |
+| **Total** | **56** | **4** | **52** | **~23 days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
 > **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044 (16 tasks).  
@@ -25,8 +26,9 @@
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).  
 > **Sprint 6 closed:** TASK-045, TASK-048, TASK-049, TASK-012, TASK-013, TASK-014 + quality gates + key rotation + rate limiting. 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
 > **Sprint 7 closed:** TASK-031, TASK-011, TASK-051, TASK-073, TASK-064, TASK-058, TASK-060 + rate-limiter abstraction + review URL persistence + TD-029–TD-033. 438 tests (+31). QA: 2 Blocking + 4 Major found and fixed.
+> **Sprint 8 closed:** TASK-021, TASK-022, TASK-024, TASK-025, TASK-042, TASK-043, TASK-065, TASK-070, TASK-071, TASK-076. 467 tests (+29). TD-012 + TD-023 closed.
 
-**Critical path:** All P0 and P1 items closed. P2 focus: TASK-042 (skeleton screens), TASK-043 (empty states), TASK-052 (onboarding). Sprint 8 targets accessibility (TASK-070), monthly review model (TASK-071), and architecture cleanup (TD-012, TD-018).
+**Critical path:** All P0 and P1 items closed. Remaining P2: TASK-052 (onboarding). Remaining P3: TASK-023 (any types), TASK-053 (portfolio dashboard), and infrastructure items.
 
 ---
 
@@ -54,11 +56,11 @@
 | TASK-018 | Deprecate dead `trades.stats` procedure | trades | P2 | XS | — | DONE |
 | TASK-019 | Add `notes_embedding` and `email_log` to Prisma schema | infra | P3 | S | — | DONE |
 | TASK-020 | Implement cursor pagination in `accountLogs.list` | accounts | P3 | S | — | DONE |
-| TASK-021 | Activate and document `ANALYTICS_CACHE_ENABLED` for production | infra | P3 | XS | — | TODO |
-| TASK-022 | Configure verified email domain in Resend | infra | P3 | XS | — | TODO |
+| TASK-021 | Activate and document `ANALYTICS_CACHE_ENABLED` for production | infra | P3 | XS | — | **DONE** Sprint 8 |
+| TASK-022 | Configure verified email domain in Resend | infra | P3 | XS | — | **DONE** Sprint 8 |
 | TASK-023 | Type `market: any` in MarketCard and `amount: any` in Retiros | types | P3 | XS | — | TODO |
-| TASK-024 | Add React Testing Library component tests | testing | P3 | L | — | TODO |
-| TASK-025 | Add Playwright e2e smoke tests | testing | P3 | L | — | TODO |
+| TASK-024 | Add React Testing Library component tests | testing | P3 | L | — | **DONE** Sprint 8 |
+| TASK-025 | Add Playwright e2e smoke tests | testing | P3 | L | — | **DONE** Sprint 8 |
 | TASK-026 | Fix error message mismatch in `ai-coach/route.ts:106` | ai | P0 | XS | — | DONE |
 | TASK-027 | Centralize financial formulas in `lib/trading-formulas.ts` | formulas | P0 | M | — | DONE |
 | TASK-028 | Fix misleading "Drawdown" label on trades KPI strip | formulas | P0 | XS | — | DONE |
@@ -75,8 +77,8 @@
 | TASK-039 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | DONE |
 | TASK-040 | Add mobile back navigation to detail panels | mobile | P1 | S | — | DONE |
 | TASK-041 | Add `inputmode="decimal"` to price inputs in trade form | mobile | P2 | XS | — | DONE |
-| TASK-042 | Add skeleton screens for KPI strip, trade table, account cards | ux | P2 | M | — | TODO |
-| TASK-043 | Add empty states for Cuentas, Trades, Playbook, Mercados | ux | P2 | M | — | TODO |
+| TASK-042 | Add skeleton screens for KPI strip, trade table, account cards | ux | P2 | M | — | **DONE** Sprint 8 |
+| TASK-043 | Add empty states for Cuentas, Trades, Playbook, Mercados | ux | P2 | M | — | **DONE** Sprint 8 |
 | TASK-044 | Fix `window.location.reload()` in error boundaries | ux | P2 | XS | — | DONE |
 | TASK-045 | Three-way theme toggle (add "system" mode) | personalization | P2 | S | TASK-006 | **DONE** Sprint 6 |
 | TASK-046 | Accent color picker and colorblind mode | personalization | P2 | M | TASK-006 | DONE |
