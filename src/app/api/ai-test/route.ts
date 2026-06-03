@@ -66,7 +66,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ valid: false, error: "Invalid provider" }, { status: 400 })
   }
 
-  // @ts-expect-error — userAiConfig added in Sprint 5 migration; Prisma client not regenerated
   const rawConfig = await prisma.userAiConfig.findUnique({
     where: { userId_provider: { userId: user.id, provider } },
   })
@@ -88,7 +87,6 @@ export async function POST(request: Request) {
   else                            result = await testOpenRouterKey(apiKey)
 
   // Update lastTested and errorLog
-  // @ts-expect-error — userAiConfig added in Sprint 5 migration
   await prisma.userAiConfig.update({
     where: { userId_provider: { userId: user.id, provider } },
     data:  {

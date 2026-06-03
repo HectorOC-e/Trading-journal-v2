@@ -74,16 +74,13 @@ describe("trades.create — planNotes field (TASK-074)", () => {
     const result   = await caller.trades.create({ ...BASE_CREATE_INPUT, planNotes: planNote })
 
     // Gate 3: planNotes is serialized as a string (not null, not Buffer)
-    // @ts-expect-error — planNotes added in Sprint 5 migration; Prisma client not regenerated
     expect(result.planNotes).toBe(planNote)
-    // @ts-expect-error — planNotes added in Sprint 5 migration; Prisma client not regenerated
     expect(typeof result.planNotes).toBe("string")
   })
 
   it("accepts null planNotes (field is optional)", async () => {
     const caller = buildCreateCaller(null)
     const result = await caller.trades.create({ ...BASE_CREATE_INPUT })
-    // @ts-expect-error — planNotes added in Sprint 5 migration; Prisma client not regenerated
     expect(result.planNotes).toBeNull()
   })
 
@@ -101,7 +98,6 @@ describe("trades.update — planNotes field (TASK-074)", () => {
     const mockPrisma  = { trade: { update: vi.fn().mockResolvedValue(makeTrade(updatedNote)) } }
     const caller      = appRouter.createCaller({ prisma: mockPrisma as never, supabase: {} as never, userId: USER_ID })
     const result      = await caller.trades.update({ id: TRADE_ID, planNotes: updatedNote })
-    // @ts-expect-error — planNotes added in Sprint 5 migration; Prisma client not regenerated
     expect(result.planNotes).toBe(updatedNote)
   })
 
@@ -109,7 +105,6 @@ describe("trades.update — planNotes field (TASK-074)", () => {
     const mockPrisma = { trade: { update: vi.fn().mockResolvedValue(makeTrade(null)) } }
     const caller     = appRouter.createCaller({ prisma: mockPrisma as never, supabase: {} as never, userId: USER_ID })
     const result     = await caller.trades.update({ id: TRADE_ID, planNotes: null })
-    // @ts-expect-error — planNotes added in Sprint 5 migration; Prisma client not regenerated
     expect(result.planNotes).toBeNull()
   })
 })

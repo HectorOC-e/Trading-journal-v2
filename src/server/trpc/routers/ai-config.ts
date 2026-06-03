@@ -21,7 +21,6 @@ function validateKeyFormat(provider: Provider, apiKey: string): string | null {
 export const aiConfigRouter = router({
   list: protectedProcedure
     .query(async ({ ctx }) => {
-      // @ts-expect-error — userAiConfig added in Sprint 5 migration; Prisma client not regenerated
       const configs = await ctx.prisma.userAiConfig.findMany({
         where:   { userId: ctx.userId },
         orderBy: { provider: "asc" },
@@ -50,7 +49,6 @@ export const aiConfigRouter = router({
       }
 
       const apiKeyEnc = encryptApiKey(input.apiKey)
-      // @ts-expect-error — userAiConfig added in Sprint 5 migration; Prisma client not regenerated
       const result = await ctx.prisma.userAiConfig.upsert({
         where:  { userId_provider: { userId: ctx.userId, provider: input.provider } },
         create: {
@@ -80,7 +78,6 @@ export const aiConfigRouter = router({
   delete: protectedProcedure
     .input(z.object({ provider: z.enum(PROVIDERS) }))
     .mutation(async ({ ctx, input }) => {
-      // @ts-expect-error — userAiConfig added in Sprint 5 migration; Prisma client not regenerated
       await ctx.prisma.userAiConfig.deleteMany({
         where: { userId: ctx.userId, provider: input.provider },
       })
