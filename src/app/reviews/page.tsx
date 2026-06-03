@@ -4,7 +4,7 @@
 // Sprint 7: Filter state synced to URL params for persistence across navigation
 // Sprint 8 (TASK-071): Monthly reviews tab added
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, Suspense } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Plus, TrendingUp, Percent, Award, ClipboardCheck, Search, X, Calendar } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
@@ -113,7 +113,7 @@ function useReviewFilters() {
   }
 }
 
-export default function ReviewsPage() {
+function ReviewsPageContent() {
   const [activeTab,         setActiveTab]         = useState<ReviewTab>("weekly")
   const [modalOpen,         setModalOpen]          = useState(false)
   const [selectedReview,    setSelectedReview]     = useState<ReviewFromDB | null>(null)
@@ -270,8 +270,6 @@ export default function ReviewsPage() {
             ))}
           </div>
 
-          <KpiStrip items={kpis} className="mb-5" />
-
           {/* ── Monthly reviews tab ── */}
           {activeTab === "monthly" && (
             <>
@@ -315,6 +313,7 @@ export default function ReviewsPage() {
           {/* ── Weekly reviews tab ── */}
           {activeTab === "weekly" && (
             <>
+          <KpiStrip items={kpis} className="mb-5" />
           {/* TASK-048 + Sprint 7 URL persistence: Filter bar */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className="relative flex-1 min-w-[180px] max-w-[280px]">
@@ -429,5 +428,13 @@ export default function ReviewsPage() {
         editReview={editingMonthly}
       />
     </>
+  )
+}
+
+export default function ReviewsPage() {
+  return (
+    <Suspense>
+      <ReviewsPageContent />
+    </Suspense>
   )
 }

@@ -42,13 +42,13 @@ export function MonthlyReviewCard({ review, isSelected, onClick, onEdit, onDelet
       onClick={onClick}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onClick() }}
       className={cn(
-        "rounded-[var(--radius)] border p-4 cursor-pointer transition-colors",
+        "group rounded-[var(--radius)] border p-4 cursor-pointer transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
         isSelected
           ? "border-[var(--accent)] bg-[var(--accent-soft)]"
           : "border-[var(--line)] bg-[var(--panel)] hover:border-[var(--accent)]",
       )}
-      aria-selected={isSelected}
+      aria-pressed={isSelected}
       aria-label={`Review de ${monthName} ${review.year}`}
     >
       <div className="flex items-start gap-3">

@@ -121,6 +121,7 @@ export const monthlyReviewsRouter = router({
       const totalNetPnl   = weeklyReviews.reduce((s, r) => s + r.netPnl.toNumber(), 0)
       const avgWinRate    = weeklyReviews.reduce((s, r) => s + r.winRate.toNumber(), 0) / weeklyReviews.length
       const totalTrades   = weeklyReviews.reduce((s, r) => s + r.tradeCount, 0)
+      // Filter disciplineScore > 0: a score of 0 means "unscored/draft" in WeeklyReview, not a real zero.
       const scores        = weeklyReviews.map(r => r.disciplineScore).filter(s => s > 0)
       const avgScore      = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
 
