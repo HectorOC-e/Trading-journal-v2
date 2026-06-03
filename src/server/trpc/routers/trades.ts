@@ -209,7 +209,7 @@ export const tradesRouter = router({
       accountId: z.string().uuid().optional(),
       from:      z.string().optional(),
       to:        z.string().optional(),
-      period:    z.enum(["1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
+      period:    z.enum(["7d", "1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
     }).optional())
     .query(async ({ ctx, input }) => {
       const now        = new Date()
@@ -220,12 +220,12 @@ export const tradesRouter = router({
       const weekStart  = new Date(Date.now() - daysToMon * 86_400_000).toISOString().slice(0, 10)
       const period     = input?.period ?? "3M"
 
-      const periodDays: Record<string, number | null> = { "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
+      const periodDays: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
       const days       = periodDays[period]
       const periodFrom = days != null ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : undefined
       const queryFrom  = input?.from ?? periodFrom
       const queryTo    = input?.to
-      const grainMap: Record<string, Grain> = { "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
+      const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
       const grain      = grainMap[period]
 
       // ── Cache lookup (feature-flagged) ────────────────────────────────────

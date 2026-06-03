@@ -193,14 +193,23 @@ export const setupsRouter = router({
         : [...new Set(trades.filter(t => t.setupId).map(t => t.setupId!))]
       const setupMetas   = setupIds.map(id => setupMap.get(id) ?? { id, name: id, abbr: "??", color: "#4f6ef7", expectedWr: null, expectedAvgR: null })
 
-      // Compute stats and merge expectedWr / expectedAvgR into each record
+      // Compute stats and merge expectedWr / expectedAvgR / health into each record
+      const { calcSetupHealth } = await import("@/lib/formulas/setup")
       const setupStats = setupIds.map((id, i) => {
         const meta   = setupMetas[i]
         const base   = computeSetupStats(id, trades, { id: meta.id, name: meta.name, abbr: meta.abbr, color: meta.color }, checklistMap)
+        const health = calcSetupHealth({
+          winRate:      base.winRate,
+          avgR:         base.avgR,
+          expectedWr:   meta.expectedWr,
+          expectedAvgR: meta.expectedAvgR,
+          tradeCount:   base.trades,
+        })
         return {
           ...base,
           expectedWr:   meta.expectedWr,
           expectedAvgR: meta.expectedAvgR,
+          health,
         }
       }).sort((a, b) => b.trades - a.trades)
 

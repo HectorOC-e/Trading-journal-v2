@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
+import { logger } from "@/lib/logger"
 import {
   PROFILE_PUBLIC_FIELDS,
   validateProfileUpdate,
@@ -103,7 +104,7 @@ export const profileRouter = router({
       const admin = createAdminClient()
       const { error } = await admin.auth.admin.deleteUser(ctx.userId)
       if (error) {
-        console.error("Auth deletion failed after profile deletion:", error.message)
+        logger.error("Auth deletion failed after profile deletion", { userId: ctx.userId, error: error.message })
       }
       return { ok: true }
     }),

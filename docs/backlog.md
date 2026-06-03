@@ -42,7 +42,7 @@
 | TASK-008 | Fix N+1 query in `resourceImpactRanking` | learning | P1 | M | — | DONE |
 | TASK-009 | Fix weekTrades and account stats based on first 50 trades only | analytics | P0 | S | — | DONE |
 | TASK-010 | Connect "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
-| TASK-011 | Extract `computeDisciplineScore` as shared function | formulas | P2 | S | TASK-027 | TODO |
+| TASK-011 | Extract `computeDisciplineScore` as shared function | formulas | P2 | S | TASK-027 | **DONE** Sprint 7 |
 | TASK-012 | Implement sparklines of equity per setup in Playbook | playbook | P2 | M | — | **DONE** Sprint 6 (consolidated → TASK-049) |
 | TASK-013 | Eliminate 15+ `as never` casts in trades/page.tsx | types | P2 | M | — | **DONE** Sprint 6 |
 | TASK-014 | Unify `LearningResource` type with RouterOutputs | types | P2 | S | — | **DONE** Sprint 6 |
@@ -62,7 +62,7 @@
 | TASK-028 | Fix misleading "Drawdown" label on trades KPI strip | formulas | P0 | XS | — | DONE |
 | TASK-029 | Fix inconsistent drawdown calculation in `use-account-stats.ts` | formulas | P0 | XS | — | DONE |
 | TASK-030 | Implement `UserPreferences` table and router | profile | P1 | M | TASK-006 | DONE |
-| TASK-031 | Add Edit and Delete buttons to ReviewDetailPanel | reviews | P1 | M | — | TODO |
+| TASK-031 | Add Edit and Delete buttons to ReviewDetailPanel | reviews | P1 | M | — | **DONE** Sprint 7 |
 | TASK-032 | Update stale AI model IDs in config (coach + summary) | ai | P1 | XS | — | DONE |
 | TASK-033 | Implement AI configuration UI and `UserAiConfig` table | ai | P1 | L | TASK-006, TASK-032 | DONE |
 | TASK-034 | Add per-trade psychology fields to Trade model | psychology | P1 | M | — | TODO |
@@ -82,7 +82,7 @@
 | TASK-048 | Weekly review filtering and search | reviews | P2 | M | — | **DONE** Sprint 6 |
 | TASK-049 | Playbook sparklines with real equity data | playbook | P2 | M | — | **DONE** Sprint 6 |
 | TASK-050 | Goal setting and dashboard widget | personalization | P2 | M | TASK-006 | DONE |
-| TASK-051 | Custom tags management UI | personalization | P2 | M | TASK-006 | TODO |
+| TASK-051 | Custom tags management UI | personalization | P2 | M | TASK-006 | **DONE** Sprint 7 |
 | TASK-052 | Onboarding checklist widget for new users | ux | P2 | M | TASK-006 | TODO |
 | TASK-053 | Multi-account portfolio dashboard | analytics | P3 | XL | TASK-019 | TODO |
 | TASK-056 | Create `useCurrency()` hook for currency symbol propagation | profile | P1 | S | TASK-006 | DONE |

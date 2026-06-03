@@ -236,7 +236,28 @@ export function ReviewDetailPanel({
             </table>
           </div>
         </div>
+
+        {/* "Última edición" timestamp — shown only when review was edited after creation */}
+        {review.updatedAt !== review.createdAt && !isDraft && (
+          <div
+            className="px-5 py-2 text-[10px] border-t"
+            style={{ borderColor: "var(--line)", color: "var(--ink-3)" }}
+          >
+            Última edición: {formatRelativeTime(review.updatedAt)}
+          </div>
+        )}
       </div>
     </div>
   )
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs  = Date.now() - new Date(iso).getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+  if (diffMin < 1)  return "hace un momento"
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24)   return `hace ${diffH} h`
+  const diffD = Math.floor(diffH / 24)
+  return `hace ${diffD} día${diffD > 1 ? "s" : ""}`
 }

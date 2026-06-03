@@ -8,7 +8,8 @@
 > **Pre-Sprint 4 closed:** Type contract, Theme CSS, Decimal serialization, Label mismatch, useEffect deps, Trade limit, Test discovery (8 findings, 5 tests added).  
 > **Sprint 4 closed:** Psychology UI, auto-save, week selector, dashboard persistence, `any` types eliminated, `as never` casts reduced 12→4. Tests: 364 passing (+2 regression guards). (6 tasks, 2 regression tests).  
 > **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
-> **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**
+> **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**  
+> **Sprint 7 closed:** TD-002/TD-017 (discipline score centralization — already implemented, verified canonical formula in `lib/formulas/discipline.ts`), TD-020 (embedding now webhook-triggered, not fire-and-forget), TD-029 (`CYCLE.includes` guard on DB prefs), TD-030 (`>=` boundary in `InMemoryRateLimiter`), TD-031 (`serializeAccount` on all 5 mutation endpoints), TD-032 (`Prisma.Decimal` in accounts test mock), TD-033 (rate-limit tests import real `InMemoryRateLimiter`). Tests: 407 → 430 (+23). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**
 
 ---
 
@@ -17,7 +18,7 @@
 | ID | Severity | Category | Title | Effort | Task | Status |
 |---|---|---|---|---|---|---|
 | TD-001 | CRITICAL | Formula | Win Rate: 8 inline implementations | M | TASK-027, TASK-005 | **Closed** Sprint 1 |
-| TD-002 | CRITICAL | Formula | Discipline Score: 3 independent implementations | S | TASK-011 | Open |
+| TD-002 | CRITICAL | Formula | Discipline Score: 3 independent implementations | S | TASK-011 | **Closed** Sprint 7 |
 | TD-003 | CRITICAL | Functionality | Profile page entirely disconnected from backend | L | TASK-006 | **Closed** Sprint 3 |
 | TD-004 | CRITICAL | Data | KPIs calculated over paginated data (max 50 trades) | S | TASK-001, TASK-009 | **Closed** Sprint 1 |
 | TD-005 | CRITICAL | Logic | Phase promotion `objectiveMet = false` hardcoded | XS | TASK-002 | **Closed** Sprint 2 |
@@ -32,26 +33,26 @@
 | TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | **Closed** Sprint 6 |
 | TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | **Closed** Sprint 2 |
 | TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | **Closed** Sprint 4 |
-| TD-017 | MEDIUM | Formula | Discipline score uses simplified formula in review modal | S | TASK-011 | Open |
+| TD-017 | MEDIUM | Formula | Discipline score uses simplified formula in review modal | S | TASK-011 | **Closed** Sprint 7 |
 | TD-018 | MEDIUM | Architecture | Inline business logic in router files (924-line trades.ts) | L | Ongoing | Open |
 | TD-019 | MEDIUM | Performance | tRPC context recreates Supabase client per request | M | — | Open |
-| TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | — | Open |
+| TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | TASK-058 | **Closed** Sprint 7 |
 | TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | **Closed** Sprint 1 |
 | TD-022 | MEDIUM | Security | AI API keys encryption + per-user isolation | L | TASK-033 | **Closed** Sprint 5 (partial: per-user encryption implemented; env vars still at risk) |
 | TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
-| TD-029 | LOW | Type Safety | `prefs.theme` DB cast lacks `CYCLE.includes` guard | XS | — | Open |
-| TD-030 | LOW | Reliability | Rate limiter window boundary off-by-one (`>` vs `>=`) | XS | — | Open |
-| TD-031 | MEDIUM | Type Safety | Accounts mutations return unserialized `Decimal` over the wire | XS | — | Open |
-| TD-032 | LOW | Testing | `accounts.test.ts` mock uses plain number not `Prisma.Decimal` | XS | — | Open |
-| TD-033 | LOW | Testing | Rate limit test duplicates algorithm instead of importing it | S | — | Open |
+| TD-029 | LOW | Type Safety | `prefs.theme` DB cast lacks `CYCLE.includes` guard | XS | — | **Closed** Sprint 7 |
+| TD-030 | LOW | Reliability | Rate limiter window boundary off-by-one (`>` vs `>=`) | XS | — | **Closed** Sprint 7 |
+| TD-031 | MEDIUM | Type Safety | Accounts mutations return unserialized `Decimal` over the wire | XS | — | **Closed** Sprint 7 |
+| TD-032 | LOW | Testing | `accounts.test.ts` mock uses plain number not `Prisma.Decimal` | XS | — | **Closed** Sprint 7 |
+| TD-033 | LOW | Testing | Rate limit test duplicates algorithm instead of importing it | S | — | **Closed** Sprint 7 |
 | TD-024 | LOW | Documentation | No `.env.example`, no variables documentation | XS | TASK-059 | **Closed** Sprint 2 |
 | TD-025 | MEDIUM | Data | Drawdown label on trades page shows "peor día" not drawdown | XS | TASK-028 | **Closed** Sprint 2 |
 | TD-026 | MEDIUM | Data | `use-account-stats.ts` shows current-DD from ATH, not max-DD | XS | TASK-029 | **Closed** Sprint 1 |
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-015 | **Closed** Sprint 2 |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
-**Open items: 11 of 33 | Closed total: 22 items**  
-**Remaining estimated effort: ~6 engineer-days to close all open items**
+**Open items: 4 of 33 | Closed total: 29 items**  
+**Remaining estimated effort: ~4 engineer-days to close all open items**
 
 ---
 

@@ -2,34 +2,11 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { decryptApiKey } from "@/lib/ai/key-encryption"
+import { createRateLimiter } from "@/lib/rate-limiter"
 
 type Provider = "anthropic" | "openrouter" | "openai"
 
-// In-memory rate limiter: 5 tests per 60 s per user
-const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
-const RATE_LIMIT_MAX    = 5
-const RATE_LIMIT_WINDOW = 60_000 // ms
-
-// TODO(Sprint 7): replace with Redis-backed limiter (e.g. Upstash) for multi-instance Vercel deployments.
-// The current in-memory Map is per-process; each cold start resets the count.
-function checkRateLimit(userId: string): { allowed: boolean; retryAfter: number } {
-  const now = Date.now()
-  // Evict entries older than 2× the window to prevent unbounded Map growth
-  for (const [id, e] of rateLimitMap.entries()) {
-    if (now - e.windowStart > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(id)
-  }
-  const entry = rateLimitMap.get(userId)
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimitMap.set(userId, { count: 1, windowStart: now })
-    return { allowed: true, retryAfter: 0 }
-  }
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((RATE_LIMIT_WINDOW - (now - entry.windowStart)) / 1000)
-    return { allowed: false, retryAfter }
-  }
-  entry.count++
-  return { allowed: true, retryAfter: 0 }
-}
+const rateLimiter = createRateLimiter()
 
 async function testAnthropicKey(apiKey: string): Promise<{ valid: boolean; error?: string }> {
   try {
@@ -80,7 +57,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ valid: false, error: "Unauthorized" }, { status: 401 })
   }
 
-  const rl = checkRateLimit(user.id)
+  const rl = await rateLimiter.check(user.id)
   if (!rl.allowed) {
     return NextResponse.json(
       { valid: false, error: `Rate limit exceeded. Try again in ${rl.retryAfter}s.` },
@@ -120,7 +97,6 @@ export async function POST(request: Request) {
   else if (provider === "openai") result = await testOpenAIKey(apiKey)
   else                            result = await testOpenRouterKey(apiKey)
 
-  // Update lastTested and errorLog
   await prisma.userAiConfig.update({
     where: { userId_provider: { userId: user.id, provider } },
     data:  {

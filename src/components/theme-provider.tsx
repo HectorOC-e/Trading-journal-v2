@@ -42,7 +42,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Bootstrap from DB prefs (takes precedence over localStorage)
   useEffect(() => {
     if (prefs?.theme) {
-      setThemeState(prefs.theme as ThemeMode)
+      const t = prefs.theme as ThemeMode
+      if (CYCLE.includes(t)) setThemeState(t) // TD-029: guard against unknown DB values
     } else {
       const saved = localStorage.getItem("tj-theme") as ThemeMode | null
       if (saved && CYCLE.includes(saved)) setThemeState(saved)

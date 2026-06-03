@@ -10,6 +10,42 @@ function sessionCellColor(pct: number) {
   return           { bg: "rgba(224,85,85,0.20)",  text: "var(--loss)" }
 }
 
+// TASK-064: Setup health indicator dot
+import type { SetupHealthStatus } from "@/lib/formulas/setup"
+
+const HEALTH_CONFIG: Record<SetupHealthStatus, { dot: string; label: string; color: string }> = {
+  healthy:      { dot: "🟢", label: "Saludable",    color: "var(--win)"  },
+  warning:      { dot: "🟡", label: "Atención",     color: "var(--be)"   },
+  critical:     { dot: "🔴", label: "Crítico",      color: "var(--loss)" },
+  insufficient: { dot: "⚪", label: "Insuficiente", color: "var(--ink-3)" },
+}
+
+function SetupHealthDot({ health, winRate, avgR, expectedWr, expectedAvgR }: {
+  health:       SetupHealthStatus
+  winRate:      number
+  avgR:         number
+  expectedWr:   number | null
+  expectedAvgR: number | null
+}) {
+  const cfg = HEALTH_CONFIG[health]
+  const tooltip = health === "insufficient"
+    ? "Menos de 5 trades — insuficiente para evaluar"
+    : [
+        expectedWr   != null ? `WR: ${winRate.toFixed(0)}% (esp. ${expectedWr.toFixed(0)}%)` : null,
+        expectedAvgR != null ? `Avg R: ${avgR.toFixed(2)} (esp. ${expectedAvgR.toFixed(2)})` : null,
+      ].filter(Boolean).join(" · ") || cfg.label
+
+  return (
+    <span
+      className="text-[14px] shrink-0 cursor-default select-none"
+      title={`${cfg.label} · ${tooltip}`}
+      aria-label={`Salud del setup: ${cfg.label}`}
+    >
+      {cfg.dot}
+    </span>
+  )
+}
+
 function checklistColor(pct: number) {
   if (pct >= 80) return "var(--win)"
   if (pct >= 65) return "var(--be)"
@@ -184,10 +220,12 @@ export function TabPlaybook() {
                   <div className="flex items-center gap-2.5 p-3 pb-2">
                     <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                       style={{ background: s.color }}>{s.abbr}</span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
                       <p className="text-[10px] text-[var(--ink-3)]">{s.trades} trades</p>
                     </div>
+                    {/* TASK-064: Setup health indicator */}
+                    <SetupHealthDot health={s.health} winRate={s.winRate} avgR={s.avgR} expectedWr={s.expectedWr} expectedAvgR={s.expectedAvgR} />
                   </div>
                   <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
                     <defs>

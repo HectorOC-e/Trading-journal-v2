@@ -81,14 +81,15 @@ export const accountsRouter = router({
       await ctx.prisma.accountLog.create({
         data: { userId: ctx.userId, accountId: account.id, event: "CREATED", payload: createdPayload },
       })
-      return account
+      return serializeAccount(account) // TD-031: serialize Decimal fields
     }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).merge(AccountInput.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
-      return ctx.prisma.account.update({ where: { id, userId: ctx.userId }, data })
+      const account = await ctx.prisma.account.update({ where: { id, userId: ctx.userId }, data })
+      return serializeAccount(account) // TD-031
     }),
 
   changeStatus: protectedProcedure
@@ -120,7 +121,7 @@ export const accountsRouter = router({
           payload:   changeStatusPayload,
         },
       })
-      return account
+      return serializeAccount(account) // TD-031
     }),
 
   changePhase: protectedProcedure
@@ -180,7 +181,7 @@ export const accountsRouter = router({
       await ctx.prisma.accountLog.create({
         data: { userId: ctx.userId, accountId: input.id, event: "PHASE_CHANGE", payload: phasePayload },
       })
-      return account
+      return serializeAccount(account) // TD-031
     }),
 
   archive: protectedProcedure
@@ -194,7 +195,7 @@ export const accountsRouter = router({
       await ctx.prisma.accountLog.create({
         data: { userId: ctx.userId, accountId: input, event: "STATUS_CHANGE", payload: archivePayload },
       })
-      return account
+      return serializeAccount(account) // TD-031
     }),
 
   delete: protectedProcedure

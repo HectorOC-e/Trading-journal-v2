@@ -14,6 +14,7 @@ import { profileRouter }            from "./routers/profile"
 import { preferencesRouter }        from "./routers/preferences"
 import { goalsRouter }              from "./routers/goals"
 import { aiConfigRouter }           from "./routers/ai-config"
+import { tradeTagsRouter }          from "./routers/trade-tags"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -30,6 +31,7 @@ export const appRouter = router({
   preferences:       preferencesRouter,
   goals:             goalsRouter,
   aiConfig:          aiConfigRouter,
+  tradeTags:         tradeTagsRouter,
 })
 
 export type AppRouter     = typeof appRouter

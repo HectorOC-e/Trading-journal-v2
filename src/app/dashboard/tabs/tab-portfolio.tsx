@@ -15,8 +15,8 @@ import type { RouterOutputs } from "@/server/trpc/root"
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
 type AccountMeta    = RouterOutputs["accounts"]["list"][number]
 
-type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
-const PERIODS: Period[] = ["1M", "3M", "6M", "1Y", "ALL"]
+type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
+const PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
 
 export function TabPortfolio({
   kpis, pnlByDate, propFirmStatus, accountStats, accounts, period, onPeriodChange,

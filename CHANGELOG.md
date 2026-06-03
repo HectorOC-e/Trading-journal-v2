@@ -6,6 +6,40 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Sprint 7 (2026-06-03) — Reviews, Discipline, Infrastructure Hardening
+
+**Added**
+- **TASK-031:** Edit and delete in ReviewDetailPanel — "Editar" opens `NuevaReviewModal` in edit mode with prefilled fields; "Eliminar" shows confirmation dialog and navigates back on success; "Última edición: hace N horas" timestamp in detail footer
+- **TASK-051:** Custom tags management page (`/etiquetas`) — table with usage counts, inline rename (Enter to commit, Escape to cancel), delete with confirmation, merge with survivor selection; accessible from Sidebar under Cuenta section
+- **TASK-073:** 7d period added to dashboard rolling metrics — `"7d"` option in period selector (7d | 1M | 3M | 6M | 1Y | ALL); selected period persisted to `localStorage`; server extends `trades.dashboardStats` and `trades.equityCurve` with `7d` support
+- **TASK-064:** Setup health score in Playbook — `calcSetupHealth()` in `lib/formulas/setup.ts`; 🟢/🟡/🔴/⚪ dot with tooltip on each setup card; "Insuficiente" state for <5 trades
+- **TASK-058:** Reliable embedding via DB webhook — `ai-embed/route.ts` accepts both `{ tradeId }` direct calls and `{ type: "INSERT", record: { id } }` Supabase webhook payloads; `SUPABASE_WEBHOOK_SECRET` header validation; fallback to Supabase auth when header absent
+- **TASK-060:** Structured logger `lib/logger.ts` — JSON in production (Vercel-parseable), pretty-print in dev; replaces `console.error` in profile router delete path
+- **Rate limiter extraction:** `lib/rate-limiter.ts` — `RateLimiter` interface, `InMemoryRateLimiter`, `UpstashRateLimiter` (falls back to InMemory when packages absent or Redis unavailable), `createRateLimiter()` factory reads `UPSTASH_REDIS_REST_URL`
+- **Review filter URL persistence** — `useReviewFilters()` hook in `reviews/page.tsx` syncs `q`, `outcome`, `status`, `minDisc` to URL params via `router.replace()`; filter state survives navigation; "Limpiar filtros" clears URL to clean pathname
+
+**Fixed (Technical Debt)**
+- **TD-002/TD-017:** Discipline score centralization verified — canonical formula in `lib/formulas/discipline.ts`; server and modal both delegate to shared `computeDisciplineScore()`; no more divergence
+- **TD-020:** Embedding no longer fire-and-forget in same worker — webhook-triggered path decouples embedding from trade creation response
+- **TD-029:** `theme-provider.tsx` now guards `CYCLE.includes(t)` before applying DB preference to prevent unknown themes from crashing toggle cycle
+- **TD-030:** `InMemoryRateLimiter` window boundary corrected to `>=` (was `>`) — prevents one extra request slipping through at exact window expiry
+- **TD-031:** All 5 accounts mutation endpoints (`create`, `update`, `changeStatus`, `changePhase`, `archive`) now return `serializeAccount()` — `Decimal` fields are numbers over the wire
+- **TD-032:** `accounts.test.ts` mock uses `new Prisma.Decimal("10000.50")` matching real Prisma behavior; serialization assertions added
+- **TD-033:** Rate-limit tests import `InMemoryRateLimiter` directly — no algorithm duplication; 1 new test (stale entry eviction)
+
+**Tests**
+- 11 tests for `calcSetupHealth()` — all four status values, null expectations, tradeCount boundary
+- 11 tests for `tradeTagsRouter` — list (bigint→number, empty), rename (success, same-name rejection, length), delete (success, empty input), merge (success, same-tag rejection, empty inputs)
+- 1 new test for stale-entry eviction in `InMemoryRateLimiter`
+- Test suite: 407 → 430 passing (+23), 0 failing
+
+**Documentation**
+- Created `docs/SPRINT_7_COMPLETION_REPORT.md`
+- Updated `docs/backlog.md` — TASK-031, TASK-011, TASK-051 marked DONE Sprint 7
+- Updated `docs/technical-debt.md` — TD-002, TD-017, TD-020, TD-029–TD-033 closed Sprint 7; open items: 4 of 33
+
+---
+
 ### Sprint 6 QA Fix (2026-06-03) — 6 Major Findings Resolved
 
 **Fixed — Major (6)**

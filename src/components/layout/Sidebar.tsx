@@ -7,7 +7,7 @@ import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
-  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2, LogOut, ArrowDownToLine,
+  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2, LogOut, ArrowDownToLine, Tag,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -28,8 +28,9 @@ const NAV = [
   {
     section: "CUENTA",
     items: [
-      { href: "/retiros", label: "Retiros",  icon: ArrowDownToLine },
-      { href: "/perfil",  label: "Perfil",   icon: User },
+      { href: "/retiros",    label: "Retiros",   icon: ArrowDownToLine },
+      { href: "/etiquetas", label: "Etiquetas", icon: Tag },
+      { href: "/perfil",    label: "Perfil",    icon: User },
     ],
   },
 ]

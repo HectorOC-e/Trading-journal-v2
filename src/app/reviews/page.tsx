@@ -1,8 +1,10 @@
 "use client"
 
 // TASK-048: Review filtering and search
+// Sprint 7: Filter state synced to URL params for persistence across navigation
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, useEffect } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Plus, TrendingUp, Percent, Award, ClipboardCheck, Search, X } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
@@ -34,6 +36,9 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "draft",     label: "Borrador"    },
 ]
 
+const VALID_OUTCOMES = new Set(["ALL", "WIN", "LOSS", "NEUTRAL"])
+const VALID_STATUSES = new Set(["ALL", "draft", "submitted"])
+
 function FilterChip<T extends string>({
   value, options, onChange,
 }: {
@@ -61,16 +66,57 @@ function FilterChip<T extends string>({
   )
 }
 
+// Hook that syncs filter state to URL search params.
+// router.replace() updates the URL without adding a browser history entry.
+function useReviewFilters() {
+  const router      = useRouter()
+  const pathname    = usePathname()
+  const searchParams = useSearchParams()
+
+  const q       = searchParams.get("q") ?? ""
+  const outcome = (VALID_OUTCOMES.has(searchParams.get("outcome") ?? "") ? searchParams.get("outcome") : "ALL") as OutcomeFilter
+  const status  = (VALID_STATUSES.has(searchParams.get("status")  ?? "") ? searchParams.get("status")  : "ALL") as StatusFilter
+  const disc    = searchParams.get("disc") ?? ""
+
+  function buildParams(overrides: Record<string, string | null>) {
+    const p = new URLSearchParams()
+    const merged = { q, outcome, status, disc, ...overrides }
+    if (merged.q)                           p.set("q",       merged.q)
+    if (merged.outcome && merged.outcome !== "ALL") p.set("outcome", merged.outcome)
+    if (merged.status  && merged.status  !== "ALL") p.set("status",  merged.status)
+    if (merged.disc)                        p.set("disc",    merged.disc)
+    const qs = p.toString()
+    return qs ? `${pathname}?${qs}` : pathname
+  }
+
+  const setSearchQuery   = (v: string)         => router.replace(buildParams({ q: v || null }))
+  const setOutcomeFilter = (v: OutcomeFilter)  => router.replace(buildParams({ outcome: v === "ALL" ? null : v }))
+  const setStatusFilter  = (v: StatusFilter)   => router.replace(buildParams({ status:  v === "ALL" ? null : v }))
+  const setMinDisc       = (v: string)         => router.replace(buildParams({ disc: v || null }))
+  const clearFilters     = () => router.replace(pathname)
+
+  return {
+    searchQuery: q, setSearchQuery,
+    outcomeFilter: outcome, setOutcomeFilter,
+    statusFilter: status, setStatusFilter,
+    minDisc: disc, setMinDisc,
+    clearFilters,
+    hasFilters: !!(q || outcome !== "ALL" || status !== "ALL" || disc),
+  }
+}
+
 export default function ReviewsPage() {
   const [modalOpen,      setModalOpen]      = useState(false)
   const [selectedReview, setSelectedReview] = useState<ReviewFromDB | null>(null)
   const [editingReview,  setEditingReview]  = useState<ReviewFromDB | null>(null)
 
-  // TASK-048: filter state
-  const [searchQuery,   setSearchQuery]   = useState("")
-  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("ALL")
-  const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("ALL")
-  const [minDisc,       setMinDisc]       = useState<string>("")
+  const {
+    searchQuery, setSearchQuery,
+    outcomeFilter, setOutcomeFilter,
+    statusFilter, setStatusFilter,
+    minDisc, setMinDisc,
+    clearFilters, hasFilters,
+  } = useReviewFilters()
 
   const { data: reviews = [], isLoading } = trpc.weeklyReviews.list.useQuery()
   const { data: accounts = [] }           = trpc.accounts.list.useQuery()
@@ -133,7 +179,6 @@ export default function ReviewsPage() {
     const minDiscN = minDisc !== "" ? parseFloat(minDisc) : null
 
     return reviews.filter((r: ReviewFromDB) => {
-      // Text search
       if (q) {
         const haystack = [
           r.executiveSummary ?? "",
@@ -143,15 +188,12 @@ export default function ReviewsPage() {
         ].join(" ").toLowerCase()
         if (!haystack.includes(q)) return false
       }
-      // Outcome filter
       if (outcomeFilter !== "ALL") {
         if (outcomeFilter === "WIN"     && r.netPnl <= 0)  return false
         if (outcomeFilter === "LOSS"    && r.netPnl >= 0)  return false
         if (outcomeFilter === "NEUTRAL" && r.netPnl !== 0) return false
       }
-      // Status filter
       if (statusFilter !== "ALL" && r.status !== statusFilter) return false
-      // Min discipline score
       if (minDiscN !== null && r.disciplineScore < minDiscN) return false
       return true
     })
@@ -164,15 +206,6 @@ export default function ReviewsPage() {
       return acctMatch && t.date >= selectedReview.weekStart && t.date <= selectedReview.weekEnd
     })
   }, [selectedReview, allTrades])
-
-  const hasFilters = searchQuery || outcomeFilter !== "ALL" || statusFilter !== "ALL" || minDisc !== ""
-
-  const clearFilters = useCallback(() => {
-    setSearchQuery("")
-    setOutcomeFilter("ALL")
-    setStatusFilter("ALL")
-    setMinDisc("")
-  }, [])
 
   function handleCardClick(review: ReviewFromDB) {
     setSelectedReview((prev: ReviewFromDB | null) => (prev?.id === review.id ? null : review))
@@ -190,9 +223,8 @@ export default function ReviewsPage() {
 
           <KpiStrip items={kpis} className="mb-5" />
 
-          {/* TASK-048: Filter bar */}
+          {/* TASK-048 + Sprint 7 URL persistence: Filter bar */}
           <div className="flex items-center gap-3 mb-4 flex-wrap">
-            {/* Search */}
             <div className="relative flex-1 min-w-[180px] max-w-[280px]">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-3)]" />
               <input
@@ -210,17 +242,14 @@ export default function ReviewsPage() {
 
             <div className="w-px h-4 bg-[var(--line)]" />
 
-            {/* Outcome filter */}
             <FilterChip value={outcomeFilter} options={OUTCOME_OPTIONS} onChange={setOutcomeFilter} />
 
             <div className="w-px h-4 bg-[var(--line)]" />
 
-            {/* Status filter */}
             <FilterChip value={statusFilter} options={STATUS_OPTIONS} onChange={setStatusFilter} />
 
             <div className="w-px h-4 bg-[var(--line)]" />
 
-            {/* Min discipline score */}
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] text-[var(--ink-3)] whitespace-nowrap">Disc ≥</span>
               <input
@@ -234,7 +263,6 @@ export default function ReviewsPage() {
               />
             </div>
 
-            {/* Results count + clear */}
             <span className="text-[11px] text-[var(--ink-3)] ml-auto whitespace-nowrap">
               {filteredReviews.length} de {reviews.length}
             </span>

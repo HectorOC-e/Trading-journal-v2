@@ -3,10 +3,8 @@
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { TopBar } from "@/components/layout/top-bar"
-import { useDashboardStats } from "./hooks/use-dashboard-stats"
+import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
-
-type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
 import { TabOperador }   from "./tabs/tab-operador"
 import { TabDisciplina } from "./tabs/tab-disciplina"
@@ -21,23 +19,30 @@ const TABS = [
   { value: "playbook",   label: "Playbook" },
 ]
 
+const VALID_PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
+const PERIOD_STORAGE_KEY = "tj-dashboard-period"
+
 export default function DashboardPage() {
   const [tab, setTab]       = useState<Tab>("portfolio")
   const [period, setPeriod] = useState<Period>("3M")
   const [prefsLoaded, setPrefsLoaded] = useState(false)
-  const tabDebounceRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tabDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const { stats, accounts, isLoading, isError } = useDashboardStats(period)
   const { data: prefs } = trpc.preferences.get.useQuery()
   const updatePrefs = trpc.preferences.update.useMutation({
-    onError: () => { /* silent — tab preference save failure is non-critical */ },
+    onError: () => { /* silent */ },
   })
 
-  // Load saved tab from preferences once
+  // Load saved tab from preferences and period from localStorage once
   useEffect(() => {
     if (!prefs || prefsLoaded) return
     if (prefs.defaultTab && ["portfolio", "operador", "disciplina", "playbook"].includes(prefs.defaultTab)) {
       setTab(prefs.defaultTab as Tab)
+    }
+    const savedPeriod = localStorage.getItem(PERIOD_STORAGE_KEY) as Period | null
+    if (savedPeriod && VALID_PERIODS.includes(savedPeriod)) {
+      setPeriod(savedPeriod)
     }
     setPrefsLoaded(true)
   }, [prefs, prefsLoaded])
@@ -48,6 +53,11 @@ export default function DashboardPage() {
     tabDebounceRef.current = setTimeout(() => {
       updatePrefs.mutate({ defaultTab: newTab })
     }, 500)
+  }
+
+  function handlePeriodChange(p: Period) {
+    setPeriod(p)
+    localStorage.setItem(PERIOD_STORAGE_KEY, p)
   }
 
   if (isLoading) {
@@ -88,7 +98,7 @@ export default function DashboardPage() {
           accountStats={stats.accountStats}
           accounts={accounts}
           period={period}
-          onPeriodChange={setPeriod}
+          onPeriodChange={handlePeriodChange}
         />
       )}
       {tab === "operador" && (
@@ -103,7 +113,7 @@ export default function DashboardPage() {
           executionStats={stats.executionStats}
           accounts={accounts}
           period={period}
-          onPeriodChange={setPeriod}
+          onPeriodChange={handlePeriodChange}
         />
       )}
       {tab === "disciplina" && (

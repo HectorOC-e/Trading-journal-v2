@@ -24,6 +24,10 @@ export { calcRMultiple, calcAvgR, calcExpectancyR } from './risk'
 // Performance
 export { calcSharpeRatio, calcProfitFactor, calcNetPnl } from './performance'
 
+// Setup health
+export { calcSetupHealth } from './setup'
+export type { SetupHealthStatus, SetupHealthParams } from './setup'
+
 // Utilities
 export { getISOWeekKey } from './utils'
 
