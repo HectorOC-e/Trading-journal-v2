@@ -5,6 +5,155 @@
 
 ---
 
+## [Sprint 7 — Reviews, Discipline, Infrastructure Hardening & QA Cascade] — 2026-06-03
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 407 → 438 passing (+31 total: +23 implementation + 8 QA fixes) | **TypeScript:** clean (`tsc --noEmit`) | **QA findings:** 2 Blocking, 4 Major (all fixed) · 4 Minor, 5 Nitpick (deferred)
+
+### Completed (Core Features — 10 Tasks)
+
+- **TASK-031 — Review Edit and Delete** — `src/app/reviews/components/review-detail-panel.tsx`, `src/app/reviews/modals/`
+  - ✅ "Editar" button opens `NuevaReviewModal` in edit mode with all fields pre-populated
+  - ✅ "Eliminar" button with confirmation dialog; navigates back to list on success
+  - ✅ "Última edición" timestamp in submitted review footer
+  - ✅ Server-side: `weeklyReviews.update` and `weeklyReviews.delete` enforce `userId` ownership
+
+- **TASK-011 — Discipline Score Centralization (TD-002 CRITICAL)** — `src/lib/formulas/discipline.ts`, `src/server/trpc/routers/weekly-reviews.ts`
+  - ✅ `computeDisciplineScore({ executionPct, learningPct, adherencePct })` exported from formulas barrel
+  - ✅ Both server-side inline implementations in `weekly-reviews.ts` replaced with shared function
+  - ✅ Frontend modal now shows server-provided prefill score only; local computation removed
+  - ✅ Closes TD-002 CRITICAL (3 divergent implementations → 1 canonical function)
+
+- **Rate-Limiter Abstraction** — `src/lib/rate-limiter.ts`
+  - ✅ `RateLimiter` interface, `InMemoryRateLimiter`, `UpstashRateLimiter`, `createRateLimiter()` factory
+  - ✅ Graceful fallback: in-memory when `UPSTASH_REDIS_REST_URL` absent (local dev safe)
+  - ✅ `ai-test/route.ts` updated to use `createRateLimiter()` (closes TD-033)
+
+- **TASK-073 — Rolling Metrics (7d window)** — `src/server/trpc/routers/trades.ts`, `src/app/dashboard/`
+  - ✅ `"7d"` period added to `trades.dashboardStats` and `equityCurve` server procedures
+  - ✅ Period selector extended on Portfolio and Operador tabs
+  - ✅ `localStorage` persistence for period preference with try/catch guard (M-02 fix applied)
+
+- **TASK-064 — Setup Health Score** — `src/lib/formulas/setup.ts`, `src/app/dashboard/tabs/tab-playbook.tsx`
+  - ✅ `calcSetupHealth(stats)` → `"healthy" | "warning" | "critical" | "insufficient"`
+  - ✅ `SetupHealthDot` component (🟢/🟡/🔴/⚪) on each Playbook setup card
+  - ✅ Edge case: `tradeCount < 5` returns `"insufficient"` regardless of metrics
+
+- **TASK-058 — Reliable Embedding via Webhook (TD-020)** — `src/app/api/ai-embed/route.ts`
+  - ✅ Accepts Supabase webhook payload `{ type: "INSERT", record: { id } }`
+  - ✅ `SUPABASE_WEBHOOK_SECRET` with constant-time validation (`crypto.timingSafeEqual`)
+  - ✅ Embedding decoupled from trade creation request lifecycle (closes TD-020)
+
+- **TASK-060 — Structured Logger** — `src/lib/logger.ts`
+  - ✅ `logger.info/warn/error` with `{ timestamp, level, message, context }` output
+  - ✅ JSON in production, pretty-print in dev
+  - ✅ `console.error` replaced in all production server paths
+
+- **TASK-051 — Custom Tags Management** — `src/server/trpc/routers/trade-tags.ts`, `src/app/etiquetas/page.tsx`
+  - ✅ `tradeTagsRouter`: `list`, `rename`, `delete`, `merge` procedures
+  - ✅ Tags management page at `/etiquetas`; linked from Sidebar under Cuenta
+  - ✅ Bulk tag updates via PostgreSQL `array_replace` / `unnest` (single query, no N+1)
+
+- **Review URL Persistence** — `src/app/reviews/page.tsx`
+  - ✅ `useReviewFilters()` hook syncs all 4 filter params to URL search params
+  - ✅ `router.replace` — no browser history pollution; shareable filter URLs
+
+- **Sprint 6 QA Deferred Mini-Fixes** (TD-029, TD-030, TD-031, TD-032)
+  - ✅ TD-029: `CYCLE.includes(t)` guard before `setThemeState()` in ThemeProvider
+  - ✅ TD-030: `>=` boundary in `InMemoryRateLimiter.check()` (was off-by-one at exactly window expiry)
+  - ✅ TD-031: `serializeAccount()` applied to all 5 account mutation endpoints
+  - ✅ TD-032: `new Prisma.Decimal("10000.50")` in accounts test mock; serialization assertions added
+
+### Fixed (Blocking Bugs from QA Audit)
+
+- **B-01 · IDOR in `ai-embed/route.ts` (direct call path)** — `src/app/api/ai-embed/route.ts`
+  - Root cause: `user.id` captured in auth branch but never passed to `findUnique` or raw UPDATE
+  - Fix: `findFirst` with conditional `userId` filter; UPDATE includes `AND user_id = ${userId}::uuid`
+
+- **B-02 · DoS via unbounded request body** — `src/app/api/ai-embed/route.ts`
+  - Root cause: `req.json()` called with no payload size limit
+  - Fix: Reject if `Content-Length > 16 KB` before JSON parsing (413 response)
+
+### Fixed (Major Issues from QA Audit)
+
+- **M-01 · Stale `from` field in `archive` audit log** — `src/server/trpc/routers/accounts.ts`
+  - Root cause: `account.update()` run first; `account.status` post-update was always `"INACTIVE"`
+  - Fix: `findUniqueOrThrow({ select: { status: true } })` before update to capture pre-mutation status
+
+- **M-02 · Unguarded `localStorage` in dashboard** — `src/app/dashboard/page.tsx`
+  - Root cause: `getItem`/`setItem` threw in private-browsing; crashed dashboard render
+  - Fix: Both calls wrapped in isolated try/catch; `setPrefsLoaded(true)` always runs
+
+- **M-03 · Indistinguishable webhook error states** — `src/app/api/ai-embed/route.ts`
+  - Root cause: Both "secret not configured" and "wrong secret" returned 401 with no distinction
+  - Fix: `SUPABASE_WEBHOOK_SECRET` absent → 503 `WEBHOOK_NOT_CONFIGURED`; wrong secret → 401; correct → `logger.info` audit trail
+  - Bonus: Plain `===` replaced with `crypto.timingSafeEqual` for constant-time comparison
+
+- **M-04 · Unbounded tag input** — `src/server/trpc/routers/trades.ts`
+  - Root cause: `z.array(z.string())` — no element length or array size limit
+  - Fix: `z.array(z.string().min(1).max(30)).max(20)` on both `create` and `update` inputs
+
+### Technical Debt Closed (8 items)
+
+| ID | What |
+|---|---|
+| TD-002 | Discipline score: single canonical implementation |
+| TD-017 | Review modal discipline score formula divergence |
+| TD-020 | Fire-and-forget embedding → webhook-triggered |
+| TD-029 | `prefs.theme` DB cast validated with `CYCLE.includes` |
+| TD-030 | Rate limiter window boundary `>=` |
+| TD-031 | `serializeAccount()` on all 5 account mutations |
+| TD-032 | `Prisma.Decimal` in accounts test mock |
+| TD-033 | Rate limit tests import real `InMemoryRateLimiter` |
+
+### Dependencies Updated
+
+| Package | From | To | Type |
+|---|---|---|---|
+| `next` | 16.2.6 | 16.2.7 | patch |
+| `react` | 19.2.4 | 19.2.7 | patch |
+| `react-dom` | 19.2.4 | 19.2.7 | patch |
+| `@supabase/supabase-js` | 2.106.2 | 2.107.0 | minor |
+| `@tanstack/react-query` | 5.100.14 | 5.101.0 | minor |
+| `eslint-config-next` | 16.2.6 | 16.2.7 | patch |
+
+Skipped (major — breaking changes): `@types/node` 20→25, `eslint` 9→10, `typescript` 5→6.
+
+### Test Coverage
+
+- **New test files:**
+  - `src/__tests__/lib/formulas/setup.test.ts` — 11 tests for `calcSetupHealth()`
+  - `src/__tests__/routers/trade-tags.test.ts` — 11 tests for `tradeTagsRouter`
+  - Stale-entry eviction test added to `rate-limit.test.ts`
+
+- **QA fix tests:**
+  - `src/__tests__/routers/accounts.test.ts` — archive audit log `from` field test (M-01)
+  - `src/__tests__/routers/trades.test.ts` — 7 tag validation tests (M-04)
+
+- **Test delta:** 407 → 438 (+31 total)
+
+### Docs
+
+- **Created:** `docs/SPRINT_7_QA_REPORT.md` — independent staff engineer audit (2 Blocking, 4 Major, 4 Minor, 5 Nitpick)
+- **Created:** `docs/SPRINT_7_FIX_REPORT.md` — resolution of all Blocking and Major findings
+- **Created:** `docs/SPRINT_7_COMPLETION_REPORT.md` — sprint delivery summary and acceptance criteria verification
+- **Created:** `docs/SPRINT_7_RETROSPECTIVE.md` — what went well, what went wrong, risks, Sprint 8 recommendations
+- **Updated:** `docs/backlog.md` — Sprint 7 marked CLOSED; all P1 items DONE; TASK-034 corrected
+- **Updated:** `docs/roadmap.md` — Sprint 7 closeout section added
+- **Updated:** `docs/technical-debt.md` — 8 TD items closed; Sprint 7 QA fixes documented
+- **Updated:** `docs/changelog.md` — this entry
+
+---
+
+## [Sprint 6 — Theme, Reviews, Sparklines, Security & QA Cascade] — 2026-06-03
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 389 → 407 passing (+18 new tests) | **TypeScript:** clean (`tsc --noEmit`) | **QA findings:** 0 Blocking, 6 Major (all fixed) · 6 Minor, 4 Nitpick (deferred)
+
+(Details in SPRINT_6_RETROSPECTIVE.md)
+
+---
+
 ## [Sprint 5 — AI Config, Personalization, International Support & QA Cascade] — 2026-06-03
 
 **Branch:** `claude/epic-darwin-1XZTX`  

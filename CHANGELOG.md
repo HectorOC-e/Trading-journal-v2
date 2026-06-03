@@ -40,6 +40,43 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ---
 
+### Sprint 7 QA Fix (2026-06-03) — 2 Blocking + 4 Major Findings Resolved
+
+**Fixed — Blocking (2)**
+- **B-01 · IDOR in `ai-embed/route.ts`** — direct-call path captured `user.id` in auth branch but never passed it to `findUnique` or `$executeRaw`; any authenticated user could embed notes for another user's trade. Fix: `findFirst` with conditional `userId` filter; raw UPDATE includes `AND user_id = ${userId}::uuid` on direct path.
+- **B-02 · DoS via unbounded request body** — `req.json()` called with no payload size limit. Fix: reject if `Content-Length > 16 KB` before JSON parsing; 413 response.
+
+**Fixed — Major (4)**
+- **M-01 · Stale `from` in `archive` audit log** — `account.update()` ran first; `account.status` read post-update was always `"INACTIVE"`, making `from === to`. Fix: `findUniqueOrThrow({ select: { status: true } })` before update, matching the `changeStatus` pattern.
+- **M-02 · Unguarded `localStorage` in dashboard** — both `getItem` (in useEffect) and `setItem` (in handlePeriodChange) threw in private-browsing mode, crashing dashboard render. Fix: both calls wrapped in isolated try/catch; `setPrefsLoaded(true)` always runs.
+- **M-03 · Indistinguishable webhook error states** — both "secret not configured" and "wrong secret" returned 401 with no distinction. Fix: unconfigured → 503 `WEBHOOK_NOT_CONFIGURED`; wrong secret → 401; correct secret → `logger.info` audit trail. Bonus: `crypto.timingSafeEqual` for constant-time comparison.
+- **M-04 · Unbounded tag input** — `z.array(z.string())` had no element length or array size constraints. Fix: `z.array(z.string().min(1).max(30)).max(20)` on both `create` and `update` inputs.
+
+**Tests**
+- `accounts.test.ts`: archive audit log `from` field test — verifies `findUniqueOrThrow` before update (M-01 regression guard)
+- `trades.test.ts`: 7 tag validation tests — element length, empty string, array size on both `create` and `update` (M-04 regression guards)
+- Test suite: 430 → 438 passing (+8), 0 failing
+
+**Dependencies updated (patch/minor — backward compatible)**
+- `next` 16.2.6 → 16.2.7 (patch)
+- `react` 19.2.4 → 19.2.7 (patch)
+- `react-dom` 19.2.4 → 19.2.7 (patch)
+- `@supabase/supabase-js` 2.106.2 → 2.107.0 (minor)
+- `@tanstack/react-query` 5.100.14 → 5.101.0 (minor)
+- `eslint-config-next` 16.2.6 → 16.2.7 (patch)
+- Skipped: `@types/node` 20→25, `eslint` 9→10, `typescript` 5→6 (major, breaking changes)
+
+**Documentation**
+- Created `docs/SPRINT_7_QA_REPORT.md` — independent audit (2 Blocking, 4 Major, 4 Minor, 5 Nitpick)
+- Created `docs/SPRINT_7_FIX_REPORT.md` — detailed fix documentation for all 6 Blocking/Major findings
+- Created `docs/SPRINT_7_RETROSPECTIVE.md` — sprint retrospective
+- Updated `docs/backlog.md` — Sprint 7 CLOSED; all P1 items DONE; TASK-034 corrected to DONE Sprint 4
+- Updated `docs/roadmap.md` — Sprint 7 closeout section added
+- Updated `docs/technical-debt.md` — Sprint 7 QA fixes documented; test baseline 438
+- Updated `docs/changelog.md` — Sprint 7 + QA entries
+
+---
+
 ### Sprint 6 QA Fix (2026-06-03) — 6 Major Findings Resolved
 
 **Fixed — Major (6)**

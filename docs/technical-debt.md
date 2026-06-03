@@ -9,7 +9,8 @@
 > **Sprint 4 closed:** Psychology UI, auto-save, week selector, dashboard persistence, `any` types eliminated, `as never` casts reduced 12→4. Tests: 364 passing (+2 regression guards). (6 tasks, 2 regression tests).  
 > **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
 > **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**  
-> **Sprint 7 closed:** TD-002/TD-017 (discipline score centralization — already implemented, verified canonical formula in `lib/formulas/discipline.ts`), TD-020 (embedding now webhook-triggered, not fire-and-forget), TD-029 (`CYCLE.includes` guard on DB prefs), TD-030 (`>=` boundary in `InMemoryRateLimiter`), TD-031 (`serializeAccount` on all 5 mutation endpoints), TD-032 (`Prisma.Decimal` in accounts test mock), TD-033 (rate-limit tests import real `InMemoryRateLimiter`). Tests: 407 → 430 (+23). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**
+> **Sprint 7 closed:** TD-002/TD-017 (discipline score centralization — already implemented, verified canonical formula in `lib/formulas/discipline.ts`), TD-020 (embedding now webhook-triggered, not fire-and-forget), TD-029 (`CYCLE.includes` guard on DB prefs), TD-030 (`>=` boundary in `InMemoryRateLimiter`), TD-031 (`serializeAccount` on all 5 mutation endpoints), TD-032 (`Prisma.Decimal` in accounts test mock), TD-033 (rate-limit tests import real `InMemoryRateLimiter`). Tests: 407 → 430 (+23).  
+> **Sprint 7 QA fixed (post-ship):** B-01 IDOR in `ai-embed` (direct path userId filter + scoped UPDATE), B-02 unbounded body DoS (Content-Length cap 16 KB), M-01 stale `from` in `archive` audit log (`findUniqueOrThrow` before update), M-02 unguarded `localStorage` calls (try/catch), M-03 indistinguishable webhook errors (503/401 split + `crypto.timingSafeEqual`), M-04 unbounded tag input (`z.string().min(1).max(30)` + array `.max(20)`). Tests: 430 → 438 (+8 new + 2 updated). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**
 
 ---
 
@@ -52,7 +53,8 @@
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
 **Open items: 4 of 33 | Closed total: 29 items**  
-**Remaining estimated effort: ~4 engineer-days to close all open items**
+**Remaining estimated effort: ~4 engineer-days to close all open items**  
+**Test baseline: 438 passing (post Sprint 7 + Sprint 7 QA fixes)**
 
 ---
 

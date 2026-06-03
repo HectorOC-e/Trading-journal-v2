@@ -4,6 +4,7 @@
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 389 tests, 4 Blocking QA findings fixed pre-ship).
 > **Sprint 6 closed:** TASK-045 (system theme), TASK-048 (review filters), TASK-049+TASK-012 (sparklines), TASK-013 (type safety), TASK-014 (LearningResource type) + P0.1 (quality gates), P3.1 (key rotation), P3.3 (rate limiting). 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
+> **Sprint 7 closed:** TASK-031 (review edit/delete), TASK-011 (discipline score), TASK-051 (custom tags), TASK-073 (7d rolling window), TASK-064 (setup health), TASK-058 (webhook embedding), TASK-060 (structured logger) + rate-limiter abstraction + review URL persistence + TD-029–TD-033 (Sprint 6 deferred). 438 tests (+31). QA: 2 Blocking + 4 Major fixed post-ship.
 
 ---
 
@@ -12,10 +13,10 @@
 | Priority | Count | Open | Done | Estimated Remaining |
 |---|---|---|---|---|
 | P0 | 12 | 0 | 12 | — |
-| P1 | 17 | 2 | 15 | ~5 days |
-| P2 | 17 | 5 | 12 | ~15 days |
-| P3 | 10 | 9 | 1 | ~50+ days |
-| **Total** | **56** | **16** | **40** | **~55+ days** |
+| P1 | 17 | 0 | 17 | — |
+| P2 | 17 | 3 | 14 | ~9 days |
+| P3 | 10 | 7 | 3 | ~50+ days |
+| **Total** | **56** | **10** | **46** | **~60+ days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
 > **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044 (16 tasks).  
@@ -23,8 +24,9 @@
 > **Sprint 4 closed:** TASK-034 (psychology fields), TASK-047, TASK-061, TASK-069, TASK-023 (partial), TASK-013 (67% complete) (6 tasks, all Major findings resolved).  
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).  
 > **Sprint 6 closed:** TASK-045, TASK-048, TASK-049, TASK-012, TASK-013, TASK-014 + quality gates + key rotation + rate limiting. 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
+> **Sprint 7 closed:** TASK-031, TASK-011, TASK-051, TASK-073, TASK-064, TASK-058, TASK-060 + rate-limiter abstraction + review URL persistence + TD-029–TD-033. 438 tests (+31). QA: 2 Blocking + 4 Major found and fixed.
 
-**Critical path:** All P0 items closed. P1 focus: TASK-031 (review edit/delete) and TASK-011 (discipline score centralization — TD-002 CRITICAL). P2 focus: TASK-051 (custom tags), TASK-042 (skeleton screens), TASK-043 (empty states). Sprint 7 includes Redis rate limiter (M-004 full fix) and mutation serialization (TD-031).
+**Critical path:** All P0 and P1 items closed. P2 focus: TASK-042 (skeleton screens), TASK-043 (empty states), TASK-052 (onboarding). Sprint 8 targets accessibility (TASK-070), monthly review model (TASK-071), and architecture cleanup (TD-012, TD-018).
 
 ---
 
@@ -65,7 +67,7 @@
 | TASK-031 | Add Edit and Delete buttons to ReviewDetailPanel | reviews | P1 | M | — | **DONE** Sprint 7 |
 | TASK-032 | Update stale AI model IDs in config (coach + summary) | ai | P1 | XS | — | DONE |
 | TASK-033 | Implement AI configuration UI and `UserAiConfig` table | ai | P1 | L | TASK-006, TASK-032 | DONE |
-| TASK-034 | Add per-trade psychology fields to Trade model | psychology | P1 | M | — | TODO |
+| TASK-034 | Add per-trade psychology fields to Trade model | psychology | P1 | M | — | **DONE** Sprint 4 |
 | TASK-035 | Implement toast notification system | ux | P1 | M | — | DONE |
 | TASK-036 | Fix dead "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
 | TASK-037 | Fix `generateSummary` HTTP 200 on failure | reviews | P1 | XS | TASK-035 | DONE |
@@ -341,23 +343,31 @@ TASK-019 (schema sync) ─────────────────► TA
 **Exit criteria:** 407 tests · TypeScript clean · all Major QA findings resolved  
 **Docs:** `docs/SPRINT_6_COMPLETION_REPORT.md` · `docs/SPRINT_6_QA_REPORT.md` · `docs/SPRINT_6_FIX_REPORT.md` · `docs/SPRINT_6_RETROSPECTIVE.md`
 
-### Sprint 7 (Weeks 19–22) — Reviews, Discipline Score, Infra Hardening
+### ~~Sprint 7 (Weeks 19–22) — Reviews, Discipline Score, Infra Hardening~~ ✅ CLOSED 2026-06-03
 **Goal:** Close remaining P1 items; fix TD-002 (CRITICAL); harden infrastructure; start P3 testing backlog.
 
-| Task | Effort | Owner | Notes |
+| Task | Effort | Owner | Status |
 |---|---|---|---|
-| TASK-031 — Edit/Delete in ReviewDetailPanel | M | FE | P1, deferred 3 sprints |
-| TASK-011 — Extract `computeDisciplineScore` | S | BE | TD-002 CRITICAL — 3 implementations |
-| Redis rate limiter (Upstash) | M | BE | M-004 full fix — extract `lib/rate-limiter.ts` |
-| TD-031 — `serializeAccount` on mutations | XS | BE | `create/update/changeStatus` return Decimal |
-| Review URL persistence | S | FE | Filters reset on navigate (deferred Sprint 6) |
-| TASK-051 — Custom tags management | M | BE/FE | P2 |
-| TD-029 — Guard `CYCLE.includes` on DB prefs cast | XS | FE | m-001 deferred from Sprint 6 QA |
-| TD-030 — Rate limiter boundary `>=` | XS | BE | m-002 deferred from Sprint 6 QA |
-| TD-032 — `Prisma.Decimal` in accounts test mock | XS | QA | m-006 deferred from Sprint 6 QA |
-| TASK-021 — Activate analytics cache | XS | DevOps | |
-| TASK-024 — RTL component tests | L | QA | |
-| TASK-025 — Playwright e2e tests | L | QA | |
+| TASK-031 — Edit/Delete in ReviewDetailPanel | M | FE | ✅ DONE |
+| TASK-011 — Extract `computeDisciplineScore` | S | BE | ✅ DONE (TD-002 closed) |
+| `lib/rate-limiter.ts` + Upstash abstraction | M | BE | ✅ DONE (TD-033 closed) |
+| TD-031 — `serializeAccount` on mutations | XS | BE | ✅ DONE |
+| Review URL persistence | S | FE | ✅ DONE |
+| TASK-051 — Custom tags management | M | BE/FE | ✅ DONE |
+| TD-029 — Guard `CYCLE.includes` on DB prefs cast | XS | FE | ✅ DONE |
+| TD-030 — Rate limiter boundary `>=` | XS | BE | ✅ DONE |
+| TD-032 — `Prisma.Decimal` in accounts test mock | XS | QA | ✅ DONE |
+| TASK-073 — Rolling metrics (7d window) | M | BE/FE | ✅ DONE |
+| TASK-064 — Setup health score in Playbook | S | BE/FE | ✅ DONE |
+| TASK-058 — Reliable embedding via webhook | M | BE | ✅ DONE (TD-020 closed) |
+| TASK-060 — Structured logger `lib/logger.ts` | S | BE | ✅ DONE |
+| TASK-021 — Activate analytics cache | XS | DevOps | ⏭ Deferred to Sprint 8 |
+| TASK-024 — RTL component tests | L | QA | ⏭ Deferred to Sprint 8 |
+| TASK-025 — Playwright e2e tests | L | QA | ⏭ Deferred to Sprint 8 |
+
+**QA Audit (independent):** 2 Blocking (IDOR + DoS) · 4 Major (all fixed) · 4 Minor (deferred) · 5 Nitpick (deferred)  
+**Exit criteria:** 438 tests · TypeScript clean · all Blocking + Major QA findings resolved  
+**Docs:** `docs/SPRINT_7_COMPLETION_REPORT.md` · `docs/SPRINT_7_QA_REPORT.md` · `docs/SPRINT_7_FIX_REPORT.md` · `docs/SPRINT_7_RETROSPECTIVE.md`
 
 ---
 

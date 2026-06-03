@@ -2,7 +2,7 @@
 
 > **Last Updated: 2026-06-03**  
 > Merges the existing ROADMAP.md (Phases 0–5) with the master-remediation-plan phased execution plan and new feature initiatives through Phase XIV.
-> **Sprints 1–6 complete.** Phases X–XI closed. Phase XII partially closed (TASK-045, TASK-048, TASK-049 done). Phase XIII type safety items closed (TASK-013, TASK-014). Sprint 7 begins Phase XII-C (discipline score) and TASK-031 (review edit/delete).
+> **Sprints 1–7 complete.** Phases X–XI closed. Phase XII partially closed (TASK-045, TASK-031, TASK-011, TASK-048, TASK-049 done). Phase XIII type safety items closed (TASK-013, TASK-014). Phase XIV partly shipped (TASK-051 custom tags, TASK-073 rolling metrics). All P0 and P1 items resolved. Sprint 8 targets accessibility, monthly reviews, and architecture cleanup.
 
 ---
 
@@ -302,6 +302,93 @@ revengeFlag      Boolean  @default(false)
 - ✅ No security vulnerabilities introduced
 - ✅ Type safety improved: 3 `any` types eliminated, 1 unsafe cast removed
 - ✅ Psychology field contract stable and extensible
+
+---
+
+## Phase XII Sprint 7 Closeout — Reviews, Discipline, Infrastructure (P1/P2) ✅ CLOSED 2026-06-03 [Sprint 7]
+
+**Objective:** Close all remaining P1 items; resolve TD-002 (CRITICAL discipline score); harden infrastructure (Redis abstraction, webhook embedding, structured logging); ship custom tags and rolling metrics.
+
+**Result:** XII-B (TASK-031 review edit/delete) complete. XII-C (TASK-011 discipline score — TD-002 CRITICAL) complete. XIV (TASK-051 custom tags) complete. TASK-073 rolling metrics (7d/1M/3M/6M/1Y/ALL window) complete. TASK-064 setup health score (🟢/🟡/🔴/⚪) complete. TASK-058 webhook embedding (TD-020) complete. TASK-060 structured logger complete. Rate-limiter abstraction (`InMemoryRateLimiter` + `UpstashRateLimiter`) complete (TD-033). TD-029–TD-032 (Sprint 6 deferred) all patched. Independent QA: 2 Blocking + 4 Major (all fixed), 4 Minor + 5 Nitpick deferred. 438 tests (+31). TypeScript clean. All P0 + P1 backlog items now resolved.
+
+### Sprint 7 Deliverables
+
+**TASK-031:** Review edit and delete:
+- ✅ "Editar" button opens `NuevaReviewModal` in edit mode with pre-populated fields
+- ✅ "Eliminar" button with confirmation dialog; navigates to list on success
+- ✅ "Última edición: hace 3 horas" timestamp in detail panel footer
+- ✅ Server-side user ownership enforced via `userId` filter on all mutations
+
+**TASK-011 — TD-002 CLOSED:** Discipline score centralization:
+- ✅ Canonical `computeDisciplineScore()` in `lib/formulas/discipline.ts`
+- ✅ Both server-side duplicates in `weekly-reviews.ts` replaced with shared function
+- ✅ Frontend modal shows server-provided prefill score only; no local computation
+
+**Rate-limiter abstraction:**
+- ✅ `src/lib/rate-limiter.ts`: `RateLimiter` interface, `InMemoryRateLimiter`, `UpstashRateLimiter`, `createRateLimiter()` factory
+- ✅ Graceful fallback to in-memory when Upstash env vars absent
+- ✅ Tests import `InMemoryRateLimiter` directly (TD-033 closed)
+
+**TASK-073 — Rolling metrics:**
+- ✅ `"7d"` window added to `trades.dashboardStats` and `equityCurve`
+- ✅ `localStorage` persistence for period selection
+- ✅ Period selector extended on both Portfolio and Operador tabs
+
+**TASK-064 — Setup health score:**
+- ✅ `calcSetupHealth()` in `lib/formulas/setup.ts` — healthy/warning/critical/insufficient
+- ✅ `SetupHealthDot` component on each Playbook setup card
+- ✅ `<5 trades` guard returns `"insufficient"` (⚪ badge)
+
+**TASK-058 — TD-020 CLOSED:** Reliable embedding:
+- ✅ `ai-embed/route.ts` accepts Supabase webhook payload `{ type: "INSERT", record: { id } }`
+- ✅ `SUPABASE_WEBHOOK_SECRET` constant-time validation
+- ✅ Embedding decoupled from trade creation request lifecycle
+
+**TASK-060:** Structured logger:
+- ✅ `src/lib/logger.ts` — JSON in production, pretty-print in dev
+- ✅ Replaces `console.error` in all production server paths
+
+**TASK-051 — Custom tags:**
+- ✅ `tradeTagsRouter`: `list`, `rename`, `delete`, `merge` procedures
+- ✅ Tags management page at `/etiquetas` linked from Sidebar
+- ✅ Bulk update via PostgreSQL `array_replace` / `unnest` (no N+1)
+
+**Review URL persistence:**
+- ✅ `searchQuery`, `outcomeFilter`, `statusFilter`, `minDisc` synced to URL params
+- ✅ `router.replace` — no browser history pollution
+
+**Sprint 6 QA deferred items:**
+- ✅ TD-029: `CYCLE.includes(t)` guard before `setThemeState()` in theme-provider
+- ✅ TD-030: `>=` boundary in `InMemoryRateLimiter.check()`
+- ✅ TD-031: `serializeAccount()` on all 5 account mutation endpoints
+- ✅ TD-032: `new Prisma.Decimal("10000.50")` in accounts test mock
+
+**Sprint 7 QA Blocking/Major fixes (post-ship):**
+- ✅ B-01: IDOR in `ai-embed/route.ts` — `findFirst` with userId on direct path; scoped UPDATE
+- ✅ B-02: DoS via unbounded body — Content-Length cap (16 KB) before JSON parse
+- ✅ M-01: Stale `from` in `archive` audit log — `findUniqueOrThrow` before update
+- ✅ M-02: Unguarded `localStorage` calls in dashboard — both wrapped in try/catch
+- ✅ M-03: Indistinguishable webhook errors — 503 for unconfigured vs 401 for wrong secret
+- ✅ M-04: Unbounded tag input — `z.array(z.string().min(1).max(30)).max(20)` on create + update
+
+### QA Audit Findings
+
+| Severity | Count | Status |
+|---|---|---|
+| Blocking | 2 | ✅ All fixed |
+| Major | 4 | ✅ All fixed |
+| Minor | 4 | 📋 Deferred to Sprint 8 |
+| Nitpick | 5 | 📋 Deferred to Sprint 8 |
+
+### Sprint 7 Success Metrics
+
+- ✅ All P1 backlog items resolved (TASK-031 was 3 sprints overdue)
+- ✅ TD-002 CRITICAL closed — single `computeDisciplineScore` in production
+- ✅ IDOR security bug fixed (B-01 — ai-embed direct path)
+- ✅ 2 Blocking + 4 Major QA findings fixed same session
+- ✅ 438 tests passing (+31 from baseline 407)
+- ✅ TypeScript clean (tsc --noEmit)
+- ✅ 8 technical debt items closed (TD-002, TD-017, TD-020, TD-029–TD-033)
 
 ---
 
