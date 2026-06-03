@@ -5,17 +5,16 @@ import { encryptApiKey, decryptApiKey, maskApiKey } from "@/lib/ai/key-encryptio
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
 type Provider = typeof PROVIDERS[number]
 
-// Gate 1: Zod schema matches the TypeScript interface field-for-field
 const UpsertAiConfigInput = z.object({
   provider: z.enum(PROVIDERS),
   apiKey:   z.string().min(20).max(200),
   model:    z.string().max(100).optional().nullable(),
 })
 
-// Provider-specific key format validation (prefix check)
 function validateKeyFormat(provider: Provider, apiKey: string): string | null {
-  if (provider === "anthropic"   && !apiKey.startsWith("sk-ant-")) return "Anthropic keys must start with 'sk-ant-'"
-  if (provider === "openai"      && !apiKey.startsWith("sk-"))      return "OpenAI keys must start with 'sk-'"
+  if (provider === "anthropic"   && !apiKey.startsWith("sk-ant-")) return "Las claves de Anthropic deben empezar con 'sk-ant-'"
+  if (provider === "openai"      && !apiKey.startsWith("sk-"))      return "Las claves de OpenAI deben empezar con 'sk-'"
+  if (provider === "openrouter"  && !apiKey.startsWith("sk-or-"))   return "Las claves de OpenRouter deben empezar con 'sk-or-'"
   return null
 }
 
@@ -27,12 +26,11 @@ export const aiConfigRouter = router({
         where:   { userId: ctx.userId },
         orderBy: { provider: "asc" },
       })
-      // Never return decrypted keys — mask them for display
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return (configs as any[]).map((c: { id: string; provider: string; apiKeyEnc: string; model: string | null; isActive: boolean; lastTested: Date | null; errorLog: string | null; createdAt: Date; updatedAt: Date }) => ({
         id:         c.id,
         provider:   c.provider,
-        maskedKey:  maskApiKey(decryptApiKey(c.apiKeyEnc)),
+        maskedKey:  (() => { try { return maskApiKey(decryptApiKey(c.apiKeyEnc)) } catch { return "***" } })(),
         model:      c.model,
         isActive:   c.isActive,
         lastTested: c.lastTested?.toISOString() ?? null,
@@ -45,7 +43,6 @@ export const aiConfigRouter = router({
   upsert: protectedProcedure
     .input(UpsertAiConfigInput)
     .mutation(async ({ ctx, input }) => {
-      // Gate 1: validate key format per provider
       const formatError = validateKeyFormat(input.provider as Provider, input.apiKey)
       if (formatError) {
         const { TRPCError } = await import("@trpc/server")
@@ -89,17 +86,21 @@ export const aiConfigRouter = router({
       })
       return { deleted: true }
     }),
-
-  // Expose decrypted key ONLY to internal services (not to the client directly)
-  // This is used by ai-coach, ai-embed routes. Not exposed to frontend.
-  _getDecryptedKey: protectedProcedure
-    .input(z.object({ provider: z.enum(PROVIDERS) }))
-    .query(async ({ ctx, input }) => {
-      // @ts-expect-error — userAiConfig added in Sprint 5 migration; Prisma client not regenerated
-      const config = await ctx.prisma.userAiConfig.findUnique({
-        where: { userId_provider: { userId: ctx.userId, provider: input.provider } },
-      })
-      if (!config) return null
-      return decryptApiKey(config.apiKeyEnc)
-    }),
 })
+
+/**
+ * Server-side helper for internal API routes that need a user's decrypted key.
+ * NOT exposed via tRPC — import directly from server-only code.
+ */
+export async function getDecryptedApiKey(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  prisma: any,
+  userId: string,
+  provider: Provider,
+): Promise<string | null> {
+  const config = await prisma.userAiConfig.findUnique({
+    where: { userId_provider: { userId, provider } },
+  })
+  if (!config) return null
+  return decryptApiKey(config.apiKeyEnc)
+}

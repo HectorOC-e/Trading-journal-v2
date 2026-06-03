@@ -15,10 +15,10 @@ export const accountLogsRouter = router({
         where: {
           accountId,
           userId: ctx.userId,
-          ...(cursor ? { id: { lt: cursor } } : {}),
         },
         orderBy: { createdAt: "desc" },
         take:    limit + 1,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       })
 
       const hasMore    = items.length > limit

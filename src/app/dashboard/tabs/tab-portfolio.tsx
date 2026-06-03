@@ -197,7 +197,7 @@ export function TabPortfolio({
         </Card>
       </div>
 
-      <GoalProgressWidget kpis={kpis} weeklyTradesCount={kpis.tradesCountToday} />
+      <GoalProgressWidget kpis={kpis} weeklyTradesCount={kpis.tradesCountWeek} />
 
       <PropFirmRules propFirmStatus={propFirmStatus} />
 

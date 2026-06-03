@@ -253,8 +253,12 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   })
 
   const autoSaveReview = trpc.weeklyReviews.update.useMutation({
-    onSuccess: () => { utils.weeklyReviews.list.invalidate(); setAutoSaveStatus("saved") },
-    onError:   () => { setAutoSaveStatus("idle") },
+    onSuccess: () => {
+      utils.weeklyReviews.list.invalidate()
+      setAutoSaveStatus("saved")
+      setTimeout(() => setAutoSaveStatus("idle"), 2000)
+    },
+    onError: () => { setAutoSaveStatus("idle") },
   })
 
   const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({

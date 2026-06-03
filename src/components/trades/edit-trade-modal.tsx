@@ -319,6 +319,9 @@ export function EditTradeModal({
                 value={planNotes}
                 onChange={e => setPlanNotes(e.target.value)}
               />
+              {planNotes.length > 400 && (
+                <p className="text-[10px] text-[var(--ink-3)]">{planNotes.length}/500</p>
+              )}
             </div>
 
             {/* Notes */}

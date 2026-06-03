@@ -201,7 +201,7 @@ model Trade {
   executionQuality Int?     @map("execution_quality") // 1–5
   fomoFlag         Boolean  @default(false) @map("fomo_flag")
   revengeFlag      Boolean  @default(false) @map("revenge_flag")
-  planNotes        String?  @map("plan_notes")
+  planNotes        String?  @map("plan_notes") @db.VarChar(500)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

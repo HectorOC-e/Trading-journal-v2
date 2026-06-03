@@ -71,9 +71,8 @@ describe("accountLogs.list — cursor pagination (TASK-020)", () => {
     await caller.accountLogs.list({ accountId: ACCOUNT_ID, cursor: CURSOR_ID })
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          id: { lt: CURSOR_ID },
-        }),
+        cursor: { id: CURSOR_ID },
+        skip:   1,
       })
     )
   })

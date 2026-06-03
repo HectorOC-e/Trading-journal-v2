@@ -215,6 +215,9 @@ export const tradesRouter = router({
       const now        = new Date()
       const today      = now.toISOString().slice(0, 10)
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      const dayOfWeek  = now.getDay() // 0=Sun, 1=Mon ... 6=Sat
+      const daysToMon  = (dayOfWeek + 6) % 7  // days since last Monday
+      const weekStart  = new Date(Date.now() - daysToMon * 86_400_000).toISOString().slice(0, 10)
       const period     = input?.period ?? "3M"
 
       const periodDays: Record<string, number | null> = { "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
@@ -308,7 +311,7 @@ export const tradesRouter = router({
       }))
 
       // ── Core analytics (service delegation) ──────────────────────────────
-      const kpis         = buildKpis(trades, today, monthStart)
+      const kpis         = buildKpis(trades, today, monthStart, weekStart)
       const accountStats = buildAccountStats(trades, acctBalances, today, monthStart)
       const equityCurve  = buildEquityCurve(trades, acctBalances)
       const pnlByDate    = buildPnlByDate(trades, grain)

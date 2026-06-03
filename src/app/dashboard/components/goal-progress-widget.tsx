@@ -63,8 +63,8 @@ export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgress
 
   if (!goals) return null
 
-  const { disciplineGoal, weeklyTradesGoal, weeklyPnlGoal, weeklyGoalMinutes } = goals
-  const hasAnyGoal = disciplineGoal != null || weeklyTradesGoal != null || weeklyPnlGoal != null || weeklyGoalMinutes != null
+  const { weeklyTradesGoal, weeklyPnlGoal } = goals
+  const hasAnyGoal = weeklyTradesGoal != null || weeklyPnlGoal != null
 
   if (!hasAnyGoal) {
     return (
@@ -83,11 +83,12 @@ export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgress
     )
   }
 
-  const tradesGoalPct    = weeklyTradesGoal != null && weeklyTradesGoal > 0 ? weeklyTradesCount / weeklyTradesGoal : 0
-  const pnlGoalPct       = weeklyPnlGoal    != null && weeklyPnlGoal > 0    ? kpis.pnlMonth / weeklyPnlGoal : 0
-  const disciplinePct    = disciplineGoal   != null && disciplineGoal > 0   ? Math.min(1, 80 / disciplineGoal) : 0
-  // weeklyGoalMinutes uses a placeholder — real learning minutes require a separate query
-  const learningPct      = weeklyGoalMinutes != null && weeklyGoalMinutes > 0 ? 0 : 0
+  const tradesGoalPct = weeklyTradesGoal != null && weeklyTradesGoal > 0
+    ? weeklyTradesCount / weeklyTradesGoal
+    : 0
+  const pnlGoalPct = weeklyPnlGoal != null && weeklyPnlGoal > 0
+    ? kpis.pnlWeek / weeklyPnlGoal
+    : 0
 
   const rings: GoalRingProps[] = []
 
@@ -101,33 +102,18 @@ export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgress
   }
 
   if (weeklyPnlGoal != null) {
-    const pnlValue = kpis.pnlMonth
+    const pnlValue = kpis.pnlWeek
     rings.push({
       label: "P&L semanal",
-      value: `$${Math.abs(pnlValue).toFixed(0)}${pnlValue < 0 ? " (loss)" : ""}`,
+      value: `${pnlValue >= 0 ? "+" : ""}$${Math.abs(pnlValue).toFixed(0)}`,
       pct:   Math.max(0, pnlGoalPct),
       color: pnlGoalPct >= 1 ? "var(--win)" : pnlGoalPct < 0 ? "var(--loss)" : "var(--accent)",
       sub:   `meta $${weeklyPnlGoal}`,
     })
   }
 
-  if (disciplineGoal != null) {
-    rings.push({
-      label: "Disciplina",
-      value: `${disciplineGoal}% meta`,
-      pct:   disciplinePct,
-      color: disciplinePct >= 1 ? "var(--win)" : "var(--accent)",
-    })
-  }
-
-  if (weeklyGoalMinutes != null) {
-    rings.push({
-      label: "Aprendizaje",
-      value: `0/${weeklyGoalMinutes} min`,
-      pct:   learningPct,
-      color: "var(--accent)",
-    })
-  }
+  // disciplineGoal ring suppressed until real weekly discipline score is available in KpiSummary
+  // learningPct ring suppressed until learning-minutes tracking query is implemented
 
   return (
     <div style={{

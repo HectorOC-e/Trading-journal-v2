@@ -36,20 +36,22 @@ export type AccountWithLimits = {
 export type TodayTrade = { accountId: string; pnl: number | null; status: string }
 
 export type KpiSummary = {
-  total:            number
-  wins:             number
-  losses:           number
-  be:               number
-  winRate:          number
-  avgR:             number
-  netPnl:           number
-  pnlMonth:         number
-  pnlToday:         number
-  tradesCountToday: number
-  expectancyR:      number
-  expectancyDollar: number
-  profitFactor:     number
-  sharpeRatio:      number | null
+  total:             number
+  wins:              number
+  losses:            number
+  be:                number
+  winRate:           number
+  avgR:              number
+  netPnl:            number
+  pnlMonth:          number
+  pnlWeek:           number
+  pnlToday:          number
+  tradesCountToday:  number
+  tradesCountWeek:   number
+  expectancyR:       number
+  expectancyDollar:  number
+  profitFactor:      number
+  sharpeRatio:       number | null
   bestDay:  { date: string; pnl: number } | null
   worstDay: { date: string; pnl: number } | null
   tradeStreak: { count: number; isWin: boolean } | null
@@ -94,6 +96,7 @@ export function buildKpis(
   trades: MinimalTrade[],
   today: string,
   monthStart: string,
+  weekStart?: string,
 ): KpiSummary {
   const total   = trades.length
   const wins    = trades.filter(t => isWin({ pnl: t.pnl })).length
@@ -120,6 +123,9 @@ export function buildKpis(
   const pnlMonth        = trades.filter(t => t.date >= monthStart).reduce((s, t) => s + t.pnl, 0)
   const pnlToday        = trades.filter(t => t.date === today).reduce((s, t) => s + t.pnl, 0)
   const tradesCountToday = trades.filter(t => t.date === today).length
+  const effectiveWeekStart = weekStart ?? today
+  const pnlWeek         = trades.filter(t => t.date >= effectiveWeekStart && t.date <= today).reduce((s, t) => s + t.pnl, 0)
+  const tradesCountWeek  = trades.filter(t => t.date >= effectiveWeekStart && t.date <= today).length
 
   const pnlByDateMap: Record<string, number> = {}
   for (const t of trades) pnlByDateMap[t.date] = (pnlByDateMap[t.date] ?? 0) + t.pnl
@@ -150,8 +156,10 @@ export function buildKpis(
     avgR:             parseFloat(avgR.toFixed(4)),
     netPnl:           parseFloat(netPnl.toFixed(2)),
     pnlMonth:         parseFloat(pnlMonth.toFixed(2)),
+    pnlWeek:          parseFloat(pnlWeek.toFixed(2)),
     pnlToday:         parseFloat(pnlToday.toFixed(2)),
     tradesCountToday,
+    tradesCountWeek,
     expectancyR:      parseFloat(expectancyR.toFixed(4)),
     expectancyDollar: parseFloat(expectancyDollar.toFixed(2)),
     profitFactor:     parseFloat(profitFactor.toFixed(4)),

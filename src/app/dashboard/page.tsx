@@ -29,7 +29,9 @@ export default function DashboardPage() {
 
   const { stats, accounts, isLoading, isError } = useDashboardStats(period)
   const { data: prefs } = trpc.preferences.get.useQuery()
-  const updatePrefs = trpc.preferences.update.useMutation()
+  const updatePrefs = trpc.preferences.update.useMutation({
+    onError: () => { /* silent — tab preference save failure is non-critical */ },
+  })
 
   // Load saved tab from preferences once
   useEffect(() => {
