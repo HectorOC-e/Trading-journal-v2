@@ -42,6 +42,10 @@ describe("key-encryption", () => {
     expect(() => decryptApiKey("not:valid")).toThrow("Invalid encrypted key format")
   })
 
+  it("throws on non-hex secret", () => {
+    expect(() => encryptApiKey("test", "z".repeat(64))).toThrow("non-hex")
+  })
+
   it("encrypt/decrypt with secretOverride", () => {
     const altSecret = "b".repeat(64)
     const plaintext = "override-test-key"
@@ -112,5 +116,19 @@ describe("rotateEncryptionKey", () => {
     await expect(
       rotateEncryptionKey("short", "f".repeat(64), async () => [], async () => {}),
     ).rejects.toThrow("64-character hex strings")
+  })
+
+  it("throws if secrets contain non-hex characters", async () => {
+    const nonHex = "z".repeat(64)
+    await expect(
+      rotateEncryptionKey(nonHex, "d".repeat(64), async () => [], async () => {}),
+    ).rejects.toThrow("non-hex")
+  })
+
+  it("throws if old and new secret are identical", async () => {
+    const secret = "c".repeat(64)
+    await expect(
+      rotateEncryptionKey(secret, secret, async () => [], async () => {}),
+    ).rejects.toThrow("oldSecret and newSecret must be different")
   })
 })

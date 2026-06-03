@@ -48,7 +48,7 @@ function useWindowWidth() {
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
-  const { theme, toggle } = useTheme()
+  const { resolvedTheme, toggle } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [userInitial, setUserInitial] = useState("")
@@ -128,7 +128,7 @@ export function Sidebar() {
             onClick={toggle}
             style={{ width: 32, height: 32, borderRadius: 8, background: "var(--chip)", border: "1px solid var(--line)", display: "grid", placeItems: "center", cursor: "pointer", fontSize: 14 }}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {resolvedTheme === "dark" ? "☀️" : "🌙"}
           </button>
           {userInitial && (
             <Link href="/perfil" style={{
@@ -358,13 +358,13 @@ export function Sidebar() {
             display: "grid", placeItems: "center",
             fontSize: 11, fontWeight: 700,
           }}>HC</div>
-          <button onClick={toggle} title={theme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
+          <button onClick={toggle} title={resolvedTheme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
             width: 26, height: 26, borderRadius: 8,
             background: "var(--chip)", border: "1px solid var(--line)",
             display: "grid", placeItems: "center",
             cursor: "pointer", fontSize: 13,
           }}>
-            {theme === "dark" ? "☀️" : "🌙"}
+            {resolvedTheme === "dark" ? "☀️" : "🌙"}
           </button>
         </div>
       </aside>
@@ -514,26 +514,26 @@ export function Sidebar() {
             </div>
           )}
           {!collapsed && (
-            <button onClick={toggle} title={theme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
+            <button onClick={toggle} title={resolvedTheme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
               width: 28, height: 28, borderRadius: 8,
               background: "var(--chip)", border: "1px solid var(--line)",
               display: "grid", placeItems: "center",
               cursor: "pointer", flexShrink: 0, fontSize: 14,
             }}>
-              {theme === "dark" ? "☀️" : "🌙"}
+              {resolvedTheme === "dark" ? "☀️" : "🌙"}
             </button>
           )}
         </div>
         {collapsed ? (
           <>
-            <button onClick={toggle} title={theme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
+            <button onClick={toggle} title={resolvedTheme === "dark" ? "Modo claro" : "Modo oscuro"} style={{
               marginTop: 8,
               width: 28, height: 28, borderRadius: 8,
               background: "var(--chip)", border: "1px solid var(--line)",
               display: "grid", placeItems: "center",
               cursor: "pointer", fontSize: 14,
             }}>
-              {theme === "dark" ? "☀️" : "🌙"}
+              {resolvedTheme === "dark" ? "☀️" : "🌙"}
             </button>
             <button onClick={handleLogout} title="Cerrar sesión" style={{
               marginTop: 4,

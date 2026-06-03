@@ -71,6 +71,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     localStorage.setItem("tj-theme", theme)
+
+    return () => {
+      if (mediaListenerRef.current) {
+        window.matchMedia("(prefers-color-scheme: dark)").removeEventListener("change", mediaListenerRef.current)
+        mediaListenerRef.current = null
+      }
+    }
   }, [theme])
 
   // Apply accent hue and colorblind mode from DB preferences
@@ -91,9 +98,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [prefs?.accentHue, prefs?.colorScheme])
 
+  const prefsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const setTheme = (t: ThemeMode) => {
     setThemeState(t)
-    updatePrefs.mutate({ theme: t })
+    if (prefsSaveTimer.current) clearTimeout(prefsSaveTimer.current)
+    prefsSaveTimer.current = setTimeout(() => {
+      updatePrefs.mutate({ theme: t })
+    }, 500)
   }
 
   const toggle = () => {

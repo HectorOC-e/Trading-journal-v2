@@ -7,6 +7,9 @@ function getEncryptionKey(secretOverride?: string): Buffer {
   if (!secret || secret.length !== 64) {
     throw new Error("AI_KEY_ENCRYPTION_SECRET must be a 64-character hex string (32 bytes)")
   }
+  if (!/^[0-9a-fA-F]{64}$/.test(secret)) {
+    throw new Error("AI_KEY_ENCRYPTION_SECRET contains non-hex characters")
+  }
   return Buffer.from(secret, "hex")
 }
 
@@ -46,6 +49,12 @@ export async function rotateEncryptionKey(
 ): Promise<{ rotated: number; failed: number }> {
   if (oldSecret.length !== 64 || newSecret.length !== 64) {
     throw new Error("Both secrets must be 64-character hex strings")
+  }
+  if (!/^[0-9a-fA-F]{64}$/.test(oldSecret) || !/^[0-9a-fA-F]{64}$/.test(newSecret)) {
+    throw new Error("Secrets contain non-hex characters")
+  }
+  if (oldSecret === newSecret) {
+    throw new Error("oldSecret and newSecret must be different")
   }
   const configs = await getAllConfigs()
   let rotated = 0, failed = 0

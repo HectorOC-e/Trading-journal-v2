@@ -10,8 +10,14 @@ const rateLimitMap = new Map<string, { count: number; windowStart: number }>()
 const RATE_LIMIT_MAX    = 5
 const RATE_LIMIT_WINDOW = 60_000 // ms
 
+// TODO(Sprint 7): replace with Redis-backed limiter (e.g. Upstash) for multi-instance Vercel deployments.
+// The current in-memory Map is per-process; each cold start resets the count.
 function checkRateLimit(userId: string): { allowed: boolean; retryAfter: number } {
-  const now   = Date.now()
+  const now = Date.now()
+  // Evict entries older than 2× the window to prevent unbounded Map growth
+  for (const [id, e] of rateLimitMap.entries()) {
+    if (now - e.windowStart > RATE_LIMIT_WINDOW * 2) rateLimitMap.delete(id)
+  }
   const entry = rateLimitMap.get(userId)
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
     rateLimitMap.set(userId, { count: 1, windowStart: now })
