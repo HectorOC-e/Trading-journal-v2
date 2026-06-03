@@ -509,6 +509,8 @@ export const tradesRouter = router({
       executionQuality: z.number().int().min(1).max(5).optional().nullable(),
       fomoFlag:        z.boolean().optional(),
       revengeFlag:     z.boolean().optional(),
+      // Pre-trade planning field (TASK-074)
+      planNotes:       z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       // ── Prop firm enforcement ──────────────────────────────────────────────
@@ -595,6 +597,8 @@ export const tradesRouter = router({
       executionQuality: z.number().int().min(1).max(5).optional().nullable(),
       fomoFlag:         z.boolean().optional(),
       revengeFlag:      z.boolean().optional(),
+      // Pre-trade planning field (TASK-074)
+      planNotes:        z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input

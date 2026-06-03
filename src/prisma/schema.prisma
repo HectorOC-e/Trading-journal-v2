@@ -44,6 +44,7 @@ model User {
   tradeEmbeddings      TradeEmbedding[]
   emailLogs            EmailLog[]
   preferences          UserPreferences?
+  aiConfigs            UserAiConfig[]
 
   @@map("users")
 }
@@ -200,6 +201,7 @@ model Trade {
   executionQuality Int?     @map("execution_quality") // 1–5
   fomoFlag         Boolean  @default(false) @map("fomo_flag")
   revengeFlag      Boolean  @default(false) @map("revenge_flag")
+  planNotes        String?  @map("plan_notes")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -500,4 +502,29 @@ model EmailLog {
 
   @@unique([userId, emailType, weekKey])
   @@map("email_logs")
+}
+
+// ─────────────────────────────────────────────
+// USER AI CONFIG (Sprint 5)
+// Stores encrypted API keys for AI providers per user.
+// Supports anthropic | openrouter | openai.
+// apiKeyEnc format: "<iv_hex>:<tag_hex>:<ciphertext_hex>" (AES-256-GCM)
+// ─────────────────────────────────────────────
+model UserAiConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  provider  String   // "anthropic" | "openrouter" | "openai"
+  apiKeyEnc String   @map("api_key_enc")  // AES-256-GCM encrypted: "<iv_hex>:<tag_hex>:<ciphertext_hex>"
+  model     String?  // optional model override per provider
+  isActive  Boolean  @default(true) @map("is_active")
+  lastTested DateTime? @map("last_tested")
+  errorLog  String?  @map("error_log")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("user_ai_configs")
 }

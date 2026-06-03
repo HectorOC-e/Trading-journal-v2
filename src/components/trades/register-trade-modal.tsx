@@ -118,6 +118,7 @@ interface FormState {
   session: TradeSession
   tags: TradeTag[]
   notes: string
+  planNotes: string
   checklistItems: Record<string, boolean>
   screenshots: string[]
   // Psychology fields (TASK-034)
@@ -143,6 +144,7 @@ const INITIAL: FormState = {
   session: "New York",
   tags: [],
   notes: "",
+  planNotes: "",
   checklistItems: {},
   screenshots: [],
   // Psychology fields
@@ -729,6 +731,20 @@ export function RegisterTradeModal({
               </p>
             </div>
           )}
+
+          {/* ── Plan pre-operación (TASK-074) ── */}
+          <div>
+            <label className="text-eyebrow block mb-1.5">Plan pre-operación</label>
+            <Textarea
+              placeholder="¿Por qué vas a tomar este trade? Nivel clave, catalizador, invalidación..."
+              value={form.planNotes}
+              onChange={e => setForm(f => ({ ...f, planNotes: e.target.value.slice(0, 500) }))}
+              rows={2}
+            />
+            {form.planNotes.length > 400 && (
+              <p className="text-[10px] text-[var(--ink-3)] mt-1">{form.planNotes.length}/500</p>
+            )}
+          </div>
 
           {/* ── Notas ── */}
           <div>

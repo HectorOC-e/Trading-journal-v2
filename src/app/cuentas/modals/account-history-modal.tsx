@@ -19,7 +19,8 @@ export function AccountHistoryModal({ accountId, accountName, onClose }: {
   accountName: string
   onClose: () => void
 }) {
-  const { data: logs = [], isLoading } = trpc.accountLogs.list.useQuery({ accountId })
+  const { data, isLoading } = trpc.accountLogs.list.useQuery({ accountId })
+  const logs = data?.items ?? []
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

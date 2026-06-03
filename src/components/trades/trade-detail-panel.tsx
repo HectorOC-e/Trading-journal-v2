@@ -587,6 +587,16 @@ export function TradeDetailPanel({
         )
       })()}
 
+      {/* ── Plan pre-operación (TASK-074) ── */}
+      {(trade as { planNotes?: string | null }).planNotes && (
+        <div>
+          <p className="text-eyebrow mb-2">Plan pre-operación</p>
+          <p className="text-xs text-[var(--ink-2)] leading-relaxed bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)]">
+            {(trade as { planNotes?: string | null }).planNotes}
+          </p>
+        </div>
+      )}
+
       {/* ── Notes ── */}
       {trade.notes && (
         <div>

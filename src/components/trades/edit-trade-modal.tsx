@@ -41,6 +41,7 @@ interface EditTradeModalProps {
     size: number
     session: string
     notes: string
+    planNotes?: string | null
     tags: string[]
     setupId?: string | null
     // Psychology fields (TASK-034)
@@ -53,7 +54,7 @@ interface EditTradeModalProps {
   setups?: Setup[]
   onSave?: (data: Partial<{
     entry: number; stop: number; target: number; size: number
-    session: string; notes: string; tags: string[]; setupId: string
+    session: string; notes: string; planNotes: string | null; tags: string[]; setupId: string
     emotionBefore: EmotionBefore | null
     confidenceRating: number | null
     executionQuality: number | null
@@ -75,7 +76,8 @@ export function EditTradeModal({
   const [target, setTarget] = useState(String(trade.target))
   const [size,   setSize]   = useState(String(trade.size))
   const [session, setSession] = useState(trade.session)
-  const [notes,   setNotes]   = useState(trade.notes ?? "")
+  const [notes,     setNotes]     = useState(trade.notes ?? "")
+  const [planNotes, setPlanNotes] = useState(trade.planNotes ?? "")
   const [tags,    setTags]    = useState<string[]>(trade.tags ?? [])
   const [setupId, setSetupId] = useState(trade.setupId ?? "")
   const [checklist, setChecklist] = useState<Record<string, boolean>>({})
@@ -123,6 +125,7 @@ export function EditTradeModal({
       size:    parseFloat(size)   || trade.size,
       session,
       notes,
+      planNotes: planNotes || null,
       tags:    finalTags,
       setupId: setupId || undefined,
       emotionBefore:    emotionBefore,
@@ -303,6 +306,19 @@ export function EditTradeModal({
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Plan pre-operación (TASK-074) */}
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] text-[var(--ink-3)] font-medium">Plan pre-operación</label>
+              <textarea
+                rows={2}
+                maxLength={500}
+                className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-xs text-[var(--ink)] resize-none focus:outline-none focus:border-[var(--accent)] transition-colors"
+                placeholder="Razón del trade, nivel clave, invalidación..."
+                value={planNotes}
+                onChange={e => setPlanNotes(e.target.value)}
+              />
             </div>
 
             {/* Notes */}

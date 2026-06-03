@@ -9,6 +9,7 @@ import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
 import { PropFirmRules } from "../components/prop-firm-rules"
 import { TYPE_META, fmtDate } from "../components/shared"
+import { GoalProgressWidget } from "../components/goal-progress-widget"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
@@ -195,6 +196,8 @@ export function TabPortfolio({
           )}
         </Card>
       </div>
+
+      <GoalProgressWidget kpis={kpis} weeklyTradesCount={kpis.tradesCountToday} />
 
       <PropFirmRules propFirmStatus={propFirmStatus} />
 
