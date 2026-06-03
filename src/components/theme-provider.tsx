@@ -1,27 +1,75 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { trpc } from "@/lib/trpc/client"
 
-type Theme = "dark" | "light"
+export type ThemeMode = "light" | "dark" | "system"
 
-const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: "dark",
-  toggle: () => {},
+type ResolvedTheme = "light" | "dark"
+
+interface ThemeContextValue {
+  theme:         ThemeMode
+  resolvedTheme: ResolvedTheme
+  setTheme:      (t: ThemeMode) => void
+  /** Cycles: light → dark → system → light */
+  toggle: () => void
+}
+
+const ThemeContext = createContext<ThemeContextValue>({
+  theme:         "system",
+  resolvedTheme: "dark",
+  setTheme:      () => {},
+  toggle:        () => {},
 })
 
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window === "undefined") return "dark"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  return mode === "system" ? getSystemTheme() : mode
+}
+
+const CYCLE: ThemeMode[] = ["light", "dark", "system"]
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark")
-  const { data: prefs } = trpc.preferences.get.useQuery()
+  const [theme, setThemeState] = useState<ThemeMode>("system")
+  const { data: prefs }  = trpc.preferences.get.useQuery()
+  const updatePrefs      = trpc.preferences.update.useMutation()
+  const mediaListenerRef = useRef<(() => void) | null>(null)
 
+  // Bootstrap from DB prefs (takes precedence over localStorage)
   useEffect(() => {
-    const saved = localStorage.getItem("tj-theme") as Theme | null
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved) setTheme(saved)
-  }, [])
+    if (prefs?.theme) {
+      setThemeState(prefs.theme as ThemeMode)
+    } else {
+      const saved = localStorage.getItem("tj-theme") as ThemeMode | null
+      if (saved && CYCLE.includes(saved)) setThemeState(saved)
+    }
+  }, [prefs?.theme])
 
+  // Apply resolved theme class and listen for OS changes when mode is "system"
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark")
+    const applyResolved = (resolved: ResolvedTheme) => {
+      document.documentElement.classList.toggle("dark", resolved === "dark")
+    }
+
+    // Clean up previous OS listener
+    if (mediaListenerRef.current) {
+      window.matchMedia("(prefers-color-scheme: dark)").removeEventListener("change", mediaListenerRef.current)
+      mediaListenerRef.current = null
+    }
+
+    if (theme === "system") {
+      applyResolved(getSystemTheme())
+      const handler = () => applyResolved(getSystemTheme())
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", handler)
+      mediaListenerRef.current = handler
+    } else {
+      applyResolved(theme)
+    }
+
     localStorage.setItem("tj-theme", theme)
   }, [theme])
 
@@ -43,8 +91,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [prefs?.accentHue, prefs?.colorScheme])
 
+  const setTheme = (t: ThemeMode) => {
+    setThemeState(t)
+    updatePrefs.mutate({ theme: t })
+  }
+
+  const toggle = () => {
+    const next = CYCLE[(CYCLE.indexOf(theme) + 1) % CYCLE.length]
+    setTheme(next)
+  }
+
+  const resolvedTheme = resolveTheme(theme)
+
   return (
-    <ThemeContext.Provider value={{ theme, toggle: () => setTheme(t => t === "dark" ? "light" : "dark") }}>
+    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggle }}>
       {children}
     </ThemeContext.Provider>
   )

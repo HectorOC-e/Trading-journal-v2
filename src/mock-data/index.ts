@@ -261,7 +261,8 @@ export const mockTrades = [
   },
 ] as unknown as Trade[]
 
-export const mockResources: LearningResource[] = [
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mockResources: LearningResource[] = ((<any>[
   {
     id: "res-1",
     title: "Volume Profile · Aitor",
@@ -387,7 +388,7 @@ export const mockResources: LearningResource[] = [
     status: "PENDING",
     isFavorite: false,
   },
-]
+]) as LearningResource[])
 
 export const mockRules: Rule[] = [
   { id: "rule-sys-1", name: "Operar fuera de sesión",      description: "Trade abierto fuera de las killzones permitidas.",                                         severity: "CRÍTICA",        isSystem: true,  enabled: true  },

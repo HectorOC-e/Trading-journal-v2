@@ -3,6 +3,7 @@
 > **Last Updated: 2026-06-03**  
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, all tests passing, 4 Blocking QA findings fixed).
+> **Sprint 6 closed:** TASK-045 (system theme toggle), TASK-048 (review filtering), TASK-049 (playbook sparklines), P0.1 (quality gates), P0.2 (TD-013+TD-014 type safety), P3.1 (key rotation), P3.3 (rate limiting). 404 tests passing (+15).
 
 ---
 
@@ -12,15 +13,16 @@
 |---|---|---|---|---|
 | P0 | 12 | 0 | 12 | — |
 | P1 | 17 | 3 | 14 | ~7 days |
-| P2 | 16 | 13 | 3 | ~32 days |
+| P2 | 16 | 10 | 6 | ~25 days |
 | P3 | 10 | 9 | 1 | ~50+ days |
-| **Total** | **55** | **25** | **30** | **~80+ days** |
+| **Total** | **55** | **22** | **33** | **~70+ days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
 > **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044 (16 tasks).  
 > **Sprint 3 closed:** TASK-006 (profile backend unblocks 7 downstream tasks), TASK-030 (UserPreferences) (2 core tasks + QA audit fixes).  
 > **Sprint 4 closed:** TASK-034 (psychology fields), TASK-047, TASK-061, TASK-069, TASK-023 (partial), TASK-013 (67% complete) (6 tasks, all Major findings resolved).  
-> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).
+> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).  
+> **Sprint 6 closed:** TASK-045, TASK-048, TASK-049, + type safety (TD-013, TD-014) + security hardening (rate limit, key rotation) (3 feature tasks + 4 tech debt items, 404 tests).
 
 **Critical path:** All P0 items closed. P1 focus: TASK-011 (discipline score centralization) and TASK-031 (review edit/delete). P2 focus: TASK-045 (system theme), TASK-048 (review filtering).
 
@@ -74,11 +76,11 @@
 | TASK-042 | Add skeleton screens for KPI strip, trade table, account cards | ux | P2 | M | — | TODO |
 | TASK-043 | Add empty states for Cuentas, Trades, Playbook, Mercados | ux | P2 | M | — | TODO |
 | TASK-044 | Fix `window.location.reload()` in error boundaries | ux | P2 | XS | — | DONE |
-| TASK-045 | Three-way theme toggle (add "system" mode) | personalization | P2 | S | TASK-006 | TODO |
+| TASK-045 | Three-way theme toggle (add "system" mode) | personalization | P2 | S | TASK-006 | **DONE** Sprint 6 |
 | TASK-046 | Accent color picker and colorblind mode | personalization | P2 | M | TASK-006 | DONE |
 | TASK-047 | Persist dashboard tab and chart grain | personalization | P2 | XS | — | DONE |
-| TASK-048 | Weekly review filtering and search | reviews | P2 | M | — | TODO |
-| TASK-049 | Playbook sparklines with real equity data | playbook | P2 | M | — | TODO |
+| TASK-048 | Weekly review filtering and search | reviews | P2 | M | — | **DONE** Sprint 6 |
+| TASK-049 | Playbook sparklines with real equity data | playbook | P2 | M | — | **DONE** Sprint 6 |
 | TASK-050 | Goal setting and dashboard widget | personalization | P2 | M | TASK-006 | DONE |
 | TASK-051 | Custom tags management UI | personalization | P2 | M | TASK-006 | TODO |
 | TASK-052 | Onboarding checklist widget for new users | ux | P2 | M | TASK-006 | TODO |

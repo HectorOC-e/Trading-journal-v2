@@ -52,12 +52,42 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-/* ── Sparkline flat placeholder ── */
-function SparklinePlaceholder({ color, height = 44 }: { color: string; height?: number }) {
-  const W = 200, mid = height / 2
+/* ── Sparkline: real equity curve (TASK-049) ── */
+function SetupSparkline({
+  data, color, height = 44,
+}: {
+  data?: number[]
+  color: string
+  height?: number
+}) {
+  const W = 200
+  const pts = data && data.length >= 2 ? data : null
+  if (!pts) {
+    const mid = height / 2
+    return (
+      <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
+        <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.35" />
+      </svg>
+    )
+  }
+  const min = Math.min(...pts), max = Math.max(...pts)
+  const range = max - min || 1
+  const pad   = 4
+  const xStep = pts.length > 1 ? (W - pad * 2) / (pts.length - 1) : W
+  const toY   = (v: number) => pad + ((1 - (v - min) / range) * (height - pad * 2))
+  const d     = pts.map((v, i) => `${i === 0 ? "M" : "L"}${(pad + i * xStep).toFixed(1)},${toY(v).toFixed(1)}`).join(" ")
+  const areaD = `${d} L${(pad + (pts.length - 1) * xStep).toFixed(1)},${height} L${pad},${height} Z`
+  const fillId = `sf-${color.replace(/[^a-z0-9]/gi, "")}`
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
-      <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.35" />
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path d={areaD} fill={`url(#${fillId})`} />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -79,7 +109,7 @@ function DirectionChip({ direction }: { direction: string }) {
 /* ═══════════════════════════════════════════════
    Setup Card — mejorada
 ═══════════════════════════════════════════════ */
-type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number }
+type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number; equityCurve?: number[] }
 
 function SetupCard({ setup, selected, onClick, stats, versionCount }: {
   setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats; versionCount?: number
@@ -125,9 +155,9 @@ function SetupCard({ setup, selected, onClick, stats, versionCount }: {
           <StatusBadge status={setup.status} />
         </div>
 
-        {/* Sparkline */}
+        {/* Sparkline — TASK-049: real equity curve */}
         <div style={{ margin: "0 -2px" }}>
-          <SparklinePlaceholder color={sparkColor} height={40} />
+          <SetupSparkline data={stats?.equityCurve} color={sparkColor} height={40} />
         </div>
 
         {/* Stats row */}
@@ -272,13 +302,20 @@ function SetupDrawer({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
 
-          {/* Equity placeholder */}
+          {/* Equity curve — TASK-049: real sparkline */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-eyebrow">Curva de equity</p>
-              <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
+              {(!stats || stats.total === 0) && (
+                <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
+              )}
+              {stats && stats.total > 0 && (
+                <span className={cn("text-[11px] font-mono font-bold", stats.netPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {stats.netPnl >= 0 ? "+" : "-"}${Math.abs(stats.netPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              )}
             </div>
-            <SparklinePlaceholder color="var(--accent)" height={60} />
+            <SetupSparkline data={stats?.equityCurve} color={stats && stats.netPnl >= 0 ? "var(--win)" : "var(--accent)"} height={60} />
           </div>
 
           {/* Stats grid */}
@@ -1049,13 +1086,13 @@ export default function PlaybookPage() {
     for (const s of dashStats?.setupStats ?? []) {
       if (!s.setupId) continue
       map[s.setupId] = {
-        total:      s.trades,
-        wins:       Math.round(s.winRate / 100 * s.trades),
-        netPnl:     s.netPnl,
-        avgR:       s.avgR,
-        aplusRate:  s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
-        // avgR is the arithmetic mean of all R multiples (= E[R] per trade)
-        expectancy: s.avgR,
+        total:       s.trades,
+        wins:        Math.round(s.winRate / 100 * s.trades),
+        netPnl:      s.netPnl,
+        avgR:        s.avgR,
+        aplusRate:   s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
+        expectancy:  s.avgR,
+        equityCurve: s.equityCurve,
       }
     }
     return map

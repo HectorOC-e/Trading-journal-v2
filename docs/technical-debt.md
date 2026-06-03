@@ -8,6 +8,7 @@
 > **Pre-Sprint 4 closed:** Type contract, Theme CSS, Decimal serialization, Label mismatch, useEffect deps, Trade limit, Test discovery (8 findings, 5 tests added).  
 > **Sprint 4 closed:** Psychology UI, auto-save, week selector, dashboard persistence, `any` types eliminated, `as never` casts reduced 12→4. Tests: 364 passing (+2 regression guards). (6 tasks, 2 regression tests).  
 > **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
+> **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 404 passing (+15). **Open items: 6 of 28 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020).**
 
 ---
 
@@ -27,8 +28,8 @@
 | TD-010 | HIGH | Schema | `notes_embedding` and `email_log` outside Prisma schema | S | TASK-019 | **Closed** Sprint 2 |
 | TD-011 | HIGH | Formula | Sharpe Ratio duplicated with different formula | XS | TASK-027 | **Closed** Sprint 2 |
 | TD-012 | MEDIUM | Type Safety | `phasePayload as never` in accounts router | XS | — | Open |
-| TD-013 | MEDIUM | Type Safety | 15+ `as never` casts in `trades/page.tsx` | M | TASK-013 | Open |
-| TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | Open |
+| TD-013 | MEDIUM | Type Safety | 15+ `as never` casts in `trades/page.tsx` | M | TASK-013 | **Closed** Sprint 6 |
+| TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | **Closed** Sprint 6 |
 | TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | **Closed** Sprint 2 |
 | TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | **Closed** Sprint 4 |
 | TD-017 | MEDIUM | Formula | Discipline score uses simplified formula in review modal | S | TASK-011 | Open |

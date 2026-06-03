@@ -249,11 +249,10 @@ export default function TradesPage() {
     return () => { document.body.style.overflow = "" }
   }, [!!selected])
 
-  // TD-013: account from serializeTrade (number) vs accounts.list (string) — Decimal serialization difference
   const detailPanel = selected ? (
     <TradeDetailPanel
       trade={selected}
-      account={selected.account as never}
+      account={selected.account ?? undefined}
       setup={selected.setup ?? undefined}
       onClose={() => setSelectedId(null)}
       onDelete={() => deleteTrade.mutate(selected.id)}
@@ -371,7 +370,7 @@ export default function TradesPage() {
       <RegisterTradeModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        accounts={accounts as never}
+        accounts={accounts}
         setups={setups}
         markets={markets}
         tradeCountToday={tradeCountToday}
@@ -394,9 +393,9 @@ export default function TradesPage() {
           open={!!positionLogTrade}
           onOpenChange={(v) => { if (!v) setPositionLogTrade(null) }}
           trade={posLogTarget}
-          account={posLogTarget.account as never}
+          account={posLogTarget.account}
           events={posLogTarget.events}
-          onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data } as never)}
+          onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data })}
           adding={addEvent.isPending}
         />
       )}

@@ -79,7 +79,7 @@ interface PositionLogModalProps {
     notes: string
     timestamp: string
   }[]
-  onAddEvent?: (data: { type: string; price?: number; contracts?: number; notes: string }) => void
+  onAddEvent?: (data: { type: AddableType; price?: number; contracts?: number; notes: string }) => void
   adding?: boolean
 }
 

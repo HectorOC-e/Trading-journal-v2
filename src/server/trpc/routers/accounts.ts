@@ -1,7 +1,10 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
+import type { Prisma } from "@/lib/generated/prisma/client"
 import { router, protectedProcedure } from "../init"
 import type { AccountLogPayload } from "@/types"
+
+type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 
 const ACCOUNT_TYPES = ["PERSONAL", "PROP_FIRM", "DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] as const
 const ACCOUNT_STATUSES = ["ACTIVE", "PAUSED", "INACTIVE", "LOST"] as const
@@ -28,20 +31,35 @@ const AccountInput = z.object({
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
+function serializeAccount(a: RawAccount) {
+  return {
+    ...a,
+    initialBalance: Number(a.initialBalance),
+    ddDailyPct:    a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
+    ddWeeklyPct:   a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
+    ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
+    ddTotalPct:    a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
+    targetPct:     a.targetPct   != null ? Number(a.targetPct)   : null,
+    createdAt:     a.createdAt.toISOString(),
+    updatedAt:     a.updatedAt.toISOString(),
+  }
+}
+
 export const accountsRouter = router({
   list: protectedProcedure
     .input(z.object({
       includeInactive: z.boolean().default(false),
     }).optional())
-    .query(({ ctx, input }) =>
-      ctx.prisma.account.findMany({
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.prisma.account.findMany({
         where: {
           userId: ctx.userId,
           ...(input?.includeInactive ? {} : { status: { in: ["ACTIVE", "PAUSED"] } }),
         },
         orderBy: { createdAt: "asc" },
       })
-    ),
+      return rows.map(serializeAccount)
+    }),
 
   create: protectedProcedure
     .input(AccountInput)

@@ -44,8 +44,15 @@ describe("accounts router", () => {
   })
 
   it("list: returns accounts for userId", async () => {
+    const now = new Date("2026-01-01T00:00:00Z")
     const fakeAccounts = [
-      { id: "acc-1", name: "Main", userId: USER_ID, broker: "IBKR", type: "PERSONAL" },
+      {
+        id: "acc-1", name: "Main", userId: USER_ID, broker: "IBKR",
+        type: "PERSONAL", status: "ACTIVE",
+        initialBalance: 10000, ddDailyPct: null, ddWeeklyPct: null,
+        ddMonthlyPct: null, ddTotalPct: null, ddModel: null, targetPct: null,
+        createdAt: now, updatedAt: now,
+      },
     ]
     mockPrisma.account.findMany.mockResolvedValue(fakeAccounts)
 
@@ -55,7 +62,12 @@ describe("accounts router", () => {
       where: { userId: USER_ID, status: { in: ["ACTIVE", "PAUSED"] } },
       orderBy: { createdAt: "asc" },
     })
-    expect(result).toEqual(fakeAccounts)
+    expect(result[0]).toMatchObject({
+      id: "acc-1",
+      name: "Main",
+      initialBalance: 10000,
+      createdAt: now.toISOString(),
+    })
   })
 
   it("create: inserts account and creates a log entry", async () => {
