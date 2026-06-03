@@ -1,7 +1,8 @@
 # Roadmap — Trading Journal v2
 
-> **Last Updated: 2026-06-02**  
+> **Last Updated: 2026-06-03**  
 > Merges the existing ROADMAP.md (Phases 0–5) with the master-remediation-plan phased execution plan and new feature initiatives through Phase XIV.
+> **Sprints 1–5 complete.** Phases X–XI closed. Phase XII (Psychology & Reviews) beginning Sprint 6.
 
 ---
 
@@ -170,6 +171,85 @@ revengeFlag      Boolean  @default(false)
 - ReviewDetailPanel has edit and delete
 - All mutations have visual feedback
 - Learning stats procedure is read-only
+
+---
+
+## Phase XI Sprint 5 Closeout — AI Config & Personalization Polish (P1/P2) ✅ CLOSED 2026-06-03 [Sprint 5]
+
+**Objective:** Complete AI configuration with encrypted key storage, surface accent color + goal-setting features, add international support (useCurrency), surface Sharpe Ratio KPI, implement pre-trade planning field.
+
+**Result:** XI-A (AI Configuration - TASK-033) complete with UserAiConfig model, AES-256-GCM encryption, tRPC procedures, test endpoint, and UI. XI-B (Accent Color - TASK-046) complete with colorblind mode. XI-C (Goal Widget - TASK-050) complete with dashboard integration. XI-D (International Support - TASK-056, TASK-062) complete with useCurrency hook and Sharpe Ratio KPI. XI-E (Pre-Trade Planning - TASK-074) complete with planNotes field. Cursor pagination fixed (TASK-020). 4 Blocking bugs caught in QA audit and fixed pre-ship. 389 tests passing (+11 from baseline). `@ts-expect-error` directives removed once Prisma client regenerated.
+
+### Sprint 5 Deliverables
+
+**TASK-033:** Full AI configuration system:
+- ✅ `UserAiConfig` Prisma model with encrypted `apiKeyEnc`, provider enum, metadata (isActive, lastTested, errorLog)
+- ✅ AES-256-GCM encryption in `lib/ai/key-encryption.ts` — random 12-byte IV, proper tag validation
+- ✅ tRPC router: `aiConfig.get`, `aiConfig.update`, `aiConfig.delete` with full Zod validation
+- ✅ Test connection endpoint (`api/ai-test/route.ts`) validates key format per provider
+- ✅ Profile UI with masked key inputs, model selectors, connection test button
+- ✅ Integration tests: encrypt→decrypt roundtrip, 3+ providers, API validation
+- ✅ Security fix: removed `_getDecryptedKey` from router (moved to server-only function)
+
+**TASK-046:** Accent color picker + colorblind mode:
+- ✅ UI: 8 preset colors + custom OKLCH hue slider
+- ✅ Colorblind modes: deuteranopia, protanopia, tritanopia with CSS variable presets
+- ✅ Persisted to `UserPreferences` (accentHue, colorScheme)
+- ✅ B-01 fix: `ThemeProvider` now reads prefs and applies CSS variables via `document.documentElement.style.setProperty()`
+- ✅ Real-time preview on accent color change
+
+**TASK-050:** Goal-setting dashboard widget:
+- ✅ Circular progress rings for 4 goals (weekly trades, P&L, discipline, learning minutes)
+- ✅ Goal CRUD UI in profile page
+- ✅ Dashboard displays progress
+- ✅ B-03/B-04 fix: `buildKpis` extended with `tradesCountWeek` (Mon–today) and `pnlWeek` (not monthly)
+- ✅ Goal widget now receives correct weekly metrics
+
+**TASK-020:** Cursor pagination for account logs:
+- ✅ B-02 fix: Switched from broken `id < cursor` (UUID ordering mismatch) to Prisma native `cursor: { id }, skip: 1`
+- ✅ Tests validate cursor pagination correctness
+- ✅ M-03 fix: Test uses valid UUID, `mockPrisma` injection pattern
+
+**TASK-056:** International currency support:
+- ✅ `useCurrency()` hook reads `profile.baseCurrency`
+- ✅ All P&L displays (KPI strip, trade list, analytics, goals widget) use hook for symbol
+- ✅ Supports 3+ currency configurations (USD, EUR, GBP at minimum)
+
+**TASK-062:** Sharpe Ratio KPI:
+- ✅ Retrieves from `dashboardStats` (formula centralized in Sprint 1)
+- ✅ KPI card component matches existing style
+- ✅ Added to analytics dashboard KPI strip
+- ✅ Displays correctly on mobile
+
+**TASK-074:** Pre-trade planning field:
+- ✅ `planNotes` field in Trade model (optional String, max 500)
+- ✅ Form textarea in register/edit trade modals (collapsible)
+- ✅ Trade detail panel displays planNotes (read-only, 200 char limit with expand)
+- ✅ Roundtrip test: create → read → display
+
+### QA Audit Findings
+
+| Severity | Count | Status |
+|---|---|---|
+| Blocking | 4 | ✅ All fixed |
+| Major | 6 | ✅ All fixed |
+| Minor | 7 | ✅ All fixed |
+| Nitpick | 4 | ✅ All fixed |
+
+**All 21 findings resolved before ship. Zero defects in production.**
+
+### Sprint 5 Success Metrics
+
+- ✅ AI configuration fully functional end-to-end
+- ✅ Encryption implementation sound (AES-256-GCM)
+- ✅ Accent color and goal widget working correctly
+- ✅ Cursor pagination correct (no duplicates or skips)
+- ✅ International support (useCurrency) propagated
+- ✅ 389 tests passing (+11 from baseline)
+- ✅ Sharpe Ratio surfaced as KPI
+- ✅ Pre-trade planning field available
+- ✅ 4 Blocking bugs caught and fixed in QA before merge
+- ✅ TypeScript clean (tsc --noEmit)
 
 ---
 

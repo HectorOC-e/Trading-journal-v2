@@ -1,7 +1,118 @@
 # Changelog — Trading Journal v2
 
-> **Last Updated: 2026-06-02**  
+> **Last Updated: 2026-06-03**  
 > Git-style changelog organized by development phase. Based on TASKS.md, audit findings, and codebase analysis. Dates are approximate development windows.
+
+---
+
+## [Sprint 5 — AI Config, Personalization, International Support & QA Cascade] — 2026-06-03
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 378 → 389 passing (+11 new tests) | **TypeScript:** clean (`tsc --noEmit`) | **QA findings:** 4 Blocking, 6 Major, 7 Minor, 4 Nitpick (all fixed before merge)
+
+### Completed (Core Features — 7 Tasks)
+
+- **TASK-033 — AI Configuration** — `src/server/trpc/routers/ai-config.ts`, `src/lib/ai/key-encryption.ts`, `src/app/api/ai-test/route.ts`
+  - ✅ `UserAiConfig` Prisma model with AES-256-GCM encrypted API keys
+  - ✅ tRPC procedures: `aiConfig.get`, `aiConfig.update`, `aiConfig.delete` with provider validation (Anthropic/OpenRouter/OpenAI)
+  - ✅ Test endpoint validates connectivity per provider
+  - ✅ Profile UI with masked key inputs, model selectors, last-tested timestamp
+  - ✅ Security fix: removed `_getDecryptedKey` from router (moved to server-only function)
+
+- **TASK-046 — Accent Color Picker & Colorblind Mode** — `src/app/perfil/page.tsx`, `src/components/theme-provider.tsx`
+  - ✅ UI: 8 preset colors + custom OKLCH hue slider (0–360)
+  - ✅ Colorblind presets: deuteranopia, protanopia, tritanopia with CSS variable overrides
+  - ✅ Persisted to `UserPreferences` (accentHue, colorScheme)
+  - ✅ B-01 fix: `ThemeProvider` reads prefs and applies CSS variables via `document.documentElement.style.setProperty()`
+
+- **TASK-050 — Goal-Setting Dashboard Widget** — `src/app/dashboard/components/goal-progress-widget.tsx`, `src/app/dashboard/tabs/tab-portfolio.tsx`
+  - ✅ Circular progress rings for 4 goals (weekly trades, P&L, discipline, learning minutes)
+  - ✅ Goal form in profile page; CRUD operations
+  - ✅ B-03/B-04 fix: `buildKpis` extended with `tradesCountWeek` (Mon–today) and `pnlWeek` (not monthly)
+  - ✅ Widget now receives correct weekly metrics
+
+- **TASK-020 — Cursor Pagination for Account Logs** — `src/server/trpc/routers/account-logs.ts`
+  - ✅ B-02 fix: Switched from broken `id < cursor` (UUID ordering mismatch) to Prisma native cursor API
+  - ✅ M-03 fix: Test updated with valid UUID (`d4d4d4d4-d4d4-4d4d-8d4d-d4d4d4d4d4d4`)
+  - ✅ Pagination now returns correct pages without duplication
+
+- **TASK-056 — useCurrency Hook** — `src/hooks/use-currency.ts`
+  - ✅ Hook reads `profile.baseCurrency` and returns symbol
+  - ✅ All P&L displays updated (KPI strip, trade list, analytics, goals widget)
+  - ✅ Supports 3+ currencies (USD, EUR, GBP)
+
+- **TASK-062 — Sharpe Ratio KPI** — `src/app/dashboard/tabs/tab-operador.tsx`
+  - ✅ Retrieves from `dashboardStats` (formula centralized Sprint 1)
+  - ✅ KPI card component matches existing style
+  - ✅ Added to analytics dashboard KPI strip
+
+- **TASK-074 — Pre-Trade Planning Field** — `src/lib/generated/prisma/schema.prisma`, `src/app/trades/modals/register-trade-modal.tsx`
+  - ✅ `planNotes` field in Trade model (optional String, max 500 chars)
+  - ✅ Textarea in trade form (collapsible "Plan pre-operación" section)
+  - ✅ Trade detail panel displays planNotes (read-only, 200 char limit)
+
+### Fixed (Blocking Bugs from QA Audit)
+
+- **B-01 · Accent Color Saved but Never Applied** — `src/components/theme-provider.tsx`
+  - Root cause: UI saved prefs to DB; ThemeProvider never read them back or applied CSS
+  - Fix: `ThemeProvider` queries `prefs.accentHue`, applies OKLCH color via `document.documentElement.style.setProperty()`
+
+- **B-02 · Cursor Pagination Used Wrong Sort Order** — `src/server/trpc/routers/account-logs.ts`
+  - Root cause: Query sorted by `createdAt DESC` but filtered cursor as `id < cursor` (unrelated ordering)
+  - Fix: Switched to Prisma native `cursor: { id }, skip: 1` (correct pattern)
+
+- **B-03 · Goal Widget Used Today's Trades as Weekly Trades** — `src/app/dashboard/components/goal-progress-widget.tsx`, `src/domains/analytics/services/dashboard-analytics.ts`
+  - Root cause: `buildKpis` exported `tradesCountToday`; widget received it labeled as weekly count
+  - Fix: Added `tradesCountWeek` (Mon–today) to `buildKpis` output
+
+- **B-04 · Goal Widget Mixed Monthly P&L with Weekly Goal** — `src/app/dashboard/components/goal-progress-widget.tsx`, `src/domains/analytics/services/dashboard-analytics.ts`
+  - Root cause: Widget received `pnlMonth` but expected `pnlWeek`
+  - Fix: Added `pnlWeek` to `buildKpis` output (shares B-03 fix)
+
+### Fixed (Major Issues from QA Audit)
+
+- **M-01 · `_getDecryptedKey` Exposed via tRPC Router** — `src/server/trpc/routers/ai-config.ts`
+  - Moved function to server-only export (not in tRPC); removed mutation exposure
+
+- **M-02 · Unused `@ts-expect-error` Directives Broke Build** — `src/app/api/ai-test/route.ts`, `src/server/trpc/routers/ai-config.ts`, `src/__tests__/routers/plan-notes.test.ts`
+  - Root cause: Directives added before `prisma generate`; once generated, directives became unused (Next.js 16 strict mode error)
+  - Fix: Ran `prisma generate` to produce `UserAiConfig` types; removed 5 unused directives
+
+- **M-03 · Cursor Pagination Test Invalid UUID** — `src/__tests__/routers/account-logs-pagination.test.ts`
+  - Fixed UUID to `d4d4d4d4-d4d4-4d4d-8d4d-d4d4d4d4d4d4` (was `"cursor-id-uuid-1234-5678"`)
+
+- **M-04 · React Query v5 Removed `onSuccess` Callback** — `src/app/cuentas/modals/account-history-modal.tsx`
+  - Root cause: tRPC v11 + React Query v5 removed `onSuccess` from `useQuery` options
+  - Fix: Switched to `useEffect` with `useRef` to track seen cursors and prevent double-appending
+
+- **M-05 · Test `maskApiKey` Expected Value Wrong** — `src/__tests__/ai-config.test.ts`
+  - Fixed expected value from `"sk-ant-a...z9"` to `${key.slice(0, 8)}...${key.slice(-4)}`
+
+- **M-06 · `profile.update` Returned Unserialized Date Objects** — Fixed in Sprint 3 carry-over
+
+### Test Coverage
+
+- **New test files:**
+  - `src/__tests__/routers/ai-config.test.ts` — AI config CRUD, encryption roundtrip, key format validation
+  - `src/__tests__/routers/account-logs-pagination.test.ts` — Cursor pagination correctness
+  - `src/__tests__/routers/plan-notes.test.ts` — planNotes roundtrip, max length validation
+  - Psychology field tests (TASK-034 from Sprint 4 final fixes)
+
+- **Test delta:** 378 → 389 (+11 new tests, all passing)
+
+### Docs
+
+- **Created:** `docs/SPRINT_5_QA_REPORT.md` — comprehensive QA audit of 8 tasks (4 Blocking, 6 Major, 7 Minor, 4 Nitpick)
+- **Created:** `docs/SPRINT_5_RETROSPECTIVE.md` — what went well, what went wrong, pending risks, recommendations for Sprint 6
+
+---
+
+## [Sprint 4 — Psychology UI, Auto-Save, Week Selector, Dashboard Persistence] — 2026-06-02
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 364/364 passing | **TypeScript:** clean (`tsc --noEmit`)
+
+(Details in SPRINT_4_RETROSPECTIVE.md)
 
 ---
 

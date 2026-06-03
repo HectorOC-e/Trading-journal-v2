@@ -1,7 +1,8 @@
 # Backlog — Trading Journal v2
 
-> **Last Updated: 2026-06-02**  
+> **Last Updated: 2026-06-03**  
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
+> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, all tests passing, 4 Blocking QA findings fixed).
 
 ---
 
@@ -10,16 +11,18 @@
 | Priority | Count | Open | Done | Estimated Remaining |
 |---|---|---|---|---|
 | P0 | 12 | 0 | 12 | — |
-| P1 | 17 | 10 | 7 | ~18 days |
-| P2 | 16 | 16 | 0 | ~34 days |
-| P3 | 10 | 10 | 0 | ~50+ days |
-| **Total** | **55** | **36** | **19** | **~90+ days** |
+| P1 | 17 | 3 | 14 | ~7 days |
+| P2 | 16 | 13 | 3 | ~32 days |
+| P3 | 10 | 9 | 1 | ~50+ days |
+| **Total** | **55** | **25** | **30** | **~80+ days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
-> **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044, TASK-059 (16 tasks).  
-> **Sprint 3 closed:** TASK-006 (profile backend unblocks 7 downstream tasks) (1 task + QA audit fixes).
+> **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044 (16 tasks).  
+> **Sprint 3 closed:** TASK-006 (profile backend unblocks 7 downstream tasks), TASK-030 (UserPreferences) (2 core tasks + QA audit fixes).  
+> **Sprint 4 closed:** TASK-034 (psychology fields), TASK-047, TASK-061, TASK-069, TASK-023 (partial), TASK-013 (67% complete) (6 tasks, all Major findings resolved).  
+> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).
 
-**Critical path:** All P0 items closed. Next phase: TASK-030 (UserPreferences) unblocks personalization features. TASK-011 (discipline score centralization) unblocks reviews refinement.
+**Critical path:** All P0 items closed. P1 focus: TASK-011 (discipline score centralization) and TASK-031 (review edit/delete). P2 focus: TASK-045 (system theme), TASK-048 (review filtering).
 
 ---
 
@@ -46,7 +49,7 @@
 | TASK-017 | Server-side validation for Storage image uploads | security | P0 | S | — | DONE |
 | TASK-018 | Deprecate dead `trades.stats` procedure | trades | P2 | XS | — | DONE |
 | TASK-019 | Add `notes_embedding` and `email_log` to Prisma schema | infra | P3 | S | — | DONE |
-| TASK-020 | Implement cursor pagination in `accountLogs.list` | accounts | P3 | S | — | TODO |
+| TASK-020 | Implement cursor pagination in `accountLogs.list` | accounts | P3 | S | — | DONE |
 | TASK-021 | Activate and document `ANALYTICS_CACHE_ENABLED` for production | infra | P3 | XS | — | TODO |
 | TASK-022 | Configure verified email domain in Resend | infra | P3 | XS | — | TODO |
 | TASK-023 | Type `market: any` in MarketCard and `amount: any` in Retiros | types | P3 | XS | — | TODO |
@@ -56,10 +59,10 @@
 | TASK-027 | Centralize financial formulas in `lib/trading-formulas.ts` | formulas | P0 | M | — | DONE |
 | TASK-028 | Fix misleading "Drawdown" label on trades KPI strip | formulas | P0 | XS | — | DONE |
 | TASK-029 | Fix inconsistent drawdown calculation in `use-account-stats.ts` | formulas | P0 | XS | — | DONE |
-| TASK-030 | Implement `UserPreferences` table and router | profile | P1 | M | TASK-006 | TODO |
+| TASK-030 | Implement `UserPreferences` table and router | profile | P1 | M | TASK-006 | DONE |
 | TASK-031 | Add Edit and Delete buttons to ReviewDetailPanel | reviews | P1 | M | — | TODO |
 | TASK-032 | Update stale AI model IDs in config (coach + summary) | ai | P1 | XS | — | DONE |
-| TASK-033 | Implement AI configuration UI and `UserAiConfig` table | ai | P1 | L | TASK-006, TASK-032 | TODO |
+| TASK-033 | Implement AI configuration UI and `UserAiConfig` table | ai | P1 | L | TASK-006, TASK-032 | DONE |
 | TASK-034 | Add per-trade psychology fields to Trade model | psychology | P1 | M | — | TODO |
 | TASK-035 | Implement toast notification system | ux | P1 | M | — | DONE |
 | TASK-036 | Fix dead "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
@@ -72,14 +75,17 @@
 | TASK-043 | Add empty states for Cuentas, Trades, Playbook, Mercados | ux | P2 | M | — | TODO |
 | TASK-044 | Fix `window.location.reload()` in error boundaries | ux | P2 | XS | — | DONE |
 | TASK-045 | Three-way theme toggle (add "system" mode) | personalization | P2 | S | TASK-006 | TODO |
-| TASK-046 | Accent color picker and colorblind mode | personalization | P2 | M | TASK-006 | TODO |
-| TASK-047 | Persist dashboard tab and chart grain | personalization | P2 | XS | — | TODO |
+| TASK-046 | Accent color picker and colorblind mode | personalization | P2 | M | TASK-006 | DONE |
+| TASK-047 | Persist dashboard tab and chart grain | personalization | P2 | XS | — | DONE |
 | TASK-048 | Weekly review filtering and search | reviews | P2 | M | — | TODO |
 | TASK-049 | Playbook sparklines with real equity data | playbook | P2 | M | — | TODO |
-| TASK-050 | Goal setting and dashboard widget | personalization | P2 | M | TASK-006 | TODO |
+| TASK-050 | Goal setting and dashboard widget | personalization | P2 | M | TASK-006 | DONE |
 | TASK-051 | Custom tags management UI | personalization | P2 | M | TASK-006 | TODO |
 | TASK-052 | Onboarding checklist widget for new users | ux | P2 | M | TASK-006 | TODO |
 | TASK-053 | Multi-account portfolio dashboard | analytics | P3 | XL | TASK-019 | TODO |
+| TASK-056 | Create `useCurrency()` hook for currency symbol propagation | profile | P1 | S | TASK-006 | DONE |
+| TASK-062 | Surface Sharpe Ratio as KPI on dashboard | analytics | P2 | S | — | DONE |
+| TASK-074 | Add `planNotes` field for pre-trade planning | trades | P1 | S | — | DONE |
 
 **Effort scale:** XS = <4h · S = 1–2 days · M = 3–7 days · L = 1–3 weeks · XL = 3–6 weeks
 

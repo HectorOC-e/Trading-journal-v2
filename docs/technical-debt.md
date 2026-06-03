@@ -1,12 +1,13 @@
 # Technical Debt Register — Trading Journal v2
 
-> **Last Updated: 2026-06-02**  
+> **Last Updated: 2026-06-03**  
 > Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
 > **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).  
 > **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
-> **Sprint 3 closed:** TD-003 (B-002 admin client fix), TD-002 (deferred) (1 item + 24 test additions).  
-> **Pre-Sprint 4 closed:** QA audit of Sprints 1–3 — Type contract (B-01), Theme CSS (B-02), Decimal serialization (B-03), Label mismatch (M-01), useEffect deps (M-02/04), Trade limit (M-03), Test discovery (M-05) (8 findings, 5 tests added, 354 passing).  
-> **Sprint 4 closed:** Psychology UI (TASK-034), auto-save (TASK-061), week selector (TASK-069), dashboard persistence (TASK-047), `any` types eliminated (TASK-023 complete, M-01 fixed). `as never` casts reduced 12→4 (TASK-013 complete 67%, M-05 fixed). Tests: 364 passing (+2 regression guards for M-03). **Open items: 13 of 28 (TD-002, TD-012, TD-013 annotation, TD-016–020, TD-022–023).**
+> **Sprint 3 closed:** TD-003 (admin client fix) (1 item + profile backend + 24 test additions).  
+> **Pre-Sprint 4 closed:** Type contract, Theme CSS, Decimal serialization, Label mismatch, useEffect deps, Trade limit, Test discovery (8 findings, 5 tests added).  
+> **Sprint 4 closed:** Psychology UI, auto-save, week selector, dashboard persistence, `any` types eliminated, `as never` casts reduced 12→4. Tests: 364 passing (+2 regression guards). (6 tasks, 2 regression tests).  
+> **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
 
 ---
 
@@ -30,12 +31,12 @@
 | TD-014 | MEDIUM | Type Safety | Manual `LearningResource` type duplicates RouterOutputs | S | TASK-014 | Open |
 | TD-015 | MEDIUM | Dead Code | `trades.stats` procedure superseded by `dashboardStats` | XS | TASK-018 | **Closed** Sprint 2 |
 | TD-016 | MEDIUM | Type Safety | `market: any` and `amount: any` props | XS | TASK-023 | **Closed** Sprint 4 |
-| TD-017 | MEDIUM | Formula | Review modal discipline score uses simplified frontend formula | S | TASK-011 | Open |
+| TD-017 | MEDIUM | Formula | Discipline score uses simplified formula in review modal | S | TASK-011 | Open |
 | TD-018 | MEDIUM | Architecture | Inline business logic in router files (924-line trades.ts) | L | Ongoing | Open |
 | TD-019 | MEDIUM | Performance | tRPC context recreates Supabase client per request | M | — | Open |
 | TD-020 | MEDIUM | Reliability | Fire-and-forget embedding in same Node.js worker | M | — | Open |
 | TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | **Closed** Sprint 1 |
-| TD-022 | MEDIUM | Security | AI API keys as plaintext env vars (no per-user encryption) | L | TASK-033 | Open |
+| TD-022 | MEDIUM | Security | AI API keys encryption + per-user isolation | L | TASK-033 | **Closed** Sprint 5 (partial: per-user encryption implemented; env vars still at risk) |
 | TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
 | TD-024 | LOW | Documentation | No `.env.example`, no variables documentation | XS | TASK-059 | **Closed** Sprint 2 |
 | TD-025 | MEDIUM | Data | Drawdown label on trades page shows "peor día" not drawdown | XS | TASK-028 | **Closed** Sprint 2 |
@@ -43,8 +44,8 @@
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-015 | **Closed** Sprint 2 |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
-**Open items: 13 of 28 | Closed total: 6+9+1+8 = 24 items**  
-**Remaining estimated effort: ~9 engineer-days to close all open items**
+**Open items: 8 of 28 | Closed total: 6+9+1+8+7 = 31 items**  
+**Remaining estimated effort: ~5 engineer-days to close all open items**
 
 ---
 
