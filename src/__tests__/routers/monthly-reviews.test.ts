@@ -171,6 +171,54 @@ describe("monthlyReviews router", () => {
     expect(result.netPnl).toBeCloseTo(300)
   })
 
+  // ── prefill: discipline score filter (m-01 regression guard) ────────────
+
+  it("prefill: zero disciplineScore is excluded from average (draft/unscored week)", async () => {
+    mockPrisma.weeklyReview.findMany.mockResolvedValue([
+      {
+        id:              "wr-scored",
+        disciplineScore: 80,
+        whatWorked:      "Respetó el plan",
+        toImprove:       null,
+        netPnl:          { toNumber: () => 200 },
+        winRate:         { toNumber: () => 65 },
+        tradeCount:      8,
+      },
+      {
+        id:              "wr-draft",
+        disciplineScore: 0, // unscored/draft — must not drag down the average
+        whatWorked:      null,
+        toImprove:       null,
+        netPnl:          { toNumber: () => 0 },
+        winRate:         { toNumber: () => 0 },
+        tradeCount:      0,
+      },
+    ])
+
+    const result = await caller.monthlyReviews.prefill({ year: 2026, month: 6 })
+
+    // With the filter active: avg of [80] = 80, not avg of [80, 0] = 40
+    expect(result.overallScore).toBe(80)
+  })
+
+  it("prefill: returns null overallScore when all weekly scores are zero (all drafts)", async () => {
+    mockPrisma.weeklyReview.findMany.mockResolvedValue([
+      {
+        id:              "wr-draft-1",
+        disciplineScore: 0,
+        whatWorked:      null,
+        toImprove:       null,
+        netPnl:          { toNumber: () => 0 },
+        winRate:         { toNumber: () => 0 },
+        tradeCount:      0,
+      },
+    ])
+
+    const result = await caller.monthlyReviews.prefill({ year: 2026, month: 6 })
+
+    expect(result.overallScore).toBeNull()
+  })
+
   // ── ownership check ───────────────────────────────────────────────────────
   it("list: scopes query to authenticated userId only", async () => {
     mockPrisma.monthlyReview.findMany.mockResolvedValue([])
