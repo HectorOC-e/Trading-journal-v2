@@ -498,7 +498,7 @@ export const tradesRouter = router({
       date:            z.string(),
       openTime:        z.string(),
       session:         z.enum(["London", "New York", "Asia", "London Close"]),
-      tags:            z.array(z.string()).default([]),
+      tags:            z.array(z.string().min(1).max(30)).max(20).default([]),
       notes:           z.string().default(""),
       screenshotUrls:  z.array(z.string()).default([]),
       pnl:             z.number().optional(),
@@ -584,7 +584,7 @@ export const tradesRouter = router({
     .input(z.object({
       id:               z.string().uuid(),
       notes:            z.string().optional(),
-      tags:             z.array(z.string()).optional(),
+      tags:             z.array(z.string().min(1).max(30)).max(20).optional(),
       pnl:              z.number().optional(),
       rMultiple:        z.number().optional(),
       screenshotUrls:   z.array(z.string()).optional(),

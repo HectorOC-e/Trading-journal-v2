@@ -275,3 +275,86 @@ describe("trades.create — emotionBefore null-sentinel contract (M-03)", () => 
     ).rejects.toThrow()
   })
 })
+
+describe("trades.create — tag validation (M-04)", () => {
+  let mockPrisma: ReturnType<typeof makeMockPrisma>
+  let caller: ReturnType<typeof appRouter.createCaller>
+
+  beforeEach(() => {
+    mockPrisma = makeMockPrisma()
+    caller = appRouter.createCaller({
+      prisma: mockPrisma as never,
+      supabase: {} as never,
+      userId: USER_ID,
+    })
+  })
+
+  it("accepts tags within limits (≤20 tags, each ≤30 chars)", async () => {
+    const trade = await caller.trades.create({
+      ...BASE_CREATE_INPUT,
+      tags: ["momentum", "breakout", "news-driven"],
+    })
+    expect(trade).toBeDefined()
+  })
+
+  it("rejects a tag element exceeding 30 characters", async () => {
+    await expect(
+      caller.trades.create({
+        ...BASE_CREATE_INPUT,
+        tags: ["a".repeat(31)],
+      })
+    ).rejects.toThrow()
+  })
+
+  it("rejects an empty-string tag element", async () => {
+    await expect(
+      caller.trades.create({ ...BASE_CREATE_INPUT, tags: [""] })
+    ).rejects.toThrow()
+  })
+
+  it("rejects more than 20 tags", async () => {
+    await expect(
+      caller.trades.create({
+        ...BASE_CREATE_INPUT,
+        tags: Array.from({ length: 21 }, (_, i) => `tag${i}`),
+      })
+    ).rejects.toThrow()
+  })
+})
+
+describe("trades.update — tag validation (M-04)", () => {
+  let mockPrisma: ReturnType<typeof makeMockPrisma>
+  let caller: ReturnType<typeof appRouter.createCaller>
+
+  beforeEach(() => {
+    mockPrisma = makeMockPrisma()
+    caller = appRouter.createCaller({
+      prisma: mockPrisma as never,
+      supabase: {} as never,
+      userId: USER_ID,
+    })
+  })
+
+  it("accepts valid tag update", async () => {
+    const result = await caller.trades.update({
+      id:   TRADE_ID,
+      tags: ["scalp", "london-open"],
+    })
+    expect(result).toBeDefined()
+  })
+
+  it("rejects a tag element exceeding 30 characters on update", async () => {
+    await expect(
+      caller.trades.update({ id: TRADE_ID, tags: ["b".repeat(31)] })
+    ).rejects.toThrow()
+  })
+
+  it("rejects more than 20 tags on update", async () => {
+    await expect(
+      caller.trades.update({
+        id:   TRADE_ID,
+        tags: Array.from({ length: 21 }, (_, i) => `tag${i}`),
+      })
+    ).rejects.toThrow()
+  })
+})

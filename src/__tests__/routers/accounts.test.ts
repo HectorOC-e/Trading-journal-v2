@@ -114,4 +114,33 @@ describe("accounts router", () => {
     })
     expect(result).toEqual(fakeAccount)
   })
+
+  it("archive: audit log captures pre-update status in 'from' field (M-01)", async () => {
+    // Account is ACTIVE before archiving
+    const prevAccount = makeFakeAccount({ id: "acc-4", status: "ACTIVE" })
+    const updatedAccount = makeFakeAccount({ id: "acc-4", status: "INACTIVE" })
+
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ status: "ACTIVE" })
+    mockPrisma.account.update.mockResolvedValue(updatedAccount)
+    mockPrisma.accountLog.create.mockResolvedValue({ id: "log-2" })
+
+    await caller.accounts.archive("550e8400-e29b-41d4-a716-446655440001")
+
+    // findUniqueOrThrow must be called BEFORE update to capture pre-mutation status
+    expect(mockPrisma.account.findUniqueOrThrow).toHaveBeenCalledWith({
+      where: { id: "550e8400-e29b-41d4-a716-446655440001", userId: USER_ID },
+      select: { status: true },
+    })
+    expect(mockPrisma.accountLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        payload: expect.objectContaining({
+          event: "STATUS_CHANGE",
+          from:  "ACTIVE",   // must be the pre-update value, not post-update "INACTIVE"
+          to:    "INACTIVE",
+        }),
+      }),
+    })
+
+    void prevAccount // referenced to avoid lint warning
+  })
 })

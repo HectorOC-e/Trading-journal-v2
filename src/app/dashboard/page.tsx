@@ -40,9 +40,13 @@ export default function DashboardPage() {
     if (prefs.defaultTab && ["portfolio", "operador", "disciplina", "playbook"].includes(prefs.defaultTab)) {
       setTab(prefs.defaultTab as Tab)
     }
-    const savedPeriod = localStorage.getItem(PERIOD_STORAGE_KEY) as Period | null
-    if (savedPeriod && VALID_PERIODS.includes(savedPeriod)) {
-      setPeriod(savedPeriod)
+    try {
+      const savedPeriod = localStorage.getItem(PERIOD_STORAGE_KEY) as Period | null
+      if (savedPeriod && VALID_PERIODS.includes(savedPeriod)) {
+        setPeriod(savedPeriod)
+      }
+    } catch {
+      // localStorage unavailable (e.g. private-browsing quota exceeded)
     }
     setPrefsLoaded(true)
   }, [prefs, prefsLoaded])
@@ -57,7 +61,11 @@ export default function DashboardPage() {
 
   function handlePeriodChange(p: Period) {
     setPeriod(p)
-    localStorage.setItem(PERIOD_STORAGE_KEY, p)
+    try {
+      localStorage.setItem(PERIOD_STORAGE_KEY, p)
+    } catch {
+      // localStorage unavailable
+    }
   }
 
   if (isLoading) {

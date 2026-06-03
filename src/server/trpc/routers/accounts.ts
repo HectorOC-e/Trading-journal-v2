@@ -187,11 +187,15 @@ export const accountsRouter = router({
   archive: protectedProcedure
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
+      const prev = await ctx.prisma.account.findUniqueOrThrow({
+        where: { id: input, userId: ctx.userId },
+        select: { status: true },
+      })
       const account = await ctx.prisma.account.update({
         where: { id: input, userId: ctx.userId },
         data:  { status: "INACTIVE" },
       })
-      const archivePayload: AccountLogPayload = { event: "STATUS_CHANGE", from: account.status, to: "INACTIVE", note: "Archivada" }
+      const archivePayload: AccountLogPayload = { event: "STATUS_CHANGE", from: prev.status, to: "INACTIVE", note: "Archivada" }
       await ctx.prisma.accountLog.create({
         data: { userId: ctx.userId, accountId: input, event: "STATUS_CHANGE", payload: archivePayload },
       })
