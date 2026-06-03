@@ -2,8 +2,8 @@
 
 > **Last Updated: 2026-06-03**  
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
-> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, all tests passing, 4 Blocking QA findings fixed).
-> **Sprint 6 closed:** TASK-045 (system theme toggle), TASK-048 (review filtering), TASK-049 (playbook sparklines), P0.1 (quality gates), P0.2 (TD-013+TD-014 type safety), P3.1 (key rotation), P3.3 (rate limiting). 404 tests passing (+15).
+> **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 389 tests, 4 Blocking QA findings fixed pre-ship).
+> **Sprint 6 closed:** TASK-045 (system theme), TASK-048 (review filters), TASK-049+TASK-012 (sparklines), TASK-013 (type safety), TASK-014 (LearningResource type) + P0.1 (quality gates), P3.1 (key rotation), P3.3 (rate limiting). 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
 
 ---
 
@@ -12,19 +12,19 @@
 | Priority | Count | Open | Done | Estimated Remaining |
 |---|---|---|---|---|
 | P0 | 12 | 0 | 12 | — |
-| P1 | 17 | 3 | 14 | ~7 days |
-| P2 | 16 | 10 | 6 | ~25 days |
+| P1 | 17 | 2 | 15 | ~5 days |
+| P2 | 17 | 5 | 12 | ~15 days |
 | P3 | 10 | 9 | 1 | ~50+ days |
-| **Total** | **55** | **22** | **33** | **~70+ days** |
+| **Total** | **56** | **16** | **40** | **~55+ days** |
 
 > **Sprint 1 closed:** TASK-001, TASK-003, TASK-004, TASK-005, TASK-009, TASK-016, TASK-017, TASK-027, TASK-029 (9 tasks).  
 > **Sprint 2 closed:** TASK-002, TASK-007, TASK-008, TASK-015, TASK-018, TASK-019, TASK-026, TASK-028, TASK-035, TASK-036, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-044 (16 tasks).  
 > **Sprint 3 closed:** TASK-006 (profile backend unblocks 7 downstream tasks), TASK-030 (UserPreferences) (2 core tasks + QA audit fixes).  
 > **Sprint 4 closed:** TASK-034 (psychology fields), TASK-047, TASK-061, TASK-069, TASK-023 (partial), TASK-013 (67% complete) (6 tasks, all Major findings resolved).  
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 4 Blocking QA findings fixed pre-ship).  
-> **Sprint 6 closed:** TASK-045, TASK-048, TASK-049, + type safety (TD-013, TD-014) + security hardening (rate limit, key rotation) (3 feature tasks + 4 tech debt items, 404 tests).
+> **Sprint 6 closed:** TASK-045, TASK-048, TASK-049, TASK-012, TASK-013, TASK-014 + quality gates + key rotation + rate limiting. 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
 
-**Critical path:** All P0 items closed. P1 focus: TASK-011 (discipline score centralization) and TASK-031 (review edit/delete). P2 focus: TASK-045 (system theme), TASK-048 (review filtering).
+**Critical path:** All P0 items closed. P1 focus: TASK-031 (review edit/delete) and TASK-011 (discipline score centralization — TD-002 CRITICAL). P2 focus: TASK-051 (custom tags), TASK-042 (skeleton screens), TASK-043 (empty states). Sprint 7 includes Redis rate limiter (M-004 full fix) and mutation serialization (TD-031).
 
 ---
 
@@ -43,9 +43,9 @@
 | TASK-009 | Fix weekTrades and account stats based on first 50 trades only | analytics | P0 | S | — | DONE |
 | TASK-010 | Connect "Ver registro →" button in Disciplina tab | ux | P1 | XS | — | DONE |
 | TASK-011 | Extract `computeDisciplineScore` as shared function | formulas | P2 | S | TASK-027 | TODO |
-| TASK-012 | Implement sparklines of equity per setup in Playbook | playbook | P2 | M | — | TODO |
-| TASK-013 | Eliminate 15+ `as never` casts in trades/page.tsx | types | P2 | M | — | TODO |
-| TASK-014 | Unify `LearningResource` type with RouterOutputs | types | P2 | S | — | TODO |
+| TASK-012 | Implement sparklines of equity per setup in Playbook | playbook | P2 | M | — | **DONE** Sprint 6 (consolidated → TASK-049) |
+| TASK-013 | Eliminate 15+ `as never` casts in trades/page.tsx | types | P2 | M | — | **DONE** Sprint 6 |
+| TASK-014 | Unify `LearningResource` type with RouterOutputs | types | P2 | S | — | **DONE** Sprint 6 |
 | TASK-015 | Update stale AI model IDs in config | ai | P1 | XS | — | DONE |
 | TASK-016 | Harden CRON_SECRET check in edge function | security | P0 | XS | — | DONE |
 | TASK-017 | Server-side validation for Storage image uploads | security | P0 | S | — | DONE |
@@ -203,8 +203,8 @@ Treat as a coordinated effort. TASK-027 is the prerequisite for all others.
 
 | ID | Title | Priority | Effort |
 |---|---|---|---|
-| TASK-013 | Eliminate 15+ `as never` casts in trades/page.tsx | P2 | M |
-| TASK-023 | Type `market: any` and `amount: any` props | P3 | XS |
+| ~~TASK-013~~ | ~~Eliminate 15+ `as never` casts in trades/page.tsx~~ | P2 | M | **DONE Sprint 6** |
+| TASK-023 | Type `market: any` and `amount: any` props | P3 | XS | DONE Sprint 4 |
 
 ### infra — Schema and Infrastructure (4 tasks)
 
@@ -229,12 +229,12 @@ Treat as a coordinated effort. TASK-027 is the prerequisite for all others.
 TASK-027 (formula centralization) ──┬──► TASK-005 (win criterion)
                                     └──► TASK-011 (discipline score)
 
-TASK-006 (profile backend) ─────────┬──► TASK-030 (UserPreferences)
-                                    ├──► TASK-033 (AI config UI)
-                                    ├──► TASK-045 (system theme)
-                                    ├──► TASK-046 (accent color)
-                                    ├──► TASK-050 (goal setting)
-                                    └──► TASK-051 (custom tags)
+TASK-006 (profile backend) ─────────┬──► TASK-030 (UserPreferences) ✅
+                                    ├──► TASK-033 (AI config UI) ✅
+                                    ├──► TASK-045 (system theme) ✅
+                                    ├──► TASK-046 (accent color) ✅
+                                    ├──► TASK-050 (goal setting) ✅
+                                    └──► TASK-051 (custom tags) [TODO]
 
 TASK-035 (toast system) ────────────────► TASK-037 (review error handling)
 TASK-032 (model IDs) ───────────────────► TASK-033 (AI config UI)
@@ -322,30 +322,42 @@ TASK-019 (schema sync) ─────────────────► TA
 | TASK-018 — Deprecate trades.stats dead code | XS | BE |
 | TASK-023 — Fix any props in mercados/retiros | XS | FE |
 
-### Sprint 6 (Weeks 15–18) — Personalization and Playbook
+### ~~Sprint 6 (Weeks 15–18) — Personalization and Playbook~~ ✅ CLOSED 2026-06-03
 **Goal:** Complete personalization features; playbook real data; reviews filter.
 
-| Task | Effort | Owner |
-|---|---|---|
-| TASK-046 — Accent color + colorblind mode | M | FE |
-| TASK-048 — Review filtering and search | M | BE/FE |
-| TASK-049 — Playbook sparklines with real data | M | FE |
-| TASK-050 — Goal setting + dashboard widget | M | BE/FE |
-| TASK-051 — Custom tags management | M | BE/FE |
-| TASK-052 — Onboarding checklist | M | FE |
+| Task | Effort | Owner | Status |
+|---|---|---|---|
+| TASK-045 — Three-way theme toggle (light/dark/system) | S | FE | ✅ DONE |
+| TASK-048 — Review filtering and search | M | BE/FE | ✅ DONE |
+| TASK-049 — Playbook sparklines with real data | M | FE | ✅ DONE |
+| TASK-012 — Setup sparklines (consolidated → TASK-049) | M | FE | ✅ DONE |
+| TASK-013 — Eliminate remaining `as never` casts | M | FE | ✅ DONE (TD-013 closed) |
+| TASK-014 — Unify LearningResource type | S | FE | ✅ DONE (TD-014 closed) |
+| P0.1 — QUALITY_GATES.md | XS | BE | ✅ DONE |
+| P3.1 — Key rotation utility | S | BE | ✅ DONE |
+| P3.3 — AI test rate limiter | S | BE | ✅ DONE |
 
-### Sprint 7 (Weeks 19–22) — Infrastructure, Testing, P3 Backlog
-**Goal:** Infra hardening, test coverage, begin long-term features.
+**QA Audit (independent):** 0 Blocking · 6 Major (all fixed) · 6 Minor (deferred) · 4 Nitpick (deferred)  
+**Exit criteria:** 407 tests · TypeScript clean · all Major QA findings resolved  
+**Docs:** `docs/SPRINT_6_COMPLETION_REPORT.md` · `docs/SPRINT_6_QA_REPORT.md` · `docs/SPRINT_6_FIX_REPORT.md` · `docs/SPRINT_6_RETROSPECTIVE.md`
 
-| Task | Effort | Owner |
-|---|---|---|
-| TASK-019 — Prisma schema sync | S | BE |
-| TASK-020 — AccountLogs cursor pagination | S | BE |
-| TASK-021 — Activate analytics cache | XS | DevOps |
-| TASK-022 — Verified email domain | XS | DevOps |
-| TASK-024 — RTL component tests | L | QA |
-| TASK-025 — Playwright e2e tests | L | QA |
-| TASK-053 — Portfolio dashboard (start) | XL | BE/FE |
+### Sprint 7 (Weeks 19–22) — Reviews, Discipline Score, Infra Hardening
+**Goal:** Close remaining P1 items; fix TD-002 (CRITICAL); harden infrastructure; start P3 testing backlog.
+
+| Task | Effort | Owner | Notes |
+|---|---|---|---|
+| TASK-031 — Edit/Delete in ReviewDetailPanel | M | FE | P1, deferred 3 sprints |
+| TASK-011 — Extract `computeDisciplineScore` | S | BE | TD-002 CRITICAL — 3 implementations |
+| Redis rate limiter (Upstash) | M | BE | M-004 full fix — extract `lib/rate-limiter.ts` |
+| TD-031 — `serializeAccount` on mutations | XS | BE | `create/update/changeStatus` return Decimal |
+| Review URL persistence | S | FE | Filters reset on navigate (deferred Sprint 6) |
+| TASK-051 — Custom tags management | M | BE/FE | P2 |
+| TD-029 — Guard `CYCLE.includes` on DB prefs cast | XS | FE | m-001 deferred from Sprint 6 QA |
+| TD-030 — Rate limiter boundary `>=` | XS | BE | m-002 deferred from Sprint 6 QA |
+| TD-032 — `Prisma.Decimal` in accounts test mock | XS | QA | m-006 deferred from Sprint 6 QA |
+| TASK-021 — Activate analytics cache | XS | DevOps | |
+| TASK-024 — RTL component tests | L | QA | |
+| TASK-025 — Playwright e2e tests | L | QA | |
 
 ---
 

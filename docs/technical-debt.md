@@ -8,7 +8,7 @@
 > **Pre-Sprint 4 closed:** Type contract, Theme CSS, Decimal serialization, Label mismatch, useEffect deps, Trade limit, Test discovery (8 findings, 5 tests added).  
 > **Sprint 4 closed:** Psychology UI, auto-save, week selector, dashboard persistence, `any` types eliminated, `as never` casts reduced 12→4. Tests: 364 passing (+2 regression guards). (6 tasks, 2 regression tests).  
 > **Sprint 5 closed:** AI config encryption (TD-022 partial: per-user encryption now implemented), cursor pagination (UUID order mismatch fixed), goal widget (weekly metrics corrected). React Query v5 callback removed. Prisma types regenerated; unused `@ts-expect-error` removed. Tests: 389 passing (+11). **Open items: 8 of 28 (TD-002, TD-012, TD-013, TD-014, TD-017, TD-018, TD-019, TD-020).**
-> **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 404 passing (+15). **Open items: 6 of 28 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020).**
+> **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**
 
 ---
 
@@ -39,14 +39,19 @@
 | TD-021 | MEDIUM | Security | Setup images uploaded from client without server validation | S | TASK-017 | **Closed** Sprint 1 |
 | TD-022 | MEDIUM | Security | AI API keys encryption + per-user isolation | L | TASK-033 | **Closed** Sprint 5 (partial: per-user encryption implemented; env vars still at risk) |
 | TD-023 | HIGH | Testing | Zero component or integration tests; no CI/CD | L+S | TASK-024, TASK-025 | Open |
+| TD-029 | LOW | Type Safety | `prefs.theme` DB cast lacks `CYCLE.includes` guard | XS | — | Open |
+| TD-030 | LOW | Reliability | Rate limiter window boundary off-by-one (`>` vs `>=`) | XS | — | Open |
+| TD-031 | MEDIUM | Type Safety | Accounts mutations return unserialized `Decimal` over the wire | XS | — | Open |
+| TD-032 | LOW | Testing | `accounts.test.ts` mock uses plain number not `Prisma.Decimal` | XS | — | Open |
+| TD-033 | LOW | Testing | Rate limit test duplicates algorithm instead of importing it | S | — | Open |
 | TD-024 | LOW | Documentation | No `.env.example`, no variables documentation | XS | TASK-059 | **Closed** Sprint 2 |
 | TD-025 | MEDIUM | Data | Drawdown label on trades page shows "peor día" not drawdown | XS | TASK-028 | **Closed** Sprint 2 |
 | TD-026 | MEDIUM | Data | `use-account-stats.ts` shows current-DD from ATH, not max-DD | XS | TASK-029 | **Closed** Sprint 1 |
 | TD-027 | LOW | Config | AI model IDs stale (`claude-sonnet-4-5`, haiku with date suffix) | XS | TASK-015 | **Closed** Sprint 2 |
 | TD-028 | LOW | Error Handling | `generateSummary` returns `{ error }` with HTTP 200 on failure | XS | TASK-037 | **Closed** Sprint 2 |
 
-**Open items: 8 of 28 | Closed total: 6+9+1+8+7 = 31 items**  
-**Remaining estimated effort: ~5 engineer-days to close all open items**
+**Open items: 11 of 33 | Closed total: 22 items**  
+**Remaining estimated effort: ~6 engineer-days to close all open items**
 
 ---
 
@@ -402,3 +407,60 @@ These items produce incorrect data, broken features, or security vulnerabilities
 | TD-019 Auth per-request | Future | JWT header auth; no auth API calls in tRPC context |
 | TD-020 Fire-and-forget embed | Future | Reliable embedding via DB webhook or queue |
 | TD-018 Domain extraction | Ongoing | Routers < 200 lines each; logic in domains/ |
+
+---
+
+## Sprint 6 QA Debt (added 2026-06-03)
+
+Items deferred from the Sprint 6 QA audit (Minor and Nitpick findings). None block production; all targeted for Sprint 7 cleanup.
+
+---
+
+### TD-029 — `prefs.theme` DB cast lacks `CYCLE.includes` guard
+
+- **Location:** `src/components/theme-provider.tsx:44`
+- **Severity:** LOW — inconsistency; could cause subtle bug with stale DB rows
+- **Root cause:** The localStorage path guards with `CYCLE.includes(saved)` before calling `setThemeState`. The DB prefs path does `setThemeState(prefs.theme as ThemeMode)` without validating the value is in `CYCLE`. A stale DB row with an unknown theme value would be applied directly.
+- **Fix:** `if (prefs?.theme && CYCLE.includes(prefs.theme as ThemeMode)) setThemeState(prefs.theme as ThemeMode)`
+- **Effort:** XS | **Source:** Sprint 6 QA m-001
+
+---
+
+### TD-030 — Rate limiter window boundary off-by-one
+
+- **Location:** `src/app/api/ai-test/route.ts:17`
+- **Severity:** LOW — users blocked 1ms beyond the advertised 60s window
+- **Root cause:** Condition `now - entry.windowStart > RATE_LIMIT_WINDOW` uses strict `>`. At exactly `now === windowStart + 60000`, the window has elapsed but the condition is false; the user sees "try again in 0s" but is still blocked.
+- **Fix:** Change `>` to `>=`
+- **Effort:** XS | **Source:** Sprint 6 QA m-002
+
+---
+
+### TD-031 — Accounts mutation endpoints return unserialized `Decimal` over the wire
+
+- **Location:** `src/server/trpc/routers/accounts.ts:84,123,183,197`
+- **Severity:** MEDIUM — type contract inconsistency between `list` and mutations
+- **Root cause:** `serializeAccount` is correctly applied in `accounts.list`, but `create`, `update`, `changeStatus`, `changePhase`, and `archive` return raw Prisma objects. Since no `superjson` transformer is used, Prisma `Decimal` serializes via `.toJSON()` to a string `"10000.00"`. `RouterOutputs["accounts"]["create"]` will have `initialBalance: string` while `RouterOutputs["accounts"]["list"][number]` has `initialBalance: number`.
+- **Impact:** Currently latent (callers use mutation return only for cache invalidation). Any future code reading `initialBalance` from a mutation result will silently get a string.
+- **Fix:** Apply `return serializeAccount(account)` to all 5 mutation endpoints.
+- **Effort:** XS | **Source:** Sprint 6 QA m-003
+
+---
+
+### TD-032 — `accounts.test.ts` mock uses plain JS number instead of `Prisma.Decimal`
+
+- **Location:** `src/__tests__/routers/accounts.test.ts:52`
+- **Severity:** LOW — test gives false confidence in Decimal serialization
+- **Root cause:** `findMany` mock resolves with `initialBalance: 10000` (JS number). Real Prisma returns `initialBalance: Decimal("10000.00")`. The test passes even if `serializeAccount` were deleted, because `Number(10000) === 10000`.
+- **Fix:** Use `new Prisma.Decimal("10000.50")` in the mock; assert `typeof result[0].initialBalance === "number"`.
+- **Effort:** XS | **Source:** Sprint 6 QA m-006
+
+---
+
+### TD-033 — Rate limit test duplicates algorithm instead of importing it
+
+- **Location:** `src/__tests__/routers/rate-limit.test.ts:9–25`
+- **Severity:** LOW — changes to production algorithm don't break tests
+- **Root cause:** The test re-implements `checkRateLimit` as a `makeRateLimiter` factory. If the production algorithm in `route.ts` is changed, these tests continue passing without detecting the regression.
+- **Fix:** Extract `checkRateLimit` from `route.ts` into `src/lib/rate-limiter.ts`. Import and test the real function. This also enables the Redis-backed implementation (TD-031 full fix for M-004) to be swapped by replacing the module.
+- **Effort:** S | **Source:** Sprint 6 QA n-004 (coupled with M-004 Redis fix)

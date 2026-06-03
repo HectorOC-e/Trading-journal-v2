@@ -2,7 +2,7 @@
 
 > **Last Updated: 2026-06-03**  
 > Merges the existing ROADMAP.md (Phases 0–5) with the master-remediation-plan phased execution plan and new feature initiatives through Phase XIV.
-> **Sprints 1–5 complete.** Phases X–XI closed. Phase XII (Psychology & Reviews) beginning Sprint 6.
+> **Sprints 1–6 complete.** Phases X–XI closed. Phase XII partially closed (TASK-045, TASK-048, TASK-049 done). Phase XIII type safety items closed (TASK-013, TASK-014). Sprint 7 begins Phase XII-C (discipline score) and TASK-031 (review edit/delete).
 
 ---
 
@@ -40,7 +40,10 @@ A privacy-first, single-tenant trading journal that functions as a personal trad
 - ~~8 separate win-rate implementations~~ ✅ Fixed Sprint 1 (win rate); discipline score deferred to Sprint 5
 - ~~CRON_SECRET security bypass in edge function~~ ✅ Fixed Sprint 1
 - ~~rMultiple null on all CSV-imported trades~~ ✅ Fixed Sprint 1
-- **Remaining:** 6 Minor findings + 4 Nitpick findings + 13 open technical debt items (deferred to future sprints)
+- ~~Three-way theme toggle (system mode wrong icon)~~ ✅ Fixed Sprint 6 (M-002 — `resolvedTheme` used in Sidebar)
+- ~~Media listener leak on ThemeProvider unmount~~ ✅ Fixed Sprint 6 (M-001 — effect cleanup return added)
+- ~~Key encryption accepted non-hex secrets silently~~ ✅ Fixed Sprint 6 (M-005/M-006 — regex guard + equality guard)
+- **Remaining open:** 11 technical debt items (TD-002 CRITICAL, TD-029–TD-033 from Sprint 6 QA); Redis rate limiter needed for multi-instance deployments
 
 ---
 
@@ -302,6 +305,67 @@ revengeFlag      Boolean  @default(false)
 
 ---
 
+## Phase XII Sprint 6 Closeout — Theme, Reviews, Sparklines, Security (P1/P2) ✅ PARTIAL 2026-06-03 [Sprint 6]
+
+**Objective:** Personalization completion, review filtering, playbook real data, security hardening.
+
+**Result:** XII-B (Review Filtering — TASK-048) complete. XIV-A (System Theme — TASK-045, consolidated here) complete. XIII-A (Sparklines — TASK-049) complete. XIII-D (Type Safety — TASK-013, TASK-014) complete. P1.3 (Goal exceeded feedback) complete. P3.1 (key rotation) and P3.3 (rate limiter) complete. Independent QA: 0 Blocking, 6 Major (all fixed), 6 Minor + 4 Nitpick deferred to Sprint 7. 407 tests (+18). TypeScript clean.
+
+### Sprint 6 Deliverables
+
+**TASK-045:** Three-way theme toggle:
+- ✅ `ThemeMode = "light" | "dark" | "system"` with `ResolvedTheme` separation
+- ✅ OS media query listener with proper `useEffect` cleanup on unmount (M-001 fixed)
+- ✅ DB persistence via `preferences.update` with 500ms debounce (M-003 fixed)
+- ✅ Sidebar icon uses `resolvedTheme` not `theme` — correct in all OS combinations (M-002 fixed)
+
+**TASK-048:** Weekly review filtering and search:
+- ✅ Text search across executiveSummary, whatWorked, toImprove, weekLabel
+- ✅ Outcome filter (ALL/WIN/LOSS/NEUTRAL), status filter (ALL/submitted/draft), min discipline score
+- ✅ "X de Y" count, "Limpiar filtros" button, empty state with shortcut
+- ✅ `useMemo` dependency array complete — no stale-closure risk
+
+**TASK-049 / TASK-012:** Playbook sparklines:
+- ✅ `SetupSparkline` SVG component from `equityCurve[]` data
+- ✅ Gradient fill, color matched to setup status, dashed fallback when <2 points
+- ✅ `max === min` division-by-zero guard (`range || 1`)
+- ✅ Drawer shows real equity curve with P&L label
+
+**TD-013 closed — Type safety:**
+- ✅ `serializeAccount()` in accounts.ts — all `Decimal → number`, `Date → ISO string`
+- ✅ 4 remaining `as never` casts eliminated from `trades/page.tsx`
+- ✅ `PositionLogModal.onAddEvent` narrowed to `AddableType`
+
+**TD-014 closed — LearningResource type:**
+- ✅ `Omit<SerializedLearningResource, "type" | "status"> & { type: ResourceType; status: ResourceStatus }` — no more manual interface duplication
+
+**Security:**
+- ✅ `rotateEncryptionKey()` with injectable DB functions, hex validation, equality guard (M-005, M-006 fixed)
+- ✅ In-memory rate limiter 5 req/60s, `Retry-After` header, stale-entry eviction (M-004 partial)
+
+### QA Audit Findings
+
+| Severity | Count | Status |
+|---|---|---|
+| Blocking | 0 | — |
+| Major | 6 | ✅ All fixed |
+| Minor | 6 | 📋 Deferred (TD-029–TD-033) |
+| Nitpick | 4 | 📋 Deferred |
+
+### Sprint 6 Success Metrics
+
+- ✅ System theme toggle correct in all 6 OS × preference combinations
+- ✅ Review filters functional (text, outcome, status, discipline)
+- ✅ Sparklines real data from equityCurve with correct edge cases
+- ✅ 0 `as never` casts in application code
+- ✅ LearningResource type derived from RouterOutputs
+- ✅ Key rotation validated: hex format, equality guard, failed-count resilience
+- ✅ 407 tests passing (+18 from baseline)
+- ✅ TypeScript clean (tsc --noEmit)
+- ✅ All 6 Major QA findings fixed same session
+
+---
+
 ## Phase XII — Psychology & Reviews (P1/P2) [~3 weeks]
 
 **Objective:** Complete psychology tracking and improve review workflow.
@@ -316,11 +380,9 @@ Surface psychology fields from Phase XI in analytics:
 
 ### XII-B — Review Workflow
 
-**TASK-048:** Add filtering and search to reviews list:
-- Search by week label and date range
-- Filter by account
-- Filter by status (draft/submitted)
-- Filter by discipline score range
+~~**TASK-048:** Add filtering and search to reviews list~~ ✅ DONE Sprint 6
+
+**TASK-031:** Add Edit and Delete buttons to `ReviewDetailPanel`. Re-use `NuevaReviewModal` in edit mode. Call `weeklyReviews.update` mutation. Show "Last edited" timestamp.
 
 **TASK-011:** Extract `computeDisciplineScore(params)` into `lib/trading-formulas.ts`. Replace all 3 implementations. Frontend modal shows server-provided value only.
 
@@ -337,7 +399,7 @@ disciplineScore =
 ### Phase XII Success Metrics
 - Psychology data available in at least 2 analytics charts
 - Discipline score consistent across UI and server
-- Reviews filterable by account and date range
+- Reviews filterable by account and date range (✅ DONE Sprint 6 — TASK-048)
 
 ---
 

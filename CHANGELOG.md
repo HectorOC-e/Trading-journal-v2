@@ -6,6 +6,92 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Sprint 6 QA Fix (2026-06-03) — 6 Major Findings Resolved
+
+**Fixed — Major (6)**
+- **M-001:** `ThemeProvider` useEffect had no cleanup return — media query listener now removed on component unmount
+- **M-002:** Sidebar theme-toggle icon used `theme === "dark"` instead of `resolvedTheme === "dark"` — fixed for all 7 occurrences; icon now correct when preference is "system"
+- **M-003:** `updatePrefs.mutate` fired synchronously on every toggle — debounced to 500ms to prevent DB write storms
+- **M-004:** In-memory rate-limit Map grew unboundedly — added per-check eviction of entries >2× window age; TODO comment for Upstash Redis (Sprint 7)
+- **M-005:** `getEncryptionKey` validated only string length — added `/^[0-9a-fA-F]{64}$/` regex guard to reject misconfigured secrets with a clear error
+- **M-006:** `rotateEncryptionKey` accepted `oldSecret === newSecret` silently — added hex validation + equality guard; throws with descriptive error
+
+**Tests**
+- Added 3 tests: non-hex secret rejection (M-005), non-hex rotation secrets (M-006), identical secrets guard (M-006)
+- Test suite: 404 → 407 passing, 0 failing
+
+**Documentation**
+- Created `docs/SPRINT_6_QA_REPORT.md` — independent audit with 6 Major, 6 Minor, 4 Nitpick findings
+- Created `docs/SPRINT_6_FIX_REPORT.md` — detailed fix documentation for all 6 Major findings
+- Created `docs/SPRINT_6_RETROSPECTIVE.md` — sprint retrospective with risks and Sprint 7 recommendations
+
+---
+
+### Sprint 6 (2026-06-03) — System Theme, Review Filters, Sparklines, Type Safety, Security
+
+**Added**
+- **TASK-045:** Three-way theme toggle (light / dark / system) — system mode reads `prefers-color-scheme`, subscribes to live OS changes, persists to DB; toggle cycles light → dark → system → light
+- **TASK-048:** Weekly review filtering and search — text search across executiveSummary/whatWorked/toImprove/weekLabel; outcome filter (All/WIN/LOSS/NEUTRAL); status filter (All/submitted/draft); minimum discipline score; "X de Y" count; "Limpiar filtros" button; empty state
+- **TASK-049:** Playbook sparklines with real equity data — SVG path from `equityCurve[]`; gradient fill; color matched to setup status; dashed fallback when <2 data points; real P&L label in drawer
+- **P1.3:** Goal widget exceeded feedback — gold glow ring, ✓ icon, "+N extra" text, green border, celebration banner when any goal exceeded
+- **P0.1:** `QUALITY_GATES.md` — 4-gate definition-of-done (Zod/TS alignment, Browser QA, Integration test, Security review)
+- **P3.1:** `rotateEncryptionKey()` — re-encrypts all `UserAiConfig.apiKeyEnc` from old to new key; injectable DB functions for testability; returns `{ rotated, failed }` counters
+- **P3.3:** In-memory rate limiter on AI test endpoint — 5 req/60 s per user; 429 with `Retry-After: N` header
+
+**Fixed (Type Safety — TD-013, TD-014)**
+- **TD-013:** `accounts.list` now serializes `Decimal → number` and `Date → ISO string` via `serializeAccount()`; all 4 `as never` casts removed from `trades/page.tsx`; `PositionLogModal.onAddEvent` narrowed to `AddableType`
+- **TD-014:** `LearningResource` type derived from `RouterOutputs` with `type: ResourceType` and `status: ResourceStatus` overrides — no more manual interface duplication
+
+**Tests**
+- 9 tests for `key-encryption.ts`: roundtrip, random IV, tamper detection, secretOverride, maskApiKey, rotateEncryptionKey (happy path, failed count, length validation)
+- 6 tests for rate limiter algorithm: first 5 allowed, 6th blocked, window reset, per-user isolation, retryAfter decreases
+- Test suite: 389 → 404 passing (+15)
+
+**Documentation**
+- Created `docs/SPRINT_6_COMPLETION_REPORT.md`
+- Updated `docs/backlog.md` — Sprint 6 tasks marked DONE
+- Updated `docs/technical-debt.md` — TD-013, TD-014 closed
+
+---
+
+### Sprint 5 QA Fix (2026-06-03) — 4 Blocking + 6 Major Findings Resolved
+
+**Fixed — Blocking (4)**
+- **B-01:** `_getDecryptedKey` exposed in tRPC router — removed from router; moved to server-only helper
+- **B-02:** `accountLogs.list` cursor used UUID lexicographic ordering — switched to Prisma `cursor: { id }, skip: 1`
+- **B-03:** Weekly metrics passed wrong date range to goal widget — fixed `buildKpis` to use Mon–today window for `tradesCountWeek` and `pnlWeek`
+- **B-04:** AES-256-GCM auth tag not validated on decrypt — `setAuthTag()` now called before `decipher.final()` on all decrypt paths
+
+**Fixed — Major (6)**
+- Stale Prisma types causing `@ts-expect-error` on `planNotes` and `userAiConfig` — regenerated client, directives removed
+- `UserAiConfig.provider` enum not validated in Zod schema — added `z.enum(["anthropic","openai","openrouter"])`
+- Mask function showed last 8 chars not first 8 — corrected `maskApiKey` to show prefix
+- React Query v5 `onSuccess` in `useMutation` removed (deprecated) — migrated to `useEffect` watching `data`
+- Cursor pagination test used non-UUID string — replaced with `crypto.randomUUID()`
+- AI test endpoint leaked decrypted key in error log — guard added
+
+**Tests**
+- Added 11 tests covering B-01 through B-04 and Major fixes
+- Test suite: 364 → 389 passing (+25)
+
+---
+
+### Sprint 5 (2026-06-03) — AI Config, Personalization Polish, International Support
+
+**Added**
+- **TASK-033:** Full AI configuration system — `UserAiConfig` Prisma model, AES-256-GCM encryption in `key-encryption.ts`, tRPC router (`get/update/delete`), connectivity test endpoint, profile UI with masked key inputs and per-provider model selectors
+- **TASK-046:** Accent color picker + colorblind mode — 8 preset colors, OKLCH hue slider, deuteranopia/protanopia/tritanopia CSS variable presets, real-time preview, persisted to `UserPreferences`
+- **TASK-050:** Goal-setting dashboard widget — circular progress rings for 4 goals (weekly trades, P&L, discipline, learning minutes), goal CRUD in profile page
+- **TASK-020:** Cursor pagination for `accountLogs.list` — Prisma native cursor with `skip: 1` pattern, correct UUID ordering
+- **TASK-056:** `useCurrency()` hook — reads `profile.baseCurrency`, propagated to all P&L displays (KPI strip, trade list, analytics, goal widget)
+- **TASK-062:** Sharpe Ratio KPI card on dashboard analytics strip
+- **TASK-074:** `planNotes` field — collapsible textarea in register/edit modals, read-only display in detail panel (200 char limit with expand)
+
+**Tests**
+- Test suite: 354 → 364 → 389 passing
+
+---
+
 ### Sprint 4 QA Fix (2026-06-02) — Major Finding Resolution
 
 **Fixed — Major (5)**
