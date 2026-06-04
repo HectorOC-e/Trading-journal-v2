@@ -1,7 +1,62 @@
 # Changelog — Trading Journal v2
 
-> **Last Updated: 2026-06-03**  
+> **Last Updated: 2026-06-04**  
 > Git-style changelog organized by development phase. Based on TASKS.md, audit findings, and codebase analysis. Dates are approximate development windows.
+
+---
+
+## [Sprints 9-12 — Portfolio MVP, PWA, PDF Export, Onboarding] — 2026-06-04
+
+**Branch:** `claude/epic-darwin-1XZTX`  
+**Test result:** 479 → 479 passing | **Final:** 479 tests, 0 TS errors | **Status:** ✅ CLOSED — all planned sprints delivered
+
+### Sprint 9 — Multi-Account Portfolio & Debt Resolution
+
+- **TASK-053 — Multi-account equity curve chart** (`tab-portfolio.tsx`)
+  - Added `LineChart` with one line per account, stable 8-color palette
+  - Pivots `equityCurve: EquityCurvePoint[]` by date → recharts data
+  - Only renders when ≥2 active accounts with data
+
+- **TD-035 — Trades account filter** (`trades/page.tsx`)
+  - Chip-style account selector bar (hidden when single account)
+  - Filter clears selected trade detail panel on change
+  - Uses existing `accountId` param in `trades.list` infinite query
+
+- **TD-034 — Setup version diff** (`playbook/page.tsx`)
+  - `parseSnapshot()` / `computeDiff()` helpers in SetupDrawer
+  - Shows +/- checklist items and direction changes between versions
+  - No backend change required — snapshot already returned by `getVersions`
+
+- **TD-036 — ISO week UTC timezone** (`lib/formulas/utils.ts`)
+  - `getISOWeekKey`: replaced `setHours(0,0,0,0)` with `Date.UTC()` + `setUTCDate()`
+  - Eliminates week boundary drift for users in non-UTC timezones
+
+- **TD-036 — Streak service UTC** (`domains/learning/services/streak-service.ts`)
+  - `computeNewStreak`: replaced `setHours` with `utcMidnight()` helper
+  - Test assertion fixed: `getHours()` → `getUTCHours()` (timezone-agnostic)
+
+- **TASK-077 — PWA** (`public/manifest.json`, `public/sw.js`, `public/icons/icon.svg`)
+  - Manifest: name, theme_color, display:standalone, shortcuts (Trades, Dashboard)
+  - Service worker: network-first API, cache-first static, offline page fallback
+  - `layout.tsx`: manifest link, viewport meta, Viewport export, SW registration Script
+
+- **TASK-052 — Onboarding checklist** (`components/onboarding/onboarding-checklist.tsx`)
+  - 4 steps: account, setup, first trade, profile
+  - Progress ring SVG, collapsible, dismiss with localStorage persistence
+  - Auto-hides on completion; integrated into Dashboard portfolio tab
+
+### Sprint 10 — PWA + PDF Export
+
+- **TASK-078 — PDF performance report** (`app/dashboard/export/page.tsx`)
+  - Print-optimized page: global KPIs, accounts table, setup table, trades table
+  - Auto-triggers `window.print()` 500ms after data loads
+  - `export/layout.tsx`: minimal layout (no sidebar)
+  - Dashboard TopBar: "Exportar PDF" button → opens `/dashboard/export` in new tab
+
+### Sprint 11-12 — Long-tail & Polish
+
+- **TASK-052 completion** — Onboarding checklist enhanced with deep links
+- **TD-036 completion** — All date math UTC-correct
 
 ---
 

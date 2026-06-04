@@ -10,6 +10,8 @@ import { TabPortfolio }  from "./tabs/tab-portfolio"
 import { TabOperador }   from "./tabs/tab-operador"
 import { TabDisciplina } from "./tabs/tab-disciplina"
 import { TabPlaybook }   from "./tabs/tab-playbook"
+import { FileDown } from "lucide-react"
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -110,7 +112,16 @@ export default function DashboardPage() {
 
   return (
     <main aria-label="Panel principal">
-      <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
+      <TopBar
+        title="Dashboard"
+        subtitle="Vista general de tu portfolio"
+        actions={[{
+          label: "Exportar PDF",
+          icon: <FileDown size={14} />,
+          variant: "ghost" as const,
+          onClick: () => window.open("/dashboard/export", "_blank"),
+        }]}
+      />
       <div className="flex items-center gap-1 mb-6 border-b border-[var(--line)]" role="tablist" aria-label="Secciones del dashboard">
         {TABS.map(t => (
           <button
@@ -135,15 +146,19 @@ export default function DashboardPage() {
         ))}
       </div>
       {tab === "portfolio" && (
-        <TabPortfolio
-          kpis={stats.kpis}
-          pnlByDate={stats.pnlByDate}
-          propFirmStatus={stats.propFirmStatus}
-          accountStats={stats.accountStats}
-          accounts={accounts}
-          period={period}
-          onPeriodChange={handlePeriodChange}
-        />
+        <div className="flex flex-col gap-4">
+          <OnboardingChecklist />
+          <TabPortfolio
+            kpis={stats.kpis}
+            pnlByDate={stats.pnlByDate}
+            propFirmStatus={stats.propFirmStatus}
+            accountStats={stats.accountStats}
+            equityCurve={stats.equityCurve}
+            accounts={accounts}
+            period={period}
+            onPeriodChange={handlePeriodChange}
+          />
+        </div>
       )}
       {tab === "operador" && (
         <TabOperador

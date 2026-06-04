@@ -30,6 +30,12 @@ export default function TradesPage() {
   const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
   const [importModalOpen, setImportModalOpen]       = useState(false)
+  const [filterAccountId, setFilterAccountId]       = useState<string | null>(null)
+
+  function handleAccountFilter(id: string | null) {
+    setFilterAccountId(id)
+    setSelectedId(null)
+  }
 
   const pendingChecklistRef = useRef<{ setupId?: string; items: string[]; total: number } | null>(null)
 
@@ -43,7 +49,7 @@ export default function TradesPage() {
     hasNextPage,
     isFetchingNextPage,
   } = trpc.trades.list.useInfiniteQuery(
-    { limit: 50 },
+    { limit: 50, ...(filterAccountId ? { accountId: filterAccountId } : {}) },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   )
   const trades = tradePages?.pages.flatMap(p => p.items) ?? []
@@ -321,7 +327,42 @@ export default function TradesPage() {
               },
             ]}
           />
-          <KpiStrip items={kpiItems} className="mb-6" />
+          <KpiStrip items={kpiItems} className="mb-4" />
+
+          {/* Account filter (TD-035) */}
+          {accounts.length > 1 && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11px] text-[var(--ink-3)] font-medium shrink-0">Cuenta:</span>
+              <div className="flex items-center gap-1 flex-wrap">
+                <button
+                  onClick={() => handleAccountFilter(null)}
+                  className={[
+                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                    !filterAccountId
+                      ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                      : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
+                  ].join(" ")}
+                >
+                  Todas
+                </button>
+                {accounts.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => handleAccountFilter(a.id === filterAccountId ? null : a.id)}
+                    className={[
+                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                      filterAccountId === a.id
+                        ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                        : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
+                    ].join(" ")}
+                  >
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tradesLoading ? (
             <SkeletonTableRows rows={8} />
           ) : trades.length === 0 ? (

@@ -1,0 +1,33 @@
+{
+  "name": "Trading Journal",
+  "short_name": "TJournal",
+  "description": "Diario de trading profesional con analytics, playbook y coach IA",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#4f6ef7",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Registrar Trade",
+      "short_name": "Trade",
+      "url": "/trades",
+      "description": "Registra un nuevo trade"
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "description": "Ver analytics del portfolio"
+    }
+  ]
+}

@@ -243,14 +243,36 @@ function SetupDrawer({
   const [lightboxImg,    setLightboxImg]    = useState<string | null>(null)
   const [showVersions,   setShowVersions]   = useState(false)
 
-  // T-VIII-004: version history for the selected setup
-  type VersionRow = { id: string; version: number; reason: string; createdAt: Date | string }
+  // T-VIII-004: version history for the selected setup (with snapshots for diff)
+  type VersionSnapshot = { aplusChecklist?: string[]; standardChecklist?: string[]; direction?: string }
+  type VersionRow = { id: string; version: number; reason: string; createdAt: Date | string; snapshot: unknown }
   const { data: versionsRaw } = trpc.setups.getVersions.useQuery(
     setup?.id ?? "",
     { enabled: !!setup?.id, staleTime: 30_000 },
   )
-  // Cast to a simple type to avoid deep instantiation in JSX
   const versions = versionsRaw as VersionRow[] | undefined
+
+  function parseSnapshot(s: unknown): VersionSnapshot {
+    if (!s || typeof s !== "object") return {}
+    const obj = s as Record<string, unknown>
+    return {
+      aplusChecklist:    Array.isArray(obj.aplusChecklist)    ? (obj.aplusChecklist as string[])    : [],
+      standardChecklist: Array.isArray(obj.standardChecklist) ? (obj.standardChecklist as string[]) : [],
+      direction:         typeof obj.direction === "string" ? obj.direction : undefined,
+    }
+  }
+
+  function computeDiff(prev: VersionSnapshot, next: VersionSnapshot) {
+    const added:   string[] = []
+    const removed: string[] = []
+    const prevAll = [...(prev.aplusChecklist ?? []), ...(prev.standardChecklist ?? [])]
+    const nextAll = [...(next.aplusChecklist ?? []), ...(next.standardChecklist ?? [])]
+    for (const item of nextAll) if (!prevAll.includes(item)) added.push(item)
+    for (const item of prevAll) if (!nextAll.includes(item)) removed.push(item)
+    const dirChanged = prev.direction && next.direction && prev.direction !== next.direction
+      ? `${prev.direction} → ${next.direction}` : null
+    return { added, removed, dirChanged }
+  }
 
   useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false); setLightboxImg(null); setShowVersions(false) }, [setup?.id])
 
@@ -400,7 +422,7 @@ function SetupDrawer({
             </div>
           )}
 
-          {/* T-VIII-004: Version history */}
+          {/* T-VIII-004: Version history with diff (TD-034) */}
           {versions && versions.length > 0 && (
             <div>
               <button
@@ -413,15 +435,42 @@ function SetupDrawer({
               </button>
               {showVersions && (
                 <div className="flex flex-col gap-1.5 mt-2">
-                  {versions.map(v => (
-                    <div key={v.id} className="flex items-start gap-2.5 py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
-                      <span className="text-[9px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">v{v.version}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-[var(--ink-2)]">{v.reason}</p>
-                        <p className="text-[10px] text-[var(--ink-3)]">{new Date(v.createdAt).toLocaleDateString("es-HN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  {versions.map((v, idx) => {
+                    // v.snapshot = state BEFORE this version's change
+                    // next state = previous version's snapshot (or current setup if idx === 0)
+                    const prevSnap = parseSnapshot(v.snapshot)
+                    const nextSnap: VersionSnapshot = idx === 0
+                      ? { aplusChecklist: setup.aplusChecklist, standardChecklist: setup.standardChecklist, direction: setup.direction }
+                      : parseSnapshot(versions[idx - 1].snapshot)
+                    const { added, removed, dirChanged } = computeDiff(prevSnap, nextSnap)
+                    const hasDiff = added.length > 0 || removed.length > 0 || dirChanged
+                    return (
+                      <div key={v.id} className="flex items-start gap-2.5 py-2.5 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                        <span className="text-[9px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">v{v.version}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-[var(--ink-2)]">{v.reason}</p>
+                          <p className="text-[10px] text-[var(--ink-3)] mb-1.5">{new Date(v.createdAt).toLocaleDateString("es-HN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                          {hasDiff && (
+                            <div className="flex flex-col gap-0.5">
+                              {dirChanged && (
+                                <p className="text-[10px] text-[var(--be)]">Dirección: {dirChanged}</p>
+                              )}
+                              {removed.map(item => (
+                                <p key={item} className="text-[10px] text-[var(--loss)] flex items-center gap-1">
+                                  <span className="font-bold">−</span> {item}
+                                </p>
+                              ))}
+                              {added.map(item => (
+                                <p key={item} className="text-[10px] text-[var(--win)] flex items-center gap-1">
+                                  <span className="font-bold">+</span> {item}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -787,7 +836,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
             <button key={t} onClick={() => setTab(t)}
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]")}>
-              {t === "info" ? "📋 Información" : t === "checklist" ? "✓ Checklists" : "📈 Edge"}
+              {t === "info" ? "Información" : t === "checklist" ? "Checklists" : "Edge"}
             </button>
           ))}
         </div>

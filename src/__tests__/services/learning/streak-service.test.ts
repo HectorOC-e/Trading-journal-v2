@@ -31,12 +31,12 @@ describe("computeNewStreak", () => {
     expect(newStreak).toBe(1)
   })
 
-  it("returned lastReviewDate is set to today (midnight)", () => {
+  it("returned lastReviewDate is set to today (UTC midnight)", () => {
     const today = day("2026-05-30")
     const { lastReviewDate } = computeNewStreak(null, 0, today)
     expect(lastReviewDate.toISOString().slice(0, 10)).toBe("2026-05-30")
-    expect(lastReviewDate.getHours()).toBe(0)
-    expect(lastReviewDate.getMinutes()).toBe(0)
+    expect(lastReviewDate.getUTCHours()).toBe(0)
+    expect(lastReviewDate.getUTCMinutes()).toBe(0)
   })
 
   it("building streak over multiple consecutive days", () => {

@@ -1,7 +1,10 @@
 "use client"
 
 import { useMemo } from "react"
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+import {
+  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line, CartesianGrid,
+} from "recharts"
 import { TrendingUp, TrendingDown, Target, BarChart2, CheckCircle2, Percent, Activity, Award } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
@@ -18,13 +21,20 @@ type AccountMeta    = RouterOutputs["accounts"]["list"][number]
 type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
 const PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
 
+// Palette for multi-account equity curves (max 8 accounts)
+const ACCOUNT_COLORS = [
+  "#4f6ef7", "#22c55e", "#f59e0b", "#e05555",
+  "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16",
+]
+
 export function TabPortfolio({
-  kpis, pnlByDate, propFirmStatus, accountStats, accounts, period, onPeriodChange,
+  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, accounts, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   pnlByDate:      DashboardStats["pnlByDate"]
   propFirmStatus: DashboardStats["propFirmStatus"]
   accountStats:   DashboardStats["accountStats"]
+  equityCurve:    DashboardStats["equityCurve"]
   accounts:       AccountMeta[]
   period:         Period
   onPeriodChange: (p: Period) => void
@@ -64,6 +74,20 @@ export function TabPortfolio({
       return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", status: a?.status ?? "ACTIVE" }
     })
   }, [accountStats, accounts])
+
+  // Multi-account equity curve: pivot by date, one column per account
+  const equityCurveByAccount = useMemo(() => {
+    const activeAccountIds = accountStats.map(s => s.accountId)
+    const byDate: Record<string, Record<string, number>> = {}
+    for (const pt of equityCurve) {
+      if (!activeAccountIds.includes(pt.accountId)) continue
+      if (!byDate[pt.date]) byDate[pt.date] = {}
+      byDate[pt.date][pt.accountId] = pt.balance
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, vals]) => ({ date: fmtDate(date), ...vals }))
+  }, [equityCurve, accountStats])
 
   const pf = kpis.profitFactor
   const { netPnl, wins, total, winRate, avgR, sharpeRatio, expectancyDollar, bestDay, worstDay, tradeStreak } = kpis
@@ -207,6 +231,50 @@ export function TabPortfolio({
           )}
         </Card>
       </div>
+
+      {/* Multi-account equity curve (TASK-053) */}
+      {equityCurveByAccount.length > 1 && accountStats.length > 1 && (
+        <Card title="Curva de equity por cuenta" sub="Balance acumulado en el período seleccionado">
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={equityCurveByAccount} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
+                tickFormatter={v => `$${(v as number).toLocaleString()}`} width={60} />
+              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--line)", strokeWidth: 1 }} />
+              {accountStats.map((s, i) => {
+                const acct  = accounts.find(a => a.id === s.accountId)
+                const color = ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
+                return (
+                  <Line
+                    key={s.accountId}
+                    type="monotone"
+                    dataKey={s.accountId}
+                    name={acct?.name ?? s.accountId}
+                    stroke={color}
+                    strokeWidth={1.8}
+                    dot={false}
+                    activeDot={{ r: 3, stroke: color }}
+                    connectNulls
+                  />
+                )
+              })}
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-2 flex-wrap">
+            {accountStats.map((s, i) => {
+              const acct  = accounts.find(a => a.id === s.accountId)
+              const color = ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
+              return (
+                <span key={s.accountId} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
+                  {acct?.name ?? s.accountId}
+                </span>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       <GoalProgressWidget kpis={kpis} weeklyTradesCount={kpis.tradesCountWeek} />
 
