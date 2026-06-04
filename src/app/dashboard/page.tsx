@@ -86,10 +86,19 @@ export default function DashboardPage() {
     return (
       <main aria-label="Panel principal">
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
-        <div className="flex flex-col items-center justify-center h-64 gap-3" role="alert">
-          <p className="text-[var(--ink-3)] text-sm">No se pudo cargar el dashboard.</p>
+        <div
+          className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] py-16 px-6 text-center"
+          role="alert"
+        >
+          <div className="w-10 h-10 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] flex items-center justify-center">
+            <span className="text-[var(--loss)] text-[16px] font-bold">!</span>
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-[var(--ink)]">No se pudo cargar el dashboard</p>
+            <p className="text-[12px] text-[var(--ink-3)] mt-1">Verifica tu conexión e intenta de nuevo.</p>
+          </div>
           <button
-            className="text-[12px] px-4 py-1.5 rounded border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            className="h-8 px-4 rounded-[var(--radius-sm)] text-[12px] font-semibold text-white bg-[var(--accent)] hover:bg-[var(--accent-h)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 active:scale-[0.97]"
             onClick={() => window.location.reload()}
           >
             Reintentar
@@ -102,13 +111,29 @@ export default function DashboardPage() {
   return (
     <main aria-label="Panel principal">
       <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
-      <FilterBar
-        options={TABS}
-        value={tab}
-        onChange={(v) => handleTabChange(v as Tab)}
-        className="mb-6"
-        ariaLabel="Secciones del dashboard"
-      />
+      <div className="flex items-center gap-1 mb-6 border-b border-[var(--line)]" role="tablist" aria-label="Secciones del dashboard">
+        {TABS.map(t => (
+          <button
+            key={t.value}
+            role="tab"
+            aria-selected={tab === t.value}
+            onClick={() => handleTabChange(t.value as Tab)}
+            className="relative px-4 py-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-t-[var(--radius-xs)]"
+            style={{
+              color: tab === t.value ? "var(--ink)" : "var(--ink-3)",
+              marginBottom: -1,
+            }}
+          >
+            {t.label}
+            {tab === t.value && (
+              <span
+                className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
+                style={{ background: "var(--accent)" }}
+              />
+            )}
+          </button>
+        ))}
+      </div>
       {tab === "portfolio" && (
         <TabPortfolio
           kpis={stats.kpis}

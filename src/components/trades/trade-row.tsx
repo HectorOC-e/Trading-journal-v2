@@ -1,30 +1,37 @@
-// TradeRow molecule — spec: Trades > Anatomy
+// TradeRow — redesigned: no left-border stripe antipattern.
+// Result communicated via P&L color + result pill + row background.
 
+import { cn } from "@/lib/utils"
 import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
 
 const SESSION_CFG: Record<TradeSession, { label: string; color: string; bg: string }> = {
-  "New York":     { label: "NY",        color: "#6395f9", bg: "rgba(99,149,249,.12)" },
-  "London":       { label: "London",    color: "#a78bfa", bg: "rgba(167,139,250,.12)" },
-  "Asia":         { label: "Asia",      color: "#f59e0b", bg: "rgba(245,158,11,.12)" },
-  "London Close": { label: "LDN Close", color: "#c084fc", bg: "rgba(192,132,252,.10)" },
+  "New York":     { label: "NY",       color: "#4f6ef7", bg: "rgba(79,110,247,0.10)"  },
+  "London":       { label: "London",   color: "#7c3aed", bg: "rgba(124,58,237,0.10)"  },
+  "Asia":         { label: "Asia",     color: "#d97706", bg: "rgba(217,119,6,0.10)"   },
+  "London Close": { label: "LDN Cl",  color: "#9333ea", bg: "rgba(147,51,234,0.09)"  },
 }
 
 const TAG_CFG: Record<string, { color: string; bg: string }> = {
-  "A+":       { color: "#16a34a", bg: "rgba(22,163,74,.12)" },
-  "A":        { color: "var(--accent)", bg: "var(--accent-soft)" },
-  "Plan":     { color: "var(--accent)", bg: "var(--accent-soft)" },
-  "Off-plan": { color: "var(--loss)",   bg: "var(--loss-soft)" },
-  "Impulsivo":{ color: "var(--loss)",   bg: "var(--loss-soft)" },
-  "BE":       { color: "var(--be)",     bg: "var(--be-soft)" },
+  "A+":        { color: "#16a34a",       bg: "rgba(22,163,74,0.10)"  },
+  "A":         { color: "var(--accent)", bg: "var(--accent-soft)"    },
+  "Plan":      { color: "var(--accent)", bg: "var(--accent-soft)"    },
+  "Off-plan":  { color: "var(--loss)",   bg: "var(--loss-soft)"      },
+  "Impulsivo": { color: "var(--loss)",   bg: "var(--loss-soft)"      },
+  "BE":        { color: "var(--be)",     bg: "var(--be-soft)"        },
+}
+
+const RESULT_CFG = {
+  WIN:  { label: "W",    color: "var(--win)",    bg: "var(--win-soft)"    },
+  LOSS: { label: "L",    color: "var(--loss)",   bg: "var(--loss-soft)"   },
+  BE:   { label: "BE",   color: "var(--be)",     bg: "var(--be-soft)"     },
+  OPEN: { label: "OPEN", color: "var(--accent)", bg: "var(--accent-soft)" },
 }
 
 function shortAccount(name: string) {
   const parts = name.split(" ")
-  if (parts.length <= 2) return name
-  return parts.slice(0, 2).join(" ")
+  return parts.length <= 2 ? name : parts.slice(0, 2).join(" ")
 }
 
-// Determine result based on actual closed PnL, not planned rMultiple
 function getResult(trade: Trade): "WIN" | "LOSS" | "BE" | "OPEN" {
   if (trade.status !== "CLOSED" && trade.pnl == null) return "OPEN"
   const pnl = trade.pnl ?? 0
@@ -33,197 +40,159 @@ function getResult(trade: Trade): "WIN" | "LOSS" | "BE" | "OPEN" {
   return "BE"
 }
 
-const RESULT_CFG = {
-  WIN:  { label: "WIN",   color: "var(--win)",    bg: "var(--win-soft)" },
-  LOSS: { label: "LOSS",  color: "var(--loss)",   bg: "var(--loss-soft)" },
-  BE:   { label: "BE",    color: "var(--be)",     bg: "var(--be-soft)" },
-  OPEN: { label: "OPEN",  color: "var(--accent)", bg: "var(--accent-soft)" },
-}
-
 interface TradeRowProps {
-  trade: Trade
-  account?: Account
-  setup?: Setup
+  trade:     Trade
+  account?:  Account
+  setup?:    Setup
   selected?: boolean
-  onClick?: () => void
+  onClick?:  () => void
 }
 
 export function TradeRow({ trade, account, setup, selected = false, onClick }: TradeRowProps) {
-  const result     = getResult(trade)
-  const resultCfg  = RESULT_CFG[result]
-  const pnl        = trade.pnl ?? null
-  const r          = trade.rMultiple ?? null
-  const session    = SESSION_CFG[trade.session as TradeSession]
-  const isOpen     = result === "OPEN"
+  const result    = getResult(trade)
+  const rc        = RESULT_CFG[result]
+  const pnl       = trade.pnl ?? null
+  const r         = trade.rMultiple ?? null
+  const session   = SESSION_CFG[trade.session as TradeSession]
+  const isOpen    = result === "OPEN"
 
   const qualityTag = trade.tags.find(t =>
     (["A+", "A", "Plan", "Off-plan", "Impulsivo", "BE"] as TradeTag[]).includes(t as TradeTag)
   )
   const tagCfg = qualityTag ? TAG_CFG[qualityTag] : null
 
-  const stripeColor = resultCfg.color
-
   return (
     <tr
       onClick={onClick}
-      style={{
-        borderBottom: "1px solid var(--line)",
-        background: selected ? "var(--accent-soft)" : "transparent",
-        cursor: "pointer",
-        transition: "background .1s",
-      }}
-      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "var(--panel-2)" }}
-      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = "transparent" }}
+      aria-selected={selected}
+      className={cn(
+        "cursor-pointer border-b border-[var(--line)] transition-colors duration-100",
+        selected ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--panel-2)]"
+      )}
     >
-      {/* Stripe + Direction */}
-      <td style={{ padding: "0 8px 0 0", width: 90, paddingLeft: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", height: "100%" }}>
-          <div style={{
-            width: 3, alignSelf: "stretch", minHeight: 52,
-            background: stripeColor,
-            borderRadius: "0 2px 2px 0", marginRight: 10, flexShrink: 0,
-            opacity: isOpen ? 0.4 : 1,
-          }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {/* Direction */}
-            <span style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              width: 44, height: 18, borderRadius: 5,
-              fontSize: 9, fontWeight: 800, letterSpacing: ".06em",
+      {/* Result indicator — dot + direction pills, no side stripe */}
+      <td className="pl-4 pr-2 py-3 w-[80px]">
+        <div className="flex flex-col gap-1">
+          {/* Direction */}
+          <span
+            className="inline-flex items-center justify-center w-[38px] h-[18px] rounded-[4px] text-[9px] font-bold tracking-wider"
+            style={{
               background: trade.direction === "LONG" ? "var(--win-soft)" : "var(--loss-soft)",
               color: trade.direction === "LONG" ? "var(--win)" : "var(--loss)",
-            }}>
-              {trade.direction}
-            </span>
-            {/* Result badge */}
-            <span style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              width: 44, height: 18, borderRadius: 5,
-              fontSize: 9, fontWeight: 800, letterSpacing: ".06em",
-              background: resultCfg.bg, color: resultCfg.color,
-              border: isOpen ? `1px solid ${resultCfg.color}33` : "none",
-            }}>
-              {resultCfg.label}
-            </span>
-          </div>
+            }}
+          >
+            {trade.direction}
+          </span>
+          {/* Result */}
+          <span
+            className="inline-flex items-center justify-center w-[38px] h-[18px] rounded-[4px] text-[9px] font-bold tracking-wider"
+            style={{
+              background: rc.bg,
+              color: rc.color,
+              border: isOpen ? `1px solid ${rc.color}40` : "none",
+            }}
+          >
+            {rc.label}
+          </span>
         </div>
       </td>
 
       {/* Symbol + Setup */}
-      <td style={{ padding: "14px 8px", minWidth: 130 }}>
-        <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 800, color: "var(--ink)", lineHeight: 1 }}>
+      <td className="px-2 py-3 min-w-[120px]">
+        <p className="font-mono text-[14px] font-bold leading-none tracking-tight" style={{ color: "var(--ink)" }}>
           {trade.symbol}
         </p>
         {setup && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-            <span style={{
-              fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 4,
-              background: "var(--accent-soft)", color: "var(--accent)",
-              letterSpacing: ".04em",
-            }}>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span
+              className="text-[9px] font-bold px-1.5 py-px rounded-[3px] tracking-wider"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+            >
               {setup.abbreviation}
             </span>
-            <span style={{ fontSize: 11, color: "var(--ink-3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 90 }}>
-              {setup.name}
-            </span>
+            <span className="text-[11px] text-[var(--ink-3)] truncate max-w-[80px]">{setup.name}</span>
           </div>
         )}
       </td>
 
       {/* Account */}
-      <td style={{ padding: "14px 8px", maxWidth: 150 }}>
-        <p style={{ fontSize: 12.5, color: "var(--ink-2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 140 }}>
-          {account ? shortAccount(account.name) : trade.accountId}
-        </p>
+      <td className="px-2 py-3 max-w-[130px] hidden sm:table-cell">
+        <p className="text-[12px] text-[var(--ink-2)] truncate">{account ? shortAccount(account.name) : "—"}</p>
         {account && (
-          <span style={{
-            fontSize: 9.5, fontWeight: 600, letterSpacing: ".06em",
-            color: account.type === "PROP_FIRM" ? "var(--accent)" : "var(--ink-3)",
-          }}>
-            {account.type === "PROP_FIRM" ? "PROP" : "PERSONAL"}
-          </span>
+          <p
+            className="text-[9px] font-semibold tracking-wider mt-0.5"
+            style={{ color: account.type === "PROP_FIRM" ? "var(--accent)" : "var(--ink-3)" }}
+          >
+            {account.type === "PROP_FIRM" ? "PROP" : account.type === "DEMO_PROP" ? "DEMO" : "PER"}
+          </p>
         )}
       </td>
 
-      {/* Date + Time */}
-      <td style={{ padding: "14px 8px", whiteSpace: "nowrap" }}>
-        <p style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{trade.date}</p>
-        <p style={{ fontSize: 11, color: "var(--ink-3)", fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>{trade.openTime}</p>
+      {/* Date */}
+      <td className="px-2 py-3 whitespace-nowrap hidden md:table-cell">
+        <p className="text-[12px] text-[var(--ink-2)]">{trade.date}</p>
+        {trade.openTime && (
+          <p className="font-mono text-[10px] text-[var(--ink-3)] mt-0.5">{trade.openTime}</p>
+        )}
       </td>
 
       {/* Session */}
-      <td style={{ padding: "14px 8px" }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center",
-          padding: "3px 9px", borderRadius: 999,
-          fontSize: 10.5, fontWeight: 600,
-          background: session?.bg ?? "var(--chip)",
-          color: session?.color ?? "var(--ink-3)",
-          whiteSpace: "nowrap",
-        }}>
+      <td className="px-2 py-3 hidden lg:table-cell">
+        <span
+          className="inline-flex items-center px-2 py-[3px] rounded-full text-[10px] font-semibold whitespace-nowrap"
+          style={{
+            background: session?.bg ?? "var(--chip)",
+            color: session?.color ?? "var(--ink-3)",
+          }}
+        >
           {session?.label ?? trade.session}
         </span>
       </td>
 
       {/* R Multiple */}
-      <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+      <td className="px-2 py-3 text-right whitespace-nowrap hidden sm:table-cell">
         {isOpen ? (
-          <div>
-            <span style={{ fontSize: 10, color: "var(--ink-3)", fontFamily: "'JetBrains Mono',monospace" }}>
+          <div className="text-right">
+            <span className="font-mono text-[11px] text-[var(--ink-3)]">
               {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}
             </span>
-            <p style={{ fontSize: 9, color: "var(--ink-3)", marginTop: 1 }}>objetivo</p>
+            <p className="text-[9px] text-[var(--ink-3)] mt-0.5">target</p>
           </div>
         ) : (
-          <span style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            minWidth: 52, padding: "3px 8px", borderRadius: 6,
-            fontFamily: "'JetBrains Mono',monospace",
-            fontSize: 12.5, fontWeight: 800,
-            background: resultCfg.bg, color: resultCfg.color,
-          }}>
+          <span
+            className="inline-flex items-center justify-center min-w-[46px] px-2 py-[3px] rounded-[5px] font-mono text-[12px] font-bold"
+            style={{ background: rc.bg, color: rc.color }}
+          >
             {r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}
           </span>
         )}
       </td>
 
-      {/* P&L */}
-      <td style={{ padding: "14px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+      {/* P&L — primary data column */}
+      <td className="px-2 py-3 text-right whitespace-nowrap">
         {pnl != null ? (
-          <>
-            <span style={{
-              fontFamily: "'JetBrains Mono',monospace",
-              fontSize: 13, fontWeight: 700,
-              color: resultCfg.color,
-            }}>
-              {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString()}
-            </span>
-            <div style={{ height: 3, borderRadius: 99, marginTop: 4, background: "var(--line)", overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: 99,
-                width: `${Math.min(100, Math.abs(pnl) / 50)}%`,
-                background: resultCfg.color,
-              }} />
-            </div>
-          </>
+          <span
+            className="font-mono text-[13px] font-bold tabular-nums"
+            style={{ color: rc.color }}
+          >
+            {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
         ) : (
-          <span style={{ fontSize: 12, color: "var(--ink-3)" }}>abierto</span>
+          <span className="text-[11px] text-[var(--ink-3)]">open</span>
         )}
       </td>
 
-      {/* Quality badge */}
-      <td style={{ padding: "14px 8px 14px 8px", paddingRight: 16 }}>
+      {/* Quality */}
+      <td className="px-2 pl-2 pr-4 py-3 hidden md:table-cell">
         {tagCfg && qualityTag ? (
-          <span style={{
-            display: "inline-flex", alignItems: "center",
-            padding: "3px 10px", borderRadius: 999,
-            fontSize: 11, fontWeight: 700,
-            background: tagCfg.bg, color: tagCfg.color,
-          }}>
+          <span
+            className="inline-flex items-center px-2.5 py-[3px] rounded-full text-[10px] font-bold whitespace-nowrap"
+            style={{ background: tagCfg.bg, color: tagCfg.color }}
+          >
             {qualityTag}
           </span>
         ) : (
-          <span style={{ color: "var(--ink-3)", fontSize: 12 }}>—</span>
+          <span className="text-[var(--ink-3)] text-[11px]">—</span>
         )}
       </td>
     </tr>

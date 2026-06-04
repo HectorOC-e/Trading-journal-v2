@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
+import { Toggle } from "@/components/ui/toggle"
 import { trpc }   from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -33,19 +34,6 @@ function SevBadge({ sev }: { sev: string }) {
   )
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!on)}
-      className="relative shrink-0 transition-colors"
-      style={{ width: 40, height: 22, borderRadius: 11, background: on ? "var(--win)" : "var(--line)" }}
-    >
-      <span className="absolute top-[3px] rounded-full bg-white transition-all"
-        style={{ left: on ? 21 : 3, width: 16, height: 16, boxShadow: "0 1px 3px rgba(0,0,0,.25)" }} />
-    </button>
-  )
-}
-
 /* ── Rule Row ── */
 function RuleRow({ rule, onEdit, onDelete, onToggle }: {
   rule: DbRule
@@ -55,9 +43,16 @@ function RuleRow({ rule, onEdit, onDelete, onToggle }: {
 }) {
   const cfg = SEV[rule.severity as Severity] ?? SEV["INFORMACIÓN"]
   return (
-    <div className="flex items-start gap-3.5 px-5 py-3.5 border-b border-[var(--line)] last:border-0 transition-opacity"
-      style={{ opacity: rule.enabled ? 1 : 0.45 }}>
-      <div className="w-[3px] self-stretch rounded-full shrink-0 min-h-[32px]" style={{ background: cfg.color }} />
+    <div
+      className="flex items-start gap-3 px-4 py-3.5 border-b border-[var(--line)] last:border-0 transition-opacity hover:bg-[var(--panel-2)]"
+      style={{ opacity: rule.enabled ? 1 : 0.50 }}
+    >
+      {/* Severity dot — replaces side stripe (impeccable anti-pattern) */}
+      <div
+        className="w-2 h-2 rounded-full shrink-0 mt-1.5"
+        style={{ background: cfg.color }}
+        aria-hidden="true"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-[13px] font-semibold text-[var(--ink)]">{rule.name}</p>

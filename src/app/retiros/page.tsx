@@ -131,48 +131,40 @@ function WithdrawalRow({ w, onStatusChange, updating = false }: {
   onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
   updating?: boolean
 }) {
-  const date = new Date(w.date)
+  const date    = new Date(w.date)
   const dateStr = date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 
-  function handleStatus(s: WithdrawalStatus) {
-    onStatusChange(w.id, s)
-  }
-
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12,
-      padding: "14px 16px",
-      borderBottom: "1px solid var(--line)",
-      flexWrap: "wrap",
-    }}>
+    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--line)] last:border-0 flex-wrap sm:flex-nowrap">
       {/* Date + account */}
-      <div style={{ minWidth: 120, flex: "0 0 auto" }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{dateStr}</p>
-        <p style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{w.account.name}</p>
+      <div className="shrink-0 min-w-[110px]">
+        <p className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>{dateStr}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: "var(--ink-3)" }}>{w.account.name}</p>
       </div>
 
       {/* Amount */}
-      <div style={{ flex: 1, minWidth: 80 }}>
-        <p style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: "var(--win)" }}>
-          +${Number(w.amount).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--ink-3)" }}>{w.currency}</span>
+      <div className="flex-1 min-w-[90px]">
+        <p className="font-mono text-[16px] font-bold tabular-nums" style={{ color: "var(--win)" }}>
+          +${Number(w.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
+        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--ink-3)" }}>{w.currency}</p>
       </div>
 
       {/* Note / reference */}
-      <div style={{ flex: 2, minWidth: 100 }}>
-        {w.note && <p style={{ fontSize: 12, color: "var(--ink-2)" }}>{w.note}</p>}
+      <div className="flex-1 min-w-[80px] hidden sm:block">
+        {w.note && <p className="text-[12px]" style={{ color: "var(--ink-2)" }}>{w.note}</p>}
         {w.reference && (
-          <p style={{ fontSize: 10, color: "var(--ink-3)", fontFamily: "monospace", marginTop: 2 }}>
-            Ref: {w.reference}
+          <p className="font-mono text-[10px] mt-0.5" style={{ color: "var(--ink-3)" }}>
+            {w.reference}
           </p>
         )}
       </div>
 
       {/* Status */}
-      <div style={{ flexShrink: 0 }}>
+      <div className="shrink-0">
         <StatusSelect
           current={w.status as WithdrawalStatus}
-          onSelect={handleStatus}
+          onSelect={(s) => onStatusChange(w.id, s)}
           loading={updating}
         />
       </div>

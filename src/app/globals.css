@@ -3,34 +3,41 @@
 
 /* ── Design Tokens ── */
 :root {
-  --bg:          #F6F5F1;
+  /* Precision neutral — tinted toward accent hue (264° blue-violet), not warm cream.
+     bg is #F8FAFC equivalent in oklch with a barely-perceptible accent tint. */
+  --bg:          oklch(98.5% 0.005 264);
   --panel:       #FFFFFF;
-  --panel-2:     #FAFAF7;
-  --ink:         #16140F;
-  --ink-2:       #45413A;
-  --ink-3:       #8A8678;
-  --line:        #ECEAE2;
-  --line-2:      #E2DFD4;
-  --chip:        #F2EFE7;
-  --accent:      oklch(58% 0.16 264);
-  --accent-h:    oklch(54% 0.18 264);
-  --accent-soft: oklch(95% 0.03 264);
-  --win:         oklch(63% 0.16 152);
-  --win-soft:    oklch(94% 0.06 152);
-  --loss:        oklch(60% 0.20 27);
-  --loss-soft:   oklch(94% 0.06 27);
-  --be:          oklch(75% 0.14 85);
-  --be-soft:     oklch(95% 0.06 85);
-  --radius:      12px;
-  --radius-sm:   8px;
-  --radius-xs:   6px;
-  --radius-lg:   16px;
+  --panel-2:     oklch(97.5% 0.004 264);
+  --ink:         oklch(14% 0.018 264);
+  --ink-2:       oklch(38% 0.015 264);
+  --ink-3:       oklch(60% 0.010 264);
+  --line:        oklch(91% 0.007 264);
+  --line-2:      oklch(87% 0.009 264);
+  --chip:        oklch(94% 0.006 264);
 
-  /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(22,20,15,0.06);
-  --shadow-sm: 0 1px 4px rgba(22,20,15,0.08), 0 2px 8px rgba(22,20,15,0.04);
-  --shadow-md: 0 4px 12px rgba(22,20,15,0.10), 0 2px 4px rgba(22,20,15,0.06);
-  --shadow-lg: 0 8px 24px rgba(22,20,15,0.12), 0 4px 8px rgba(22,20,15,0.06);
+  /* Accent: precise blue-violet — same hue, calibrated saturation */
+  --accent:      oklch(56% 0.18 264);
+  --accent-h:    oklch(51% 0.20 264);
+  --accent-soft: oklch(94% 0.04 264);
+
+  /* Semantic outcome colors — calibrated for trading context */
+  --win:         oklch(60% 0.17 148);
+  --win-soft:    oklch(95% 0.04 148);
+  --loss:        oklch(58% 0.22 25);
+  --loss-soft:   oklch(95% 0.04 25);
+  --be:          oklch(72% 0.13 88);
+  --be-soft:     oklch(96% 0.04 88);
+
+  --radius:      10px;
+  --radius-sm:   7px;
+  --radius-xs:   5px;
+  --radius-lg:   14px;
+
+  /* Shadows — calibrated for precision neutral bg */
+  --shadow-xs: 0 1px 2px oklch(14% 0.018 264 / 0.05);
+  --shadow-sm: 0 1px 4px oklch(14% 0.018 264 / 0.07), 0 2px 8px oklch(14% 0.018 264 / 0.04);
+  --shadow-md: 0 4px 12px oklch(14% 0.018 264 / 0.09), 0 2px 4px oklch(14% 0.018 264 / 0.05);
+  --shadow-lg: 0 8px 24px oklch(14% 0.018 264 / 0.11), 0 4px 8px oklch(14% 0.018 264 / 0.05);
 
   /* Easing */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -54,19 +61,20 @@
 }
 
 .dark {
-  --bg:          #0E0C09;
-  --panel:       #16140F;
-  --panel-2:     #1B1813;
-  --ink:         #F5F2EA;
-  --ink-2:       #C7C2B5;
-  --ink-3:       #807A6B;
-  --line:        #25221C;
-  --line-2:      #2F2C24;
-  --chip:        #25221C;
-  --accent-soft: #1A1C2A;
-  --win-soft:    #14201A;
-  --loss-soft:   #251514;
-  --be-soft:     #25201A;
+  /* Dark mode: precision near-black with subtle accent tint */
+  --bg:          oklch(11% 0.014 264);
+  --panel:       oklch(14% 0.014 264);
+  --panel-2:     oklch(17% 0.014 264);
+  --ink:         oklch(94% 0.008 264);
+  --ink-2:       oklch(76% 0.010 264);
+  --ink-3:       oklch(52% 0.010 264);
+  --line:        oklch(22% 0.014 264);
+  --line-2:      oklch(26% 0.015 264);
+  --chip:        oklch(22% 0.014 264);
+  --accent-soft: oklch(22% 0.06 264);
+  --win-soft:    oklch(18% 0.06 148);
+  --loss-soft:   oklch(18% 0.06 25);
+  --be-soft:     oklch(18% 0.05 88);
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.20);
   --shadow-sm: 0 1px 4px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.16);
@@ -123,6 +131,10 @@ body {
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
+
+/* ── Modal keyframes (referenced by Dialog) ── */
+@keyframes fadeIn  { from { opacity: 0; }             to { opacity: 1; } }
+@keyframes scaleIn { from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

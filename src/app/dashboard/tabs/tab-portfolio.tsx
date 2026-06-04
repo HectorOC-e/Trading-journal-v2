@@ -71,13 +71,24 @@ export function TabPortfolio({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
-        <div className="flex gap-1 bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-sm)] p-0.5">
+        <div
+          className="flex items-center gap-0.5 p-0.5 rounded-[var(--radius-sm)]"
+          style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
+          role="group"
+          aria-label="Período de análisis"
+        >
           {PERIODS.map(p => (
-            <button key={p} onClick={() => onPeriodChange(p)}
+            <button
+              key={p}
+              onClick={() => onPeriodChange(p)}
               className={cn(
-                "px-3 py-1 text-[11px] font-semibold rounded-[4px] transition-colors",
-                period === p ? "bg-[var(--accent)] text-white" : "text-[var(--ink-3)] hover:text-[var(--ink)]",
-              )}>
+                "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]",
+                period === p
+                  ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                  : "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
+              )}
+            >
               {p}
             </button>
           ))}
