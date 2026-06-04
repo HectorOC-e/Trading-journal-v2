@@ -57,6 +57,15 @@ export default function TradesPage() {
   const { data: markets = [] } =
     trpc.markets.list.useQuery()
 
+  const { data: customTagsRaw = [] } =
+    trpc.tradeTags.list.useQuery()
+
+  // Exclude system tags — custom tags are user-created
+  const SYSTEM_TAGS = new Set(["A+", "Plan", "Off-plan", "Impulsivo", "Revanche"])
+  const customTags = customTagsRaw
+    .map(t => t.tag)
+    .filter(t => !SYSTEM_TAGS.has(t))
+
   const PROP_FIRM_MESSAGES: Record<string, string> = {
     PROP_FIRM_DAILY_LOSS_LIMIT:   "Has alcanzado el límite de pérdida diaria para esta cuenta.",
     PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",
@@ -386,6 +395,7 @@ export default function TradesPage() {
         accounts={accounts}
         setups={setups}
         markets={markets}
+        customTags={customTags}
         tradeCountToday={tradeCountToday}
         onSubmit={handleModalSubmit}
       />

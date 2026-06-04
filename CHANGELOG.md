@@ -6,6 +6,41 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 ## [Unreleased]
 
+### Stabilization Sprint (2026-06-03) — QA Manual Remediation
+
+**Fixed — P0 Blocking (21 QA findings addressed)**
+
+- **QA-002/003/004/005/009 · Archived accounts in dashboard:** `dashboardStats` now filters accounts to `status: ACTIVE | PAUSED` before computing all KPIs, equity curves, account comparisons, and tab data. Archived (INACTIVE/LOST) accounts and their trades are excluded from all four dashboard tabs.
+- **QA-008/010/011 · Trades completely broken:** Added missing migration `010_psychology_plan_notes.sql` — psychology fields (`emotion_before`, `confidence_rating`, `execution_quality`, `fomo_flag`, `revenge_flag`) and `plan_notes` were in Prisma schema since Sprint 4/7 but never applied to the DB. All trade operations (`list`, `create`, `update`) were failing with column-not-found errors.
+- **QA-010 · Invalid timestamp on trade create:** `openTime = ""` produced `new Date("2026-06-03T:00")` = Invalid Date. Fixed: fallback to `"00:00"` when openTime is empty.
+- **QA-011 · Custom tags missing from trade form:** `trades.page.tsx` now fetches `tradeTags.list` and passes user-created tags to `RegisterTradeModal`. Tags are displayed as toggleable buttons (excluding system tags A+/Plan/Off-plan/Impulsivo/Revanche).
+- **QA-012 · Discipline score = 100 with no trades:** `calcDisciplineScore` now returns `executionScore = 0` when `totalTrades = 0`. Without trade activity, discipline cannot be measured as perfect. Score floor with no activity: 50 (learning + adherence defaults).
+- **QA-013 · Duplicate edit button in Reviews:** Removed non-functional "Editar" button from `ReviewCard` footer. Edit functionality lives only in `ReviewDetailPanel` header.
+- **QA-014 · No status filter in Cuentas:** Added status filter tabs (Activas / Pausadas / Archivadas / Todas) to `/cuentas`. Query uses `includeInactive: true`; filtering is client-side. Archived accounts are no longer invisible.
+- **QA-015 · Health indicator missing in Playbook:** `SetupCard` in `/playbook` now displays health dot (🟢/🟡/🔴/⚪) with tooltip. Health data fetched from `setups.performanceStats`.
+- **QA-018 · "Ver trades" button does nothing:** Button in `AccountDetailPanel` now navigates to `/trades?accountId={id}` via `useRouter().push()`.
+- **QA-019 · Rules not reflected in Disciplina tab:** Dashboard Disciplina tab now shows "Reglas activas" section fetching `rules.list`, displaying enabled rules with severity badges and a link to `/reglas`.
+- **QA-020 · Withdrawal allows amount > balance:** `withdrawals.create` now validates `amount <= currentBalance` (initialBalance + closed trade P&L). Returns `TRPCError` with descriptive message if exceeded.
+- **QA-021 · Withdrawal status dropdown clipped:** Removed `overflow: hidden` from table container. Dropdown anchors to right edge of trigger with `position: absolute; right: 0`. Added outside-click handler to close dropdown.
+- **QA-007 · Setup cards in Dashboard Playbook tab don't navigate:** Cards now call `router.push('/playbook?highlight={setupId}')`. `/playbook` reads the `highlight` query param and auto-opens the setup drawer.
+
+**Tests**
+- Updated 4 test files to reflect new discipline score behavior (0 trades → 50, not 100)
+- Updated withdrawals test mock to include `account.findUniqueOrThrow` + `trade.findMany` for balance validation
+- Suite: 473 passing (+0), 6 pre-existing timezone failures (unchanged)
+- TypeScript: 0 errors
+
+**Migration**
+- `prisma/migrations/010_psychology_plan_notes.sql` — **must be applied before next deploy**
+
+**Documentation**
+- Created `docs/STABILIZATION_REPORT.md`
+- Created `docs/MANUAL_QA_TEST_PLAN_V2.md` (replaces V1)
+- Created `docs/FINAL_PROJECT_STATUS.md`
+- Created `PRODUCT.md` at project root
+
+---
+
 ### Sprint 7 (2026-06-03) — Reviews, Discipline, Infrastructure Hardening
 
 **Added**

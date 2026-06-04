@@ -137,7 +137,6 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
 
         <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }} onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="sm" onClick={onClick}>Ver review completa</Button>
-          <Button variant="ghost" size="sm">Editar</Button>
         </div>
       </div>
     </div>

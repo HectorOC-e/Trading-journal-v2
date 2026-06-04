@@ -20,6 +20,7 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
 type SetupStatus = "ACTIVO" | "EN_PRUEBA" | "PAUSADO" | "DESCARTADO"
+type HealthStatus = "healthy" | "warning" | "critical" | "insufficient"
 
 interface DbSetup {
   id: string; name: string; abbreviation: string; market: string
@@ -109,7 +110,7 @@ function DirectionChip({ direction }: { direction: string }) {
 /* ═══════════════════════════════════════════════
    Setup Card — mejorada
 ═══════════════════════════════════════════════ */
-type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number; equityCurve?: number[] }
+type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number; equityCurve?: number[]; health?: HealthStatus; expectedWr?: number | null; expectedAvgR?: number | null }
 
 function SetupCard({ setup, selected, onClick, stats, versionCount }: {
   setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats; versionCount?: number
@@ -152,7 +153,23 @@ function SetupCard({ setup, selected, onClick, stats, versionCount }: {
               <DirectionChip direction={setup.direction} />
             </div>
           </div>
-          <StatusBadge status={setup.status} />
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <StatusBadge status={setup.status} />
+            {stats?.health && (
+              <span
+                className="text-[13px] cursor-default"
+                title={stats.health === "insufficient" ? "Insuficiente: menos de 5 trades"
+                  : stats.health === "healthy"    ? "Saludable"
+                  : stats.health === "warning"    ? "Atención: bajo rendimiento"
+                  : "Crítico: requiere revisión"}
+              >
+                {stats.health === "healthy"      ? "🟢"
+                 : stats.health === "warning"    ? "🟡"
+                 : stats.health === "critical"   ? "🔴"
+                 : "⚪"}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Sparkline — TASK-049: real equity curve */}
@@ -1067,6 +1084,11 @@ const STATUS_FILTERS = [
 export default function PlaybookPage() {
   const utils = trpc.useUtils()
 
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null
+  const highlightId = searchParams?.get("highlight") ?? null
+
   const [modalOpen,     setModalOpen]     = useState(false)
   const [editSetup,     setEditSetup]     = useState<DbSetup | null>(null)
   const [drawerSetup,   setDrawerSetup]   = useState<DbSetup | null>(null)
@@ -1079,24 +1101,31 @@ export default function PlaybookPage() {
   )
   const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
   const { data: dashStats }        = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
+  const { data: perfStats }        = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
 
   // Setup stats from server-side aggregation (all trades, not paginated 50)
   const setupStats = useMemo<Record<string, SetupStats>>(() => {
     const map: Record<string, SetupStats> = {}
+    // Build health/expectedWr map from performanceStats
+    const healthMap = new Map((perfStats?.setupStats ?? []).map(s => [s.setupId, { health: s.health as HealthStatus | undefined, expectedWr: s.expectedWr, expectedAvgR: s.expectedAvgR }]))
     for (const s of dashStats?.setupStats ?? []) {
       if (!s.setupId) continue
+      const hData = healthMap.get(s.setupId)
       map[s.setupId] = {
-        total:       s.trades,
-        wins:        Math.round(s.winRate / 100 * s.trades),
-        netPnl:      s.netPnl,
-        avgR:        s.avgR,
-        aplusRate:   s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
-        expectancy:  s.avgR,
-        equityCurve: s.equityCurve,
+        total:        s.trades,
+        wins:         Math.round(s.winRate / 100 * s.trades),
+        netPnl:       s.netPnl,
+        avgR:         s.avgR,
+        aplusRate:    s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
+        expectancy:   s.avgR,
+        equityCurve:  s.equityCurve,
+        health:       hData?.health,
+        expectedWr:   hData?.expectedWr ?? null,
+        expectedAvgR: hData?.expectedAvgR ?? null,
       }
     }
     return map
-  }, [dashStats])
+  }, [dashStats, perfStats])
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
@@ -1110,6 +1139,15 @@ export default function PlaybookPage() {
     onSuccess: () => utils.setups.list.invalidate(),
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
+
+  // Auto-open drawer when navigating from dashboard (QA-007)
+  useEffect(() => {
+    if (highlightId && setups.length > 0 && !drawerSetup) {
+      const target = setups.find(s => s.id === highlightId)
+      if (target) setDrawerSetup(target)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, setups.length])
 
   const active = setups.filter(s => s.status === "ACTIVO")
   const inTest = setups.filter(s => s.status === "EN_PRUEBA")

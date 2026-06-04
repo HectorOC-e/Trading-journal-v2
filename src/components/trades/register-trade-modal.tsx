@@ -179,6 +179,7 @@ interface RegisterTradeModalProps {
   accounts?: AccountLike[]
   setups?: SetupLike[]
   markets?: MarketLike[]
+  customTags?: string[]
   tradeCountToday?: number
   onSubmit?: (data: RegisterTradeFormData) => void
 }
@@ -191,6 +192,7 @@ export function RegisterTradeModal({
   accounts = [],
   setups = [],
   markets = [],
+  customTags = [],
   tradeCountToday = 0,
   onSubmit,
 }: RegisterTradeModalProps) {
@@ -704,6 +706,28 @@ export function RegisterTradeModal({
                         )}
                       >
                         {label}
+                      </button>
+                    ))}
+                    {customTags.map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          setForm(f => ({
+                            ...f,
+                            tags: (f.tags as string[]).includes(tag)
+                              ? f.tags.filter(t => t !== tag)
+                              : [...f.tags, tag as TradeTag],
+                          }))
+                        }}
+                        className={cn(
+                          "h-7 px-3 rounded-full text-xs font-medium transition-colors",
+                          (form.tags as string[]).includes(tag)
+                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {tag}
                       </button>
                     ))}
                   </div>

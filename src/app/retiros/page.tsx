@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Plus, X, Loader2, DollarSign, Clock, CheckCircle2,
   XCircle, ArrowDownToLine, Filter, ChevronDown,
@@ -69,9 +69,19 @@ function StatusSelect({ current, onSelect, loading }: {
   loading?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
   const m = STATUS_META[current]
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(v => !v)}
         disabled={loading}
@@ -89,10 +99,10 @@ function StatusSelect({ current, onSelect, loading }: {
       </button>
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 20,
+          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50,
           background: "var(--panel)", border: "1px solid var(--line)",
-          borderRadius: 10, padding: 4, minWidth: 140,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+          borderRadius: 10, padding: 4, minWidth: 150,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         }}>
           {STATUS_ORDER.map(s => {
             const sm = STATUS_META[s]
@@ -415,7 +425,7 @@ export default function RetirosPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", gap: 12, padding: "10px 16px",

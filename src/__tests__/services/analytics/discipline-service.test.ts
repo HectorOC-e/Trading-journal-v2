@@ -26,12 +26,13 @@ const period = {
 }
 
 describe("computeDisciplineScore", () => {
-  it("returns perfect score when no trades and no violations", async () => {
+  it("returns 50 when no trades (execution cannot be measured without trade data)", async () => {
     const prisma = makePrisma()
     const result = await computeDisciplineScore(prisma, "user-1", period)
 
-    expect(result.score).toBe(100)
-    expect(result.executionScore).toBe(50)
+    // No trades → executionScore = 0; learning/adherence default to max
+    expect(result.score).toBe(50)
+    expect(result.executionScore).toBe(0)
     expect(result.learningScore).toBe(30)
     expect(result.adherenceScore).toBe(20)
   })

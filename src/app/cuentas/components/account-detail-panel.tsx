@@ -6,6 +6,7 @@ import {
   Pencil, Archive, Loader2, Trash2, XCircle,
   History, ArrowUpCircle, ArrowLeft,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import {
@@ -29,6 +30,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const [deleteInput,   setDeleteInput]   = useState("")
   const [lostModal,     setLostModal]     = useState(false)
   const [lostNote,      setLostNote]      = useState("")
+  const router = useRouter()
 
   // Escape key to close on desktop
   useEffect(() => {
@@ -243,7 +245,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <Pencil size={11} /> Editar
           </button>
-          <button className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+          <button
+            onClick={() => router.push(`/trades?accountId=${account.id}`)}
+            className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <BarChart3 size={11} /> Ver trades
           </button>
           <button onClick={onOpenHistory}

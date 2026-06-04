@@ -164,9 +164,9 @@ export function ReviewDetailPanel({
       <div className="grid grid-cols-4 gap-0" style={{ borderBottom: "1px solid var(--line)" }}>
         {[
           { label: "Trades",    value: review.tradeCount.toString(),    color: "var(--ink)" },
-          { label: "Net P&L",   value: formatPnl(review.netPnl),        color: pnlColor(review.netPnl) },
-          { label: "Win Rate",  value: `${review.winRate.toFixed(0)}%`, color: review.winRate >= 55 ? "var(--win)" : "var(--loss)" },
-          { label: "Disciplina", value: `${review.disciplineScore}`,    color: disciplineColor(review.disciplineScore) },
+          { label: "Net P&L",   value: review.tradeCount > 0 ? formatPnl(review.netPnl) : "—", color: pnlColor(review.netPnl) },
+          { label: "Win Rate",  value: review.tradeCount > 0 ? `${review.winRate.toFixed(0)}%` : "—", color: review.winRate >= 55 ? "var(--win)" : "var(--loss)" },
+          { label: "Disciplina", value: review.tradeCount > 0 ? `${review.disciplineScore}` : "—", color: disciplineColor(review.disciplineScore) },
         ].map(({ label, value, color }, i) => (
           <div key={label} className="flex flex-col items-center py-3" style={{ borderRight: i < 3 ? "1px solid var(--line)" : undefined }}>
             <span className="font-mono font-bold text-sm" style={{ color }}>{value}</span>

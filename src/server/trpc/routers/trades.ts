@@ -236,11 +236,24 @@ export const tradesRouter = router({
       }
 
       // ── Fetch ─────────────────────────────────────────────────────────────
-      const [tradeRows, accounts, setupRows, checklistRows] = await Promise.all([
+      // Only active/paused accounts; archived (INACTIVE/LOST) are excluded from
+      // all dashboard analytics (QA-002/003/004/005/009).
+      const activeAccounts = await ctx.prisma.account.findMany({
+        where: { userId: ctx.userId, status: { in: ["ACTIVE", "PAUSED"] } },
+        select: {
+          id: true, name: true, type: true, status: true,
+          initialBalance: true, ddDailyPct: true, ddTotalPct: true,
+          maxTradesPerDay: true, allowedSymbols: true,
+        },
+      })
+      const activeAccountIds = activeAccounts.map(a => a.id)
+
+      const [tradeRows, setupRows, checklistRows] = await Promise.all([
         ctx.prisma.trade.findMany({
           where: {
-            userId: ctx.userId,
-            status: "CLOSED",
+            userId:    ctx.userId,
+            status:    "CLOSED",
+            accountId: { in: activeAccountIds },
             ...(input?.accountId && { accountId: input.accountId }),
             ...((queryFrom || queryTo) ? {
               date: {
@@ -256,14 +269,6 @@ export const tradesRouter = router({
             setupId: true, entry: true, stop: true, target: true, size: true,
           },
           orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-        }),
-        ctx.prisma.account.findMany({
-          where: { userId: ctx.userId },
-          select: {
-            id: true, name: true, type: true, status: true,
-            initialBalance: true, ddDailyPct: true, ddTotalPct: true,
-            maxTradesPerDay: true, allowedSymbols: true,
-          },
         }),
         ctx.prisma.setup.findMany({
           where: { userId: ctx.userId },
@@ -298,6 +303,7 @@ export const tradesRouter = router({
         size:      Number(t.size),
       }))
 
+      const accounts = activeAccounts
       const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) }))
       const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
         id:              a.id,
@@ -558,6 +564,7 @@ export const tradesRouter = router({
         include: { account: true, setup: true, events: true },
       })
 
+      const openTimeSafe = input.openTime || "00:00"
       await ctx.prisma.tradeEvent.create({
         data: {
           userId:    ctx.userId,
@@ -566,7 +573,7 @@ export const tradesRouter = router({
           price:     input.entry,
           contracts: input.size,
           notes:     `${input.direction} · SL ${input.stop} · TP ${input.target}`,
-          timestamp: new Date(`${input.date}T${input.openTime}:00`),
+          timestamp: new Date(`${input.date}T${openTimeSafe}:00`),
         },
       })
 

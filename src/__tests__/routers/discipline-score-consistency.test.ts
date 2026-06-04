@@ -25,13 +25,14 @@ describe("calcDisciplineScore — canonical formula", () => {
     expect(r.adherenceScore).toBe(20)
   })
 
-  it("zero trades, zero resources, zero rules → 100 (no data = perfect)", () => {
+  it("zero trades, zero resources, zero rules → 50 (no trade evidence = 0 execution)", () => {
     const r = calcDisciplineScore({
       totalTrades: 0, taggedViolations: 0,
       pendingReviews: 0, completedReviews: 0,
       totalEnabledRules: 0, violatedRules: 0,
     })
-    expect(r.score).toBe(100)
+    // No trades → executionScore = 0 (no evidence); learning/adherence default to max
+    expect(r.score).toBe(50)
   })
 
   it("all violations → 0 execution score", () => {
@@ -78,9 +79,9 @@ describe("calcDisciplineScore — canonical formula", () => {
       pendingReviews: 0, completedReviews: 10,
       totalEnabledRules: 0, violatedRules: 0,
     })
-    // No pending = full learning score
+    // No pending = full learning score; no trades → execution = 0
     expect(r.learningScore).toBe(30)
-    expect(r.score).toBe(100)
+    expect(r.score).toBe(50) // 0 (exec) + 30 (learning) + 20 (adherence)
   })
 
   it("score is always 0–100", () => {

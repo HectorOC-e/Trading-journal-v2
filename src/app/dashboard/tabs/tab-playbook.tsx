@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 
@@ -127,6 +128,7 @@ function LifecycleSuggestions() {
 }
 
 export function TabPlaybook() {
+  const router = useRouter()
   const { data, isLoading } = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
 
   const setupStats     = data?.setupStats     ?? []
@@ -215,7 +217,8 @@ export function TabPlaybook() {
 
               return (
                 <div key={s.setupId}
-                  className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
+                  onClick={() => router.push(`/playbook?highlight=${s.setupId}`)}
+                  className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--accent)] transition-colors"
                   style={{ background: "var(--panel-2)" }}>
                   <div className="flex items-center gap-2.5 p-3 pb-2">
                     <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
