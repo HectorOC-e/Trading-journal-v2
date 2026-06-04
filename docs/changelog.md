@@ -5,10 +5,10 @@
 
 ---
 
-## [Sprint 8 — Testing Infrastructure, Accessibility, Monthly Reviews & CI/CD] — 2026-06-03
+## [Sprint 8 — Testing Infrastructure, Accessibility, Monthly Reviews & CI/CD] — 2026-06-04
 
 **Branch:** `claude/epic-darwin-1XZTX`  
-**Test result:** 438 → 467 passing (+29: 15 RTL component tests + 8 router tests + 5 coach-service tests + 1 localStorage regression guard) | **TypeScript:** clean (`tsc --noEmit`) | **Vercel fix:** `serverExternalPackages` for optional `@upstash/*` peer deps (Turbopack static analysis)
+**Test result:** 438 → 467 → 479 passing | **Final:** 479 tests, 0 TS errors | **Status:** ✅ CLOSED with all Blocking & Major QA findings fixed | **Vercel:** Deployment successful after Turbopack fix
 
 ### Completed (Core Features — 10 Tasks)
 
@@ -77,6 +77,24 @@
 - **Turbopack `@upstash/*` module resolution** — `src/next.config.ts`
   - Root cause: Turbopack statically analyzes all `require()` calls, including those inside `try/catch` blocks — fails at build time when `@upstash/ratelimit` and `@upstash/redis` are not installed
   - Fix: `serverExternalPackages: ["@upstash/ratelimit", "@upstash/redis"]` — Turbopack skips bundling; Node resolves at runtime; existing `try/catch` in `UpstashRateLimiter` falls back to `InMemoryRateLimiter`
+
+### Fixed (QA Findings — Sprint 8 Audit)
+
+- **B-01 · `useSearchParams()` without Suspense boundary** — `src/app/reviews/page.tsx`
+  - Root cause: ReviewsPage called `useReviewFilters()` → `useSearchParams()` at top level; Next.js 16 requires Suspense for SSG prerender
+  - Fix: Extracted logic to `ReviewsPageContent`; default export wraps in `<Suspense>`
+  
+- **B-02 · MonthlyReviewCard Edit/Delete buttons permanently invisible** — `src/app/reviews/components/monthly-review-card.tsx`
+  - Root cause: Buttons use `opacity-0 group-hover:opacity-100` but parent card missing `group` Tailwind class
+  - Fix: Added `group` class to outer `<div>`; button visibility now toggles on hover
+
+- **M-01 · Invalid ARIA `aria-selected` on `role="button"`** — `src/app/reviews/components/monthly-review-card.tsx`
+  - Root cause: `aria-selected` is WCAG violation on `role="button"` (valid only on `tab/option/row/treeitem`)
+  - Fix: Replaced with `aria-pressed` (correct ARIA state for toggle button)
+
+- **M-02 · KPI strip shows weekly data on Mensuales tab** — `src/app/reviews/page.tsx`
+  - Root cause: `<KpiStrip>` rendered outside both tab conditionals; weekly aggregates visible on monthly tab
+  - Fix: Moved inside `activeTab === "weekly"` block; monthly tab now shows clean review list
 
 ### Technical Debt Closed (2 items)
 

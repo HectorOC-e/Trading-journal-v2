@@ -1,6 +1,6 @@
 # Technical Debt Register — Trading Journal v2
 
-> **Last Updated: 2026-06-03**  
+> **Last Updated: 2026-06-04**  
 > Debt register merging original entries (TD-001–TD-024) with new architectural debt items (TD-025–TD-028) from the full audit. Items are never removed — status is updated in place.
 > **Sprint 1 closed:** TD-001, TD-004, TD-006, TD-007, TD-021, TD-026 (6 items).  
 > **Sprint 2 closed:** TD-005, TD-008, TD-009, TD-010, TD-011, TD-015, TD-025, TD-027, TD-028 (9 items).  
@@ -11,7 +11,7 @@
 > **Sprint 6 closed:** TD-013 (`as never` casts eliminated via `accounts.list` serialization + `AccountLike` narrowing), TD-014 (`LearningResource` now derived `Omit<RouterOutputs...> & { type: ResourceType; status: ResourceStatus }`). Tests: 407 (+18). **Sprint 6 QA added:** TD-029 (prefs cast guard), TD-030 (rate limit boundary), TD-031 (mutation serialization), TD-032 (test mock Decimal), TD-033 (rate limit algorithm isolation). **Open items: 11 of 33 (TD-002, TD-012, TD-017, TD-018, TD-019, TD-020, TD-023, TD-029, TD-030, TD-031, TD-032, TD-033).**  
 > **Sprint 7 closed:** TD-002/TD-017 (discipline score centralization — already implemented, verified canonical formula in `lib/formulas/discipline.ts`), TD-020 (embedding now webhook-triggered, not fire-and-forget), TD-029 (`CYCLE.includes` guard on DB prefs), TD-030 (`>=` boundary in `InMemoryRateLimiter`), TD-031 (`serializeAccount` on all 5 mutation endpoints), TD-032 (`Prisma.Decimal` in accounts test mock), TD-033 (rate-limit tests import real `InMemoryRateLimiter`). Tests: 407 → 430 (+23).  
 > **Sprint 7 QA fixed (post-ship):** B-01 IDOR in `ai-embed` (direct path userId filter + scoped UPDATE), B-02 unbounded body DoS (Content-Length cap 16 KB), M-01 stale `from` in `archive` audit log (`findUniqueOrThrow` before update), M-02 unguarded `localStorage` calls (try/catch), M-03 indistinguishable webhook errors (503/401 split + `crypto.timingSafeEqual`), M-04 unbounded tag input (`z.string().min(1).max(30)` + array `.max(20)`). Tests: 430 → 438 (+8 new + 2 updated). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**  
-> **Sprint 8 closed:** TD-012 (`phasePayload` verified — already uses `satisfies AccountLogPayload`, not `as never`; formally closed), TD-023 (RTL component tests added: 15 tests across FilterBar, KpiCard, localStorage; Playwright e2e skeleton configured; CI now runs tests on every push). Tests: 438 → 467 (+29). **Open items: 2 of 33 (TD-018, TD-019).**
+> **Sprint 8 closed:** TD-012 (`phasePayload` verified — already uses `satisfies AccountLogPayload`, not `as never`; formally closed), TD-023 (RTL component tests added: 15 tests across FilterBar, KpiCard, localStorage; Playwright e2e skeleton configured; CI now runs tests on every push). Tests: 438 → 467 (+29). **Sprint 8 QA fixed:** B-01 Suspense boundary on reviews page (UseSearchParams requires Suspense for SSG), B-02 `group` class on MonthlyReviewCard (Tailwind group-hover visibility), M-01 `aria-selected` → `aria-pressed` (invalid ARIA on role=button), M-02 KpiStrip moved inside weekly tab. Tests: 467 → 479 (+12 regression guards). **Open items: 2 of 33 (TD-018, TD-019). All P0 and P1 closed.**
 
 ---
 

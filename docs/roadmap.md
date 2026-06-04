@@ -1,8 +1,8 @@
 # Roadmap — Trading Journal v2
 
-> **Last Updated: 2026-06-03**  
+> **Last Updated: 2026-06-04**  
 > Merges the existing ROADMAP.md (Phases 0–5) with the master-remediation-plan phased execution plan and new feature initiatives through Phase XIV.
-> **Sprints 1–7 complete.** Phases X–XI closed. Phase XII partially closed (TASK-045, TASK-031, TASK-011, TASK-048, TASK-049 done). Phase XIII type safety items closed (TASK-013, TASK-014). Phase XIV partly shipped (TASK-051 custom tags, TASK-073 rolling metrics). All P0 and P1 items resolved. Sprint 8 targets accessibility, monthly reviews, and architecture cleanup.
+> **Sprints 1–8 complete.** Phases X–XII closed. Phase XIII fully closed (TASK-024, TASK-025, TASK-070, TASK-076 + testing infrastructure complete). Phase XIV completed (TASK-021, TASK-022, TASK-042, TASK-043, TASK-065, TASK-071). All P0 and P1 items resolved. Only 4 open items remain: 1 P2 (TASK-052 onboarding) + 3 P3 (deferred features). Sprint 8 delivered accessibility, monthly reviews, CI/CD, and QA infrastructure.
 
 ---
 

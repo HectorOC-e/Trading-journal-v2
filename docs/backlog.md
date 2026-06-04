@@ -1,11 +1,11 @@
 # Backlog — Trading Journal v2
 
-> **Last Updated: 2026-06-03**  
+> **Last Updated: 2026-06-04**  
 > Complete 53-task backlog (TASK-001–053) organized by module and sprint. Sources: repository-audit-report, product-gap-analysis, feature-opportunities, ai-architecture-recommendations, personalization-roadmap, ux-improvement-roadmap, master-remediation-plan.
 > **Sprint 5 closed:** TASK-020, TASK-033, TASK-046, TASK-050, TASK-056, TASK-062, TASK-074 (7 tasks, 389 tests, 4 Blocking QA findings fixed pre-ship).
 > **Sprint 6 closed:** TASK-045 (system theme), TASK-048 (review filters), TASK-049+TASK-012 (sparklines), TASK-013 (type safety), TASK-014 (LearningResource type) + P0.1 (quality gates), P3.1 (key rotation), P3.3 (rate limiting). 407 tests (+18). QA: 0 Blocking, 6 Major fixed.
 > **Sprint 7 closed:** TASK-031 (review edit/delete), TASK-011 (discipline score), TASK-051 (custom tags), TASK-073 (7d rolling window), TASK-064 (setup health), TASK-058 (webhook embedding), TASK-060 (structured logger) + rate-limiter abstraction + review URL persistence + TD-029–TD-033 (Sprint 6 deferred). 438 tests (+31). QA: 2 Blocking + 4 Major fixed post-ship.
-> **Sprint 8 closed:** TASK-021 (analytics cache docs), TASK-022 (email setup docs), TASK-024 (RTL component tests), TASK-025 (Playwright scaffold), TASK-042 (skeleton screens), TASK-043 (empty states), TASK-065 (coach service extraction), TASK-070 (accessibility ARIA), TASK-071 (monthly reviews), TASK-076 (CI/CD). 467 tests (+29). TD-012 + TD-023 closed.
+> **Sprint 8 closed:** TASK-021 (analytics cache docs), TASK-022 (email setup docs), TASK-024 (RTL component tests), TASK-025 (Playwright scaffold), TASK-042 (skeleton screens), TASK-043 (empty states), TASK-065 (coach service extraction), TASK-070 (accessibility ARIA), TASK-071 (monthly reviews), TASK-076 (CI/CD). 467 tests (+29). TD-012 + TD-023 closed. QA: 2 Blocking + 3 Major fixed (all Sprint 8 QA findings resolved).
 
 ---
 
