@@ -89,13 +89,20 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   return (
     <div
       onClick={onClick}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onClick()}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
-        boxShadow: selected ? "0 0 0 1px var(--accent)" : "none",
+        boxShadow: selected
+          ? "0 0 0 1px var(--accent), var(--shadow-sm)"
+          : undefined,
       }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.borderColor = "var(--line-2)" }}
+      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.borderColor = "var(--line)" }}
     >
-      <div style={{ height: 3, background: tm.color }} />
+      <div style={{ height: 4, background: tm.color }} />
 
       <div className="p-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">

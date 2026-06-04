@@ -1,6 +1,3 @@
-// Dialog — Radix primitive wrapped with spec tokens
-// shadcn/ui pattern: copy-owned, no external stylesheet dependency
-
 "use client"
 
 import * as RadixDialog from "@radix-ui/react-dialog"
@@ -19,28 +16,37 @@ export function DialogContent({
 }: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>) {
   return (
     <RadixDialog.Portal>
-      <RadixDialog.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+      <RadixDialog.Overlay
+        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[3px]"
+        style={{
+          animation: "fadeIn 0.15s ease",
+        }}
+      />
       <RadixDialog.Content
         aria-describedby={ariaDescribedBy}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-          // overflow:hidden on the outer shell — scrolling happens inside the body div
-          "w-full max-h-[88vh] flex flex-col overflow-hidden",
-          "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] shadow-xl",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+          "w-full max-h-[90dvh] flex flex-col overflow-hidden",
+          "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-lg)]",
+          "shadow-[0_20px_60px_rgba(0,0,0,0.20),0_8px_24px_rgba(0,0,0,0.12)]",
           className
         )}
+        style={{
+          animation: "scaleIn 0.18s cubic-bezier(0.16,1,0.3,1)",
+        }}
         {...props}
       >
-        {/* X button is ABOVE the scrollable div — always pinned to top-right */}
-        <RadixDialog.Close className="absolute right-3 top-3 z-20 p-1.5 rounded-md text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)] transition-colors">
-          <X size={16} />
+        {/* Close button — pinned top-right */}
+        <RadixDialog.Close
+          className="absolute right-3 top-3 z-20 p-1.5 rounded-[var(--radius-xs)] transition-colors"
+          style={{ color: "var(--ink-3)" }}
+          aria-label="Cerrar"
+        >
+          <X size={15} />
         </RadixDialog.Close>
 
-        {/* Scrollable body — pr-10 so content doesn't hide behind the X */}
-        <div className="flex-1 overflow-y-auto p-6 pr-10">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 pr-10">
           {children}
         </div>
       </RadixDialog.Content>
@@ -49,21 +55,37 @@ export function DialogContent({
 }
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("mb-5", className)} {...props} />
+  return (
+    <div className={cn("mb-5", className)} {...props} />
+  )
 }
 
 export function DialogTitle({ className, ...props }: React.ComponentPropsWithoutRef<typeof RadixDialog.Title>) {
-  return <RadixDialog.Title className={cn("text-base font-semibold text-[var(--ink)]", className)} {...props} />
+  return (
+    <RadixDialog.Title
+      className={cn("text-[15px] font-semibold text-[var(--ink)] leading-tight", className)}
+      {...props}
+    />
+  )
 }
 
 export function DialogDescription({ className, ...props }: React.ComponentPropsWithoutRef<typeof RadixDialog.Description>) {
-  return <RadixDialog.Description className={cn("text-sm text-[var(--ink-2)] mt-1", className)} {...props} />
+  return (
+    <RadixDialog.Description
+      className={cn("text-[13px] text-[var(--ink-3)] mt-1 leading-relaxed", className)}
+      {...props}
+    />
+  )
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[var(--line)]", className)}
+      className={cn(
+        "flex items-center justify-end gap-2 mt-5 pt-4",
+        "border-t border-[var(--line)]",
+        className
+      )}
       {...props}
     />
   )
