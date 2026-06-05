@@ -2,11 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main, "claude/*"]
+    branches: [main-principal, dev, "claude/*"]
   pull_request:
-    branches: [main]
+    branches: [main-principal, dev]
+
+# Never run two pipelines for the same ref at once; never cancel an in-flight
+# production migration.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  # ── 1. Code gates ───────────────────────────────────────────────────────────
   checks:
     name: Type check, Tests & Build
     runs-on: ubuntu-latest
@@ -52,3 +59,71 @@ jobs:
       - name: Build
         working-directory: src
         run: pnpm run build
+
+  # ── 2. Migration validation (antierrores) ───────────────────────────────────
+  # Boots a fresh local Supabase stack and replays EVERY migration from zero.
+  # A broken, out-of-order, or non-idempotent migration fails here — long before
+  # production is touched. Runs on every PR and push.
+  migrate-validate:
+    name: Validate migrations (replay from scratch)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local stack (applies all migrations to a fresh DB)
+        run: supabase start
+
+      - name: Replay from zero (db reset)
+        run: supabase db reset
+
+      - name: Stop local stack
+        if: always()
+        run: supabase stop --no-backup
+
+  # ── 3. Apply migrations to PRODUCTION (automatic) ────────────────────────────
+  # Only on a real push to the production branch, and only after BOTH the code
+  # gates and the from-scratch validation pass. Uses `--db-url` so it needs NO
+  # Supabase access token / login — it reuses the DATABASE_URL secret the CI
+  # already uses. `db push` is idempotent: it applies only the migrations not yet
+  # recorded in the remote history.
+  #
+  # IMPORTANT: migrations run DDL, so MIGRATION_DB_URL must be a DIRECT / session
+  # connection (port 5432), NOT the transaction pooler (port 6543). If your
+  # DATABASE_URL is the pooler, add a SUPABASE_DB_URL secret with the direct URL.
+  migrate-deploy:
+    name: Apply migrations to production
+    needs: [checks, migrate-validate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main-principal'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: prod-migrate
+      cancel-in-progress: false
+    env:
+      MIGRATION_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Require a database URL
+        run: |
+          if [ -z "$MIGRATION_DB_URL" ]; then
+            echo "::error::No database URL available. Set DATABASE_URL (or SUPABASE_DB_URL for the direct connection) in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Preview pending migrations (dry run)
+        run: supabase db push --db-url "$MIGRATION_DB_URL" --dry-run
+
+      - name: Apply pending migrations
+        run: supabase db push --db-url "$MIGRATION_DB_URL"
