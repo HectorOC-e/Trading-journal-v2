@@ -263,6 +263,7 @@ export default function PerfilPage() {
   const [weeklyGoalMinutesG, setWeeklyGoalMinutesG] = useState<number | null>(null)
   const [editingProvider,    setEditingProvider]    = useState<string | null>(null)
   const [aiKeyInput,         setAiKeyInput]         = useState("")
+  const [testingProvider,    setTestingProvider]    = useState<string | null>(null)
 
   // Initialize local state once on first data load (useEffect avoids calling setState during render)
   useEffect(() => {
@@ -355,6 +356,27 @@ export default function PerfilPage() {
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
+
+  // Tests a SAVED provider key against the real provider API (/api/ai-test).
+  // Surfaces the real error returned by the provider — not a generic message.
+  async function testConnection(provider: "anthropic" | "openrouter" | "openai") {
+    setTestingProvider(provider)
+    try {
+      const res = await fetch("/api/ai-test", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ provider }),
+      })
+      const data = await res.json().catch(() => ({})) as { valid?: boolean; error?: string }
+      if (data.valid) toast.success(`Conexión exitosa con ${provider} ✓`)
+      else            toast.error(`Falló la conexión: ${data.error ?? "error desconocido"}`)
+    } catch (e) {
+      toast.error(`No se pudo probar la conexión: ${e instanceof Error ? e.message : "error de red"}`)
+    } finally {
+      utils.aiConfig.list.invalidate()
+      setTestingProvider(null)
+    }
+  }
 
   /* ── Handlers ── */
   function handleSaveProfile() {
@@ -755,6 +777,14 @@ export default function PerfilPage() {
                     )}
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
+                    {config && !isEditing && (
+                      <GhostBtn
+                        onClick={() => testConnection(id as "anthropic" | "openrouter" | "openai")}
+                        loading={testingProvider === id}
+                      >
+                        Probar conexión
+                      </GhostBtn>
+                    )}
                     {!isEditing && (
                       <GhostBtn onClick={() => { setEditingProvider(id); setAiKeyInput("") }}>
                         {config ? "Editar" : "Agregar"}
