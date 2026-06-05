@@ -129,16 +129,16 @@ export function TabDisciplina({ kpis, discipline }: {
             <AreaChart data={weeklyScore} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradScore" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <XAxis dataKey="week" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
               <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
                 tickFormatter={v => `${v}%`} width={32} />
               <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="score" name="Score" stroke="#4f6ef7" strokeWidth={2}
-                fill="url(#gradScore)" dot={{ r: 3, fill: "#4f6ef7", strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="score" name="Score" stroke="var(--accent)" strokeWidth={2}
+                fill="url(#gradScore)" dot={{ r: 3, fill: "var(--accent)", strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -173,7 +173,7 @@ export function TabDisciplina({ kpis, discipline }: {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5">
             {[
               { label: "Sin violación",  value: `${sinViolacionPct}%`,    sub: `${total} trades total`,          color: "var(--win)"  },
-              { label: "Plan seguido",   value: `${planSeguidoPct}%`,     sub: `${composition.planSeguido} / ${total}`, color: "#4f6ef7" },
+              { label: "Plan seguido",   value: `${planSeguidoPct}%`,     sub: `${composition.planSeguido} / ${total}`, color: "var(--accent)" },
               { label: "Off-plan count", value: `${composition.offPlan}`, sub: "trades off-plan",                color: "var(--loss)" },
             ].map(m => (
               <div key={m.label} className="flex flex-col gap-1">
@@ -398,7 +398,7 @@ export function TabDisciplina({ kpis, discipline }: {
       {/* Insights detectados (T-VI-002) */}
       <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Brain size={16} className="text-[#4f6ef7]" />
+          <Brain size={16} className="text-[var(--accent)]" />
           <p className="text-[13px] font-semibold text-[var(--ink)]">Insights detectados</p>
           <p className="text-[11px] text-[var(--ink-3)] ml-1">Patrones de comportamiento basados en tu historial</p>
         </div>
@@ -445,7 +445,7 @@ export function TabDisciplina({ kpis, discipline }: {
                   <p className="text-xs text-[var(--ink-2)]">{p.description}</p>
                   <p className="text-[10px] text-[var(--ink-3)] italic">{p.evidence}</p>
                   <div className="flex items-start gap-1.5 mt-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#4f6ef7] shrink-0 mt-0.5">Acción</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] shrink-0 mt-0.5">Acción</span>
                     <p className="text-[11px] text-[var(--ink-2)]">{p.actionable}</p>
                   </div>
                 </div>

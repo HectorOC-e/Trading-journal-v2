@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
+import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
@@ -159,29 +160,13 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-1 mb-6 border-b border-[var(--line)]" role="tablist" aria-label="Secciones del dashboard">
-        {TABS.map(t => (
-          <button
-            key={t.value}
-            role="tab"
-            aria-selected={tab === t.value}
-            onClick={() => handleTabChange(t.value as Tab)}
-            className="relative px-4 py-2.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-t-[var(--radius-xs)]"
-            style={{
-              color: tab === t.value ? "var(--ink)" : "var(--ink-3)",
-              marginBottom: -1,
-            }}
-          >
-            {t.label}
-            {tab === t.value && (
-              <span
-                className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full"
-                style={{ background: "var(--accent)" }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs
+        options={TABS}
+        value={tab}
+        onChange={(v) => handleTabChange(v as Tab)}
+        ariaLabel="Secciones del dashboard"
+        className="mb-6"
+      />
       {tab === "portfolio" && (
         <div className="flex flex-col gap-4">
           <OnboardingChecklist />

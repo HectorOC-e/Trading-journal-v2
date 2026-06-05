@@ -102,6 +102,16 @@
 - [ ] **Dashboard**: header muestra saludo según hora + fecha; card héroe de Net P&L coloreada (verde si ≥0, rojo si <0) con win rate y nº trades; botón PDF funciona.
 - [ ] **Zoom**: en móvil se puede hacer pinch-zoom (ya no bloqueado por `maximumScale`).
 
+## 8c. Backlog final — notificaciones, tabs, charts
+
+- [ ] **Campana de notificaciones** visible en sidebar (desktop/tablet) y header móvil; muestra badge con nº de alertas.
+- [ ] Con una cuenta bloqueada → aparece notificación "X bloqueada" que enlaza a /cuentas.
+- [ ] Con reviews vencidas/pendientes → aparecen notificaciones que enlazan a /aprendizaje.
+- [ ] Sin alertas → estado "Todo al día".
+- [ ] El dropdown cierra al click-fuera y al navegar.
+- [ ] **SegmentedTabs**: tabs del Dashboard (underline) y toggle Semanales/Mensuales de Reviews (pill) funcionan igual que antes; indicador activo correcto.
+- [ ] **Charts** del Dashboard (disciplina/operador/portfolio/playbook): las series azules ahora usan el accent del tema (cambian al cambiar de tema).
+
 ## 9. Accesibilidad
 
 - [ ] `:focus-visible` muestra anillo de accent en elementos interactivos nuevos (FABs, menú `···`, drawer).

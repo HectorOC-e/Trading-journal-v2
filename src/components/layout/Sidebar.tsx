@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
+import { NotificationBell } from "@/components/layout/notification-bell"
 
 const NAV = [
   {
@@ -158,6 +159,7 @@ export function Sidebar() {
               Trading Journal
             </span>
           </div>
+          <NotificationBell placement="down" compact />
           <button
             onClick={toggle}
             className="w-8 h-8 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors"
@@ -350,6 +352,7 @@ export function Sidebar() {
             style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
             {userInitial || "?"}
           </div>
+          <NotificationBell placement="up" />
           <button
             onClick={toggle}
             className="w-7 h-7 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors hover:bg-[var(--chip)]"
@@ -513,6 +516,7 @@ export function Sidebar() {
             alignItems: "center",
           }}
         >
+          <NotificationBell placement="up" />
           <button
             onClick={toggle}
             title={`Tema: ${resolvedTheme}`}

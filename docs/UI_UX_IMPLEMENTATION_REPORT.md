@@ -95,14 +95,16 @@ Diferido aún: centro de notificaciones (E2 — no hay top-bar global de escrito
 
 ## 9. Pendientes / follow-up (backlog)
 
-- ⏭️ Reviews → página completa `/reviews/[id]`.
-- ⏭️ Aprendizaje: right-rail de stats → KpiStrip colapsable; auditar 5 modales (M5/M6).
-- ✅ Dashboard "home héroe" (saludo + KpiHero Net P&L) — hecho (falta estado emocional del día).
-- ✅ Command palette ⌘K — hecho. ⏭️ Centro de notificaciones (E2) — pendiente.
-- ⏭️ `SegmentedTabs` y `PageHeader` héroe extraídos a `components/ui/`.
+- ✅ Reviews → migrado a `DrawerPanel` (variante página completa descartada por consistencia/menor riesgo).
+- ✅ Aprendizaje: right-rail → KPI strip + `DrawerPanel` (M5).
+- ✅ Dashboard "home héroe" (saludo + KpiHero Net P&L). ⏭️ Estado emocional del día: pendiente (sin fuente de dato limpia).
+- ✅ Command palette ⌘K.
+- ✅ Centro de notificaciones (E2): `NotificationBell` (cuentas bloqueadas, reviews vencidas/pendientes), anclado en Sidebar (desktop/tablet) y header móvil.
+- ✅ `SegmentedTabs` extraído a `components/ui/` (variantes underline/pill), aplicado en Dashboard y Reviews. ⏭️ `PageHeader` héroe extraíble aún no.
 - ✅ `maximumScale: 1` eliminado (WCAG 1.4.4).
-- ⏭️ Migrar `#4f6ef7` restantes de charts a `var(--chart-1)` donde aplique.
-- ⏭️ Editor de tema personalizado multi-rol completo (secundario/terciario) con preview en vivo y validación de contraste AA.
+- ✅ Charts del Dashboard migrados `#4f6ef7` → `var(--accent)` (19 usos en los 4 tabs). Colores de categoría/estado/setup se mantienen fijos a propósito.
+- ✅ Editor de tema personalizado: hex exacto + preview en vivo + contraste WCAG AA. ⏭️ Roles secundario/terciario: la app solo tematiza accent funcionalmente; serían decorativos.
+- 🟡 M6 (modales Aprendizaje) auditado: tras quitar el rail, los 5 modales son flujos enfocados apropiados como diálogos; sin anidamiento confuso restante. No requieren conversión.
 
 ## 10. Verificación requerida en CI
 

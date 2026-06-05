@@ -166,7 +166,7 @@ export function TabPlaybook() {
       {playbookSummary && (
         <div className="flex flex-wrap gap-2">
           {[
-            { label: "Más usado",    text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
+            { label: "Más usado",    text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "var(--accent)" },
             { label: "Más rentable",  text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
             { label: "En racha",       text: playbookSummary.setupInStreak.currentStreak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.currentStreak}W` : "—", color: "var(--be)" },
             { label: "Mejor A+",       text: `${playbookSummary.bestAplus.abbr} · ${playbookSummary.bestAplus.aplusRate.toFixed(2)}%`, color: "var(--accent)" },
@@ -345,7 +345,7 @@ export function TabPlaybook() {
                         <td className="py-2">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                              style={{ background: setup?.color ?? "#4f6ef7" }}>{setup?.abbr ?? "?"}</span>
+                              style={{ background: setup?.color ?? "var(--accent)" }}>{setup?.abbr ?? "?"}</span>
                             <span className="text-[var(--ink)]">{setup?.name ?? d.setupId}</span>
                           </div>
                         </td>
