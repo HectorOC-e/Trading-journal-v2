@@ -20,9 +20,8 @@ import type {
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
-import { isEmbeddingAvailable } from "@/lib/ai/config"
 import { embedText } from "@/lib/ai/embeddings"
-import { resolveModelForFeature } from "@/lib/ai/resolve-model"
+import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 
 /** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
 function periodBounds(dateStr: string) {
@@ -61,11 +60,12 @@ async function lockAccount(
 
 /** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
 function scheduleEmbedding(tradeId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
-  if (!isEmbeddingAvailable() || !notes.trim()) return
+  if (!notes.trim()) return
   void (async () => {
     try {
-      const { primary } = await resolveModelForFeature(prismaClient, userId, "embeddings")
-      const vector = await embedText(notes, primary.model)
+      const emb = await resolveEmbeddingCall(prismaClient, userId)
+      if (emb.source === "none") return
+      const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
       if (!vector) return
       await prismaClient.$executeRaw`
         UPDATE trades
@@ -866,11 +866,11 @@ export const tradesRouter = router({
       limit: z.number().int().min(1).max(20).default(10),
     }))
     .query(async ({ ctx, input }) => {
-      if (!isEmbeddingAvailable()) {
+      const emb = await resolveEmbeddingCall(ctx.prisma, ctx.userId)
+      if (emb.source === "none") {
         return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
       }
-      const { primary: embModel } = await resolveModelForFeature(ctx.prisma, ctx.userId, "embeddings")
-      const queryVector = await embedText(input.query, embModel.model)
+      const queryVector = await embedText(input.query, { model: emb.model, apiKey: emb.apiKey })
       if (!queryVector) {
         return { trades: [], similarity: [], error: "EMBED_FAILED" as const }
       }

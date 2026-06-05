@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
-import { isAnyKeyConfigured } from "@/lib/ai/config"
 import { streamCoachReply, type MessageParam } from "@/lib/ai/coach-service"
+import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Auth ────────────────────────────────────────────────────────────────────
@@ -11,11 +11,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!user) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 })
-  }
-
-  // ── API key check ───────────────────────────────────────────────────────────
-  if (!isAnyKeyConfigured()) {
-    return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
   }
 
   // ── Parse body ──────────────────────────────────────────────────────────────
@@ -39,7 +34,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         "X-Accel-Buffering": "no",
       },
     })
-  } catch {
+  } catch (err) {
+    // No usable key (neither persisted nor env) for the user's configured provider.
+    if (err instanceof NoApiKeyError) {
+      return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
+    }
     return NextResponse.json({ error: "STREAM_ERROR" }, { status: 500 })
   }
 }

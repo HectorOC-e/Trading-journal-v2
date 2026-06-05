@@ -4,8 +4,7 @@ import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
 import { streamChat }        from "@/lib/ai/chat"
-import { isAnyKeyConfigured } from "@/lib/ai/config"
-import { resolveModelForFeature } from "@/lib/ai/resolve-model"
+import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 
 const WeeklyReviewInput = z.object({
@@ -184,8 +183,14 @@ export const weeklyReviewsRouter = router({
       accountId:  z.string().uuid().optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!isAnyKeyConfigured()) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay clave de API configurada. Añade ANTHROPIC_API_KEY o OPENROUTER_API_KEY en la configuración." })
+      // Resolve the user's configured provider + key (persisted first, then env).
+      const aiCall = await resolveAiCall(ctx.prisma, ctx.userId, "weekly_reviews")
+      const candidates = usableCandidates(aiCall)
+      if (candidates.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Configura un proveedor de IA y su API key en Ajustes → Configuración de IA para generar el resumen.",
+        })
       }
 
       const start = new Date(input.weekStart)
@@ -232,16 +237,24 @@ ${tradeLines}
 JSON:`
 
       try {
-        // Per-user model for review generation, with global fallback (HALLAZGO 4 / AI config).
-        const { primary, fallback } = await resolveModelForFeature(ctx.prisma, ctx.userId, "weekly_reviews")
-        // Collect full streamed response (summary is short)
-        const stream = await streamChat({
-          model:    primary.model,
-          messages: [{ role: "user", content: prompt }],
-        }).catch(async (e) => {
-          if (fallback) return streamChat({ model: fallback.model, messages: [{ role: "user", content: prompt }] })
-          throw e
-        })
+        // Try each usable candidate (primary then fallback); each carries its own
+        // provider + model + key resolved from the user's persisted config.
+        let stream: ReadableStream<Uint8Array> | null = null
+        let streamErr: unknown
+        for (const c of candidates) {
+          try {
+            stream = await streamChat({
+              provider: c.provider,
+              apiKey:   c.apiKey,
+              model:    c.model,
+              messages: [{ role: "user", content: prompt }],
+            })
+            break
+          } catch (e) {
+            streamErr = e
+          }
+        }
+        if (!stream) throw streamErr ?? new Error("AI stream failed")
         const reader  = stream.getReader()
         const decoder = new TextDecoder()
         let   raw     = ""

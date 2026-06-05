@@ -1,6 +1,8 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { encryptApiKey, decryptApiKey, maskApiKey, EncryptionConfigError } from "@/lib/ai/key-encryption"
+import { buildAiDiagnostics, resolveAiCall } from "@/lib/ai/resolve-provider"
+import { testProviderConnectivity } from "@/lib/ai/health-check"
 
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
 type Provider = typeof PROVIDERS[number]
@@ -110,6 +112,50 @@ export const aiConfigRouter = router({
       })
       return { deleted: true }
     }),
+
+  /**
+   * AI Diagnostics — the EFFECTIVE configuration the app will actually use:
+   * default/fallback provider+model, per-feature resolution, and key status per
+   * provider (persisted "user" key, "env" key, or "none"). Never returns keys.
+   */
+  diagnostics: protectedProcedure.query(async ({ ctx }) => {
+    return buildAiDiagnostics(ctx.prisma, ctx.userId)
+  }),
+
+  /**
+   * AI Health Check — resolves the user's effective chat provider+model+key and
+   * pings the provider to validate connectivity, returning the REAL result.
+   */
+  healthCheck: protectedProcedure.mutation(async ({ ctx }) => {
+    const call = await resolveAiCall(ctx.prisma, ctx.userId, "ai_chat")
+    const { primary } = call
+    if (primary.source === "none") {
+      return {
+        ok:             false,
+        provider:       primary.provider,
+        model:          primary.model,
+        source:         primary.source,
+        detectedModels: null as number | null,
+        error:          "No hay API key configurada para el proveedor efectivo. Añádela en Configuración de IA." as string | null,
+      }
+    }
+    const result = await testProviderConnectivity(primary.provider, primary.apiKey)
+    // Persist last-tested/error on the matching saved config (best-effort).
+    if (primary.source === "user") {
+      await ctx.prisma.userAiConfig.updateMany({
+        where: { userId: ctx.userId, provider: primary.provider },
+        data:  { lastTested: new Date(), errorLog: result.valid ? null : (result.error ?? "Unknown error") },
+      }).catch(() => {})
+    }
+    return {
+      ok:             result.valid,
+      provider:       primary.provider,
+      model:          primary.model,
+      source:         primary.source,
+      detectedModels: result.detectedModels ?? null,
+      error:          result.valid ? null : (result.error ?? "Error desconocido"),
+    }
+  }),
 })
 
 /**

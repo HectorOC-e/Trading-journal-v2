@@ -182,7 +182,7 @@ export function AiCoachDrawer() {
           {apiError === "NO_API_KEY" && (
             <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm text-[var(--ink-3)]">
               <strong className="text-[var(--ink)]">Configuración pendiente.</strong>
-              {" "}Configura <code className="font-mono text-xs bg-[var(--chip)] px-1 rounded">ANTHROPIC_API_KEY</code> para activar el coach.
+              {" "}Ve a <strong className="text-[var(--ink)]">Ajustes → Configuración de IA</strong>, añade la API key de tu proveedor (Anthropic, OpenAI u OpenRouter) y verifícala con <strong className="text-[var(--ink)]">Probar conexión</strong>.
             </div>
           )}
 

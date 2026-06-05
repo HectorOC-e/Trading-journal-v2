@@ -6,8 +6,10 @@ vi.mock("@/domains/analytics/ai-context", () => ({
 vi.mock("@/lib/ai/chat", () => ({
   streamChat: vi.fn(),
 }))
+// resolve-provider falls back to the env key via getProviderKey when no persisted
+// user key exists; return a stub key so a usable candidate is available.
 vi.mock("@/lib/ai/config", () => ({
-  getCoachModel: vi.fn().mockReturnValue("claude-sonnet-4-6"),
+  getProviderKey: vi.fn().mockReturnValue("test-key"),
 }))
 
 import { streamCoachReply } from "@/lib/ai/coach-service"
@@ -37,9 +39,11 @@ const MOCK_CONTEXT = {
 
 const MOCK_STREAM = new ReadableStream()
 
-// Minimal prisma mock — no per-user AI settings row → platform defaults apply.
+// Minimal prisma mock — no per-user AI settings row and no persisted key →
+// platform defaults apply and the key resolves via the env fallback (mocked above).
 const mockPrisma = {
   userAiSettings: { findUnique: () => Promise.resolve(null) },
+  userAiConfig:   { findUnique: () => Promise.resolve(null) },
 } as never
 
 describe("coach-service (TASK-065)", () => {
@@ -78,9 +82,16 @@ describe("coach-service (TASK-065)", () => {
     expect(result).toBe(MOCK_STREAM)
   })
 
-  it("includes model from getCoachModel", async () => {
+  it("resolves the default model from settings (platform default)", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
     const callArgs = mockStreamChat.mock.calls[0][0]
     expect(callArgs.model).toBe("claude-sonnet-4-6")
+  })
+
+  it("threads the resolved provider and api key to streamChat", async () => {
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+    const callArgs = mockStreamChat.mock.calls[0][0]
+    expect(callArgs.provider).toBe("anthropic")  // platform default provider
+    expect(callArgs.apiKey).toBe("test-key")      // from env fallback
   })
 })
