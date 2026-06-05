@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   themeColor: "#4f6ef7",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale lock — users must be able to zoom (WCAG 1.4.4 / m4).
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

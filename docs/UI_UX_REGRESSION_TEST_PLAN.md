@@ -93,6 +93,15 @@
 - [ ] PWA/service worker registra sin errores en consola.
 - [ ] Sin errores de hidratación en consola (especialmente por el script `theme-init`).
 
+## 8b. Fase 5 — Command palette, hero, zoom
+
+- [ ] **⌘K** (macOS) / **Ctrl+K** (Win/Linux) abre la paleta de comandos desde cualquier pantalla.
+- [ ] Escribir filtra; ↑/↓ navegan; Enter ejecuta; Esc cierra; click en backdrop cierra.
+- [ ] "Nuevo trade" en la paleta abre el RegisterTradeModal.
+- [ ] Cada destino navega a su ruta correcta (incl. /psicologia, /analytics, Perfil).
+- [ ] **Dashboard**: header muestra saludo según hora + fecha; card héroe de Net P&L coloreada (verde si ≥0, rojo si <0) con win rate y nº trades; botón PDF funciona.
+- [ ] **Zoom**: en móvil se puede hacer pinch-zoom (ya no bloqueado por `maximumScale`).
+
 ## 9. Accesibilidad
 
 - [ ] `:focus-visible` muestra anillo de accent en elementos interactivos nuevos (FABs, menú `···`, drawer).

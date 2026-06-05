@@ -72,9 +72,14 @@ Se implementaron las Fases 0–4 del plan maestro. El sistema de temas (entregab
   - **Móvil**: hoja inferior (sin drag), apilado sobre el navbar.
   - Lógica de streaming/API intacta.
 
-## 7. Fase 5 — Momentos premium / enhancements ⏭️
+## 7. Fase 5 — Momentos premium / enhancements 🟡
 
-Diferida en su mayoría. No implementado en esta entrega: command palette ⌘K (E1), centro de notificaciones (E2), KpiHero/saludo en Dashboard (E3/E4), `SegmentedTabs` extraído (m3), `ThemePreview` en vivo multi-rol con validación WCAG (la versión actual es por color primario), quitar `maximumScale:1` (m4 — pendiente). Documentado como backlog en §9.
+Implementado en esta iteración:
+- ✅ **Command palette ⌘K / Ctrl+K** (E1) — `components/ui/command-palette.tsx`, montado en `AppShell`. Navega a cualquier destino + "Nuevo trade"; navegación con flechas, Enter, Esc.
+- ✅ **Dashboard header héroe** (E3/E4) — saludo según hora + fecha + card héroe de **Net P&L del periodo** (coloreado win/loss) con win rate y nº de trades, en `app/dashboard/page.tsx`.
+- ✅ **`maximumScale: 1` eliminado** (m4) — el usuario ya puede hacer zoom (WCAG 1.4.4).
+
+Diferido aún: centro de notificaciones (E2), `SegmentedTabs`/`PageHeader` extraídos (m3), editor de tema personalizado multi-rol con preview en vivo + validación WCAG (versión actual = por color primario). Ver §9.
 
 ---
 
@@ -89,10 +94,10 @@ Diferida en su mayoría. No implementado en esta entrega: command palette ⌘K (
 
 - ⏭️ Reviews → página completa `/reviews/[id]`.
 - ⏭️ Aprendizaje: right-rail de stats → KpiStrip colapsable; auditar 5 modales (M5/M6).
-- ⏭️ Dashboard "home héroe" (saludo + KpiHero + estado emocional).
-- ⏭️ Command palette ⌘K · centro de notificaciones.
+- ✅ Dashboard "home héroe" (saludo + KpiHero Net P&L) — hecho (falta estado emocional del día).
+- ✅ Command palette ⌘K — hecho. ⏭️ Centro de notificaciones (E2) — pendiente.
 - ⏭️ `SegmentedTabs` y `PageHeader` héroe extraídos a `components/ui/`.
-- ⏭️ Quitar `maximumScale: 1` (accesibilidad WCAG 1.4.4).
+- ✅ `maximumScale: 1` eliminado (WCAG 1.4.4).
 - ⏭️ Migrar `#4f6ef7` restantes de charts a `var(--chart-1)` donde aplique.
 - ⏭️ Editor de tema personalizado multi-rol completo (secundario/terciario) con preview en vivo y validación de contraste AA.
 
