@@ -20,6 +20,7 @@ function makeFakeAccount(overrides = {}) {
     currency: "USD", timezone: "America/New_York", phase: "NONE",
     allowedSymbols: [], maxTradesPerDay: null, minTradingDays: null,
     statusNote: null, archivedAt: null,
+    locked: false, lockReason: "", lockedAt: null,
     createdAt: now, updatedAt: now,
     ...overrides,
   }
@@ -142,5 +143,42 @@ describe("accounts router", () => {
     })
 
     void prevAccount // referenced to avoid lint warning
+  })
+
+  // ── HALLAZGO 1B — manual lock / unlock ─────────────────────────────────────
+  it("lock: sets locked state + writes a LOCKED audit log", async () => {
+    mockPrisma.account.update.mockResolvedValue(makeFakeAccount({ locked: true, lockReason: "MANUAL", lockedAt: new Date() }))
+    mockPrisma.accountLog.create.mockResolvedValue({ id: "log-lock" })
+
+    const result = await caller.accounts.lock({ id: "550e8400-e29b-41d4-a716-446655440002", reason: "MANUAL" })
+
+    expect(mockPrisma.account.update).toHaveBeenCalledWith({
+      where: { id: "550e8400-e29b-41d4-a716-446655440002", userId: USER_ID },
+      data:  expect.objectContaining({ locked: true, lockReason: "MANUAL" }),
+    })
+    expect(mockPrisma.accountLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        event:   "LOCKED",
+        payload: expect.objectContaining({ event: "LOCKED", reason: "MANUAL", auto: false }),
+      }),
+    })
+    expect(result.locked).toBe(true)
+    expect(typeof result.initialBalance).toBe("number")
+  })
+
+  it("unlock: clears locked state + writes an UNLOCKED audit log", async () => {
+    mockPrisma.account.update.mockResolvedValue(makeFakeAccount({ locked: false, lockReason: "", lockedAt: null }))
+    mockPrisma.accountLog.create.mockResolvedValue({ id: "log-unlock" })
+
+    const result = await caller.accounts.unlock({ id: "550e8400-e29b-41d4-a716-446655440002" })
+
+    expect(mockPrisma.account.update).toHaveBeenCalledWith({
+      where: { id: "550e8400-e29b-41d4-a716-446655440002", userId: USER_ID },
+      data:  { locked: false, lockReason: "", lockedAt: null },
+    })
+    expect(mockPrisma.accountLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ event: "UNLOCKED" }),
+    })
+    expect(result.locked).toBe(false)
   })
 })

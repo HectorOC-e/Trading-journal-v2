@@ -16,11 +16,16 @@ vi.mock("@/domains/analytics/services/analytics-cache", () => ({
   setCachedStats: vi.fn(),
   invalidateCache: vi.fn(),
 }))
-vi.mock("@/domains/trading/services/prop-firm-guard", () => ({
-  checkDailyLossLimit:  vi.fn().mockReturnValue(false),
-  checkTradeCountLimit: vi.fn().mockReturnValue(false),
-  checkSymbolAllowlist: vi.fn().mockReturnValue(false),
-}))
+// Keep the real checkLossLimit (loss-limit tests rely on it); stub the
+// count/symbol guards so unrelated create tests always pass them.
+vi.mock("@/domains/trading/services/prop-firm-guard", async (importActual) => {
+  const actual = await importActual<typeof import("@/domains/trading/services/prop-firm-guard")>()
+  return {
+    ...actual,
+    checkTradeCountLimit: vi.fn().mockReturnValue(false),
+    checkSymbolAllowlist: vi.fn().mockReturnValue(false),
+  }
+})
 
 const USER_ID    = "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1"
 const ACCOUNT_ID = "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2"
@@ -80,24 +85,39 @@ const BASE_ACCOUNT = {
   minTradingDays:  null,
   status:          "ACTIVE",
   statusNote:      "",
+  locked:          false,
+  lockReason:      "",
+  lockedAt:        null,
   createdAt:       new Date(),
   updatedAt:       new Date(),
 }
 
-function makeMockPrisma() {
+function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
   const trade = { ...BASE_TRADE }
+  const account = { ...BASE_ACCOUNT, ...accountOverrides }
   return {
     account: {
-      findUniqueOrThrow: vi.fn().mockResolvedValue(BASE_ACCOUNT),
+      findUniqueOrThrow: vi.fn().mockResolvedValue(account),
+      update:            vi.fn().mockResolvedValue(account),
+    },
+    setup: {
+      findUnique: vi.fn().mockResolvedValue({ status: "ACTIVO" }),
     },
     trade: {
       create: vi.fn().mockResolvedValue(trade),
       update: vi.fn().mockResolvedValue(trade),
       findUniqueOrThrow: vi.fn().mockResolvedValue({ ...trade, account: BASE_ACCOUNT, setup: null, events: [] }),
       findMany: vi.fn().mockResolvedValue([]),
+      count:   vi.fn().mockResolvedValue(0),
     },
     tradeEvent: {
       create: vi.fn().mockResolvedValue({ id: "ev-1", type: "OPEN", timestamp: new Date() }),
+    },
+    accountLog: {
+      create: vi.fn().mockResolvedValue({ id: "log-1" }),
+    },
+    userAiSettings: {
+      findUnique: vi.fn().mockResolvedValue(null),
     },
     tradeChecklistResult: {},
   }
@@ -356,5 +376,66 @@ describe("trades.update — tag validation (M-04)", () => {
         tags: Array.from({ length: 21 }, (_, i) => `tag${i}`),
       })
     ).rejects.toThrow()
+  })
+})
+
+// ── HALLAZGO 1B / 2 — risk-limit lock + setup guard on create ────────────────
+describe("trades.create — lock & setup guards", () => {
+  let caller: ReturnType<typeof appRouter.createCaller>
+
+  function callerWith(prisma: ReturnType<typeof makeMockPrisma>) {
+    return appRouter.createCaller({ prisma: prisma as never, supabase: {} as never, userId: USER_ID })
+  }
+
+  it("rejects a trade on a locked account (FORBIDDEN ACCOUNT_LOCKED)", async () => {
+    const prisma = makeMockPrisma({ locked: true, lockReason: "DAILY_LOSS_LIMIT" })
+    caller = callerWith(prisma)
+    await expect(caller.trades.create(BASE_CREATE_INPUT)).rejects.toThrow(/ACCOUNT_LOCKED/)
+    expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects a trade referencing a PAUSED setup (SETUP_NOT_AVAILABLE)", async () => {
+    const prisma = makeMockPrisma()
+    prisma.setup.findUnique.mockResolvedValue({ status: "PAUSADO" })
+    caller = callerWith(prisma)
+    await expect(
+      caller.trades.create({ ...BASE_CREATE_INPUT, setupId: "550e8400-e29b-41d4-a716-446655440099" }),
+    ).rejects.toThrow(/SETUP_NOT_AVAILABLE/)
+    expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+
+  it("allows a trade referencing an active setup", async () => {
+    const prisma = makeMockPrisma()
+    prisma.setup.findUnique.mockResolvedValue({ status: "ACTIVO" })
+    caller = callerWith(prisma)
+    const trade = await caller.trades.create({ ...BASE_CREATE_INPUT, setupId: "550e8400-e29b-41d4-a716-446655440099" })
+    expect(trade).toBeDefined()
+    expect(prisma.trade.create).toHaveBeenCalled()
+  })
+
+  it("auto-locks the account when a configured loss limit is already breached", async () => {
+    // Weekly limit 5% of $10k = $500. Already-realized week loss = -$600 → breach.
+    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
+    prisma.trade.findMany.mockResolvedValue([{ pnl: -600, date: new Date("2025-01-06") }])
+    caller = callerWith(prisma)
+
+    await expect(caller.trades.create(BASE_CREATE_INPUT)).rejects.toThrow(/ACCOUNT_LOCKED:WEEKLY_LOSS_LIMIT/)
+    // Account was locked + audited
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ locked: true, lockReason: "WEEKLY_LOSS_LIMIT" }) }),
+    )
+    expect(prisma.accountLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ event: "LOCKED" }) }),
+    )
+    expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+
+  it("allows a trade when realized loss is below the configured limit", async () => {
+    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
+    prisma.trade.findMany.mockResolvedValue([{ pnl: -100, date: new Date("2025-01-06") }]) // 1% < 5%
+    caller = callerWith(prisma)
+    const trade = await caller.trades.create(BASE_CREATE_INPUT)
+    expect(trade).toBeDefined()
+    expect(prisma.account.update).not.toHaveBeenCalled()
   })
 })
