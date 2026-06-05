@@ -500,7 +500,9 @@ model TradeEmbedding {
 model UserPreferences {
   userId       String   @id @map("user_id") @db.Uuid
   theme        String   @default("system")      // "light" | "dark" | "system"
-  accentHue    Int?     @map("accent_hue")      // 0–360 OKLCH
+  colorTheme   String   @default("indigo")      @map("color_theme") // "indigo" | "violeta" | "turquesa" | "carmesi" | "custom"
+  customTheme  String?  @map("custom_theme")    // JSON: { accent, accentSoft, ... } when colorTheme = "custom"
+  accentHue    Int?     @map("accent_hue")      // 0–360 OKLCH (legacy quick accent override)
   colorScheme  String   @default("default")     @map("color_scheme") // "default" | "deuteranopia" | "mono"
   defaultTab   String   @default("portfolio")   @map("default_tab")
   kpiOrder     String[] @default([]) @map("kpi_order")

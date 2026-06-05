@@ -16,6 +16,7 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { ReviewDetailPanel } from "./components/review-detail-panel"
+import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { NuevaReviewModal } from "./modals/create-review-modal"
 import { NuevaMensualModal } from "./modals/create-monthly-review-modal"
 import { ReviewCard } from "./components/review-card"
@@ -236,8 +237,8 @@ function ReviewsPageContent() {
 
   return (
     <>
-      <div className="flex gap-0 items-start" style={{ margin: selectedReview ? "-28px -32px" : undefined }}>
-        <div className={cn("flex-1 min-w-0", selectedReview ? "px-8 py-7" : "")}>
+      <div>
+        <div className="min-w-0">
           <TopBar
             title="Reviews"
             subtitle="Semanas y meses analizados"
@@ -401,7 +402,14 @@ function ReviewsPageContent() {
             </>
           )}
         </div>
+      </div>
 
+      <DrawerPanel
+        open={!!selectedReview}
+        onClose={() => setSelectedReview(null)}
+        width={480}
+        ariaLabel="Detalle de la review"
+      >
         {selectedReview && (
           <ReviewDetailPanel
             review={selectedReview}
@@ -411,7 +419,7 @@ function ReviewsPageContent() {
             onEdit={(r) => { setEditingReview(r); setModalOpen(true) }}
           />
         )}
-      </div>
+      </DrawerPanel>
 
       <NuevaReviewModal
         open={modalOpen}

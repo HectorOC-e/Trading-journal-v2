@@ -7,8 +7,12 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { createClient } from "@/lib/supabase/client"
-import { Loader2 } from "lucide-react"
+import { Loader2, RotateCcw } from "lucide-react"
 import { AiModelsCard } from "./components/ai-models-card"
+import {
+  PREDEFINED_THEMES, applyColorTheme, customFromHue, customFromHex, contrastRatio,
+  parseCustomTheme, DEFAULT_CUSTOM, type ColorTheme, type CustomTheme,
+} from "@/lib/themes"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
 
@@ -255,7 +259,8 @@ export default function PerfilPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [formInitialized,    setFormInitialized]    = useState(false)
   const [theme,              setThemeState]         = useState<"light" | "dark" | "system">("system")
-  const [accentHue,          setAccentHue]          = useState<number | null>(null)
+  const [colorTheme,         setColorTheme]         = useState<ColorTheme>("indigo")
+  const [customTheme,        setCustomTheme]        = useState<CustomTheme>(DEFAULT_CUSTOM)
   const [colorScheme,        setColorScheme]        = useState<"default" | "deuteranopia" | "mono">("default")
   const [disciplineGoal,     setDisciplineGoal]     = useState<number | undefined>(undefined)
   const [weeklyTradesGoal,   setWeeklyTradesGoal]   = useState<number | null>(null)
@@ -280,10 +285,43 @@ export default function PerfilPage() {
   useEffect(() => {
     if (prefs) {
       setThemeState(prefs.theme as "light" | "dark" | "system")
-      setAccentHue(prefs.accentHue ?? null)
+      setColorTheme((prefs.colorTheme as ColorTheme) ?? "indigo")
+      setCustomTheme(parseCustomTheme(prefs.customTheme) ?? DEFAULT_CUSTOM)
       setColorScheme((prefs.colorScheme as "default" | "deuteranopia" | "mono") ?? "default")
     }
   }, [prefs])
+
+  /* ── Theme handlers ── */
+  function pickTheme(id: ColorTheme) {
+    setColorTheme(id)
+    applyColorTheme(id, id === "custom" ? customTheme : null)
+    localStorage.setItem("tj-color-theme", id)
+    updatePrefsMut.mutate({ colorTheme: id })
+  }
+
+  function applyCustom(next: CustomTheme) {
+    setCustomTheme(next)
+    setColorTheme("custom")
+    applyColorTheme("custom", next)
+    const json = JSON.stringify(next)
+    localStorage.setItem("tj-color-theme", "custom")
+    localStorage.setItem("tj-custom-theme", json)
+    updatePrefsMut.mutate({ colorTheme: "custom", customTheme: json })
+  }
+  function pickCustomHue(hue: number) { applyCustom(customFromHue(hue)) }
+  function pickCustomHex(hex: string) { applyCustom(customFromHex(hex)) }
+
+  function restoreDefaultTheme() {
+    setColorTheme("indigo")
+    setCustomTheme(DEFAULT_CUSTOM)
+    applyColorTheme("indigo", null)
+    document.documentElement.style.removeProperty("--accent")
+    document.documentElement.style.removeProperty("--accent-soft")
+    localStorage.setItem("tj-color-theme", "indigo")
+    localStorage.removeItem("tj-custom-theme")
+    updatePrefsMut.mutate({ colorTheme: "indigo", customTheme: null, accentHue: null })
+    toast.success("Tema restaurado a Indigo")
+  }
 
   /* ── Password modal state ── */
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -663,45 +701,126 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Accent color */}
+          {/* Color palette / themes */}
           <div style={{ marginTop: 20 }}>
-            <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 10 }}>
-              Color de acento
-            </label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              {ACCENT_PRESETS.map(({ hue, label }) => (
-                <button
-                  key={hue}
-                  title={label}
-                  onClick={() => {
-                    setAccentHue(hue)
-                    updatePrefsMut.mutate({ accentHue: hue })
-                    document.documentElement.style.setProperty("--accent-hue", String(hue))
-                  }}
-                  style={{
-                    width: 28, height: 28, borderRadius: "50%",
-                    background: `oklch(60% 0.2 ${hue})`,
-                    border: accentHue === hue ? "3px solid var(--ink)" : "2px solid transparent",
-                    cursor: "pointer", outline: "none", flexShrink: 0,
-                    boxShadow: accentHue === hue ? "0 0 0 1px var(--panel)" : undefined,
-                  }}
-                />
-              ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>
+                Paleta de color
+              </label>
               <button
-                onClick={() => {
-                  setAccentHue(null)
-                  updatePrefsMut.mutate({ accentHue: null })
-                  document.documentElement.style.removeProperty("--accent-hue")
-                }}
+                onClick={restoreDefaultTheme}
+                title="Restaurar tema por defecto"
                 style={{
-                  height: 28, padding: "0 10px", borderRadius: 14,
-                  background: "var(--chip)", border: `1px solid ${accentHue === null ? "var(--ink)" : "var(--line)"}`,
-                  color: "var(--ink-2)", fontSize: 11, cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  height: 24, padding: "0 9px", borderRadius: 12,
+                  background: "var(--chip)", border: "1px solid var(--line)",
+                  color: "var(--ink-2)", fontSize: 11, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                Ninguno
+                <RotateCcw size={11} /> Restaurar
               </button>
             </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 8 }}>
+              {PREDEFINED_THEMES.map((t) => {
+                const active = colorTheme === t.id
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => pickTheme(t.id)}
+                    style={{
+                      display: "flex", flexDirection: "column", gap: 8,
+                      padding: 10, borderRadius: "var(--radius-sm)", cursor: "pointer",
+                      border: active ? "2px solid var(--accent)" : "1px solid var(--line)",
+                      background: active ? "var(--accent-soft)" : "var(--panel-2)",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 18, height: 18, borderRadius: "50%", background: t.swatch, flexShrink: 0, boxShadow: "0 0 0 2px var(--panel)" }} />
+                      <span style={{ width: 18, height: 18, borderRadius: 5, background: t.surface, border: "1px solid var(--line)", flexShrink: 0 }} />
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: active ? "var(--accent)" : "var(--ink)" }}>{t.label}</span>
+                    </div>
+                    <span style={{ fontSize: 10.5, color: "var(--ink-3)", lineHeight: 1.3 }}>{t.blurb}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Custom theme — full primary color + live preview + WCAG check */}
+          <div style={{ marginTop: 20 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 6 }}>
+              Tema personalizado
+            </label>
+            <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 10 }}>
+              Elige tu color primario. El contraste del texto se calcula automáticamente (AA). Win/Loss (verde/rojo) se mantienen reservados para resultados de trading.
+            </p>
+
+            {/* Quick hue presets */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+              {ACCENT_PRESETS.map(({ hue, label }) => {
+                const active = colorTheme === "custom" && customTheme.accent === customFromHue(hue).accent
+                return (
+                  <button
+                    key={hue}
+                    title={label}
+                    onClick={() => pickCustomHue(hue)}
+                    style={{
+                      width: 28, height: 28, borderRadius: "50%",
+                      background: `oklch(60% 0.2 ${hue})`,
+                      border: active ? "3px solid var(--ink)" : "2px solid transparent",
+                      cursor: "pointer", outline: "none", flexShrink: 0,
+                      boxShadow: active ? "0 0 0 1px var(--panel)" : undefined,
+                    }}
+                  />
+                )
+              })}
+              {/* Exact hex picker */}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 28, padding: "0 10px", borderRadius: 14, background: "var(--chip)", border: "1px solid var(--line)", color: "var(--ink-2)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                <input
+                  type="color"
+                  defaultValue={customTheme.accent.startsWith("#") ? customTheme.accent : "#4f6ef7"}
+                  onChange={(e) => pickCustomHex(e.target.value)}
+                  style={{ width: 18, height: 18, padding: 0, border: "none", background: "none", cursor: "pointer" }}
+                />
+                Personalizado
+              </label>
+            </div>
+
+            {/* Live preview mock */}
+            {(() => {
+              const c = customTheme
+              const ratio = c.accent.startsWith("#") ? contrastRatio(c.accent, c.accentContrast) : null
+              const aa = ratio == null || ratio >= 4.5
+              return (
+                <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--panel-2)", padding: 14 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 10 }}>
+                    Vista previa
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <button style={{ height: 32, padding: "0 14px", borderRadius: "var(--radius-sm)", background: c.accent, color: c.accentContrast, fontSize: 12.5, fontWeight: 600, border: "none", cursor: "default" }}>
+                      Botón primario
+                    </button>
+                    <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 10px", borderRadius: 999, background: c.accentSoft, color: c.accent, fontSize: 11.5, fontWeight: 600 }}>
+                      Activo
+                    </span>
+                    <span style={{ color: "var(--win)", fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>+$1,240</span>
+                    <span style={{ color: "var(--loss)", fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>−$380</span>
+                    {ratio != null && (
+                      <span style={{
+                        marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5,
+                        height: 24, padding: "0 9px", borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: aa ? "var(--win-soft)" : "var(--loss-soft)",
+                        color: aa ? "var(--win)" : "var(--loss)",
+                      }}>
+                        {aa ? "✓" : "⚠"} Contraste {ratio.toFixed(1)}:1 {aa ? "AA" : "bajo"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Colorblind mode */}

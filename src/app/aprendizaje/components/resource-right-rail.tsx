@@ -61,14 +61,11 @@ export function ResourceRightRail({
 
   return (
     <aside
-      className="rail-aside"
       style={{
-        width: 340, flexShrink: 0,
-        borderLeft: "1px solid var(--line)",
-        padding: "24px 20px",
+        width: "100%",
+        padding: "20px 18px",
         display: "flex", flexDirection: "column", gap: 24,
-        overflowY: "auto", background: "var(--panel)",
-        position: "sticky", top: 0, height: "100vh",
+        background: "var(--panel)",
       }}
     >
       {/* Resumen */}

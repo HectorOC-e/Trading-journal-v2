@@ -2,12 +2,15 @@ import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 
 const THEMES = ["light", "dark", "system"] as const
+const COLOR_THEMES = ["indigo", "violeta", "turquesa", "carmesi", "custom"] as const
 const COLOR_SCHEMES = ["default", "deuteranopia", "mono"] as const
 const TABLE_DENSITIES = ["compact", "comfortable", "spacious"] as const
 const DEFAULT_GRAINS = ["daily", "weekly", "monthly"] as const
 
 const UpdatePreferencesInput = z.object({
   theme:        z.enum(THEMES).optional(),
+  colorTheme:   z.enum(COLOR_THEMES).optional(),
+  customTheme:  z.string().max(2000).nullable().optional(), // JSON of custom palette roles
   accentHue:    z.number().int().min(0).max(360).nullable().optional(),
   colorScheme:  z.enum(COLOR_SCHEMES).optional(),
   defaultTab:   z.string().optional(),
@@ -22,14 +25,12 @@ const UpdatePreferencesInput = z.object({
 export const preferencesRouter = router({
   get: protectedProcedure
     .query(async ({ ctx }) => {
-      const prefs = await ctx.prisma.userPreferences.findUnique({
-        where: { userId: ctx.userId },
-      })
-      // Return defaults if no preferences row exists yet
-      return prefs ?? {
+      const defaults = {
         userId:       ctx.userId,
         theme:        "system" as const,
-        accentHue:    null,
+        colorTheme:   "indigo",
+        customTheme:  null as string | null,
+        accentHue:    null as number | null,
         colorScheme:  "default" as const,
         defaultTab:   "portfolio",
         kpiOrder:     [] as string[],
@@ -40,6 +41,19 @@ export const preferencesRouter = router({
         numberLocale: "es-HN",
         createdAt:    new Date(),
         updatedAt:    new Date(),
+      }
+      // Preferences are read GLOBALLY on every page (theme-provider). With the
+      // tRPC httpBatchLink, an unhandled error here would fail the WHOLE batch
+      // and leave every page without data. So a read failure (e.g. a column not
+      // yet migrated in this environment) must degrade gracefully to defaults.
+      try {
+        const prefs = await ctx.prisma.userPreferences.findUnique({
+          where: { userId: ctx.userId },
+        })
+        return prefs ?? defaults
+      } catch (err) {
+        console.error("[preferences.get] read failed, falling back to defaults:", err)
+        return defaults
       }
     }),
 

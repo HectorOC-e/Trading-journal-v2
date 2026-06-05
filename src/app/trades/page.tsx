@@ -13,6 +13,7 @@ import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
 import { LogSessionPopover } from "@/components/trades/log-session-popover"
 import { ImportCsvModal } from "./components/import-csv-modal"
+import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -356,7 +357,7 @@ export default function TradesPage() {
                   className={[
                     "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
                     !filterAccountId
-                      ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                      ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                       : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
                   ].join(" ")}
                 >
@@ -369,7 +370,7 @@ export default function TradesPage() {
                     className={[
                       "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
                       filterAccountId === a.id
-                        ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                        ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                         : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
                     ].join(" ")}
                   >
@@ -411,41 +412,17 @@ export default function TradesPage() {
           )}
         </div>
 
-        {/* Right rail — desktop only, lives inside layout */}
-        {selected && (
-          <div
-            className="hidden md:block"
-            style={{
-              width: 340, flexShrink: 0,
-              borderLeft: "1px solid var(--line)",
-              background: "var(--panel)",
-              position: "sticky", top: 0,
-              height: "100vh", overflowY: "auto",
-            }}
-          >
-            {detailPanel}
-          </div>
-        )}
       </div>
 
-      {/* Mobile panel — rendered OUTSIDE the layout div so no overflow ancestor blocks iOS scroll */}
-      {selected && (
-        <div
-          className="md:hidden"
-          style={{
-            position: "fixed",
-            top: 52, left: 0, right: 0, bottom: 56,
-            zIndex: 40,
-            overflowY: "scroll",
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-            background: "var(--panel)",
-            borderTop: "1px solid var(--line)",
-          }}
-        >
-          {detailPanel}
-        </div>
-      )}
+      {/* Detail — unified overlay drawer (Fase 2): no longer strangles the table (C3) */}
+      <DrawerPanel
+        open={!!selected}
+        onClose={() => setSelectedId(null)}
+        width={460}
+        ariaLabel="Detalle del trade"
+      >
+        {detailPanel}
+      </DrawerPanel>
 
       <RegisterTradeModal
         open={modalOpen}

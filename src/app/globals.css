@@ -15,12 +15,21 @@
   --line-2:      oklch(87% 0.009 264);
   --chip:        oklch(94% 0.006 264);
 
-  /* Accent: precise blue-violet — same hue, calibrated saturation */
-  --accent:      oklch(56% 0.18 264);
-  --accent-h:    oklch(51% 0.20 264);
-  --accent-soft: oklch(94% 0.04 264);
+  /* Accent: precise blue-violet — same hue, calibrated saturation.
+     Theme palettes (see [data-theme] blocks below) override ONLY these accent tokens
+     plus the neutral atmosphere (bg/panel/line/chip). */
+  --accent:          oklch(56% 0.18 264);
+  --accent-h:        oklch(51% 0.20 264);
+  --accent-soft:     oklch(94% 0.04 264);
+  --accent-contrast: #ffffff; /* text/icon color that sits ON --accent — guaranteed AA */
 
-  /* Semantic outcome colors — calibrated for trading context */
+  /* ─────────────────────────────────────────────────────────────────────────
+     RESERVED DOMAIN COLORS — LAW OF THE DESIGN SYSTEM
+     win = profit (green) · loss = loss (red) · be = breakeven (amber).
+     These are FUNCTIONAL semantics in a trading journal, not decoration.
+     They are CONSTANT across every theme. A theme NEVER overrides them.
+     Only the colorblind layer (data-colorblind) may retune their hue safely.
+     ───────────────────────────────────────────────────────────────────────── */
   --win:         oklch(60% 0.17 148);
   --win-soft:    oklch(95% 0.04 148);
   --loss:        oklch(58% 0.22 25);
@@ -31,7 +40,8 @@
   --radius:      10px;
   --radius-sm:   7px;
   --radius-xs:   5px;
-  --radius-lg:   14px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
 
   /* Shadows — calibrated for precision neutral bg */
   --shadow-xs: 0 1px 2px oklch(14% 0.018 264 / 0.05);
@@ -82,6 +92,99 @@
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.24);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   THEME PALETTES (Fase 1)
+   A theme changes ACCENT + ATMOSPHERE (bg/panel/line/chip) only.
+   win/loss/be are reserved and NEVER overridden here.
+   Applied via <html data-theme="violeta|turquesa|carmesi">.
+   "indigo" (default) = :root / .dark above — no block needed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tema 2 · Violeta (Purple Noguchi #60519b) — premium / creativo ── */
+[data-theme="violeta"] {
+  --bg:          oklch(98.5% 0.006 295);
+  --panel-2:     oklch(97.5% 0.006 295);
+  --line:        oklch(91% 0.009 295);
+  --line-2:      oklch(87% 0.011 295);
+  --chip:        oklch(94% 0.008 295);
+  --accent:      oklch(52% 0.15 295);
+  --accent-h:    oklch(47% 0.17 295);
+  --accent-soft: oklch(94% 0.045 295);
+}
+.dark[data-theme="violeta"] {
+  --bg:          oklch(13% 0.018 290);
+  --panel:       oklch(16% 0.018 290);
+  --panel-2:     oklch(19% 0.018 290);
+  --line:        oklch(24% 0.018 290);
+  --line-2:      oklch(28% 0.020 290);
+  --chip:        oklch(24% 0.018 290);
+  --ink:         oklch(94% 0.010 290);
+  --ink-2:       oklch(76% 0.012 290);
+  --ink-3:       oklch(52% 0.012 290);
+  --accent:      oklch(58% 0.17 295);
+  --accent-h:    oklch(64% 0.17 295);
+  --accent-soft: oklch(28% 0.07 295);
+}
+
+/* ── Tema 3 · Turquesa (Turquoise Noguchi #00a6c0) — calma / tech ── */
+[data-theme="turquesa"] {
+  --bg:          oklch(98.5% 0.006 215);
+  --panel-2:     oklch(97.5% 0.006 215);
+  --line:        oklch(91% 0.009 215);
+  --line-2:      oklch(87% 0.011 215);
+  --chip:        oklch(94% 0.008 215);
+  --accent:      oklch(58% 0.12 215);
+  --accent-h:    oklch(52% 0.13 215);
+  --accent-soft: oklch(94% 0.045 215);
+}
+.dark[data-theme="turquesa"] {
+  --bg:          oklch(15% 0.020 230);
+  --panel:       oklch(18% 0.022 230);
+  --panel-2:     oklch(21% 0.024 230);
+  --line:        oklch(27% 0.024 230);
+  --line-2:      oklch(31% 0.026 230);
+  --chip:        oklch(27% 0.024 230);
+  --ink:         oklch(94% 0.010 230);
+  --ink-2:       oklch(76% 0.012 230);
+  --ink-3:       oklch(54% 0.014 230);
+  --accent:      oklch(72% 0.13 210);
+  --accent-h:    oklch(78% 0.13 210);
+  --accent-soft: oklch(30% 0.07 215);
+  --accent-contrast: oklch(20% 0.03 230);
+}
+
+/* ── Tema 4 · Carmesí (Red Noguchi #75020f) — rojo SOLO atmósfera; accent dorado
+       para no chocar con --loss (rojo = pérdida). ── */
+[data-theme="carmesi"] {
+  --bg:          oklch(98.5% 0.007 25);
+  --panel-2:     oklch(97.5% 0.007 25);
+  --line:        oklch(91% 0.010 25);
+  --line-2:      oklch(87% 0.012 25);
+  --chip:        oklch(94% 0.009 25);
+  --accent:      oklch(64% 0.13 75);
+  --accent-h:    oklch(58% 0.14 75);
+  --accent-soft: oklch(95% 0.05 80);
+  --accent-contrast: oklch(20% 0.03 60);
+}
+.dark[data-theme="carmesi"] {
+  --bg:          oklch(13% 0.020 18);
+  --panel:       oklch(16% 0.024 18);
+  --panel-2:     oklch(19% 0.028 18);
+  --line:        oklch(26% 0.030 18);
+  --line-2:      oklch(30% 0.034 18);
+  --chip:        oklch(26% 0.030 18);
+  --ink:         oklch(94% 0.012 30);
+  --ink-2:       oklch(76% 0.014 30);
+  --ink-3:       oklch(54% 0.014 30);
+  --accent:      oklch(78% 0.14 80);
+  --accent-h:    oklch(84% 0.14 80);
+  --accent-soft: oklch(30% 0.07 60);
+  --accent-contrast: oklch(20% 0.03 60);
+}
+
+/* ── Custom theme overrides are injected inline on <html> by ThemeProvider
+       via --accent / --accent-soft etc. (see theme-provider.tsx). ── */
+
 @theme inline {
   --color-bg:          var(--bg);
   --color-panel:       var(--panel);
@@ -91,8 +194,9 @@
   --color-ink-3:       var(--ink-3);
   --color-line:        var(--line);
   --color-chip:        var(--chip);
-  --color-accent:      var(--accent);
-  --color-accent-soft: var(--accent-soft);
+  --color-accent:          var(--accent);
+  --color-accent-soft:     var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
   --color-win:         var(--win);
   --color-win-soft:    var(--win-soft);
   --color-loss:        var(--loss);
@@ -317,7 +421,7 @@ body {
   .main-content {
     padding: 16px;
     padding-top: calc(52px + 16px);
-    padding-bottom: 72px;
+    padding-bottom: 88px;
     overflow-y: visible;
     overflow-x: hidden;
     min-height: 0 !important;
@@ -325,7 +429,7 @@ body {
   }
   .detail-panel-mobile {
     position: fixed !important;
-    inset: 52px 0 56px 0 !important;
+    inset: 52px 0 60px 0 !important;
     width: 100% !important;
     max-height: none !important;
     z-index: 40;

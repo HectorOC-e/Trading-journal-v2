@@ -9,10 +9,11 @@ import {
   ShieldCheck, ClipboardList, GraduationCap, User,
   ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
-  TrendingUp, Settings,
+  Brain, LineChart, Plus,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { useQuickActions } from "@/lib/quick-actions-store"
 
 const NAV = [
   {
@@ -21,6 +22,13 @@ const NAV = [
       { href: "/dashboard",   label: "Dashboard",   icon: LayoutDashboard },
       { href: "/trades",      label: "Trades",      icon: CandlestickChart },
       { href: "/reviews",     label: "Reviews",     icon: ClipboardList },
+    ],
+  },
+  {
+    section: "ANÁLISIS",
+    items: [
+      { href: "/psicologia",  label: "Psicología",  icon: Brain },
+      { href: "/analytics",   label: "Analytics",   icon: LineChart },
     ],
   },
   {
@@ -65,10 +73,33 @@ function ThemeIcon({ theme }: { theme: string }) {
   return <Monitor size={13} />
 }
 
+type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number | string }> }
+
+function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex-1 flex flex-col items-center justify-center gap-0.5 h-[56px] rounded-[8px] transition-colors",
+        active ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
+      )}
+      aria-label={item.label}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon size={20} />
+      <span className={cn("text-[9px] leading-none", active ? "font-semibold" : "font-medium")}>
+        {item.label}
+      </span>
+    </Link>
+  )
+}
+
 export function Sidebar() {
   const pathname  = usePathname()
   const router    = useRouter()
   const { resolvedTheme, toggle } = useTheme()
+  const openRegister = useQuickActions(s => s.openRegister)
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
   const [userInitial,  setUserInitial]  = useState("")
@@ -98,22 +129,15 @@ export function Sidebar() {
   const isTablet = width >= 768 && width < 1024
 
   // ── Mobile ───────────────────────────────────────────────────────────────────
+  const allNav = NAV.flatMap(g => g.items)
+  const byHref = (href: string) => allNav.find(i => i.href === href)!
+
   if (isMobile) {
-    const bottomItems = [
-      NAV[0].items[0], // Dashboard
-      NAV[0].items[1], // Trades
-      NAV[0].items[2], // Reviews
-      NAV[2].items[0], // Aprendizaje
-    ]
-    const drawerItems = [
-      NAV[1].items[0], // Cuentas
-      NAV[1].items[1], // Playbook
-      NAV[1].items[2], // Reglas
-      NAV[1].items[3], // Mercados
-      NAV[3].items[0], // Retiros
-      NAV[3].items[1], // Etiquetas
-      NAV[3].items[2], // Perfil
-    ]
+    // 2 destinos + FAB central (Nuevo Trade) + 2 destinos
+    const leftItems  = [byHref("/dashboard"), byHref("/trades")]
+    const rightItems = [byHref("/analytics")]
+    const bottomItems = [...leftItems, ...rightItems]
+    const drawerItems = allNav.filter(i => !bottomItems.some(b => b.href === i.href))
     const anyDrawerActive = drawerItems.some(i => pathname.startsWith(i.href))
 
     return (
@@ -222,55 +246,49 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Bottom nav */}
+        {/* Bottom nav — 2 destinos · FAB central (Nuevo Trade) · 2 destinos */}
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 flex items-center h-[56px] px-1"
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-between h-[60px] px-1"
           style={{ background: "var(--panel)", borderTop: "1px solid var(--line)" }}
           aria-label="Navegación principal"
         >
-          {bottomItems.map(item => {
-            const active = pathname.startsWith(item.href)
-            const Icon   = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-0.5 h-[44px] rounded-[8px] transition-colors",
-                  active ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
-                )}
-                style={{ background: active ? "var(--accent-soft)" : "transparent" }}
-                aria-label={item.label}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon size={18} />
-                <span className={cn("text-[9px] leading-none", active ? "font-semibold" : "font-medium")}>
-                  {item.label.slice(0, 8)}
-                </span>
-              </Link>
-            )
-          })}
+          {leftItems.map(item => (
+            <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+          ))}
+
+          {/* Center FAB — Quick Action: Nuevo Trade */}
+          <div className="flex-1 flex justify-center">
+            <button
+              onClick={openRegister}
+              aria-label="Nuevo trade"
+              className="w-14 h-14 -mt-5 rounded-full flex items-center justify-center shadow-[var(--shadow-lg)] bg-[var(--accent)] text-[var(--accent-contrast)] active:scale-95 transition-transform"
+              style={{ border: "3px solid var(--panel)" }}
+            >
+              <Plus size={26} />
+            </button>
+          </div>
+
+          {rightItems.map(item => (
+            <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+          ))}
 
           <button
             onClick={() => setDrawerOpen(v => !v)}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 h-[44px] rounded-[8px] transition-colors",
+              "flex-1 flex flex-col items-center justify-center gap-0.5 h-[56px] rounded-[8px] transition-colors relative",
               anyDrawerActive || drawerOpen ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
             )}
-            style={{
-              background: anyDrawerActive || drawerOpen ? "var(--accent-soft)" : "transparent",
-              border: "none", cursor: "pointer", position: "relative",
-            }}
+            style={{ background: "transparent", border: "none", cursor: "pointer" }}
             aria-label="Más secciones"
             aria-expanded={drawerOpen}
           >
-            <MoreHorizontal size={18} />
+            <MoreHorizontal size={20} />
             <span className={cn("text-[9px] leading-none", anyDrawerActive || drawerOpen ? "font-semibold" : "font-medium")}>
               Más
             </span>
             {anyDrawerActive && !drawerOpen && (
               <span
-                className="absolute top-1.5 right-[22%] w-1.5 h-1.5 rounded-full"
+                className="absolute top-2 right-[26%] w-1.5 h-1.5 rounded-full"
                 style={{ background: "var(--accent)", border: "1.5px solid var(--panel)" }}
                 aria-hidden="true"
               />
