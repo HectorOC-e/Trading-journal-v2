@@ -114,16 +114,16 @@ export function TabOperador({
               <AreaChart data={equityData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gradBal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#4f6ef7" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#4f6ef7" stopOpacity={0} />
+                    <stop offset="5%"  stopColor="var(--accent)" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
                   tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
                 <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="balance" name="Balance" stroke="#4f6ef7" strokeWidth={2.5}
-                  fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "#4f6ef7", strokeWidth: 0 }} />
+                <Area type="monotone" dataKey="balance" name="Balance" stroke="var(--accent)" strokeWidth={2.5}
+                  fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "var(--accent)", strokeWidth: 0 }} />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
@@ -131,7 +131,7 @@ export function TabOperador({
           )}
           <div className="flex gap-5 mt-1 pt-3 border-t border-[var(--line)]">
             <div className="flex items-center gap-2">
-              <span className="w-5 h-px inline-block" style={{ background: "#4f6ef7" }} />
+              <span className="w-5 h-px inline-block" style={{ background: "var(--accent)" }} />
               <span className="text-xs text-[var(--ink-3)]">Balance</span>
               <span className="text-xs font-mono font-semibold text-[var(--ink)]">
                 ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -17,6 +17,7 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { ReviewDetailPanel } from "./components/review-detail-panel"
 import { DrawerPanel } from "@/components/ui/drawer-panel"
+import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { NuevaReviewModal } from "./modals/create-review-modal"
 import { NuevaMensualModal } from "./modals/create-monthly-review-modal"
 import { ReviewCard } from "./components/review-card"
@@ -251,25 +252,14 @@ function ReviewsPageContent() {
           />
 
           {/* Semanales / Mensuales tab toggle */}
-          <div className="flex items-center gap-1 mb-5" role="tablist" aria-label="Tipo de review">
-            {(["weekly", "monthly"] as ReviewTab[]).map(tab => (
-              <button
-                key={tab}
-                role="tab"
-                aria-selected={activeTab === tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "h-7 px-3 rounded-full text-xs font-medium transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
-                  activeTab === tab
-                    ? "bg-[var(--accent)] text-white"
-                    : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
-                )}
-              >
-                {tab === "weekly" ? "Semanales" : "Mensuales"}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            variant="pill"
+            options={[{ value: "weekly", label: "Semanales" }, { value: "monthly", label: "Mensuales" }]}
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as ReviewTab)}
+            ariaLabel="Tipo de review"
+            className="mb-5"
+          />
 
           {/* ── Monthly reviews tab ── */}
           {activeTab === "monthly" && (

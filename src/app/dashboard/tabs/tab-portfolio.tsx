@@ -23,7 +23,7 @@ const PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
 
 // Palette for multi-account equity curves (max 8 accounts)
 const ACCOUNT_COLORS = [
-  "#4f6ef7", "#22c55e", "#f59e0b", "#e05555",
+  "var(--accent)", "#22c55e", "#f59e0b", "#e05555",
   "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16",
 ]
 
@@ -206,7 +206,7 @@ export function TabPortfolio({
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
                   {barAccountNames.map((name, i) => {
                     const meta = accounts.find(a => a.name === name)
-                    const color = meta ? (TYPE_META[meta.type]?.color ?? "#4f6ef7") : "#4f6ef7"
+                    const color = meta ? (TYPE_META[meta.type]?.color ?? "var(--accent)") : "var(--accent)"
                     const isLast = i === barAccountNames.length - 1
                     return (
                       <Bar key={name} dataKey={name} stackId="a" fill={color}
@@ -218,7 +218,7 @@ export function TabPortfolio({
               <div className="flex gap-4 mt-1 flex-wrap">
                 {barAccountNames.map(name => {
                   const meta = accounts.find(a => a.name === name)
-                  const color = meta ? (TYPE_META[meta.type]?.color ?? "#4f6ef7") : "#4f6ef7"
+                  const color = meta ? (TYPE_META[meta.type]?.color ?? "var(--accent)") : "var(--accent)"
                   return (
                     <span key={name} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
                       <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />{name}
