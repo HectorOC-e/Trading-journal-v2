@@ -18,7 +18,7 @@
 | Performance | ✅ READY | Server-side analytics, cursor pagination, cache flag |
 | Accessibility | ✅ READY | ARIA correct, focus rings, landmarks |
 | Observability | 🟡 PARTIAL | `logger.ts` structured logs; no APM/error tracker wired |
-| PWA | 🟡 PARTIAL | Manifest+SW ready; PNG icons needed for iOS |
+| PWA | ✅ READY | Manifest+SW ready; PNG icons (192/512) generated + SVG fallback |
 | Reports | ✅ READY | PDF export (print-based) |
 
 ---
@@ -27,7 +27,7 @@
 - [ ] **Apply migration 010** (`psychology_plan_notes.sql`) — trades break without it
 - [ ] Set env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `DATABASE_URL`, `CRON_SECRET`, `RESEND_*`
 - [ ] Run `prisma migrate deploy` against prod DB
-- [ ] Generate PWA PNG icons (192, 512) from `public/icons/icon.svg`
+- [x] Generate PWA PNG icons (192, 512) — done via `scripts/gen-icons.mjs`
 - [ ] Execute FINAL_MANUAL_QA_TEST_PLAN on staging
 - [ ] Verify HTTPS (required for PWA install + service worker)
 
