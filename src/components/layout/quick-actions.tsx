@@ -46,10 +46,14 @@ export function QuickActions() {
 
   // ── Data for the register modal ──────────────────────────────────────────
   const utils = trpc.useUtils()
-  const { data: accounts = [] } = trpc.accounts.list.useQuery()
-  const { data: setups = [] }   = trpc.setups.list.useQuery()
-  const { data: markets = [] }  = trpc.markets.list.useQuery()
-  const { data: customTagsRaw = [] } = trpc.tradeTags.list.useQuery()
+  // Only fetch the register-form data when the modal is actually open — these
+  // would otherwise run on EVERY page (this component is global) and add needless
+  // DB connection pressure on serverless.
+  const q = { enabled: registerOpen, staleTime: 60_000 }
+  const { data: accounts = [] } = trpc.accounts.list.useQuery(undefined, q)
+  const { data: setups = [] }   = trpc.setups.list.useQuery(undefined, q)
+  const { data: markets = [] }  = trpc.markets.list.useQuery(undefined, q)
+  const { data: customTagsRaw = [] } = trpc.tradeTags.list.useQuery(undefined, q)
   const customTags = customTagsRaw.map(t => t.tag).filter(t => !SYSTEM_TAGS.has(t))
 
   const createTrade = trpc.trades.create.useMutation({
