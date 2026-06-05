@@ -42,13 +42,28 @@ export const aiConfigRouter = router({
   upsert: protectedProcedure
     .input(UpsertAiConfigInput)
     .mutation(async ({ ctx, input }) => {
-      const formatError = validateKeyFormat(input.provider as Provider, input.apiKey)
+      const { TRPCError } = await import("@trpc/server")
+      // Trim accidental whitespace from pasted keys before any validation.
+      const apiKey = input.apiKey.trim()
+
+      const formatError = validateKeyFormat(input.provider as Provider, apiKey)
       if (formatError) {
-        const { TRPCError } = await import("@trpc/server")
         throw new TRPCError({ code: "BAD_REQUEST", message: formatError })
       }
 
-      const apiKeyEnc = encryptApiKey(input.apiKey)
+      // HALLAZGO 4 — the encryption layer throws when the SERVER secret
+      // (AI_KEY_ENCRYPTION_SECRET) is missing/misconfigured. That is a server
+      // problem, NOT the user's API key. Surface a clear, non-blaming message
+      // instead of leaking "must be a 64-character hex string" to the user.
+      let apiKeyEnc: string
+      try {
+        apiKeyEnc = encryptApiKey(apiKey)
+      } catch {
+        throw new TRPCError({
+          code:    "INTERNAL_SERVER_ERROR",
+          message: "El servidor no tiene configurado el cifrado de claves IA (AI_KEY_ENCRYPTION_SECRET). Tu clave es válida; contacta al administrador.",
+        })
+      }
       const result = await ctx.prisma.userAiConfig.upsert({
         where:  { userId_provider: { userId: ctx.userId, provider: input.provider } },
         create: {

@@ -76,6 +76,8 @@ export default function CuentasPage() {
   const archiveAccount = trpc.accounts.archive.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
   const changeStatus   = trpc.accounts.changeStatus.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
   const changePhase    = trpc.accounts.changePhase.useMutation({ onSuccess: () => { invalidate() }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const lockAccount    = trpc.accounts.lock.useMutation({ onSuccess: () => { invalidate(); toast.success("Cuenta bloqueada") }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const unlockAccount  = trpc.accounts.unlock.useMutation({ onSuccess: () => { invalidate(); toast.success("Cuenta desbloqueada") }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
   const selected       = accounts.find(a => a.id === selectedId) ?? null
   const historyAccount = accounts.find(a => a.id === historyId) ?? null
@@ -195,6 +197,9 @@ export default function CuentasPage() {
                   onLost={(note) => changeStatus.mutate({ id: selected.id, status: "LOST", statusNote: note })}
                   onOpenHistory={() => setHistoryId(selected.id)}
                   onPromotePhase={() => setPromoteId(selected.id)}
+                  onLock={() => lockAccount.mutate({ id: selected.id, reason: "MANUAL" })}
+                  onUnlock={() => unlockAccount.mutate({ id: selected.id })}
+                  locking={lockAccount.isPending || unlockAccount.isPending}
                   stats={accountStats[selected.id]}
                 />
               </div>

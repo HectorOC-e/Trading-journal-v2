@@ -11,6 +11,8 @@ type KpiSummary = RouterOutputs["trades"]["dashboardStats"]["kpis"]
 interface GoalProgressWidgetProps {
   kpis: KpiSummary
   weeklyTradesCount?: number
+  /** Current-week discipline score (0-100). With a disciplineGoal set, shows a ring. */
+  disciplineScore?: number | null
 }
 
 function CircleProgress({ pct, color, exceeded, size = 52 }: {
@@ -74,13 +76,14 @@ function GoalRing({ label, value, pct, color, sub, exceeded, exceededBy }: GoalR
   )
 }
 
-export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgressWidgetProps) {
+export function GoalProgressWidget({ kpis, weeklyTradesCount = 0, disciplineScore = null }: GoalProgressWidgetProps) {
   const { data: goals } = trpc.goals.get.useQuery()
 
   if (!goals) return null
 
-  const { weeklyTradesGoal, weeklyPnlGoal } = goals
-  const hasAnyGoal = weeklyTradesGoal != null || weeklyPnlGoal != null
+  const { weeklyTradesGoal, weeklyPnlGoal, disciplineGoal } = goals
+  const hasDisciplineGoal = disciplineGoal != null && disciplineGoal > 0 && disciplineScore != null
+  const hasAnyGoal = weeklyTradesGoal != null || weeklyPnlGoal != null || hasDisciplineGoal
 
   if (!hasAnyGoal) {
     return (
@@ -137,8 +140,19 @@ export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgress
     })
   }
 
-  // disciplineGoal ring suppressed until real weekly discipline score is available in KpiSummary
-  // learningPct ring suppressed until learning-minutes tracking query is implemented
+  // Discipline goal ring (HALLAZGO 3) — current-week discipline score vs target
+  if (hasDisciplineGoal && disciplineGoal != null && disciplineScore != null) {
+    const discPct      = disciplineScore / disciplineGoal
+    const discExceeded = disciplineScore >= disciplineGoal
+    rings.push({
+      label:      "Disciplina",
+      value:      `${Math.round(disciplineScore)}/${disciplineGoal}`,
+      pct:        Math.max(0, discPct),
+      color:      discExceeded ? "var(--win)" : discPct >= 0.7 ? "var(--accent)" : "var(--loss)",
+      sub:        `meta ${disciplineGoal}%`,
+      exceeded:   discExceeded,
+    })
+  }
 
   const anyExceeded = rings.some(r => r.exceeded)
 
@@ -168,9 +182,8 @@ export function GoalProgressWidget({ kpis, weeklyTradesCount = 0 }: GoalProgress
           background:    "rgba(34,197,94,0.1)",
           border:        "1px solid rgba(34,197,94,0.25)",
         }}>
-          <span style={{ fontSize: 13 }}>🎯</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: "var(--win)" }}>
-            ¡Meta(s) superada(s) esta semana!
+            Meta(s) superada(s) esta semana
           </span>
         </div>
       )}

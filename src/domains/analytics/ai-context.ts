@@ -28,6 +28,15 @@ export type TraderContext = {
     reviewsDoneThisMonth: number
     masteredResources: number
   }
+  // HALLAZGO 3 — personal goals + this-week progress so AI can reference them
+  goals: {
+    weeklyPnlGoal:     number | null
+    weeklyTradesGoal:  number | null
+    disciplineGoal:    number | null
+    weeklyGoalMinutes: number | null
+    weekPnl:           number
+    weekTrades:        number
+  }
   recentTrades: {
     id: string
     date: string
@@ -95,7 +104,7 @@ export async function buildTraderContext(
     : undefined
 
   // ── 5 parallel sub-fetches ────────────────────────────────────────────────
-  const [tradeRows, violationRows, learningRows, reviewRows, setupRows] = await Promise.all([
+  const [tradeRows, violationRows, learningRows, reviewRows, setupRows, goalRow] = await Promise.all([
     // 1. Closed trades for performance & patterns
     prisma.trade.findMany({
       where: {
@@ -144,7 +153,15 @@ export async function buildTraderContext(
       where: { userId },
       select: { id: true, name: true },
     }) as Promise<RawSetupRow[]>,
-  ]) as [RawTradeRow[], RawViolationRow[], RawLearningRow[], RawReviewRow[], RawSetupRow[]]
+
+    // 6. Personal goals (HALLAZGO 3)
+    prisma.user.findUnique({
+      where:  { id: userId },
+      select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true },
+    }),
+  ]) as [RawTradeRow[], RawViolationRow[], RawLearningRow[], RawReviewRow[], RawSetupRow[], {
+    weeklyPnlGoal: unknown; weeklyTradesGoal: number | null; disciplineGoal: number | null; weeklyGoalMinutes: number | null
+  } | null]
 
   // ── Normalize trades to MinimalTrade ──────────────────────────────────────
   const trades: MinimalTrade[] = tradeRows.map((t: RawTradeRow) => ({
@@ -267,6 +284,20 @@ export async function buildTraderContext(
   // ── Pattern detection ─────────────────────────────────────────────────────
   const patterns = detectPatterns(trades)
 
+  // ── Goals + this-week progress (HALLAZGO 3) ───────────────────────────────
+  const weekStartD = new Date(now)
+  weekStartD.setDate(now.getDate() - ((now.getDay() + 6) % 7)) // Monday
+  const weekStartStr = weekStartD.toISOString().slice(0, 10)
+  const weekTradesArr = trades.filter(t => t.date >= weekStartStr)
+  const goals = {
+    weeklyPnlGoal:     goalRow?.weeklyPnlGoal != null ? Number(goalRow.weeklyPnlGoal) : null,
+    weeklyTradesGoal:  goalRow?.weeklyTradesGoal ?? null,
+    disciplineGoal:    goalRow?.disciplineGoal ?? null,
+    weeklyGoalMinutes: goalRow?.weeklyGoalMinutes ?? null,
+    weekPnl:           parseFloat(weekTradesArr.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
+    weekTrades:        weekTradesArr.length,
+  }
+
   return {
     performance: {
       totalTrades: total,
@@ -290,6 +321,7 @@ export async function buildTraderContext(
       reviewsDoneThisMonth,
       masteredResources,
     },
+    goals,
     recentTrades,
     patterns,
   }

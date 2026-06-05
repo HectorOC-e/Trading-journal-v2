@@ -85,6 +85,13 @@ model Account {
   allowedSymbols    String[] @map("allowed_symbols")
   minTradingDays    Int?     @map("min_trading_days")                        // some firms require min days
 
+  // ── Risk-limit lock (HALLAZGO 1B) ─────────────
+  // When a configured loss limit (daily/weekly/monthly) is reached the account
+  // is locked: no new trades or imports until manually unlocked.
+  locked      Boolean   @default(false)
+  lockReason  String    @default("") @map("lock_reason")  // e.g. "DAILY_LOSS_LIMIT"
+  lockedAt    DateTime? @map("locked_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

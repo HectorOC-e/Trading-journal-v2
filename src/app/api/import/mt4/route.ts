@@ -50,10 +50,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 3. Verify account belongs to user
   const account = await prisma.account.findUnique({
     where: { id: accountId, userId },
-    select: { id: true },
+    select: { id: true, locked: true, lockReason: true },
   })
   if (!account) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 })
+  }
+  // HALLAZGO 1B — a locked account cannot import new trades
+  if (account.locked) {
+    return NextResponse.json(
+      { error: "ACCOUNT_LOCKED", reason: account.lockReason || "MANUAL" },
+      { status: 403 },
+    )
   }
 
   // 4. Read file text and detect format

@@ -51,8 +51,14 @@ interface SetupLike {
   name: string
   abbreviation: string
   market: string
+  status?: string
   aplusChecklist: string[]
   standardChecklist: string[]
+}
+
+/** A setup can be picked only when active/in-test. Paused/discarded are read-only. */
+function isSelectableSetup(s: SetupLike): boolean {
+  return s.status !== "PAUSADO" && s.status !== "DESCARTADO"
 }
 
 interface MarketLike {
@@ -571,31 +577,58 @@ export function RegisterTradeModal({
                     <p className="text-[10px] text-[var(--ink-3)] mt-1">Off-plan / impulsivo</p>
                   </button>
 
-                  {setups.map(setup => (
-                    <button
-                      key={setup.id}
-                      type="button"
-                      onClick={() => selectSetup(setup.id)}
-                      className={cn(
-                        "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
-                        form.setupId === setup.id
-                          ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                          : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
-                          {setup.abbreviation}
-                        </span>
-                        {setup.aplusChecklist.length > 0 && (
-                          <Star size={10} className="text-amber-400 fill-amber-400" />
+                  {setups.map(setup => {
+                    const selectable = isSelectableSetup(setup)
+                    const paused = setup.status === "PAUSADO"
+                    if (!selectable) {
+                      return (
+                        <div
+                          key={setup.id}
+                          aria-disabled="true"
+                          title={paused ? "Setup pausado — no disponible para registrar" : "Setup descartado — no disponible"}
+                          className="text-left rounded-[var(--radius-sm)] p-3 border border-[var(--line)] bg-[var(--panel-2)] opacity-50 cursor-not-allowed select-none"
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: "var(--chip)", color: "var(--ink-3)" }}>
+                              {setup.abbreviation}
+                            </span>
+                            <span className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded-full"
+                              style={{ background: "var(--chip)", color: "var(--ink-3)" }}>
+                              {paused ? "PAUSADO" : "DESCARTADO"}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-[var(--ink-3)] leading-tight">{setup.name}</p>
+                          <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <button
+                        key={setup.id}
+                        type="button"
+                        onClick={() => selectSetup(setup.id)}
+                        className={cn(
+                          "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                          form.setupId === setup.id
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                            : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
                         )}
-                      </div>
-                      <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{setup.name}</p>
-                      <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
-                    </button>
-                  ))}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                            style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
+                            {setup.abbreviation}
+                          </span>
+                          {setup.aplusChecklist.length > 0 && (
+                            <Star size={10} className="text-amber-400 fill-amber-400" />
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{setup.name}</p>
+                        <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Checklists — both always visible */}
@@ -748,7 +781,7 @@ export function RegisterTradeModal({
 
           {/* ── Advertencias ── */}
           {showWarning && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border-l-4 border-[var(--be)]">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border border-[var(--be)]">
               <AlertTriangle size={14} className="text-[var(--be)] shrink-0" />
               <p className="text-xs text-[var(--be)] font-medium">
                 Posible Do-Not-Take: {tradeCountToday + 1}er trade del día

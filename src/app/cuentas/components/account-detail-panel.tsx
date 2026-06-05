@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import {
   X, Shield, BarChart3,
   Pencil, Archive, Loader2, Trash2, XCircle,
-  History, ArrowUpCircle, ArrowLeft,
+  History, ArrowUpCircle, ArrowLeft, Lock, Unlock,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
@@ -15,7 +15,7 @@ import {
 import type { RawAccount, TradeStats } from "./account-card"
 import type { AccountType } from "@/types"
 
-export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, stats }: {
+export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, onLock, onUnlock, locking, stats }: {
   account:   RawAccount
   onClose:   () => void
   onDelete?: () => void; deleting?: boolean
@@ -24,6 +24,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   onLost?:  (note: string) => void
   onOpenHistory?: () => void
   onPromotePhase?: () => void
+  onLock?:   () => void
+  onUnlock?: () => void
+  locking?:  boolean
   stats?:    TradeStats
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -47,6 +50,16 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const phase        = (account.phase as string) ?? "NONE"
   const initialBalance = Number(account.initialBalance)
   const flatLine     = Array(10).fill(initialBalance)
+
+  const locked       = Boolean((account as { locked?: boolean }).locked)
+  const lockReason   = ((account as { lockReason?: string }).lockReason) ?? ""
+  const LOCK_LABELS: Record<string, string> = {
+    DAILY_LOSS_LIMIT:   "Daily Loss Limit Reached",
+    WEEKLY_LOSS_LIMIT:  "Weekly Loss Limit Reached",
+    MONTHLY_LOSS_LIMIT: "Monthly Loss Limit Reached",
+    MANUAL:             "Bloqueo manual",
+  }
+  const lockLabel = LOCK_LABELS[lockReason] ?? (lockReason || "Cuenta bloqueada")
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -82,6 +95,20 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             </span>
           )}
         </div>
+
+        {/* HALLAZGO 1B — locked banner */}
+        {locked && (
+          <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded-[var(--radius-sm)] border"
+            style={{ background: "var(--loss-soft)", borderColor: "var(--loss)" }}>
+            <Lock size={13} className="text-[var(--loss)] mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-[var(--loss)]">{lockLabel}</p>
+              <p className="text-[10px] text-[var(--ink-3)] mt-0.5">
+                No se permiten nuevos trades ni importaciones hasta desbloquear.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-5 flex flex-col gap-5">
@@ -255,6 +282,21 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             <History size={11} /> Historial
           </button>
         </div>
+
+        {/* HALLAZGO 1B — manual lock / unlock */}
+        {(onLock || onUnlock) && (
+          locked ? (
+            <button onClick={onUnlock} disabled={locking}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--win)] text-[var(--win)] hover:bg-[var(--win)] hover:text-white transition-colors disabled:opacity-50">
+              <Unlock size={13} /> {locking ? "Desbloqueando…" : "Desbloquear cuenta"}
+            </button>
+          ) : (
+            <button onClick={onLock} disabled={locking}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--loss)] text-[var(--loss)] hover:bg-[var(--loss)] hover:text-white transition-colors disabled:opacity-50">
+              <Lock size={13} /> {locking ? "Bloqueando…" : "Bloquear cuenta"}
+            </button>
+          )
+        )}
 
         {/* Phase promotion */}
         {isPF && phase !== "FUNDED" && phase !== "NONE" && (

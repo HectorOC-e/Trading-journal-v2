@@ -28,13 +28,14 @@ const ACCOUNT_COLORS = [
 ]
 
 export function TabPortfolio({
-  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, accounts, period, onPeriodChange,
+  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, discipline, accounts, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   pnlByDate:      DashboardStats["pnlByDate"]
   propFirmStatus: DashboardStats["propFirmStatus"]
   accountStats:   DashboardStats["accountStats"]
   equityCurve:    DashboardStats["equityCurve"]
+  discipline:     DashboardStats["discipline"]
   accounts:       AccountMeta[]
   period:         Period
   onPeriodChange: (p: Period) => void
@@ -276,7 +277,11 @@ export function TabPortfolio({
         </Card>
       )}
 
-      <GoalProgressWidget kpis={kpis} weeklyTradesCount={kpis.tradesCountWeek} />
+      <GoalProgressWidget
+        kpis={kpis}
+        weeklyTradesCount={kpis.tradesCountWeek}
+        disciplineScore={discipline.weeklyScore.length > 0 ? discipline.weeklyScore[discipline.weeklyScore.length - 1].score : null}
+      />
 
       <PropFirmRules propFirmStatus={propFirmStatus} />
 

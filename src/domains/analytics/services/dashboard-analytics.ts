@@ -80,8 +80,12 @@ export type SymbolStat        = { symbol: string; pnl: number; trades: number; w
 export type PropFirmStatus    = {
   accountId:      string
   name:           string
-  ddPctUsed:      number
-  dailyLossPct:   number
+  ddPctUsed:      number   // % of allowed max-drawdown consumed (bar fill)
+  ddActualPct:    number   // actual max drawdown as % of balance
+  ddLimitPct:     number   // configured max-drawdown limit %
+  dailyLossPct:   number   // % of allowed daily loss consumed (bar fill)
+  dailyActualPct: number   // actual today loss as % of balance
+  dailyLimitPct:  number   // configured daily-loss limit %
   tradesUsed:     number
   tradesMax:      number
   status:         "OK" | "ALERTA"
@@ -331,16 +335,14 @@ export function buildPropFirmStatus(
 
       const maxDd        = computeMaxDrawdown(at.map(t => t.pnl))
       const ddTotalLimit = Number(a.ddTotalPct ?? 5)
-      const ddPctUsed    = initBal > 0 && ddTotalLimit > 0
-        ? (maxDd / initBal) / (ddTotalLimit / 100) * 100
-        : 0
+      const ddActualPct  = initBal > 0 ? (maxDd / initBal) * 100 : 0
+      const ddPctUsed    = ddTotalLimit > 0 ? ddActualPct / ddTotalLimit * 100 : 0
 
-      const todayAt     = todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
-      const todayLoss   = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
-      const ddDailyLim  = Number(a.ddDailyPct ?? 1)
-      const dailyLossPct = initBal > 0 && ddDailyLim > 0
-        ? (todayLoss / initBal) / (ddDailyLim / 100) * 100
-        : 0
+      const todayAt      = todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
+      const todayLoss    = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
+      const ddDailyLim   = Number(a.ddDailyPct ?? 1)
+      const dailyActualPct = initBal > 0 ? (todayLoss / initBal) * 100 : 0
+      const dailyLossPct = ddDailyLim > 0 ? dailyActualPct / ddDailyLim * 100 : 0
 
       const tradesUsed = todayTrades.filter(t => t.accountId === a.id).length
       const tradesMax  = a.maxTradesPerDay ?? 0
@@ -350,7 +352,11 @@ export function buildPropFirmStatus(
         accountId:      a.id,
         name:           a.name,
         ddPctUsed:      parseFloat(ddPctUsed.toFixed(1)),
+        ddActualPct:    parseFloat(ddActualPct.toFixed(1)),
+        ddLimitPct:     parseFloat(ddTotalLimit.toFixed(1)),
         dailyLossPct:   parseFloat(dailyLossPct.toFixed(1)),
+        dailyActualPct: parseFloat(dailyActualPct.toFixed(1)),
+        dailyLimitPct:  parseFloat(ddDailyLim.toFixed(1)),
         tradesUsed,
         tradesMax,
         status,

@@ -40,6 +40,7 @@ function serializeAccount(a: RawAccount) {
     ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
     ddTotalPct:    a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:     a.targetPct   != null ? Number(a.targetPct)   : null,
+    lockedAt:      a.lockedAt != null ? a.lockedAt.toISOString() : null,
     createdAt:     a.createdAt.toISOString(),
     updatedAt:     a.updatedAt.toISOString(),
   }
@@ -122,6 +123,41 @@ export const accountsRouter = router({
         },
       })
       return serializeAccount(account) // TD-031
+    }),
+
+  // ── HALLAZGO 1B — manual lock / unlock with audit ──────────────────────────
+  lock: protectedProcedure
+    .input(z.object({
+      id:     z.string().uuid(),
+      reason: z.string().min(1).max(200).default("MANUAL"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const account = await ctx.prisma.account.update({
+        where: { id: input.id, userId: ctx.userId },
+        data:  { locked: true, lockReason: input.reason, lockedAt: new Date() },
+      })
+      const payload: AccountLogPayload = { event: "LOCKED", reason: input.reason, auto: false }
+      await ctx.prisma.accountLog.create({
+        data: { userId: ctx.userId, accountId: input.id, event: "LOCKED", payload },
+      })
+      return serializeAccount(account)
+    }),
+
+  unlock: protectedProcedure
+    .input(z.object({
+      id:   z.string().uuid(),
+      note: z.string().max(200).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const account = await ctx.prisma.account.update({
+        where: { id: input.id, userId: ctx.userId },
+        data:  { locked: false, lockReason: "", lockedAt: null },
+      })
+      const payload: AccountLogPayload = { event: "UNLOCKED", note: input.note ?? "Desbloqueo manual" }
+      await ctx.prisma.accountLog.create({
+        data: { userId: ctx.userId, accountId: input.id, event: "UNLOCKED", payload },
+      })
+      return serializeAccount(account)
     }),
 
   changePhase: protectedProcedure

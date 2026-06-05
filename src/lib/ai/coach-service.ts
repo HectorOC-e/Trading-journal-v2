@@ -12,7 +12,14 @@ export interface CoachStreamOptions {
 }
 
 function buildSystemPrompt(ctx: Awaited<ReturnType<typeof buildTraderContext>>): string {
-  const { performance, behavior, learning, recentTrades, patterns } = ctx
+  const { performance, behavior, learning, goals, recentTrades, patterns } = ctx
+
+  const goalLines: string[] = []
+  if (goals.weeklyPnlGoal != null)     goalLines.push(`- Meta P&L semanal: $${goals.weeklyPnlGoal} (actual: $${goals.weekPnl})`)
+  if (goals.weeklyTradesGoal != null)  goalLines.push(`- Meta trades/semana: ${goals.weeklyTradesGoal} (actual: ${goals.weekTrades})`)
+  if (goals.disciplineGoal != null)    goalLines.push(`- Meta disciplina: ${goals.disciplineGoal}%`)
+  if (goals.weeklyGoalMinutes != null) goalLines.push(`- Meta aprendizaje: ${goals.weeklyGoalMinutes} min/semana`)
+  const goalsSummary = goalLines.length > 0 ? goalLines.join("\n") : "  - El trader no ha configurado metas personales."
 
   const recentSummary = recentTrades
     .slice(0, 5)
@@ -52,6 +59,9 @@ ${performance.worstSetup ? `- Peor setup: ${performance.worstSetup.name} (${perf
 - Recursos pendientes de revisión: ${learning.pendingReviews}
 - Revisiones completadas este mes: ${learning.reviewsDoneThisMonth}
 - Recursos dominados: ${learning.masteredResources}
+
+### Metas personales
+${goalsSummary}
 
 ### Últimos trades
 ${recentSummary || "  - Sin trades recientes."}

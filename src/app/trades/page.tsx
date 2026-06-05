@@ -73,9 +73,25 @@ export default function TradesPage() {
     .filter(t => !SYSTEM_TAGS.has(t))
 
   const PROP_FIRM_MESSAGES: Record<string, string> = {
-    PROP_FIRM_DAILY_LOSS_LIMIT:   "Has alcanzado el límite de pérdida diaria para esta cuenta.",
     PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",
     PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
+    SETUP_NOT_AVAILABLE:          "Ese setup está pausado o descartado y no puede usarse para registrar trades.",
+    SETUP_NOT_FOUND:              "El setup seleccionado no existe.",
+  }
+
+  // ACCOUNT_LOCKED:<reason> → clear human message naming the limit reached (HALLAZGO 1B)
+  const LOCK_MESSAGES: Record<string, string> = {
+    DAILY_LOSS_LIMIT:   "Cuenta bloqueada: Daily Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    WEEKLY_LOSS_LIMIT:  "Cuenta bloqueada: Weekly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MONTHLY_LOSS_LIMIT: "Cuenta bloqueada: Monthly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MANUAL:             "Cuenta bloqueada manualmente. Desbloquéala en Cuentas para volver a operar.",
+  }
+  function resolveTradeError(message: string): string | null {
+    if (message.startsWith("ACCOUNT_LOCKED:")) {
+      const reason = message.slice("ACCOUNT_LOCKED:".length)
+      return LOCK_MESSAGES[reason] ?? "Cuenta bloqueada. Desbloquéala en Cuentas para volver a operar."
+    }
+    return PROP_FIRM_MESSAGES[message] ?? null
   }
 
   const saveChecklist = trpc.trades.saveChecklistResult.useMutation({
@@ -92,7 +108,7 @@ export default function TradesPage() {
       }
     },
     onError: (err) => {
-      const msg = PROP_FIRM_MESSAGES[err.message]
+      const msg = resolveTradeError(err.message)
       if (msg) setPropFirmError(msg)
       else toast.error(formatErrorForUser(err))
     },

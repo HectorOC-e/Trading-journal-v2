@@ -3,7 +3,7 @@
 import { useState } from "react"
 import {
   Target, Shield, BarChart3, ChevronRight,
-  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown,
+  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown, Lock,
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
@@ -113,6 +113,12 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold text-[var(--ink)] leading-tight">{rawAccount.name}</p>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
+              {(rawAccount as { locked?: boolean }).locked && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
+                  <Lock size={8} /> BLOQUEADA
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[var(--ink-3)] mt-0.5">{rawAccount.broker} · {rawAccount.currency} · {daysActive}d activa</p>
           </div>

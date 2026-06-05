@@ -4,7 +4,7 @@ import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
-import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
+import { checkLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
@@ -21,6 +21,41 @@ import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/ana
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
 import { isEmbeddingAvailable } from "@/lib/ai/config"
 import { embedText } from "@/lib/ai/embeddings"
+
+/** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
+function periodBounds(dateStr: string) {
+  const day = new Date(`${dateStr}T00:00:00Z`)
+  const dow = (day.getUTCDay() + 6) % 7 // Monday = 0
+  const weekStart = new Date(day);  weekStart.setUTCDate(day.getUTCDate() - dow)
+  const monthStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))
+  const earliest = weekStart < monthStart ? weekStart : monthStart
+  return { day, weekStart, monthStart, earliest }
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getUTCFullYear() === b.getUTCFullYear()
+    && a.getUTCMonth() === b.getUTCMonth()
+    && a.getUTCDate() === b.getUTCDate()
+}
+
+/** Lock an account (auto, on loss-limit breach) and write an audit log. */
+async function lockAccount(
+  prisma: typeof import("@/lib/prisma").prisma,
+  userId: string,
+  accountId: string,
+  reason: string,
+  limitPct?: number,
+  currentPct?: number,
+): Promise<void> {
+  await prisma.account.update({
+    where: { id: accountId, userId },
+    data:  { locked: true, lockReason: reason, lockedAt: new Date() },
+  })
+  const payload: AccountLogPayload = { event: "LOCKED", reason, limitPct, currentPct, auto: true }
+  await prisma.accountLog.create({
+    data: { userId, accountId, event: "LOCKED", payload },
+  })
+}
 
 /** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
 function scheduleEmbedding(tradeId: string, notes: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
@@ -420,41 +455,83 @@ export const tradesRouter = router({
       planNotes:       z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // ── Prop firm enforcement ──────────────────────────────────────────────
+      // ── Account + risk-limit enforcement (HALLAZGO 1B) ─────────────────────
       const account = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.accountId, userId: ctx.userId },
         select: {
           type:            true,
+          locked:          true,
+          lockReason:      true,
           ddDailyPct:      true,
+          ddWeeklyPct:     true,
+          ddMonthlyPct:    true,
           maxTradesPerDay: true,
           allowedSymbols:  true,
           initialBalance:  true,
         },
       })
 
+      // 1) Already locked → no new trades until manual unlock
+      if (account.locked) {
+        throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${account.lockReason || "MANUAL"}` })
+      }
+
+      // 2) Setup must be selectable (HALLAZGO 2 — backend guard)
+      if (input.setupId) {
+        const setup = await ctx.prisma.setup.findUnique({
+          where:  { id: input.setupId, userId: ctx.userId },
+          select: { status: true },
+        })
+        if (!setup) throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_FOUND" })
+        if (setup.status === "PAUSADO" || setup.status === "DESCARTADO") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_AVAILABLE" })
+        }
+      }
+
+      // 3) Loss limits (daily / weekly / monthly) — universal, all account types.
+      //    On breach the account is auto-locked and the trade is rejected.
+      const initBal = Number(account.initialBalance)
+      const bounds  = periodBounds(input.date)
+      const hasLossLimit = account.ddDailyPct != null || account.ddWeeklyPct != null || account.ddMonthlyPct != null
+      if (hasLossLimit && initBal > 0) {
+        const periodTrades = await ctx.prisma.trade.findMany({
+          where:  { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: { gte: bounds.earliest } },
+          select: { pnl: true, date: true },
+        })
+        const sumFrom = (from: Date) => periodTrades
+          .filter(t => (t.date as Date) >= from)
+          .reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+        const dayLoss   = periodTrades.filter(t => sameDay(t.date as Date, bounds.day)).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+        const weekLoss  = sumFrom(bounds.weekStart)
+        const monthLoss = sumFrom(bounds.monthStart)
+
+        const violation =
+          checkLossLimit("DAILY",   dayLoss,   initBal, account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null) ??
+          checkLossLimit("WEEKLY",  weekLoss,  initBal, account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null) ??
+          checkLossLimit("MONTHLY", monthLoss, initBal, account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null)
+
+        if (violation) {
+          await lockAccount(ctx.prisma, ctx.userId, input.accountId, violation.type,
+            "limitPct" in violation ? violation.limitPct : undefined,
+            "currentPct" in violation ? violation.currentPct : undefined)
+          throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${violation.type}` })
+        }
+      }
+
+      // 4) Prop-firm-only constraints: max trades/day + symbol allowlist
       if (account.type === "PROP_FIRM" || account.type === "DEMO_PROP") {
         const tradeDate = new Date(input.date)
-
-        if (account.ddDailyPct != null) {
-          const todayTrades = await ctx.prisma.trade.findMany({
-            where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: tradeDate },
-            select: { pnl: true },
-          })
-          const todayLoss = todayTrades.reduce((s, t) => s + Math.min(0, Number(t.pnl ?? 0)), 0)
-          const violation = checkDailyLossLimit(todayLoss, Number(account.initialBalance), Number(account.ddDailyPct))
-          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_DAILY_LOSS_LIMIT" })
-        }
-
         if (account.maxTradesPerDay != null) {
           const todayCount = await ctx.prisma.trade.count({
             where: { accountId: input.accountId, userId: ctx.userId, date: tradeDate },
           })
-          const violation = checkTradeCountLimit(todayCount, account.maxTradesPerDay)
-          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
+          if (checkTradeCountLimit(todayCount, account.maxTradesPerDay)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
+          }
         }
-
-        const violation = checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])
-        if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
+        if (checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
+        }
       }
 
       const trade = await ctx.prisma.trade.create({

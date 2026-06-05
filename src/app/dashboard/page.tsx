@@ -154,6 +154,7 @@ export default function DashboardPage() {
             propFirmStatus={stats.propFirmStatus}
             accountStats={stats.accountStats}
             equityCurve={stats.equityCurve}
+            discipline={stats.discipline}
             accounts={accounts}
             period={period}
             onPeriodChange={handlePeriodChange}

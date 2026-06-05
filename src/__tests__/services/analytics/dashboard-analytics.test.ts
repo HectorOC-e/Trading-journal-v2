@@ -7,8 +7,9 @@ import {
   buildPnlBySymbol,
   buildExecutionStats,
   buildDiscipline,
+  buildPropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
-import type { MinimalTrade, AccountBalance } from "@/domains/analytics/services/dashboard-analytics"
+import type { MinimalTrade, AccountBalance, AccountWithLimits } from "@/domains/analytics/services/dashboard-analytics"
 
 function trade(overrides: Partial<MinimalTrade> & { id: string; date: string; pnl: number }): MinimalTrade {
   return {
@@ -408,5 +409,42 @@ describe("buildDiscipline", () => {
       trade({ id: "3", date: "2026-05-01", pnl:  50 }), // clean — excluded
     ], 3)
     expect(d.costoIndisciplina).toBe(-50)
+  })
+})
+
+// ── buildPropFirmStatus (HALLAZGO 1A — actual DD% vs limit) ──────────────────
+
+describe("buildPropFirmStatus", () => {
+  const propAccount: AccountWithLimits = {
+    id: "acc-1", name: "FTMO", type: "PROP_FIRM",
+    initialBalance: 10_000, ddDailyPct: 5, ddTotalPct: 10,
+    maxTradesPerDay: null, allowedSymbols: [],
+  }
+
+  it("reports actual drawdown % and limit, plus utilization", () => {
+    // Max drawdown of $500 on $10k = 5% actual; limit 10% → 50% utilized
+    const closed = [
+      trade({ id: "1", date: "2026-05-01", pnl:  200 }),
+      trade({ id: "2", date: "2026-05-02", pnl: -500 }), // trough
+    ]
+    const [s] = buildPropFirmStatus([propAccount], closed, [])
+    expect(s.ddActualPct).toBeCloseTo(5, 1)   // (peak 200 → -300) drawdown 500 = 5%
+    expect(s.ddLimitPct).toBe(10)
+    expect(s.ddPctUsed).toBeCloseTo(50, 0)    // 5% / 10% limit
+  })
+
+  it("reports actual daily loss % and limit from today's trades", () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const closed = [trade({ id: "1", date: today, pnl: -250 })]
+    const todayTrades = [{ accountId: "acc-1", pnl: -250, status: "CLOSED" }]
+    const [s] = buildPropFirmStatus([propAccount], closed, todayTrades)
+    expect(s.dailyActualPct).toBeCloseTo(2.5, 1) // 250/10k
+    expect(s.dailyLimitPct).toBe(5)
+    expect(s.dailyLossPct).toBeCloseTo(50, 0)    // 2.5% / 5%
+  })
+
+  it("only includes prop-firm-type accounts", () => {
+    const personal: AccountWithLimits = { ...propAccount, id: "p", type: "PERSONAL" }
+    expect(buildPropFirmStatus([personal], [], [])).toHaveLength(0)
   })
 })
