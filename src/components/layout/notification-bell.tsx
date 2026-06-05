@@ -21,7 +21,16 @@ type Note = {
  * a bell + dropdown. Anchored in the Sidebar (desktop/tablet footer) and the
  * mobile header — there is no global desktop top-bar, so the sidebar is the home.
  */
-export function NotificationBell({ placement = "up", compact = false }: { placement?: "up" | "down"; compact?: boolean }) {
+export function NotificationBell({
+  placement = "up",
+  align = "right",
+  compact = false,
+}: {
+  placement?: "up" | "down"
+  /** Which edge the dropdown anchors to. In the left sidebar use "left" so it opens rightward (into content) instead of off-screen. */
+  align?: "left" | "right"
+  compact?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -103,7 +112,7 @@ export function NotificationBell({ placement = "up", compact = false }: { placem
           className="absolute z-[60] w-[280px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden scale-pop"
           style={{
             boxShadow: "var(--shadow-lg)",
-            right: 0,
+            ...(align === "left" ? { left: 0 } : { right: 0 }),
             ...(placement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
           }}
         >

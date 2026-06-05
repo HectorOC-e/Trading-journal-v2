@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc } from "@/lib/trpc/client"
@@ -291,12 +291,22 @@ export default function PerfilPage() {
     }
   }, [prefs])
 
-  /* ── Theme handlers ── */
+  /* ── Theme handlers ──
+     Persistence is DEBOUNCED: the color <input type=color> fires onChange on every
+     pointer move while dragging. Writing to the DB per event spammed mutations and
+     exhausted the connection pool. We apply the theme locally instantly (no flash)
+     and persist only ~400ms after the last change. */
+  const themePersistTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  function persistThemeDebounced(payload: { colorTheme?: ColorTheme; customTheme?: string | null; accentHue?: number | null }) {
+    if (themePersistTimer.current) clearTimeout(themePersistTimer.current)
+    themePersistTimer.current = setTimeout(() => updatePrefsMut.mutate(payload), 400)
+  }
+
   function pickTheme(id: ColorTheme) {
     setColorTheme(id)
     applyColorTheme(id, id === "custom" ? customTheme : null)
     localStorage.setItem("tj-color-theme", id)
-    updatePrefsMut.mutate({ colorTheme: id })
+    persistThemeDebounced({ colorTheme: id })
   }
 
   function applyCustom(next: CustomTheme) {
@@ -306,7 +316,7 @@ export default function PerfilPage() {
     const json = JSON.stringify(next)
     localStorage.setItem("tj-color-theme", "custom")
     localStorage.setItem("tj-custom-theme", json)
-    updatePrefsMut.mutate({ colorTheme: "custom", customTheme: json })
+    persistThemeDebounced({ colorTheme: "custom", customTheme: json })
   }
   function pickCustomHue(hue: number) { applyCustom(customFromHue(hue)) }
   function pickCustomHex(hex: string) { applyCustom(customFromHex(hex)) }
