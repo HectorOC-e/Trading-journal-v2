@@ -17,9 +17,11 @@ import { aiConfigRouter }           from "./routers/ai-config"
 import { aiSettingsRouter }         from "./routers/ai-settings"
 import { tradeTagsRouter }          from "./routers/trade-tags"
 import { monthlyReviewsRouter }     from "./routers/monthly-reviews"
+import { analyticsRouter }          from "./routers/analytics"
 
 export const appRouter = router({
   trades:           tradesRouter,
+  analytics:        analyticsRouter,
   accounts:         accountsRouter,
   withdrawals:      withdrawalsRouter,
   accountLogs:      accountLogsRouter,

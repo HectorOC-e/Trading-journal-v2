@@ -7,6 +7,7 @@ export type { AiProvider } from "./config"
 /** AI-powered capabilities that can each use a distinct model. */
 export const AI_FEATURES = [
   "trade_analysis",
+  "analytics_insights",
   "review_generation",
   "psychology_analysis",
   "learning_insights",

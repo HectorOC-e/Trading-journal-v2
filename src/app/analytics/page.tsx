@@ -3,81 +3,302 @@
 import { useState } from "react"
 import { TopBar } from "@/components/layout/top-bar"
 import { FilterBar } from "@/components/ui/filter-bar"
+import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
-import { useDashboardStats, type Period } from "../dashboard/hooks/use-dashboard-stats"
-import { TabPortfolio } from "../dashboard/tabs/tab-portfolio"
-import { TabOperador } from "../dashboard/tabs/tab-operador"
+import { trpc } from "@/lib/trpc/client"
+import type { RouterOutputs } from "@/server/trpc/root"
+import { AiInsightsPanel } from "./components/ai-insights-panel"
 
-// Pillar route (Fase 3): consolidates the analytical dashboard tabs
-// (Portfolio + Operador) into a first-class "Analytics" destination.
+type Overview = RouterOutputs["analytics"]["overview"]
+type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
+
 const PERIODS = [
   { value: "7d", label: "7D" }, { value: "1M", label: "1M" }, { value: "3M", label: "3M" },
   { value: "6M", label: "6M" }, { value: "1Y", label: "1A" }, { value: "ALL", label: "Todo" },
 ]
-
-type View = "portfolio" | "operador"
-const VIEWS = [
-  { value: "portfolio", label: "Portfolio" },
-  { value: "operador",  label: "Operador" },
+const SECTIONS = [
+  { value: "performance", label: "Performance" },
+  { value: "risk",        label: "Riesgo" },
+  { value: "accounts",    label: "Cuentas" },
+  { value: "setups",      label: "Setups" },
+  { value: "markets",     label: "Mercados" },
+  { value: "psychology",  label: "Psicología" },
+  { value: "goals",       label: "Objetivos" },
+  { value: "withdrawals", label: "Retiros" },
 ]
 
+const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })
+const money = (n: number) => `${n >= 0 ? "+" : "−"}$${fmt(Math.abs(n))}`
+
+/* ── Presentational helpers ────────────────────────────────────────────── */
+function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "win" | "loss" | "ink"; sub?: string }) {
+  const color = tone === "win" ? "var(--win)" : tone === "loss" ? "var(--loss)" : "var(--ink)"
+  return (
+    <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)]">{label}</p>
+      <p className="num text-[20px] font-bold leading-tight mt-1" style={{ color }}>{value}</p>
+      {sub && <p className="text-[10.5px] text-[var(--ink-3)] mt-0.5">{sub}</p>}
+    </div>
+  )
+}
+
+function Bar({ value, max, color }: { value: number; max: number; color: string }) {
+  const pct = max > 0 ? Math.min(100, (Math.abs(value) / max) * 100) : 0
+  return (
+    <div className="h-2 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+    </div>
+  )
+}
+
+function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
+  return <th className={`text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)] py-2 px-3 ${right ? "text-right" : "text-left"}`}>{children}</th>
+}
+function Td({ children, right, tone }: { children: React.ReactNode; right?: boolean; tone?: "win" | "loss" }) {
+  const color = tone === "win" ? "var(--win)" : tone === "loss" ? "var(--loss)" : "var(--ink-2)"
+  return <td className={`text-[12px] py-2 px-3 ${right ? "text-right num" : ""}`} style={{ color }}>{children}</td>
+}
+
+function Sparkline({ points }: { points: number[] }) {
+  if (points.length < 2) return null
+  const min = Math.min(...points), max = Math.max(...points)
+  const range = max - min || 1
+  const w = 100, h = 32
+  const d = points.map((p, i) => `${(i / (points.length - 1)) * w},${h - ((p - min) / range) * h}`).join(" ")
+  const up = points[points.length - 1] >= points[0]
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-10">
+      <polyline points={d} fill="none" stroke={up ? "var(--win)" : "var(--loss)"} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+/* ── Sections ──────────────────────────────────────────────────────────── */
+function Performance({ d }: { d: Overview }) {
+  const p = d.performance
+  return (
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <Stat label="Net P&L" value={money(p.netPnl)} tone={p.netPnl >= 0 ? "win" : "loss"} sub={`${p.totalTrades} trades`} />
+      <Stat label="Win Rate" value={`${p.winRate}%`} sub={`${p.wins}G · ${p.losses}P`} />
+      <Stat label="Profit Factor" value={p.profitFactor != null ? String(p.profitFactor) : "—"} sub="ganancia / pérdida" />
+      <Stat label="Expectancy" value={money(p.expectancy)} tone={p.expectancy >= 0 ? "win" : "loss"} sub="por trade" />
+      <Stat label="Avg R" value={`${p.avgR}R`} sub="r múltiplo medio" />
+      <Stat label="Avg Win" value={`$${fmt(p.avgWin)}`} tone="win" />
+      <Stat label="Avg Loss" value={`$${fmt(p.avgLoss)}`} tone="loss" />
+      <Stat label="Holding medio" value={p.avgHoldMinutes != null ? `${p.avgHoldMinutes} min` : "—"} />
+    </div>
+  )
+}
+
+function Risk({ d }: { d: Overview }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <Stat label="Peor drawdown" value={`${d.risk.worstDrawdownPct}%`} tone="loss" sub="pico a valle global" />
+        <Stat label="Cuentas" value={String(d.risk.accounts.length)} sub={`${d.risk.accounts.filter(a => a.locked).length} bloqueadas`} />
+        <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)] mb-1">Curva de equity</p>
+          <Sparkline points={d.risk.equityCurve.map(e => e.balance)} />
+        </div>
+      </div>
+      <Table head={["Cuenta", "Balance", "Drawdown", "Límite DD", "Estado"]}>
+        {d.risk.accounts.map(a => (
+          <tr key={a.id} className="border-t border-[var(--line)]">
+            <Td>{a.name}</Td>
+            <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>${fmt(a.balance)}</Td>
+            <Td right tone={a.maxDrawdownPct > 0 ? "loss" : undefined}>{a.maxDrawdownPct}%</Td>
+            <Td right>{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</Td>
+            <Td><span style={{ color: a.locked ? "var(--loss)" : "var(--win)" }}>{a.locked ? "Bloqueada" : "Activa"}</span></Td>
+          </tr>
+        ))}
+      </Table>
+    </div>
+  )
+}
+
+function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+  return (
+    <div className="rounded-[var(--radius)] border border-[var(--line)] overflow-x-auto" style={{ background: "var(--panel)" }}>
+      <table className="w-full border-collapse min-w-[480px]">
+        <thead><tr>{head.map((h, i) => <Th key={h} right={i > 0}>{h}</Th>)}</tr></thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  )
+}
+
+function AccountsIntel({ d }: { d: Overview }) {
+  return (
+    <Table head={["Cuenta", "Balance", "Net P&L", "Trades", "Win Rate"]}>
+      {d.risk.accounts.map(a => (
+        <tr key={a.id} className="border-t border-[var(--line)]">
+          <Td>{a.name}</Td>
+          <Td right>${fmt(a.balance)}</Td>
+          <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{money(a.netPnl)}</Td>
+          <Td right>{a.trades}</Td>
+          <Td right>{a.winRate}%</Td>
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+function Setups({ d }: { d: Overview }) {
+  const max = Math.max(1, ...d.setups.map(s => Math.abs(s.netPnl)))
+  if (d.setups.length === 0) return <Empty msg="Sin trades con setup asignado en este periodo." />
+  return (
+    <div className="flex flex-col gap-2">
+      {d.setups.map(s => (
+        <div key={s.setupId} className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
+              <span className="text-[13px] font-semibold text-[var(--ink)] truncate">{s.name}</span>
+            </span>
+            <span className="num text-[13px] font-bold shrink-0" style={{ color: s.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(s.netPnl)}</span>
+          </div>
+          <Bar value={s.netPnl} max={max} color={s.netPnl >= 0 ? "var(--win)" : "var(--loss)"} />
+          <div className="flex gap-4 mt-2 text-[11px] text-[var(--ink-3)]">
+            <span>{s.trades} trades</span><span>WR {s.winRate}%</span><span>avgR {s.avgR}</span>
+            <span>maxLoss {s.maxConsecutiveLosses}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Markets({ d }: { d: Overview }) {
+  if (d.markets.length === 0) return <Empty msg="Sin datos de mercado en este periodo." />
+  return (
+    <Table head={["Símbolo", "Trades", "Net P&L", "Win Rate", "Avg R"]}>
+      {d.markets.map(m => (
+        <tr key={m.symbol} className="border-t border-[var(--line)]">
+          <Td>{m.symbol}</Td>
+          <Td right>{m.trades}</Td>
+          <Td right tone={m.netPnl >= 0 ? "win" : "loss"}>{money(m.netPnl)}</Td>
+          <Td right>{m.winRate}%</Td>
+          <Td right>{m.avgR}</Td>
+        </tr>
+      ))}
+    </Table>
+  )
+}
+
+function Psychology({ d }: { d: Overview }) {
+  const p = d.psychology
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Stat label="Disciplina" value={`${p.disciplineScore}/100`} tone={p.disciplineScore >= 70 ? "win" : "loss"} />
+        <Stat label="Violaciones" value={`${p.violationRate}%`} tone={p.violationRate > 0 ? "loss" : "win"} sub="de tus trades" />
+        <Stat label="FOMO" value={String(p.fomoCount)} tone={p.fomoCount > 0 ? "loss" : undefined} />
+        <Stat label="Revancha" value={String(p.revengeCount)} tone={p.revengeCount > 0 ? "loss" : undefined} />
+      </div>
+      <Table head={["Emoción", "Trades", "P&L medio", "Win Rate"]}>
+        {p.byEmotion.map(e => (
+          <tr key={e.emotion} className="border-t border-[var(--line)]">
+            <Td><span className="capitalize">{e.emotion}</span></Td>
+            <Td right>{e.trades}</Td>
+            <Td right tone={e.avgPnl >= 0 ? "win" : "loss"}>{money(e.avgPnl)}</Td>
+            <Td right>{e.winRate}%</Td>
+          </tr>
+        ))}
+      </Table>
+    </div>
+  )
+}
+
+function GoalRow({ label, current, goal, unit }: { label: string; current: number; goal: number | null; unit?: string }) {
+  const pct = goal && goal > 0 ? Math.min(100, (current / goal) * 100) : 0
+  return (
+    <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[12px] font-medium text-[var(--ink)]">{label}</span>
+        <span className="num text-[12px] text-[var(--ink-2)]">{fmt(current)}{unit} {goal != null ? `/ ${fmt(goal)}${unit}` : ""}</span>
+      </div>
+      {goal != null
+        ? <Bar value={pct} max={100} color={pct >= 100 ? "var(--win)" : "var(--accent)"} />
+        : <p className="text-[10.5px] text-[var(--ink-3)]">Sin objetivo definido · configúralo en Perfil.</p>}
+    </div>
+  )
+}
+
+function Goals({ d }: { d: Overview }) {
+  const g = d.goals
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <GoalRow label="P&L semanal" current={g.weekPnl} goal={g.weeklyPnlGoal} unit="$" />
+      <GoalRow label="Trades semanales" current={g.weekTrades} goal={g.weeklyTradesGoal} />
+      <GoalRow label="Disciplina" current={d.psychology.disciplineScore} goal={g.disciplineGoal} unit="/100" />
+      <GoalRow label="Minutos de estudio (meta)" current={0} goal={g.weeklyGoalMinutes} unit="min" />
+    </div>
+  )
+}
+
+function Withdrawals({ d }: { d: Overview }) {
+  const w = d.withdrawals
+  const max = Math.max(1, ...w.byMonth.map(m => m.amount))
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
+        <Stat label="Total retirado" value={`$${fmt(w.total)}`} />
+        <Stat label="Nº de retiros" value={String(w.count)} />
+        <Stat label="Impacto en P&L" value={`${w.impactPct}%`} tone={w.impactPct > 50 ? "loss" : undefined} sub="del P&L neto" />
+      </div>
+      {w.byMonth.length > 0 ? (
+        <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-2">
+          {w.byMonth.map(m => (
+            <div key={m.month} className="flex items-center gap-3">
+              <span className="text-[11px] text-[var(--ink-3)] w-16 shrink-0">{m.month}</span>
+              <div className="flex-1"><Bar value={m.amount} max={max} color="var(--accent)" /></div>
+              <span className="num text-[11px] text-[var(--ink-2)] w-20 text-right shrink-0">${fmt(m.amount)}</span>
+            </div>
+          ))}
+        </div>
+      ) : <Empty msg="Sin retiros en este periodo." />}
+    </div>
+  )
+}
+
+function Empty({ msg }: { msg: string }) {
+  return <div className="rounded-[var(--radius)] border border-dashed border-[var(--line)] py-12 text-center text-[12px] text-[var(--ink-3)]">{msg}</div>
+}
+
+/* ── Page ──────────────────────────────────────────────────────────────── */
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("3M")
-  const [view, setView] = useState<View>("portfolio")
-  const { stats, accounts, isLoading, isError } = useDashboardStats(period)
+  const [section, setSection] = useState("performance")
+  const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period }, { staleTime: 30_000 })
 
   return (
     <main aria-label="Analytics">
-      <TopBar
-        title="Analytics"
-        subtitle="Rendimiento del portfolio y análisis del operador"
-      />
+      <TopBar title="Analytics" subtitle="Centro de inteligencia · qué está ocurriendo y por qué" />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <FilterBar
-          options={VIEWS}
-          value={view}
-          onChange={(v) => setView(v as View)}
-          ariaLabel="Vista de analytics"
-        />
-        <FilterBar
-          options={PERIODS}
-          value={period}
-          onChange={(v) => setPeriod(v as Period)}
-          ariaLabel="Periodo"
-        />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <SegmentedTabs variant="pill" options={SECTIONS} value={section} onChange={setSection} ariaLabel="Secciones de analytics" className="flex-wrap" />
+        <FilterBar options={PERIODS} value={period} onChange={(v) => setPeriod(v as Period)} ariaLabel="Periodo" />
+      </div>
+
+      <div className="mb-5">
+        <AiInsightsPanel period={period} />
       </div>
 
       {isLoading ? (
         <SkeletonKpiStrip />
-      ) : isError || !stats ? (
-        <p className="text-sm text-[var(--loss)] py-8">No se pudieron cargar los datos. Recarga la página.</p>
-      ) : view === "portfolio" ? (
-        <TabPortfolio
-          kpis={stats.kpis}
-          pnlByDate={stats.pnlByDate}
-          propFirmStatus={stats.propFirmStatus}
-          accountStats={stats.accountStats}
-          equityCurve={stats.equityCurve}
-          discipline={stats.discipline}
-          accounts={accounts}
-          period={period}
-          onPeriodChange={setPeriod}
-        />
+      ) : isError || !data ? (
+        <p className="text-sm text-[var(--loss)] py-8">No se pudieron cargar los datos de analytics.</p>
       ) : (
-        <TabOperador
-          kpis={stats.kpis}
-          accountStats={stats.accountStats}
-          equityCurve={stats.equityCurve}
-          sessionStats={stats.sessionStats}
-          pnlBySymbol={stats.pnlBySymbol}
-          hourStats={stats.hourStats}
-          recentTrades={stats.recentTrades}
-          executionStats={stats.executionStats}
-          accounts={accounts}
-          period={period}
-          onPeriodChange={setPeriod}
-        />
+        <>
+          {section === "performance" && <Performance d={data} />}
+          {section === "risk"        && <Risk d={data} />}
+          {section === "accounts"    && <AccountsIntel d={data} />}
+          {section === "setups"      && <Setups d={data} />}
+          {section === "markets"     && <Markets d={data} />}
+          {section === "psychology"  && <Psychology d={data} />}
+          {section === "goals"       && <Goals d={data} />}
+          {section === "withdrawals" && <Withdrawals d={data} />}
+        </>
       )}
     </main>
   )

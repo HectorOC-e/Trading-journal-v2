@@ -54,6 +54,7 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
           }
           controller.close()
         } catch (err) {
+          console.error("[streamChat:anthropic] stream error", { model: opts.model, err })
           controller.error(err)
         }
       },
@@ -127,6 +128,7 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
         }
         controller.close()
       } catch (err) {
+        console.error(`[streamChat:${provider}] stream error`, { model: opts.model, err })
         controller.error(err)
       } finally {
         reader.releaseLock()

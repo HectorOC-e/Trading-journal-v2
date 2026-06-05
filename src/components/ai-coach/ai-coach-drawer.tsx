@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { MessageCircle, X, Send, Loader2, Minus, Maximize2, Minimize2, GripHorizontal } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Markdown } from "@/components/ui/markdown"
 
 type Message = {
   id:      string
@@ -260,15 +261,17 @@ export function AiCoachDrawer() {
               <div
                 key={m.id}
                 className={cn(
-                  "max-w-[85%] rounded-[var(--radius)] px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap",
+                  "max-w-[85%] rounded-[var(--radius)] px-3 py-2 text-sm leading-relaxed",
                   m.role === "user"
-                    ? "self-end bg-[var(--accent)] text-[var(--accent-contrast)]"
+                    ? "self-end bg-[var(--accent)] text-[var(--accent-contrast)] whitespace-pre-wrap"
                     : "self-start bg-[var(--panel-2)] text-[var(--ink)] border border-[var(--line)]",
                 )}
               >
-                {m.content || (streaming && m.role === "assistant" ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : null)}
+                {m.role === "assistant"
+                  ? (m.content
+                      ? <Markdown content={m.content} />
+                      : (streaming ? <Loader2 size={14} className="animate-spin" /> : null))
+                  : m.content}
               </div>
             ))}
             <div ref={bottomRef} />
