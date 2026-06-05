@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
-import { encryptApiKey, decryptApiKey, maskApiKey } from "@/lib/ai/key-encryption"
+import { encryptApiKey, decryptApiKey, maskApiKey, EncryptionConfigError } from "@/lib/ai/key-encryption"
 
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
 type Provider = typeof PROVIDERS[number]
@@ -11,10 +11,18 @@ const UpsertAiConfigInput = z.object({
   model:    z.string().max(100).optional().nullable(),
 })
 
+/**
+ * Per-provider key-format validation. Returns a clear message or null.
+ * - Anthropic: sk-ant-...
+ * - OpenAI:    sk-... (incl. sk-proj-...)
+ * - OpenRouter: sk-or-... (incl. sk-or-v1-...). NOT a 64-char hex string —
+ *   that requirement only applies to the SERVER encryption secret, never user keys.
+ */
 function validateKeyFormat(provider: Provider, apiKey: string): string | null {
-  if (provider === "anthropic"   && !apiKey.startsWith("sk-ant-")) return "Las claves de Anthropic deben empezar con 'sk-ant-'"
-  if (provider === "openai"      && !apiKey.startsWith("sk-"))      return "Las claves de OpenAI deben empezar con 'sk-'"
-  if (provider === "openrouter"  && !apiKey.startsWith("sk-or-"))   return "Las claves de OpenRouter deben empezar con 'sk-or-'"
+  if (provider === "anthropic"  && !apiKey.startsWith("sk-ant-")) return "Invalid Anthropic API Key — debe empezar con 'sk-ant-'"
+  if (provider === "openrouter" && !apiKey.startsWith("sk-or-"))  return "Invalid OpenRouter API Key — debe empezar con 'sk-or-' (p. ej. sk-or-v1-…)"
+  // OpenAI last so an 'sk-or-'/'sk-ant-' typo on the wrong provider is caught above.
+  if (provider === "openai"     && !apiKey.startsWith("sk-"))     return "Invalid OpenAI API Key — debe empezar con 'sk-'"
   return null
 }
 
@@ -58,11 +66,15 @@ export const aiConfigRouter = router({
       let apiKeyEnc: string
       try {
         apiKeyEnc = encryptApiKey(apiKey)
-      } catch {
-        throw new TRPCError({
-          code:    "INTERNAL_SERVER_ERROR",
-          message: "El servidor no tiene configurado el cifrado de claves IA (AI_KEY_ENCRYPTION_SECRET). Tu clave es válida; contacta al administrador.",
-        })
+      } catch (e) {
+        if (e instanceof EncryptionConfigError) {
+          // Server misconfiguration — NOT the user's key. Clear, actionable message.
+          throw new TRPCError({
+            code:    "INTERNAL_SERVER_ERROR",
+            message: "Missing encryption secret — el servidor no tiene AI_KEY_ENCRYPTION_SECRET configurado. Tu clave es válida; contacta al administrador.",
+          })
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "No se pudo guardar la clave. Intenta de nuevo." })
       }
       const result = await ctx.prisma.userAiConfig.upsert({
         where:  { userId_provider: { userId: ctx.userId, provider: input.provider } },

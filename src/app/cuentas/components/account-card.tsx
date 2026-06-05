@@ -13,9 +13,12 @@ import { trpc } from "@/lib/trpc/client"
 
 export type RawAccount = RouterOutputs["accounts"]["list"][number]
 
+type AccountRisk = RouterOutputs["trades"]["dashboardStats"]["accountStats"][number]["risk"]
+
 export interface TradeStats {
   netPnl: number
   pnlMonth: number
+  pnlWeek: number
   pnlToday: number
   winRate: number | null
   avgR: number | null
@@ -24,6 +27,7 @@ export interface TradeStats {
   tradesTotal: number
   drawdownPct: number
   sparkline: number[]
+  risk: AccountRisk
 }
 
 export const TYPE_META: Record<AccountType, { label: string; color: string; bg: string }> = {
@@ -174,17 +178,23 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
                 </span>
               )}
             </div>
+            {/* Risk gauges — single source of truth (stats.risk). Bar fills by limit
+                utilization; the number shows actual% / limit% (BUG#1 fix). */}
             {rawAccount.ddTotalPct != null && (
-              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+              <RuleBar label="Drawdown total" usedPct={stats?.risk.total.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.total.actualPct.toFixed(1)}% / ${Number(rawAccount.ddTotalPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddTotalPct)}%`} />
             )}
             {rawAccount.ddDailyPct != null && (
-              <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+              <RuleBar label="Pérdida diaria" usedPct={stats?.risk.daily.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.daily.actualPct.toFixed(1)}% / ${Number(rawAccount.ddDailyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddDailyPct)}%`} />
             )}
             {rawAccount.ddWeeklyPct != null && (
-              <RuleBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
+              <RuleBar label="Pérdida semanal" usedPct={stats?.risk.weekly.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.weekly.actualPct.toFixed(1)}% / ${Number(rawAccount.ddWeeklyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddWeeklyPct)}%`} />
             )}
             {rawAccount.ddMonthlyPct != null && (
-              <RuleBar label="Pérdida mensual" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlMonth) / (initialBalance * Number(rawAccount.ddMonthlyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+              <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(1)}% / ${Number(rawAccount.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
             {rawAccount.targetPct != null && (
               <div>

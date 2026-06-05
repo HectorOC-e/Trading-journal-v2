@@ -439,3 +439,22 @@ describe("trades.create — lock & setup guards", () => {
     expect(prisma.account.update).not.toHaveBeenCalled()
   })
 })
+
+// ── BUG#1 PROBLEMA B — Max Drawdown auto-lock ────────────────────────────────
+describe("trades.create — max drawdown auto-lock", () => {
+  it("auto-locks on total max-drawdown breach (MAX_DRAWDOWN)", async () => {
+    // ddTotal 10% of $10k = $1000. Equity 0→+1000→-200 ⇒ peak-to-trough DD $1200 = 12% > 10%.
+    const prisma = makeMockPrisma({ ddTotalPct: 10, initialBalance: 10000 })
+    prisma.trade.findMany.mockResolvedValue([
+      { pnl: 1000, date: new Date("2025-01-02") },
+      { pnl: -1200, date: new Date("2025-01-03") },
+    ])
+    const caller = appRouter.createCaller({ prisma: prisma as never, supabase: {} as never, userId: USER_ID })
+
+    await expect(caller.trades.create(BASE_CREATE_INPUT)).rejects.toThrow(/ACCOUNT_LOCKED:MAX_DRAWDOWN/)
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ locked: true, lockReason: "MAX_DRAWDOWN" }) }),
+    )
+    expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+})

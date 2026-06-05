@@ -4,15 +4,16 @@ import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
-import { checkLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
+import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
+import { computeAccountRisk } from "@/domains/trading/services/risk-engine"
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
   buildExecutionStats, buildDiscipline,
 } from "@/domains/analytics/services/dashboard-analytics"
 import type {
-  MinimalTrade, AccountBalance, AccountWithLimits, Grain,
+  MinimalTrade, AccountBalance, AccountWithLimits, AccountLimits, Grain,
   KpiSummary, AccountStat, EquityCurvePoint, PnlByDatePoint,
   SessionStat, HourStat, SymbolStat, PropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
@@ -279,7 +280,7 @@ export const tradesRouter = router({
         where: { userId: ctx.userId, status: { in: ["ACTIVE", "PAUSED"] } },
         select: {
           id: true, name: true, type: true, status: true,
-          initialBalance: true, ddDailyPct: true, ddTotalPct: true,
+          initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
           maxTradesPerDay: true, allowedSymbols: true,
         },
       })
@@ -352,10 +353,17 @@ export const tradesRouter = router({
         maxTradesPerDay: a.maxTradesPerDay,
         allowedSymbols:  a.allowedSymbols as string[],
       }))
+      const limitsById: Record<string, AccountLimits> = Object.fromEntries(accounts.map(a => [a.id, {
+        id:           a.id,
+        ddDailyPct:   a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
+        ddWeeklyPct:  a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
+        ddMonthlyPct: a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
+        ddTotalPct:   a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
+      }]))
 
       // ── Core analytics (service delegation) ──────────────────────────────
       const kpis         = buildKpis(trades, today, monthStart, weekStart)
-      const accountStats = buildAccountStats(trades, acctBalances, today, monthStart)
+      const accountStats = buildAccountStats(trades, acctBalances, today, monthStart, weekStart, limitsById)
       const equityCurve  = buildEquityCurve(trades, acctBalances)
       const pnlByDate    = buildPnlByDate(trades, grain)
       const pnlBySymbol  = buildPnlBySymbol(trades, 10)
@@ -467,6 +475,7 @@ export const tradesRouter = router({
           ddDailyPct:      true,
           ddWeeklyPct:     true,
           ddMonthlyPct:    true,
+          ddTotalPct:      true,
           maxTradesPerDay: true,
           allowedSymbols:  true,
           initialBalance:  true,
@@ -490,33 +499,37 @@ export const tradesRouter = router({
         }
       }
 
-      // 3) Loss limits (daily / weekly / monthly) — universal, all account types.
+      // 3) Risk limits (daily / weekly / monthly loss + total max-drawdown) —
+      //    universal, all account types. Single source of truth: risk-engine.
       //    On breach the account is auto-locked and the trade is rejected.
       const initBal = Number(account.initialBalance)
       const bounds  = periodBounds(input.date)
-      const hasLossLimit = account.ddDailyPct != null || account.ddWeeklyPct != null || account.ddMonthlyPct != null
-      if (hasLossLimit && initBal > 0) {
-        const periodTrades = await ctx.prisma.trade.findMany({
-          where:  { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: { gte: bounds.earliest } },
-          select: { pnl: true, date: true },
+      const hasRiskLimit =
+        account.ddDailyPct != null || account.ddWeeklyPct != null ||
+        account.ddMonthlyPct != null || account.ddTotalPct != null
+      if (hasRiskLimit && initBal > 0) {
+        // Full closed-trade history (chronological) — needed for peak-to-trough max drawdown.
+        const closed = await ctx.prisma.trade.findMany({
+          where:   { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+          select:  { pnl: true, date: true },
+          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
         })
-        const sumFrom = (from: Date) => periodTrades
-          .filter(t => (t.date as Date) >= from)
-          .reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-        const dayLoss   = periodTrades.filter(t => sameDay(t.date as Date, bounds.day)).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-        const weekLoss  = sumFrom(bounds.weekStart)
-        const monthLoss = sumFrom(bounds.monthStart)
+        const sumFrom = (from: Date) => closed.filter(t => (t.date as Date) >= from).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+        const risk = computeAccountRisk({
+          initialBalance: initBal,
+          ddDailyPct:   account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null,
+          ddWeeklyPct:  account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null,
+          ddMonthlyPct: account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null,
+          ddTotalPct:   account.ddTotalPct   != null ? Number(account.ddTotalPct)   : null,
+          dayPnl:       closed.filter(t => sameDay(t.date as Date, bounds.day)).reduce((s, t) => s + Number(t.pnl ?? 0), 0),
+          weekPnl:      sumFrom(bounds.weekStart),
+          monthPnl:     sumFrom(bounds.monthStart),
+          maxDrawdown:  computeMaxDrawdown(closed.map(t => Number(t.pnl ?? 0))),
+        })
 
-        const violation =
-          checkLossLimit("DAILY",   dayLoss,   initBal, account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null) ??
-          checkLossLimit("WEEKLY",  weekLoss,  initBal, account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null) ??
-          checkLossLimit("MONTHLY", monthLoss, initBal, account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null)
-
-        if (violation) {
-          await lockAccount(ctx.prisma, ctx.userId, input.accountId, violation.type,
-            "limitPct" in violation ? violation.limitPct : undefined,
-            "currentPct" in violation ? violation.currentPct : undefined)
-          throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${violation.type}` })
+        if (risk.breach) {
+          await lockAccount(ctx.prisma, ctx.userId, input.accountId, risk.breach.reason, risk.breach.limitPct, risk.breach.actualPct)
+          throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${risk.breach.reason}` })
         }
       }
 

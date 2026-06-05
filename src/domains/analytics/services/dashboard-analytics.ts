@@ -1,5 +1,6 @@
 import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
+import { computeAccountRisk, type AccountRisk } from "@/domains/trading/services/risk-engine"
 
 export type MinimalTrade = {
   id:        string
@@ -62,6 +63,7 @@ export type AccountStat = {
   balance:      number
   netPnl:       number
   pnlMonth:     number
+  pnlWeek:      number
   pnlToday:     number
   tradesToday:  number
   tradesMonth:  number
@@ -70,6 +72,15 @@ export type AccountStat = {
   avgR:         number
   drawdownPct:  number
   sparkline:    number[]
+  risk:         AccountRisk   // single source of truth for limit gauges + breach
+}
+
+export type AccountLimits = {
+  id:           string
+  ddDailyPct:   number | null
+  ddWeeklyPct:  number | null
+  ddMonthlyPct: number | null
+  ddTotalPct:   number | null
 }
 
 export type EquityCurvePoint  = { date: string; balance: number; accountId: string }
@@ -181,6 +192,8 @@ export function buildAccountStats(
   accounts:   AccountBalance[],
   today:      string,
   monthStart: string,
+  weekStart:  string,
+  limitsById: Record<string, AccountLimits> = {},
 ): AccountStat[] {
   return accounts.map(a => {
     const at = trades.filter(t => t.accountId === a.id)
@@ -189,24 +202,44 @@ export function buildAccountStats(
     const acctWins   = at.filter(t => isWin({ pnl: t.pnl })).length
     const acctWithR  = at.filter(t => t.rMultiple != null)
     const monthT     = at.filter(t => t.date >= monthStart)
+    const weekT      = at.filter(t => t.date >= weekStart)
     const todayT     = at.filter(t => t.date === today)
+
+    const pnlMonth = monthT.reduce((s, t) => s + t.pnl, 0)
+    const pnlWeek  = weekT.reduce((s, t) => s + t.pnl, 0)
+    const pnlToday = todayT.reduce((s, t) => s + t.pnl, 0)
 
     const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
     const sparkline = [initBal, ...computeEquityCurve(initBal, at).map(c => parseFloat(c.balance.toFixed(2)))]
+
+    const limits = limitsById[a.id] ?? { id: a.id, ddDailyPct: null, ddWeeklyPct: null, ddMonthlyPct: null, ddTotalPct: null }
+    const risk = computeAccountRisk({
+      initialBalance: initBal,
+      ddDailyPct:   limits.ddDailyPct,
+      ddWeeklyPct:  limits.ddWeeklyPct,
+      ddMonthlyPct: limits.ddMonthlyPct,
+      ddTotalPct:   limits.ddTotalPct,
+      dayPnl:       pnlToday,
+      weekPnl:      pnlWeek,
+      monthPnl:     pnlMonth,
+      maxDrawdown:  maxDd,
+    })
 
     return {
       accountId:   a.id,
       balance:     parseFloat((initBal + acctNetPnl).toFixed(2)),
       netPnl:      parseFloat(acctNetPnl.toFixed(2)),
-      pnlMonth:    parseFloat(monthT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
-      pnlToday:    parseFloat(todayT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
+      pnlMonth:    parseFloat(pnlMonth.toFixed(2)),
+      pnlWeek:     parseFloat(pnlWeek.toFixed(2)),
+      pnlToday:    parseFloat(pnlToday.toFixed(2)),
       tradesToday: todayT.length,
       tradesMonth: monthT.length,
       tradesTotal: at.length,
       winRate:     calcWinRate(acctWins, at.length),
       avgR:        acctWithR.length > 0 ? acctWithR.reduce((s, t) => s + t.rMultiple!, 0) / acctWithR.length : 0,
-      drawdownPct: initBal > 0 ? (maxDd / initBal) * 100 : 0,
+      drawdownPct: risk.total.actualPct,
       sparkline,
+      risk,
     }
   })
 }

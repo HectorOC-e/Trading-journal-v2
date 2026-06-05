@@ -59,6 +59,7 @@ export default function CuentasPage() {
     (dashStats?.accountStats ?? []).map(s => [s.accountId, {
       netPnl:      s.netPnl,
       pnlMonth:    s.pnlMonth,
+      pnlWeek:     s.pnlWeek,
       pnlToday:    s.pnlToday,
       winRate:     s.winRate,
       avgR:        s.avgR,
@@ -67,6 +68,7 @@ export default function CuentasPage() {
       tradesTotal: s.tradesTotal,
       drawdownPct: s.drawdownPct,
       sparkline:   s.sparkline,
+      risk:        s.risk,
     }]),
   )
 

@@ -51,9 +51,18 @@ describe("key-encryption: encryptApiKey / decryptApiKey (AES-256-GCM)", () => {
     expect(() => decryptApiKey("only-two:parts")).toThrow("Invalid encrypted key format")
   })
 
-  it("throws if AI_KEY_ENCRYPTION_SECRET is missing", () => {
+  it("throws EncryptionConfigError when secret missing in production", async () => {
+    const { EncryptionConfigError } = await import("@/lib/ai/key-encryption")
     vi.stubEnv("AI_KEY_ENCRYPTION_SECRET", "")
-    expect(() => encryptApiKey("sk-test")).toThrow("AI_KEY_ENCRYPTION_SECRET")
+    vi.stubEnv("NODE_ENV", "production")
+    expect(() => encryptApiKey("sk-test")).toThrow(EncryptionConfigError)
+  })
+
+  it("uses an insecure dev key (no throw) when secret missing outside production", () => {
+    vi.stubEnv("AI_KEY_ENCRYPTION_SECRET", "")
+    vi.stubEnv("NODE_ENV", "development")
+    const encrypted = encryptApiKey("sk-test")          // does not throw
+    expect(decryptApiKey(encrypted)).toBe("sk-test")    // roundtrips with derived dev key
   })
 
   it("throws if AI_KEY_ENCRYPTION_SECRET is wrong length", () => {

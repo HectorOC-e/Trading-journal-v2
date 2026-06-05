@@ -84,6 +84,7 @@ export default function TradesPage() {
     DAILY_LOSS_LIMIT:   "Cuenta bloqueada: Daily Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
     WEEKLY_LOSS_LIMIT:  "Cuenta bloqueada: Weekly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
     MONTHLY_LOSS_LIMIT: "Cuenta bloqueada: Monthly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MAX_DRAWDOWN:       "Cuenta bloqueada: Maximum Drawdown alcanzado. Desbloquéala en Cuentas para volver a operar.",
     MANUAL:             "Cuenta bloqueada manualmente. Desbloquéala en Cuentas para volver a operar.",
   }
   function resolveTradeError(message: string): string | null {

@@ -1,14 +1,44 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto"
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto"
 
 const ALGO = "aes-256-gcm"
 
+/** Distinguishable error so callers can tell "server misconfigured" from "bad user key". */
+export class EncryptionConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "EncryptionConfigError"
+  }
+}
+
+let warnedDevKey = false
+
+/**
+ * Resolve the AES-256 key.
+ * - Production: requires a 64-char hex `AI_KEY_ENCRYPTION_SECRET`. Missing/invalid → EncryptionConfigError.
+ * - Development/test: if the secret is missing, derive a STABLE dev key from a fixed seed
+ *   so local development works without setup. Logged once, loud — never use in production.
+ */
 function getEncryptionKey(secretOverride?: string): Buffer {
   const secret = secretOverride ?? process.env.AI_KEY_ENCRYPTION_SECRET
-  if (!secret || secret.length !== 64) {
-    throw new Error("AI_KEY_ENCRYPTION_SECRET must be a 64-character hex string (32 bytes)")
+  const isProd = process.env.NODE_ENV === "production"
+
+  if (!secret) {
+    if (isProd) {
+      throw new EncryptionConfigError("AI_KEY_ENCRYPTION_SECRET is not configured on the server")
+    }
+    if (!warnedDevKey) {
+      warnedDevKey = true
+      console.warn(
+        "[key-encryption] AI_KEY_ENCRYPTION_SECRET missing — using an INSECURE derived dev key. " +
+        "Set a real 64-char hex secret before production (openssl rand -hex 32).",
+      )
+    }
+    // Deterministic 32-byte key derived from a dev-only seed.
+    return createHash("sha256").update("tj-dev-insecure-ai-key-encryption-seed").digest()
   }
-  if (!/^[0-9a-fA-F]{64}$/.test(secret)) {
-    throw new Error("AI_KEY_ENCRYPTION_SECRET contains non-hex characters")
+
+  if (secret.length !== 64 || !/^[0-9a-fA-F]{64}$/.test(secret)) {
+    throw new EncryptionConfigError("AI_KEY_ENCRYPTION_SECRET must be a 64-character hex string (32 bytes)")
   }
   return Buffer.from(secret, "hex")
 }

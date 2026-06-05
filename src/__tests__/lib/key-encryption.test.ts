@@ -43,7 +43,7 @@ describe("key-encryption", () => {
   })
 
   it("throws on non-hex secret", () => {
-    expect(() => encryptApiKey("test", "z".repeat(64))).toThrow("non-hex")
+    expect(() => encryptApiKey("test", "z".repeat(64))).toThrow(/64-character hex/)
   })
 
   it("encrypt/decrypt with secretOverride", () => {

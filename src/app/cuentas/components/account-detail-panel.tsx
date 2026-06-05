@@ -57,6 +57,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
     DAILY_LOSS_LIMIT:   "Daily Loss Limit Reached",
     WEEKLY_LOSS_LIMIT:  "Weekly Loss Limit Reached",
     MONTHLY_LOSS_LIMIT: "Monthly Loss Limit Reached",
+    MAX_DRAWDOWN:       "Maximum Drawdown Reached",
     MANUAL:             "Bloqueo manual",
   }
   const lockLabel = LOCK_LABELS[lockReason] ?? (lockReason || "Cuenta bloqueada")
@@ -180,9 +181,21 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
               </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(account.ddTotalPct) * 100) : 0} limitLabel={`${Number(account.ddTotalPct)}% max`} />
+              {/* Risk gauges from single source of truth (stats.risk) — BUG#1 fix:
+                  bar fills by limit utilization, number shows actual% / limit% */}
+              <RuleBar label="Drawdown total" usedPct={stats?.risk.total.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.total.actualPct.toFixed(2)}% / ${Number(account.ddTotalPct).toFixed(1)}%` : `— / ${Number(account.ddTotalPct)}%`} />
               {account.ddDailyPct != null && (
-                <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(account.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(account.ddDailyPct)}% límite`} />
+                <RuleBar label="Pérdida diaria" usedPct={stats?.risk.daily.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.daily.actualPct.toFixed(2)}% / ${Number(account.ddDailyPct).toFixed(1)}%` : `— / ${Number(account.ddDailyPct)}%`} />
+              )}
+              {account.ddWeeklyPct != null && (
+                <RuleBar label="Pérdida semanal" usedPct={stats?.risk.weekly.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.weekly.actualPct.toFixed(2)}% / ${Number(account.ddWeeklyPct).toFixed(1)}%` : `— / ${Number(account.ddWeeklyPct)}%`} />
+              )}
+              {account.ddMonthlyPct != null && (
+                <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(2)}% / ${Number(account.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(account.ddMonthlyPct)}%`} />
               )}
               {account.targetPct != null && (
                 <div>
