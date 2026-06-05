@@ -37,11 +37,34 @@ One row per user: `defaultProvider`, `defaultModel`, `fallbackProvider?`, `fallb
 - Collapsible per-feature overrides (provider + model each; blank = use default).
 - New component `app/perfil/components/ai-models-card.tsx`, mounted under the existing AI-keys card.
 
-## Scope / honesty notes
-- **Wired now:** AI chat / coach uses the resolver + fallback end-to-end.
-- **Resolver available, wiring incremental:** review-generation, psychology, learning, weekly-reviews, and embeddings can call `resolveFeatureModel(settings, <feature>)` the same way; those call sites still use their existing `config.ts` model getters and will be migrated incrementally. The per-feature settings are already stored and editable — no fake "fully wired everywhere" claim.
-- **`costPriority`** is stored and shown; it is advisory metadata today (no automatic model downgrade). A future cycle can use it to auto-pick models per posture.
+## Update — full wiring + functional cost priority (2026-06-04, second pass)
+
+### All AI call-sites now use the resolver
+A shared server bridge `lib/ai/resolve-model.ts` (`loadAiSettings`, `resolveModelForFeature`) keeps the pure resolver Prisma-free. Wired:
+| Feature | Call-site | Fallback |
+|---------|-----------|----------|
+| `ai_chat` | `coach-service.streamCoachReply` | yes (init) |
+| `weekly_reviews` | `weekly-reviews.generateSummary` | yes (init) |
+| `embeddings` | `trades.scheduleEmbedding`, `trades.semanticSearch`, `app/api/ai-embed` | n/a (returns null on fail) |
+
+`embedText(text, modelOverride?)` now accepts a per-user model. Embedding call-sites resolve the `embeddings` feature and pass it (webhook path routes through the trade owner's model).
+
+> `trade_analysis`, `psychology_analysis`, `learning_insights` have **no dedicated AI generation call-site today** (they are computed analytically). They remain in the feature list so they're configurable the moment such a call-site is added.
+
+### costPriority is now functional (cost ladders)
+- Added `CHAT_LADDER` (per provider × quality/speed/cost) and `EMBEDDING_LADDER`.
+- Any model left as **`auto`** (or blank) resolves through the ladder by the user's `costPriority`. Explicit models are never overridden.
+- `pickAutoModel(provider, costPriority, feature)` exported + tested.
+- UI hint: type `auto` in any model field to let priority decide.
+
+### Tests
+`feature-models.test.ts` now covers ladders/auto/embeddings/explicit-wins (13 total). Suite: **511** pass.
+
+---
+
+## Original scope notes (first pass)
 - Key storage is unchanged (env keys at runtime + encrypted `UserAiConfig`); this cycle adds **model routing**, not key plumbing.
+- Fallback is applied at stream **init** (not mid-stream).
 
 ## Files
 - `prisma/schema.prisma`, `prisma/migrations/012_user_ai_settings.sql`

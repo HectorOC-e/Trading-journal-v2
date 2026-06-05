@@ -6,12 +6,14 @@ import { getEmbeddingModel, getProviderKey, isEmbeddingAvailable } from "./confi
 /**
  * Generate a 1536-dim embedding vector for the given text.
  * Returns null if no embedding key is configured or on error.
+ * `modelOverride` lets callers route through the user's configured embeddings model;
+ * defaults to the platform embedding model.
  */
-export async function embedText(text: string): Promise<number[] | null> {
+export async function embedText(text: string, modelOverride?: string): Promise<number[] | null> {
   if (!isEmbeddingAvailable()) return null
   if (!text.trim()) return null
 
-  const model = getEmbeddingModel()
+  const model = modelOverride?.trim() || getEmbeddingModel()
 
   // Determine base URL and key
   const isOpenRouter = model.includes("/")

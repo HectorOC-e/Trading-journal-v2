@@ -100,6 +100,7 @@ export function AiModelsCard() {
       <p style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>Modelos de IA</p>
       <p style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 18 }}>
         Modelo global por defecto + fallback. Opcionalmente un modelo distinto por funcionalidad.
+        Escribe <code style={{ background: "var(--panel-2)", padding: "1px 4px", borderRadius: 3 }}>auto</code> en cualquier modelo para que se elija según tu <b>prioridad</b>.
       </p>
 
       {/* Global default */}

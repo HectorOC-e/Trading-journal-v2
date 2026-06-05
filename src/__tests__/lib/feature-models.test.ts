@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
-  resolveFeatureModel, parseFeatureModels, DEFAULT_AI_SETTINGS,
+  resolveFeatureModel, parseFeatureModels, pickAutoModel, DEFAULT_AI_SETTINGS,
   AI_FEATURES, type AiSettings,
 } from "@/lib/ai/feature-models"
 
@@ -70,5 +70,33 @@ describe("parseFeatureModels", () => {
     expect(AI_FEATURES).toContain("ai_chat")
     expect(AI_FEATURES).toContain("embeddings")
     expect(AI_FEATURES.length).toBe(7)
+  })
+})
+
+describe("costPriority auto-pick (ladders)", () => {
+  it("'auto' default model resolves via ladder by priority", () => {
+    const quality = resolveFeatureModel(settings({ defaultProvider: "anthropic", defaultModel: "auto", costPriority: "quality" }), "ai_chat")
+    expect(quality.primary.model).toBe("claude-opus-4-8")
+    const speed = resolveFeatureModel(settings({ defaultProvider: "anthropic", defaultModel: "auto", costPriority: "speed" }), "ai_chat")
+    expect(speed.primary.model).toBe("claude-haiku-4-5-20251001")
+  })
+
+  it("blank model is treated as auto", () => {
+    const r = resolveFeatureModel(settings({ defaultProvider: "openai", defaultModel: "", costPriority: "cost" }), "ai_chat")
+    expect(r.primary.model).toBe("gpt-4o-mini")
+  })
+
+  it("embeddings auto picks an embedding model, not a chat model", () => {
+    const r = resolveFeatureModel(settings({ defaultProvider: "openai", defaultModel: "auto", costPriority: "quality" }), "embeddings")
+    expect(r.primary.model).toBe("text-embedding-3-small")
+  })
+
+  it("pickAutoModel routes openrouter cost to a cheap model", () => {
+    expect(pickAutoModel("openrouter", "cost", "ai_chat")).toBe("openai/gpt-4o-mini")
+  })
+
+  it("explicit model is never overridden by priority", () => {
+    const r = resolveFeatureModel(settings({ defaultProvider: "anthropic", defaultModel: "claude-sonnet-4-6", costPriority: "cost" }), "ai_chat")
+    expect(r.primary.model).toBe("claude-sonnet-4-6")
   })
 })

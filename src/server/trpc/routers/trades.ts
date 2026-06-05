@@ -21,6 +21,7 @@ import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/ana
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
 import { isEmbeddingAvailable } from "@/lib/ai/config"
 import { embedText } from "@/lib/ai/embeddings"
+import { resolveModelForFeature } from "@/lib/ai/resolve-model"
 
 /** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
 function periodBounds(dateStr: string) {
@@ -58,11 +59,12 @@ async function lockAccount(
 }
 
 /** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
-function scheduleEmbedding(tradeId: string, notes: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
+function scheduleEmbedding(tradeId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
   if (!isEmbeddingAvailable() || !notes.trim()) return
   void (async () => {
     try {
-      const vector = await embedText(notes)
+      const { primary } = await resolveModelForFeature(prismaClient, userId, "embeddings")
+      const vector = await embedText(notes, primary.model)
       if (!vector) return
       await prismaClient.$executeRaw`
         UPDATE trades
@@ -558,7 +560,7 @@ export const tradesRouter = router({
       })
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
+      scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
       return serializeTrade(full)
     }),
 
@@ -592,7 +594,7 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
-      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
+      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
       return serializeTrade(trade)
     }),
 
@@ -854,7 +856,8 @@ export const tradesRouter = router({
       if (!isEmbeddingAvailable()) {
         return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
       }
-      const queryVector = await embedText(input.query)
+      const { primary: embModel } = await resolveModelForFeature(ctx.prisma, ctx.userId, "embeddings")
+      const queryVector = await embedText(input.query, embModel.model)
       if (!queryVector) {
         return { trades: [], similarity: [], error: "EMBED_FAILED" as const }
       }

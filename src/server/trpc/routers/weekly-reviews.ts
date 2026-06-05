@@ -4,7 +4,8 @@ import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
 import { streamChat }        from "@/lib/ai/chat"
-import { isAnyKeyConfigured, getWeeklySummaryModel } from "@/lib/ai/config"
+import { isAnyKeyConfigured } from "@/lib/ai/config"
+import { resolveModelForFeature } from "@/lib/ai/resolve-model"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 
 const WeeklyReviewInput = z.object({
@@ -231,10 +232,15 @@ ${tradeLines}
 JSON:`
 
       try {
+        // Per-user model for review generation, with global fallback (HALLAZGO 4 / AI config).
+        const { primary, fallback } = await resolveModelForFeature(ctx.prisma, ctx.userId, "weekly_reviews")
         // Collect full streamed response (summary is short)
         const stream = await streamChat({
-          model:    getWeeklySummaryModel(),
+          model:    primary.model,
           messages: [{ role: "user", content: prompt }],
+        }).catch(async (e) => {
+          if (fallback) return streamChat({ model: fallback.model, messages: [{ role: "user", content: prompt }] })
+          throw e
         })
         const reader  = stream.getReader()
         const decoder = new TextDecoder()

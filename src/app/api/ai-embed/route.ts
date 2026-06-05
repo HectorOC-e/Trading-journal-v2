@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { embedText } from "@/lib/ai/embeddings"
+import { resolveModelForFeature } from "@/lib/ai/resolve-model"
 import { isEmbeddingAvailable } from "@/lib/ai/config"
 import { logger } from "@/lib/logger"
 
@@ -92,14 +93,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // On direct path, enforce ownership (IDOR guard). Webhook path uses secret auth — no userId filter.
   const trade = await prisma.trade.findFirst({
     where: { id: tradeId, ...(userId ? { userId } : {}) },
-    select: { notes: true },
+    select: { notes: true, userId: true },
   })
   if (!trade) return NextResponse.json({ ok: false }, { status: 404 })
 
   const notes = trade.notes?.trim()
   if (!notes) return NextResponse.json({ ok: true, skipped: true })
 
-  const vector = await embedText(notes)
+  // Route through the trade owner's configured embeddings model (falls back to platform default).
+  const { primary: embModel } = await resolveModelForFeature(prisma, trade.userId, "embeddings")
+  const vector = await embedText(notes, embModel.model)
   if (!vector) {
     logger.warn("ai-embed: embedding failed", { tradeId })
     return NextResponse.json({ ok: false, reason: "EMBED_FAILED" })

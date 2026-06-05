@@ -47,22 +47,66 @@ export type ResolvedFeatureModel = {
   fallback: ModelRef | null
 }
 
+// ── Cost-priority ladders ──────────────────────────────────────────────────────
+// When a model is left as "auto" (or blank), the model is picked from these
+// ladders by the user's costPriority. Embeddings have their own fixed ladder
+// because Anthropic has no embedding API.
+const CHAT_LADDER: Record<AiProvider, Record<CostPriority, string>> = {
+  anthropic: {
+    quality: "claude-opus-4-8",
+    speed:   "claude-haiku-4-5-20251001",
+    cost:    "claude-haiku-4-5-20251001",
+  },
+  openrouter: {
+    quality: "anthropic/claude-opus-4-8",
+    speed:   "anthropic/claude-haiku-4-5",
+    cost:    "openai/gpt-4o-mini",
+  },
+  openai: {
+    quality: "gpt-4o",
+    speed:   "gpt-4o-mini",
+    cost:    "gpt-4o-mini",
+  },
+}
+
+const EMBEDDING_LADDER: Record<AiProvider, string> = {
+  openai:     "text-embedding-3-small",
+  openrouter: "openai/text-embedding-3-small",
+  anthropic:  "openai/text-embedding-3-small", // Anthropic has no embeddings → route via OpenAI-compatible
+}
+
+function isAutoModel(model: string | undefined | null): boolean {
+  const m = (model ?? "").trim().toLowerCase()
+  return m === "" || m === "auto"
+}
+
+/** Pick a concrete model from the ladders for a provider + cost posture. */
+export function pickAutoModel(provider: AiProvider, costPriority: CostPriority, feature: AiFeature): string {
+  if (feature === "embeddings") return EMBEDDING_LADDER[provider]
+  return CHAT_LADDER[provider][costPriority]
+}
+
 /**
  * Resolve which model to use for a feature:
- *   1. per-feature override if set,
- *   2. otherwise the global default,
+ *   1. per-feature override if set (explicit model, or "auto" → ladder by costPriority),
+ *   2. otherwise the global default (explicit, or "auto" → ladder by costPriority),
  *   3. plus the global fallback (when configured and distinct from primary).
  */
 export function resolveFeatureModel(settings: AiSettings, feature: AiFeature): ResolvedFeatureModel {
   const override = settings.featureModels[feature]
-  const primary: ModelRef = override?.model
-    ? { provider: override.provider, model: override.model }
-    : { provider: settings.defaultProvider, model: settings.defaultModel }
+  const provider = override?.provider ?? settings.defaultProvider
+  const rawModel = override ? override.model : settings.defaultModel
+  const model    = isAutoModel(rawModel)
+    ? pickAutoModel(provider, settings.costPriority, feature)
+    : rawModel
+  const primary: ModelRef = { provider, model }
 
   let fallback: ModelRef | null = null
   if (settings.fallbackModel && settings.fallbackProvider) {
-    const fb: ModelRef = { provider: settings.fallbackProvider, model: settings.fallbackModel }
-    // No point falling back to the exact same model
+    const fbModel = isAutoModel(settings.fallbackModel)
+      ? pickAutoModel(settings.fallbackProvider, settings.costPriority, feature)
+      : settings.fallbackModel
+    const fb: ModelRef = { provider: settings.fallbackProvider, model: fbModel }
     if (!(fb.provider === primary.provider && fb.model === primary.model)) {
       fallback = fb
     }
