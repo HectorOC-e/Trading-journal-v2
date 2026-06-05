@@ -1,25 +1,28 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useLayoutEffect } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
-import { Bell, Lock, Clock, BookOpen, Check } from "lucide-react"
+import { Bell, Lock, Clock, BookOpen, ShieldCheck, Check, CheckCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { trpc } from "@/lib/trpc/client"
+import { useNotifications, type AppNotification } from "@/lib/notifications"
 
-type Note = {
-  id:    string
-  icon:  React.ComponentType<{ size?: number | string }>
-  text:  string
-  sub?:  string
-  href:  string
-  tone:  "loss" | "be" | "accent"
+const TONE_ICON = {
+  danger:   Lock,
+  warning:  Clock,
+  info:     BookOpen,
+  reminder: ShieldCheck,
+} as const
+
+function toneColor(t: AppNotification["tone"]) {
+  return t === "danger" ? "var(--loss)" : t === "warning" ? "var(--be)" : t === "reminder" ? "var(--ink-3)" : "var(--accent)"
 }
 
 /**
- * Notification center (Fase 5 · E2).
- * Aggregates actionable signals (locked accounts, overdue/pending reviews) into
- * a bell + dropdown. Anchored in the Sidebar (desktop/tablet footer) and the
- * mobile header — there is no global desktop top-bar, so the sidebar is the home.
+ * Notification center bell (Fase 6).
+ * The dropdown is rendered through a PORTAL to document.body and positioned with
+ * fixed coords from the button rect — this escapes the sidebar's overflow:hidden
+ * (which previously clipped it). Anchors via `align` so it never opens off-screen.
  */
 export function NotificationBell({
   placement = "up",
@@ -27,64 +30,54 @@ export function NotificationBell({
   compact = false,
 }: {
   placement?: "up" | "down"
-  /** Which edge the dropdown anchors to. In the left sidebar use "left" so it opens rightward (into content) instead of off-screen. */
   align?: "left" | "right"
   compact?: boolean
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+  const [coords, setCoords] = useState<React.CSSProperties>({})
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
-  // Global component (sidebar): cache aggressively so navigating pages reuses
-  // the app-wide React Query cache instead of refetching on every route change.
-  const opts = { staleTime: 60_000, refetchOnWindowFocus: false }
-  const { data: accounts = [] } = trpc.accounts.list.useQuery(undefined, opts)
-  const { data: stats }         = trpc.learningResources.stats.useQuery(undefined, opts)
+  const { active, count, dismiss, clearAll } = useNotifications()
 
+  useEffect(() => setMounted(true), [])
+
+  // Close on outside click (account for the portalled panel being outside the button)
   useEffect(() => {
     if (!open) return
     function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (btnRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false) }
     document.addEventListener("mousedown", onDown)
-    return () => document.removeEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey) }
   }, [open])
 
-  const lockedAccounts = accounts.filter((a) => a.locked)
-  const urgent = stats?.urgentReviews ?? []
-  const pending = stats?.pendingReviewsCount ?? 0
-
-  const notes: Note[] = [
-    ...lockedAccounts.map((a) => ({
-      id: `lock-${a.id}`,
-      icon: Lock,
-      text: `${a.name} bloqueada`,
-      sub: a.lockReason || "Límite alcanzado",
-      href: "/cuentas",
-      tone: "loss" as const,
-    })),
-    ...(urgent.length > 0 ? [{
-      id: "urgent-reviews",
-      icon: Clock,
-      text: `${urgent.length} review${urgent.length !== 1 ? "s" : ""} vencida${urgent.length !== 1 ? "s" : ""}`,
-      sub: "Recursos que necesitan repaso ya",
-      href: "/aprendizaje",
-      tone: "be" as const,
-    }] : []),
-    ...(pending > 0 ? [{
-      id: "pending-reviews",
-      icon: BookOpen,
-      text: `${pending} recurso${pending !== 1 ? "s" : ""} por repasar`,
-      href: "/aprendizaje",
-      tone: "accent" as const,
-    }] : []),
-  ]
-
-  const count = notes.length
-  const toneColor = (t: Note["tone"]) => t === "loss" ? "var(--loss)" : t === "be" ? "var(--be)" : "var(--accent)"
+  // Position the portalled panel relative to the button
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return
+    function place() {
+      const r = btnRef.current!.getBoundingClientRect()
+      const c: React.CSSProperties = { position: "fixed" }
+      if (align === "left") c.left = r.left
+      else c.right = Math.max(8, window.innerWidth - r.right)
+      if (placement === "up") c.bottom = window.innerHeight - r.top + 8
+      else c.top = r.bottom + 8
+      setCoords(c)
+    }
+    place()
+    window.addEventListener("resize", place)
+    return () => window.removeEventListener("resize", place)
+  }, [open, align, placement])
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         aria-label="Notificaciones"
         aria-expanded={open}
@@ -107,47 +100,62 @@ export function NotificationBell({
         )}
       </button>
 
-      {open && (
+      {mounted && open && createPortal(
         <div
-          className="absolute z-[60] w-[280px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden scale-pop"
-          style={{
-            boxShadow: "var(--shadow-lg)",
-            ...(align === "left" ? { left: 0 } : { right: 0 }),
-            ...(placement === "up" ? { bottom: "calc(100% + 8px)" } : { top: "calc(100% + 8px)" }),
-          }}
+          ref={panelRef}
+          className="w-[300px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden scale-pop"
+          style={{ ...coords, zIndex: 70, boxShadow: "var(--shadow-lg)" }}
         >
-          <div className="flex items-center justify-between px-3.5 h-10 border-b border-[var(--line)]">
-            <p className="text-[12px] font-semibold text-[var(--ink)]">Notificaciones</p>
-            {count > 0 && <span className="text-[10px] text-[var(--ink-3)]">{count} pendiente{count !== 1 ? "s" : ""}</span>}
+          <div className="flex items-center justify-between px-3.5 h-11 border-b border-[var(--line)]">
+            <p className="text-[12.5px] font-semibold text-[var(--ink)]">Notificaciones</p>
+            {count > 0 && (
+              <button
+                onClick={clearAll}
+                className="flex items-center gap-1 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors"
+              >
+                <CheckCheck size={13} /> Limpiar
+              </button>
+            )}
           </div>
 
           {count === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 px-4 text-center">
+            <div className="flex flex-col items-center gap-2 py-9 px-4 text-center">
               <Check size={22} className="text-[var(--win)]" />
               <p className="text-[12px] text-[var(--ink-3)]">Todo al día. Sin alertas.</p>
             </div>
           ) : (
-            <div className="max-h-[320px] overflow-y-auto py-1">
-              {notes.map((n) => {
-                const Icon = n.icon
+            <div className="max-h-[360px] overflow-y-auto py-1">
+              {active.slice(0, 8).map((n) => {
+                const Icon = TONE_ICON[n.tone]
                 return (
-                  <Link
-                    key={n.id}
-                    href={n.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-[var(--chip)] transition-colors"
-                  >
+                  <div key={n.id} className="group flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-[var(--chip)] transition-colors">
                     <span className="mt-0.5 shrink-0" style={{ color: toneColor(n.tone) }}><Icon size={15} /></span>
-                    <span className="min-w-0">
-                      <span className="block text-[12.5px] font-medium text-[var(--ink)] leading-snug">{n.text}</span>
-                      {n.sub && <span className="block text-[10.5px] text-[var(--ink-3)] truncate">{n.sub}</span>}
-                    </span>
-                  </Link>
+                    <Link href={n.href} onClick={() => setOpen(false)} className="min-w-0 flex-1">
+                      <span className="block text-[12.5px] font-medium text-[var(--ink)] leading-snug">{n.title}</span>
+                      {n.body && <span className="block text-[10.5px] text-[var(--ink-3)] leading-snug line-clamp-2 mt-0.5">{n.body}</span>}
+                    </Link>
+                    <button
+                      onClick={() => dismiss(n.id)}
+                      aria-label="Descartar"
+                      className="shrink-0 w-6 h-6 -mr-1 rounded flex items-center justify-center text-[var(--ink-3)] opacity-0 group-hover:opacity-100 hover:text-[var(--ink)] hover:bg-[var(--line)] transition-all"
+                    >
+                      <Check size={13} />
+                    </button>
+                  </div>
                 )
               })}
             </div>
           )}
-        </div>
+
+          <Link
+            href="/notificaciones"
+            onClick={() => setOpen(false)}
+            className="block text-center text-[11.5px] font-medium text-[var(--accent)] py-2.5 border-t border-[var(--line)] hover:bg-[var(--chip)] transition-colors"
+          >
+            Ver todas las notificaciones
+          </Link>
+        </div>,
+        document.body,
       )}
     </div>
   )

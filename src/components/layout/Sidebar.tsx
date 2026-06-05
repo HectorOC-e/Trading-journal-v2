@@ -9,12 +9,13 @@ import {
   ShieldCheck, ClipboardList, GraduationCap, User,
   ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
-  Brain, LineChart, Plus,
+  Brain, LineChart, Plus, Bell,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
 import { NotificationBell } from "@/components/layout/notification-bell"
+import { useNotifications } from "@/lib/notifications"
 
 const NAV = [
   {
@@ -50,6 +51,7 @@ const NAV = [
   {
     section: "CUENTA",
     items: [
+      { href: "/notificaciones", label: "Notificaciones", icon: Bell },
       { href: "/retiros",    label: "Retiros",   icon: ArrowDownToLine },
       { href: "/etiquetas",  label: "Etiquetas", icon: Tag },
       { href: "/perfil",     label: "Perfil",    icon: User },
@@ -101,6 +103,12 @@ export function Sidebar() {
   const router    = useRouter()
   const { resolvedTheme, toggle } = useTheme()
   const openRegister = useQuickActions(s => s.openRegister)
+  const { active: notifs } = useNotifications()
+  const navBadge: Record<string, number> = {
+    "/notificaciones": notifs.length,
+    "/cuentas":     notifs.filter(n => n.category === "Cuenta").length,
+    "/aprendizaje": notifs.filter(n => n.category === "Aprendizaje").length,
+  }
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
   const [userInitial,  setUserInitial]  = useState("")
@@ -367,7 +375,7 @@ export function Sidebar() {
   }
 
   // ── Desktop ───────────────────────────────────────────────────────────────────
-  const W = collapsed ? 52 : 232
+  const W = collapsed ? 72 : 240
 
   return (
     <aside
@@ -385,7 +393,7 @@ export function Sidebar() {
         style={{
           display: "flex", alignItems: "center",
           gap: 10,
-          padding: collapsed ? "16px 0 14px" : "16px 16px 14px",
+          padding: collapsed ? "18px 0 16px" : "18px 18px 16px",
           justifyContent: collapsed ? "center" : "flex-start",
           borderBottom: "1px solid var(--line)",
           position: "relative",
@@ -425,33 +433,37 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Nav */}
+      {/* Nav — reference spacing: 16px gutter, 38px rows, 4px gaps, section labels */}
       <nav
-        style={{ padding: "8px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
+        style={{ padding: collapsed ? "12px 0" : "12px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
         aria-label="Navegación principal"
       >
-        {NAV.map(group => (
-          <div key={group.section} className="mb-1">
-            {!collapsed && (
+        {NAV.map((group, gi) => (
+          <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 16 }}>
+            {!collapsed ? (
               <p
-                className="text-[9px] font-bold uppercase tracking-[0.12em] px-4 py-2"
+                className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5"
                 style={{ color: "var(--ink-3)" }}
               >
                 {group.section}
               </p>
+            ) : (
+              <div style={{ height: 1, margin: "10px 16px", background: "var(--line)" }} />
             )}
-            {collapsed && <div style={{ height: 8 }} />}
             {group.items.map(item => {
               const active = pathname.startsWith(item.href)
               const Icon   = item.icon
+              const badge  = navBadge[item.href] ?? 0
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex items-center rounded-[var(--radius-xs)] transition-all duration-150",
-                    collapsed ? "justify-center h-[36px] mx-1.5 mb-0.5" : "gap-2.5 px-4 py-2 mx-2 mb-0.5",
+                    "relative flex items-center transition-colors duration-150",
+                    collapsed
+                      ? "justify-center h-[40px] mx-2 mb-1 rounded-[var(--radius-sm)]"
+                      : "gap-3 h-[38px] px-3 mx-2.5 mb-0.5 rounded-[var(--radius-sm)]",
                     active
                       ? "text-[var(--accent)] font-semibold"
                       : "text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
@@ -463,9 +475,29 @@ export function Sidebar() {
                   }}
                   aria-current={active ? "page" : undefined}
                 >
-                  <Icon size={15} className="shrink-0" />
-                  {!collapsed && (
-                    <span className="whitespace-nowrap">{item.label}</span>
+                  <Icon size={16} className="shrink-0" />
+                  {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+
+                  {/* Count badge */}
+                  {badge > 0 && (
+                    !collapsed ? (
+                      <span
+                        className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                        style={{ background: "var(--loss)", color: "#fff" }}
+                      >
+                        {badge > 9 ? "9+" : badge}
+                      </span>
+                    ) : (
+                      <span
+                        className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                        style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }}
+                      />
+                    )
+                  )}
+
+                  {/* Active indicator bar (right edge) */}
+                  {active && !collapsed && (
+                    <span className="absolute right-1 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "var(--accent)" }} />
                   )}
                 </Link>
               )
@@ -477,9 +509,9 @@ export function Sidebar() {
       {/* Footer */}
       <div
         style={{
-          padding: collapsed ? "12px 0" : "12px 16px",
+          padding: collapsed ? "12px 0" : "14px 18px",
           borderTop: "1px solid var(--line)",
-          display: "flex", flexDirection: "column", gap: 8,
+          display: "flex", flexDirection: "column", gap: 10,
         }}
       >
         {/* User */}
