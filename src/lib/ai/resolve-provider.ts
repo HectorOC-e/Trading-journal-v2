@@ -141,7 +141,7 @@ export type AiDiagnostics = {
 }
 
 /** Features that are actually consumed by a live LLM call-site today. */
-export const ACTIVE_AI_FEATURES: AiFeature[] = ["ai_chat", "weekly_reviews", "embeddings"]
+export const ACTIVE_AI_FEATURES: AiFeature[] = ["ai_chat", "analytics_insights", "weekly_reviews", "embeddings"]
 
 const ALL_PROVIDERS: AiProvider[] = ["openrouter", "anthropic", "openai"]
 

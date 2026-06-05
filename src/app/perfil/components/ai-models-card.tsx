@@ -17,6 +17,7 @@ const PROVIDER_LABEL: Record<Provider, string> = {
 
 const FEATURE_LABEL: Record<AiFeature, string> = {
   trade_analysis:     "Análisis de trades",
+  analytics_insights: "Inteligencia Analytics",
   review_generation:  "Generación de reviews",
   psychology_analysis:"Análisis psicológico",
   learning_insights:  "Insights de aprendizaje",

@@ -69,7 +69,8 @@ describe("parseFeatureModels", () => {
   it("covers exactly the declared feature set", () => {
     expect(AI_FEATURES).toContain("ai_chat")
     expect(AI_FEATURES).toContain("embeddings")
-    expect(AI_FEATURES.length).toBe(7)
+    expect(AI_FEATURES).toContain("analytics_insights")
+    expect(AI_FEATURES.length).toBe(8)
   })
 })
 
