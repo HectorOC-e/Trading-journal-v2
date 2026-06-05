@@ -23,6 +23,15 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "off",
     },
   },
+  // `react-hooks/set-state-in-effect` is a React-Compiler performance HINT, not a
+  // correctness rule. The flagged sites are intentional sync-on-open / localStorage
+  // bootstrap effects (audited in Cycle 1, TD-037). Surfaced as warnings, not errors,
+  // so `eslint` errors stay reserved for genuine bugs. Tracked for v3 key-remount refactor.
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

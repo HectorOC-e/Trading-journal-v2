@@ -358,3 +358,144 @@ export function buildPropFirmStatus(
       }
     })
 }
+
+// ── Execution stats ───────────────────────────────────────────────────────────
+
+export type ExecutionStats = {
+  avgDurationMinutes: number | null
+  avgPlannedRisk:     number | null
+  avgPlannedReward:   number | null
+  riskRewardRatio:    number | null
+}
+
+/** Average trade duration (open→close minutes), planned risk/reward, R:R ratio. */
+export function buildExecutionStats(trades: MinimalTrade[]): ExecutionStats {
+  const durations: number[] = []
+  const risks:     number[] = []
+  const rewards:   number[] = []
+  for (const t of trades) {
+    if (t.openTime && t.closeTime) {
+      const [oh, om] = t.openTime.split(":").map(Number)
+      const [ch, cm] = t.closeTime.split(":").map(Number)
+      const mins = (ch * 60 + cm) - (oh * 60 + om)
+      if (mins > 0) durations.push(mins)
+    }
+    const risk   = Math.abs(t.entry - t.stop)   * t.size
+    const reward = Math.abs(t.target - t.entry) * t.size
+    if (risk   > 0) risks.push(risk)
+    if (reward > 0) rewards.push(reward)
+  }
+  const avg = (xs: number[]) => xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+  const avgDuration      = avg(durations)
+  const avgPlannedRisk   = avg(risks)
+  const avgPlannedReward = avg(rewards)
+  return {
+    avgDurationMinutes: avgDuration      != null ? parseFloat(avgDuration.toFixed(1))      : null,
+    avgPlannedRisk:     avgPlannedRisk   != null ? parseFloat(avgPlannedRisk.toFixed(2))   : null,
+    avgPlannedReward:   avgPlannedReward != null ? parseFloat(avgPlannedReward.toFixed(2)) : null,
+    riskRewardRatio:    avgPlannedRisk && avgPlannedReward ? parseFloat((avgPlannedReward / avgPlannedRisk).toFixed(4)) : null,
+  }
+}
+
+// ── Discipline ─────────────────────────────────────────────────────────────────
+
+export type DisciplineSummary = {
+  heatmapData:   { date: string; severity: 0 | 1 | 2 }[]
+  rDistribution: { bucket: string; count: number }[]
+  violations:    { rule: string; count: number; severity: "mayor" | "menor" }[]
+  weeklyScore:   { week: string; score: number }[]
+  aplusStats: {
+    aplusCount: number; stdCount: number
+    aplusWr: number | null; stdWr: number | null
+    aplusAvgR: number | null; stdAvgR: number | null
+  }
+  composition:       { planSeguido: number; offPlan: number; partial: number }
+  costoIndisciplina: number
+  rachaDiasLimpios:  number
+}
+
+const R_BUCKETS = ["-3R","-2R","-1R","0R","+1R","+2R","+3R","+4R+"] as const
+
+/** Behavioral discipline aggregation: heatmap, R-distribution, violations, weekly compliance, A+ vs std, clean-day streak. */
+export function buildDiscipline(trades: MinimalTrade[], totalTrades: number): DisciplineSummary {
+  const isOff = (t: MinimalTrade) => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")
+
+  // Heatmap: worst severity per day (0 clean, 1 loss, 2 off-plan)
+  const dateMap: Record<string, 0 | 1 | 2> = {}
+  for (const t of trades) {
+    const sev: 0 | 1 | 2 = isOff(t) ? 2 : t.pnl < 0 ? 1 : 0
+    const cur = dateMap[t.date]
+    if (cur === undefined || sev > cur) dateMap[t.date] = sev
+  }
+  const heatmapData = Object.entries(dateMap).map(([date, severity]) => ({ date, severity }))
+
+  // R-multiple distribution
+  const bucketMap: Record<string, number> = Object.fromEntries(R_BUCKETS.map(b => [b, 0]))
+  for (const t of trades) {
+    const r = t.rMultiple ?? 0
+    if      (r <= -2.5) bucketMap["-3R"]++
+    else if (r <= -1.5) bucketMap["-2R"]++
+    else if (r <= -0.5) bucketMap["-1R"]++
+    else if (r <= 0.5)  bucketMap["0R"]++
+    else if (r <= 1.5)  bucketMap["+1R"]++
+    else if (r <= 2.5)  bucketMap["+2R"]++
+    else if (r <= 3.5)  bucketMap["+3R"]++
+    else                bucketMap["+4R+"]++
+  }
+  const rDistribution = R_BUCKETS.map(b => ({ bucket: b, count: bucketMap[b] }))
+
+  // Violation tallies
+  const tally = (tag: string) => trades.filter(t => t.tags.includes(tag)).length
+  const violations = [
+    { rule: "Flag impulsivo manual",    count: tally("Impulsivo"),                  severity: "mayor" as const },
+    { rule: "Off-plan",                 count: tally("Off-plan"),                   severity: "mayor" as const },
+    { rule: "Revanche / revenge trade", count: tally("Revanche"),                   severity: "mayor" as const },
+    { rule: "Sin setup asignado",       count: trades.filter(t => !t.setupId).length, severity: "menor" as const },
+  ].filter(v => v.count > 0)
+
+  // Weekly plan-adherence score (last 12 weeks)
+  const byWeek: Record<string, { plan: number; total: number }> = {}
+  for (const t of trades) {
+    const key = getISOWeekKey(new Date(t.date))
+    if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
+    byWeek[key].total++
+    if (t.setupId != null && !isOff(t)) byWeek[key].plan++
+  }
+  const weeklyScore = Object.entries(byWeek)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12)
+    .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
+
+  // A+ vs standard performance
+  const aplus = trades.filter(t => t.tags.includes("A+"))
+  const std   = trades.filter(t => !t.tags.includes("A+"))
+  const avgR  = (xs: MinimalTrade[]) => xs.length > 0 ? xs.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / xs.length : null
+  const aplusStats = {
+    aplusCount: aplus.length,
+    stdCount:   std.length,
+    aplusWr:    aplus.length > 0 ? calcWinRate(aplus.filter(t => isWin({ pnl: t.pnl })).length, aplus.length) : null,
+    stdWr:      std.length   > 0 ? calcWinRate(std.filter(t => isWin({ pnl: t.pnl })).length, std.length)     : null,
+    aplusAvgR:  avgR(aplus),
+    stdAvgR:    avgR(std),
+  }
+
+  // Composition + cost of indiscipline
+  const planSeguido = trades.filter(t => t.setupId != null && !isOff(t)).length
+  const offPlan     = trades.filter(isOff).length
+  const composition = { planSeguido, offPlan, partial: Math.max(0, totalTrades - planSeguido - offPlan) }
+  const costoIndisciplina = trades.filter(isOff).reduce((s, t) => s + t.pnl, 0)
+
+  // Clean-day streak (consecutive most-recent days with no off-plan trade)
+  const tradingDays = [...new Set(trades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
+  let rachaDiasLimpios = 0
+  for (const day of tradingDays) {
+    if (trades.filter(t => t.date === day).some(isOff)) break
+    rachaDiasLimpios++
+  }
+
+  return {
+    heatmapData, rDistribution, violations, weeklyScore, aplusStats, composition,
+    costoIndisciplina: parseFloat(costoIndisciplina.toFixed(2)),
+    rachaDiasLimpios,
+  }
+}

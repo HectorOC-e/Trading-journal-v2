@@ -2,7 +2,6 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { isWin, calcWinRate, getISOWeekKey } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
@@ -10,6 +9,7 @@ import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
+  buildExecutionStats, buildDiscipline,
 } from "@/domains/analytics/services/dashboard-analytics"
 import type {
   MinimalTrade, AccountBalance, AccountWithLimits, Grain,
@@ -361,111 +361,9 @@ export const tradesRouter = router({
           }
         })
 
-      // ── Execution stats ───────────────────────────────────────────────────
-      const durations: number[] = []
-      const risks: number[]     = []
-      const rewards: number[]   = []
-      for (const t of trades) {
-        if (t.openTime && t.closeTime) {
-          const [oh, om] = t.openTime.split(":").map(Number)
-          const [ch, cm] = t.closeTime.split(":").map(Number)
-          const mins = (ch * 60 + cm) - (oh * 60 + om)
-          if (mins > 0) durations.push(mins)
-        }
-        const risk   = Math.abs(t.entry - t.stop)   * t.size
-        const reward = Math.abs(t.target - t.entry) * t.size
-        if (risk   > 0) risks.push(risk)
-        if (reward > 0) rewards.push(reward)
-      }
-      const avgDuration      = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null
-      const avgPlannedRisk   = risks.length    > 0 ? risks.reduce((a, b) => a + b, 0)    / risks.length    : null
-      const avgPlannedReward = rewards.length  > 0 ? rewards.reduce((a, b) => a + b, 0)  / rewards.length  : null
-      const executionStats = {
-        avgDurationMinutes: avgDuration      != null ? parseFloat(avgDuration.toFixed(1))      : null,
-        avgPlannedRisk:     avgPlannedRisk   != null ? parseFloat(avgPlannedRisk.toFixed(2))   : null,
-        avgPlannedReward:   avgPlannedReward != null ? parseFloat(avgPlannedReward.toFixed(2)) : null,
-        riskRewardRatio:    avgPlannedRisk && avgPlannedReward ? parseFloat((avgPlannedReward / avgPlannedRisk).toFixed(4)) : null,
-      }
-
-      // ── Discipline ────────────────────────────────────────────────────────
-      const heatmapData: { date: string; severity: 0 | 1 | 2 }[] = []
-      const dateMap: Record<string, 0 | 1 | 2> = {}
-      for (const t of trades) {
-        const isOffPlan = t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")
-        const isLoss    = t.pnl < 0
-        const sev: 0 | 1 | 2 = isOffPlan ? 2 : isLoss ? 1 : 0
-        const cur = dateMap[t.date]
-        if (cur === undefined || sev > cur) dateMap[t.date] = sev
-      }
-      for (const [date, severity] of Object.entries(dateMap)) heatmapData.push({ date, severity })
-
-      const BUCKETS = ["-3R","-2R","-1R","0R","+1R","+2R","+3R","+4R+"] as const
-      const bucketMap: Record<string, number> = Object.fromEntries(BUCKETS.map(b => [b, 0]))
-      for (const t of trades) {
-        const r = t.rMultiple ?? 0
-        if      (r <= -2.5) bucketMap["-3R"]++
-        else if (r <= -1.5) bucketMap["-2R"]++
-        else if (r <= -0.5) bucketMap["-1R"]++
-        else if (r <= 0.5)  bucketMap["0R"]++
-        else if (r <= 1.5)  bucketMap["+1R"]++
-        else if (r <= 2.5)  bucketMap["+2R"]++
-        else if (r <= 3.5)  bucketMap["+3R"]++
-        else                bucketMap["+4R+"]++
-      }
-      const rDistribution = BUCKETS.map(b => ({ bucket: b, count: bucketMap[b] }))
-
-      const impulsivoCount = trades.filter(t => t.tags.includes("Impulsivo")).length
-      const offPlanCount   = trades.filter(t => t.tags.includes("Off-plan")).length
-      const revanCheCount  = trades.filter(t => t.tags.includes("Revanche")).length
-      const noSetupCount   = trades.filter(t => !t.setupId).length
-      const violations = [
-        { rule: "Flag impulsivo manual",    count: impulsivoCount, severity: "mayor" as const },
-        { rule: "Off-plan",                 count: offPlanCount,   severity: "mayor" as const },
-        { rule: "Revanche / revenge trade", count: revanCheCount,  severity: "mayor" as const },
-        { rule: "Sin setup asignado",       count: noSetupCount,   severity: "menor" as const },
-      ].filter(v => v.count > 0)
-
-      const byWeek: Record<string, { plan: number; total: number }> = {}
-      for (const t of trades) {
-        const key = getISOWeekKey(new Date(t.date))
-        if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
-        byWeek[key].total++
-        if (t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")) byWeek[key].plan++
-      }
-      const weeklyScore = Object.entries(byWeek)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .slice(-12)
-        .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
-
-      const aplusTrades = trades.filter(t => t.tags.includes("A+"))
-      const stdTrades   = trades.filter(t => !t.tags.includes("A+"))
-      const aplusStats = {
-        aplusCount: aplusTrades.length,
-        stdCount:   stdTrades.length,
-        aplusWr:    aplusTrades.length > 0 ? calcWinRate(aplusTrades.filter(t => isWin({ pnl: t.pnl })).length, aplusTrades.length) : null,
-        stdWr:      stdTrades.length   > 0 ? calcWinRate(stdTrades.filter(t => isWin({ pnl: t.pnl })).length, stdTrades.length) : null,
-        aplusAvgR:  aplusTrades.length > 0 ? aplusTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / aplusTrades.length : null,
-        stdAvgR:    stdTrades.length   > 0 ? stdTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / stdTrades.length   : null,
-      }
-
-      const total       = kpis.total
-      const planSeguido = trades.filter(t => t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")).length
-      const offPlan2    = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).length
-      const composition = { planSeguido, offPlan: offPlan2, partial: Math.max(0, total - planSeguido - offPlan2) }
-      const costoIndisciplina = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).reduce((s, t) => s + t.pnl, 0)
-
-      const tradingDays = [...new Set(trades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
-      let rachaDiasLimpios = 0
-      for (const day of tradingDays) {
-        if (trades.filter(t => t.date === day).some(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))) break
-        rachaDiasLimpios++
-      }
-
-      const discipline = {
-        heatmapData, rDistribution, violations, weeklyScore, aplusStats, composition,
-        costoIndisciplina: parseFloat(costoIndisciplina.toFixed(2)),
-        rachaDiasLimpios,
-      }
+      // ── Execution stats + discipline (service delegation) ─────────────────
+      const executionStats = buildExecutionStats(trades)
+      const discipline     = buildDiscipline(trades, kpis.total)
 
       const result: DashboardOutput = {
         kpis,
