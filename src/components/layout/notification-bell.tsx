@@ -25,8 +25,11 @@ export function NotificationBell({ placement = "up", compact = false }: { placem
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const { data: accounts = [] } = trpc.accounts.list.useQuery()
-  const { data: stats }         = trpc.learningResources.stats.useQuery()
+  // Global component (sidebar): cache aggressively so navigating pages reuses
+  // the app-wide React Query cache instead of refetching on every route change.
+  const opts = { staleTime: 60_000, refetchOnWindowFocus: false }
+  const { data: accounts = [] } = trpc.accounts.list.useQuery(undefined, opts)
+  const { data: stats }         = trpc.learningResources.stats.useQuery(undefined, opts)
 
   useEffect(() => {
     if (!open) return
