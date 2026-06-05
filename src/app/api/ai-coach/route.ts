@@ -5,7 +5,7 @@ import { streamCoachReply, type MessageParam } from "@/lib/ai/coach-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 300
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Auth ────────────────────────────────────────────────────────────────────

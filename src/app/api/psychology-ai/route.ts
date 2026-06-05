@@ -5,7 +5,7 @@ import { streamPsychologyInsights, type PsychologyAiOptions } from "@/lib/ai/psy
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 300
 
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 

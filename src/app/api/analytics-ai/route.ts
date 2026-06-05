@@ -7,7 +7,7 @@ import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 // Streaming AI on a Node serverless function. Without a raised maxDuration the
 // function is killed mid-stream (slow model + bundle build) → client "network error".
 export const runtime = "nodejs"
-export const maxDuration = 60
+export const maxDuration = 300
 
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 
