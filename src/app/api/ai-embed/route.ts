@@ -15,8 +15,7 @@ import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@/lib/generated/prisma/client"
 import { embedText } from "@/lib/ai/embeddings"
-import { resolveModelForFeature } from "@/lib/ai/resolve-model"
-import { isEmbeddingAvailable } from "@/lib/ai/config"
+import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 import { logger } from "@/lib/logger"
 
 const MAX_BODY_BYTES = 16_384 // 16 KB — ample for any trade payload
@@ -74,10 +73,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     userId = user.id
   }
 
-  if (!isEmbeddingAvailable()) {
-    return NextResponse.json({ ok: false, reason: "NO_EMBEDDING_KEY" })
-  }
-
   let body: unknown
   try {
     body = await req.json()
@@ -100,9 +95,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const notes = trade.notes?.trim()
   if (!notes) return NextResponse.json({ ok: true, skipped: true })
 
-  // Route through the trade owner's configured embeddings model (falls back to platform default).
-  const { primary: embModel } = await resolveModelForFeature(prisma, trade.userId, "embeddings")
-  const vector = await embedText(notes, embModel.model)
+  // Route through the trade owner's configured embeddings provider + key
+  // (persisted user key first, then env fallback).
+  const emb = await resolveEmbeddingCall(prisma, trade.userId)
+  if (emb.source === "none") {
+    return NextResponse.json({ ok: false, reason: "NO_EMBEDDING_KEY" })
+  }
+  const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
   if (!vector) {
     logger.warn("ai-embed: embedding failed", { tradeId })
     return NextResponse.json({ ok: false, reason: "EMBED_FAILED" })

@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildTraderContext } from "@/domains/analytics/ai-context"
 import { streamChat }         from "./chat"
-import { resolveModelForFeature } from "./resolve-model"
+import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provider"
 
 export type MessageParam = { role: "user" | "assistant"; content: string }
 
@@ -84,18 +84,30 @@ ${patternSummary}
 export async function streamCoachReply(opts: CoachStreamOptions): Promise<ReadableStream<Uint8Array>> {
   const [traderCtx, resolved] = await Promise.all([
     buildTraderContext(opts.userId, opts.prisma),
-    resolveModelForFeature(opts.prisma, opts.userId, "ai_chat"),
+    resolveAiCall(opts.prisma, opts.userId, "ai_chat"),
   ])
   const systemPrompt = buildSystemPrompt(traderCtx)
 
-  // Per-feature model for chat, with a global fallback model on init failure.
-  const { primary, fallback } = resolved
-  try {
-    return await streamChat({ model: primary.model, messages: opts.messages, system: systemPrompt })
-  } catch (err) {
-    if (fallback) {
-      return await streamChat({ model: fallback.model, messages: opts.messages, system: systemPrompt })
-    }
-    throw err
+  // Use the user's resolved provider + key (primary, then fallback). Each candidate
+  // already carries its own provider/model/apiKey — no env guessing.
+  const candidates = usableCandidates(resolved)
+  if (candidates.length === 0) {
+    throw new NoApiKeyError(resolved.primary.provider)
   }
+
+  let lastErr: unknown
+  for (const c of candidates) {
+    try {
+      return await streamChat({
+        provider: c.provider,
+        apiKey:   c.apiKey,
+        model:    c.model,
+        messages: opts.messages,
+        system:   systemPrompt,
+      })
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  throw lastErr
 }
