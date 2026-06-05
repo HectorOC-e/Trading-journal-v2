@@ -2,6 +2,7 @@ import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
+import { generatePsychologyInsights } from "@/domains/analytics/services/psychology-insights"
 
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 type Period = typeof PERIODS[number]
@@ -45,5 +46,13 @@ export const analyticsRouter = router({
         accounts:    bundle.raw.accountsMeta,
         withdrawals: bundle.raw.withdrawals,
       })
+    }),
+
+  // Psychology Intelligence — behavioural patterns/biases/habits (deterministic).
+  psychologyInsights: protectedProcedure
+    .input(PeriodInput)
+    .query(async ({ ctx, input }) => {
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period))
+      return generatePsychologyInsights(bundle.raw.trades)
     }),
 })

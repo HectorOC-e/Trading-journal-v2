@@ -4,6 +4,8 @@ import { useState } from "react"
 import { TopBar } from "@/components/layout/top-bar"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
+import { IntelligencePanel } from "@/components/ui/intelligence-panel"
+import { trpc } from "@/lib/trpc/client"
 import { useDashboardStats, type Period } from "../dashboard/hooks/use-dashboard-stats"
 import { TabDisciplina } from "../dashboard/tabs/tab-disciplina"
 
@@ -17,20 +19,35 @@ const PERIODS = [
 export default function PsicologiaPage() {
   const [period, setPeriod] = useState<Period>("3M")
   const { stats, isLoading, isError } = useDashboardStats(period)
+  const { data: psychInsights = [], isLoading: psychLoading } =
+    trpc.analytics.psychologyInsights.useQuery({ period: period as never }, { staleTime: 30_000 })
 
   return (
     <main aria-label="Psicología">
       <TopBar
         title="Psicología"
-        subtitle="Disciplina, emociones y control de impulsos en tu operativa"
+        subtitle="Análisis conductual · patrones, sesgos y disciplina"
       />
       <FilterBar
         options={PERIODS}
         value={period}
         onChange={(v) => setPeriod(v as Period)}
-        className="mb-6"
+        className="mb-5"
         ariaLabel="Periodo"
       />
+
+      {/* Psychology Intelligence layer — patterns, biases, habits + AI narrative */}
+      <div className="mb-6">
+        <IntelligencePanel
+          insights={psychInsights}
+          isLoading={psychLoading}
+          endpoint="/api/psychology-ai"
+          period={period}
+          title="Inteligencia psicológica"
+          subtitle="Patrones conductuales · sesgos · hábitos"
+          emptyHint="Registra emociones y flags en tus trades para detectar patrones psicológicos."
+        />
+      </div>
 
       {isLoading ? (
         <SkeletonKpiStrip />

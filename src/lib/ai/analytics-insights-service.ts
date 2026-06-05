@@ -40,10 +40,12 @@ function buildContext(bundle: Awaited<ReturnType<typeof buildAnalyticsBundle>>):
 
 const SYSTEM = `Eres el motor de inteligencia analítica de un trading journal profesional.
 Tu trabajo NO es repetir las métricas (eso ya lo muestra la plataforma). Tu trabajo es responder POR QUÉ están ocurriendo y QUÉ debería hacer el trader después.
-Usa SOLO los datos del contexto. Sé concreto, directo y accionable. Responde en español, en markdown compacto, con estas secciones:
-1. **Qué está pasando** (2-3 hallazgos clave, con números).
-2. **Por qué** (correlaciones/causas probables).
-3. **Qué hacer** (2-4 recomendaciones accionables y priorizadas).
+Usa SOLO los datos del contexto. Sé concreto, directo y accionable. Responde en español, en markdown compacto.
+Usa bloques de callout cuando aporten:
+> [!INSIGHT] para hallazgos clave
+> [!WARNING] para riesgos
+> [!RECOMMENDATION] para acciones concretas
+Estructura: 1) **Qué está pasando** (hallazgos con números), 2) **Por qué** (correlaciones/causas), 3) **Qué hacer** (recomendaciones priorizadas).
 No inventes datos. Si faltan datos, dilo brevemente.`
 
 export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise<ReadableStream<Uint8Array>> {
