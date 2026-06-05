@@ -58,17 +58,17 @@ export function MonthlyReviewCard({ review, isSelected, onClick, onEdit, onDelet
             <h3 className="text-[14px] font-semibold text-[var(--ink)]">
               {monthName} {review.year}
             </h3>
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 md:opacity-60 md:group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit() }}
-                className="p-1 rounded text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-[var(--radius-xs)] text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)] transition-colors"
                 aria-label={`Editar review de ${monthName} ${review.year}`}
               >
                 ✎
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); onDelete() }}
-                className="p-1 rounded text-[var(--ink-3)] hover:text-[var(--loss)] transition-colors"
+                className="flex items-center justify-center w-8 h-8 rounded-[var(--radius-xs)] text-[var(--ink-3)] hover:text-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors"
                 aria-label={`Eliminar review de ${monthName} ${review.year}`}
               >
                 ×

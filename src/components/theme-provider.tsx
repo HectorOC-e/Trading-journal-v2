@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { trpc } from "@/lib/trpc/client"
+import { applyColorTheme, parseCustomTheme, type ColorTheme } from "@/lib/themes"
 
 export type ThemeMode = "light" | "dark" | "system"
 
@@ -81,23 +82,32 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme])
 
-  // Apply accent hue and colorblind mode from DB preferences
+  // Apply named/custom color theme from DB preferences.
+  // Falls back to localStorage so the theme survives before prefs load (no flash).
   useEffect(() => {
-    if (!prefs) return
+    const colorTheme = (prefs?.colorTheme as ColorTheme | undefined)
+      ?? (localStorage.getItem("tj-color-theme") as ColorTheme | null)
+      ?? "indigo"
+    const custom = parseCustomTheme(
+      prefs?.customTheme ?? localStorage.getItem("tj-custom-theme"),
+    )
+    applyColorTheme(colorTheme, custom)
+    localStorage.setItem("tj-color-theme", colorTheme)
+    if (prefs?.customTheme) localStorage.setItem("tj-custom-theme", prefs.customTheme)
+
+    // Legacy quick accent-hue override still wins when set (and no full theme/custom).
     const root = document.documentElement
-    if (prefs.accentHue != null) {
+    if (colorTheme !== "custom" && prefs?.accentHue != null) {
       root.style.setProperty("--accent", `oklch(0.6 0.2 ${prefs.accentHue})`)
       root.style.setProperty("--accent-soft", `oklch(0.95 0.05 ${prefs.accentHue})`)
-    } else {
-      root.style.removeProperty("--accent")
-      root.style.removeProperty("--accent-soft")
     }
-    if (prefs.colorScheme && prefs.colorScheme !== "default") {
+
+    if (prefs?.colorScheme && prefs.colorScheme !== "default") {
       root.setAttribute("data-colorblind", prefs.colorScheme)
     } else {
       root.removeAttribute("data-colorblind")
     }
-  }, [prefs?.accentHue, prefs?.colorScheme])
+  }, [prefs?.colorTheme, prefs?.customTheme, prefs?.accentHue, prefs?.colorScheme])
 
   const prefsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 

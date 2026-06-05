@@ -243,18 +243,24 @@ export function ResourceCard({
             </span>
           </div>
 
-          {/* ··· dropdown */}
+          {/* ··· dropdown — always visible & touch-friendly (C1 fix) */}
           <div ref={menuRef} className="relative shrink-0">
             <button
-              className="text-[var(--ink-3)] hover:text-[var(--ink)] opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-[var(--chip)]"
+              className={cn(
+                "flex items-center justify-center w-9 h-9 -mr-1.5 rounded-[var(--radius-xs)] transition-colors",
+                "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)]",
+                menuOpen && "bg-[var(--chip)] text-[var(--ink)]",
+              )}
               aria-label="Más opciones"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
               onClick={(e) => {
                 e.stopPropagation()
                 setMenuOpen((v) => !v)
                 setConfirmDelete(false)
               }}
             >
-              <MoreHorizontal size={15} />
+              <MoreHorizontal size={16} />
             </button>
 
             {menuOpen && (

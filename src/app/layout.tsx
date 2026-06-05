@@ -29,6 +29,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        {/* No-flash: apply dark class + color theme before hydration */}
+        <Script id="theme-init" strategy="beforeInteractive">{`
+          (function(){
+            try {
+              var d = document.documentElement;
+              var t = localStorage.getItem('tj-theme') || 'system';
+              var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+              d.classList.toggle('dark', isDark);
+              var ct = localStorage.getItem('tj-color-theme');
+              if (ct && ct !== 'indigo') d.setAttribute('data-theme', ct);
+            } catch(e) {}
+          })();
+        `}</Script>
       </head>
       <body>
         <TRPCProvider>

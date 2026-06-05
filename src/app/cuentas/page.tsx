@@ -15,6 +15,7 @@ import { SkeletonAccountCards } from "@/components/ui/skeleton"
 import { AccountCard, KpiBox } from "./components/account-card"
 import type { TradeStats } from "./components/account-card"
 import { AccountDetailPanel } from "./components/account-detail-panel"
+import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { NuevaCuentaModal } from "./modals/create-account-modal"
 import { EditarCuentaModal } from "./modals/edit-account-modal"
 import { AccountHistoryModal } from "./modals/account-history-modal"
@@ -164,51 +165,46 @@ export default function CuentasPage() {
         )}
 
         {!isLoading && accounts.length > 0 && (
-          <div className="flex gap-4 items-start">
-            <div className={cn("grid gap-4 flex-1", selected ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-              {accounts.map(a => (
-                <AccountCard
-                  key={a.id}
-                  rawAccount={a}
-                  selected={selectedId === a.id}
-                  onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
-                  stats={accountStats[a.id]}
-                  onSyncBalance={(e) => { e.stopPropagation(); setSyncId(a.id) }}
-                />
-              ))}
-            </div>
-
-            {selected && (
-              <div style={{
-                width: 340, flexShrink: 0,
-                background: "var(--panel)",
-                border: "1px solid var(--line)",
-                borderRadius: "var(--radius)",
-                position: "sticky", top: 0,
-                maxHeight: "calc(100vh - 28px)",
-                overflowY: "auto",
-              }}>
-                <AccountDetailPanel
-                  account={selected}
-                  onClose={() => setSelectedId(null)}
-                  onEdit={() => setEditingId(selected.id)}
-                  onDelete={() => deleteAccount.mutate(selected.id)}
-                  deleting={deleteAccount.isPending}
-                  onArchive={() => archiveAccount.mutate(selected.id)}
-                  archiving={archiveAccount.isPending}
-                  onLost={(note) => changeStatus.mutate({ id: selected.id, status: "LOST", statusNote: note })}
-                  onOpenHistory={() => setHistoryId(selected.id)}
-                  onPromotePhase={() => setPromoteId(selected.id)}
-                  onLock={() => lockAccount.mutate({ id: selected.id, reason: "MANUAL" })}
-                  onUnlock={() => unlockAccount.mutate({ id: selected.id })}
-                  locking={lockAccount.isPending || unlockAccount.isPending}
-                  stats={accountStats[selected.id]}
-                />
-              </div>
-            )}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {accounts.map(a => (
+              <AccountCard
+                key={a.id}
+                rawAccount={a}
+                selected={selectedId === a.id}
+                onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
+                stats={accountStats[a.id]}
+                onSyncBalance={(e) => { e.stopPropagation(); setSyncId(a.id) }}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      <DrawerPanel
+        open={!!selected}
+        onClose={() => setSelectedId(null)}
+        width={460}
+        ariaLabel="Detalle de la cuenta"
+      >
+        {selected && (
+          <AccountDetailPanel
+            account={selected}
+            onClose={() => setSelectedId(null)}
+            onEdit={() => setEditingId(selected.id)}
+            onDelete={() => deleteAccount.mutate(selected.id)}
+            deleting={deleteAccount.isPending}
+            onArchive={() => archiveAccount.mutate(selected.id)}
+            archiving={archiveAccount.isPending}
+            onLost={(note) => changeStatus.mutate({ id: selected.id, status: "LOST", statusNote: note })}
+            onOpenHistory={() => setHistoryId(selected.id)}
+            onPromotePhase={() => setPromoteId(selected.id)}
+            onLock={() => lockAccount.mutate({ id: selected.id, reason: "MANUAL" })}
+            onUnlock={() => unlockAccount.mutate({ id: selected.id })}
+            locking={lockAccount.isPending || unlockAccount.isPending}
+            stats={accountStats[selected.id]}
+          />
+        )}
+      </DrawerPanel>
 
       <NuevaCuentaModal open={modalOpen} onOpenChange={setModalOpen} markets={markets as never} />
 

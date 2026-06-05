@@ -2,12 +2,15 @@ import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 
 const THEMES = ["light", "dark", "system"] as const
+const COLOR_THEMES = ["indigo", "violeta", "turquesa", "carmesi", "custom"] as const
 const COLOR_SCHEMES = ["default", "deuteranopia", "mono"] as const
 const TABLE_DENSITIES = ["compact", "comfortable", "spacious"] as const
 const DEFAULT_GRAINS = ["daily", "weekly", "monthly"] as const
 
 const UpdatePreferencesInput = z.object({
   theme:        z.enum(THEMES).optional(),
+  colorTheme:   z.enum(COLOR_THEMES).optional(),
+  customTheme:  z.string().max(2000).nullable().optional(), // JSON of custom palette roles
   accentHue:    z.number().int().min(0).max(360).nullable().optional(),
   colorScheme:  z.enum(COLOR_SCHEMES).optional(),
   defaultTab:   z.string().optional(),
@@ -29,6 +32,8 @@ export const preferencesRouter = router({
       return prefs ?? {
         userId:       ctx.userId,
         theme:        "system" as const,
+        colorTheme:   "indigo",
+        customTheme:  null,
         accentHue:    null,
         colorScheme:  "default" as const,
         defaultTab:   "portfolio",
