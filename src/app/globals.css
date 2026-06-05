@@ -119,6 +119,13 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* ── Global focus-visible baseline — keyboard users get Calibrated Indigo rings everywhere ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
 /* ── Selection ── */
 ::selection {
   background: var(--accent-soft);
@@ -200,6 +207,12 @@ body {
 /* ── Numeric data — tabular figures prevent layout shift ── */
 .num {
   font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Every font-mono usage in this app is financial data — enforce tabular-nums globally */
+.font-mono {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }

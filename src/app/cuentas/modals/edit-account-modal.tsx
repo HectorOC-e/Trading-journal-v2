@@ -118,7 +118,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
               )}>
-              {t === "general" ? "🏦 General" : "📊 Límites"}
+              {t === "general" ? "General" : "Límites"}
             </button>
           ))}
         </div>
@@ -186,7 +186,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
                       className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold border transition-all",
                         form.ddModel === m ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]" : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
                       )}>
-                      {m === "FIXED" ? "🔒 Fijo" : "📈 Trailing"}
+                      {m === "FIXED" ? "Fijo" : "Trailing"}
                     </button>
                   ))}
                 </div>

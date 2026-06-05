@@ -125,7 +125,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]"
               )}>
-              {t === "general" ? "🏦 General" : isPropFirmLike(form.tipo) ? "🛡 Prop Firm" : "📊 Límites"}
+              {t === "general" ? "General" : isPropFirmLike(form.tipo) ? "Prop Firm" : "Límites"}
             </button>
           ))}
         </div>
@@ -264,7 +264,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                             ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
                             : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
                         )}>
-                        {m === "FIXED" ? "🔒 Fijo (FTMO, FXify)" : "📈 Trailing (Apex, TopStep)"}
+                        {m === "FIXED" ? "Fijo (FTMO, FXify)" : "Trailing (Apex, TopStep)"}
                       </button>
                     ))}
                   </div>
@@ -280,7 +280,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                               ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
                               : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
                           )}>
-                          {p === "PHASE_1" ? "Phase 1" : p === "PHASE_2" ? "Phase 2" : p === "FUNDED" ? "✅ Funded" : "Sin fase"}
+                          {p === "PHASE_1" ? "Phase 1" : p === "PHASE_2" ? "Phase 2" : p === "FUNDED" ? "Funded" : "Sin fase"}
                         </button>
                       ))}
                     </div>

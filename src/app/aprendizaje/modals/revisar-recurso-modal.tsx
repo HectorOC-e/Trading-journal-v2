@@ -111,7 +111,7 @@ export function RevisarRecursoModal({
                       : "bg-[var(--panel)] text-[var(--ink-2)] hover:bg-[var(--chip)]"
                   )}
                 >
-                  {mode === "quick" ? "⚡ Quick" : "📝 Deep"}
+                  {mode === "quick" ? "Quick" : "Deep"}
                 </button>
               ))}
             </div>
@@ -193,9 +193,9 @@ export function RevisarRecursoModal({
 
           {reviewMode === "deep" && (
             <>
-              {([ ["🧠 ¿Qué aprendiste?", "learned", "Resume el concepto o lección más importante..."],
-                  ["🎯 ¿Cómo aplicarlo al trading?", "howToApply", "¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"],
-                  ["💡 Insights clave (uno por línea)", "insights", "• Insight 1\n• Insight 2\n• Insight 3"],
+              {([ ["¿Qué aprendiste?", "learned", "Resume el concepto o lección más importante..."],
+                  ["¿Cómo aplicarlo al trading?", "howToApply", "¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"],
+                  ["Insights clave (uno por línea)", "insights", "• Insight 1\n• Insight 2\n• Insight 3"],
               ] as [string, keyof RevisarState, string][]).map(([label, key, placeholder]) => (
                 <div key={key}>
                   <label className="text-[10px] font-bold uppercase tracking-wider block mb-1.5 text-[var(--ink-3)]">{label}</label>
@@ -204,7 +204,7 @@ export function RevisarRecursoModal({
                 </div>
               ))}
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">⭐ Valoración</label>
+                <label className="text-[10px] font-bold uppercase tracking-wider block mb-2 text-[var(--ink-3)]">Valoración</label>
                 <div className="flex gap-1.5">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button key={star} onClick={() => setField("rating", star === form.rating ? 0 : star)} className="transition-transform hover:scale-110">

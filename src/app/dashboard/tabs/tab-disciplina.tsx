@@ -176,10 +176,13 @@ export function TabDisciplina({ kpis, discipline }: {
               { label: "Plan seguido",   value: `${planSeguidoPct}%`,     sub: `${composition.planSeguido} / ${total}`, color: "#4f6ef7" },
               { label: "Off-plan count", value: `${composition.offPlan}`, sub: "trades off-plan",                color: "var(--loss)" },
             ].map(m => (
-              <div key={m.label} className="border-l-2 pl-3" style={{ borderColor: m.color }}>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-1">{m.label}</p>
-                <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 22 }}>{m.value}</p>
-                <p className="text-[10px] text-[var(--ink-3)] mt-0.5">{m.sub}</p>
+              <div key={m.label} className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)]">{m.label}</p>
+                </div>
+                <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 22, fontVariantNumeric: "tabular-nums" }}>{m.value}</p>
+                <p className="text-[10px] text-[var(--ink-3)]">{m.sub}</p>
               </div>
             ))}
           </div>
@@ -427,8 +430,8 @@ export function TabDisciplina({ kpis, discipline }: {
               return (
                 <div
                   key={p.id}
-                  className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-2"
-                  style={{ borderLeftWidth: 3, borderLeftColor: badgeColor }}
+                  className="rounded-[var(--radius-sm)] p-4 flex flex-col gap-2"
+                  style={{ border: `1px solid ${badgeColor}`, background: p.confidence === "high" ? "var(--loss-soft)" : p.confidence === "medium" ? "var(--be-soft)" : "var(--win-soft)" }}
                 >
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-[var(--ink)] flex-1">{p.title}</p>

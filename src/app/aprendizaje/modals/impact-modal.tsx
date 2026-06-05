@@ -31,7 +31,7 @@ export function SetupImpactModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>📊 Impacto en trading</DialogTitle>
+          <DialogTitle>Impacto en trading</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-[var(--ink-3)] -mt-2 truncate">{resource.title}</p>
 

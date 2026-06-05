@@ -40,7 +40,7 @@ export function TabOperador({
   const accountCards = useMemo(() => {
     return accountStats.map(s => {
       const a    = accounts.find(acc => acc.id === s.accountId)
-      const meta = TYPE_META[a?.type ?? "PERSONAL"] ?? { color: "#6b7280", label: "—", icon: "📊" }
+      const meta = TYPE_META[a?.type ?? "PERSONAL"] ?? { color: "#6b7280", label: "—" }
       return {
         ...s,
         name:      a?.name   ?? s.accountId,

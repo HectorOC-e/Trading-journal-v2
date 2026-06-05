@@ -54,7 +54,7 @@ function KpiBox({ label, value, sub, color }: { label: string; value: string; su
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-3)", marginBottom: 6 }}>
         {label}
       </p>
-      <p style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: color ?? "var(--ink)", lineHeight: 1 }}>
+      <p style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: color ?? "var(--ink)", lineHeight: 1 }}>
         {value}
       </p>
       <p style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>{sub}</p>
@@ -367,7 +367,7 @@ export default function RetirosPage() {
                   <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{a.name}</p>
                   <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.count} retiros</p>
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "monospace", color: "var(--win)", marginLeft: 8 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: "var(--win)", marginLeft: 8 }}>
                   ${a.totalPagado.toLocaleString()}
                 </p>
               </div>

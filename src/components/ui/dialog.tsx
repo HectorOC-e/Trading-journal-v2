@@ -27,8 +27,8 @@ export function DialogContent({
         className={cn(
           "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
           "w-full max-h-[90dvh] flex flex-col overflow-hidden",
-          "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius-lg)]",
-          "shadow-[0_20px_60px_rgba(0,0,0,0.20),0_8px_24px_rgba(0,0,0,0.12)]",
+          "bg-[var(--panel)] rounded-[var(--radius-lg)]",
+          "shadow-[var(--shadow-lg)]",
           className
         )}
         style={{

@@ -523,9 +523,9 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
           {step === "analisis" && (
             <div className="flex flex-col gap-4 py-2">
               {[
-                { key: "executiveSummary", label: "📋 Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas...", rows: 3 },
-                { key: "whatWorked",       label: "✅ ¿Qué funcionó bien?", value: whatWorked, set: setWhatWorked, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
-                { key: "toImprove",        label: "🔧 A mejorar la próxima semana", value: toImprove, set: setToImprove, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
+                { key: "executiveSummary", label: "Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas...", rows: 3 },
+                { key: "whatWorked",       label: "¿Qué funcionó bien?", value: whatWorked, set: setWhatWorked, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
+                { key: "toImprove",        label: "A mejorar la próxima semana", value: toImprove, set: setToImprove, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
               ].map(({ key, label, value, set, placeholder, rows }) => (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-1.5">

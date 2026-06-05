@@ -357,7 +357,6 @@ export function Sidebar() {
         background: "var(--panel)",
         borderRight: "1px solid var(--line)",
         display: "flex", flexDirection: "column",
-        transition: "width 0.2s var(--ease-out), min-width 0.2s var(--ease-out)",
       }}
     >
       {/* Brand */}
@@ -369,7 +368,6 @@ export function Sidebar() {
           justifyContent: collapsed ? "center" : "flex-start",
           borderBottom: "1px solid var(--line)",
           position: "relative",
-          transition: "padding 0.2s",
         }}
       >
         <div className="w-7 h-7 rounded-[6px] flex items-center justify-center text-white font-mono font-bold text-[10px] relative shrink-0"
@@ -461,7 +459,6 @@ export function Sidebar() {
           padding: collapsed ? "12px 0" : "12px 16px",
           borderTop: "1px solid var(--line)",
           display: "flex", flexDirection: "column", gap: 8,
-          transition: "padding 0.2s",
         }}
       >
         {/* User */}

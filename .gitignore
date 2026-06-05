@@ -1,3 +1,9 @@
 .claude/worktrees/
 .next/
 node_modules/
+
+# Agent / skill tooling (local installs)
+.agents/
+.claude/skills/
+.impeccable/
+skills-lock.json

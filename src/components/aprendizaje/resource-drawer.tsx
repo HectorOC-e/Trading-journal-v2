@@ -238,7 +238,6 @@ export function ResourceDrawer({
         {/* ── Header ── */}
         <div
           className="flex items-start gap-3 p-4 border-b border-[var(--line)] shrink-0"
-          style={{ borderLeft: `3px solid ${accentColor}` }}
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -339,7 +338,7 @@ export function ResourceDrawer({
           {uniqueInsights.length > 0 && (
             <section>
               <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-2">
-                💡 Insights acumulados ({uniqueInsights.length})
+                Insights acumulados ({uniqueInsights.length})
               </h4>
               <ul className="flex flex-col gap-1">
                 {uniqueInsights.map((ins, i) => (
@@ -393,13 +392,13 @@ export function ResourceDrawer({
             className="flex-1 h-9 rounded-[var(--radius-sm)] text-sm font-medium bg-[var(--accent)] text-white hover:opacity-90 transition-opacity"
             onClick={() => { localStorage.setItem("review-mode", "quick"); onReview(resource, "quick") }}
           >
-            ⚡ Quick
+            Quick review
           </button>
           <button
             className="flex-1 h-9 rounded-[var(--radius-sm)] text-sm font-medium bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors"
             onClick={() => { localStorage.setItem("review-mode", "deep"); onReview(resource, "deep") }}
           >
-            📝 Deep
+            Deep review
           </button>
           <button
             className="h-9 px-4 rounded-[var(--radius-sm)] text-sm font-medium border border-[var(--line)] text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)] transition-colors shrink-0"

@@ -27,14 +27,14 @@ function formatPnl(pnl: number): string {
   return pnl >= 0 ? `+$${pnl.toLocaleString()}` : `-$${Math.abs(pnl).toLocaleString()}`
 }
 
-function SectionBlock({ emoji, title, text }: { emoji: string; title: string; text: string }) {
+function SectionBlock({ title, text }: { title: string; text: string }) {
   const items = text.split("\n").map((l) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
   const isBullets = text.includes("•") || text.includes("\n")
 
   return (
     <div className="mb-5">
       <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>
-        {emoji} {title}
+        {title}
       </p>
       {isBullets ? (
         <ul className="space-y-1.5">
@@ -176,10 +176,10 @@ export function ReviewDetailPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
-        <SectionBlock emoji="📋" title="Resumen ejecutivo" text={review.executiveSummary} />
+        <SectionBlock title="Resumen ejecutivo" text={review.executiveSummary} />
 
         <div className="mb-5">
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>✅ Qué funcionó bien</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Qué funcionó bien</p>
           <div className="rounded-lg p-3" style={{ background: "var(--win-soft)" }}>
             {review.whatWorked.split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean).map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
@@ -191,7 +191,7 @@ export function ReviewDetailPanel({
         </div>
 
         <div className="mb-5">
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>🔧 A mejorar</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>A mejorar</p>
           <div className="rounded-lg p-3" style={{ background: "var(--loss-soft)" }}>
             {review.toImprove.split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean).map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
@@ -203,7 +203,7 @@ export function ReviewDetailPanel({
         </div>
 
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>📊 Trades de la semana</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Trades de la semana</p>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
             <table className="w-full text-xs">
               <thead>

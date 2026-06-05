@@ -58,7 +58,7 @@ export function TopBar({ title, subtitle, breadcrumbs, actions, className, compa
         )}
 
         <h1 className={cn(
-          "font-bold text-[var(--ink)] tracking-tight leading-tight",
+          "font-bold text-[var(--ink)] tracking-tight leading-tight [text-wrap:balance]",
           compact ? "text-[16px]" : "text-[18px] sm:text-[20px]"
         )}>
           {title}
