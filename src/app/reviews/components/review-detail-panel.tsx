@@ -85,8 +85,8 @@ export function ReviewDetailPanel({
 
   return (
     <div
-      className="flex flex-col overflow-hidden detail-panel-mobile"
-      style={{ width: 380, background: "var(--panel)", borderLeft: "1px solid var(--line)", position: "sticky", top: 0, maxHeight: "100vh" }}
+      className="flex flex-col overflow-hidden"
+      style={{ width: "100%", background: "var(--panel)" }}
     >
       <button
         onClick={onClose}

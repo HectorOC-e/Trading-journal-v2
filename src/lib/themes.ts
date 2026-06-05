@@ -59,6 +59,63 @@ export function customFromHue(hue: number): CustomTheme {
   }
 }
 
+// ── Color math (WCAG) ─────────────────────────────────────────────────────────
+export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim())
+  if (!m) return null
+  return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+  const h = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")
+  return `#${h(r)}${h(g)}${h(b)}`
+}
+
+function relLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
+  const f = (c: number) => {
+    const s = c / 255
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
+  }
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+}
+
+/** WCAG contrast ratio between two hex colors (1–21). */
+export function contrastRatio(hexA: string, hexB: string): number {
+  const a = hexToRgb(hexA), b = hexToRgb(hexB)
+  if (!a || !b) return 1
+  const la = relLuminance(a), lb = relLuminance(b)
+  const [hi, lo] = la > lb ? [la, lb] : [lb, la]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** Pick #fff or #111 — whichever has higher contrast on `hex`. */
+export function bestContrastOn(hex: string): string {
+  return contrastRatio(hex, "#ffffff") >= contrastRatio(hex, "#111111") ? "#ffffff" : "#111111"
+}
+
+function mix(hex: string, withHex: string, weight: number): string {
+  const a = hexToRgb(hex), b = hexToRgb(withHex)
+  if (!a || !b) return hex
+  return rgbToHex(
+    a.r + (b.r - a.r) * weight,
+    a.g + (b.g - a.g) * weight,
+    a.b + (b.b - a.b) * weight,
+  )
+}
+
+/**
+ * Build a full CustomTheme from a single primary hex.
+ * Derives hover (darker), soft (translucent tint) and an AA-safe contrast color.
+ */
+export function customFromHex(hex: string): CustomTheme {
+  return {
+    accent:         hex,
+    accentH:        mix(hex, "#000000", 0.14),
+    accentSoft:     hexToRgb(hex) ? `rgba(${hexToRgb(hex)!.r}, ${hexToRgb(hex)!.g}, ${hexToRgb(hex)!.b}, 0.16)` : hex,
+    accentContrast: bestContrastOn(hex),
+  }
+}
+
 const CUSTOM_VARS: Record<keyof CustomTheme, string> = {
   accent:         "--accent",
   accentH:        "--accent-h",

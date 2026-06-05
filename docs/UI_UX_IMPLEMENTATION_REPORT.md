@@ -51,7 +51,7 @@ Se implementaron las Fases 0–4 del plan maestro. El sistema de temas (entregab
 - ✅ Nuevo **`DrawerPanel`**: overlay derecho en desktop/tablet (no reflowea contenido), hoja inset (52px–60px) en móvil, cierre por Esc/backdrop/control, lock de scroll.
 - ✅ **Trades**: detail-rail 340px (estrangulaba la tabla a ~794px en 1366px) → `DrawerPanel` overlay 460px. **C3 resuelto** en Trades.
 - ✅ **Cuentas**: detail-rail 340px → `DrawerPanel` overlay 460px. Grid de cuentas a ancho completo.
-- 🟡 **Reviews**: el plan pedía **página completa** `/reviews/[id]`. Se mantiene su panel actual por ahora (no migrado a drawer ni a ruta). Diferido por alcance.
+- ✅ **Reviews**: el detail-rail 380px se migró a **`DrawerPanel`** overlay (480px), unificando el patrón con Trades/Cuentas y eliminando el último push-rail. (La variante "página completa `/reviews/[id]`" del plan se cambió por drawer por consistencia y menor riesgo.)
 - 🟡 **Aprendizaje**: corregido el menú invisible (C1) pero el right-rail permanente de stats y los 5 modales (M5/M6) no se reestructuraron aún.
 
 ## 5. Fase 3 — Navegación, pilares, navbar móvil, Quick Actions ✅
@@ -79,7 +79,9 @@ Implementado en esta iteración:
 - ✅ **Dashboard header héroe** (E3/E4) — saludo según hora + fecha + card héroe de **Net P&L del periodo** (coloreado win/loss) con win rate y nº de trades, en `app/dashboard/page.tsx`.
 - ✅ **`maximumScale: 1` eliminado** (m4) — el usuario ya puede hacer zoom (WCAG 1.4.4).
 
-Diferido aún: centro de notificaciones (E2), `SegmentedTabs`/`PageHeader` extraídos (m3), editor de tema personalizado multi-rol con preview en vivo + validación WCAG (versión actual = por color primario). Ver §9.
+- ✅ **Editor de tema personalizado** (`lib/themes.ts` + Perfil): selector de color hex exacto (`<input type=color>`) + presets de tono, **vista previa en vivo** (botón/chip/win-loss) y **badge de contraste WCAG AA** calculado en tiempo real; `accentContrast` se elige automáticamente (negro/blanco) por mejor contraste.
+
+Diferido aún: centro de notificaciones (E2 — no hay top-bar global de escritorio donde anclarlo sin un cambio de layout mayor), `SegmentedTabs`/`PageHeader` extraídos (m3), roles secundario/terciario del tema (la app solo tematiza el accent de forma funcional; secundario/terciario serían decorativos). Ver §9.
 
 ---
 

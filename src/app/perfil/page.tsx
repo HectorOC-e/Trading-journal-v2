@@ -10,8 +10,8 @@ import { createClient } from "@/lib/supabase/client"
 import { Loader2, RotateCcw } from "lucide-react"
 import { AiModelsCard } from "./components/ai-models-card"
 import {
-  PREDEFINED_THEMES, applyColorTheme, customFromHue, parseCustomTheme,
-  DEFAULT_CUSTOM, type ColorTheme, type CustomTheme,
+  PREDEFINED_THEMES, applyColorTheme, customFromHue, customFromHex, contrastRatio,
+  parseCustomTheme, DEFAULT_CUSTOM, type ColorTheme, type CustomTheme,
 } from "@/lib/themes"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
@@ -299,8 +299,7 @@ export default function PerfilPage() {
     updatePrefsMut.mutate({ colorTheme: id })
   }
 
-  function pickCustomHue(hue: number) {
-    const next = customFromHue(hue)
+  function applyCustom(next: CustomTheme) {
     setCustomTheme(next)
     setColorTheme("custom")
     applyColorTheme("custom", next)
@@ -309,6 +308,8 @@ export default function PerfilPage() {
     localStorage.setItem("tj-custom-theme", json)
     updatePrefsMut.mutate({ colorTheme: "custom", customTheme: json })
   }
+  function pickCustomHue(hue: number) { applyCustom(customFromHue(hue)) }
+  function pickCustomHex(hex: string) { applyCustom(customFromHex(hex)) }
 
   function restoreDefaultTheme() {
     setColorTheme("indigo")
@@ -747,15 +748,17 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Custom theme — quick multi-role palette via accent hue */}
+          {/* Custom theme — full primary color + live preview + WCAG check */}
           <div style={{ marginTop: 20 }}>
             <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 6 }}>
               Tema personalizado
             </label>
             <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 10 }}>
-              Elige un color primario. Win/Loss (verde/rojo) se mantienen reservados para resultados de trading.
+              Elige tu color primario. El contraste del texto se calcula automáticamente (AA). Win/Loss (verde/rojo) se mantienen reservados para resultados de trading.
             </p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+
+            {/* Quick hue presets */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
               {ACCENT_PRESETS.map(({ hue, label }) => {
                 const active = colorTheme === "custom" && customTheme.accent === customFromHue(hue).accent
                 return (
@@ -773,7 +776,51 @@ export default function PerfilPage() {
                   />
                 )
               })}
+              {/* Exact hex picker */}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 28, padding: "0 10px", borderRadius: 14, background: "var(--chip)", border: "1px solid var(--line)", color: "var(--ink-2)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                <input
+                  type="color"
+                  defaultValue={customTheme.accent.startsWith("#") ? customTheme.accent : "#4f6ef7"}
+                  onChange={(e) => pickCustomHex(e.target.value)}
+                  style={{ width: 18, height: 18, padding: 0, border: "none", background: "none", cursor: "pointer" }}
+                />
+                Personalizado
+              </label>
             </div>
+
+            {/* Live preview mock */}
+            {(() => {
+              const c = customTheme
+              const ratio = c.accent.startsWith("#") ? contrastRatio(c.accent, c.accentContrast) : null
+              const aa = ratio == null || ratio >= 4.5
+              return (
+                <div style={{ borderRadius: "var(--radius)", border: "1px solid var(--line)", background: "var(--panel-2)", padding: 14 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 10 }}>
+                    Vista previa
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <button style={{ height: 32, padding: "0 14px", borderRadius: "var(--radius-sm)", background: c.accent, color: c.accentContrast, fontSize: 12.5, fontWeight: 600, border: "none", cursor: "default" }}>
+                      Botón primario
+                    </button>
+                    <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 10px", borderRadius: 999, background: c.accentSoft, color: c.accent, fontSize: 11.5, fontWeight: 600 }}>
+                      Activo
+                    </span>
+                    <span style={{ color: "var(--win)", fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>+$1,240</span>
+                    <span style={{ color: "var(--loss)", fontSize: 12.5, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace" }}>−$380</span>
+                    {ratio != null && (
+                      <span style={{
+                        marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5,
+                        height: 24, padding: "0 9px", borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: aa ? "var(--win-soft)" : "var(--loss-soft)",
+                        color: aa ? "var(--win)" : "var(--loss)",
+                      }}>
+                        {aa ? "✓" : "⚠"} Contraste {ratio.toFixed(1)}:1 {aa ? "AA" : "bajo"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
           </div>
 
           {/* Colorblind mode */}
