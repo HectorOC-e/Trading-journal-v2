@@ -37,6 +37,11 @@ const MOCK_CONTEXT = {
 
 const MOCK_STREAM = new ReadableStream()
 
+// Minimal prisma mock — no per-user AI settings row → platform defaults apply.
+const mockPrisma = {
+  userAiSettings: { findUnique: () => Promise.resolve(null) },
+} as never
+
 describe("coach-service (TASK-065)", () => {
   beforeEach(() => {
     mockBuildTraderContext.mockResolvedValue(MOCK_CONTEXT)
@@ -44,14 +49,13 @@ describe("coach-service (TASK-065)", () => {
   })
 
   it("calls buildTraderContext with the correct userId", async () => {
-    const prisma = {} as never
-    await streamCoachReply({ userId: "user-123", messages: [], prisma })
-    expect(mockBuildTraderContext).toHaveBeenCalledWith("user-123", prisma)
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+    expect(mockBuildTraderContext).toHaveBeenCalledWith("user-123", mockPrisma)
   })
 
   it("passes messages and a system prompt to streamChat", async () => {
     const messages = [{ role: "user" as const, content: "¿Cómo mejorar mi win rate?" }]
-    await streamCoachReply({ userId: "user-123", messages, prisma: {} as never })
+    await streamCoachReply({ userId: "user-123", messages, prisma: mockPrisma })
 
     expect(mockStreamChat).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -62,7 +66,7 @@ describe("coach-service (TASK-065)", () => {
   })
 
   it("includes trader performance data in the system prompt", async () => {
-    await streamCoachReply({ userId: "user-123", messages: [], prisma: {} as never })
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
 
     const callArgs = mockStreamChat.mock.calls[0][0]
     expect(callArgs.system).toContain("60%") // win rate
@@ -70,12 +74,12 @@ describe("coach-service (TASK-065)", () => {
   })
 
   it("returns the ReadableStream from streamChat directly", async () => {
-    const result = await streamCoachReply({ userId: "user-123", messages: [], prisma: {} as never })
+    const result = await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
     expect(result).toBe(MOCK_STREAM)
   })
 
   it("includes model from getCoachModel", async () => {
-    await streamCoachReply({ userId: "user-123", messages: [], prisma: {} as never })
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
     const callArgs = mockStreamChat.mock.calls[0][0]
     expect(callArgs.model).toBe("claude-sonnet-4-6")
   })

@@ -45,9 +45,31 @@ model User {
   emailLogs            EmailLog[]
   preferences          UserPreferences?
   aiConfigs            UserAiConfig[]
+  aiSettings           UserAiSettings?
   monthlyReviews       MonthlyReview[]
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// USER AI SETTINGS (expanded AI configuration)
+// Per-feature model routing + global default + global fallback + cost posture.
+// ─────────────────────────────────────────────
+model UserAiSettings {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  defaultProvider  String   @default("anthropic") @map("default_provider")  // openrouter | anthropic | openai
+  defaultModel     String   @default("claude-sonnet-4-6") @map("default_model")
+  fallbackProvider String?  @map("fallback_provider")
+  fallbackModel    String?  @map("fallback_model")
+  costPriority     String   @default("quality") @map("cost_priority")        // quality | speed | cost
+  featureModels    Json     @default("{}") @map("feature_models")            // { [feature]: { provider, model } }
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_ai_settings")
 }
 
 // ─────────────────────────────────────────────

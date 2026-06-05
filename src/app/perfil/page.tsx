@@ -8,6 +8,7 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
+import { AiModelsCard } from "./components/ai-models-card"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
 
@@ -744,7 +745,7 @@ export default function PerfilPage() {
                   <div>
                     <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{label}</p>
                     {config && !isEditing && (
-                      <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, fontFamily: "monospace" }}>
+                      <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, fontFamily: "'JetBrains Mono','Cascadia Code',monospace" }}>
                         {config.maskedKey}
                         {config.lastTested && ` · Probado ${new Date(config.lastTested).toLocaleDateString("es-HN")}`}
                       </p>
@@ -802,6 +803,9 @@ export default function PerfilPage() {
             )
           })}
         </Card>
+
+        {/* ── Modelos de IA (config ampliada) ── */}
+        <AiModelsCard />
 
         {/* ── Seguridad ── */}
         {showPasswordForm && (

@@ -2,6 +2,24 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildTraderContext } from "@/domains/analytics/ai-context"
 import { streamChat }         from "./chat"
 import { getCoachModel }      from "./config"
+import {
+  resolveFeatureModel, parseFeatureModels, DEFAULT_AI_SETTINGS,
+  type AiSettings, type AiProvider,
+} from "./feature-models"
+
+/** Load the user's expanded AI settings, falling back to platform defaults. */
+async function loadAiSettings(prisma: PrismaClient, userId: string): Promise<AiSettings> {
+  const row = await prisma.userAiSettings.findUnique({ where: { userId } })
+  if (!row) return { ...DEFAULT_AI_SETTINGS, defaultModel: getCoachModel() }
+  return {
+    defaultProvider:  row.defaultProvider as AiProvider,
+    defaultModel:     row.defaultModel,
+    fallbackProvider: (row.fallbackProvider as AiProvider | null) ?? null,
+    fallbackModel:    row.fallbackModel ?? null,
+    costPriority:     (row.costPriority as AiSettings["costPriority"]) ?? "quality",
+    featureModels:    parseFeatureModels(row.featureModels),
+  }
+}
 
 export type MessageParam = { role: "user" | "assistant"; content: string }
 
@@ -82,12 +100,20 @@ ${patternSummary}
  * Called from the HTTP route handler after auth and rate-limit checks.
  */
 export async function streamCoachReply(opts: CoachStreamOptions): Promise<ReadableStream<Uint8Array>> {
-  const traderCtx  = await buildTraderContext(opts.userId, opts.prisma)
+  const [traderCtx, settings] = await Promise.all([
+    buildTraderContext(opts.userId, opts.prisma),
+    loadAiSettings(opts.prisma, opts.userId),
+  ])
   const systemPrompt = buildSystemPrompt(traderCtx)
 
-  return streamChat({
-    model:    getCoachModel(),
-    messages: opts.messages,
-    system:   systemPrompt,
-  })
+  // Per-feature model for chat, with a global fallback model on init failure.
+  const { primary, fallback } = resolveFeatureModel(settings, "ai_chat")
+  try {
+    return await streamChat({ model: primary.model, messages: opts.messages, system: systemPrompt })
+  } catch (err) {
+    if (fallback) {
+      return await streamChat({ model: fallback.model, messages: opts.messages, system: systemPrompt })
+    }
+    throw err
+  }
 }

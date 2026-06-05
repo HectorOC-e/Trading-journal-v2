@@ -14,6 +14,7 @@ import { profileRouter }            from "./routers/profile"
 import { preferencesRouter }        from "./routers/preferences"
 import { goalsRouter }              from "./routers/goals"
 import { aiConfigRouter }           from "./routers/ai-config"
+import { aiSettingsRouter }         from "./routers/ai-settings"
 import { tradeTagsRouter }          from "./routers/trade-tags"
 import { monthlyReviewsRouter }     from "./routers/monthly-reviews"
 
@@ -33,6 +34,7 @@ export const appRouter = router({
   preferences:       preferencesRouter,
   goals:             goalsRouter,
   aiConfig:          aiConfigRouter,
+  aiSettings:        aiSettingsRouter,
   tradeTags:         tradeTagsRouter,
 })
 

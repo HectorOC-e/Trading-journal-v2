@@ -1,7 +1,15 @@
 # AI Configuration — Interactive Survey
 > **Purpose:** Capture the user's desired AI setup before building the expanded configuration experience.
-> Fill this in (replace the `[ ]` / `→` placeholders). Answers drive the implementation in a follow-up cycle.
 > **Date:** 2026-06-04
+> **STATUS: ANSWERED → IMPLEMENTED (2026-06-04).** See `HIGH_PRIORITY_FIXES_REPORT.md` / `AI_MODELS_CONFIG_REPORT.md`.
+
+## User's answers
+- **Providers:** OpenRouter + OpenAI + Anthropic (all three).
+- **Models:** global default **or** per-feature (both supported).
+- **Priority:** Quality.
+- **Fallback:** a single global fallback model.
+
+These answers were implemented: `UserAiSettings` (global default + global fallback + per-feature overrides + cost priority), a pure `resolveFeatureModel` resolver with fallback, an `aiSettings` tRPC router, a Profile UI (Modelos de IA), and coach-service wired to the resolver with fallback-on-init.
 
 ---
 
