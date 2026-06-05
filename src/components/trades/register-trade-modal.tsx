@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp, Brain } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
   Dialog, DialogContent, DialogHeader,
@@ -14,6 +14,18 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
+
+// ── Psychology types ────────────────────────────────────────────────────────
+
+type EmotionBefore = "calm" | "anxious" | "excited" | "fearful" | "overconfident"
+
+const EMOTION_OPTIONS: { value: EmotionBefore; label: string }[] = [
+  { value: "calm",          label: "Tranquilo" },
+  { value: "anxious",       label: "Ansioso" },
+  { value: "excited",       label: "Eufórico" },
+  { value: "fearful",       label: "Temeroso" },
+  { value: "overconfident", label: "Sobreconfiado" },
+]
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -39,8 +51,14 @@ interface SetupLike {
   name: string
   abbreviation: string
   market: string
+  status?: string
   aplusChecklist: string[]
   standardChecklist: string[]
+}
+
+/** A setup can be picked only when active/in-test. Paused/discarded are read-only. */
+function isSelectableSetup(s: SetupLike): boolean {
+  return s.status !== "PAUSADO" && s.status !== "DESCARTADO"
 }
 
 interface MarketLike {
@@ -106,8 +124,15 @@ interface FormState {
   session: TradeSession
   tags: TradeTag[]
   notes: string
+  planNotes: string
   checklistItems: Record<string, boolean>
   screenshots: string[]
+  // Psychology fields (TASK-034)
+  emotionBefore: EmotionBefore | null
+  confidenceRating: number | null
+  executionQuality: number | null
+  fomoFlag: boolean
+  revengeFlag: boolean
 }
 
 const INITIAL: FormState = {
@@ -125,8 +150,15 @@ const INITIAL: FormState = {
   session: "New York",
   tags: [],
   notes: "",
+  planNotes: "",
   checklistItems: {},
   screenshots: [],
+  // Psychology fields
+  emotionBefore: null,
+  confidenceRating: null,
+  executionQuality: null,
+  fomoFlag: false,
+  revengeFlag: false,
 }
 
 // ── Auto quality tag ───────────────────────────────────────────────────────
@@ -145,14 +177,17 @@ function computeAutoTag(form: FormState, setup: SetupLike | undefined): TradeTag
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
+export type RegisterTradeFormData = FormState
+
 interface RegisterTradeModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   accounts?: AccountLike[]
   setups?: SetupLike[]
   markets?: MarketLike[]
+  customTags?: string[]
   tradeCountToday?: number
-  onSubmit?: (data: FormState) => void
+  onSubmit?: (data: RegisterTradeFormData) => void
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -163,12 +198,14 @@ export function RegisterTradeModal({
   accounts = [],
   setups = [],
   markets = [],
+  customTags = [],
   tradeCountToday = 0,
   onSubmit,
 }: RegisterTradeModalProps) {
   const [form, setForm] = useState<FormState>(INITIAL)
   const [sizeManual, setSizeManual] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [psychOpen, setPsychOpen] = useState(false)
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -540,31 +577,58 @@ export function RegisterTradeModal({
                     <p className="text-[10px] text-[var(--ink-3)] mt-1">Off-plan / impulsivo</p>
                   </button>
 
-                  {setups.map(setup => (
-                    <button
-                      key={setup.id}
-                      type="button"
-                      onClick={() => selectSetup(setup.id)}
-                      className={cn(
-                        "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
-                        form.setupId === setup.id
-                          ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                          : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
-                          {setup.abbreviation}
-                        </span>
-                        {setup.aplusChecklist.length > 0 && (
-                          <Star size={10} className="text-amber-400 fill-amber-400" />
+                  {setups.map(setup => {
+                    const selectable = isSelectableSetup(setup)
+                    const paused = setup.status === "PAUSADO"
+                    if (!selectable) {
+                      return (
+                        <div
+                          key={setup.id}
+                          aria-disabled="true"
+                          title={paused ? "Setup pausado — no disponible para registrar" : "Setup descartado — no disponible"}
+                          className="text-left rounded-[var(--radius-sm)] p-3 border border-[var(--line)] bg-[var(--panel-2)] opacity-50 cursor-not-allowed select-none"
+                        >
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: "var(--chip)", color: "var(--ink-3)" }}>
+                              {setup.abbreviation}
+                            </span>
+                            <span className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded-full"
+                              style={{ background: "var(--chip)", color: "var(--ink-3)" }}>
+                              {paused ? "PAUSADO" : "DESCARTADO"}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-[var(--ink-3)] leading-tight">{setup.name}</p>
+                          <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <button
+                        key={setup.id}
+                        type="button"
+                        onClick={() => selectSetup(setup.id)}
+                        className={cn(
+                          "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                          form.setupId === setup.id
+                            ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                            : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
                         )}
-                      </div>
-                      <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{setup.name}</p>
-                      <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
-                    </button>
-                  ))}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                            style={{ background: "var(--chip)", color: "var(--ink-2)" }}>
+                            {setup.abbreviation}
+                          </span>
+                          {setup.aplusChecklist.length > 0 && (
+                            <Star size={10} className="text-amber-400 fill-amber-400" />
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-[var(--ink)] leading-tight">{setup.name}</p>
+                        <p className="text-[10px] text-[var(--ink-3)] mt-1">{setup.market}</p>
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Checklists — both always visible */}
@@ -677,6 +741,28 @@ export function RegisterTradeModal({
                         {label}
                       </button>
                     ))}
+                    {customTags.map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          setForm(f => ({
+                            ...f,
+                            tags: (f.tags as string[]).includes(tag)
+                              ? f.tags.filter(t => t !== tag)
+                              : [...f.tags, tag as TradeTag],
+                          }))
+                        }}
+                        className={cn(
+                          "h-7 px-3 rounded-full text-xs font-medium transition-colors",
+                          (form.tags as string[]).includes(tag)
+                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
+                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {tag}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
@@ -695,13 +781,27 @@ export function RegisterTradeModal({
 
           {/* ── Advertencias ── */}
           {showWarning && (
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border-l-4 border-[var(--be)]">
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border border-[var(--be)]">
               <AlertTriangle size={14} className="text-[var(--be)] shrink-0" />
               <p className="text-xs text-[var(--be)] font-medium">
                 Posible Do-Not-Take: {tradeCountToday + 1}er trade del día
               </p>
             </div>
           )}
+
+          {/* ── Plan pre-operación (TASK-074) ── */}
+          <div>
+            <label className="text-eyebrow block mb-1.5">Plan pre-operación</label>
+            <Textarea
+              placeholder="¿Por qué vas a tomar este trade? Nivel clave, catalizador, invalidación..."
+              value={form.planNotes}
+              onChange={e => setForm(f => ({ ...f, planNotes: e.target.value.slice(0, 500) }))}
+              rows={2}
+            />
+            {form.planNotes.length > 400 && (
+              <p className="text-[10px] text-[var(--ink-3)] mt-1">{form.planNotes.length}/500</p>
+            )}
+          </div>
 
           {/* ── Notas ── */}
           <div>
@@ -711,6 +811,124 @@ export function RegisterTradeModal({
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
             />
+          </div>
+
+          {/* ── Psicología (collapsible) ── */}
+          <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--panel-2)] transition-colors"
+              onClick={() => setPsychOpen(v => !v)}
+            >
+              <Brain size={12} className="text-[var(--ink-3)]" />
+              <span className="text-eyebrow flex-1">Psicología</span>
+              <span className="text-[10px] text-[var(--ink-3)] mr-1">Opcional</span>
+              {psychOpen ? <ChevronUp size={12} className="text-[var(--ink-3)]" /> : <ChevronDown size={12} className="text-[var(--ink-3)]" />}
+            </button>
+
+            {psychOpen && (
+              <div className="px-3 pb-3 pt-1 flex flex-col gap-3 border-t border-[var(--line)] bg-[var(--panel-2)]">
+                {/* Emoción antes del trade */}
+                <div>
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Estado emocional</label>
+                  <div className="flex gap-1 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, emotionBefore: null }))}
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                        !form.emotionBefore
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                      )}
+                    >
+                      —
+                    </button>
+                    {EMOTION_OPTIONS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, emotionBefore: value }))}
+                        className={cn(
+                          "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                          form.emotionBefore === value
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Confianza + Calidad de ejecución */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Confianza (1-5)</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, confidenceRating: f.confidenceRating === n ? null : n }))}
+                          className={cn(
+                            "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                            form.confidenceRating === n
+                              ? "bg-[var(--accent)] text-white"
+                              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Calidad de ejecución (1-5)</label>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setForm(f => ({ ...f, executionQuality: f.executionQuality === n ? null : n }))}
+                          className={cn(
+                            "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
+                            form.executionQuality === n
+                              ? "bg-[var(--accent)] text-white"
+                              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                          )}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* FOMO + Revanche flags */}
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.fomoFlag}
+                      onChange={e => setForm(f => ({ ...f, fomoFlag: e.target.checked }))}
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-[var(--ink-2)]">¿FOMO?</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.revengeFlag}
+                      onChange={e => setForm(f => ({ ...f, revengeFlag: e.target.checked }))}
+                      className="accent-[var(--accent)] w-3.5 h-3.5"
+                    />
+                    <span className="text-xs text-[var(--ink-2)]">¿Revanche?</span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Screenshots ── */}

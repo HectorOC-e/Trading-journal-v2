@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { AccountLogPayload } from "@/types"
 
@@ -28,6 +29,24 @@ export const withdrawalsRouter = router({
       reference: z.string().default(""),
     }))
     .mutation(async ({ ctx, input }) => {
+      // Validate amount does not exceed current balance (QA-020)
+      const account = await ctx.prisma.account.findUniqueOrThrow({
+        where: { id: input.accountId, userId: ctx.userId },
+        select: { initialBalance: true },
+      })
+      const closedTrades = await ctx.prisma.trade.findMany({
+        where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+        select: { pnl: true },
+      })
+      const totalPnl       = closedTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+      const currentBalance = Number(account.initialBalance) + totalPnl
+      if (input.amount > currentBalance) {
+        throw new TRPCError({
+          code:    "BAD_REQUEST",
+          message: `El monto del retiro ($${input.amount}) supera el balance actual ($${currentBalance.toFixed(2)}).`,
+        })
+      }
+
       const withdrawal = await ctx.prisma.withdrawal.create({
         data: {
           userId:    ctx.userId,

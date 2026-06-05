@@ -5,8 +5,11 @@ import {
   buildPnlByDate,
   buildSessionStats,
   buildPnlBySymbol,
+  buildExecutionStats,
+  buildDiscipline,
+  buildPropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
-import type { MinimalTrade, AccountBalance } from "@/domains/analytics/services/dashboard-analytics"
+import type { MinimalTrade, AccountBalance, AccountWithLimits } from "@/domains/analytics/services/dashboard-analytics"
 
 function trade(overrides: Partial<MinimalTrade> & { id: string; date: string; pnl: number }): MinimalTrade {
   return {
@@ -300,5 +303,148 @@ describe("buildPnlBySymbol", () => {
     expect(result[0].symbol).toBe("B")
     expect(result[1].symbol).toBe("C")
     expect(result[2].symbol).toBe("A")
+  })
+})
+
+// ── buildExecutionStats (TD-018 extraction) ─────────────────────────────────
+
+describe("buildExecutionStats", () => {
+  it("empty trades → all null", () => {
+    const r = buildExecutionStats([])
+    expect(r.avgDurationMinutes).toBeNull()
+    expect(r.avgPlannedRisk).toBeNull()
+    expect(r.avgPlannedReward).toBeNull()
+    expect(r.riskRewardRatio).toBeNull()
+  })
+
+  it("computes avg duration from open/close times", () => {
+    const r = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, openTime: "09:00", closeTime: "09:30" }), // 30m
+      trade({ id: "2", date: "2026-05-01", pnl: 10, openTime: "10:00", closeTime: "11:00" }), // 60m
+    ])
+    expect(r.avgDurationMinutes).toBe(45)
+  })
+
+  it("ignores non-positive durations", () => {
+    const r = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, openTime: "10:00", closeTime: "09:00" }), // negative
+      trade({ id: "2", date: "2026-05-01", pnl: 10, openTime: "10:00", closeTime: "10:20" }), // 20m
+    ])
+    expect(r.avgDurationMinutes).toBe(20)
+  })
+
+  it("computes planned risk, reward, and R:R ratio", () => {
+    // entry 1.10, stop 1.09, target 1.12, size 10 → risk=0.01*10=0.1, reward=0.02*10=0.2
+    const r = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, entry: 1.10, stop: 1.09, target: 1.12, size: 10 }),
+    ])
+    expect(r.avgPlannedRisk).toBeCloseTo(0.1, 5)
+    expect(r.avgPlannedReward).toBeCloseTo(0.2, 5)
+    expect(r.riskRewardRatio).toBeCloseTo(2, 4)
+  })
+})
+
+// ── buildDiscipline (TD-018 extraction) ─────────────────────────────────────
+
+describe("buildDiscipline", () => {
+  it("empty trades → zeroed summary", () => {
+    const d = buildDiscipline([], 0)
+    expect(d.heatmapData).toEqual([])
+    expect(d.violations).toEqual([])
+    expect(d.rachaDiasLimpios).toBe(0)
+    expect(d.composition).toEqual({ planSeguido: 0, offPlan: 0, partial: 0 })
+    expect(d.rDistribution).toHaveLength(8)
+  })
+
+  it("heatmap picks worst severity per day (off-plan=2 > loss=1 > clean=0)", () => {
+    const d = buildDiscipline([
+      trade({ id: "1", date: "2026-05-01", pnl:  50 }),                       // clean
+      trade({ id: "2", date: "2026-05-01", pnl: -50, tags: ["Off-plan"] }),   // off-plan
+      trade({ id: "3", date: "2026-05-02", pnl: -50 }),                       // loss
+    ], 3)
+    const day1 = d.heatmapData.find(h => h.date === "2026-05-01")
+    const day2 = d.heatmapData.find(h => h.date === "2026-05-02")
+    expect(day1?.severity).toBe(2)
+    expect(day2?.severity).toBe(1)
+  })
+
+  it("tallies violations by tag and filters zero-counts", () => {
+    const d = buildDiscipline([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, tags: ["Impulsivo"] }),
+      trade({ id: "2", date: "2026-05-01", pnl: 10, tags: ["Revanche"] }),
+      trade({ id: "3", date: "2026-05-01", pnl: 10, setupId: "s1" }),
+    ], 3)
+    const rules = Object.fromEntries(d.violations.map(v => [v.rule, v.count]))
+    expect(rules["Flag impulsivo manual"]).toBe(1)
+    expect(rules["Revanche / revenge trade"]).toBe(1)
+    expect(rules["Sin setup asignado"]).toBe(2) // trades 1 & 2 have no setupId
+    expect(rules["Off-plan"]).toBeUndefined()   // zero → filtered out
+  })
+
+  it("clean-day streak breaks on most recent off-plan day", () => {
+    const d = buildDiscipline([
+      trade({ id: "1", date: "2026-05-03", pnl: 10 }),                     // clean (latest)
+      trade({ id: "2", date: "2026-05-02", pnl: 10 }),                     // clean
+      trade({ id: "3", date: "2026-05-01", pnl: -10, tags: ["Impulsivo"] }), // dirty
+    ], 3)
+    expect(d.rachaDiasLimpios).toBe(2)
+  })
+
+  it("A+ vs standard win-rate split", () => {
+    const d = buildDiscipline([
+      trade({ id: "1", date: "2026-05-01", pnl:  10, tags: ["A+"] }), // A+ win
+      trade({ id: "2", date: "2026-05-01", pnl: -10, tags: ["A+"] }), // A+ loss
+      trade({ id: "3", date: "2026-05-01", pnl:  10 }),               // std win
+    ], 3)
+    expect(d.aplusStats.aplusCount).toBe(2)
+    expect(d.aplusStats.stdCount).toBe(1)
+    expect(d.aplusStats.aplusWr).toBe(50)
+    expect(d.aplusStats.stdWr).toBe(100)
+  })
+
+  it("cost of indiscipline sums P&L of off-plan trades only", () => {
+    const d = buildDiscipline([
+      trade({ id: "1", date: "2026-05-01", pnl: -30, tags: ["Off-plan"] }),
+      trade({ id: "2", date: "2026-05-01", pnl: -20, tags: ["Impulsivo"] }),
+      trade({ id: "3", date: "2026-05-01", pnl:  50 }), // clean — excluded
+    ], 3)
+    expect(d.costoIndisciplina).toBe(-50)
+  })
+})
+
+// ── buildPropFirmStatus (HALLAZGO 1A — actual DD% vs limit) ──────────────────
+
+describe("buildPropFirmStatus", () => {
+  const propAccount: AccountWithLimits = {
+    id: "acc-1", name: "FTMO", type: "PROP_FIRM",
+    initialBalance: 10_000, ddDailyPct: 5, ddTotalPct: 10,
+    maxTradesPerDay: null, allowedSymbols: [],
+  }
+
+  it("reports actual drawdown % and limit, plus utilization", () => {
+    // Max drawdown of $500 on $10k = 5% actual; limit 10% → 50% utilized
+    const closed = [
+      trade({ id: "1", date: "2026-05-01", pnl:  200 }),
+      trade({ id: "2", date: "2026-05-02", pnl: -500 }), // trough
+    ]
+    const [s] = buildPropFirmStatus([propAccount], closed, [])
+    expect(s.ddActualPct).toBeCloseTo(5, 1)   // (peak 200 → -300) drawdown 500 = 5%
+    expect(s.ddLimitPct).toBe(10)
+    expect(s.ddPctUsed).toBeCloseTo(50, 0)    // 5% / 10% limit
+  })
+
+  it("reports actual daily loss % and limit from today's trades", () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const closed = [trade({ id: "1", date: today, pnl: -250 })]
+    const todayTrades = [{ accountId: "acc-1", pnl: -250, status: "CLOSED" }]
+    const [s] = buildPropFirmStatus([propAccount], closed, todayTrades)
+    expect(s.dailyActualPct).toBeCloseTo(2.5, 1) // 250/10k
+    expect(s.dailyLimitPct).toBe(5)
+    expect(s.dailyLossPct).toBeCloseTo(50, 0)    // 2.5% / 5%
+  })
+
+  it("only includes prop-firm-type accounts", () => {
+    const personal: AccountWithLimits = { ...propAccount, id: "p", type: "PERSONAL" }
+    expect(buildPropFirmStatus([personal], [], [])).toHaveLength(0)
   })
 })

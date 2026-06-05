@@ -37,6 +37,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
+  // Pass userId as header so tRPC context can skip a redundant auth.getUser() call
+  if (user) {
+    response.headers.set("x-user-id", user.id)
+  }
+
   return response
 }
 

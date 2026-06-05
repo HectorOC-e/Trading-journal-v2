@@ -1,0 +1,4 @@
+
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS weekly_goal_minutes INTEGER DEFAULT 300,
+  ADD COLUMN IF NOT EXISTS email_notifications BOOLEAN DEFAULT true;

@@ -1,0 +1,3 @@
+ALTER TABLE learning_resources
+  ADD COLUMN IF NOT EXISTS week_delta_minutes INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS week_delta_reset_at TIMESTAMPTZ;

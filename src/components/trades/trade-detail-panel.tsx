@@ -430,27 +430,23 @@ export function TradeDetailPanel({
             </p>
             {(account.ddTotalPct != null || account.ddDailyPct != null) && (
               <div className="mt-2 pt-2 border-t border-[var(--line)]">
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   {account.ddTotalPct != null && (
-                    <div className="flex-1">
-                      <p className="text-[9px] text-[var(--ink-3)] mb-1">DD máx</p>
-                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                        <div className="h-full rounded-full bg-[var(--loss)]" style={{ width: "20%" }} />
-                      </div>
-                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                        2% / {account.ddTotalPct}%
-                      </p>
+                    <div>
+                      <p className="text-[9px] text-[var(--ink-3)] mb-1">Límite DD</p>
+                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
+                        {account.ddTotalPct}%
+                      </span>
                     </div>
                   )}
                   {account.ddDailyPct != null && (
-                    <div className="flex-1">
+                    <div>
                       <p className="text-[9px] text-[var(--ink-3)] mb-1">Pérd. diaria</p>
-                      <div className="h-1.5 rounded-full bg-[var(--chip)] overflow-hidden">
-                        <div className="h-full rounded-full bg-[var(--be)]" style={{ width: "10%" }} />
-                      </div>
-                      <p className="text-[9px] text-[var(--ink-3)] mt-0.5">
-                        0.5% / {account.ddDailyPct}%
-                      </p>
+                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded"
+                        style={{ background: "var(--be-soft)", color: "var(--be)" }}>
+                        {account.ddDailyPct}%
+                      </span>
                     </div>
                   )}
                 </div>
@@ -541,6 +537,63 @@ export function TradeDetailPanel({
               <Badge key={tag} variant={TAG_VARIANT[tag as TradeTag] ?? "default"}>{tag}</Badge>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* ── Psicología ── */}
+      {(() => {
+        const hasPsych = trade.emotionBefore || trade.confidenceRating != null || trade.executionQuality != null || trade.fomoFlag || trade.revengeFlag
+        if (!hasPsych) return null
+        const EMOTION_LABELS: Record<string, string> = {
+          calm: "Tranquilo", anxious: "Ansioso", excited: "Eufórico",
+          fearful: "Temeroso", overconfident: "Sobreconfiado",
+        }
+        return (
+          <div>
+            <p className="text-eyebrow mb-2">Psicología</p>
+            <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-2">
+              {trade.emotionBefore && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Estado emocional</span>
+                  <span className="text-xs font-medium text-[var(--ink)]">
+                    {EMOTION_LABELS[trade.emotionBefore] ?? trade.emotionBefore}
+                  </span>
+                </div>
+              )}
+              {trade.confidenceRating != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Confianza</span>
+                  <span className="text-xs font-medium font-mono text-[var(--ink)]">{trade.confidenceRating}/5</span>
+                </div>
+              )}
+              {trade.executionQuality != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--ink-3)]">Calidad ejecución</span>
+                  <span className="text-xs font-medium font-mono text-[var(--ink)]">{trade.executionQuality}/5</span>
+                </div>
+              )}
+              {(trade.fomoFlag || trade.revengeFlag) && (
+                <div className="flex gap-2 flex-wrap pt-1">
+                  {trade.fomoFlag && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">FOMO</span>
+                  )}
+                  {trade.revengeFlag && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">Revanche</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ── Plan pre-operación (TASK-074) ── */}
+      {(trade as { planNotes?: string | null }).planNotes && (
+        <div>
+          <p className="text-eyebrow mb-2">Plan pre-operación</p>
+          <p className="text-xs text-[var(--ink-2)] leading-relaxed bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)]">
+            {(trade as { planNotes?: string | null }).planNotes}
+          </p>
         </div>
       )}
 

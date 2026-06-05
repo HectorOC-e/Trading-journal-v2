@@ -13,10 +13,15 @@ function makeMockPrisma() {
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
-      findUniqueOrThrow: vi.fn(),
+      // Default: account with initialBalance > amount so balance check passes
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ initialBalance: 100000 }),
     },
     accountLog: {
       create: vi.fn(),
+    },
+    trade: {
+      // Default: no closed trades so P&L is 0
+      findMany: vi.fn().mockResolvedValue([]),
     },
     withdrawal: {
       findMany: vi.fn(),

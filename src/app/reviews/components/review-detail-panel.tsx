@@ -27,14 +27,14 @@ function formatPnl(pnl: number): string {
   return pnl >= 0 ? `+$${pnl.toLocaleString()}` : `-$${Math.abs(pnl).toLocaleString()}`
 }
 
-function SectionBlock({ emoji, title, text }: { emoji: string; title: string; text: string }) {
+function SectionBlock({ title, text }: { title: string; text: string }) {
   const items = text.split("\n").map((l) => l.replace(/^•\s*/, "").trim()).filter(Boolean)
   const isBullets = text.includes("•") || text.includes("\n")
 
   return (
     <div className="mb-5">
       <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>
-        {emoji} {title}
+        {title}
       </p>
       {isBullets ? (
         <ul className="space-y-1.5">
@@ -164,9 +164,9 @@ export function ReviewDetailPanel({
       <div className="grid grid-cols-4 gap-0" style={{ borderBottom: "1px solid var(--line)" }}>
         {[
           { label: "Trades",    value: review.tradeCount.toString(),    color: "var(--ink)" },
-          { label: "Net P&L",   value: formatPnl(review.netPnl),        color: pnlColor(review.netPnl) },
-          { label: "Win Rate",  value: `${review.winRate.toFixed(0)}%`, color: review.winRate >= 55 ? "var(--win)" : "var(--loss)" },
-          { label: "Disciplina", value: `${review.disciplineScore}`,    color: disciplineColor(review.disciplineScore) },
+          { label: "Net P&L",   value: review.tradeCount > 0 ? formatPnl(review.netPnl) : "—", color: pnlColor(review.netPnl) },
+          { label: "Win Rate",  value: review.tradeCount > 0 ? `${review.winRate.toFixed(0)}%` : "—", color: review.winRate >= 55 ? "var(--win)" : "var(--loss)" },
+          { label: "Disciplina", value: review.tradeCount > 0 ? `${review.disciplineScore}` : "—", color: disciplineColor(review.disciplineScore) },
         ].map(({ label, value, color }, i) => (
           <div key={label} className="flex flex-col items-center py-3" style={{ borderRight: i < 3 ? "1px solid var(--line)" : undefined }}>
             <span className="font-mono font-bold text-sm" style={{ color }}>{value}</span>
@@ -176,10 +176,10 @@ export function ReviewDetailPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
-        <SectionBlock emoji="📋" title="Resumen ejecutivo" text={review.executiveSummary} />
+        <SectionBlock title="Resumen ejecutivo" text={review.executiveSummary} />
 
         <div className="mb-5">
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>✅ Qué funcionó bien</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Qué funcionó bien</p>
           <div className="rounded-lg p-3" style={{ background: "var(--win-soft)" }}>
             {review.whatWorked.split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean).map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
@@ -191,7 +191,7 @@ export function ReviewDetailPanel({
         </div>
 
         <div className="mb-5">
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>🔧 A mejorar</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>A mejorar</p>
           <div className="rounded-lg p-3" style={{ background: "var(--loss-soft)" }}>
             {review.toImprove.split("\n").map((l: string) => l.replace(/^•\s*/, "").trim()).filter(Boolean).map((item: string, i: number) => (
               <div key={i} className="flex items-start gap-2 mb-1.5 last:mb-0">
@@ -203,7 +203,7 @@ export function ReviewDetailPanel({
         </div>
 
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>📊 Trades de la semana</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Trades de la semana</p>
           <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
             <table className="w-full text-xs">
               <thead>
@@ -236,7 +236,28 @@ export function ReviewDetailPanel({
             </table>
           </div>
         </div>
+
+        {/* "Última edición" timestamp — shown only when review was edited after creation */}
+        {review.updatedAt !== review.createdAt && !isDraft && (
+          <div
+            className="px-5 py-2 text-[10px] border-t"
+            style={{ borderColor: "var(--line)", color: "var(--ink-3)" }}
+          >
+            Última edición: {formatRelativeTime(review.updatedAt)}
+          </div>
+        )}
       </div>
     </div>
   )
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs  = Date.now() - new Date(iso).getTime()
+  const diffMin = Math.floor(diffMs / 60_000)
+  if (diffMin < 1)  return "hace un momento"
+  if (diffMin < 60) return `hace ${diffMin} min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24)   return `hace ${diffH} h`
+  const diffD = Math.floor(diffH / 24)
+  return `hace ${diffD} día${diffD > 1 ? "s" : ""}`
 }

@@ -235,38 +235,45 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       </div>
 
       {/* ── Table ── */}
-      <div style={{
-        background: "var(--panel)", border: "1px solid var(--line)",
-        borderTop: "none",
-        borderRadius: "0 0 var(--radius) var(--radius)",
-        overflow: "hidden",
-      }}>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
+      <div
+        className="bg-[var(--panel)] border border-[var(--line)] rounded-b-[var(--radius)]"
+        style={{ borderTop: "none" }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse" style={{ minWidth: 520 }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid var(--line)", background: "var(--panel-2)" }}>
-                {["", "Símbolo · Setup", "Cuenta", "Fecha", "Sesión", "R", "P&L", "Calidad"].map((h, i) => (
-                  <th
-                    key={`${h}-${i}`}
-                    style={{
-                      padding: i === 0 ? "10px 8px 10px 0" : "10px 8px",
-                      textAlign: i >= 5 ? "right" : "left",
-                      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                      letterSpacing: ".07em", color: "var(--ink-3)",
-                      paddingRight: i === 7 ? 16 : 8,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
+              <tr className="border-b border-[var(--line)] bg-[var(--panel-2)]">
+                <th className="pl-4 pr-2 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap w-[80px]">
+                  Dir / Res
+                </th>
+                <th className="px-2 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap">
+                  Símbolo
+                </th>
+                <th className="px-2 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap hidden sm:table-cell">
+                  Cuenta
+                </th>
+                <th className="px-2 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap hidden md:table-cell">
+                  Fecha
+                </th>
+                <th className="px-2 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap hidden lg:table-cell">
+                  Sesión
+                </th>
+                <th className="px-2 py-2.5 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap hidden sm:table-cell">
+                  R
+                </th>
+                <th className="px-2 py-2.5 text-right text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap">
+                  P&amp;L
+                </th>
+                <th className="px-2 pl-2 pr-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap hidden md:table-cell">
+                  Calidad
+                </th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: "40px 16px", textAlign: "center", fontSize: 13, color: "var(--ink-3)" }}>
-                    No hay trades con estos filtros.
+                  <td colSpan={8} className="py-10 px-4 text-center text-[13px] text-[var(--ink-3)]">
+                    Sin trades con estos filtros.
                   </td>
                 </tr>
               ) : (

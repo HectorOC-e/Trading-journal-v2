@@ -14,7 +14,7 @@
 | Sprint 2 | W2–W3 | Formula fixes | ✅ Complete | 9 debt items closed | 232 passing |
 | Sprint 3 | W3–W4 | Profile backend | ✅ Complete | 1 debt item, +24 tests | 256 passing |
 | **Pre-Sprint 4** | 2026-06-02 | QA audit of Sprints 1–3 | ✅ Complete | 8 QA findings fixed, +5 tests | 354 passing |
-| Sprint 4 | Pending | Reviews, Psychology, Personalization | ⏳ Planned | 6 tasks (TASK-030, 031, 034, 047, 045, 011) | — |
+| **Sprint 4** | 2026-06-02 | Reviews, Psychology, Personalization | ✅ Complete | 0 Blocking / 5 Major / 6 Minor / 4 Nitpick | 364 passing |
 
 ---
 

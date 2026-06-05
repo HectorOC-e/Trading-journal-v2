@@ -14,8 +14,11 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {propFirmStatus.map(a => (
           <div key={a.accountId}
-            className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-3"
-            style={{ borderLeft: `3px solid ${a.status === "OK" ? "var(--win)" : "var(--loss)"}` }}>
+            className="rounded-[var(--radius-sm)] p-4 flex flex-col gap-3"
+            style={{
+              border: `1px solid ${a.status === "OK" ? "var(--win)" : "var(--loss)"}`,
+              background: a.status === "OK" ? "var(--win-soft)" : "var(--loss-soft)",
+            }}>
             <div className="flex items-center justify-between">
               <p className="text-[13px] font-semibold text-[var(--ink)]">{a.name}</p>
               <span className="text-[10px] font-bold tracking-wider"
@@ -23,8 +26,8 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
                 {a.status}
               </span>
             </div>
-            <RuleBar label="Max drawdown total" usedPct={a.ddPctUsed} displayRight={`${a.ddPctUsed.toFixed(1)}%`} />
-            <RuleBar label="Pérdida diaria"      usedPct={a.dailyLossPct} displayRight={`${a.dailyLossPct.toFixed(1)}%`} />
+            <RuleBar label="Max drawdown total" usedPct={a.ddPctUsed}    displayRight={`${a.ddActualPct.toFixed(1)}% / ${a.ddLimitPct.toFixed(1)}%`} />
+            <RuleBar label="Pérdida diaria"      usedPct={a.dailyLossPct} displayRight={`${a.dailyActualPct.toFixed(1)}% / ${a.dailyLimitPct.toFixed(1)}%`} />
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] text-[var(--ink-2)]">Trades / día</span>

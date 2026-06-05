@@ -1,32 +1,56 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
 
-/* ── Design Tokens — fiel al spec ── */
+/* ── Design Tokens ── */
 :root {
-  --bg:          #F6F5F1;
+  /* Precision neutral — tinted toward accent hue (264° blue-violet), not warm cream.
+     bg is #F8FAFC equivalent in oklch with a barely-perceptible accent tint. */
+  --bg:          oklch(98.5% 0.005 264);
   --panel:       #FFFFFF;
-  --panel-2:     #FAFAF7;
-  --ink:         #16140F;
-  --ink-2:       #45413A;
-  --ink-3:       #8A8678;
-  --line:        #ECEAE2;
-  --line-2:      #E2DFD4;
-  --chip:        #F2EFE7;
-  --accent:      oklch(58% 0.16 264);
-  --accent-soft: oklch(95% 0.03 264);
-  --win:         oklch(63% 0.16 152);
-  --win-soft:    oklch(94% 0.06 152);
-  --loss:        oklch(60% 0.20 27);
-  --loss-soft:   oklch(94% 0.06 27);
-  --be:          oklch(75% 0.14 85);
-  --be-soft:     oklch(95% 0.06 85);
-  --radius:      14px;
-  --radius-sm:   10px;
+  --panel-2:     oklch(97.5% 0.004 264);
+  --ink:         oklch(14% 0.018 264);
+  --ink-2:       oklch(38% 0.015 264);
+  --ink-3:       oklch(60% 0.010 264);
+  --line:        oklch(91% 0.007 264);
+  --line-2:      oklch(87% 0.009 264);
+  --chip:        oklch(94% 0.006 264);
+
+  /* Accent: precise blue-violet — same hue, calibrated saturation */
+  --accent:      oklch(56% 0.18 264);
+  --accent-h:    oklch(51% 0.20 264);
+  --accent-soft: oklch(94% 0.04 264);
+
+  /* Semantic outcome colors — calibrated for trading context */
+  --win:         oklch(60% 0.17 148);
+  --win-soft:    oklch(95% 0.04 148);
+  --loss:        oklch(58% 0.22 25);
+  --loss-soft:   oklch(95% 0.04 25);
+  --be:          oklch(72% 0.13 88);
+  --be-soft:     oklch(96% 0.04 88);
+
+  --radius:      10px;
+  --radius-sm:   7px;
+  --radius-xs:   5px;
+  --radius-lg:   14px;
+
+  /* Shadows — calibrated for precision neutral bg */
+  --shadow-xs: 0 1px 2px oklch(14% 0.018 264 / 0.05);
+  --shadow-sm: 0 1px 4px oklch(14% 0.018 264 / 0.07), 0 2px 8px oklch(14% 0.018 264 / 0.04);
+  --shadow-md: 0 4px 12px oklch(14% 0.018 264 / 0.09), 0 2px 4px oklch(14% 0.018 264 / 0.05);
+  --shadow-lg: 0 8px 24px oklch(14% 0.018 264 / 0.11), 0 4px 8px oklch(14% 0.018 264 / 0.05);
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:  cubic-bezier(0.4, 0, 1, 1);
+
+  /* Chart colors */
   --chart-1: #4f6ef7;
   --chart-2: #2d7a3a;
   --chart-3: #b87d2d;
   --chart-4: #b83232;
   --chart-5: #c4622d;
+
+  /* Learning category colors */
   --cat-libro:       #4f6ef7;
   --cat-video:       #9b59b6;
   --cat-nota:        #22c55e;
@@ -37,19 +61,25 @@
 }
 
 .dark {
-  --bg:          #0E0C09;
-  --panel:       #16140F;
-  --panel-2:     #1B1813;
-  --ink:         #F5F2EA;
-  --ink-2:       #C7C2B5;
-  --ink-3:       #807A6B;
-  --line:        #25221C;
-  --line-2:      #2F2C24;
-  --chip:        #25221C;
-  --accent-soft: #1A1C2A;
-  --win-soft:    #14201A;
-  --loss-soft:   #251514;
-  --be-soft:     #25201A;
+  /* Dark mode: precision near-black with subtle accent tint */
+  --bg:          oklch(11% 0.014 264);
+  --panel:       oklch(14% 0.014 264);
+  --panel-2:     oklch(17% 0.014 264);
+  --ink:         oklch(94% 0.008 264);
+  --ink-2:       oklch(76% 0.010 264);
+  --ink-3:       oklch(52% 0.010 264);
+  --line:        oklch(22% 0.014 264);
+  --line-2:      oklch(26% 0.015 264);
+  --chip:        oklch(22% 0.014 264);
+  --accent-soft: oklch(22% 0.06 264);
+  --win-soft:    oklch(18% 0.06 148);
+  --loss-soft:   oklch(18% 0.06 25);
+  --be-soft:     oklch(18% 0.05 88);
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.20);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.16);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.32), 0 2px 4px rgba(0,0,0,0.20);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.24);
 }
 
 @theme inline {
@@ -75,6 +105,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html { scroll-behavior: smooth; }
 html, body { height: 100%; }
 
 body {
@@ -82,11 +113,46 @@ body {
   color: var(--ink);
   font-family: "Inter", sans-serif;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* ── Shell layout — fiel al spec: 240px sidebar + 1fr main + 340px rail ── */
+/* ── Global focus-visible baseline — keyboard users get Calibrated Indigo rings everywhere ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Focus visible — consistent ring across all interactive elements ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* ── Modal keyframes (referenced by Dialog) ── */
+@keyframes fadeIn  { from { opacity: 0; }             to { opacity: 1; } }
+@keyframes scaleIn { from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-3); }
+
+/* ── Shell layout ── */
 .shell {
   display: flex;
   min-height: 100vh;
@@ -112,7 +178,7 @@ body {
 .main-content {
   flex: 1;
   min-width: 0;
-  padding: 28px 32px;
+  padding: 24px 28px;
   overflow-y: auto;
   background: var(--bg);
   min-height: 100vh;
@@ -127,25 +193,117 @@ body {
   border-left: 1px solid var(--line);
 }
 
-/* ── Typography ── */
+/* ── Typography utilities ── */
 .eyebrow {
-  font-size: 10.5px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .10em;
   color: var(--ink-3);
   font-weight: 600;
 }
-
-/* keep backward compat alias */
-.text-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-3); font-weight: 600; }
+.text-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: .10em; color: var(--ink-3); font-weight: 600; }
 .mono { font-family: "JetBrains Mono", monospace; }
 
-/* ── Responsive ── */
+/* ── Numeric data — tabular figures prevent layout shift ── */
+.num {
+  font-family: "JetBrains Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
 
+/* Every font-mono usage in this app is financial data — enforce tabular-nums globally */
+.font-mono {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ── Shimmer animation (skeleton screens) ── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--chip) 25%,
+    var(--line) 50%,
+    var(--chip) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ── Fade in ── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in { animation: fade-in 0.2s var(--ease-out) both; }
+
+/* ── Scale pop ── */
+@keyframes scale-pop {
+  0%   { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.scale-pop { animation: scale-pop 0.18s var(--ease-out) both; }
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Card atom ── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.card-hover {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.card-hover:hover {
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Data table ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.data-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+  color: var(--ink-2);
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--panel-2); }
+
+/* ── Responsive ── */
 @media (max-width: 767px) {
-  /* En mobile el body scrollea — no main-content.
-     Esto es crítico para que position:fixed (header y bottom nav) funcione
-     correctamente en iOS Safari y Android Chrome. */
   html, body {
     height: auto !important;
     min-height: 0 !important;
@@ -160,31 +318,96 @@ body {
     padding: 16px;
     padding-top: calc(52px + 16px);
     padding-bottom: 72px;
-    overflow-y: visible;   /* body scrollea, no este contenedor */
+    overflow-y: visible;
     overflow-x: hidden;
     min-height: 0 !important;
     height: auto;
   }
-  /* Detail panels: full-screen sheets sobre el contenido */
   .detail-panel-mobile {
     position: fixed !important;
     inset: 52px 0 56px 0 !important;
     width: 100% !important;
     max-height: none !important;
     z-index: 40;
-    overflow-y: scroll;           /* scroll (not auto) required for iOS momentum */
+    overflow-y: scroll;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     border-left: none !important;
     border-top: 1px solid var(--line) !important;
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.16);
   }
   .rail-aside { display: none !important; }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .main-content {
-    padding: 20px;
+    padding: 20px 24px;
     overflow-x: hidden;
   }
 }
+
+@media (min-width: 1440px) {
+  .main-content {
+    padding: 28px 36px;
+  }
+}
+
+/* ── Status dot ── */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Metric value — fixed size, tabular ── */
+.metric-value {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ── Section divider ── */
+.section-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 20px 0;
+}
+
+/* ── Input group label ── */
+.input-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 5px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Compact chip ── */
+.compact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--chip);
+  color: var(--ink-2);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ── Z-index scale ── */
+/* dropdown   10 */
+/* sticky     20 */
+/* overlay    30 */
+/* modal-bg   40 */
+/* modal      50 */
+/* toast      60 */
+/* tooltip    70 */

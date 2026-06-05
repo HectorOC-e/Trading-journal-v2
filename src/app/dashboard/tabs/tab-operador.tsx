@@ -16,8 +16,8 @@ type AccountMeta    = RouterOutputs["accounts"]["list"][number]
 
 const TRADE_FILTERS = ["Todos", "A+", "Plan seguido", "Off-plan", "Con violación"]
 
-type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
-const PERIODS: Period[] = ["1M", "3M", "6M", "1Y", "ALL"]
+type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
+const PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
 
 export function TabOperador({
   kpis, accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts, period, onPeriodChange,
@@ -40,7 +40,7 @@ export function TabOperador({
   const accountCards = useMemo(() => {
     return accountStats.map(s => {
       const a    = accounts.find(acc => acc.id === s.accountId)
-      const meta = TYPE_META[a?.type ?? "PERSONAL"] ?? { color: "#6b7280", label: "—", icon: "📊" }
+      const meta = TYPE_META[a?.type ?? "PERSONAL"] ?? { color: "#6b7280", label: "—" }
       return {
         ...s,
         name:      a?.name   ?? s.accountId,

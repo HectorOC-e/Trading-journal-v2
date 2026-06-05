@@ -16,6 +16,8 @@ export type AccountLogPayload =
   | { event: "STATUS_CHANGE";      from: string; to: string; note: string }
   | { event: "NOTE";               text: string }
   | { event: "BALANCE_CORRECTION"; variance: number; note: string }
+  | { event: "LOCKED";             reason: string; limitPct?: number; currentPct?: number; auto: boolean }
+  | { event: "UNLOCKED";           note: string }
 
 // ── Derived from design-spec modal fields and anatomy sections ──
 
@@ -61,38 +63,10 @@ export type ResourceStatus =
   | "MASTERED"
   | "ABANDONED"
 
-// Manual interface kept for components that depend on ResourceType narrowing.
-// SerializedLearningResource (above) is the RouterOutputs-derived canonical type.
-export interface LearningResource {
-  id: string
-  title: string
-  type: ResourceType
-  author: string
-  source: "Propio" | "Externa" | string
-  date: string
-  notes: string
-  tags: string[]
-  markedForReview: boolean
-  progressPct?: number | null
-  createdAt: string
-  updatedAt: string
-  // Fields added in TASK-L003
+// TD-014: Derived from RouterOutputs with narrowed enum types for component safety.
+export type LearningResource = Omit<SerializedLearningResource, "type" | "status"> & {
+  type:   ResourceType
   status: ResourceStatus
-  progressType?: string | null
-  totalUnits?: number | null
-  currentUnits?: number | null
-  avgScore?: number | null
-  nextReviewAt?: string | null
-  reviewInterval?: number | null
-  isFavorite: boolean
-  rating?: number | null
-  completedAt?: string | null
-  // Fields added in TASK-L013
-  linkedSetups?: { id: string; name: string }[]
-  // Fields added in TASK-L019
-  archiveReason?: string | null
-  // Fields added in TASK-L020
-  lastReviewAt?: string | null
 }
 
 export interface Rule {

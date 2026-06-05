@@ -1,9 +1,44 @@
 import { describe, it, expect } from "vitest"
 import {
   checkDailyLossLimit,
+  checkLossLimit,
   checkTradeCountLimit,
   checkSymbolAllowlist,
 } from "@/domains/trading/services/prop-firm-guard"
+
+// ── checkLossLimit (HALLAZGO 1B — generic daily/weekly/monthly) ─────────────
+
+describe("checkLossLimit", () => {
+  it("null when no limit configured", () => {
+    expect(checkLossLimit("WEEKLY", -5000, 10_000, null)).toBeNull()
+    expect(checkLossLimit("WEEKLY", -5000, 10_000, 0)).toBeNull()
+  })
+
+  it("null when initial balance is non-positive", () => {
+    expect(checkLossLimit("MONTHLY", -500, 0, 5)).toBeNull()
+  })
+
+  it("no violation when loss below limit", () => {
+    expect(checkLossLimit("WEEKLY", -300, 10_000, 5)).toBeNull()
+  })
+
+  it("weekly violation at exactly the limit", () => {
+    const r = checkLossLimit("WEEKLY", -500, 10_000, 5)
+    expect(r?.type).toBe("WEEKLY_LOSS_LIMIT")
+    if (r?.type === "WEEKLY_LOSS_LIMIT") {
+      expect(r.limitPct).toBe(5)
+      expect(r.currentPct).toBeCloseTo(5, 5)
+    }
+  })
+
+  it("monthly violation when loss exceeds limit", () => {
+    expect(checkLossLimit("MONTHLY", -1200, 10_000, 10)?.type).toBe("MONTHLY_LOSS_LIMIT")
+  })
+
+  it("positive period P&L never violates", () => {
+    expect(checkLossLimit("DAILY", 800, 10_000, 2)).toBeNull()
+  })
+})
 
 // ── checkDailyLossLimit ───────────────────────────────────────────────────
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 
@@ -8,6 +9,42 @@ function sessionCellColor(pct: number) {
   if (pct >= 65) return { bg: "rgba(34,197,94,0.20)",  text: "var(--win)"  }
   if (pct >= 50) return { bg: "rgba(232,150,42,0.20)", text: "var(--be)"   }
   return           { bg: "rgba(224,85,85,0.20)",  text: "var(--loss)" }
+}
+
+// TASK-064: Setup health indicator dot
+import type { SetupHealthStatus } from "@/lib/formulas/setup"
+
+const HEALTH_CONFIG: Record<SetupHealthStatus, { dot: string; label: string; color: string }> = {
+  healthy:      { dot: "🟢", label: "Saludable",    color: "var(--win)"  },
+  warning:      { dot: "🟡", label: "Atención",     color: "var(--be)"   },
+  critical:     { dot: "🔴", label: "Crítico",      color: "var(--loss)" },
+  insufficient: { dot: "⚪", label: "Insuficiente", color: "var(--ink-3)" },
+}
+
+function SetupHealthDot({ health, winRate, avgR, expectedWr, expectedAvgR }: {
+  health:       SetupHealthStatus
+  winRate:      number
+  avgR:         number
+  expectedWr:   number | null
+  expectedAvgR: number | null
+}) {
+  const cfg = HEALTH_CONFIG[health]
+  const tooltip = health === "insufficient"
+    ? "Menos de 5 trades — insuficiente para evaluar"
+    : [
+        expectedWr   != null ? `WR: ${winRate.toFixed(0)}% (esp. ${expectedWr.toFixed(0)}%)` : null,
+        expectedAvgR != null ? `Avg R: ${avgR.toFixed(2)} (esp. ${expectedAvgR.toFixed(2)})` : null,
+      ].filter(Boolean).join(" · ") || cfg.label
+
+  return (
+    <span
+      className="text-[14px] shrink-0 cursor-default select-none"
+      title={`${cfg.label} · ${tooltip}`}
+      aria-label={`Salud del setup: ${cfg.label}`}
+    >
+      {cfg.dot}
+    </span>
+  )
 }
 
 function checklistColor(pct: number) {
@@ -91,6 +128,7 @@ function LifecycleSuggestions() {
 }
 
 export function TabPlaybook() {
+  const router = useRouter()
   const { data, isLoading } = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
 
   const setupStats     = data?.setupStats     ?? []
@@ -128,13 +166,12 @@ export function TabPlaybook() {
       {playbookSummary && (
         <div className="flex flex-wrap gap-2">
           {[
-            { icon: "📊", label: "Más usado",    text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
-            { icon: "💰", label: "Más rentable",  text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
-            { icon: "🔥", label: "En racha",       text: playbookSummary.setupInStreak.currentStreak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.currentStreak}W` : "—", color: "var(--be)" },
-            { icon: "⭐", label: "Mejor A+",       text: `${playbookSummary.bestAplus.abbr} · ${playbookSummary.bestAplus.aplusRate.toFixed(2)}%`, color: "var(--accent)" },
-          ].map(({ icon, label, text, color }) => (
+            { label: "Más usado",    text: `${playbookSummary.mostUsed.abbr} · ${playbookSummary.mostUsed.trades} trades`, color: "#4f6ef7" },
+            { label: "Más rentable",  text: `${playbookSummary.mostProfitable.abbr} · ${playbookSummary.mostProfitable.netPnl >= 0 ? "+" : "-"}$${Math.abs(playbookSummary.mostProfitable.netPnl).toFixed(2)}`, color: "var(--win)" },
+            { label: "En racha",       text: playbookSummary.setupInStreak.currentStreak > 0 ? `${playbookSummary.setupInStreak.abbr} · ${playbookSummary.setupInStreak.currentStreak}W` : "—", color: "var(--be)" },
+            { label: "Mejor A+",       text: `${playbookSummary.bestAplus.abbr} · ${playbookSummary.bestAplus.aplusRate.toFixed(2)}%`, color: "var(--accent)" },
+          ].map(({ label, text, color }) => (
             <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--panel)] border border-[var(--line)]">
-              <span className="text-sm">{icon}</span>
               <span className="text-[10px] text-[var(--ink-3)] uppercase tracking-wider font-semibold">{label}:</span>
               <span className="text-[12px] font-mono font-bold" style={{ color }}>{text}</span>
             </div>
@@ -179,15 +216,18 @@ export function TabPlaybook() {
 
               return (
                 <div key={s.setupId}
-                  className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--line-2)] transition-colors"
+                  onClick={() => router.push(`/playbook?highlight=${s.setupId}`)}
+                  className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden cursor-pointer hover:border-[var(--accent)] transition-colors"
                   style={{ background: "var(--panel-2)" }}>
                   <div className="flex items-center gap-2.5 p-3 pb-2">
                     <span className="w-7 h-7 rounded-[6px] flex items-center justify-center text-[10px] font-bold text-white shrink-0"
                       style={{ background: s.color }}>{s.abbr}</span>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight truncate">{s.name}</p>
                       <p className="text-[10px] text-[var(--ink-3)]">{s.trades} trades</p>
                     </div>
+                    {/* TASK-064: Setup health indicator */}
+                    <SetupHealthDot health={s.health} winRate={s.winRate} avgR={s.avgR} expectedWr={s.expectedWr} expectedAvgR={s.expectedAvgR} />
                   </div>
                   <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: 64 }} preserveAspectRatio="none">
                     <defs>

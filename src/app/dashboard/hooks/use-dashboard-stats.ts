@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc/client"
 
-type Period = "1M" | "3M" | "6M" | "1Y" | "ALL"
+export type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
 
 export function useDashboardStats(period: Period = "3M") {
   const statsQuery    = trpc.trades.dashboardStats.useQuery({ period }, { staleTime: 60_000 })

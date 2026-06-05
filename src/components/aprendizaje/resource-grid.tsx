@@ -290,7 +290,7 @@ export function ResourceGrid({
                   : "bg-[var(--chip)] text-[var(--ink-2)] border-[var(--line)] hover:border-[var(--accent)]"
               )}
             >
-              ⭐ Favoritos
+              Favoritos
             </button>
             <button
               onClick={() => setOnlyNoReviews((v) => !v)}

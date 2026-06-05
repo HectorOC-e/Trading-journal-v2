@@ -1,5 +1,6 @@
 import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
+import { computeAccountRisk, type AccountRisk } from "@/domains/trading/services/risk-engine"
 
 export type MinimalTrade = {
   id:        string
@@ -36,20 +37,22 @@ export type AccountWithLimits = {
 export type TodayTrade = { accountId: string; pnl: number | null; status: string }
 
 export type KpiSummary = {
-  total:            number
-  wins:             number
-  losses:           number
-  be:               number
-  winRate:          number
-  avgR:             number
-  netPnl:           number
-  pnlMonth:         number
-  pnlToday:         number
-  tradesCountToday: number
-  expectancyR:      number
-  expectancyDollar: number
-  profitFactor:     number
-  sharpeRatio:      number | null
+  total:             number
+  wins:              number
+  losses:            number
+  be:                number
+  winRate:           number
+  avgR:              number
+  netPnl:            number
+  pnlMonth:          number
+  pnlWeek:           number
+  pnlToday:          number
+  tradesCountToday:  number
+  tradesCountWeek:   number
+  expectancyR:       number
+  expectancyDollar:  number
+  profitFactor:      number
+  sharpeRatio:       number | null
   bestDay:  { date: string; pnl: number } | null
   worstDay: { date: string; pnl: number } | null
   tradeStreak: { count: number; isWin: boolean } | null
@@ -60,6 +63,7 @@ export type AccountStat = {
   balance:      number
   netPnl:       number
   pnlMonth:     number
+  pnlWeek:      number
   pnlToday:     number
   tradesToday:  number
   tradesMonth:  number
@@ -68,6 +72,15 @@ export type AccountStat = {
   avgR:         number
   drawdownPct:  number
   sparkline:    number[]
+  risk:         AccountRisk   // single source of truth for limit gauges + breach
+}
+
+export type AccountLimits = {
+  id:           string
+  ddDailyPct:   number | null
+  ddWeeklyPct:  number | null
+  ddMonthlyPct: number | null
+  ddTotalPct:   number | null
 }
 
 export type EquityCurvePoint  = { date: string; balance: number; accountId: string }
@@ -78,8 +91,12 @@ export type SymbolStat        = { symbol: string; pnl: number; trades: number; w
 export type PropFirmStatus    = {
   accountId:      string
   name:           string
-  ddPctUsed:      number
-  dailyLossPct:   number
+  ddPctUsed:      number   // % of allowed max-drawdown consumed (bar fill)
+  ddActualPct:    number   // actual max drawdown as % of balance
+  ddLimitPct:     number   // configured max-drawdown limit %
+  dailyLossPct:   number   // % of allowed daily loss consumed (bar fill)
+  dailyActualPct: number   // actual today loss as % of balance
+  dailyLimitPct:  number   // configured daily-loss limit %
   tradesUsed:     number
   tradesMax:      number
   status:         "OK" | "ALERTA"
@@ -94,6 +111,7 @@ export function buildKpis(
   trades: MinimalTrade[],
   today: string,
   monthStart: string,
+  weekStart?: string,
 ): KpiSummary {
   const total   = trades.length
   const wins    = trades.filter(t => isWin({ pnl: t.pnl })).length
@@ -120,6 +138,9 @@ export function buildKpis(
   const pnlMonth        = trades.filter(t => t.date >= monthStart).reduce((s, t) => s + t.pnl, 0)
   const pnlToday        = trades.filter(t => t.date === today).reduce((s, t) => s + t.pnl, 0)
   const tradesCountToday = trades.filter(t => t.date === today).length
+  const effectiveWeekStart = weekStart ?? today
+  const pnlWeek         = trades.filter(t => t.date >= effectiveWeekStart && t.date <= today).reduce((s, t) => s + t.pnl, 0)
+  const tradesCountWeek  = trades.filter(t => t.date >= effectiveWeekStart && t.date <= today).length
 
   const pnlByDateMap: Record<string, number> = {}
   for (const t of trades) pnlByDateMap[t.date] = (pnlByDateMap[t.date] ?? 0) + t.pnl
@@ -150,8 +171,10 @@ export function buildKpis(
     avgR:             parseFloat(avgR.toFixed(4)),
     netPnl:           parseFloat(netPnl.toFixed(2)),
     pnlMonth:         parseFloat(pnlMonth.toFixed(2)),
+    pnlWeek:          parseFloat(pnlWeek.toFixed(2)),
     pnlToday:         parseFloat(pnlToday.toFixed(2)),
     tradesCountToday,
+    tradesCountWeek,
     expectancyR:      parseFloat(expectancyR.toFixed(4)),
     expectancyDollar: parseFloat(expectancyDollar.toFixed(2)),
     profitFactor:     parseFloat(profitFactor.toFixed(4)),
@@ -169,6 +192,8 @@ export function buildAccountStats(
   accounts:   AccountBalance[],
   today:      string,
   monthStart: string,
+  weekStart:  string,
+  limitsById: Record<string, AccountLimits> = {},
 ): AccountStat[] {
   return accounts.map(a => {
     const at = trades.filter(t => t.accountId === a.id)
@@ -177,24 +202,44 @@ export function buildAccountStats(
     const acctWins   = at.filter(t => isWin({ pnl: t.pnl })).length
     const acctWithR  = at.filter(t => t.rMultiple != null)
     const monthT     = at.filter(t => t.date >= monthStart)
+    const weekT      = at.filter(t => t.date >= weekStart)
     const todayT     = at.filter(t => t.date === today)
+
+    const pnlMonth = monthT.reduce((s, t) => s + t.pnl, 0)
+    const pnlWeek  = weekT.reduce((s, t) => s + t.pnl, 0)
+    const pnlToday = todayT.reduce((s, t) => s + t.pnl, 0)
 
     const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
     const sparkline = [initBal, ...computeEquityCurve(initBal, at).map(c => parseFloat(c.balance.toFixed(2)))]
+
+    const limits = limitsById[a.id] ?? { id: a.id, ddDailyPct: null, ddWeeklyPct: null, ddMonthlyPct: null, ddTotalPct: null }
+    const risk = computeAccountRisk({
+      initialBalance: initBal,
+      ddDailyPct:   limits.ddDailyPct,
+      ddWeeklyPct:  limits.ddWeeklyPct,
+      ddMonthlyPct: limits.ddMonthlyPct,
+      ddTotalPct:   limits.ddTotalPct,
+      dayPnl:       pnlToday,
+      weekPnl:      pnlWeek,
+      monthPnl:     pnlMonth,
+      maxDrawdown:  maxDd,
+    })
 
     return {
       accountId:   a.id,
       balance:     parseFloat((initBal + acctNetPnl).toFixed(2)),
       netPnl:      parseFloat(acctNetPnl.toFixed(2)),
-      pnlMonth:    parseFloat(monthT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
-      pnlToday:    parseFloat(todayT.reduce((s, t) => s + t.pnl, 0).toFixed(2)),
+      pnlMonth:    parseFloat(pnlMonth.toFixed(2)),
+      pnlWeek:     parseFloat(pnlWeek.toFixed(2)),
+      pnlToday:    parseFloat(pnlToday.toFixed(2)),
       tradesToday: todayT.length,
       tradesMonth: monthT.length,
       tradesTotal: at.length,
       winRate:     calcWinRate(acctWins, at.length),
       avgR:        acctWithR.length > 0 ? acctWithR.reduce((s, t) => s + t.rMultiple!, 0) / acctWithR.length : 0,
-      drawdownPct: initBal > 0 ? (maxDd / initBal) * 100 : 0,
+      drawdownPct: risk.total.actualPct,
       sparkline,
+      risk,
     }
   })
 }
@@ -323,16 +368,14 @@ export function buildPropFirmStatus(
 
       const maxDd        = computeMaxDrawdown(at.map(t => t.pnl))
       const ddTotalLimit = Number(a.ddTotalPct ?? 5)
-      const ddPctUsed    = initBal > 0 && ddTotalLimit > 0
-        ? (maxDd / initBal) / (ddTotalLimit / 100) * 100
-        : 0
+      const ddActualPct  = initBal > 0 ? (maxDd / initBal) * 100 : 0
+      const ddPctUsed    = ddTotalLimit > 0 ? ddActualPct / ddTotalLimit * 100 : 0
 
-      const todayAt     = todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
-      const todayLoss   = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
-      const ddDailyLim  = Number(a.ddDailyPct ?? 1)
-      const dailyLossPct = initBal > 0 && ddDailyLim > 0
-        ? (todayLoss / initBal) / (ddDailyLim / 100) * 100
-        : 0
+      const todayAt      = todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
+      const todayLoss    = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
+      const ddDailyLim   = Number(a.ddDailyPct ?? 1)
+      const dailyActualPct = initBal > 0 ? (todayLoss / initBal) * 100 : 0
+      const dailyLossPct = ddDailyLim > 0 ? dailyActualPct / ddDailyLim * 100 : 0
 
       const tradesUsed = todayTrades.filter(t => t.accountId === a.id).length
       const tradesMax  = a.maxTradesPerDay ?? 0
@@ -342,11 +385,156 @@ export function buildPropFirmStatus(
         accountId:      a.id,
         name:           a.name,
         ddPctUsed:      parseFloat(ddPctUsed.toFixed(1)),
+        ddActualPct:    parseFloat(ddActualPct.toFixed(1)),
+        ddLimitPct:     parseFloat(ddTotalLimit.toFixed(1)),
         dailyLossPct:   parseFloat(dailyLossPct.toFixed(1)),
+        dailyActualPct: parseFloat(dailyActualPct.toFixed(1)),
+        dailyLimitPct:  parseFloat(ddDailyLim.toFixed(1)),
         tradesUsed,
         tradesMax,
         status,
         allowedSymbols: a.allowedSymbols,
       }
     })
+}
+
+// ── Execution stats ───────────────────────────────────────────────────────────
+
+export type ExecutionStats = {
+  avgDurationMinutes: number | null
+  avgPlannedRisk:     number | null
+  avgPlannedReward:   number | null
+  riskRewardRatio:    number | null
+}
+
+/** Average trade duration (open→close minutes), planned risk/reward, R:R ratio. */
+export function buildExecutionStats(trades: MinimalTrade[]): ExecutionStats {
+  const durations: number[] = []
+  const risks:     number[] = []
+  const rewards:   number[] = []
+  for (const t of trades) {
+    if (t.openTime && t.closeTime) {
+      const [oh, om] = t.openTime.split(":").map(Number)
+      const [ch, cm] = t.closeTime.split(":").map(Number)
+      const mins = (ch * 60 + cm) - (oh * 60 + om)
+      if (mins > 0) durations.push(mins)
+    }
+    const risk   = Math.abs(t.entry - t.stop)   * t.size
+    const reward = Math.abs(t.target - t.entry) * t.size
+    if (risk   > 0) risks.push(risk)
+    if (reward > 0) rewards.push(reward)
+  }
+  const avg = (xs: number[]) => xs.length > 0 ? xs.reduce((a, b) => a + b, 0) / xs.length : null
+  const avgDuration      = avg(durations)
+  const avgPlannedRisk   = avg(risks)
+  const avgPlannedReward = avg(rewards)
+  return {
+    avgDurationMinutes: avgDuration      != null ? parseFloat(avgDuration.toFixed(1))      : null,
+    avgPlannedRisk:     avgPlannedRisk   != null ? parseFloat(avgPlannedRisk.toFixed(2))   : null,
+    avgPlannedReward:   avgPlannedReward != null ? parseFloat(avgPlannedReward.toFixed(2)) : null,
+    riskRewardRatio:    avgPlannedRisk && avgPlannedReward ? parseFloat((avgPlannedReward / avgPlannedRisk).toFixed(4)) : null,
+  }
+}
+
+// ── Discipline ─────────────────────────────────────────────────────────────────
+
+export type DisciplineSummary = {
+  heatmapData:   { date: string; severity: 0 | 1 | 2 }[]
+  rDistribution: { bucket: string; count: number }[]
+  violations:    { rule: string; count: number; severity: "mayor" | "menor" }[]
+  weeklyScore:   { week: string; score: number }[]
+  aplusStats: {
+    aplusCount: number; stdCount: number
+    aplusWr: number | null; stdWr: number | null
+    aplusAvgR: number | null; stdAvgR: number | null
+  }
+  composition:       { planSeguido: number; offPlan: number; partial: number }
+  costoIndisciplina: number
+  rachaDiasLimpios:  number
+}
+
+const R_BUCKETS = ["-3R","-2R","-1R","0R","+1R","+2R","+3R","+4R+"] as const
+
+/** Behavioral discipline aggregation: heatmap, R-distribution, violations, weekly compliance, A+ vs std, clean-day streak. */
+export function buildDiscipline(trades: MinimalTrade[], totalTrades: number): DisciplineSummary {
+  const isOff = (t: MinimalTrade) => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")
+
+  // Heatmap: worst severity per day (0 clean, 1 loss, 2 off-plan)
+  const dateMap: Record<string, 0 | 1 | 2> = {}
+  for (const t of trades) {
+    const sev: 0 | 1 | 2 = isOff(t) ? 2 : t.pnl < 0 ? 1 : 0
+    const cur = dateMap[t.date]
+    if (cur === undefined || sev > cur) dateMap[t.date] = sev
+  }
+  const heatmapData = Object.entries(dateMap).map(([date, severity]) => ({ date, severity }))
+
+  // R-multiple distribution
+  const bucketMap: Record<string, number> = Object.fromEntries(R_BUCKETS.map(b => [b, 0]))
+  for (const t of trades) {
+    const r = t.rMultiple ?? 0
+    if      (r <= -2.5) bucketMap["-3R"]++
+    else if (r <= -1.5) bucketMap["-2R"]++
+    else if (r <= -0.5) bucketMap["-1R"]++
+    else if (r <= 0.5)  bucketMap["0R"]++
+    else if (r <= 1.5)  bucketMap["+1R"]++
+    else if (r <= 2.5)  bucketMap["+2R"]++
+    else if (r <= 3.5)  bucketMap["+3R"]++
+    else                bucketMap["+4R+"]++
+  }
+  const rDistribution = R_BUCKETS.map(b => ({ bucket: b, count: bucketMap[b] }))
+
+  // Violation tallies
+  const tally = (tag: string) => trades.filter(t => t.tags.includes(tag)).length
+  const violations = [
+    { rule: "Flag impulsivo manual",    count: tally("Impulsivo"),                  severity: "mayor" as const },
+    { rule: "Off-plan",                 count: tally("Off-plan"),                   severity: "mayor" as const },
+    { rule: "Revanche / revenge trade", count: tally("Revanche"),                   severity: "mayor" as const },
+    { rule: "Sin setup asignado",       count: trades.filter(t => !t.setupId).length, severity: "menor" as const },
+  ].filter(v => v.count > 0)
+
+  // Weekly plan-adherence score (last 12 weeks)
+  const byWeek: Record<string, { plan: number; total: number }> = {}
+  for (const t of trades) {
+    const key = getISOWeekKey(new Date(t.date))
+    if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
+    byWeek[key].total++
+    if (t.setupId != null && !isOff(t)) byWeek[key].plan++
+  }
+  const weeklyScore = Object.entries(byWeek)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12)
+    .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
+
+  // A+ vs standard performance
+  const aplus = trades.filter(t => t.tags.includes("A+"))
+  const std   = trades.filter(t => !t.tags.includes("A+"))
+  const avgR  = (xs: MinimalTrade[]) => xs.length > 0 ? xs.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / xs.length : null
+  const aplusStats = {
+    aplusCount: aplus.length,
+    stdCount:   std.length,
+    aplusWr:    aplus.length > 0 ? calcWinRate(aplus.filter(t => isWin({ pnl: t.pnl })).length, aplus.length) : null,
+    stdWr:      std.length   > 0 ? calcWinRate(std.filter(t => isWin({ pnl: t.pnl })).length, std.length)     : null,
+    aplusAvgR:  avgR(aplus),
+    stdAvgR:    avgR(std),
+  }
+
+  // Composition + cost of indiscipline
+  const planSeguido = trades.filter(t => t.setupId != null && !isOff(t)).length
+  const offPlan     = trades.filter(isOff).length
+  const composition = { planSeguido, offPlan, partial: Math.max(0, totalTrades - planSeguido - offPlan) }
+  const costoIndisciplina = trades.filter(isOff).reduce((s, t) => s + t.pnl, 0)
+
+  // Clean-day streak (consecutive most-recent days with no off-plan trade)
+  const tradingDays = [...new Set(trades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
+  let rachaDiasLimpios = 0
+  for (const day of tradingDays) {
+    if (trades.filter(t => t.date === day).some(isOff)) break
+    rachaDiasLimpios++
+  }
+
+  return {
+    heatmapData, rDistribution, violations, weeklyScore, aplusStats, composition,
+    costoIndisciplina: parseFloat(costoIndisciplina.toFixed(2)),
+    rachaDiasLimpios,
+  }
 }

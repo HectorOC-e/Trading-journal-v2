@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Plus, X, Loader2, DollarSign, Clock, CheckCircle2,
   XCircle, ArrowDownToLine, Filter, ChevronDown,
@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import type { RouterOutputs } from "@/server/trpc/root"
+
+type WithdrawalItem = RouterOutputs["withdrawals"]["list"][number]
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 
@@ -51,7 +54,7 @@ function KpiBox({ label, value, sub, color }: { label: string; value: string; su
       <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--ink-3)", marginBottom: 6 }}>
         {label}
       </p>
-      <p style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace", color: color ?? "var(--ink)", lineHeight: 1 }}>
+      <p style={{ fontSize: 22, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: color ?? "var(--ink)", lineHeight: 1 }}>
         {value}
       </p>
       <p style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 4 }}>{sub}</p>
@@ -66,9 +69,19 @@ function StatusSelect({ current, onSelect, loading }: {
   loading?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
   const m = STATUS_META[current]
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(v => !v)}
         disabled={loading}
@@ -86,10 +99,10 @@ function StatusSelect({ current, onSelect, loading }: {
       </button>
       {open && (
         <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 20,
+          position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50,
           background: "var(--panel)", border: "1px solid var(--line)",
-          borderRadius: 10, padding: 4, minWidth: 140,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+          borderRadius: 10, padding: 4, minWidth: 150,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
         }}>
           {STATUS_ORDER.map(s => {
             const sm = STATUS_META[s]
@@ -113,60 +126,45 @@ function StatusSelect({ current, onSelect, loading }: {
 }
 
 /* ── Withdrawal row ── */
-function WithdrawalRow({ w, onStatusChange }: {
-  w: {
-    id: string; amount: any; currency: string; status: string
-    date: any; note: string; reference: string
-    account: { name: string; currency: string }
-  }
+function WithdrawalRow({ w, onStatusChange, updating = false }: {
+  w: WithdrawalItem
   onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
   updating?: boolean
 }) {
-  const [updating, setUpdating] = useState(false)
-  const date = new Date(w.date)
+  const date    = new Date(w.date)
   const dateStr = date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 
-  async function handleStatus(s: WithdrawalStatus) {
-    setUpdating(true)
-    onStatusChange(w.id, s)
-    setTimeout(() => setUpdating(false), 800)
-  }
-
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 12,
-      padding: "14px 16px",
-      borderBottom: "1px solid var(--line)",
-      flexWrap: "wrap",
-    }}>
+    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--line)] last:border-0 flex-wrap sm:flex-nowrap">
       {/* Date + account */}
-      <div style={{ minWidth: 120, flex: "0 0 auto" }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{dateStr}</p>
-        <p style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{w.account.name}</p>
+      <div className="shrink-0 min-w-[110px]">
+        <p className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>{dateStr}</p>
+        <p className="text-[11px] mt-0.5" style={{ color: "var(--ink-3)" }}>{w.account.name}</p>
       </div>
 
       {/* Amount */}
-      <div style={{ flex: 1, minWidth: 80 }}>
-        <p style={{ fontSize: 18, fontWeight: 700, fontFamily: "monospace", color: "var(--win)" }}>
-          +${Number(w.amount).toLocaleString()} <span style={{ fontSize: 11, fontWeight: 400, color: "var(--ink-3)" }}>{w.currency}</span>
+      <div className="flex-1 min-w-[90px]">
+        <p className="font-mono text-[16px] font-bold tabular-nums" style={{ color: "var(--win)" }}>
+          +${Number(w.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
+        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--ink-3)" }}>{w.currency}</p>
       </div>
 
       {/* Note / reference */}
-      <div style={{ flex: 2, minWidth: 100 }}>
-        {w.note && <p style={{ fontSize: 12, color: "var(--ink-2)" }}>{w.note}</p>}
+      <div className="flex-1 min-w-[80px] hidden sm:block">
+        {w.note && <p className="text-[12px]" style={{ color: "var(--ink-2)" }}>{w.note}</p>}
         {w.reference && (
-          <p style={{ fontSize: 10, color: "var(--ink-3)", fontFamily: "monospace", marginTop: 2 }}>
-            Ref: {w.reference}
+          <p className="font-mono text-[10px] mt-0.5" style={{ color: "var(--ink-3)" }}>
+            {w.reference}
           </p>
         )}
       </div>
 
       {/* Status */}
-      <div style={{ flexShrink: 0 }}>
+      <div className="shrink-0">
         <StatusSelect
           current={w.status as WithdrawalStatus}
-          onSelect={handleStatus}
+          onSelect={(s) => onStatusChange(w.id, s)}
           loading={updating}
         />
       </div>
@@ -308,14 +306,15 @@ export default function RetirosPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [filterAccount, setFilterAccount] = useState<string>("all")
   const [filterStatus, setFilterStatus]   = useState<string>("all")
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const { data: withdrawals = [], isLoading } = trpc.withdrawals.list.useQuery({})
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
   const utils = trpc.useUtils()
 
   const updateStatus = trpc.withdrawals.updateStatus.useMutation({
-    onSuccess: () => utils.withdrawals.list.invalidate(),
-    onError:   (err) => toast.error(formatErrorForUser(err)),
+    onSuccess: () => { utils.withdrawals.list.invalidate(); setUpdatingId(null) },
+    onError:   (err) => { setUpdatingId(null); toast.error(formatErrorForUser(err)) },
   })
 
   // Filtered
@@ -368,7 +367,7 @@ export default function RetirosPage() {
                   <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{a.name}</p>
                   <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.count} retiros</p>
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "monospace", color: "var(--win)", marginLeft: 8 }}>
+                <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: "var(--win)", marginLeft: 8 }}>
                   ${a.totalPagado.toLocaleString()}
                 </p>
               </div>
@@ -418,7 +417,7 @@ export default function RetirosPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", gap: 12, padding: "10px 16px",
@@ -450,8 +449,11 @@ export default function RetirosPage() {
           <WithdrawalRow
             key={w.id}
             w={w}
-            onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
-            updating={updateStatus.isPending}
+            onStatusChange={(id, status) => {
+              setUpdatingId(id)
+              updateStatus.mutate({ id, status })
+            }}
+            updating={updatingId === w.id && updateStatus.isPending}
           />
         ))}
       </div>

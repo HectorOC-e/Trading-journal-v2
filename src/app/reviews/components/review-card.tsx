@@ -92,7 +92,7 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
       <div className="p-4 sm:p-5">
         <div className="flex items-start gap-3 sm:gap-5 mb-3">
           <div className="shrink-0 w-20 sm:w-28">
-            <p className="font-mono font-bold leading-none" style={{ fontSize: "clamp(20px,5vw,28px)", color: "var(--ink)" }}>{review.weekLabel}</p>
+            <p className="font-mono font-bold leading-none text-[20px]" style={{ color: "var(--ink)" }}>{review.weekLabel}</p>
             <p className="text-[10px] sm:text-xs mt-1" style={{ color: "var(--ink-3)" }}>{review.weekRange}</p>
             <p className="text-[10px] sm:text-[11px] mt-0.5 font-medium truncate" style={{ color: "var(--ink-2)" }}>{accountName(review.accountId)}</p>
             <span
@@ -137,7 +137,6 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
 
         <div className="flex items-center gap-2 mt-4 pt-4" style={{ borderTop: "1px solid var(--line)" }} onClick={(e) => e.stopPropagation()}>
           <Button variant="ghost" size="sm" onClick={onClick}>Ver review completa</Button>
-          <Button variant="ghost" size="sm">Editar</Button>
         </div>
       </div>
     </div>

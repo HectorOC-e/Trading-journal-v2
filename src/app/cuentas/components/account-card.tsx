@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import {
   Target, Shield, BarChart3, ChevronRight,
-  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown,
+  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown, Lock,
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
@@ -12,9 +13,12 @@ import { trpc } from "@/lib/trpc/client"
 
 export type RawAccount = RouterOutputs["accounts"]["list"][number]
 
+type AccountRisk = RouterOutputs["trades"]["dashboardStats"]["accountStats"][number]["risk"]
+
 export interface TradeStats {
   netPnl: number
   pnlMonth: number
+  pnlWeek: number
   pnlToday: number
   winRate: number | null
   avgR: number | null
@@ -23,6 +27,7 @@ export interface TradeStats {
   tradesTotal: number
   drawdownPct: number
   sparkline: number[]
+  risk: AccountRisk
 }
 
 export const TYPE_META: Record<AccountType, { label: string; color: string; bg: string }> = {
@@ -80,7 +85,9 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const phase  = (rawAccount.phase as string) ?? "NONE"
 
   const initialBalance = Number(rawAccount.initialBalance)
-  const daysActive = Math.max(0, Math.floor((Date.now() - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
+  // Read clock once at mount — keeps render pure (Date.now() is impure during render)
+  const [now] = useState(() => Date.now())
+  const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
 
   const flatLine  = Array(10).fill(initialBalance)
   const sparkData = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine
@@ -89,13 +96,20 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   return (
     <div
       onClick={onClick}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onClick()}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
-        boxShadow: selected ? "0 0 0 1px var(--accent)" : "none",
+        boxShadow: selected
+          ? "0 0 0 1px var(--accent), var(--shadow-sm)"
+          : undefined,
       }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.borderColor = "var(--line-2)" }}
+      onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.borderColor = "var(--line)" }}
     >
-      <div style={{ height: 3, background: tm.color }} />
+      <div style={{ height: 4, background: tm.color }} />
 
       <div className="p-5 flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
@@ -103,6 +117,12 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold text-[var(--ink)] leading-tight">{rawAccount.name}</p>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
+              {(rawAccount as { locked?: boolean }).locked && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
+                  <Lock size={8} /> BLOQUEADA
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-[var(--ink-3)] mt-0.5">{rawAccount.broker} · {rawAccount.currency} · {daysActive}d activa</p>
           </div>
@@ -158,17 +178,23 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
                 </span>
               )}
             </div>
+            {/* Risk gauges — single source of truth (stats.risk). Bar fills by limit
+                utilization; the number shows actual% / limit% (BUG#1 fix). */}
             {rawAccount.ddTotalPct != null && (
-              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(rawAccount.ddTotalPct) * 100) : 0} limitLabel={`${Number(rawAccount.ddTotalPct)}%`} />
+              <RuleBar label="Drawdown total" usedPct={stats?.risk.total.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.total.actualPct.toFixed(1)}% / ${Number(rawAccount.ddTotalPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddTotalPct)}%`} />
             )}
             {rawAccount.ddDailyPct != null && (
-              <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(rawAccount.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddDailyPct)}%`} />
+              <RuleBar label="Pérdida diaria" usedPct={stats?.risk.daily.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.daily.actualPct.toFixed(1)}% / ${Number(rawAccount.ddDailyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddDailyPct)}%`} />
             )}
             {rawAccount.ddWeeklyPct != null && (
-              <RuleBar label="Pérdida semanal" usedPct={0} limitLabel={`${Number(rawAccount.ddWeeklyPct)}%`} />
+              <RuleBar label="Pérdida semanal" usedPct={stats?.risk.weekly.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.weekly.actualPct.toFixed(1)}% / ${Number(rawAccount.ddWeeklyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddWeeklyPct)}%`} />
             )}
             {rawAccount.ddMonthlyPct != null && (
-              <RuleBar label="Pérdida mensual" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlMonth) / (initialBalance * Number(rawAccount.ddMonthlyPct) / 100) * 100) : 0} limitLabel={`${Number(rawAccount.ddMonthlyPct)}%`} />
+              <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(1)}% / ${Number(rawAccount.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
             {rawAccount.targetPct != null && (
               <div>

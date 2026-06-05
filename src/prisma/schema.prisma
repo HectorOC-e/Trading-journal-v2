@@ -44,8 +44,32 @@ model User {
   tradeEmbeddings      TradeEmbedding[]
   emailLogs            EmailLog[]
   preferences          UserPreferences?
+  aiConfigs            UserAiConfig[]
+  aiSettings           UserAiSettings?
+  monthlyReviews       MonthlyReview[]
 
   @@map("users")
+}
+
+// ─────────────────────────────────────────────
+// USER AI SETTINGS (expanded AI configuration)
+// Per-feature model routing + global default + global fallback + cost posture.
+// ─────────────────────────────────────────────
+model UserAiSettings {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  defaultProvider  String   @default("anthropic") @map("default_provider")  // openrouter | anthropic | openai
+  defaultModel     String   @default("claude-sonnet-4-6") @map("default_model")
+  fallbackProvider String?  @map("fallback_provider")
+  fallbackModel    String?  @map("fallback_model")
+  costPriority     String   @default("quality") @map("cost_priority")        // quality | speed | cost
+  featureModels    Json     @default("{}") @map("feature_models")            // { [feature]: { provider, model } }
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_ai_settings")
 }
 
 // ─────────────────────────────────────────────
@@ -82,6 +106,13 @@ model Account {
   maxTradesPerDay   Int?     @map("max_trades_per_day")
   allowedSymbols    String[] @map("allowed_symbols")
   minTradingDays    Int?     @map("min_trading_days")                        // some firms require min days
+
+  // ── Risk-limit lock (HALLAZGO 1B) ─────────────
+  // When a configured loss limit (daily/weekly/monthly) is reached the account
+  // is locked: no new trades or imports until manually unlocked.
+  locked      Boolean   @default(false)
+  lockReason  String    @default("") @map("lock_reason")  // e.g. "DAILY_LOSS_LIMIT"
+  lockedAt    DateTime? @map("locked_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -200,6 +231,7 @@ model Trade {
   executionQuality Int?     @map("execution_quality") // 1–5
   fomoFlag         Boolean  @default(false) @map("fomo_flag")
   revengeFlag      Boolean  @default(false) @map("revenge_flag")
+  planNotes        String?  @map("plan_notes") @db.VarChar(500)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -500,4 +532,55 @@ model EmailLog {
 
   @@unique([userId, emailType, weekKey])
   @@map("email_logs")
+}
+
+// ─────────────────────────────────────────────
+// MONTHLY REVIEW (Sprint 8, TASK-071)
+// One review per (user, year, month).
+// Aggregates across weekly reviews of that month.
+// ─────────────────────────────────────────────
+model MonthlyReview {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  year         Int
+  month        Int      // 1–12
+  summary      String   @default("") @db.Text
+  keyThemes    String[] @map("key_themes")
+  goalsSet     String[] @map("goals_set")
+  goalsMet     String[] @map("goals_met")
+  overallScore Int?     @map("overall_score") // 0–100, avg of weekly discipline scores
+  weeklyIds    String[] @map("weekly_ids")    // soft refs to WeeklyReview.id
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, year, month])
+  @@index([userId, year])
+  @@map("monthly_reviews")
+}
+
+// ─────────────────────────────────────────────
+// USER AI CONFIG (Sprint 5)
+// Stores encrypted API keys for AI providers per user.
+// Supports anthropic | openrouter | openai.
+// apiKeyEnc format: "<iv_hex>:<tag_hex>:<ciphertext_hex>" (AES-256-GCM)
+// ─────────────────────────────────────────────
+model UserAiConfig {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  provider  String   // "anthropic" | "openrouter" | "openai"
+  apiKeyEnc String   @map("api_key_enc")  // AES-256-GCM encrypted: "<iv_hex>:<tag_hex>:<ciphertext_hex>"
+  model     String?  // optional model override per provider
+  isActive  Boolean  @default(true) @map("is_active")
+  lastTested DateTime? @map("last_tested")
+  errorLog  String?  @map("error_log")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@map("user_ai_configs")
 }

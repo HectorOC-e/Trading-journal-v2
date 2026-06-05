@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useRef } from "react"
 import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
+import { SkeletonTableRows } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
@@ -28,6 +30,12 @@ export default function TradesPage() {
   const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
   const [importModalOpen, setImportModalOpen]       = useState(false)
+  const [filterAccountId, setFilterAccountId]       = useState<string | null>(null)
+
+  function handleAccountFilter(id: string | null) {
+    setFilterAccountId(id)
+    setSelectedId(null)
+  }
 
   const pendingChecklistRef = useRef<{ setupId?: string; items: string[]; total: number } | null>(null)
 
@@ -41,7 +49,7 @@ export default function TradesPage() {
     hasNextPage,
     isFetchingNextPage,
   } = trpc.trades.list.useInfiniteQuery(
-    { limit: 50 },
+    { limit: 50, ...(filterAccountId ? { accountId: filterAccountId } : {}) },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   )
   const trades = tradePages?.pages.flatMap(p => p.items) ?? []
@@ -55,10 +63,36 @@ export default function TradesPage() {
   const { data: markets = [] } =
     trpc.markets.list.useQuery()
 
+  const { data: customTagsRaw = [] } =
+    trpc.tradeTags.list.useQuery()
+
+  // Exclude system tags — custom tags are user-created
+  const SYSTEM_TAGS = new Set(["A+", "Plan", "Off-plan", "Impulsivo", "Revanche"])
+  const customTags = customTagsRaw
+    .map(t => t.tag)
+    .filter(t => !SYSTEM_TAGS.has(t))
+
   const PROP_FIRM_MESSAGES: Record<string, string> = {
-    PROP_FIRM_DAILY_LOSS_LIMIT:   "Has alcanzado el límite de pérdida diaria para esta cuenta.",
     PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",
     PROP_FIRM_SYMBOL_NOT_ALLOWED: "Este símbolo no está permitido en esta cuenta.",
+    SETUP_NOT_AVAILABLE:          "Ese setup está pausado o descartado y no puede usarse para registrar trades.",
+    SETUP_NOT_FOUND:              "El setup seleccionado no existe.",
+  }
+
+  // ACCOUNT_LOCKED:<reason> → clear human message naming the limit reached (HALLAZGO 1B)
+  const LOCK_MESSAGES: Record<string, string> = {
+    DAILY_LOSS_LIMIT:   "Cuenta bloqueada: Daily Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    WEEKLY_LOSS_LIMIT:  "Cuenta bloqueada: Weekly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MONTHLY_LOSS_LIMIT: "Cuenta bloqueada: Monthly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MAX_DRAWDOWN:       "Cuenta bloqueada: Maximum Drawdown alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    MANUAL:             "Cuenta bloqueada manualmente. Desbloquéala en Cuentas para volver a operar.",
+  }
+  function resolveTradeError(message: string): string | null {
+    if (message.startsWith("ACCOUNT_LOCKED:")) {
+      const reason = message.slice("ACCOUNT_LOCKED:".length)
+      return LOCK_MESSAGES[reason] ?? "Cuenta bloqueada. Desbloquéala en Cuentas para volver a operar."
+    }
+    return PROP_FIRM_MESSAGES[message] ?? null
   }
 
   const saveChecklist = trpc.trades.saveChecklistResult.useMutation({
@@ -75,7 +109,7 @@ export default function TradesPage() {
       }
     },
     onError: (err) => {
-      const msg = PROP_FIRM_MESSAGES[err.message]
+      const msg = resolveTradeError(err.message)
       if (msg) setPropFirmError(msg)
       else toast.error(formatErrorForUser(err))
     },
@@ -195,6 +229,11 @@ export default function TradesPage() {
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
     tags: string[]; notes: string; screenshots: string[]
     checklistItems: Record<string, boolean>
+    emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
+    confidenceRating: number | null
+    executionQuality: number | null
+    fomoFlag: boolean
+    revengeFlag: boolean
   }) => {
     // Capture checklist before mutation fires
     const setup = setups.find(s => s.id === form.setupId)
@@ -212,20 +251,25 @@ export default function TradesPage() {
     const size   = parseFloat(form.size)
 
     createTrade.mutate({
-      accountId:      form.accountId,
-      setupId:        form.setupId || undefined,
-      direction:      form.direction,
-      symbol:         form.symbol.toUpperCase(),
+      accountId:        form.accountId,
+      setupId:          form.setupId || undefined,
+      direction:        form.direction,
+      symbol:           form.symbol.toUpperCase(),
       entry,
       stop,
       target,
       size,
-      date:           form.date,
-      openTime:       form.openTime,
-      session:        form.session,
-      tags:           form.tags,
-      notes:          form.notes,
-      screenshotUrls: form.screenshots,
+      date:             form.date,
+      openTime:         form.openTime,
+      session:          form.session,
+      tags:             form.tags,
+      notes:            form.notes,
+      screenshotUrls:   form.screenshots,
+      emotionBefore:    form.emotionBefore ?? undefined,
+      confidenceRating: form.confidenceRating,
+      executionQuality: form.executionQuality,
+      fomoFlag:         form.fomoFlag,
+      revengeFlag:      form.revengeFlag,
     })
   }
 
@@ -239,14 +283,11 @@ export default function TradesPage() {
     return () => { document.body.style.overflow = "" }
   }, [!!selected])
 
-  // NOTE: as never casts below bridge the gap between RouterOutputs types (Decimal serialized as
-  // string by tRPC's JSON transport) and the component prop interfaces (which expect number).
-  // Fixing these would require refactoring all component interfaces — tracked as TD future item.
   const detailPanel = selected ? (
     <TradeDetailPanel
-      trade={selected as never}
-      account={selected.account as never}
-      setup={selected.setup as never}
+      trade={selected}
+      account={selected.account ?? undefined}
+      setup={selected.setup ?? undefined}
       onClose={() => setSelectedId(null)}
       onDelete={() => deleteTrade.mutate(selected.id)}
       deleting={deleteTrade.isPending}
@@ -303,14 +344,60 @@ export default function TradesPage() {
               },
             ]}
           />
-          <KpiStrip items={kpiItems} className="mb-6" />
-          <TradesTable
-            trades={trades as never}
-            accounts={accounts as never}
-            setups={setups as never}
-            selectedId={selectedId ?? undefined}
-            onSelect={(t) => setSelectedId(t ? t.id : null)}
-          />
+          <KpiStrip items={kpiItems} className="mb-4" />
+
+          {/* Account filter (TD-035) */}
+          {accounts.length > 1 && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-[11px] text-[var(--ink-3)] font-medium shrink-0">Cuenta:</span>
+              <div className="flex items-center gap-1 flex-wrap">
+                <button
+                  onClick={() => handleAccountFilter(null)}
+                  className={[
+                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                    !filterAccountId
+                      ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                      : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
+                  ].join(" ")}
+                >
+                  Todas
+                </button>
+                {accounts.map(a => (
+                  <button
+                    key={a.id}
+                    onClick={() => handleAccountFilter(a.id === filterAccountId ? null : a.id)}
+                    className={[
+                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                      filterAccountId === a.id
+                        ? "bg-[var(--accent)] text-white shadow-[0_1px_3px_rgba(79,110,247,0.3)]"
+                        : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
+                    ].join(" ")}
+                  >
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tradesLoading ? (
+            <SkeletonTableRows rows={8} />
+          ) : trades.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="Sin trades registrados"
+              subtitle="Registra tu primer trade o importa un historial CSV para comenzar."
+              action={{ label: "Registrar trade", onClick: () => setModalOpen(true) }}
+            />
+          ) : (
+            <TradesTable
+              trades={trades}
+              accounts={accounts}
+              setups={setups}
+              selectedId={selectedId ?? undefined}
+              onSelect={(t) => setSelectedId(t ? t.id : null)}
+            />
+          )}
           {hasNextPage && (
             <div className="mt-4 flex justify-center">
               <button
@@ -363,20 +450,21 @@ export default function TradesPage() {
       <RegisterTradeModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        accounts={accounts as never}
-        setups={setups as never}
-        markets={markets as never}
+        accounts={accounts}
+        setups={setups}
+        markets={markets}
+        customTags={customTags}
         tradeCountToday={tradeCountToday}
-        onSubmit={handleModalSubmit as never}
+        onSubmit={handleModalSubmit}
       />
 
       {editTarget && (
         <EditTradeModal
           open={!!editingTrade}
           onOpenChange={(v) => { if (!v) setEditingTrade(null) }}
-          trade={editTarget as never}
-          setups={setups as never}
-          onSave={(data) => updateTrade.mutate({ id: editTarget.id, ...data } as never)}
+          trade={editTarget}
+          setups={setups}
+          onSave={(data) => updateTrade.mutate({ id: editTarget.id, ...data })}
           saving={updateTrade.isPending}
         />
       )}
@@ -385,10 +473,10 @@ export default function TradesPage() {
         <PositionLogModal
           open={!!positionLogTrade}
           onOpenChange={(v) => { if (!v) setPositionLogTrade(null) }}
-          trade={posLogTarget as never}
-          account={(posLogTarget as never as { account?: { initialBalance: number; ddDailyPct?: number | null; ddTotalPct?: number | null } }).account}
-          events={(posLogTarget as never as { events?: { id: string; type: string; price: number | null; contracts: number | null; notes: string; timestamp: string }[] }).events ?? []}
-          onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data } as never)}
+          trade={posLogTarget}
+          account={posLogTarget.account}
+          events={posLogTarget.events}
+          onAddEvent={(data) => addEvent.mutate({ tradeId: posLogTarget.id, ...data })}
           adding={addEvent.isPending}
         />
       )}

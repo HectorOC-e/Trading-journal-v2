@@ -1,6 +1,7 @@
 "use client"
 
-import { X, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { X, Loader2, ChevronDown } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import type { AccountLogPayload } from "@/types"
 
@@ -14,12 +15,29 @@ const EVENT_META: Record<string, { label: string; color: string }> = {
   BALANCE_CORRECTION: { label: "Corrección de saldo",  color: "#fb923c" },
 }
 
+type Log = { id: string; event: string; payload: unknown; createdAt: Date | string }
+
 export function AccountHistoryModal({ accountId, accountName, onClose }: {
   accountId: string
   accountName: string
   onClose: () => void
 }) {
-  const { data: logs = [], isLoading } = trpc.accountLogs.list.useQuery({ accountId })
+  const [cursor, setCursor]   = useState<string | undefined>(undefined)
+  const [allLogs, setAllLogs] = useState<Log[]>([])
+  const seenCursors           = useRef(new Set<string | undefined>())
+
+  const { data, isLoading, isFetching } = trpc.accountLogs.list.useQuery({ accountId, cursor })
+
+  useEffect(() => {
+    if (!data) return
+    // Prevent double-appending the same page (StrictMode double-effect or re-render)
+    if (seenCursors.current.has(cursor)) return
+    seenCursors.current.add(cursor)
+    const newItems = data.items as Log[]
+    setAllLogs(prev => cursor ? [...prev, ...newItems] : newItems)
+  }, [data, cursor])
+
+  const hasMore = !!data?.nextCursor
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -39,13 +57,13 @@ export function AccountHistoryModal({ accountId, accountName, onClose }: {
               <Loader2 size={16} className="animate-spin" /> Cargando…
             </div>
           )}
-          {!isLoading && logs.length === 0 && (
+          {!isLoading && allLogs.length === 0 && (
             <p className="text-center text-[13px] text-[var(--ink-3)] py-8">Sin eventos registrados</p>
           )}
-          {!isLoading && logs.length > 0 && (
+          {allLogs.length > 0 && (
             <div className="relative flex flex-col gap-0">
               <div className="absolute left-[9px] top-3 bottom-3 w-px bg-[var(--line)]" />
-              {(logs as { id: string; event: string; payload: unknown; createdAt: Date | string }[]).map((log) => {
+              {allLogs.map((log) => {
                 const meta = EVENT_META[log.event] ?? { label: log.event, color: "#6b7280" }
                 const p = log.payload as AccountLogPayload
                 const date = new Date(log.createdAt)
@@ -104,6 +122,16 @@ export function AccountHistoryModal({ accountId, accountName, onClose }: {
                 )
               })}
             </div>
+          )}
+          {hasMore && (
+            <button
+              onClick={() => setCursor(data!.nextCursor!)}
+              disabled={isFetching}
+              className="mt-4 w-full flex items-center justify-center gap-1.5 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] py-2 border border-[var(--line)] rounded-[var(--radius-sm)] hover:bg-[var(--chip)] transition-colors disabled:opacity-50"
+            >
+              {isFetching ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />}
+              {isFetching ? "Cargando…" : "Cargar más"}
+            </button>
           )}
         </div>
       </div>

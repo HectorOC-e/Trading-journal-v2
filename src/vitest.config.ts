@@ -3,9 +3,12 @@ import path from "path"
 
 export default defineConfig({
   test: {
-    environment: "node",
     globals: true,
-    exclude: ["**/.claude/**", "**/node_modules/**"],
+    exclude: ["**/.claude/**", "**/node_modules/**", "**/__tests__/e2e/**"],
+    setupFiles: ["./vitest.setup.ts"],
+    // Default environment for server-side tests
+    environment: "node",
+    // Component tests in __tests__/components/ use @vitest-environment jsdom docblock
   },
   resolve: {
     alias: {

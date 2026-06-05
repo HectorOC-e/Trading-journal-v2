@@ -1,34 +1,35 @@
 // Unified embeddings — supports OpenAI API and OpenRouter (OpenAI-compatible).
 // Anthropic does not offer an embedding API.
+//
+// Model + API key are passed in explicitly (resolved from the user's persisted
+// config via resolve-provider.ts → resolveEmbeddingCall). No env-var guessing here.
 
-import { getEmbeddingModel, getProviderKey, isEmbeddingAvailable } from "./config"
+export type EmbedOptions = {
+  model:  string
+  apiKey: string
+}
 
 /**
- * Generate a 1536-dim embedding vector for the given text.
- * Returns null if no embedding key is configured or on error.
+ * Generate an embedding vector for the given text.
+ * Returns null if no key is provided, text is empty, or on error.
+ * A slash-style model id ("openai/text-embedding-3-small") routes through
+ * OpenRouter; a bare id ("text-embedding-3-small") routes through OpenAI.
  */
-export async function embedText(text: string): Promise<number[] | null> {
-  if (!isEmbeddingAvailable()) return null
-  if (!text.trim()) return null
+export async function embedText(text: string, opts: EmbedOptions): Promise<number[] | null> {
+  const model  = opts.model?.trim()
+  const apiKey = opts.apiKey
+  if (!model || !apiKey || !text.trim()) return null
 
-  const model = getEmbeddingModel()
-
-  // Determine base URL and key
-  const isOpenRouter = model.includes("/")
-  const baseUrl = isOpenRouter
+  const viaOpenRouter = model.includes("/")
+  const baseUrl = viaOpenRouter
     ? "https://openrouter.ai/api/v1"
     : "https://api.openai.com/v1"
-  const key = isOpenRouter
-    ? (getProviderKey("openrouter") || getProviderKey("openai"))
-    : getProviderKey("openai")
-
-  if (!key) return null
 
   try {
     const res = await fetch(`${baseUrl}/embeddings`, {
       method:  "POST",
       headers: {
-        "Authorization": `Bearer ${key}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type":  "application/json",
       },
       body: JSON.stringify({ model, input: text }),

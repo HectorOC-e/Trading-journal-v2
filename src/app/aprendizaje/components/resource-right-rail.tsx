@@ -152,7 +152,7 @@ export function ResourceRightRail({
       {/* Insight del día */}
       {dailyInsight && (
         <section>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">💡 Insight del día</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">Insight del día</p>
           <div className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] p-3">
             <p className="text-sm text-[var(--ink)] leading-relaxed italic">&ldquo;{dailyInsight.text}&rdquo;</p>
             <p className="text-[10px] text-[var(--ink-3)] mt-2 text-right">— {dailyInsight.resourceTitle}</p>
@@ -163,7 +163,7 @@ export function ResourceRightRail({
       {/* Impacto en trading */}
       {impactRanking.length > 0 && (
         <section>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">📊 Impacto en trading</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">Impacto en trading</p>
           <div className="flex flex-col gap-1.5">
             {impactRanking.slice(0, 5).map((row) => (
               <div
@@ -201,7 +201,7 @@ export function ResourceRightRail({
       {/* Foco del día */}
       {stats?.focusResource && (
         <section>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">🎯 Foco del día</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">Foco del día</p>
           <div className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] p-3">
             <div className="flex items-center gap-2 mb-1">
               <CategoryChip type={stats.focusResource.type as ResourceType} />
@@ -309,7 +309,7 @@ export function ResourceRightRail({
 
       {/* Racha de reviews */}
       <section>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">🔥 Racha de reviews</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] mb-3">Racha de reviews</p>
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-full flex items-center justify-center font-mono font-bold text-white text-lg shrink-0" style={{ background: "var(--accent)" }}>
             {stats?.currentStreak ?? 0}

@@ -39,7 +39,7 @@ describe('calcDisciplineScore()', () => {
     expect(result.score).toBe(63) // Math.round(37.5 + 9 + 16) = Math.round(62.5) = 63
   })
 
-  it('defaults all to maximum when zero trades/reviews/rules', () => {
+  it('returns 0 execution score and 50 total when zero trades (no evidence of discipline)', () => {
     const result = calcDisciplineScore({
       totalTrades: 0,
       taggedViolations: 0,
@@ -49,10 +49,13 @@ describe('calcDisciplineScore()', () => {
       violatedRules: 0,
     })
 
-    expect(result.executionScore).toBe(50)
+    // No trades → execution cannot be measured → 0 (not 50)
+    expect(result.executionScore).toBe(0)
+    // No pending reviews → learning defaults to max
     expect(result.learningScore).toBe(30)
+    // No rules → adherence defaults to max
     expect(result.adherenceScore).toBe(20)
-    expect(result.score).toBe(100)
+    expect(result.score).toBe(50)
   })
 
   it('scores correctly when no learning or rules', () => {

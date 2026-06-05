@@ -1,10 +1,17 @@
 // Unified streaming chat — supports Anthropic SDK, OpenRouter, and OpenAI-compatible APIs.
+//
+// Provider and API key are passed in EXPLICITLY by the caller (resolved from the
+// user's persisted config via resolve-provider.ts). This module no longer reads
+// environment variables or guesses the provider from the model name — that was the
+// root cause of the "configure ANTHROPIC_API_KEY" inconsistency.
 
-import { detectProvider, getProviderKey } from "./config"
+import type { AiProvider } from "./config"
 
 export type ChatMessage = { role: "user" | "assistant"; content: string }
 
 export type StreamChatOptions = {
+  provider:  AiProvider
+  apiKey:    string
   model:     string
   messages:  ChatMessage[]
   system?:   string
@@ -16,9 +23,11 @@ export type StreamChatOptions = {
  * Callers pipe this directly to the response without buffering.
  */
 export async function streamChat(opts: StreamChatOptions): Promise<ReadableStream<Uint8Array>> {
-  const provider = detectProvider(opts.model)
-  const key      = getProviderKey(provider)
+  const provider = opts.provider
+  const key      = opts.apiKey
   const encoder  = new TextEncoder()
+
+  if (!key) throw new Error(`No API key provided for provider "${provider}"`)
 
   if (provider === "anthropic") {
     // Use Anthropic SDK for direct Anthropic calls

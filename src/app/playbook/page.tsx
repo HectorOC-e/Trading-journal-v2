@@ -20,6 +20,7 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
 type SetupStatus = "ACTIVO" | "EN_PRUEBA" | "PAUSADO" | "DESCARTADO"
+type HealthStatus = "healthy" | "warning" | "critical" | "insufficient"
 
 interface DbSetup {
   id: string; name: string; abbreviation: string; market: string
@@ -52,12 +53,42 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-/* ── Sparkline flat placeholder ── */
-function SparklinePlaceholder({ color, height = 44 }: { color: string; height?: number }) {
-  const W = 200, mid = height / 2
+/* ── Sparkline: real equity curve (TASK-049) ── */
+function SetupSparkline({
+  data, color, height = 44,
+}: {
+  data?: number[]
+  color: string
+  height?: number
+}) {
+  const W = 200
+  const pts = data && data.length >= 2 ? data : null
+  if (!pts) {
+    const mid = height / 2
+    return (
+      <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
+        <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.35" />
+      </svg>
+    )
+  }
+  const min = Math.min(...pts), max = Math.max(...pts)
+  const range = max - min || 1
+  const pad   = 4
+  const xStep = pts.length > 1 ? (W - pad * 2) / (pts.length - 1) : W
+  const toY   = (v: number) => pad + ((1 - (v - min) / range) * (height - pad * 2))
+  const d     = pts.map((v, i) => `${i === 0 ? "M" : "L"}${(pad + i * xStep).toFixed(1)},${toY(v).toFixed(1)}`).join(" ")
+  const areaD = `${d} L${(pad + (pts.length - 1) * xStep).toFixed(1)},${height} L${pad},${height} Z`
+  const fillId = `sf-${color.replace(/[^a-z0-9]/gi, "")}`
   return (
     <svg viewBox={`0 0 ${W} ${height}`} style={{ width: "100%", height }} preserveAspectRatio="none">
-      <line x1="0" y1={mid} x2={W} y2={mid} stroke={color} strokeWidth="1.5" strokeDasharray="4 3" strokeOpacity="0.35" />
+      <defs>
+        <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path d={areaD} fill={`url(#${fillId})`} />
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -79,7 +110,7 @@ function DirectionChip({ direction }: { direction: string }) {
 /* ═══════════════════════════════════════════════
    Setup Card — mejorada
 ═══════════════════════════════════════════════ */
-type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number }
+type SetupStats = { total: number; wins: number; netPnl: number; avgR: number; aplusRate: number; expectancy: number; equityCurve?: number[]; health?: HealthStatus; expectedWr?: number | null; expectedAvgR?: number | null }
 
 function SetupCard({ setup, selected, onClick, stats, versionCount }: {
   setup: DbSetup; selected: boolean; onClick: () => void; stats?: SetupStats; versionCount?: number
@@ -122,12 +153,28 @@ function SetupCard({ setup, selected, onClick, stats, versionCount }: {
               <DirectionChip direction={setup.direction} />
             </div>
           </div>
-          <StatusBadge status={setup.status} />
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <StatusBadge status={setup.status} />
+            {stats?.health && (
+              <span
+                className="text-[13px] cursor-default"
+                title={stats.health === "insufficient" ? "Insuficiente: menos de 5 trades"
+                  : stats.health === "healthy"    ? "Saludable"
+                  : stats.health === "warning"    ? "Atención: bajo rendimiento"
+                  : "Crítico: requiere revisión"}
+              >
+                {stats.health === "healthy"      ? "🟢"
+                 : stats.health === "warning"    ? "🟡"
+                 : stats.health === "critical"   ? "🔴"
+                 : "⚪"}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Sparkline */}
+        {/* Sparkline — TASK-049: real equity curve */}
         <div style={{ margin: "0 -2px" }}>
-          <SparklinePlaceholder color={sparkColor} height={40} />
+          <SetupSparkline data={stats?.equityCurve} color={sparkColor} height={40} />
         </div>
 
         {/* Stats row */}
@@ -196,14 +243,36 @@ function SetupDrawer({
   const [lightboxImg,    setLightboxImg]    = useState<string | null>(null)
   const [showVersions,   setShowVersions]   = useState(false)
 
-  // T-VIII-004: version history for the selected setup
-  type VersionRow = { id: string; version: number; reason: string; createdAt: Date | string }
+  // T-VIII-004: version history for the selected setup (with snapshots for diff)
+  type VersionSnapshot = { aplusChecklist?: string[]; standardChecklist?: string[]; direction?: string }
+  type VersionRow = { id: string; version: number; reason: string; createdAt: Date | string; snapshot: unknown }
   const { data: versionsRaw } = trpc.setups.getVersions.useQuery(
     setup?.id ?? "",
     { enabled: !!setup?.id, staleTime: 30_000 },
   )
-  // Cast to a simple type to avoid deep instantiation in JSX
   const versions = versionsRaw as VersionRow[] | undefined
+
+  function parseSnapshot(s: unknown): VersionSnapshot {
+    if (!s || typeof s !== "object") return {}
+    const obj = s as Record<string, unknown>
+    return {
+      aplusChecklist:    Array.isArray(obj.aplusChecklist)    ? (obj.aplusChecklist as string[])    : [],
+      standardChecklist: Array.isArray(obj.standardChecklist) ? (obj.standardChecklist as string[]) : [],
+      direction:         typeof obj.direction === "string" ? obj.direction : undefined,
+    }
+  }
+
+  function computeDiff(prev: VersionSnapshot, next: VersionSnapshot) {
+    const added:   string[] = []
+    const removed: string[] = []
+    const prevAll = [...(prev.aplusChecklist ?? []), ...(prev.standardChecklist ?? [])]
+    const nextAll = [...(next.aplusChecklist ?? []), ...(next.standardChecklist ?? [])]
+    for (const item of nextAll) if (!prevAll.includes(item)) added.push(item)
+    for (const item of prevAll) if (!nextAll.includes(item)) removed.push(item)
+    const dirChanged = prev.direction && next.direction && prev.direction !== next.direction
+      ? `${prev.direction} → ${next.direction}` : null
+    return { added, removed, dirChanged }
+  }
 
   useEffect(() => { setConfirmName(""); setConfirmingDel(false); setStatusMenuOpen(false); setLightboxImg(null); setShowVersions(false) }, [setup?.id])
 
@@ -272,13 +341,20 @@ function SetupDrawer({
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-5">
 
-          {/* Equity placeholder */}
+          {/* Equity curve — TASK-049: real sparkline */}
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-eyebrow">Curva de equity</p>
-              <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
+              {(!stats || stats.total === 0) && (
+                <span className="text-[11px] text-[var(--ink-3)]">— sin trades</span>
+              )}
+              {stats && stats.total > 0 && (
+                <span className={cn("text-[11px] font-mono font-bold", stats.netPnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
+                  {stats.netPnl >= 0 ? "+" : "-"}${Math.abs(stats.netPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
+              )}
             </div>
-            <SparklinePlaceholder color="var(--accent)" height={60} />
+            <SetupSparkline data={stats?.equityCurve} color={stats && stats.netPnl >= 0 ? "var(--win)" : "var(--accent)"} height={60} />
           </div>
 
           {/* Stats grid */}
@@ -346,7 +422,7 @@ function SetupDrawer({
             </div>
           )}
 
-          {/* T-VIII-004: Version history */}
+          {/* T-VIII-004: Version history with diff (TD-034) */}
           {versions && versions.length > 0 && (
             <div>
               <button
@@ -359,15 +435,42 @@ function SetupDrawer({
               </button>
               {showVersions && (
                 <div className="flex flex-col gap-1.5 mt-2">
-                  {versions.map(v => (
-                    <div key={v.id} className="flex items-start gap-2.5 py-2 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
-                      <span className="text-[9px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">v{v.version}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-[var(--ink-2)]">{v.reason}</p>
-                        <p className="text-[10px] text-[var(--ink-3)]">{new Date(v.createdAt).toLocaleDateString("es-HN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  {versions.map((v, idx) => {
+                    // v.snapshot = state BEFORE this version's change
+                    // next state = previous version's snapshot (or current setup if idx === 0)
+                    const prevSnap = parseSnapshot(v.snapshot)
+                    const nextSnap: VersionSnapshot = idx === 0
+                      ? { aplusChecklist: setup.aplusChecklist, standardChecklist: setup.standardChecklist, direction: setup.direction }
+                      : parseSnapshot(versions[idx - 1].snapshot)
+                    const { added, removed, dirChanged } = computeDiff(prevSnap, nextSnap)
+                    const hasDiff = added.length > 0 || removed.length > 0 || dirChanged
+                    return (
+                      <div key={v.id} className="flex items-start gap-2.5 py-2.5 px-3 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)]">
+                        <span className="text-[9px] font-bold text-[var(--accent)] bg-[var(--accent-soft)] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5">v{v.version}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-[var(--ink-2)]">{v.reason}</p>
+                          <p className="text-[10px] text-[var(--ink-3)] mb-1.5">{new Date(v.createdAt).toLocaleDateString("es-HN", { day: "numeric", month: "short", year: "numeric" })}</p>
+                          {hasDiff && (
+                            <div className="flex flex-col gap-0.5">
+                              {dirChanged && (
+                                <p className="text-[10px] text-[var(--be)]">Dirección: {dirChanged}</p>
+                              )}
+                              {removed.map(item => (
+                                <p key={item} className="text-[10px] text-[var(--loss)] flex items-center gap-1">
+                                  <span className="font-bold">−</span> {item}
+                                </p>
+                              ))}
+                              {added.map(item => (
+                                <p key={item} className="text-[10px] text-[var(--win)] flex items-center gap-1">
+                                  <span className="font-bold">+</span> {item}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -733,7 +836,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
             <button key={t} onClick={() => setTab(t)}
               className={cn("flex-1 py-1.5 text-[12px] font-medium rounded-[var(--radius-sm)] transition-colors",
                 tab === t ? "bg-[var(--panel)] text-[var(--ink)] shadow-sm" : "text-[var(--ink-3)] hover:text-[var(--ink)]")}>
-              {t === "info" ? "📋 Información" : t === "checklist" ? "✓ Checklists" : "📈 Edge"}
+              {t === "info" ? "Información" : t === "checklist" ? "Checklists" : "Edge"}
             </button>
           ))}
         </div>
@@ -1030,6 +1133,11 @@ const STATUS_FILTERS = [
 export default function PlaybookPage() {
   const utils = trpc.useUtils()
 
+  const searchParams = typeof window !== "undefined"
+    ? new URLSearchParams(window.location.search)
+    : null
+  const highlightId = searchParams?.get("highlight") ?? null
+
   const [modalOpen,     setModalOpen]     = useState(false)
   const [editSetup,     setEditSetup]     = useState<DbSetup | null>(null)
   const [drawerSetup,   setDrawerSetup]   = useState<DbSetup | null>(null)
@@ -1042,24 +1150,31 @@ export default function PlaybookPage() {
   )
   const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
   const { data: dashStats }        = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
+  const { data: perfStats }        = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
 
   // Setup stats from server-side aggregation (all trades, not paginated 50)
   const setupStats = useMemo<Record<string, SetupStats>>(() => {
     const map: Record<string, SetupStats> = {}
+    // Build health/expectedWr map from performanceStats
+    const healthMap = new Map((perfStats?.setupStats ?? []).map(s => [s.setupId, { health: s.health as HealthStatus | undefined, expectedWr: s.expectedWr, expectedAvgR: s.expectedAvgR }]))
     for (const s of dashStats?.setupStats ?? []) {
       if (!s.setupId) continue
+      const hData = healthMap.get(s.setupId)
       map[s.setupId] = {
-        total:      s.trades,
-        wins:       Math.round(s.winRate / 100 * s.trades),
-        netPnl:     s.netPnl,
-        avgR:       s.avgR,
-        aplusRate:  s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
-        // avgR is the arithmetic mean of all R multiples (= E[R] per trade)
-        expectancy: s.avgR,
+        total:        s.trades,
+        wins:         Math.round(s.winRate / 100 * s.trades),
+        netPnl:       s.netPnl,
+        avgR:         s.avgR,
+        aplusRate:    s.trades > 0 ? Math.round((s.aplusCount / s.trades) * 100) : 0,
+        expectancy:   s.avgR,
+        equityCurve:  s.equityCurve,
+        health:       hData?.health,
+        expectedWr:   hData?.expectedWr ?? null,
+        expectedAvgR: hData?.expectedAvgR ?? null,
       }
     }
     return map
-  }, [dashStats])
+  }, [dashStats, perfStats])
 
   const setStatusMut = trpc.setups.setStatus.useMutation({
     onSuccess: () => { utils.setups.list.invalidate(); setDrawerSetup(null) },
@@ -1073,6 +1188,15 @@ export default function PlaybookPage() {
     onSuccess: () => utils.setups.list.invalidate(),
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
+
+  // Auto-open drawer when navigating from dashboard (QA-007)
+  useEffect(() => {
+    if (highlightId && setups.length > 0 && !drawerSetup) {
+      const target = setups.find(s => s.id === highlightId)
+      if (target) setDrawerSetup(target)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, setups.length])
 
   const active = setups.filter(s => s.status === "ACTIVO")
   const inTest = setups.filter(s => s.status === "EN_PRUEBA")

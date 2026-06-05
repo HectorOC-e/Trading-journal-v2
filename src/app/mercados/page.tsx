@@ -11,6 +11,9 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import type { MarketCategory } from "@/types"
+import type { RouterOutputs } from "@/server/trpc/root"
+
+type MarketItem = RouterOutputs["markets"]["list"][number]
 
 const CAT_LABELS: Record<MarketCategory, string> = {
   FUTUROS:  "Futuros",
@@ -64,10 +67,8 @@ function SessionChip({ s }: { s: string }) {
   )
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function MarketCard({ market, onToggleWatch, onEdit, onDelete, toggling }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  market: any
+  market: MarketItem
   onToggleWatch: () => void
   onEdit: () => void
   onDelete: () => void
@@ -77,66 +78,84 @@ function MarketCard({ market, onToggleWatch, onEdit, onDelete, toggling }: {
   const color = CAT_COLOR[cat] ?? "var(--accent)"
 
   return (
-    <div style={{
-      background: "var(--panel)", border: "1px solid var(--line)",
-      borderRadius: "var(--radius)", padding: "16px 18px",
-      display: "flex", flexDirection: "column", gap: 10,
-    }}>
+    <div
+      className="rounded-[var(--radius)] flex flex-col gap-3 p-4 transition-all duration-150"
+      style={{
+        background: "var(--panel)",
+        border: "1px solid var(--line)",
+      }}
+      onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--line-2)"}
+      onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "var(--line)"}
+    >
+      {/* Top color bar */}
+      <div className="h-[3px] rounded-full -mt-4 -mx-4 mb-1" style={{ background: color }} />
+
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-            background: color + "22", color,
-            display: "grid", placeItems: "center",
-            fontFamily: "'JetBrains Mono',monospace", fontSize: 11, fontWeight: 700,
-          }}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center font-mono text-[11px] font-bold shrink-0"
+            style={{ background: `${color}18`, color }}
+          >
             {market.symbol.slice(0, 3)}
           </div>
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", lineHeight: 1.2 }}>{market.symbol}</p>
-            <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{market.name}</p>
+            <p className="font-mono text-[14px] font-bold leading-tight" style={{ color: "var(--ink)" }}>{market.symbol}</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--ink-3)" }}>{market.name}</p>
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <button onClick={onEdit} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4 }}>
-            <Pencil size={13} />
+        <div className="flex items-center gap-0.5 shrink-0">
+          <button
+            onClick={onEdit}
+            className="p-1.5 rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--chip)]"
+            style={{ color: "var(--ink-3)" }}
+            aria-label="Editar"
+          >
+            <Pencil size={12} />
           </button>
-          <button onClick={onDelete} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--ink-3)", padding: 4 }}>
-            <Trash2 size={13} />
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--loss-soft)]"
+            style={{ color: "var(--ink-3)" }}
+            aria-label="Eliminar"
+          >
+            <Trash2 size={12} />
           </button>
-          <button onClick={onToggleWatch} disabled={toggling} style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: market.isWatchlisted ? "#f59e0b" : "var(--line-2)", padding: 4,
-          }}>
+          <button
+            onClick={onToggleWatch}
+            disabled={toggling}
+            className="p-1.5 rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--be-soft)]"
+            style={{ color: market.isWatchlisted ? "#f59e0b" : "var(--line-2)" }}
+            aria-label={market.isWatchlisted ? "Quitar de favoritos" : "Añadir a favoritos"}
+          >
             {toggling
-              ? <Loader2 size={16} className="animate-spin" />
-              : <Star size={16} fill={market.isWatchlisted ? "#f59e0b" : "none"} />}
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Star size={14} fill={market.isWatchlisted ? "#f59e0b" : "none"} />}
           </button>
         </div>
       </div>
 
       {market.description && (
-        <p style={{ fontSize: 12, color: "var(--ink-3)", lineHeight: 1.45 }}>{market.description}</p>
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--ink-3)" }}>{market.description}</p>
       )}
 
       {/* Specs */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+      <div className="grid grid-cols-2 gap-y-2 gap-x-3 pt-1 border-t border-[var(--line)]">
         {[
-          { l: "Exchange",     v: market.exchange    || "—" },
-          { l: "Tick size",    v: market.tickSize    || "—" },
-          { l: "Point value",  v: market.pointValue  || "—" },
-          { l: "Divisa",       v: market.currency },
+          { l: "Exchange",    v: market.exchange   || "—" },
+          { l: "Tick size",   v: market.tickSize   || "—" },
+          { l: "Point value", v: market.pointValue || "—" },
+          { l: "Divisa",      v: market.currency },
         ].map(f => (
           <div key={f.l}>
-            <p style={{ fontSize: 9.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--ink-3)" }}>{f.l}</p>
-            <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 12, fontWeight: 600, color: "var(--ink)", marginTop: 1 }}>{f.v}</p>
+            <p className="text-[9px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--ink-3)" }}>{f.l}</p>
+            <p className="font-mono text-[12px] font-semibold mt-0.5" style={{ color: "var(--ink)" }}>{f.v}</p>
           </div>
         ))}
       </div>
 
       {market.sessions?.length > 0 && (
-        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        <div className="flex gap-1.5 flex-wrap">
           {market.sessions.map((s: string) => <SessionChip key={s} s={s} />)}
         </div>
       )}
@@ -267,8 +286,7 @@ export default function MercadosPage() {
   const [onlyWatch, setOnlyWatch] = useState(false)
   const [search, setSearch]     = useState("")
   const [modalOpen, setModalOpen] = useState(false)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [editing, setEditing]   = useState<any | null>(null)
+  const [editing, setEditing]   = useState<(MarketForm & { id: string }) | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
   const { data: markets = [], isLoading } = trpc.markets.list.useQuery()

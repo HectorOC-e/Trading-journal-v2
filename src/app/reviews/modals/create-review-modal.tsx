@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Check, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -55,7 +55,8 @@ function generateWeekOptions(n = 6) {
   })
 }
 
-const WEEK_OPTIONS = generateWeekOptions(6)
+const WEEK_OPTIONS = generateWeekOptions(24)
+const WEEK_DEFAULT_SHOW = 8
 type WeekOption = typeof WEEK_OPTIONS[number]
 
 function disciplineColor(score: number): string {
@@ -218,6 +219,9 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   const [resourcesOpen,     setResourcesOpen]    = useState(false)
   const [linkedResources,   setLinkedResources]  = useState<string[]>([])
   const [selectedAccountId, setSelectedAccountId] = useState<string>("")
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showAllWeeks, setShowAllWeeks] = useState(false)
 
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
   const { data: rawTrades } = trpc.trades.list.useQuery({ limit: 200 })
@@ -248,6 +252,15 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
+  const autoSaveReview = trpc.weeklyReviews.update.useMutation({
+    onSuccess: () => {
+      utils.weeklyReviews.list.invalidate()
+      setAutoSaveStatus("saved")
+      setTimeout(() => setAutoSaveStatus("idle"), 2000)
+    },
+    onError: () => { setAutoSaveStatus("idle") },
+  })
+
   const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({
     onSuccess: (data) => {
       if (data.executiveSummary) setExecutiveSummary(data.executiveSummary)
@@ -269,7 +282,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   function resetState() {
     setStep("config"); setSelectedWeek(0); setGenerated(null); setAutoFields(new Set())
     setExecutiveSummary(""); setWhatWorked(""); setToImprove(""); setDisciplineScore(75)
-    setLinkedResources([]); setResourcesOpen(false)
+    setLinkedResources([]); setResourcesOpen(false); setShowAllWeeks(false); setAutoSaveStatus("idle")
   }
 
   const week = WEEK_OPTIONS[selectedWeek]
@@ -305,6 +318,29 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
       setDisciplineScore(serverScore.score)
     }
   }, [serverScore, autoFields])
+
+  // Auto-save in edit mode: debounce 2s after text changes
+  useEffect(() => {
+    if (!isEditMode || !editReview) return
+    if (!executiveSummary && !whatWorked && !toImprove) return
+
+    setAutoSaveStatus("saving")
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveReview.mutate({
+        id: editReview.id,
+        executiveSummary,
+        whatWorked,
+        toImprove,
+        disciplineScore,
+      })
+    }, 2000)
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [executiveSummary, whatWorked, toImprove, disciplineScore, isEditMode])
 
   function runAutoGenerate(weekIdx: number, accountId: string) {
     if (!accountId) return
@@ -361,7 +397,16 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetState() }}>
       <DialogContent className="max-w-[640px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{isEditMode ? `Editar review · ${editReview?.weekLabel}` : "Nueva review semanal"}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>{isEditMode ? `Editar review · ${editReview?.weekLabel}` : "Nueva review semanal"}</DialogTitle>
+            {isEditMode && autoSaveStatus !== "idle" && (
+              <span className="text-[11px] font-medium shrink-0 ml-2" style={{
+                color: autoSaveStatus === "saved" ? "var(--win)" : "var(--ink-3)",
+              }}>
+                {autoSaveStatus === "saving" ? "Guardando…" : "Guardado ✓"}
+              </span>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="flex gap-1 p-1 rounded-[var(--radius-sm)] mx-0" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
@@ -393,10 +438,28 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Semana</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {WEEK_OPTIONS.map((w, i) => (
+                  {(showAllWeeks ? WEEK_OPTIONS : WEEK_OPTIONS.slice(0, WEEK_DEFAULT_SHOW)).map((w, i) => (
                     <WeekSelectorCard key={w.label} week={w} selected={selectedWeek === i} onClick={() => handleSelectWeek(i)} generated={generated && selectedWeek === i ? generated : undefined} />
                   ))}
                 </div>
+                {!showAllWeeks && WEEK_OPTIONS.length > WEEK_DEFAULT_SHOW && (
+                  <button
+                    onClick={() => setShowAllWeeks(true)}
+                    className="mt-2 w-full text-center text-[11px] font-semibold py-1.5 rounded-[var(--radius-sm)] transition-colors"
+                    style={{ color: "var(--ink-3)", background: "var(--panel-2)", border: "1px solid var(--line)" }}
+                  >
+                    Ver semanas anteriores ({WEEK_OPTIONS.length - WEEK_DEFAULT_SHOW} más)
+                  </button>
+                )}
+                {showAllWeeks && (
+                  <button
+                    onClick={() => setShowAllWeeks(false)}
+                    className="mt-2 w-full text-center text-[11px] font-semibold py-1.5 rounded-[var(--radius-sm)] transition-colors"
+                    style={{ color: "var(--ink-3)", background: "var(--panel-2)", border: "1px solid var(--line)" }}
+                  >
+                    Ver menos
+                  </button>
+                )}
                 {/* T-IX-004: Server-sourced week summary row */}
                 {prefillData && (
                   <div className="mt-2 flex items-center gap-2 flex-wrap px-1">
@@ -460,9 +523,9 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
           {step === "analisis" && (
             <div className="flex flex-col gap-4 py-2">
               {[
-                { key: "executiveSummary", label: "📋 Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas...", rows: 3 },
-                { key: "whatWorked",       label: "✅ ¿Qué funcionó bien?", value: whatWorked, set: setWhatWorked, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
-                { key: "toImprove",        label: "🔧 A mejorar la próxima semana", value: toImprove, set: setToImprove, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
+                { key: "executiveSummary", label: "Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas...", rows: 3 },
+                { key: "whatWorked",       label: "¿Qué funcionó bien?", value: whatWorked, set: setWhatWorked, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
+                { key: "toImprove",        label: "A mejorar la próxima semana", value: toImprove, set: setToImprove, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
               ].map(({ key, label, value, set, placeholder, rows }) => (
                 <div key={key}>
                   <div className="flex items-center justify-between mb-1.5">

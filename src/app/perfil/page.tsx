@@ -8,6 +8,7 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
+import { AiModelsCard } from "./components/ai-models-card"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
 
@@ -195,6 +196,29 @@ function ProfileSkeleton() {
 }
 
 /* ── Main page ───────────────────────────────────────────────────────── */
+const ACCENT_PRESETS = [
+  { hue: 0,   label: "Rojo" },
+  { hue: 30,  label: "Naranja" },
+  { hue: 60,  label: "Amarillo" },
+  { hue: 120, label: "Verde" },
+  { hue: 200, label: "Teal" },
+  { hue: 240, label: "Azul" },
+  { hue: 280, label: "Morado" },
+  { hue: 320, label: "Rosa" },
+]
+
+const COLORBLIND_OPTIONS = [
+  { value: "default",      label: "Normal" },
+  { value: "deuteranopia", label: "Deuteranopia" },
+  { value: "mono",         label: "Monocromo" },
+]
+
+const AI_PROVIDERS = [
+  { id: "anthropic",  label: "Anthropic (Claude)", placeholder: "sk-ant-...", hint: "Obtén tu clave en console.anthropic.com" },
+  { id: "openrouter", label: "OpenRouter",         placeholder: "sk-or-...",  hint: "Obtén tu clave en openrouter.ai/keys" },
+  { id: "openai",     label: "OpenAI",             placeholder: "sk-...",     hint: "Obtén tu clave en platform.openai.com/api-keys" },
+]
+
 const SESSIONS = [
   { key: "ASIA",    start: "18:00", end: "02:00" },
   { key: "LONDON",  start: "02:00", end: "05:00" },
@@ -231,6 +255,15 @@ export default function PerfilPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [formInitialized,    setFormInitialized]    = useState(false)
   const [theme,              setThemeState]         = useState<"light" | "dark" | "system">("system")
+  const [accentHue,          setAccentHue]          = useState<number | null>(null)
+  const [colorScheme,        setColorScheme]        = useState<"default" | "deuteranopia" | "mono">("default")
+  const [disciplineGoal,     setDisciplineGoal]     = useState<number | undefined>(undefined)
+  const [weeklyTradesGoal,   setWeeklyTradesGoal]   = useState<number | null>(null)
+  const [weeklyPnlGoal,      setWeeklyPnlGoal]      = useState<number | null>(null)
+  const [weeklyGoalMinutesG, setWeeklyGoalMinutesG] = useState<number | null>(null)
+  const [editingProvider,    setEditingProvider]    = useState<string | null>(null)
+  const [aiKeyInput,         setAiKeyInput]         = useState("")
+  const [testingProvider,    setTestingProvider]    = useState<string | null>(null)
 
   // Initialize local state once on first data load (useEffect avoids calling setState during render)
   useEffect(() => {
@@ -245,7 +278,11 @@ export default function PerfilPage() {
   }, [profile, formInitialized])
 
   useEffect(() => {
-    if (prefs) setThemeState(prefs.theme as "light" | "dark" | "system")
+    if (prefs) {
+      setThemeState(prefs.theme as "light" | "dark" | "system")
+      setAccentHue(prefs.accentHue ?? null)
+      setColorScheme((prefs.colorScheme as "default" | "deuteranopia" | "mono") ?? "default")
+    }
   }, [prefs])
 
   /* ── Password modal state ── */
@@ -285,6 +322,61 @@ export default function PerfilPage() {
   const updatePrefsMut = trpc.preferences.update.useMutation({
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
+
+  /* ── Goals ── */
+  const { data: goalsData } = trpc.goals.get.useQuery()
+  const setGoalsMut = trpc.goals.set.useMutation({
+    onSuccess: () => toast.success("Metas actualizadas"),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
+  })
+
+  useEffect(() => {
+    if (!goalsData) return
+    setDisciplineGoal(goalsData.disciplineGoal ?? undefined)
+    setWeeklyTradesGoal(goalsData.weeklyTradesGoal ?? null)
+    setWeeklyPnlGoal(goalsData.weeklyPnlGoal ?? null)
+    setWeeklyGoalMinutesG(goalsData.weeklyGoalMinutes ?? null)
+  }, [goalsData])
+
+  /* ── AI Config ── */
+  const { data: aiConfigs } = trpc.aiConfig.list.useQuery()
+  const upsertAiConfigMut = trpc.aiConfig.upsert.useMutation({
+    onSuccess: () => {
+      utils.aiConfig.list.invalidate()
+      setEditingProvider(null)
+      setAiKeyInput("")
+      toast.success("API key guardada correctamente")
+    },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+  const deleteAiConfigMut = trpc.aiConfig.delete.useMutation({
+    onSuccess: () => {
+      utils.aiConfig.list.invalidate()
+      toast.success("API key eliminada")
+    },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+
+  // Tests a SAVED provider key against the real provider API (/api/ai-test).
+  // Surfaces the real error returned by the provider — not a generic message.
+  async function testConnection(provider: "anthropic" | "openrouter" | "openai") {
+    setTestingProvider(provider)
+    try {
+      const res = await fetch("/api/ai-test", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ provider }),
+      })
+      const data = await res.json().catch(() => ({})) as { valid?: boolean; error?: string }
+      if (data.valid) toast.success(`Conexión exitosa con ${provider} ✓`)
+      else            toast.error(`Falló la conexión: ${data.error ?? "error desconocido"}`)
+    } catch (e) {
+      toast.error(`No se pudo probar la conexión: ${e instanceof Error ? e.message : "error de red"}`)
+    } finally {
+      utils.aiConfig.list.invalidate()
+      setTestingProvider(null)
+    }
+  }
 
   /* ── Handlers ── */
   function handleSaveProfile() {
@@ -332,6 +424,15 @@ export default function PerfilPage() {
     } finally {
       setExportLoading(false)
     }
+  }
+
+  function handleSaveGoals() {
+    setGoalsMut.mutate({
+      disciplineGoal:    disciplineGoal,
+      weeklyTradesGoal:  weeklyTradesGoal,
+      weeklyPnlGoal:     weeklyPnlGoal,
+      weeklyGoalMinutes: weeklyGoalMinutesG,
+    })
   }
 
   /* ── Render ── */
@@ -485,6 +586,50 @@ export default function PerfilPage() {
           </div>
         </Card>
 
+        {/* ── Metas semanales ── */}
+        <Card>
+          <SectionTitle>Metas semanales</SectionTitle>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Field label="Meta de disciplina (0–100)">
+                <TextInput
+                  value={String(disciplineGoal ?? "")}
+                  onChange={v => setDisciplineGoal(v === "" ? undefined : Math.min(100, Math.max(0, parseInt(v) || 0)))}
+                  placeholder="80"
+                />
+              </Field>
+              <Field label="Trades por semana">
+                <TextInput
+                  value={weeklyTradesGoal != null ? String(weeklyTradesGoal) : ""}
+                  onChange={v => setWeeklyTradesGoal(v === "" ? null : parseInt(v) || null)}
+                  placeholder="Sin meta"
+                />
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <Field label="P&L semanal ($)">
+                <TextInput
+                  value={weeklyPnlGoal != null ? String(weeklyPnlGoal) : ""}
+                  onChange={v => setWeeklyPnlGoal(v === "" ? null : parseFloat(v) || null)}
+                  placeholder="Sin meta"
+                />
+              </Field>
+              <Field label="Minutos de aprendizaje/semana">
+                <TextInput
+                  value={weeklyGoalMinutesG != null ? String(weeklyGoalMinutesG) : ""}
+                  onChange={v => setWeeklyGoalMinutesG(v === "" ? null : parseInt(v) || null)}
+                  placeholder="300"
+                />
+              </Field>
+            </div>
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <PrimaryBtn onClick={handleSaveGoals} loading={setGoalsMut.isPending}>
+              Guardar metas
+            </PrimaryBtn>
+          </div>
+        </Card>
+
         {/* ── Apariencia ── */}
         <Card>
           <SectionTitle>Apariencia</SectionTitle>
@@ -517,6 +662,75 @@ export default function PerfilPage() {
               ))}
             </div>
           </div>
+
+          {/* Accent color */}
+          <div style={{ marginTop: 20 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 10 }}>
+              Color de acento
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {ACCENT_PRESETS.map(({ hue, label }) => (
+                <button
+                  key={hue}
+                  title={label}
+                  onClick={() => {
+                    setAccentHue(hue)
+                    updatePrefsMut.mutate({ accentHue: hue })
+                    document.documentElement.style.setProperty("--accent-hue", String(hue))
+                  }}
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%",
+                    background: `oklch(60% 0.2 ${hue})`,
+                    border: accentHue === hue ? "3px solid var(--ink)" : "2px solid transparent",
+                    cursor: "pointer", outline: "none", flexShrink: 0,
+                    boxShadow: accentHue === hue ? "0 0 0 1px var(--panel)" : undefined,
+                  }}
+                />
+              ))}
+              <button
+                onClick={() => {
+                  setAccentHue(null)
+                  updatePrefsMut.mutate({ accentHue: null })
+                  document.documentElement.style.removeProperty("--accent-hue")
+                }}
+                style={{
+                  height: 28, padding: "0 10px", borderRadius: 14,
+                  background: "var(--chip)", border: `1px solid ${accentHue === null ? "var(--ink)" : "var(--line)"}`,
+                  color: "var(--ink-2)", fontSize: 11, cursor: "pointer",
+                }}
+              >
+                Ninguno
+              </button>
+            </div>
+          </div>
+
+          {/* Colorblind mode */}
+          <div style={{ marginTop: 20 }}>
+            <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", display: "block", marginBottom: 8 }}>
+              Modo de color
+            </label>
+            <div style={{ display: "flex", gap: 8 }}>
+              {COLORBLIND_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setColorScheme(value as typeof colorScheme)
+                    updatePrefsMut.mutate({ colorScheme: value as "default" | "deuteranopia" | "mono" })
+                    document.documentElement.setAttribute("data-color-scheme", value)
+                  }}
+                  style={{
+                    flex: 1, padding: "8px 12px", borderRadius: "var(--radius-sm)",
+                    border: colorScheme === value ? "2px solid var(--accent)" : "1px solid var(--line)",
+                    background: colorScheme === value ? "var(--accent-soft)" : "var(--panel-2)",
+                    color: colorScheme === value ? "var(--accent)" : "var(--ink-2)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </Card>
 
         {/* ── Notificaciones ── */}
@@ -532,6 +746,96 @@ export default function PerfilPage() {
             }}
           />
         </Card>
+
+        {/* ── Configuración de IA ── */}
+        <Card>
+          <SectionTitle>Configuración de IA</SectionTitle>
+          <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: -14, marginBottom: 16 }}>
+            Configura tu propia API key para usar el coach de IA. Las claves se cifran con AES-256-GCM.
+          </p>
+
+          {AI_PROVIDERS.map(({ id, label, placeholder, hint }) => {
+            const config = aiConfigs?.find((c: { provider: string }) => c.provider === id)
+            const isEditing = editingProvider === id
+
+            return (
+              <div key={id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid var(--line)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isEditing ? 12 : 0 }}>
+                  <div>
+                    <p style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>{label}</p>
+                    {config && !isEditing && (
+                      <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, fontFamily: "'JetBrains Mono','Cascadia Code',monospace" }}>
+                        {config.maskedKey}
+                        {config.lastTested && ` · Probado ${new Date(config.lastTested).toLocaleDateString("es-HN")}`}
+                      </p>
+                    )}
+                    {!config && !isEditing && (
+                      <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>Sin configurar</p>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {config && !isEditing && (
+                      <GhostBtn
+                        onClick={() => testConnection(id as "anthropic" | "openrouter" | "openai")}
+                        loading={testingProvider === id}
+                      >
+                        Probar conexión
+                      </GhostBtn>
+                    )}
+                    {!isEditing && (
+                      <GhostBtn onClick={() => { setEditingProvider(id); setAiKeyInput("") }}>
+                        {config ? "Editar" : "Agregar"}
+                      </GhostBtn>
+                    )}
+                    {config && !isEditing && (
+                      <DangerBtn onClick={() => deleteAiConfigMut.mutate({ provider: id as "anthropic" | "openrouter" | "openai" })}>
+                        Eliminar
+                      </DangerBtn>
+                    )}
+                  </div>
+                </div>
+
+                {isEditing && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{hint}</p>
+                    <input
+                      type="password"
+                      value={aiKeyInput}
+                      onChange={e => setAiKeyInput(e.target.value)}
+                      placeholder={placeholder}
+                      style={{
+                        height: 38, padding: "0 12px",
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--line)",
+                        background: "var(--panel-2)",
+                        color: "var(--ink)", fontSize: 13,
+                        outline: "none", width: "100%",
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <PrimaryBtn
+                        onClick={() => upsertAiConfigMut.mutate({ provider: id as "anthropic" | "openrouter" | "openai", apiKey: aiKeyInput })}
+                        loading={upsertAiConfigMut.isPending}
+                        disabled={aiKeyInput.length < 20}
+                      >
+                        Guardar clave
+                      </PrimaryBtn>
+                      <GhostBtn onClick={() => { setEditingProvider(null); setAiKeyInput("") }}>
+                        Cancelar
+                      </GhostBtn>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Card>
+
+        {/* ── Modelos de IA (config ampliada) ── */}
+        <AiModelsCard />
 
         {/* ── Seguridad ── */}
         {showPasswordForm && (

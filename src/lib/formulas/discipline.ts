@@ -69,10 +69,11 @@ export function calcDisciplineScore(
   } = params
 
   // Execution: % of trades without behavioral tags (FOMO, Off-plan, etc.)
+  // Returns 0 when there are no trades — no evidence of discipline without activity.
   const executionScore =
     totalTrades > 0
       ? ((totalTrades - taggedViolations) / totalTrades) * 50
-      : 50
+      : 0
 
   // Learning: % of learning resources completed for review
   const learningScore =

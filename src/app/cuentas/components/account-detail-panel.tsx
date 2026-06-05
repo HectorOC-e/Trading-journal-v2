@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import {
   X, Shield, BarChart3,
   Pencil, Archive, Loader2, Trash2, XCircle,
-  History, ArrowUpCircle, ArrowLeft,
+  History, ArrowUpCircle, ArrowLeft, Lock, Unlock,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import {
@@ -14,7 +15,7 @@ import {
 import type { RawAccount, TradeStats } from "./account-card"
 import type { AccountType } from "@/types"
 
-export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, stats }: {
+export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdit, onArchive, onLost, archiving, onOpenHistory, onPromotePhase, onLock, onUnlock, locking, stats }: {
   account:   RawAccount
   onClose:   () => void
   onDelete?: () => void; deleting?: boolean
@@ -23,12 +24,16 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   onLost?:  (note: string) => void
   onOpenHistory?: () => void
   onPromotePhase?: () => void
+  onLock?:   () => void
+  onUnlock?: () => void
+  locking?:  boolean
   stats?:    TradeStats
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleteInput,   setDeleteInput]   = useState("")
   const [lostModal,     setLostModal]     = useState(false)
   const [lostNote,      setLostNote]      = useState("")
+  const router = useRouter()
 
   // Escape key to close on desktop
   useEffect(() => {
@@ -45,6 +50,17 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const phase        = (account.phase as string) ?? "NONE"
   const initialBalance = Number(account.initialBalance)
   const flatLine     = Array(10).fill(initialBalance)
+
+  const locked       = Boolean((account as { locked?: boolean }).locked)
+  const lockReason   = ((account as { lockReason?: string }).lockReason) ?? ""
+  const LOCK_LABELS: Record<string, string> = {
+    DAILY_LOSS_LIMIT:   "Daily Loss Limit Reached",
+    WEEKLY_LOSS_LIMIT:  "Weekly Loss Limit Reached",
+    MONTHLY_LOSS_LIMIT: "Monthly Loss Limit Reached",
+    MAX_DRAWDOWN:       "Maximum Drawdown Reached",
+    MANUAL:             "Bloqueo manual",
+  }
+  const lockLabel = LOCK_LABELS[lockReason] ?? (lockReason || "Cuenta bloqueada")
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -80,6 +96,20 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             </span>
           )}
         </div>
+
+        {/* HALLAZGO 1B — locked banner */}
+        {locked && (
+          <div className="flex items-start gap-2 mt-3 px-3 py-2.5 rounded-[var(--radius-sm)] border"
+            style={{ background: "var(--loss-soft)", borderColor: "var(--loss)" }}>
+            <Lock size={13} className="text-[var(--loss)] mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-[var(--loss)]">{lockLabel}</p>
+              <p className="text-[10px] text-[var(--ink-3)] mt-0.5">
+                No se permiten nuevos trades ni importaciones hasta desbloquear.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="p-5 flex flex-col gap-5">
@@ -151,9 +181,21 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
               </span>
             </div>
             <div className="flex flex-col gap-3 bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4 border border-[var(--line)]">
-              <RuleBar label="Drawdown total" usedPct={stats ? Math.min(100, stats.drawdownPct / Number(account.ddTotalPct) * 100) : 0} limitLabel={`${Number(account.ddTotalPct)}% max`} />
+              {/* Risk gauges from single source of truth (stats.risk) — BUG#1 fix:
+                  bar fills by limit utilization, number shows actual% / limit% */}
+              <RuleBar label="Drawdown total" usedPct={stats?.risk.total.usedPct ?? 0}
+                displayRight={stats ? `${stats.risk.total.actualPct.toFixed(2)}% / ${Number(account.ddTotalPct).toFixed(1)}%` : `— / ${Number(account.ddTotalPct)}%`} />
               {account.ddDailyPct != null && (
-                <RuleBar label="Pérdida diaria" usedPct={stats ? Math.min(100, Math.max(0, -stats.pnlToday) / (initialBalance * Number(account.ddDailyPct) / 100) * 100) : 0} limitLabel={`${Number(account.ddDailyPct)}% límite`} />
+                <RuleBar label="Pérdida diaria" usedPct={stats?.risk.daily.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.daily.actualPct.toFixed(2)}% / ${Number(account.ddDailyPct).toFixed(1)}%` : `— / ${Number(account.ddDailyPct)}%`} />
+              )}
+              {account.ddWeeklyPct != null && (
+                <RuleBar label="Pérdida semanal" usedPct={stats?.risk.weekly.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.weekly.actualPct.toFixed(2)}% / ${Number(account.ddWeeklyPct).toFixed(1)}%` : `— / ${Number(account.ddWeeklyPct)}%`} />
+              )}
+              {account.ddMonthlyPct != null && (
+                <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
+                  displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(2)}% / ${Number(account.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(account.ddMonthlyPct)}%`} />
               )}
               {account.targetPct != null && (
                 <div>
@@ -243,7 +285,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <Pencil size={11} /> Editar
           </button>
-          <button className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
+          <button
+            onClick={() => router.push(`/trades?accountId=${account.id}`)}
+            className="flex-1 min-w-[80px] flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-sm)] text-[12px] font-medium bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)] transition-colors">
             <BarChart3 size={11} /> Ver trades
           </button>
           <button onClick={onOpenHistory}
@@ -251,6 +295,21 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             <History size={11} /> Historial
           </button>
         </div>
+
+        {/* HALLAZGO 1B — manual lock / unlock */}
+        {(onLock || onUnlock) && (
+          locked ? (
+            <button onClick={onUnlock} disabled={locking}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--win)] text-[var(--win)] hover:bg-[var(--win)] hover:text-white transition-colors disabled:opacity-50">
+              <Unlock size={13} /> {locking ? "Desbloqueando…" : "Desbloquear cuenta"}
+            </button>
+          ) : (
+            <button onClick={onLock} disabled={locking}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--loss)] text-[var(--loss)] hover:bg-[var(--loss)] hover:text-white transition-colors disabled:opacity-50">
+              <Lock size={13} /> {locking ? "Bloqueando…" : "Bloquear cuenta"}
+            </button>
+          )
+        )}
 
         {/* Phase promotion */}
         {isPF && phase !== "FUNDED" && phase !== "NONE" && (

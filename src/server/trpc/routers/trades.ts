@@ -2,32 +2,70 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { isWin, calcWinRate, getISOWeekKey } from "@/lib/formulas"
 import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
-import { checkDailyLossLimit, checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
+import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
+import { computeAccountRisk } from "@/domains/trading/services/risk-engine"
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
+  buildExecutionStats, buildDiscipline,
 } from "@/domains/analytics/services/dashboard-analytics"
 import type {
-  MinimalTrade, AccountBalance, AccountWithLimits, Grain,
+  MinimalTrade, AccountBalance, AccountWithLimits, AccountLimits, Grain,
   KpiSummary, AccountStat, EquityCurvePoint, PnlByDatePoint,
   SessionStat, HourStat, SymbolStat, PropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
-import { isEmbeddingAvailable } from "@/lib/ai/config"
 import { embedText } from "@/lib/ai/embeddings"
+import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
+
+/** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
+function periodBounds(dateStr: string) {
+  const day = new Date(`${dateStr}T00:00:00Z`)
+  const dow = (day.getUTCDay() + 6) % 7 // Monday = 0
+  const weekStart = new Date(day);  weekStart.setUTCDate(day.getUTCDate() - dow)
+  const monthStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))
+  const earliest = weekStart < monthStart ? weekStart : monthStart
+  return { day, weekStart, monthStart, earliest }
+}
+
+function sameDay(a: Date, b: Date): boolean {
+  return a.getUTCFullYear() === b.getUTCFullYear()
+    && a.getUTCMonth() === b.getUTCMonth()
+    && a.getUTCDate() === b.getUTCDate()
+}
+
+/** Lock an account (auto, on loss-limit breach) and write an audit log. */
+async function lockAccount(
+  prisma: typeof import("@/lib/prisma").prisma,
+  userId: string,
+  accountId: string,
+  reason: string,
+  limitPct?: number,
+  currentPct?: number,
+): Promise<void> {
+  await prisma.account.update({
+    where: { id: accountId, userId },
+    data:  { locked: true, lockReason: reason, lockedAt: new Date() },
+  })
+  const payload: AccountLogPayload = { event: "LOCKED", reason, limitPct, currentPct, auto: true }
+  await prisma.accountLog.create({
+    data: { userId, accountId, event: "LOCKED", payload },
+  })
+}
 
 /** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
-function scheduleEmbedding(tradeId: string, notes: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
-  if (!isEmbeddingAvailable() || !notes.trim()) return
+function scheduleEmbedding(tradeId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
+  if (!notes.trim()) return
   void (async () => {
     try {
-      const vector = await embedText(notes)
+      const emb = await resolveEmbeddingCall(prismaClient, userId)
+      if (emb.source === "none") return
+      const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
       if (!vector) return
       await prismaClient.$executeRaw`
         UPDATE trades
@@ -209,20 +247,23 @@ export const tradesRouter = router({
       accountId: z.string().uuid().optional(),
       from:      z.string().optional(),
       to:        z.string().optional(),
-      period:    z.enum(["1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
+      period:    z.enum(["7d", "1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
     }).optional())
     .query(async ({ ctx, input }) => {
       const now        = new Date()
       const today      = now.toISOString().slice(0, 10)
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      const dayOfWeek  = now.getDay() // 0=Sun, 1=Mon ... 6=Sat
+      const daysToMon  = (dayOfWeek + 6) % 7  // days since last Monday
+      const weekStart  = new Date(Date.now() - daysToMon * 86_400_000).toISOString().slice(0, 10)
       const period     = input?.period ?? "3M"
 
-      const periodDays: Record<string, number | null> = { "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
+      const periodDays: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
       const days       = periodDays[period]
       const periodFrom = days != null ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : undefined
       const queryFrom  = input?.from ?? periodFrom
       const queryTo    = input?.to
-      const grainMap: Record<string, Grain> = { "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
+      const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
       const grain      = grainMap[period]
 
       // ── Cache lookup (feature-flagged) ────────────────────────────────────
@@ -233,11 +274,24 @@ export const tradesRouter = router({
       }
 
       // ── Fetch ─────────────────────────────────────────────────────────────
-      const [tradeRows, accounts, setupRows, checklistRows] = await Promise.all([
+      // Only active/paused accounts; archived (INACTIVE/LOST) are excluded from
+      // all dashboard analytics (QA-002/003/004/005/009).
+      const activeAccounts = await ctx.prisma.account.findMany({
+        where: { userId: ctx.userId, status: { in: ["ACTIVE", "PAUSED"] } },
+        select: {
+          id: true, name: true, type: true, status: true,
+          initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
+          maxTradesPerDay: true, allowedSymbols: true,
+        },
+      })
+      const activeAccountIds = activeAccounts.map(a => a.id)
+
+      const [tradeRows, setupRows, checklistRows] = await Promise.all([
         ctx.prisma.trade.findMany({
           where: {
-            userId: ctx.userId,
-            status: "CLOSED",
+            userId:    ctx.userId,
+            status:    "CLOSED",
+            accountId: { in: activeAccountIds },
             ...(input?.accountId && { accountId: input.accountId }),
             ...((queryFrom || queryTo) ? {
               date: {
@@ -253,14 +307,6 @@ export const tradesRouter = router({
             setupId: true, entry: true, stop: true, target: true, size: true,
           },
           orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-        }),
-        ctx.prisma.account.findMany({
-          where: { userId: ctx.userId },
-          select: {
-            id: true, name: true, type: true, status: true,
-            initialBalance: true, ddDailyPct: true, ddTotalPct: true,
-            maxTradesPerDay: true, allowedSymbols: true,
-          },
         }),
         ctx.prisma.setup.findMany({
           where: { userId: ctx.userId },
@@ -295,6 +341,7 @@ export const tradesRouter = router({
         size:      Number(t.size),
       }))
 
+      const accounts = activeAccounts
       const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) }))
       const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
         id:              a.id,
@@ -306,10 +353,17 @@ export const tradesRouter = router({
         maxTradesPerDay: a.maxTradesPerDay,
         allowedSymbols:  a.allowedSymbols as string[],
       }))
+      const limitsById: Record<string, AccountLimits> = Object.fromEntries(accounts.map(a => [a.id, {
+        id:           a.id,
+        ddDailyPct:   a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
+        ddWeeklyPct:  a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
+        ddMonthlyPct: a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
+        ddTotalPct:   a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
+      }]))
 
       // ── Core analytics (service delegation) ──────────────────────────────
-      const kpis         = buildKpis(trades, today, monthStart)
-      const accountStats = buildAccountStats(trades, acctBalances, today, monthStart)
+      const kpis         = buildKpis(trades, today, monthStart, weekStart)
+      const accountStats = buildAccountStats(trades, acctBalances, today, monthStart, weekStart, limitsById)
       const equityCurve  = buildEquityCurve(trades, acctBalances)
       const pnlByDate    = buildPnlByDate(trades, grain)
       const pnlBySymbol  = buildPnlBySymbol(trades, 10)
@@ -352,111 +406,9 @@ export const tradesRouter = router({
           }
         })
 
-      // ── Execution stats ───────────────────────────────────────────────────
-      const durations: number[] = []
-      const risks: number[]     = []
-      const rewards: number[]   = []
-      for (const t of trades) {
-        if (t.openTime && t.closeTime) {
-          const [oh, om] = t.openTime.split(":").map(Number)
-          const [ch, cm] = t.closeTime.split(":").map(Number)
-          const mins = (ch * 60 + cm) - (oh * 60 + om)
-          if (mins > 0) durations.push(mins)
-        }
-        const risk   = Math.abs(t.entry - t.stop)   * t.size
-        const reward = Math.abs(t.target - t.entry) * t.size
-        if (risk   > 0) risks.push(risk)
-        if (reward > 0) rewards.push(reward)
-      }
-      const avgDuration      = durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null
-      const avgPlannedRisk   = risks.length    > 0 ? risks.reduce((a, b) => a + b, 0)    / risks.length    : null
-      const avgPlannedReward = rewards.length  > 0 ? rewards.reduce((a, b) => a + b, 0)  / rewards.length  : null
-      const executionStats = {
-        avgDurationMinutes: avgDuration      != null ? parseFloat(avgDuration.toFixed(1))      : null,
-        avgPlannedRisk:     avgPlannedRisk   != null ? parseFloat(avgPlannedRisk.toFixed(2))   : null,
-        avgPlannedReward:   avgPlannedReward != null ? parseFloat(avgPlannedReward.toFixed(2)) : null,
-        riskRewardRatio:    avgPlannedRisk && avgPlannedReward ? parseFloat((avgPlannedReward / avgPlannedRisk).toFixed(4)) : null,
-      }
-
-      // ── Discipline ────────────────────────────────────────────────────────
-      const heatmapData: { date: string; severity: 0 | 1 | 2 }[] = []
-      const dateMap: Record<string, 0 | 1 | 2> = {}
-      for (const t of trades) {
-        const isOffPlan = t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")
-        const isLoss    = t.pnl < 0
-        const sev: 0 | 1 | 2 = isOffPlan ? 2 : isLoss ? 1 : 0
-        const cur = dateMap[t.date]
-        if (cur === undefined || sev > cur) dateMap[t.date] = sev
-      }
-      for (const [date, severity] of Object.entries(dateMap)) heatmapData.push({ date, severity })
-
-      const BUCKETS = ["-3R","-2R","-1R","0R","+1R","+2R","+3R","+4R+"] as const
-      const bucketMap: Record<string, number> = Object.fromEntries(BUCKETS.map(b => [b, 0]))
-      for (const t of trades) {
-        const r = t.rMultiple ?? 0
-        if      (r <= -2.5) bucketMap["-3R"]++
-        else if (r <= -1.5) bucketMap["-2R"]++
-        else if (r <= -0.5) bucketMap["-1R"]++
-        else if (r <= 0.5)  bucketMap["0R"]++
-        else if (r <= 1.5)  bucketMap["+1R"]++
-        else if (r <= 2.5)  bucketMap["+2R"]++
-        else if (r <= 3.5)  bucketMap["+3R"]++
-        else                bucketMap["+4R+"]++
-      }
-      const rDistribution = BUCKETS.map(b => ({ bucket: b, count: bucketMap[b] }))
-
-      const impulsivoCount = trades.filter(t => t.tags.includes("Impulsivo")).length
-      const offPlanCount   = trades.filter(t => t.tags.includes("Off-plan")).length
-      const revanCheCount  = trades.filter(t => t.tags.includes("Revanche")).length
-      const noSetupCount   = trades.filter(t => !t.setupId).length
-      const violations = [
-        { rule: "Flag impulsivo manual",    count: impulsivoCount, severity: "mayor" as const },
-        { rule: "Off-plan",                 count: offPlanCount,   severity: "mayor" as const },
-        { rule: "Revanche / revenge trade", count: revanCheCount,  severity: "mayor" as const },
-        { rule: "Sin setup asignado",       count: noSetupCount,   severity: "menor" as const },
-      ].filter(v => v.count > 0)
-
-      const byWeek: Record<string, { plan: number; total: number }> = {}
-      for (const t of trades) {
-        const key = getISOWeekKey(new Date(t.date))
-        if (!byWeek[key]) byWeek[key] = { plan: 0, total: 0 }
-        byWeek[key].total++
-        if (t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")) byWeek[key].plan++
-      }
-      const weeklyScore = Object.entries(byWeek)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .slice(-12)
-        .map(([week, v]) => ({ week: week.replace(/^\d{4}-/, ""), score: parseFloat((v.plan / v.total * 100).toFixed(2)) }))
-
-      const aplusTrades = trades.filter(t => t.tags.includes("A+"))
-      const stdTrades   = trades.filter(t => !t.tags.includes("A+"))
-      const aplusStats = {
-        aplusCount: aplusTrades.length,
-        stdCount:   stdTrades.length,
-        aplusWr:    aplusTrades.length > 0 ? calcWinRate(aplusTrades.filter(t => isWin({ pnl: t.pnl })).length, aplusTrades.length) : null,
-        stdWr:      stdTrades.length   > 0 ? calcWinRate(stdTrades.filter(t => isWin({ pnl: t.pnl })).length, stdTrades.length) : null,
-        aplusAvgR:  aplusTrades.length > 0 ? aplusTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / aplusTrades.length : null,
-        stdAvgR:    stdTrades.length   > 0 ? stdTrades.reduce((s, t) => s + (t.rMultiple ?? 0), 0)   / stdTrades.length   : null,
-      }
-
-      const total       = kpis.total
-      const planSeguido = trades.filter(t => t.setupId != null && !t.tags.includes("Impulsivo") && !t.tags.includes("Off-plan")).length
-      const offPlan2    = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).length
-      const composition = { planSeguido, offPlan: offPlan2, partial: Math.max(0, total - planSeguido - offPlan2) }
-      const costoIndisciplina = trades.filter(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan")).reduce((s, t) => s + t.pnl, 0)
-
-      const tradingDays = [...new Set(trades.map(t => t.date))].sort((a, b) => b.localeCompare(a))
-      let rachaDiasLimpios = 0
-      for (const day of tradingDays) {
-        if (trades.filter(t => t.date === day).some(t => t.tags.includes("Impulsivo") || t.tags.includes("Off-plan"))) break
-        rachaDiasLimpios++
-      }
-
-      const discipline = {
-        heatmapData, rDistribution, violations, weeklyScore, aplusStats, composition,
-        costoIndisciplina: parseFloat(costoIndisciplina.toFixed(2)),
-        rachaDiasLimpios,
-      }
+      // ── Execution stats + discipline (service delegation) ─────────────────
+      const executionStats = buildExecutionStats(trades)
+      const discipline     = buildDiscipline(trades, kpis.total)
 
       const result: DashboardOutput = {
         kpis,
@@ -484,62 +436,117 @@ export const tradesRouter = router({
 
   create: protectedProcedure
     .input(z.object({
-      accountId:      z.string().uuid(),
-      setupId:        z.string().uuid().optional(),
-      direction:      z.enum(["LONG", "SHORT"]),
-      symbol:         z.string().min(1),
-      entry:          z.number(),
-      stop:           z.number(),
-      target:         z.number(),
-      size:           z.number().positive(),
-      date:           z.string(),
-      openTime:       z.string(),
-      session:        z.enum(["London", "New York", "Asia", "London Close"]),
-      tags:           z.array(z.string()).default([]),
-      notes:          z.string().default(""),
-      screenshotUrls: z.array(z.string()).default([]),
-      pnl:            z.number().optional(),
-      closePrice:     z.number().optional(),
-      closeTime:      z.string().optional(),
-      commission:     z.number().optional(),
-      status:         z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN"),
+      accountId:       z.string().uuid(),
+      setupId:         z.string().uuid().optional(),
+      direction:       z.enum(["LONG", "SHORT"]),
+      symbol:          z.string().min(1),
+      entry:           z.number(),
+      stop:            z.number(),
+      target:          z.number(),
+      size:            z.number().positive(),
+      date:            z.string(),
+      openTime:        z.string(),
+      session:         z.enum(["London", "New York", "Asia", "London Close"]),
+      tags:            z.array(z.string().min(1).max(30)).max(20).default([]),
+      notes:           z.string().default(""),
+      screenshotUrls:  z.array(z.string()).default([]),
+      pnl:             z.number().optional(),
+      closePrice:      z.number().optional(),
+      closeTime:       z.string().optional(),
+      commission:      z.number().optional(),
+      status:          z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN"),
+      // Psychology fields (TASK-034)
+      emotionBefore:   z.enum(["calm", "anxious", "excited", "fearful", "overconfident"]).optional().nullable(),
+      confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
+      executionQuality: z.number().int().min(1).max(5).optional().nullable(),
+      fomoFlag:        z.boolean().optional(),
+      revengeFlag:     z.boolean().optional(),
+      // Pre-trade planning field (TASK-074)
+      planNotes:       z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // ── Prop firm enforcement ──────────────────────────────────────────────
+      // ── Account + risk-limit enforcement (HALLAZGO 1B) ─────────────────────
       const account = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.accountId, userId: ctx.userId },
         select: {
           type:            true,
+          locked:          true,
+          lockReason:      true,
           ddDailyPct:      true,
+          ddWeeklyPct:     true,
+          ddMonthlyPct:    true,
+          ddTotalPct:      true,
           maxTradesPerDay: true,
           allowedSymbols:  true,
           initialBalance:  true,
         },
       })
 
+      // 1) Already locked → no new trades until manual unlock
+      if (account.locked) {
+        throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${account.lockReason || "MANUAL"}` })
+      }
+
+      // 2) Setup must be selectable (HALLAZGO 2 — backend guard)
+      if (input.setupId) {
+        const setup = await ctx.prisma.setup.findUnique({
+          where:  { id: input.setupId, userId: ctx.userId },
+          select: { status: true },
+        })
+        if (!setup) throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_FOUND" })
+        if (setup.status === "PAUSADO" || setup.status === "DESCARTADO") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_AVAILABLE" })
+        }
+      }
+
+      // 3) Risk limits (daily / weekly / monthly loss + total max-drawdown) —
+      //    universal, all account types. Single source of truth: risk-engine.
+      //    On breach the account is auto-locked and the trade is rejected.
+      const initBal = Number(account.initialBalance)
+      const bounds  = periodBounds(input.date)
+      const hasRiskLimit =
+        account.ddDailyPct != null || account.ddWeeklyPct != null ||
+        account.ddMonthlyPct != null || account.ddTotalPct != null
+      if (hasRiskLimit && initBal > 0) {
+        // Full closed-trade history (chronological) — needed for peak-to-trough max drawdown.
+        const closed = await ctx.prisma.trade.findMany({
+          where:   { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+          select:  { pnl: true, date: true },
+          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+        })
+        const sumFrom = (from: Date) => closed.filter(t => (t.date as Date) >= from).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+        const risk = computeAccountRisk({
+          initialBalance: initBal,
+          ddDailyPct:   account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null,
+          ddWeeklyPct:  account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null,
+          ddMonthlyPct: account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null,
+          ddTotalPct:   account.ddTotalPct   != null ? Number(account.ddTotalPct)   : null,
+          dayPnl:       closed.filter(t => sameDay(t.date as Date, bounds.day)).reduce((s, t) => s + Number(t.pnl ?? 0), 0),
+          weekPnl:      sumFrom(bounds.weekStart),
+          monthPnl:     sumFrom(bounds.monthStart),
+          maxDrawdown:  computeMaxDrawdown(closed.map(t => Number(t.pnl ?? 0))),
+        })
+
+        if (risk.breach) {
+          await lockAccount(ctx.prisma, ctx.userId, input.accountId, risk.breach.reason, risk.breach.limitPct, risk.breach.actualPct)
+          throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${risk.breach.reason}` })
+        }
+      }
+
+      // 4) Prop-firm-only constraints: max trades/day + symbol allowlist
       if (account.type === "PROP_FIRM" || account.type === "DEMO_PROP") {
         const tradeDate = new Date(input.date)
-
-        if (account.ddDailyPct != null) {
-          const todayTrades = await ctx.prisma.trade.findMany({
-            where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: tradeDate },
-            select: { pnl: true },
-          })
-          const todayLoss = todayTrades.reduce((s, t) => s + Math.min(0, Number(t.pnl ?? 0)), 0)
-          const violation = checkDailyLossLimit(todayLoss, Number(account.initialBalance), Number(account.ddDailyPct))
-          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_DAILY_LOSS_LIMIT" })
-        }
-
         if (account.maxTradesPerDay != null) {
           const todayCount = await ctx.prisma.trade.count({
             where: { accountId: input.accountId, userId: ctx.userId, date: tradeDate },
           })
-          const violation = checkTradeCountLimit(todayCount, account.maxTradesPerDay)
-          if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
+          if (checkTradeCountLimit(todayCount, account.maxTradesPerDay)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
+          }
         }
-
-        const violation = checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])
-        if (violation) throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
+        if (checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
+        }
       }
 
       const trade = await ctx.prisma.trade.create({
@@ -547,6 +554,7 @@ export const tradesRouter = router({
         include: { account: true, setup: true, events: true },
       })
 
+      const openTimeSafe = input.openTime || "00:00"
       await ctx.prisma.tradeEvent.create({
         data: {
           userId:    ctx.userId,
@@ -555,7 +563,7 @@ export const tradesRouter = router({
           price:     input.entry,
           contracts: input.size,
           notes:     `${input.direction} · SL ${input.stop} · TP ${input.target}`,
-          timestamp: new Date(`${input.date}T${input.openTime}:00`),
+          timestamp: new Date(`${input.date}T${openTimeSafe}:00`),
         },
       })
 
@@ -565,24 +573,32 @@ export const tradesRouter = router({
       })
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
+      scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
       return serializeTrade(full)
     }),
 
   update: protectedProcedure
     .input(z.object({
-      id:             z.string().uuid(),
-      notes:          z.string().optional(),
-      tags:           z.array(z.string()).optional(),
-      pnl:            z.number().optional(),
-      rMultiple:      z.number().optional(),
-      screenshotUrls: z.array(z.string()).optional(),
-      entry:          z.number().optional(),
-      stop:           z.number().optional(),
-      target:         z.number().optional(),
-      size:           z.number().optional(),
-      session:        z.string().optional(),
-      setupId:        z.string().uuid().optional().nullable(),
+      id:               z.string().uuid(),
+      notes:            z.string().optional(),
+      tags:             z.array(z.string().min(1).max(30)).max(20).optional(),
+      pnl:              z.number().optional(),
+      rMultiple:        z.number().optional(),
+      screenshotUrls:   z.array(z.string()).optional(),
+      entry:            z.number().optional(),
+      stop:             z.number().optional(),
+      target:           z.number().optional(),
+      size:             z.number().optional(),
+      session:          z.string().optional(),
+      setupId:          z.string().uuid().optional().nullable(),
+      // Psychology fields (TASK-034)
+      emotionBefore:    z.enum(["calm", "anxious", "excited", "fearful", "overconfident"]).optional().nullable(),
+      confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
+      executionQuality: z.number().int().min(1).max(5).optional().nullable(),
+      fomoFlag:         z.boolean().optional(),
+      revengeFlag:      z.boolean().optional(),
+      // Pre-trade planning field (TASK-074)
+      planNotes:        z.string().max(500).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
@@ -591,7 +607,7 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
-      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.prisma)
+      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
       return serializeTrade(trade)
     }),
 
@@ -850,10 +866,11 @@ export const tradesRouter = router({
       limit: z.number().int().min(1).max(20).default(10),
     }))
     .query(async ({ ctx, input }) => {
-      if (!isEmbeddingAvailable()) {
+      const emb = await resolveEmbeddingCall(ctx.prisma, ctx.userId)
+      if (emb.source === "none") {
         return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
       }
-      const queryVector = await embedText(input.query)
+      const queryVector = await embedText(input.query, { model: emb.model, apiKey: emb.apiKey })
       if (!queryVector) {
         return { trades: [], similarity: [], error: "EMBED_FAILED" as const }
       }

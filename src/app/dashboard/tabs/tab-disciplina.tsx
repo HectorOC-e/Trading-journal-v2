@@ -38,6 +38,10 @@ export function TabDisciplina({ kpis, discipline }: {
   // ── Live rule violation stats (T-V-001) ────────────────────────────────────
   const { data: violationStats } = trpc.trades.ruleViolationStats.useQuery(undefined, { staleTime: 60_000 })
 
+  // ── User rules (QA-019) ───────────────────────────────────────────────────
+  const { data: userRules = [] } = trpc.rules.list.useQuery(undefined, { staleTime: 120_000 })
+  const enabledRules = userRules.filter(r => r.enabled)
+
   // ── Mood correlation (T-V-004) ────────────────────────────────────────────
   const { data: moodCorr } = trpc.tradingSessions.moodCorrelation.useQuery(undefined, { staleTime: 60_000 })
 
@@ -172,10 +176,13 @@ export function TabDisciplina({ kpis, discipline }: {
               { label: "Plan seguido",   value: `${planSeguidoPct}%`,     sub: `${composition.planSeguido} / ${total}`, color: "#4f6ef7" },
               { label: "Off-plan count", value: `${composition.offPlan}`, sub: "trades off-plan",                color: "var(--loss)" },
             ].map(m => (
-              <div key={m.label} className="border-l-2 pl-3" style={{ borderColor: m.color }}>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] mb-1">{m.label}</p>
-                <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 22 }}>{m.value}</p>
-                <p className="text-[10px] text-[var(--ink-3)] mt-0.5">{m.sub}</p>
+              <div key={m.label} className="flex flex-col gap-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)]">{m.label}</p>
+                </div>
+                <p className="font-mono font-bold text-[var(--ink)]" style={{ fontSize: 22, fontVariantNumeric: "tabular-nums" }}>{m.value}</p>
+                <p className="text-[10px] text-[var(--ink-3)]">{m.sub}</p>
               </div>
             ))}
           </div>
@@ -287,6 +294,50 @@ export function TabDisciplina({ kpis, discipline }: {
         </Card>
       </div>
 
+      {/* Reglas activas (QA-019) */}
+      {enabledRules.length > 0 && (
+        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[13px] font-semibold text-[var(--ink)]">Reglas activas</p>
+            <button
+              onClick={() => router.push("/reglas")}
+              className="text-[11px] text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors"
+            >
+              Gestionar reglas →
+            </button>
+          </div>
+          <div className="flex flex-col gap-0">
+            {enabledRules.slice(0, 8).map(rule => (
+              <div key={rule.id} className="flex items-start gap-3 py-2.5 border-b border-[var(--line)] last:border-0">
+                <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                  style={{ background: rule.severity === "CRÍTICA" ? "var(--loss)" : rule.severity === "MENOR" ? "var(--be)" : "var(--ink-3)" }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-medium text-[var(--ink)] leading-snug">{rule.name}</p>
+                  {rule.description && (
+                    <p className="text-[11px] text-[var(--ink-3)] mt-0.5 line-clamp-1">{rule.description}</p>
+                  )}
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0"
+                  style={{
+                    background: rule.severity === "CRÍTICA" ? "var(--loss-soft)" : rule.severity === "MENOR" ? "var(--be-soft)" : "var(--chip)",
+                    color:      rule.severity === "CRÍTICA" ? "var(--loss)"      : rule.severity === "MENOR" ? "var(--be)"      : "var(--ink-3)",
+                  }}>
+                  {rule.severity}
+                </span>
+              </div>
+            ))}
+            {enabledRules.length > 8 && (
+              <button
+                onClick={() => router.push("/reglas")}
+                className="text-center text-[11px] text-[var(--ink-3)] hover:text-[var(--accent)] pt-2 transition-colors"
+              >
+                Ver todas las {enabledRules.length} reglas →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Monthly violation chart (T-V-001) */}
       {violationStats && violationStats.byMonth.length > 1 && (
         <Card title="Violaciones por mes" sub="Conteo total de trades con tag de violación">
@@ -379,8 +430,8 @@ export function TabDisciplina({ kpis, discipline }: {
               return (
                 <div
                   key={p.id}
-                  className="rounded-[var(--radius-sm)] border border-[var(--line)] p-4 flex flex-col gap-2"
-                  style={{ borderLeftWidth: 3, borderLeftColor: badgeColor }}
+                  className="rounded-[var(--radius-sm)] p-4 flex flex-col gap-2"
+                  style={{ border: `1px solid ${badgeColor}`, background: p.confidence === "high" ? "var(--loss-soft)" : p.confidence === "medium" ? "var(--be-soft)" : "var(--win-soft)" }}
                 >
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-[var(--ink)] flex-1">{p.title}</p>
