@@ -52,7 +52,8 @@ Se implementaron las Fases 0–4 del plan maestro. El sistema de temas (entregab
 - ✅ **Trades**: detail-rail 340px (estrangulaba la tabla a ~794px en 1366px) → `DrawerPanel` overlay 460px. **C3 resuelto** en Trades.
 - ✅ **Cuentas**: detail-rail 340px → `DrawerPanel` overlay 460px. Grid de cuentas a ancho completo.
 - ✅ **Reviews**: el detail-rail 380px se migró a **`DrawerPanel`** overlay (480px), unificando el patrón con Trades/Cuentas y eliminando el último push-rail. (La variante "página completa `/reviews/[id]`" del plan se cambió por drawer por consistencia y menor riesgo.)
-- 🟡 **Aprendizaje**: corregido el menú invisible (C1) pero el right-rail permanente de stats y los 5 modales (M5/M6) no se reestructuraron aún.
+- ✅ **Aprendizaje (M5)**: el right-rail permanente de 340px se eliminó del flujo. Ahora hay un **strip de KPIs horizontal** arriba (glance rápido: recursos, completados, horas, reviews urgentes, racha) y el panel detallado de progreso (insight, impacto, foco, reviews vencidas, por tipo, racha) se abre como **`DrawerPanel`** desde "Panel de progreso". El grid de recursos usa ancho completo.
+- 🟡 **Aprendizaje (M6)**: el menú invisible (C1) y la competencia visual del rail (M5) están resueltos; la auditoría profunda de los 5 modales (cuáles convertir a inline/drawer) queda como follow-up — el ruido estructural ya bajó al consolidar el rail.
 
 ## 5. Fase 3 — Navegación, pilares, navbar móvil, Quick Actions ✅
 
