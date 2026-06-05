@@ -25,16 +25,12 @@ const UpdatePreferencesInput = z.object({
 export const preferencesRouter = router({
   get: protectedProcedure
     .query(async ({ ctx }) => {
-      const prefs = await ctx.prisma.userPreferences.findUnique({
-        where: { userId: ctx.userId },
-      })
-      // Return defaults if no preferences row exists yet
-      return prefs ?? {
+      const defaults = {
         userId:       ctx.userId,
         theme:        "system" as const,
         colorTheme:   "indigo",
-        customTheme:  null,
-        accentHue:    null,
+        customTheme:  null as string | null,
+        accentHue:    null as number | null,
         colorScheme:  "default" as const,
         defaultTab:   "portfolio",
         kpiOrder:     [] as string[],
@@ -45,6 +41,19 @@ export const preferencesRouter = router({
         numberLocale: "es-HN",
         createdAt:    new Date(),
         updatedAt:    new Date(),
+      }
+      // Preferences are read GLOBALLY on every page (theme-provider). With the
+      // tRPC httpBatchLink, an unhandled error here would fail the WHOLE batch
+      // and leave every page without data. So a read failure (e.g. a column not
+      // yet migrated in this environment) must degrade gracefully to defaults.
+      try {
+        const prefs = await ctx.prisma.userPreferences.findUnique({
+          where: { userId: ctx.userId },
+        })
+        return prefs ?? defaults
+      } catch (err) {
+        console.error("[preferences.get] read failed, falling back to defaults:", err)
+        return defaults
       }
     }),
 
