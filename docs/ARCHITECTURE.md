@@ -1,280 +1,221 @@
 # Architecture — Trading Journal v2
 
-> Last reviewed: 2026-05-30. See ASSESSMENT_2026.md for the detailed finding-by-finding breakdown.
+> Cómo funciona el sistema por dentro. Última actualización: 2026-06-05.
+> Refleja el estado **real** del código (`src/`), no un diseño objetivo.
 
 ---
 
-## Stack
+## 1. Stack
 
-| Layer | Technology | Version |
+| Capa | Tecnología | Versión |
 |---|---|---|
-| Frontend | Next.js App Router, React | 16.2.6, 19.2.4 |
-| API | tRPC | 11.17.0 |
-| ORM | Prisma with PrismaPg adapter | 7.8.0 |
-| Database | Supabase PostgreSQL | — |
-| Auth | Supabase Auth + JWT middleware | — |
-| Background | Supabase Edge Functions (Deno) | — |
-| Email | Resend API | — |
-| Charts | Recharts | 3.8.1 |
-| Validation | Zod | 4.4.3 |
+| Frontend | Next.js App Router + React | 16.2.x / 19.2.x |
+| API | tRPC (end-to-end types) | 11.x |
+| ORM | Prisma + adapter PrismaPg | 7.8.x |
+| Base de datos | Supabase PostgreSQL | 17 |
+| Auth | Supabase Auth + JWT (proxy middleware) | — |
+| Background | Supabase Edge Functions (Deno) + `pg_cron` | — |
+| Email | Resend | — |
+| Charts | Recharts | 3.x |
+| Validación | Zod | 4.x |
+| Búsqueda semántica | pgvector (embeddings) | — |
 | Hosting | Vercel (app) + Supabase (DB) | — |
 
 ---
 
-## Current Layering (Actual)
+## 2. Layering (actual)
+
+La refactorización a dominios (antes "target") **ya está implementada**:
 
 ```
 Browser
-  └── Page Component (900–1746 LOC)
-        ├── useMemo analytics (18+ derivations from raw arrays)
-        ├── Inline modal components (3–5 per page)
+  └── Page Component (layout + wiring de tabs/modales)
+        ├── Hooks de dominio / queries tRPC
         └── tRPC Client
-              └── tRPC Router (auth + input + business logic mixed)
-                    └── Prisma Client
-                          └── Supabase PostgreSQL
+              └── tRPC Router (auth + validación Zod + delega)
+                    └── Domain Service (lógica de negocio)
+                          ├── Formula Engine (funciones puras)  → lib/formulas/
+                          └── Prisma → Supabase PostgreSQL
 ```
 
-### Critical Problems with Current Layering
-
-**1. Client-side analytics on unbounded raw data**
-The dashboard fetches ALL trades (no pagination) and computes all metrics — equity curves, drawdown, session analysis, setup performance — in `useMemo` hooks inside a 1746-LOC page component. This degrades quadratically with trade volume.
-
-**2. Fat pages are test-resistant**
-Four pages exceed 1000 LOC. Business logic, UI state, form validation, and modal rendering are co-located. No unit of the page is independently testable.
-
-**3. Business rules not enforced at mutation boundary**
-Prop firm constraints (daily loss %, drawdown %, max trades/day, allowed symbols) are stored in the schema but not checked in `trades.create`. Rule violation counts (`Rule.violationsThisMonth`) are tracked in the schema but never incremented automatically.
-
----
-
-## Target Layering
-
-```
-Browser
-  └── Page Component (~150 LOC — layout + tab wiring)
-        ├── Custom domain hooks (useTradeAnalytics, useAccountMetrics)
-        ├── Modal components (separate files, lazy-loaded)
-        └── tRPC Client
-              └── tRPC Router (auth + input parsing only)
-                    └── Domain Service (business logic)
-                          ├── Domain Rules (pure functions — formulas.ts extended)
-                          └── Prisma Repository (DB access)
-```
-
-### Target Module Boundaries
-
+### Estructura de código (`src/`)
 ```
 src/
+  app/                      # 13 rutas: dashboard, trades, cuentas, playbook, reviews,
+                            #   aprendizaje, retiros, reglas, mercados, etiquetas, perfil, login
+    api/                    # rutas HTTP: ai-coach, ai-embed, ai-test, import/*
+  server/trpc/routers/      # 17 routers (thin: auth + input + delega a servicios)
   domains/
-    trading/
-      services/
-        trade-service.ts          ← P&L calc, close logic, prop firm enforcement
-        account-service.ts        ← balance, drawdown computation
-        setup-service.ts          ← performance aggregation
-      rules/
-        prop-firm-rules.ts        ← constraint checkers (pure functions)
-    learning/
-      services/
-        review-scheduler.ts       ← calcNextReviewAt, interval scaling
-        streak-service.ts         ← computeNewStreak (extracted from createReview)
-        decay-detector.ts         ← MASTERED→IN_REVIEW logic
-    analytics/
-      services/
-        dashboard-analytics.ts    ← all dashboard aggregations (server-side)
-        setup-analytics.ts        ← setup win-rate, equity curve per setup
-  server/
-    trpc/
-      routers/                    ← thin: auth + input validation + delegate
-  app/
-    dashboard/
-      page.tsx                    ← tab wiring only
-      hooks/
-        use-dashboard-stats.ts    ← wraps pre-aggregated tRPC queries
-      tabs/
-        tab-portfolio.tsx
-        tab-operador.tsx
-        tab-disciplina.tsx
-        tab-playbook.tsx
-    aprendizaje/
-      page.tsx                    ← wiring only
-      modals/
-        add-resource-modal.tsx
-        session-review-modal.tsx
-        impact-modal.tsx
-        link-setup-modal.tsx
+    trading/services/       # trade-service, account-service, prop-firm-guard,
+                            #   risk-engine, csv-import, mt4-parser
+    analytics/              # ai-context + services/: dashboard-analytics, setup-analytics,
+                            #   discipline-service, pattern-detector, analytics-cache
+    learning/services/      # review-scheduler, streak-service, decay-detector
+    profile/services/       # profile-service
+  lib/
+    formulas/               # Formula Engine (puro): performance, win-rate, risk,
+                            #   drawdown, discipline, setup, utils
+    ai/                     # resolve-provider, chat, embeddings, coach-service,
+                            #   config, feature-models, resolve-model, key-encryption, health-check
+    supabase/ trpc/ generated/ (prisma client)
+  prisma/schema.prisma      # modelos (solo para generar el cliente; NO prisma migrate)
+  components/  hooks/  types/  __tests__/
+supabase/migrations/        # fuente única de migraciones (Supabase CLI)
 ```
 
 ---
 
-## Domain Model
+## 3. Frontend
+
+- **App Router** de Next.js; páginas como contenedores de layout + wiring. La analítica pesada **no** se computa en `useMemo` sobre datos crudos: se consume pre-agregada del servidor.
+- **Tipos**: se derivan de `RouterOutputs` de tRPC (no se mantiene un `types/index.ts` a mano para entidades).
+- **Estado servidor**: React Query vía tRPC con `staleTime` en queries caras.
+- **Tema/UX**: tema claro/oscuro/sistema, acento configurable, modo daltónico; persistido (precedencia BD).
+- **PWA**: manifest + service worker (instalable, offline de lectura). Iconos PNG 192/512.
+
+---
+
+## 4. Backend / API
+
+- **tRPC** con `protectedProcedure`: el `userId` se extrae de la sesión, **nunca** del input del cliente.
+- Routers delgados: auth + parseo Zod + delegan a servicios de dominio.
+- **17 routers**: `trades`, `accounts`, `account-logs`, `setups`, `markets`, `rules`, `trade-tags`, `trading-sessions`, `weekly-reviews`, `monthly-reviews`, `learning-resources`, `withdrawals`, `goals`, `preferences`, `profile`, `ai-config`, `ai-settings`.
+- **Rutas HTTP** (`app/api/`): `ai-coach` (SSE streaming), `ai-embed` (embeddings, con guard IDOR), `ai-test` (test de conexión IA), `import/mt4`.
+
+---
+
+## 5. Base de datos / Migraciones
+
+- **PostgreSQL gestionado por Supabase** (proyecto `jpojusluihjjsjvcubdp`, Postgres 17). RLS en todas las tablas de aplicación.
+- **Prisma** para todo el acceso a datos (adapter PrismaPg); el cliente Supabase solo para Auth. Prisma se usa **únicamente** para generar el cliente tipado (`prisma generate`) — **nunca** `prisma migrate`.
+- **Sistema de migraciones = Supabase CLI**, fuente única en `supabase/migrations/` (rastreado en prod por `supabase_migrations.schema_migrations`).
+
+### Política de cambios de BD (obligatoria)
+**Ningún cambio de esquema se hace a mano** (SQL Editor, psql, dashboard, ni `apply_migration` ad-hoc). Todo cambio (tablas, columnas, constraints, índices, RLS, funciones, seeds) es una migración versionada en el repo. El esquema debe poder recrearse desde cero solo con el repo:
+
+```bash
+supabase migration new <nombre>   # crea supabase/migrations/<timestamp>_<nombre>.sql
+supabase db reset                 # recrea el esquema replayendo TODO desde cero
+supabase db push                  # aplica pendientes al remoto vinculado
+```
+Las consultas de **solo lectura** (inspección/diagnóstico) sí están permitidas.
+
+### Aplicación automática (CI/CD)
+El workflow `.github/workflows/ci.yml` aplica las migraciones automáticamente y de forma **antierrores**:
+1. **`migrate-validate`** (cada PR/push): levanta un Supabase local y **replaya todas las migraciones desde cero** (`supabase db reset`). Una migración rota o fuera de orden falla aquí, antes de tocar prod.
+2. **`migrate-deploy`** (solo push a `main-principal`, tras `checks` + `migrate-validate`): `supabase db push` (idempotente — solo aplica las pendientes), con `--dry-run` previo como preview.
+
+Sin secrets nuevos: el apply usa `supabase db push --db-url` reutilizando el `DATABASE_URL` que el CI ya usa (sin login/access token). La conexión debe ser **directa/session (puerto 5432)**, no el pooler de transacciones (6543); si `DATABASE_URL` es el pooler, añadir un secret `SUPABASE_DB_URL` con la conexión directa.
+
+> ¿Por qué en GitHub y no en el build de Vercel? El Root Directory de Vercel es `src/`, pero las migraciones viven en `supabase/` en la raíz del repo — quedan **fuera** del contexto de build de Vercel. Además, los preview deploys correrían el build (riesgo de mutar prod) y Vercel no puede validar "replay desde cero". GitHub Actions hace checkout del repo completo y valida en aislamiento.
+
+Aun así, **nunca** se edita la BD a mano: el cambio siempre nace como migración versionada en el repo.
+
+### Modelo de dominio (resumen)
+```
+User (root)
+ ├── Account (PERSONAL|PROP_FIRM|DEMO_*|BACKTEST|QA; status ACTIVE|PAUSED|INACTIVE|LOST;
+ │    │        dd{Daily,Weekly,Monthly,Total}Pct; phase; ddModel; maxTradesPerDay; allowedSymbols; lock)
+ │    ├── Trade (OPEN|CLOSED|CANCELLED)
+ │    │    └── TradeEvent (inmutable: OPEN|STOP_MOVE|TRAIL_STOP|TAKE_PROFIT_MOVE|PARTIAL_CLOSE|SCALE_IN|NOTE)
+ │    ├── WeeklyReview / MonthlyReview
+ │    └── Withdrawal ── AccountLog (append-only: CREATED|PHASE_CHANGE|WITHDRAWAL|STATUS_CHANGE|NOTE)
+ ├── Setup (LONG|SHORT|AMBAS; ACTIVO|EN_PRUEBA|PAUSADO|DESCARTADO; checklists; versiones)
+ │    └── LearningResource (M2M _ResourceSetups)
+ ├── LearningResource (SRS: reviewInterval, nextReviewAt) ── ResourceReview (inmutable)
+ ├── Rule (CRÍTICA|MENOR|INFORMACIÓN; violaciones por tags)
+ ├── Market · UserAiSettings · UserAiConfig (keys IA cifradas) · email_log
+```
+
+---
+
+## 6. Motores (engines)
+
+### Formula Engine — `lib/formulas/` (funciones puras, testeadas)
+Cálculo centralizado y determinista. Módulos: `performance` (net P&L, profit factor, expectancy, Sharpe), `win-rate` (criterio único `pnl > 0`), `risk` (R-multiple), `drawdown`, `discipline`, `setup`, `utils` (fechas UTC: `getISOWeekKey`). Reglas clave:
+- P&L = `(close − entry) × size` (LONG) / `(entry − close) × size` (SHORT) − comisión.
+- R-Multiple = `rawPnl / (|entry − stop| × size)`, null si distancia de stop = 0.
+- SCALE_IN: nuevo avg entry = `(oldEntry×oldSize + price×added) / newSize`.
+
+### Risk Engine — `domains/trading/services/risk-engine.ts` + `prop-firm-guard.ts`
+Calcula drawdowns (diario/semanal/mensual/total) y hace **enforcement en el límite de mutación**: `trades.create` valida contra los límites de la cuenta prop-firm (pérdida diaria, nº de trades, símbolos permitidos). Al alcanzar un límite, la cuenta se **bloquea** (lock) hasta desbloqueo manual. Usa `lib/formulas/drawdown.ts`.
+
+### Rule Engine — `rules` router + tags de comportamiento
+Reglas de comportamiento de primera clase (`Rule`). Las violaciones se rastrean vía tags en trades (`Off-plan`, `Impulsivo`, …) y alimentan el discipline score y el costo de indisciplina.
+
+### Analytics — `domains/analytics/`
+Todo agregado **server-side** (no O(n²) en cliente):
+- `dashboard-analytics.ts` → `trades.dashboardStats`: equity curves, P&L por fecha, win rate, Sharpe, profit factor, expectancy, matriz de sesión, estado prop-firm.
+- `setup-analytics.ts`: win rate / avg R / equity curve por setup, salud, lifecycle.
+- `discipline-service.ts`: discipline score (implementación única centralizada).
+- `pattern-detector.ts`: patrones de comportamiento (reglas).
+- `analytics-cache.ts`: `TradeStatsCache` (feature-flag para alto volumen).
+- `ai-context.ts`: `buildTraderContext` para el coach IA.
+
+---
+
+## 7. Integraciones IA — `lib/ai/`
+
+**Punto único de resolución: `resolve-provider.ts`.** Decide, por usuario y feature: **provider + modelo + API key**.
+
+- **Orden de key** (por provider): clave persistida del usuario en `user_ai_configs` (descifrada, AES-256-GCM) → variable de entorno → ninguna (`source: user|env|none`).
+- **Orden de modelo/provider**: override por feature → modelo global por defecto → ladder por `costPriority` (quality/speed/cost); más fallback global opcional.
+- `streamChat` y `embedText` reciben **provider + apiKey explícitos** (no leen `process.env` ni adivinan provider por el nombre del modelo).
+- **Providers**: OpenRouter, Anthropic, OpenAI (los tres OpenAI-compatibles salvo Anthropic que usa su SDK). Embeddings vía OpenAI/OpenRouter (Anthropic no tiene API de embeddings).
+- **Features que consumen LLM hoy** (`ACTIVE_AI_FEATURES`): `ai_chat` (coach), `weekly_reviews` (resumen), `embeddings` (búsqueda semántica de notas). Las demás features del configurador (`trade_analysis`, `psychology_analysis`, `learning_insights`, `review_generation`) son configurables pero **aún no consumidas**.
+- **Diagnóstico/health**: `aiConfig.diagnostics` (config efectiva + estado de keys) y `aiConfig.healthCheck` (conectividad real) + `lib/ai/health-check.ts`.
+- **Cifrado de keys**: `key-encryption.ts` (AES-256-GCM, `AI_KEY_ENCRYPTION_SECRET` 64-char hex). Degradación elegante sin claves.
+
+---
+
+## 8. Flujo de datos (ejemplo: cerrar un trade)
 
 ```
-User (root aggregate)
- ├── Account (1:n)
- │    ├── type: PERSONAL | PROP_FIRM | DEMO_PERSONAL | DEMO_PROP | BACKTEST | QA
- │    ├── status: ACTIVE | PAUSED | INACTIVE | LOST
- │    ├── dd limits: ddDailyPct, ddWeeklyPct, ddMonthlyPct, ddTotalPct
- │    ├── prop firm extras: phase, ddModel, maxTradesPerDay, allowedSymbols
- │    ├── Trade (1:n)
- │    │    ├── status: OPEN | CLOSED | CANCELLED
- │    │    ├── TradeEvent (1:n, immutable)
- │    │    │    types: OPEN | STOP_MOVE | TRAIL_STOP | TAKE_PROFIT_MOVE |
- │    │    │           PARTIAL_CLOSE | SCALE_IN | NOTE
- │    │    └── Setup (n:1, nullable)
- │    ├── WeeklyReview (1:n)
- │    └── Withdrawal (1:n)
- │         └── → AccountLog (append-only audit trail)
- ├── Setup (1:n)
- │    ├── direction: LONG | SHORT | AMBAS
- │    ├── status: ACTIVO | EN_PRUEBA | PAUSADO | DESCARTADO
- │    ├── aplusChecklist[], standardChecklist[]
- │    └── LearningResource[] (M2M via _ResourceSetups)
- ├── LearningResource (1:n)
- │    ├── type: LIBRO | VIDEO | NOTA | BACKTEST | PODCAST | DRILL | HERRAMIENTA
- │    ├── status: PENDING | IN_PROGRESS | COMPLETED | IN_REVIEW | MASTERED | ABANDONED
- │    ├── progressType: manual | pages | minutes | sessions
- │    ├── spaced repetition: reviewInterval, nextReviewAt, weekDeltaMinutes
- │    └── ResourceReview (1:n)
- ├── Rule (1:n)
- │    ├── severity: CRÍTICA | MENOR | INFORMACIÓN
- │    ├── isSystem (bool), enabled (bool)
- │    └── violationsThisMonth (int — currently not auto-incremented)
- ├── Market (1:n)
- └── AccountLog (1:n, append-only)
-      events: CREATED | PHASE_CHANGE | WITHDRAWAL | STATUS_CHANGE | NOTE
+UI close-trade-modal → tRPC trades.close (auth + Zod)
+  → trade-service: P&L + R-multiple (Formula Engine)
+  → crea TradeEvent (inmutable)
+  → risk-engine: recalcula drawdowns; si se rompe límite → lock de cuenta + AccountLog
+  → invalida queries → dashboard re-lee dashboardStats (server-agregado)
+  → (fire-and-forget) ai-embed: embebe notas vía resolveEmbeddingCall
 ```
 
 ---
 
-## Architectural Decision Records
+## 9. Seguridad
 
-### ADR-001: tRPC over REST
-**Decision:** All client–server communication via tRPC with Zod input validation.  
-**Rationale:** End-to-end type safety. Type changes in routers propagate to components without manual interface sync.  
-**Status:** Active, working well.
-
-### ADR-002: Prisma with PrismaPg adapter (no Supabase client for data queries)
-**Decision:** Prisma for all DB access; Supabase client only for Auth.  
-**Rationale:** Prisma provides better type safety and composable query building.  
-**Status:** Active.
-
-### ADR-003: Immutable event trails for trades and accounts
-**Decision:** TradeEvent and AccountLog are append-only. Mutations on Trade state create events, never modify events.  
-**Rationale:** Full audit trail; enables replay and time-travel analytics.  
-**Status:** Active, well-implemented.
-
-### ADR-004: Materialized streak on User
-**Decision:** `currentStreak`, `bestStreak`, `lastReviewDate` maintained atomically on User in `createReview` transaction.  
-**Rationale:** Avoids O(n) scan of all ResourceReview rows on each stats call.  
-**Status:** Active (implemented in L030).
-
-### ADR-005: Email idempotence via DB unique constraint
-**Decision:** `email_log(user_id, email_type, week_key)` UNIQUE. Insert-then-catch-23505 pattern.  
-**Rationale:** Atomic. No race conditions vs select-then-insert.  
-**Status:** Active (implemented in L031).
-
-### ADR-006: Decay detection in stats query (not cron)
-**Decision:** MASTERED→IN_REVIEW transition occurs inside the `stats` tRPC procedure.  
-**Rationale:** Simpler than a cron job. Triggers naturally when user is active.  
-**Trade-off:** Decay not detected during long inactivity. Acceptable given app model.  
-**Status:** Active (implemented in L029).
-
-### ADR-007 (PROPOSED): Dashboard analytics on server
-**Decision:** All dashboard aggregations (equity curves, win rates, drawdowns, session matrices) should be computed in a `trades.dashboardStats` tRPC procedure, not in client useMemo.  
-**Rationale:** Raw trade fetch is unbounded; client computation degrades with volume.  
-**Status:** Proposed. Priority P0.
-
-### ADR-008 (PROPOSED): Prop firm constraint enforcement in trades.create
-**Decision:** `trades.create` should validate against account's ddDailyPct, maxTradesPerDay, and allowedSymbols before persisting.  
-**Rationale:** Schema captures intent; enforcement is missing.  
-**Status:** Proposed. Priority P1.
+- **Auth en 3 capas**: proxy middleware (Next.js) valida JWT Supabase + `protectedProcedure` (userId de sesión) + RLS en Postgres (`(select auth.uid()) = user_id`).
+- **IDOR**: patrón `where: { id, userId }` en update/delete; guard de userId en `ai-embed`.
+- **Validación**: Zod en todos los inputs tRPC; SQL parametrizado (sin inyección).
+- **Rate limiting** en endpoints IA (Upstash Redis, fallback in-memory).
+- **Secrets server-only**: `CRON_SECRET` (edge functions), `RESEND_API_KEY`, service role key; claves IA cifradas en BD. Cap de 16KB en body de webhooks.
 
 ---
 
-## Security Model
-
-### Authentication
-- Supabase JWT validated in `src/middleware.ts` for all protected routes
-- tRPC `protectedProcedure` extracts `userId` from session; never from client input
-- Login page excluded from middleware via matcher pattern
-
-### Row Level Security
-- All application tables have RLS enabled with policies using `(select auth.uid()) = user_id`
-- `_ResourceSetups` (Prisma M2M): RLS policies on column A (LearningResource owned by user)
-- Service role key used server-side only; publishable key exposed to browser for Auth only
-
-### Input Validation
-- Zod schemas on all tRPC procedure inputs
-- `where: { id, userId: ctx.userId }` pattern on all update/delete mutations ensures cross-user access is blocked at the Prisma level even if RLS is misconfigured
-
-### Edge Functions
-- CRON_SECRET header required for cron-triggered invocations
-- Resend API key is a server-only secret
-
----
-
-## Performance Characteristics
-
-| Operation | Current | Target |
-|---|---|---|
-| Dashboard load (100 trades) | ~200ms | ~100ms |
-| Dashboard load (500 trades) | ~1500ms | ~120ms |
-| Dashboard load (1000+ trades) | ~4000ms+ | ~150ms |
-| Trade list (pagination) | All trades transferred | 50/page, cursor-based |
-| Stats computation | Client useMemo (all tabs) | Server pre-aggregated |
-| Streak read | O(1) from User fields | O(1) (done) |
-| Learning stats | O(n) resource scan | Partially materialized |
-
----
-
-## Infrastructure
+## 10. Servicios compartidos / Infra
 
 ```
-Vercel
-  └── Next.js (edge runtime for middleware, Node for API routes and pages)
-
+Vercel → Next.js (proxy middleware + Node para API/páginas)
 Supabase (jpojusluihjjsjvcubdp)
-  ├── PostgreSQL
-  │    ├── public schema (12 app tables + email_log)
-  │    └── auth schema (managed by Supabase)
-  ├── Edge Functions
-  │    └── weekly-learning-summary
-  │         ├── type=weekly  → Mondays 09:00 local time per user
-  │         └── type=inactivity → Mondays 10:00 local time per user
-  ├── pg_cron (schedules edge function calls)
+  ├── PostgreSQL (schema public + auth) — RLS
+  ├── Edge Functions → weekly-learning-summary (weekly + inactivity)
+  ├── pg_cron (agenda las edge functions)
   └── Auth (JWT + OAuth)
-
-Resend (transactional email)
+Resend (email transaccional)
+Upstash Redis (rate limiting; opcional)
 ```
+
+### ADRs vigentes
+- **ADR-001** tRPC sobre REST (type-safety end-to-end).
+- **ADR-002** Prisma para datos; Supabase client solo para Auth.
+- **ADR-003** Trails inmutables (TradeEvent, AccountLog).
+- **ADR-004** Streak materializado en User (O(1)).
+- **ADR-005** Idempotencia de email vía UNIQUE `(user_id, email_type, week_key)`.
+- **ADR-006** Detección de decay en la query `stats` (no cron).
+- **ADR-007** Analítica de dashboard server-side — **implementado**.
+- **ADR-008** Enforcement de reglas prop-firm en `trades.create` — **implementado** (risk-engine).
+- **ADR-009** Migraciones vía Supabase CLI como sistema único (ver §5).
+- **ADR-010** Resolución de IA centralizada en `resolve-provider.ts`, honrando claves persistidas (ver §7).
 
 ---
 
-## Type System Health
-
-### Current Issues
-
-```typescript
-// dashboard/page.tsx — double cast hides type mismatches
-const trades = allTrades as unknown as Trade[]
-
-// types/index.ts — Account.propFirmRules is nested object
-// but schema has these as flat fields on Account
-propFirmRules?: { maxDrawdownPct: number; dailyLossPct: number; ... }
-
-// types/index.ts — SetupStatus is incomplete
-type SetupStatus = "ACTIVO" | "PAUSADO"
-// schema has: ACTIVO | EN_PRUEBA | PAUSADO | DESCARTADO
-```
-
-### Target Pattern
-
-Use `RouterOutputs` directly instead of maintaining `types/index.ts` by hand:
-
-```typescript
-import type { RouterOutputs } from "@/server/trpc/root"
-type Trade   = RouterOutputs["trades"]["list"][number]
-type Account = RouterOutputs["accounts"]["list"][number]
-type Setup   = RouterOutputs["setups"]["list"][number]
-```
-
-The shared `types/index.ts` should only contain types that are NOT derived from tRPC (e.g., UI-only enums, prop types for pure components).
+Referencia histórica de diseño extendido (visión a 6 meses, specs de fórmulas, diseño detallado de IA) en `docs/archive/`.
