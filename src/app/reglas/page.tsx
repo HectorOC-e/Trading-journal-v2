@@ -210,7 +210,7 @@ function DeleteConfirm({ rule, onCancel, onConfirm }: { rule: DbRule; onCancel: 
         </div>
         <div className="px-5 py-4">
           <p className="text-[12.5px] text-[var(--ink-2)] leading-relaxed">
-            ¿Eliminar <strong className="text-[var(--ink)]">"{rule.name}"</strong>?
+            ¿Eliminar <strong className="text-[var(--ink)]">&ldquo;{rule.name}&rdquo;</strong>?
           </p>
         </div>
         <div className="px-5 pb-[max(20px,env(safe-area-inset-bottom))] flex gap-2">

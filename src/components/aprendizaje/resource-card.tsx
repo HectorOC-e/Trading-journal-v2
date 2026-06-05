@@ -141,6 +141,7 @@ export function ResourceCard({
   onViewImpact,
   onViewDetail,
 }: ResourceCardProps) {
+  const [now]                                 = useState(() => Date.now())
   const [menuOpen,        setMenuOpen]        = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
   const [progressInput,   setProgressInput]   = useState<string>("")
@@ -178,7 +179,7 @@ export function ResourceCard({
   const canComplete  = !isCompleted && !isAbandoned
   const isStale      = resource.status === "IN_PROGRESS" && (
     !resource.lastReviewAt ||
-    Date.now() - new Date(resource.lastReviewAt).getTime() > 30 * 86_400_000
+    now - new Date(resource.lastReviewAt).getTime() > 30 * 86_400_000
   )
 
   function closeMenu() {
@@ -507,7 +508,7 @@ export function ResourceCard({
               className="text-[10px] text-[var(--ink-3)] hover:text-[var(--accent)] px-1.5 py-0.5 rounded hover:bg-[var(--chip)] transition-colors shrink-0"
               onClick={() => onViewImpact(resource)}
             >
-              📊 Impacto
+              Impacto
             </button>
           )}
 

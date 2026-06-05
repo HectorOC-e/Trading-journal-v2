@@ -40,11 +40,14 @@ describe("FilterBar (TASK-024 / TASK-070)", () => {
     expect(screen.getByRole("tablist", { name: "Dashboard sections" })).toBeInTheDocument()
   })
 
-  it("in multiSelect mode sets aria-pressed on buttons", () => {
-    render(<FilterBar options={OPTS} value={["a", "c"]} onChange={() => {}} multiSelect />)
-    const tabs = screen.getAllByRole("tab")
-    expect(tabs[0]).toHaveAttribute("aria-pressed", "true")  // Alpha selected
-    expect(tabs[1]).toHaveAttribute("aria-pressed", "false") // Beta not selected
-    expect(tabs[2]).toHaveAttribute("aria-pressed", "true")  // Gamma selected
+  it("in multiSelect mode uses toggle buttons (role=group + aria-pressed, not tabs)", () => {
+    render(<FilterBar options={OPTS} value={["a", "c"]} onChange={() => {}} multiSelect ariaLabel="Filters" />)
+    // multiSelect is not a tablist — items are toggle buttons
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument()
+    expect(screen.getByRole("group", { name: "Filters" })).toBeInTheDocument()
+    const btns = screen.getAllByRole("button")
+    expect(btns[0]).toHaveAttribute("aria-pressed", "true")  // Alpha selected
+    expect(btns[1]).toHaveAttribute("aria-pressed", "false") // Beta not selected
+    expect(btns[2]).toHaveAttribute("aria-pressed", "true")  // Gamma selected
   })
 })

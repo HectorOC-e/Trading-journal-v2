@@ -52,8 +52,8 @@ describe("computeNewStreak", () => {
   })
 
   it("streak reset after a gap, then rebuilds from 1", () => {
-    let last: Date | null = day("2026-05-01")
-    let streak = 7
+    const last: Date | null = day("2026-05-01")
+    const streak = 7
 
     // Gap: skip to May 3rd (2-day gap)
     const { newStreak: afterGap, lastReviewDate: d2 } = computeNewStreak(last, streak, day("2026-05-03"))

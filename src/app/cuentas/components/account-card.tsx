@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   Target, Shield, BarChart3, ChevronRight,
   CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown,
@@ -80,7 +81,9 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const phase  = (rawAccount.phase as string) ?? "NONE"
 
   const initialBalance = Number(rawAccount.initialBalance)
-  const daysActive = Math.max(0, Math.floor((Date.now() - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
+  // Read clock once at mount — keeps render pure (Date.now() is impure during render)
+  const [now] = useState(() => Date.now())
+  const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
 
   const flatLine  = Array(10).fill(initialBalance)
   const sparkData = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine

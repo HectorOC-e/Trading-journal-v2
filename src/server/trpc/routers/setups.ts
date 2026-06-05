@@ -81,7 +81,6 @@ export const setupsRouter = router({
           })
           // Prisma Json type requires InputJsonValue; serialise via JSON to strip
           // non-serialisable Prisma internals (Decimal, Date → plain values).
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           const snapshotJson = JSON.parse(JSON.stringify(existing))
           await ctx.prisma.setupVersion.create({
             data: {

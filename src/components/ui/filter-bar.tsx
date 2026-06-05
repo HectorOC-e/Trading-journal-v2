@@ -22,9 +22,12 @@ export function FilterBar({ options, value, onChange, multiSelect = false, class
   const isActive = (v: string) =>
     multiSelect ? (value as string[]).includes(v) : value === v
 
+  // multiSelect items are toggle buttons (role=group + aria-pressed);
+  // single-select items are tabs (role=tablist/tab + aria-selected).
+  // aria-pressed is invalid on role=tab, so the two modes use distinct ARIA.
   return (
     <div
-      role="tablist"
+      role={multiSelect ? "group" : "tablist"}
       aria-label={ariaLabel}
       className={cn("flex items-center gap-1 flex-wrap", className)}
     >
@@ -33,8 +36,8 @@ export function FilterBar({ options, value, onChange, multiSelect = false, class
         return (
           <button
             key={opt.value}
-            role="tab"
-            aria-selected={active}
+            role={multiSelect ? undefined : "tab"}
+            aria-selected={multiSelect ? undefined : active}
             aria-pressed={multiSelect ? active : undefined}
             onClick={() => onChange(opt.value)}
             className={cn(

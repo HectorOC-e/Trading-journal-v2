@@ -12,7 +12,17 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Prisma client — not authored, not linted.
+    "lib/generated/**",
   ]),
+  // Test files legitimately use `any` to shape partial mocks for createCaller
+  // (mock Prisma/Supabase clients don't implement the full type surface).
+  {
+    files: ["__tests__/**/*.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

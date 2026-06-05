@@ -191,7 +191,7 @@ function ReviewsPageContent() {
       label: "Semanas revisadas",
       value: reviews.filter((r: ReviewFromDB) => r.status === "submitted").length.toString(),
       sub:   `de ${reviews.length} totales`,
-      trend: "neutral" as "neutral",
+      trend: "neutral" as const,
       mono:  true,
       icon:  <ClipboardCheck size={15} />,
     },

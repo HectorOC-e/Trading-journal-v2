@@ -13,7 +13,15 @@
 > **Sprint 7 QA fixed (post-ship):** B-01 IDOR in `ai-embed` (direct path userId filter + scoped UPDATE), B-02 unbounded body DoS (Content-Length cap 16 KB), M-01 stale `from` in `archive` audit log (`findUniqueOrThrow` before update), M-02 unguarded `localStorage` calls (try/catch), M-03 indistinguishable webhook errors (503/401 split + `crypto.timingSafeEqual`), M-04 unbounded tag input (`z.string().min(1).max(30)` + array `.max(20)`). Tests: 430 → 438 (+8 new + 2 updated). **Open items: 4 of 33 (TD-012, TD-018, TD-019, TD-023).**  
 > **Sprint 8 closed:** TD-012 (`phasePayload` verified — already uses `satisfies AccountLogPayload`, not `as never`; formally closed), TD-023 (RTL component tests added: 15 tests across FilterBar, KpiCard, localStorage; Playwright e2e skeleton configured; CI now runs tests on every push). Tests: 438 → 467 (+29). **Sprint 8 QA fixed:** B-01 Suspense boundary on reviews page (UseSearchParams requires Suspense for SSG), B-02 `group` class on MonthlyReviewCard (Tailwind group-hover visibility), M-01 `aria-selected` → `aria-pressed` (invalid ARIA on role=button), M-02 KpiStrip moved inside weekly tab. Tests: 467 → 479 (+12 regression guards). **Open items: 2 of 33 (TD-018, TD-019). All P0 and P1 closed.**  
 > **Stabilization Sprint closed (QA Manual):** 13 QA findings fixed. New debt: TD-034 (setup version diff), TD-035 (trades filter by accountId), TD-036 (ISO week timezone). **Open items: 5 of 36 (TD-018, TD-019, TD-034, TD-035, TD-036).**  
-> **Sprints 9-12 closed:** TD-034 (version diff in SetupDrawer), TD-035 (account filter chips in trades page), TD-036 (UTC-correct ISO week key + streak service). Tests: 479 → 479 (pre-existing timezone test fixed). **Open items: 2 of 36 (TD-018, TD-019). All P0, P1, P2 closed.**
+> **Sprints 9-12 closed:** TD-034 (version diff in SetupDrawer), TD-035 (account filter chips in trades page), TD-036 (UTC-correct ISO week key + streak service). Tests: 479 → 479 (pre-existing timezone test fixed). **Open items: 2 of 36 (TD-018, TD-019). All P0, P1, P2 closed.**  
+> **Cycle 1 (completion orchestrator) closed:** Fixed 2 render-purity bugs (Date.now in render → lazy useState), 1 a11y bug (aria-pressed on role=tab → split tab/toggle ARIA), cosmetic lint (unescaped/as-const/prefer-const), eslint config (test `any` override, generated-client ignore). ESLint: 63→22 errors. New debt: TD-037. **Open items: 3 of 37 (TD-018, TD-019, TD-037).**
+
+### TD-037 — 22 `react-hooks/set-state-in-effect` lint errors
+
+- **Severity:** LOW (Minor) · **Category:** Code Quality · **Status:** Open (accepted)
+- **Locations:** 22 sites — modal/form `useEffect(() => { if (open) setForm(...) }, [open])` sync-on-open patterns + localStorage bootstrap (theme-provider, Sidebar, market-select, register/edit-trade modals, review modals, playbook, perfil, etc.)
+- **Why open:** Functionally correct, covered by 479 tests + production build. The idiomatic non-effect fix requires parent-driven `key` remounting across all 22 sites — regression risk exceeds value of silencing the React Compiler perf hint.
+- **Fix path (v3):** Migrate form modals to `key={open ? entityId : "closed"}` remount pattern OR compute derived form state during render. Estimated L (6-8h) with full re-test.
 
 ---
 
