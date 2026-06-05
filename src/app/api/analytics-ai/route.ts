@@ -4,6 +4,11 @@ import { createClient } from "@/lib/supabase/server"
 import { streamAnalyticsInsights, type AnalyticsAiOptions } from "@/lib/ai/analytics-insights-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 
+// Streaming AI on a Node serverless function. Without a raised maxDuration the
+// function is killed mid-stream (slow model + bundle build) → client "network error".
+export const runtime = "nodejs"
+export const maxDuration = 60
+
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

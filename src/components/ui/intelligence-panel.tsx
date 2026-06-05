@@ -40,6 +40,7 @@ export function IntelligencePanel({
 
   async function generate() {
     setStreaming(true); setNarrative(""); setErr(null)
+    let got = false
     try {
       const res = await fetch(endpoint, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period }),
@@ -47,17 +48,26 @@ export function IntelligencePanel({
       const ct = res.headers.get("content-type") ?? ""
       if (ct.includes("application/json")) {
         const j = await res.json() as { error?: string }
-        setErr(j.error === "NO_API_KEY" ? "Configura tu API key en Perfil → Configuración de IA." : "No se pudo generar el análisis.")
+        setErr(j.error === "NO_API_KEY" ? "Configura tu API key en Perfil → Configuración de IA." : "No se pudo generar el análisis (IA).")
         setStreaming(false); return
       }
+      if (!res.ok) { setErr("El servidor no pudo generar el análisis. Intenta de nuevo."); setStreaming(false); return }
       const reader = res.body?.getReader(); const dec = new TextDecoder()
       if (!reader) { setStreaming(false); return }
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        setNarrative((p) => p + dec.decode(value, { stream: true }))
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          got = true
+          setNarrative((p) => p + dec.decode(value, { stream: true }))
+        }
+      } catch {
+        // Stream cut mid-way (timeout/provider). Keep partial output; only error if nothing arrived.
+        if (!got) setErr("La conexión con la IA se interrumpió. Vuelve a intentarlo.")
       }
-    } catch { setErr("Error de red al generar el análisis.") }
+    } catch {
+      setErr("No se pudo conectar. Revisa tu conexión e intenta de nuevo.")
+    }
     finally { setStreaming(false) }
   }
 

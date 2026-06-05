@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server"
 import { streamPsychologyInsights, type PsychologyAiOptions } from "@/lib/ai/psychology-insights-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
 
+export const runtime = "nodejs"
+export const maxDuration = 60
+
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 
 export async function POST(req: NextRequest): Promise<NextResponse> {

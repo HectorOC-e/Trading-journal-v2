@@ -71,7 +71,7 @@ export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise
     try {
       return await streamChat({
         provider: c.provider, apiKey: c.apiKey, model: c.model,
-        system: SYSTEM, messages: [{ role: "user", content: userMsg }],
+        system: SYSTEM, messages: [{ role: "user", content: userMsg }], maxTokens: 2000,
       })
     } catch (err) { lastErr = err }
   }
