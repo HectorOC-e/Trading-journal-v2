@@ -352,7 +352,7 @@ export function Sidebar() {
             style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
             {userInitial || "?"}
           </div>
-          <NotificationBell placement="up" />
+          <NotificationBell placement="up" align="left" />
           <button
             onClick={toggle}
             className="w-7 h-7 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors hover:bg-[var(--chip)]"
@@ -516,7 +516,7 @@ export function Sidebar() {
             alignItems: "center",
           }}
         >
-          <NotificationBell placement="up" />
+          <NotificationBell placement="up" align="left" />
           <button
             onClick={toggle}
             title={`Tema: ${resolvedTheme}`}
