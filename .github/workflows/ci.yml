@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main-principal, dev, "claude/*"]
+    branches: [main]
   pull_request:
-    branches: [main-principal, dev]
+    branches: [main]
 
 # Never run two pipelines for the same ref at once; never cancel an in-flight
 # production migration.
@@ -99,7 +99,7 @@ jobs:
   migrate-deploy:
     name: Apply migrations to production
     needs: [checks, migrate-validate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main-principal'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
       group: prod-migrate
