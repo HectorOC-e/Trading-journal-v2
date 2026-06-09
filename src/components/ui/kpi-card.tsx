@@ -24,7 +24,7 @@ export function KpiCard({ label, value, sub, trend, mono = true, className, icon
       className={cn(
         "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)]",
         "px-4 py-3.5 flex flex-col gap-1",
-        "transition-all duration-150",
+        "transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150",
         onClick && "cursor-pointer hover:border-[var(--line-2)] hover:shadow-[var(--shadow-xs)]",
         className
       )}

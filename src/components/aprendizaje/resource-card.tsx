@@ -404,7 +404,7 @@ export function ResourceCard({
             })()}
             <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
               <div
-                className="h-full rounded-full transition-all"
+                className="h-full rounded-full transition-[width]"
                 style={{
                   width:      `${resource.progressPct}%`,
                   background: progressColor(resource.progressPct),

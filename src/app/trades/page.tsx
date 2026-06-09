@@ -358,7 +358,7 @@ export default function TradesPage() {
                 <button
                   onClick={() => handleAccountFilter(null)}
                   className={[
-                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
                     !filterAccountId
                       ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                       : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
@@ -371,7 +371,7 @@ export default function TradesPage() {
                     key={a.id}
                     onClick={() => handleAccountFilter(a.id === filterAccountId ? null : a.id)}
                     className={[
-                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
                       filterAccountId === a.id
                         ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                         : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",

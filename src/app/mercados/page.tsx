@@ -79,7 +79,7 @@ function MarketCard({ market, onToggleWatch, onEdit, onDelete, toggling }: {
 
   return (
     <div
-      className="rounded-[var(--radius)] flex flex-col gap-3 p-4 transition-all duration-150"
+      className="rounded-[var(--radius)] flex flex-col gap-3 p-4 transition-[border-color] duration-150"
       style={{
         background: "var(--panel)",
         border: "1px solid var(--line)",

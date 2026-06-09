@@ -315,7 +315,7 @@ export function EditTradeModal({
                 rows={2}
                 maxLength={500}
                 className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-xs text-[var(--ink)] resize-none focus:outline-none focus:border-[var(--accent)] transition-colors"
-                placeholder="Razón del trade, nivel clave, invalidación..."
+                placeholder="Razón del trade, nivel clave, invalidación…"
                 value={planNotes}
                 onChange={e => setPlanNotes(e.target.value)}
               />

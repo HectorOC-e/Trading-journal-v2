@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { formatMoney } from "@/lib/format/money"
 import { trpc } from "@/lib/trpc/client"
 import {
   TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike, formatSyncAgo,
@@ -139,7 +140,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
                   <span>Balance inicial → actual</span>
                   <span className="font-mono font-semibold text-[var(--ink)]">
-                    ${initialBalance.toLocaleString()} → ${currentEquity.toFixed(2)}
+                    {formatMoney(initialBalance, { currency: account.currency })} → {formatMoney(currentEquity, { currency: account.currency, decimals: 2 })}
                   </span>
                 </div>
                 {lastSyncedBalance != null && (
@@ -287,7 +288,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)] flex flex-col gap-2">
             {[
               ["Broker",          account.broker],
-              ["Balance inicial", `$${Number(account.initialBalance).toLocaleString()}`],
+              ["Balance inicial", formatMoney(Number(account.initialBalance), { currency: account.currency })],
               ["Divisa",          account.currency],
               ["Timezone",        account.timezone],
             ].map(([k, v]) => (

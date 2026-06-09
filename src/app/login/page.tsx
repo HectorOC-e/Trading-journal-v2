@@ -154,7 +154,7 @@ export default function LoginPage() {
               disabled={loading || !email || !password}
               className={[
                 "w-full h-9 rounded-[var(--radius-sm)] text-[13px] font-semibold",
-                "text-white transition-all duration-150 mt-1",
+                "text-white transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 mt-1",
                 "flex items-center justify-center gap-2",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2",
                 "disabled:opacity-40 disabled:cursor-not-allowed",

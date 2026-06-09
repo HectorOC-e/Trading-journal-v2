@@ -107,7 +107,7 @@ export function TabPortfolio({
               key={p}
               onClick={() => onPeriodChange(p)}
               className={cn(
-                "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]",
                 period === p
                   ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"

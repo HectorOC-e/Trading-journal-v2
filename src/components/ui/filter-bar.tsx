@@ -41,7 +41,7 @@ export function FilterBar({ options, value, onChange, multiSelect = false, class
             aria-pressed={multiSelect ? active : undefined}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full font-medium transition-all duration-150 cursor-pointer",
+              "inline-flex items-center gap-1.5 rounded-full font-medium transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 cursor-pointer",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-1",
               "active:scale-[0.97]",
               size === "sm" ? "h-6 px-2.5 text-[11px]" : "h-7 px-3 text-[12px]",

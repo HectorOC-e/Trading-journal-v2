@@ -282,7 +282,7 @@ export function ResourceDrawer({
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-2 rounded-full bg-[var(--line)] overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="h-full rounded-full transition-[width]"
                     style={{
                       width: `${resource.progressPct ?? 0}%`,
                       background: (resource.progressPct ?? 0) >= 80 ? "var(--win)" : (resource.progressPct ?? 0) >= 40 ? "#f59e0b" : "var(--loss)",

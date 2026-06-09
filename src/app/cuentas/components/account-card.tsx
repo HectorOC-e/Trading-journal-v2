@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { formatMoney } from "@/lib/format/money"
 import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -122,8 +123,8 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow: selected
@@ -169,9 +170,9 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           <div className="flex-1 min-w-0">
             <p className="text-eyebrow mb-1">Balance actual</p>
             <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none truncate">
-              ${currentEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatMoney(currentEquity, { currency: rawAccount.currency, decimals: 2 })}
             </p>
-            <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial ${initialBalance.toLocaleString()}</p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial {formatMoney(initialBalance, { currency: rawAccount.currency })}</p>
           </div>
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>

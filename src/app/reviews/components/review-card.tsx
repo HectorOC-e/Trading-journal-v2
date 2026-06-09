@@ -45,7 +45,7 @@ function StatPill({ label, value, color, bg }: { label: string; value: string; c
 function DisciplineBar({ score }: { score: number }) {
   return (
     <div className="h-1 w-full rounded-full" style={{ background: "var(--line)" }}>
-      <div className="h-1 rounded-full transition-all duration-500" style={{ width: `${score}%`, background: disciplineColor(score) }} />
+      <div className="h-1 rounded-full transition-[width] duration-500" style={{ width: `${score}%`, background: disciplineColor(score) }} />
     </div>
   )
 }
@@ -80,7 +80,7 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius)] border bg-[var(--panel)] transition-all duration-150 overflow-hidden cursor-pointer",
+        "rounded-[var(--radius)] border bg-[var(--panel)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 overflow-hidden cursor-pointer",
         isSelected
           ? "border-[var(--accent)] shadow-[0_0_0_2px_rgba(79,110,247,0.18)]"
           : "border-[var(--line)] hover:border-[var(--accent)] hover:shadow-sm"

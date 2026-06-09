@@ -38,7 +38,7 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
               </div>
               {a.tradesMax > 0 && (
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-500"
+                  <div className="h-full rounded-full transition-[width] duration-500"
                     style={{
                       width: `${Math.min((a.tradesUsed / a.tradesMax) * 100, 100)}%`,
                       background: a.tradesUsed / a.tradesMax >= 0.8 ? "var(--be)" : "var(--win)",

@@ -382,7 +382,7 @@ export function TabPlaybook() {
                     <span className="text-[12px] font-mono font-bold" style={{ color }}>{pct.toFixed(2)}%</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct.toFixed(2)}%`, background: color }} />
+                    <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct.toFixed(2)}%`, background: color }} />
                   </div>
                 </div>
               )

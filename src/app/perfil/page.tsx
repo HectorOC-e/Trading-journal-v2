@@ -487,7 +487,7 @@ export default function PerfilPage() {
   if (isLoading) {
     return (
       <div className="main-content">
-        <TopBar title="Perfil" subtitle="Cargando..." />
+        <TopBar title="Perfil" subtitle="Cargando…" />
         <ProfileSkeleton />
       </div>
     )

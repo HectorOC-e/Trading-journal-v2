@@ -312,13 +312,13 @@ export function TradeDetailPanel({
                     {pct != null && (
                       <div className="mt-2.5">
                         <div className="relative h-1.5 rounded-full bg-[var(--line)]">
-                          <div className="absolute inset-y-0 left-0 rounded-full transition-all"
+                          <div className="absolute inset-y-0 left-0 rounded-full transition-[width,background-color]"
                             style={{
                               width: `${pct * 100}%`,
                               background: isWin ? "var(--win)" : isLoss ? "var(--loss)" : "var(--ink-3)",
                             }} />
                           {/* Marker dot */}
-                          <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-[var(--panel)] transition-all"
+                          <div className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full border-2 border-[var(--panel)] transition-[left,background-color]"
                             style={{
                               left: `calc(${pct * 100}% - 5px)`,
                               background: isWin ? "var(--win)" : isLoss ? "var(--loss)" : "var(--ink-3)",
@@ -391,7 +391,7 @@ export function TradeDetailPanel({
                 <Button
                   size="md"
                   className={cn(
-                    "w-full font-semibold transition-all",
+                    "w-full font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                     parseFloat(closePrice) > 0
                       ? "bg-[var(--accent)] text-white hover:opacity-90"
                       : "bg-[var(--chip)] text-[var(--ink-3)] cursor-not-allowed"
@@ -616,7 +616,7 @@ export function TradeDetailPanel({
               <a key={url} href={url} target="_blank" rel="noopener noreferrer"
                 className="block w-24 h-24 rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] hover:opacity-90 transition-opacity">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`screenshot ${i + 1}`} className="w-full h-full object-cover" />
+                <img src={url} alt={`screenshot ${i + 1}`} width={96} height={96} loading="lazy" decoding="async" className="w-full h-full object-cover" />
               </a>
             ))}
           </div>

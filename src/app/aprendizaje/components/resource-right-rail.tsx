@@ -101,7 +101,7 @@ export function ResourceRightRail({
                   <div className="flex items-center gap-1">
                     <input
                       type="number" min={30} max={10080} autoFocus
-                      className="w-16 h-6 px-1.5 text-xs rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[var(--ink)] focus:outline-none"
+                      className="w-16 h-6 px-1.5 text-xs rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                       value={goalInput}
                       onChange={(e) => setGoalInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -134,7 +134,7 @@ export function ResourceRightRail({
               </div>
               <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all"
+                  className="h-full rounded-full transition-[width]"
                   style={{ width: `${pct}%`, background: pct >= 100 ? "var(--win)" : pct >= 60 ? "#f59e0b" : "var(--accent)" }}
                 />
               </div>
@@ -293,7 +293,7 @@ export function ResourceRightRail({
                 <span className="text-[10px] text-[var(--ink-3)] w-[84px] shrink-0">{type}</span>
                 <div className="flex-1 h-2 rounded-full bg-[var(--line)] overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all"
+                    className="h-full rounded-full transition-[width]"
                     style={{ width: `${(count / resources.length) * 100}%`, background: TYPE_COLORS[type] }}
                   />
                 </div>

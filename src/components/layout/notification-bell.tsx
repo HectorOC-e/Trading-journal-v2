@@ -137,7 +137,7 @@ export function NotificationBell({
                     <button
                       onClick={() => dismiss(n.id)}
                       aria-label="Descartar"
-                      className="shrink-0 w-6 h-6 -mr-1 rounded flex items-center justify-center text-[var(--ink-3)] opacity-0 group-hover:opacity-100 hover:text-[var(--ink)] hover:bg-[var(--line)] transition-all"
+                      className="shrink-0 w-6 h-6 -mr-1 rounded flex items-center justify-center text-[var(--ink-3)] opacity-0 group-hover:opacity-100 hover:text-[var(--ink)] hover:bg-[var(--line)] transition-[color,background-color,opacity]"
                     >
                       <Check size={13} />
                     </button>
