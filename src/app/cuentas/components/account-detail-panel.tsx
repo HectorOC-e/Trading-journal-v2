@@ -11,7 +11,7 @@ import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { trpc } from "@/lib/trpc/client"
 import {
-  TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike,
+  TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike, formatSyncAgo,
 } from "./account-card"
 import type { RawAccount, TradeStats } from "./account-card"
 import type { AccountType } from "@/types"
@@ -54,6 +54,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   // Balance adjustments from sync corrections — baked into current equity.
   const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(account.id)
   const balanceAdjustment = varianceData?.totalVariance ?? 0
+  // Last broker sync (journal-vs-broker comparison).
+  const lastSyncedBalance = (account as { lastSyncedBalance?: number | null }).lastSyncedBalance ?? null
+  const syncedAgo = formatSyncAgo((account as { lastSyncedAt?: string | null }).lastSyncedAt)
 
   const locked       = Boolean((account as { locked?: boolean }).locked)
   const lockReason   = ((account as { lockReason?: string }).lockReason) ?? ""
@@ -139,6 +142,19 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                     ${initialBalance.toLocaleString()} → ${currentEquity.toFixed(2)}
                   </span>
                 </div>
+                {lastSyncedBalance != null && (
+                  <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
+                    <span>Broker{syncedAgo ? ` · ${syncedAgo}` : ""}</span>
+                    <span className="font-mono font-semibold text-[var(--ink)]">
+                      ${lastSyncedBalance.toFixed(2)}
+                      {Math.abs(lastSyncedBalance - currentEquity) >= 0.01 && (
+                        <span className={lastSyncedBalance - currentEquity >= 0 ? "text-[var(--win)] ml-1" : "text-[var(--loss)] ml-1"}>
+                          ({lastSyncedBalance - currentEquity >= 0 ? "+" : ""}{(lastSyncedBalance - currentEquity).toFixed(2)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </>
             )
           })()}

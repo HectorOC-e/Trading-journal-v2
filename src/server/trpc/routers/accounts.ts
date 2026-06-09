@@ -41,6 +41,8 @@ function serializeAccount(a: RawAccount) {
     ddTotalPct:    a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:     a.targetPct   != null ? Number(a.targetPct)   : null,
     lockedAt:      a.lockedAt != null ? a.lockedAt.toISOString() : null,
+    lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
+    lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
     createdAt:     a.createdAt.toISOString(),
     updatedAt:     a.updatedAt.toISOString(),
   }
@@ -299,6 +301,12 @@ export const accountsRouter = router({
           event:     "BALANCE_CORRECTION",
           payload:   payload as object,
         },
+      })
+
+      // Remember the broker balance + when, for "última sincronización" display.
+      await ctx.prisma.account.update({
+        where: { id: input.accountId, userId: ctx.userId },
+        data:  { lastSyncedBalance: input.actualBalance, lastSyncedAt: new Date() },
       })
 
       return {

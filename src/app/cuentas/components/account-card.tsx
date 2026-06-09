@@ -49,6 +49,17 @@ export const ACCOUNT_STATUS_META: Record<string, { label: string; color: string;
 
 export const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
+/** Compact relative time for the last balance sync (e.g. "hoy", "hace 3d"). */
+export function formatSyncAgo(iso: string | null | undefined, now: number = Date.now()): string | null {
+  if (!iso) return null
+  const mins = Math.floor((now - new Date(iso).getTime()) / 60_000)
+  if (mins < 1)  return "hace un momento"
+  if (mins < 60) return `hace ${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `hace ${hours}h`
+  return `hace ${Math.floor(hours / 24)}d`
+}
+
 export function KpiBox({ label, value, sub, positive, icon }: {
   label: string; value: string; sub: string; positive?: boolean; icon: React.ReactNode
 }) {
@@ -93,6 +104,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   // Read clock once at mount — keeps render pure (Date.now() is impure during render)
   const [now] = useState(() => Date.now())
   const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
+  const syncedAgo = formatSyncAgo((rawAccount as { lastSyncedAt?: string | null }).lastSyncedAt, now)
 
   const flatLine  = Array(10).fill(initialBalance)
   const sparkData = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine
@@ -279,6 +291,9 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               <ArrowUpDown size={11} />
               Sincronizar balance
             </button>
+          )}
+          {syncedAgo && (
+            <span className="text-[10px] text-[var(--ink-3)]">· {syncedAgo}</span>
           )}
           <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors ml-auto">
             Ver detalle <ChevronRight size={11} />
