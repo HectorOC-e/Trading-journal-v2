@@ -387,11 +387,26 @@ describe("trades.create — lock & setup guards", () => {
     return appRouter.createCaller({ prisma: prisma as never, supabase: {} as never, userId: USER_ID })
   }
 
-  it("rejects a trade on a locked account (FORBIDDEN ACCOUNT_LOCKED)", async () => {
-    const prisma = makeMockPrisma({ locked: true, lockReason: "DAILY_LOSS_LIMIT" })
+  it("rejects a trade on a permanently-locked account (FORBIDDEN ACCOUNT_LOCKED)", async () => {
+    // Manual / total-drawdown locks are permanent → reject without re-evaluating.
+    const prisma = makeMockPrisma({ locked: true, lockReason: "MANUAL" })
     caller = callerWith(prisma)
     await expect(caller.trades.create(BASE_CREATE_INPUT)).rejects.toThrow(/ACCOUNT_LOCKED/)
     expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+
+  it("auto-reactivates a temporal lock once its period has elapsed", async () => {
+    // Locked previously by the daily limit, but the only loss is in a past period
+    // → the daily window rolled over, so the trade is allowed and the lock clears.
+    const prisma = makeMockPrisma({ locked: true, lockReason: "DAILY_LOSS_LIMIT", ddDailyPct: 5, initialBalance: 10000 })
+    prisma.trade.findMany.mockResolvedValue([{ pnl: -600, date: new Date("2025-01-01") }])
+    caller = callerWith(prisma)
+    const trade = await caller.trades.create(BASE_CREATE_INPUT) // date 2025-01-06
+    expect(trade).toBeDefined()
+    expect(prisma.trade.create).toHaveBeenCalled()
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ locked: false }) }),
+    )
   })
 
   it("rejects a trade referencing a PAUSED setup (SETUP_NOT_AVAILABLE)", async () => {

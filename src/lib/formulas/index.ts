@@ -12,7 +12,7 @@
 export { isWin, calcWinRate } from './win-rate'
 
 // Drawdown
-export { computeMaxDrawdown, calcDrawdownPct } from './drawdown'
+export { computeMaxDrawdown, computeDrawdownFromInitial, calcDrawdownPct } from './drawdown'
 
 // Discipline
 export { calcDisciplineScore } from './discipline'

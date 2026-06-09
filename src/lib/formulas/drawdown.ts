@@ -40,6 +40,35 @@ export function computeMaxDrawdown(pnlSequence: number[]): number {
 }
 
 /**
+ * Maximum loss measured from the INITIAL balance (static high-water mark = 0).
+ *
+ * Unlike `computeMaxDrawdown` (peak-to-trough, which counts declines from any
+ * intermediate high), this measures only how far cumulative P&L dropped *below
+ * the starting balance*. This is the rule most prop firms (e.g. FTMO "Maximum
+ * Loss") use: equity must never fall more than X% below the initial balance,
+ * and prior profits do not raise the floor.
+ *
+ * @param pnlSequence - Array of P&L values in chronological order
+ * @returns Worst drop below initial balance (absolute, always ≥ 0)
+ *
+ * @example
+ * // Up to +200 then down to -100 net → never below initial by more than 100
+ * computeDrawdownFromInitial([200, -300])      // 100
+ * computeDrawdownFromInitial([200, -100])      // 0   (still above initial)
+ * computeDrawdownFromInitial([-100, 50, -100]) // 150 (deepest point -150)
+ * computeDrawdownFromInitial([])               // 0
+ */
+export function computeDrawdownFromInitial(pnlSequence: number[]): number {
+  let cum = 0
+  let maxLoss = 0
+  for (const pnl of pnlSequence) {
+    cum += pnl
+    if (-cum > maxLoss) maxLoss = -cum
+  }
+  return maxLoss
+}
+
+/**
  * Convert maximum drawdown amount to percentage of initial balance.
  *
  * @param maxDdDollar - Max drawdown in dollar/point amount

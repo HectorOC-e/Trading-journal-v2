@@ -202,7 +202,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({Number(account.targetPct)}%)</span>
                     <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                      {stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(account.targetPct)}%
+                      {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(account.targetPct)}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">

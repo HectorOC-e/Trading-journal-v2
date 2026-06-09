@@ -1,6 +1,6 @@
 import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
-import { computeMaxDrawdown, computeEquityCurve } from "@/domains/trading/services/account-service"
-import { computeAccountRisk, type AccountRisk } from "@/domains/trading/services/risk-engine"
+import { computeEquityCurve } from "@/domains/trading/services/account-service"
+import { computeAccountRisk, accountDrawdown, type AccountRisk } from "@/domains/trading/services/risk-engine"
 
 export type MinimalTrade = {
   id:        string
@@ -30,6 +30,7 @@ export type AccountWithLimits = {
   initialBalance:  number
   ddDailyPct:      number | null
   ddTotalPct:      number | null
+  ddModel?:        string | null   // FIXED | TRAILING — drives prop-firm drawdown rule
   maxTradesPerDay: number | null
   allowedSymbols:  string[]
 }
@@ -77,6 +78,8 @@ export type AccountStat = {
 
 export type AccountLimits = {
   id:           string
+  type?:        string   // account type — drives prop-firm drawdown semantics
+  ddModel?:     string | null   // FIXED | TRAILING — drives prop-firm drawdown rule
   ddDailyPct:   number | null
   ddWeeklyPct:  number | null
   ddMonthlyPct: number | null
@@ -209,10 +212,13 @@ export function buildAccountStats(
     const pnlWeek  = weekT.reduce((s, t) => s + t.pnl, 0)
     const pnlToday = todayT.reduce((s, t) => s + t.pnl, 0)
 
-    const maxDd = computeMaxDrawdown(at.map(t => t.pnl))
+    const limits = limitsById[a.id] ?? { id: a.id, type: undefined, ddModel: undefined, ddDailyPct: null, ddWeeklyPct: null, ddMonthlyPct: null, ddTotalPct: null }
+    // Prop firms with a FIXED model measure max loss from the initial balance,
+    // not peak-to-trough — single source of truth: risk-engine.accountDrawdown.
+    const isPropFirm = limits.type === "PROP_FIRM" || limits.type === "DEMO_PROP"
+    const maxDd = accountDrawdown(at.map(t => t.pnl), { isPropFirm, ddModel: limits.ddModel })
     const sparkline = [initBal, ...computeEquityCurve(initBal, at).map(c => parseFloat(c.balance.toFixed(2)))]
 
-    const limits = limitsById[a.id] ?? { id: a.id, ddDailyPct: null, ddWeeklyPct: null, ddMonthlyPct: null, ddTotalPct: null }
     const risk = computeAccountRisk({
       initialBalance: initBal,
       ddDailyPct:   limits.ddDailyPct,
@@ -366,7 +372,8 @@ export function buildPropFirmStatus(
       const at      = closedTrades.filter(t => t.accountId === a.id)
       const initBal = a.initialBalance
 
-      const maxDd        = computeMaxDrawdown(at.map(t => t.pnl))
+      // Prop firms: FIXED model → loss from initial; TRAILING → peak-to-trough.
+      const maxDd        = accountDrawdown(at.map(t => t.pnl), { isPropFirm: true, ddModel: a.ddModel })
       const ddTotalLimit = Number(a.ddTotalPct ?? 5)
       const ddActualPct  = initBal > 0 ? (maxDd / initBal) * 100 : 0
       const ddPctUsed    = ddTotalLimit > 0 ? ddActualPct / ddTotalLimit * 100 : 0

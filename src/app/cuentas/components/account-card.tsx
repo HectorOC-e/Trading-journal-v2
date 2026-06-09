@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { trpc } from "@/lib/trpc/client"
@@ -93,6 +94,13 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const sparkData = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine
   const sparkPos  = stats ? stats.netPnl >= 0 : true
 
+  // Lock badge: permanent locks (total DD / manual) persist via the DB flag;
+  // temporal locks (daily/weekly/monthly) reflect the live current-period breach
+  // so they clear automatically once the period rolls over.
+  const lockReason = (rawAccount as { lockReason?: string }).lockReason ?? ""
+  const isLocked   = (rawAccount as { locked?: boolean }).locked ?? false
+  const isBlocked  = (isLocked && isPermanentLockReason(lockReason)) || !!stats?.risk.breach
+
   return (
     <div
       onClick={onClick}
@@ -117,7 +125,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold text-[var(--ink)] leading-tight">{rawAccount.name}</p>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
-              {(rawAccount as { locked?: boolean }).locked && (
+              {isBlocked && (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
                   <Lock size={8} /> BLOQUEADA
@@ -201,7 +209,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
                 <div className="flex justify-between mb-1">
                   <span className="text-[11px] text-[var(--ink-3)]">{isPF ? "Progreso hacia objetivo" : "Objetivo"}</span>
                   <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                    {stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
+                    {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
