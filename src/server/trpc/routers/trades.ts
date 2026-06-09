@@ -112,6 +112,8 @@ function serializeAccount(a: RawAccount) {
     ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
     ddTotalPct:     a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:      a.targetPct   != null ? Number(a.targetPct)   : null,
+    lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
+    lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
     createdAt:      a.createdAt.toISOString(),
     updatedAt:      a.updatedAt.toISOString(),
   }
