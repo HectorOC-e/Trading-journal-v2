@@ -19,6 +19,8 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
   const syncBalance = trpc.accounts.syncBalance.useMutation({
     onSuccess: () => {
       utils.accounts.list.invalidate()
+      // Equity on the card includes the adjustment → refresh the variance query.
+      utils.accounts.getBalanceVariance.invalidate(accountId)
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
@@ -51,7 +53,7 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
           {!isDone ? (
             <>
               <p className="text-xs text-[var(--ink-2)]">
-                Ingresa el balance real de tu broker. Se registrará una corrección de balance para mantener el historial consistente.
+                Ingresa el balance real de tu broker. Se ajustará tu balance actual para que cuadre, sin alterar el balance inicial ni el P&amp;L de tus trades.
               </p>
               <div>
                 <label className="text-[10px] font-semibold text-[var(--ink-3)] block mb-1.5">
@@ -86,7 +88,7 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
             <div className="flex flex-col gap-3">
               <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-4">
                 <div className="flex justify-between mb-2">
-                  <span className="text-xs text-[var(--ink-3)]">Balance calculado</span>
+                  <span className="text-xs text-[var(--ink-3)]">Balance actual (app)</span>
                   <span className="text-xs font-mono font-semibold text-[var(--ink)]">
                     ${result.computedBalance.toLocaleString()}
                   </span>
@@ -98,13 +100,13 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
                   </span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-[var(--line)]">
-                  <span className="text-xs font-semibold text-[var(--ink-3)]">Diferencia</span>
+                  <span className="text-xs font-semibold text-[var(--ink-3)]">Ajuste aplicado</span>
                   <span className={`text-sm font-mono font-bold ${result.variance >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
                     {result.variance >= 0 ? "+" : ""}${result.variance.toFixed(2)}
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-[var(--ink-3)] text-center">Corrección registrada en el historial.</p>
+              <p className="text-xs text-[var(--ink-3)] text-center">Tu balance actual ahora coincide con el broker.</p>
               <button
                 onClick={onClose}
                 className="w-full py-2 rounded-[var(--radius-sm)] bg-[var(--chip)] text-[var(--ink)] text-sm font-semibold hover:opacity-80 transition-opacity"

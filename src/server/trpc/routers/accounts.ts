@@ -262,7 +262,7 @@ export const accountsRouter = router({
       })
 
       const { computeRunningBalance } = await import("@/domains/trading/services/account-service")
-      const computedBalance = computeRunningBalance(
+      const tradeEquity = computeRunningBalance(
         Number(account.initialBalance),
         trades.map(t => ({
           pnl:  t.pnl != null ? Number(t.pnl) : null,
@@ -270,7 +270,21 @@ export const accountsRouter = router({
         })),
       )
 
-      const variance = input.actualBalance - computedBalance
+      // Adjustments already applied by previous syncs — the new correction is
+      // measured from the *adjusted* equity so repeated syncs don't double-count
+      // and the running balance always reconciles to the broker.
+      const priorLogs = await ctx.prisma.accountLog.findMany({
+        where:  { accountId: input.accountId, userId: ctx.userId, event: "BALANCE_CORRECTION" },
+        select: { payload: true },
+      })
+      const priorAdjustments = priorLogs.reduce((sum, log) => {
+        const p = log.payload as { variance?: number }
+        return sum + (typeof p.variance === "number" ? p.variance : 0)
+      }, 0)
+
+      const currentEquity = tradeEquity + priorAdjustments
+      // Incremental adjustment needed to make displayed equity match the broker.
+      const variance = input.actualBalance - currentEquity
 
       const payload: AccountLogPayload = {
         event:    "BALANCE_CORRECTION",
@@ -288,7 +302,7 @@ export const accountsRouter = router({
       })
 
       return {
-        computedBalance: parseFloat(computedBalance.toFixed(2)),
+        computedBalance: parseFloat(currentEquity.toFixed(2)),
         actualBalance:   input.actualBalance,
         variance:        parseFloat(variance.toFixed(2)),
       }

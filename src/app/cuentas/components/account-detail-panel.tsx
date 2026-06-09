@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { trpc } from "@/lib/trpc/client"
 import {
   TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike,
 } from "./account-card"
@@ -50,6 +51,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const phase        = (account.phase as string) ?? "NONE"
   const initialBalance = Number(account.initialBalance)
   const flatLine     = Array(10).fill(initialBalance)
+  // Balance adjustments from sync corrections — baked into current equity.
+  const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(account.id)
+  const balanceAdjustment = varianceData?.totalVariance ?? 0
 
   const locked       = Boolean((account as { locked?: boolean }).locked)
   const lockReason   = ((account as { lockReason?: string }).lockReason) ?? ""
@@ -118,7 +122,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           {(() => {
             const sparkData     = stats?.sparkline && stats.sparkline.length > 1 ? stats.sparkline : flatLine
             const sparkPos      = stats ? stats.netPnl >= 0 : true
-            const currentEquity = initialBalance + (stats?.netPnl ?? 0)
+            const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
             return (
               <>
                 <div className="flex justify-between items-center mb-2">
@@ -144,7 +148,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
         <div className="grid grid-cols-2 gap-2">
           {(() => {
             const netPnl      = stats?.netPnl ?? 0
-            const currentEq   = initialBalance + netPnl
+            const currentEq   = initialBalance + netPnl + balanceAdjustment
             const pnlMesStr   = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"
             const pnlMesColor = stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
             const wrStr   = stats?.winRate != null ? `${stats.winRate.toFixed(2)}%` : "—"

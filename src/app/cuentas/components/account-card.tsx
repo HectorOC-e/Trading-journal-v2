@@ -86,6 +86,10 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const phase  = (rawAccount.phase as string) ?? "NONE"
 
   const initialBalance = Number(rawAccount.initialBalance)
+  // Current equity = starting capital + realized trade P&L + balance adjustments
+  // (sync corrections). Adjustments move the balance but not trade-derived metrics.
+  const balanceAdjustment = variance ?? 0
+  const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
   // Read clock once at mount — keeps render pure (Date.now() is impure during render)
   const [now] = useState(() => Date.now())
   const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
@@ -149,10 +153,13 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           )}
         </div>
 
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <p className="text-eyebrow mb-1">Balance inicial</p>
-            <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none">${initialBalance.toLocaleString()}</p>
+        <div className="flex items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-eyebrow mb-1">Balance actual</p>
+            <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none truncate">
+              ${currentEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial ${initialBalance.toLocaleString()}</p>
           </div>
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
@@ -253,10 +260,10 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           </div>
         </div>
 
-        {/* ── Balance variance (if any corrections logged) ── */}
+        {/* ── Balance adjustment from sync corrections (baked into equity above) ── */}
         {variance != null && variance !== 0 && (
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--line)]">
-            <span className="text-[var(--ink-3)]">Diferencia acumulada</span>
+            <span className="text-[var(--ink-3)]">Ajuste de balance</span>
             <span className={`font-mono font-semibold ${variance >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
               {variance >= 0 ? "+" : ""}${variance.toFixed(2)}
             </span>
