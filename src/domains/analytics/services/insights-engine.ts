@@ -163,7 +163,7 @@ export function detectSetupConcentration(input: InsightInput): Insight | null {
     id: "setup-concentration",
     category: "opportunity",
     severity: "positive",
-    title: `Tu mejor setup genera el ${pct(share)}% de tus beneficios`,
+    title: `"${name}" genera el ${pct(share)}% de tus beneficios`,
     detail: `"${name}" concentra ${pct(share)}% de tu ganancia bruta. El resto de setups aportan marginalmente.`,
     recommendation: `Aumenta foco y tamaño en "${name}" y poda los setups que no aportan; estás diversificando tu edge en exceso.`,
     evidence: `Sobre ${trades.length} trades cerrados.`,
