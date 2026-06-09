@@ -17,7 +17,7 @@ export type AccountLogPayload =
   | { event: "NOTE";               text: string }
   | { event: "BALANCE_CORRECTION"; variance: number; note: string }
   | { event: "LOCKED";             reason: string; limitPct?: number; currentPct?: number; auto: boolean }
-  | { event: "UNLOCKED";           note: string }
+  | { event: "UNLOCKED";           note: string; auto?: boolean }
 
 // ── Derived from design-spec modal fields and anatomy sections ──
 
