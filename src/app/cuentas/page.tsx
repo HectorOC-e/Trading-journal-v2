@@ -73,7 +73,13 @@ export default function CuentasPage() {
     }]),
   )
 
-  const invalidate = () => utils.accounts.list.invalidate()
+  // Account mutations (phase change, lock/unlock, archive, withdrawals) write
+  // audit entries; invalidate the history query too so the modal reflects them
+  // without a full reload (staleTime would otherwise serve a stale first page).
+  const invalidate = () => {
+    utils.accounts.list.invalidate()
+    utils.accountLogs.list.invalidate()
+  }
 
   const deleteAccount  = trpc.accounts.delete.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
   const archiveAccount = trpc.accounts.archive.useMutation({ onSuccess: () => { invalidate(); setSelectedId(null) }, onError: (err) => toast.error(formatErrorForUser(err)) })
