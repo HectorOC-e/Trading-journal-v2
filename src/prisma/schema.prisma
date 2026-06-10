@@ -248,6 +248,7 @@ model Trade {
   embedding TradeEmbedding?
 
   @@index([userId, date(sort: Desc)])
+  @@index([userId, status, date(sort: Desc)])
   @@index([accountId])
   @@map("trades")
 
