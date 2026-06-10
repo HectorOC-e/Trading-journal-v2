@@ -2,7 +2,7 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
+import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
 import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
 import {
@@ -594,8 +594,16 @@ export const tradesRouter = router({
       })
       const entry               = Number(trade.entry)
       const size                = Number(trade.size)
-      const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission)
-      const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size)
+      // Dollar P&L needs the instrument's point value (e.g. NQ = $20/pt); without
+      // it, futures/FX P&L is wrong by that factor. Look it up from the user's
+      // market catalog by symbol; default to 1 when no market is registered.
+      const market              = await ctx.prisma.market.findFirst({
+        where:  { userId: ctx.userId, symbol: trade.symbol },
+        select: { pointValue: true },
+      })
+      const pointValue          = parsePointValue(market?.pointValue)
+      const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission, pointValue)
+      const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size, pointValue)
 
       const updated = await ctx.prisma.trade.update({
         where:   { id: input.id, userId: ctx.userId },
