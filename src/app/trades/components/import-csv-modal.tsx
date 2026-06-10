@@ -141,7 +141,7 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
                     disabled={isBusy}
                     onClick={() => setSelectedAccount(acc.id)}
                     className={cn(
-                      "flex-1 min-w-[140px] text-left rounded-[var(--radius-sm)] p-2.5 border transition-all",
+                      "flex-1 min-w-[140px] text-left rounded-[var(--radius-sm)] p-2.5 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                       selectedAccount === acc.id
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                         : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]",

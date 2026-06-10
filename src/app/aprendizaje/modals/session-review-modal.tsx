@@ -129,7 +129,7 @@ export function SessionReviewModal({
                   type="text"
                   autoFocus
                   className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Un insight clave, algo que recordar..."
+                  placeholder="Un insight clave, algo que recordar…"
                   value={quickNote}
                   onChange={(e) => setQuickNote(e.target.value)}
                 />

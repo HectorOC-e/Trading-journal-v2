@@ -28,7 +28,7 @@ export function RuleBar({ label, usedPct, displayRight, limitLabel, warnAt = 60,
         aria-label={`${label}: ${pct.toFixed(0)}%`}
       >
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full transition-[width] duration-500"
           style={{ width: `${pct}%`, background: color }}
         />
       </div>

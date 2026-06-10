@@ -184,7 +184,7 @@ export function RevisarRecursoModal({
               <input
                 type="text"
                 className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                placeholder="Un insight clave, algo que recordar..."
+                placeholder="Un insight clave, algo que recordar…"
                 value={form.quickNote}
                 onChange={(e) => setField("quickNote", e.target.value)}
               />
@@ -193,7 +193,7 @@ export function RevisarRecursoModal({
 
           {reviewMode === "deep" && (
             <>
-              {([ ["¿Qué aprendiste?", "learned", "Resume el concepto o lección más importante..."],
+              {([ ["¿Qué aprendiste?", "learned", "Resume el concepto o lección más importante…"],
                   ["¿Cómo aplicarlo al trading?", "howToApply", "¿Qué cambiarías en tu trading? ¿Algún setup o regla que mejorar?"],
                   ["Insights clave (uno por línea)", "insights", "• Insight 1\n• Insight 2\n• Insight 3"],
               ] as [string, keyof RevisarState, string][]).map(([label, key, placeholder]) => (

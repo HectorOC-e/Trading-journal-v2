@@ -28,7 +28,7 @@ export default function TradesPage() {
   const [editingTrade, setEditingTrade]         = useState<string | null>(null)
   const [positionLogTrade, setPositionLogTrade] = useState<string | null>(null)
   const [propFirmError, setPropFirmError]       = useState<string | null>(null)
-  const [deactivatedAccount, setDeactivatedAccount] = useState<string | null>(null)
+  const [lockedNotice, setLockedNotice] = useState<{ name: string; reason: string } | null>(null)
   const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false)
   const [importModalOpen, setImportModalOpen]       = useState(false)
   const [filterAccountId, setFilterAccountId]       = useState<string | null>(null)
@@ -82,10 +82,10 @@ export default function TradesPage() {
 
   // ACCOUNT_LOCKED:<reason> → clear human message naming the limit reached (HALLAZGO 1B)
   const LOCK_MESSAGES: Record<string, string> = {
-    DAILY_LOSS_LIMIT:   "Cuenta bloqueada: Daily Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
-    WEEKLY_LOSS_LIMIT:  "Cuenta bloqueada: Weekly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
-    MONTHLY_LOSS_LIMIT: "Cuenta bloqueada: Monthly Loss Limit alcanzado. Desbloquéala en Cuentas para volver a operar.",
-    MAX_DRAWDOWN:       "Cuenta bloqueada: Maximum Drawdown alcanzado. Desbloquéala en Cuentas para volver a operar.",
+    DAILY_LOSS_LIMIT:   "Cuenta bloqueada: límite de pérdida diaria alcanzado. Se reactiva al día siguiente (o desbloquéala en Cuentas).",
+    WEEKLY_LOSS_LIMIT:  "Cuenta bloqueada: límite de pérdida semanal alcanzado. Se reactiva la próxima semana (o desbloquéala en Cuentas).",
+    MONTHLY_LOSS_LIMIT: "Cuenta bloqueada: límite de pérdida mensual alcanzado. Se reactiva el próximo mes (o desbloquéala en Cuentas).",
+    MAX_DRAWDOWN:       "Cuenta bloqueada: drawdown total máximo alcanzado. Requiere desbloqueo manual en Cuentas.",
     MANUAL:             "Cuenta bloqueada manualmente. Desbloquéala en Cuentas para volver a operar.",
   }
   function resolveTradeError(message: string): string | null {
@@ -103,6 +103,7 @@ export default function TradesPage() {
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: (trade) => {
       utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
       const pc = pendingChecklistRef.current
       if (pc && pc.total > 0) {
         saveChecklist.mutate({ tradeId: trade.id, setupId: pc.setupId, itemsChecked: pc.items, itemsTotal: pc.total })
@@ -136,9 +137,9 @@ export default function TradesPage() {
     onSuccess: (result) => {
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
-      if (result.accountDeactivated) {
+      if (result.accountLocked) {
         const acct = accounts.find(a => a.id === result.trade.accountId)
-        setDeactivatedAccount(acct?.name ?? "tu cuenta")
+        setLockedNotice({ name: acct?.name ?? "tu cuenta", reason: result.lockReason ?? "MAX_DRAWDOWN" })
       }
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
@@ -309,13 +310,15 @@ export default function TradesPage() {
           <button onClick={() => setPropFirmError(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
         </div>
       )}
-      {/* Account auto-deactivated banner */}
-      {deactivatedAccount && (
+      {/* Account auto-locked banner */}
+      {lockedNotice && (
         <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] border border-[var(--loss)] px-4 py-3 text-sm text-[var(--loss)]">
           <span className="flex-1">
-            La cuenta <strong>{deactivatedAccount}</strong> ha sido desactivada automáticamente por superar el drawdown total máximo.
+            {LOCK_MESSAGES[lockedNotice.reason]
+              ? <>La cuenta <strong>{lockedNotice.name}</strong> fue bloqueada automáticamente: {LOCK_MESSAGES[lockedNotice.reason]}</>
+              : <>La cuenta <strong>{lockedNotice.name}</strong> fue bloqueada automáticamente por superar un límite de riesgo.</>}
           </span>
-          <button onClick={() => setDeactivatedAccount(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
+          <button onClick={() => setLockedNotice(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
         </div>
       )}
       <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
@@ -355,7 +358,7 @@ export default function TradesPage() {
                 <button
                   onClick={() => handleAccountFilter(null)}
                   className={[
-                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                    "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
                     !filterAccountId
                       ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                       : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",
@@ -368,7 +371,7 @@ export default function TradesPage() {
                     key={a.id}
                     onClick={() => handleAccountFilter(a.id === filterAccountId ? null : a.id)}
                     className={[
-                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-all duration-100",
+                      "px-2.5 py-1 text-[11px] font-semibold rounded-[5px] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
                       filterAccountId === a.id
                         ? "bg-[var(--accent)] text-[var(--accent-contrast)] shadow-[var(--shadow-xs)]"
                         : "text-[var(--ink-3)] hover:text-[var(--ink)] bg-[var(--chip)]",

@@ -31,7 +31,7 @@ function RatingBar({
           type="button"
           onClick={() => onChange(n)}
           className={cn(
-            "flex-1 h-8 rounded-[var(--radius-sm)] text-xs font-semibold transition-all",
+            "flex-1 h-8 rounded-[var(--radius-sm)] text-xs font-semibold transition-[color,background-color,border-color,box-shadow,transform,opacity]",
             value === n
               ? "bg-[var(--accent)] text-white"
               : "bg-[var(--chip)] text-[var(--ink-2)] hover:bg-[var(--panel-2)] hover:text-[var(--ink)]",

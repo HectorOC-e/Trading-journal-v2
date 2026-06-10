@@ -124,8 +124,12 @@ function SetupCard({ setup, selected, onClick, stats, versionCount }: {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
       onClick={onClick}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden hover:border-[var(--accent-soft)]"
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.() } }}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[border-color,box-shadow,opacity] duration-150 overflow-hidden hover:border-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow:   selected ? "0 0 0 1px var(--accent)" : undefined,
@@ -488,7 +492,7 @@ function SetupDrawer({
                     className="relative aspect-video rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] hover:border-[var(--accent)] transition-colors group"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={`Referencia ${i + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`Referencia ${i + 1}`} width={320} height={180} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                       <ZoomIn size={18} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
@@ -627,7 +631,10 @@ function SetupDrawer({
           <img
             src={lightboxImg}
             alt="Referencia"
-            className="max-w-full max-h-full rounded-[var(--radius)] object-contain"
+            width={1280}
+            height={720}
+            decoding="async"
+            className="max-w-full max-h-full w-auto h-auto rounded-[var(--radius)] object-contain"
             onClick={e => e.stopPropagation()}
           />
           <button
@@ -931,7 +938,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
                   {form.images.map((url, i) => (
                     <div key={i} className="relative aspect-video rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)] group">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      <img src={url} alt="" width={320} height={180} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                       <button
                         onClick={() => removeImage(i)}
                         className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"

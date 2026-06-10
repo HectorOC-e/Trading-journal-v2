@@ -7,6 +7,8 @@ import {
 } from "lucide-react"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { formatMoney } from "@/lib/format/money"
+import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { trpc } from "@/lib/trpc/client"
@@ -48,6 +50,17 @@ export const ACCOUNT_STATUS_META: Record<string, { label: string; color: string;
 
 export const isPropFirmLike = (type: AccountType) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
+/** Compact relative time for the last balance sync (e.g. "hoy", "hace 3d"). */
+export function formatSyncAgo(iso: string | null | undefined, now: number = Date.now()): string | null {
+  if (!iso) return null
+  const mins = Math.floor((now - new Date(iso).getTime()) / 60_000)
+  if (mins < 1)  return "hace un momento"
+  if (mins < 60) return `hace ${mins}m`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `hace ${hours}h`
+  return `hace ${Math.floor(hours / 24)}d`
+}
+
 export function KpiBox({ label, value, sub, positive, icon }: {
   label: string; value: string; sub: string; positive?: boolean; icon: React.ReactNode
 }) {
@@ -85,21 +98,33 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const phase  = (rawAccount.phase as string) ?? "NONE"
 
   const initialBalance = Number(rawAccount.initialBalance)
+  // Current equity = starting capital + realized trade P&L + balance adjustments
+  // (sync corrections). Adjustments move the balance but not trade-derived metrics.
+  const balanceAdjustment = variance ?? 0
+  const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
   // Read clock once at mount — keeps render pure (Date.now() is impure during render)
   const [now] = useState(() => Date.now())
   const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
+  const syncedAgo = formatSyncAgo((rawAccount as { lastSyncedAt?: string | null }).lastSyncedAt, now)
 
   const flatLine  = Array(10).fill(initialBalance)
   const sparkData = (stats?.sparkline && stats.sparkline.length > 1) ? stats.sparkline : flatLine
   const sparkPos  = stats ? stats.netPnl >= 0 : true
+
+  // Lock badge: permanent locks (total DD / manual) persist via the DB flag;
+  // temporal locks (daily/weekly/monthly) reflect the live current-period breach
+  // so they clear automatically once the period rolls over.
+  const lockReason = (rawAccount as { lockReason?: string }).lockReason ?? ""
+  const isLocked   = (rawAccount as { locked?: boolean }).locked ?? false
+  const isBlocked  = (isLocked && isPermanentLockReason(lockReason)) || !!stats?.risk.breach
 
   return (
     <div
       onClick={onClick}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-all duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow: selected
@@ -117,7 +142,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
             <div className="flex items-center gap-2 flex-wrap">
               <p className="font-semibold text-[var(--ink)] leading-tight">{rawAccount.name}</p>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
-              {(rawAccount as { locked?: boolean }).locked && (
+              {isBlocked && (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                   style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
                   <Lock size={8} /> BLOQUEADA
@@ -141,10 +166,13 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           )}
         </div>
 
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <p className="text-eyebrow mb-1">Balance inicial</p>
-            <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none">${initialBalance.toLocaleString()}</p>
+        <div className="flex items-start gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-eyebrow mb-1">Balance actual</p>
+            <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none truncate">
+              {formatMoney(currentEquity, { currency: rawAccount.currency, decimals: 2 })}
+            </p>
+            <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial {formatMoney(initialBalance, { currency: rawAccount.currency })}</p>
           </div>
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
@@ -201,7 +229,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
                 <div className="flex justify-between mb-1">
                   <span className="text-[11px] text-[var(--ink-3)]">{isPF ? "Progreso hacia objetivo" : "Objetivo"}</span>
                   <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                    {stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
+                    {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
@@ -245,10 +273,10 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           </div>
         </div>
 
-        {/* ── Balance variance (if any corrections logged) ── */}
+        {/* ── Balance adjustment from sync corrections (baked into equity above) ── */}
         {variance != null && variance !== 0 && (
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--line)]">
-            <span className="text-[var(--ink-3)]">Diferencia acumulada</span>
+            <span className="text-[var(--ink-3)]">Ajuste de balance</span>
             <span className={`font-mono font-semibold ${variance >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
               {variance >= 0 ? "+" : ""}${variance.toFixed(2)}
             </span>
@@ -264,6 +292,9 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               <ArrowUpDown size={11} />
               Sincronizar balance
             </button>
+          )}
+          {syncedAgo && (
+            <span className="text-[10px] text-[var(--ink-3)]">· {syncedAgo}</span>
           )}
           <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors ml-auto">
             Ver detalle <ChevronRight size={11} />

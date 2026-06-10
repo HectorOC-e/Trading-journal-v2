@@ -114,6 +114,12 @@ model Account {
   lockReason  String    @default("") @map("lock_reason")  // e.g. "DAILY_LOSS_LIMIT"
   lockedAt    DateTime? @map("locked_at")
 
+  // ── Balance sync (broker reconciliation) ──────
+  // Last broker balance entered via "Sincronizar balance" + when. Equity itself
+  // is still derived (initial + P&L + adjustments); these are for display/audit.
+  lastSyncedBalance Decimal?  @map("last_synced_balance") @db.Decimal(14, 2)
+  lastSyncedAt      DateTime? @map("last_synced_at")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

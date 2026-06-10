@@ -268,7 +268,7 @@ export function TabDisciplina({ kpis, discipline }: {
               return (
                 <div key={d.bucket} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[9px] font-mono font-bold text-[var(--ink-3)]">{d.count}</span>
-                  <div className="w-full rounded-t-sm transition-all"
+                  <div className="w-full rounded-t-sm transition-[height]"
                     style={{ height: `${h}%`, background: isNeg ? "var(--loss)" : d.bucket === "0R" ? "var(--be)" : "var(--win)", minHeight: 4 }} />
                   <span className="text-[9px] text-[var(--ink-3)]">{d.bucket}</span>
                 </div>
@@ -365,7 +365,7 @@ export function TabDisciplina({ kpis, discipline }: {
                 <div className="flex-1 h-2 rounded-full bg-[var(--panel-2)]">
                   {row.winRate != null && (
                     <div
-                      className="h-2 rounded-full transition-all"
+                      className="h-2 rounded-full transition-[width]"
                       style={{
                         width: `${row.winRate}%`,
                         background: row.winRate >= 55 ? "var(--win)" : row.winRate >= 45 ? "var(--be)" : "var(--loss)",

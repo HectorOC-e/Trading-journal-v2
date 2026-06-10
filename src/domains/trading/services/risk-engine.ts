@@ -3,13 +3,23 @@
 // (bar fill), and the auto-lock decision. UI and the trade mutation must both
 // read from here so screens never diverge.
 
-import { computeMaxDrawdown, calcDrawdownPct } from "@/lib/formulas/drawdown"
+import { computeMaxDrawdown, computeDrawdownFromInitial, calcDrawdownPct } from "@/lib/formulas/drawdown"
 
 export type RiskLockReason =
   | "DAILY_LOSS_LIMIT"
   | "WEEKLY_LOSS_LIMIT"
   | "MONTHLY_LOSS_LIMIT"
   | "MAX_DRAWDOWN"
+
+/** Loss-limit reasons that reset automatically when their period rolls over. */
+export const TEMPORAL_LOCK_REASONS: readonly string[] = [
+  "DAILY_LOSS_LIMIT", "WEEKLY_LOSS_LIMIT", "MONTHLY_LOSS_LIMIT",
+]
+
+/** True for locks that require a manual unlock (total drawdown / manual / custom). */
+export function isPermanentLockReason(reason: string): boolean {
+  return !TEMPORAL_LOCK_REASONS.includes(reason)
+}
 
 /** One limit's display state. `usedPct` is the bar fill (0–100 toward the limit). */
 export type LimitGauge = {
@@ -93,4 +103,23 @@ export function computeAccountRisk(input: AccountRiskInput): AccountRisk {
 /** Convenience: maxDrawdown from a chronological P&L sequence (canonical formula). */
 export function maxDrawdownFromPnl(pnlSequence: number[]): number {
   return computeMaxDrawdown(pnlSequence)
+}
+
+/**
+ * Account-aware drawdown amount from a chronological P&L sequence — single
+ * source of truth for *which* drawdown rule applies:
+ *   • Prop firms with a FIXED model (the default, e.g. FTMO "Maximum Loss"):
+ *     loss measured from the INITIAL balance (static floor; prior profits do
+ *     not raise it).
+ *   • Prop firms with a TRAILING model, and all non-prop accounts: conventional
+ *     peak-to-trough max drawdown (the floor trails the equity high-water mark).
+ */
+export function accountDrawdown(
+  pnlSequence: number[],
+  opts: { isPropFirm: boolean; ddModel?: string | null },
+): number {
+  const fixedFromInitial = opts.isPropFirm && (opts.ddModel ?? "FIXED") !== "TRAILING"
+  return fixedFromInitial
+    ? computeDrawdownFromInitial(pnlSequence)
+    : computeMaxDrawdown(pnlSequence)
 }

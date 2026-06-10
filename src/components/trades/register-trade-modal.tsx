@@ -350,7 +350,7 @@ export function RegisterTradeModal({
                       setSizeManual(false)
                     }}
                     className={cn(
-                      "flex-1 min-w-[160px] text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                      "flex-1 min-w-[160px] text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                       form.accountId === acc.id
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                         : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
@@ -561,7 +561,7 @@ export function RegisterTradeModal({
                     type="button"
                     onClick={() => setForm(f => ({ ...f, setupId: "", checklistItems: {} }))}
                     className={cn(
-                      "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                      "text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                       !form.setupId
                         ? "border-[var(--loss)] bg-[var(--loss-soft)]"
                         : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
@@ -609,7 +609,7 @@ export function RegisterTradeModal({
                         type="button"
                         onClick={() => selectSetup(setup.id)}
                         className={cn(
-                          "text-left rounded-[var(--radius-sm)] p-3 border transition-all",
+                          "text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                           form.setupId === setup.id
                             ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                             : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
@@ -793,7 +793,7 @@ export function RegisterTradeModal({
           <div>
             <label className="text-eyebrow block mb-1.5">Plan pre-operación</label>
             <Textarea
-              placeholder="¿Por qué vas a tomar este trade? Nivel clave, catalizador, invalidación..."
+              placeholder="¿Por qué vas a tomar este trade? Nivel clave, catalizador, invalidación…"
               value={form.planNotes}
               onChange={e => setForm(f => ({ ...f, planNotes: e.target.value.slice(0, 500) }))}
               rows={2}
@@ -807,7 +807,7 @@ export function RegisterTradeModal({
           <div>
             <label className="text-eyebrow block mb-1.5">Notas</label>
             <Textarea
-              placeholder="Entrada en zona de liquidez..."
+              placeholder="Entrada en zona de liquidez…"
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
             />
@@ -940,7 +940,7 @@ export function RegisterTradeModal({
                 {form.screenshots.map((url, idx) => (
                   <div key={url} className="relative group w-20 h-20 rounded-[var(--radius-sm)] overflow-hidden border border-[var(--line)]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={`screenshot ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`screenshot ${idx + 1}`} width={80} height={80} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeScreenshot(idx)}

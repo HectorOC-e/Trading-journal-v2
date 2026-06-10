@@ -2,11 +2,9 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import type { AccountLogPayload } from "@/types"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry } from "@/domains/trading/services/trade-service"
 import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
-import { computeMaxDrawdown } from "@/domains/trading/services/account-service"
-import { computeAccountRisk } from "@/domains/trading/services/risk-engine"
+import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
@@ -24,40 +22,6 @@ import { embedText } from "@/lib/ai/embeddings"
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 
 /** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
-function periodBounds(dateStr: string) {
-  const day = new Date(`${dateStr}T00:00:00Z`)
-  const dow = (day.getUTCDay() + 6) % 7 // Monday = 0
-  const weekStart = new Date(day);  weekStart.setUTCDate(day.getUTCDate() - dow)
-  const monthStart = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), 1))
-  const earliest = weekStart < monthStart ? weekStart : monthStart
-  return { day, weekStart, monthStart, earliest }
-}
-
-function sameDay(a: Date, b: Date): boolean {
-  return a.getUTCFullYear() === b.getUTCFullYear()
-    && a.getUTCMonth() === b.getUTCMonth()
-    && a.getUTCDate() === b.getUTCDate()
-}
-
-/** Lock an account (auto, on loss-limit breach) and write an audit log. */
-async function lockAccount(
-  prisma: typeof import("@/lib/prisma").prisma,
-  userId: string,
-  accountId: string,
-  reason: string,
-  limitPct?: number,
-  currentPct?: number,
-): Promise<void> {
-  await prisma.account.update({
-    where: { id: accountId, userId },
-    data:  { locked: true, lockReason: reason, lockedAt: new Date() },
-  })
-  const payload: AccountLogPayload = { event: "LOCKED", reason, limitPct, currentPct, auto: true }
-  await prisma.accountLog.create({
-    data: { userId, accountId, event: "LOCKED", payload },
-  })
-}
-
 /** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
 function scheduleEmbedding(tradeId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
   if (!notes.trim()) return
@@ -148,6 +112,8 @@ function serializeAccount(a: RawAccount) {
     ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
     ddTotalPct:     a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:      a.targetPct   != null ? Number(a.targetPct)   : null,
+    lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
+    lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
     createdAt:      a.createdAt.toISOString(),
     updatedAt:      a.updatedAt.toISOString(),
   }
@@ -281,7 +247,7 @@ export const tradesRouter = router({
         select: {
           id: true, name: true, type: true, status: true,
           initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
-          maxTradesPerDay: true, allowedSymbols: true,
+          ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
         },
       })
       const activeAccountIds = activeAccounts.map(a => a.id)
@@ -350,11 +316,14 @@ export const tradesRouter = router({
         initialBalance:  Number(a.initialBalance),
         ddDailyPct:      a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
         ddTotalPct:      a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
+        ddModel:         a.ddModel,
         maxTradesPerDay: a.maxTradesPerDay,
         allowedSymbols:  a.allowedSymbols as string[],
       }))
       const limitsById: Record<string, AccountLimits> = Object.fromEntries(accounts.map(a => [a.id, {
         id:           a.id,
+        type:         a.type,
+        ddModel:      a.ddModel,
         ddDailyPct:   a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
         ddWeeklyPct:  a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
         ddMonthlyPct: a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
@@ -476,16 +445,28 @@ export const tradesRouter = router({
           ddWeeklyPct:     true,
           ddMonthlyPct:    true,
           ddTotalPct:      true,
+          ddModel:         true,
           maxTradesPerDay: true,
           allowedSymbols:  true,
           initialBalance:  true,
         },
       })
 
-      // 1) Already locked → no new trades until manual unlock
-      if (account.locked) {
-        throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${account.lockReason || "MANUAL"}` })
+      // 1) Risk-limit pre-trade guard (all account types). Throws ACCOUNT_LOCKED
+      //    on an active lock; auto-reactivates an elapsed temporal lock.
+      const enforceAccount: EnforceableAccount = {
+        id:             input.accountId,
+        type:           account.type,
+        ddModel:        account.ddModel,
+        ddDailyPct:     account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null,
+        ddWeeklyPct:    account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null,
+        ddMonthlyPct:   account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null,
+        ddTotalPct:     account.ddTotalPct   != null ? Number(account.ddTotalPct)   : null,
+        initialBalance: Number(account.initialBalance),
+        locked:         account.locked,
+        lockReason:     account.lockReason,
       }
+      await assertTradeable(ctx.prisma, ctx.userId, enforceAccount, input.date)
 
       // 2) Setup must be selectable (HALLAZGO 2 — backend guard)
       if (input.setupId) {
@@ -499,41 +480,7 @@ export const tradesRouter = router({
         }
       }
 
-      // 3) Risk limits (daily / weekly / monthly loss + total max-drawdown) —
-      //    universal, all account types. Single source of truth: risk-engine.
-      //    On breach the account is auto-locked and the trade is rejected.
-      const initBal = Number(account.initialBalance)
-      const bounds  = periodBounds(input.date)
-      const hasRiskLimit =
-        account.ddDailyPct != null || account.ddWeeklyPct != null ||
-        account.ddMonthlyPct != null || account.ddTotalPct != null
-      if (hasRiskLimit && initBal > 0) {
-        // Full closed-trade history (chronological) — needed for peak-to-trough max drawdown.
-        const closed = await ctx.prisma.trade.findMany({
-          where:   { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
-          select:  { pnl: true, date: true },
-          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-        })
-        const sumFrom = (from: Date) => closed.filter(t => (t.date as Date) >= from).reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-        const risk = computeAccountRisk({
-          initialBalance: initBal,
-          ddDailyPct:   account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null,
-          ddWeeklyPct:  account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null,
-          ddMonthlyPct: account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null,
-          ddTotalPct:   account.ddTotalPct   != null ? Number(account.ddTotalPct)   : null,
-          dayPnl:       closed.filter(t => sameDay(t.date as Date, bounds.day)).reduce((s, t) => s + Number(t.pnl ?? 0), 0),
-          weekPnl:      sumFrom(bounds.weekStart),
-          monthPnl:     sumFrom(bounds.monthStart),
-          maxDrawdown:  computeMaxDrawdown(closed.map(t => Number(t.pnl ?? 0))),
-        })
-
-        if (risk.breach) {
-          await lockAccount(ctx.prisma, ctx.userId, input.accountId, risk.breach.reason, risk.breach.limitPct, risk.breach.actualPct)
-          throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:${risk.breach.reason}` })
-        }
-      }
-
-      // 4) Prop-firm-only constraints: max trades/day + symbol allowlist
+      // 3) Prop-firm-only constraints: max trades/day + symbol allowlist
       if (account.type === "PROP_FIRM" || account.type === "DEMO_PROP") {
         const tradeDate = new Date(input.date)
         if (account.maxTradesPerDay != null) {
@@ -566,6 +513,12 @@ export const tradesRouter = router({
           timestamp: new Date(`${input.date}T${openTimeSafe}:00`),
         },
       })
+
+      // Post-trade: a trade registered already-closed can itself breach a limit
+      // → auto-lock immediately (locked was just cleared/false by assertTradeable).
+      if (input.status === "CLOSED" && input.pnl != null) {
+        await evaluateAndLock(ctx.prisma, ctx.userId, { ...enforceAccount, locked: false, lockReason: "" }, input.date)
+      }
 
       const full = await ctx.prisma.trade.findUniqueOrThrow({
         where:   { id: trade.id },
@@ -607,6 +560,23 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
+      // Editing realized P&L can push the account over a limit → re-evaluate lock.
+      if (input.pnl !== undefined) {
+        const a = trade.account
+        await evaluateAndLock(ctx.prisma, ctx.userId, {
+          id:             a.id,
+          type:           a.type,
+          ddModel:        a.ddModel,
+          ddDailyPct:     a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
+          ddWeeklyPct:    a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
+          ddMonthlyPct:   a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
+          ddTotalPct:     a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
+          initialBalance: Number(a.initialBalance),
+          locked:         a.locked,
+          lockReason:     a.lockReason,
+        }, (trade.date as Date).toISOString().slice(0, 10))
+        if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
+      }
       if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
       return serializeTrade(trade)
     }),
@@ -633,46 +603,35 @@ export const tradesRouter = router({
         include: { account: true, setup: true, events: true },
       })
 
-      // ── Auto-INACTIVE on total drawdown breach ────────────────────────────
+      // ── Post-trade risk evaluation (all account types) ────────────────────
+      // Closing a trade realizes P&L that may breach any limit. Temporal limits
+      // lock until their period rolls over; total drawdown locks permanently.
       const acct = await ctx.prisma.account.findUnique({
         where:  { id: trade.accountId },
-        select: { type: true, ddTotalPct: true, initialBalance: true, status: true },
+        select: {
+          type: true, ddModel: true,
+          ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
+          initialBalance: true, locked: true, lockReason: true,
+        },
       })
-      if (
-        acct &&
-        (acct.type === "PROP_FIRM" || acct.type === "DEMO_PROP") &&
-        acct.ddTotalPct != null &&
-        acct.status === "ACTIVE"
-      ) {
-        const allClosed = await ctx.prisma.trade.findMany({
-          where:   { accountId: trade.accountId, userId: ctx.userId, status: "CLOSED" },
-          select:  { pnl: true },
-          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-        })
-        const maxDd   = computeMaxDrawdown(allClosed.map(t => Number(t.pnl ?? 0)))
-        const initBal = Number(acct.initialBalance)
-        const ddPct   = initBal > 0 ? (maxDd / initBal) * 100 : 0
-        if (ddPct >= Number(acct.ddTotalPct)) {
-          await ctx.prisma.account.update({
-            where: { id: trade.accountId },
-            data:  { status: "INACTIVE" },
-          })
-          const ddPayload: AccountLogPayload = {
-            event: "STATUS_CHANGE",
-            from:  "ACTIVE",
-            to:    "INACTIVE",
-            note:  `Drawdown total ${ddPct.toFixed(2)}% superó límite de ${Number(acct.ddTotalPct)}%`,
-          }
-          await ctx.prisma.accountLog.create({
-            data: { userId: ctx.userId, accountId: trade.accountId, event: "STATUS_CHANGE", payload: ddPayload },
-          })
-              if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-          return { trade: serializeTrade(updated), accountDeactivated: true }
-        }
+      let breach: Awaited<ReturnType<typeof evaluateAndLock>> = null
+      if (acct) {
+        breach = await evaluateAndLock(ctx.prisma, ctx.userId, {
+          id:             trade.accountId,
+          type:           acct.type,
+          ddModel:        acct.ddModel,
+          ddDailyPct:     acct.ddDailyPct   != null ? Number(acct.ddDailyPct)   : null,
+          ddWeeklyPct:    acct.ddWeeklyPct  != null ? Number(acct.ddWeeklyPct)  : null,
+          ddMonthlyPct:   acct.ddMonthlyPct != null ? Number(acct.ddMonthlyPct) : null,
+          ddTotalPct:     acct.ddTotalPct   != null ? Number(acct.ddTotalPct)   : null,
+          initialBalance: Number(acct.initialBalance),
+          locked:         acct.locked,
+          lockReason:     acct.lockReason,
+        }, (trade.date as Date).toISOString().slice(0, 10))
       }
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      return { trade: serializeTrade(updated), accountDeactivated: false }
+      return { trade: serializeTrade(updated), accountLocked: breach != null, lockReason: breach?.reason ?? null }
     }),
 
   addEvent: protectedProcedure

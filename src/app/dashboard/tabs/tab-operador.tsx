@@ -157,7 +157,7 @@ export function TabOperador({
             const active = (selectedAccountId ?? accountCards[0]?.accountId) === a.accountId
             return (
               <button key={a.accountId} onClick={() => setSelectedAccountId(a.accountId)}
-                className="text-left rounded-[var(--radius-sm)] p-3 border transition-all"
+                className="text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]"
                 style={{
                   border: active ? `1.5px solid ${a.color}` : "1.5px solid var(--line)",
                   background: active ? "var(--panel-2)" : "transparent",

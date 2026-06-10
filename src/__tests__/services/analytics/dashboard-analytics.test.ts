@@ -421,16 +421,18 @@ describe("buildPropFirmStatus", () => {
     maxTradesPerDay: null, allowedSymbols: [],
   }
 
-  it("reports actual drawdown % and limit, plus utilization", () => {
-    // Max drawdown of $500 on $10k = 5% actual; limit 10% → 50% utilized
+  it("reports actual drawdown % measured from initial balance (FTMO rule)", () => {
+    // Prop firms measure max loss from the INITIAL balance, not peak-to-trough:
+    // cumulative [200, -300] → deepest point is $300 below initial = 3% on $10k.
+    // (A peak-to-trough reading would over-report this as 5%.)
     const closed = [
       trade({ id: "1", date: "2026-05-01", pnl:  200 }),
-      trade({ id: "2", date: "2026-05-02", pnl: -500 }), // trough
+      trade({ id: "2", date: "2026-05-02", pnl: -500 }), // net -300 below initial
     ]
     const [s] = buildPropFirmStatus([propAccount], closed, [])
-    expect(s.ddActualPct).toBeCloseTo(5, 1)   // (peak 200 → -300) drawdown 500 = 5%
+    expect(s.ddActualPct).toBeCloseTo(3, 1)   // $300 below initial / $10k
     expect(s.ddLimitPct).toBe(10)
-    expect(s.ddPctUsed).toBeCloseTo(50, 0)    // 5% / 10% limit
+    expect(s.ddPctUsed).toBeCloseTo(30, 0)    // 3% / 10% limit
   })
 
   it("reports actual daily loss % and limit from today's trades", () => {

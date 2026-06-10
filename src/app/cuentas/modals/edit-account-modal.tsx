@@ -183,7 +183,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {(["FIXED","TRAILING"] as const).map(m => (
                     <button key={m} onClick={() => set("ddModel", m)}
-                      className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold border transition-all",
+                      className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                         form.ddModel === m ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]" : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
                       )}>
                       {m === "FIXED" ? "Fijo" : "Trailing"}

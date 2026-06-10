@@ -78,7 +78,7 @@ function formatPnl(pnl: number): string {
 function DisciplineBar({ score }: { score: number }) {
   return (
     <div className="h-1 w-full rounded-full" style={{ background: "var(--line)" }}>
-      <div className="h-1 rounded-full transition-all duration-500" style={{ width: `${score}%`, background: disciplineColor(score) }} />
+      <div className="h-1 rounded-full transition-[width] duration-500" style={{ width: `${score}%`, background: disciplineColor(score) }} />
     </div>
   )
 }
@@ -159,7 +159,7 @@ function WeekSelectorCard({ week, selected, onClick, generated }: {
   return (
     <button
       onClick={onClick}
-      className={cn("w-full text-left rounded-[var(--radius-sm)] border p-3 transition-all duration-100",
+      className={cn("w-full text-left rounded-[var(--radius-sm)] border p-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
         selected ? "border-[var(--accent)] shadow-[0_0_0_2px_rgba(79,110,247,0.18)]" : "border-[var(--line)] hover:border-[var(--accent)]"
       )}
       style={{ background: selected ? "var(--accent-soft)" : "var(--panel-2)" }}
@@ -182,7 +182,7 @@ function AccountSelectorCard({ account, selected, onClick }: { account: AccountF
   return (
     <button
       onClick={onClick}
-      className={cn("w-full text-left rounded-[var(--radius-sm)] border p-3 transition-all duration-100",
+      className={cn("w-full text-left rounded-[var(--radius-sm)] border p-3 transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-100",
         selected ? "border-[var(--accent)] shadow-[0_0_0_2px_rgba(79,110,247,0.18)]" : "border-[var(--line)] hover:border-[var(--accent)]"
       )}
       style={{ background: selected ? "var(--accent-soft)" : "var(--panel-2)" }}
@@ -523,7 +523,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
           {step === "analisis" && (
             <div className="flex flex-col gap-4 py-2">
               {[
-                { key: "executiveSummary", label: "Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas...", rows: 3 },
+                { key: "executiveSummary", label: "Resumen ejecutivo", value: executiveSummary, set: setExecutiveSummary, placeholder: "Describe los puntos clave de la semana en 3-5 líneas…", rows: 3 },
                 { key: "whatWorked",       label: "¿Qué funcionó bien?", value: whatWorked, set: setWhatWorked, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
                 { key: "toImprove",        label: "A mejorar la próxima semana", value: toImprove, set: setToImprove, placeholder: "• Punto 1\n• Punto 2\n• Punto 3", rows: 4 },
               ].map(({ key, label, value, set, placeholder, rows }) => (

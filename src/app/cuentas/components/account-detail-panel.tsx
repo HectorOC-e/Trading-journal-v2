@@ -9,8 +9,10 @@ import {
 import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { formatMoney } from "@/lib/format/money"
+import { trpc } from "@/lib/trpc/client"
 import {
-  TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike,
+  TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike, formatSyncAgo,
 } from "./account-card"
 import type { RawAccount, TradeStats } from "./account-card"
 import type { AccountType } from "@/types"
@@ -50,6 +52,12 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const phase        = (account.phase as string) ?? "NONE"
   const initialBalance = Number(account.initialBalance)
   const flatLine     = Array(10).fill(initialBalance)
+  // Balance adjustments from sync corrections — baked into current equity.
+  const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(account.id)
+  const balanceAdjustment = varianceData?.totalVariance ?? 0
+  // Last broker sync (journal-vs-broker comparison).
+  const lastSyncedBalance = (account as { lastSyncedBalance?: number | null }).lastSyncedBalance ?? null
+  const syncedAgo = formatSyncAgo((account as { lastSyncedAt?: string | null }).lastSyncedAt)
 
   const locked       = Boolean((account as { locked?: boolean }).locked)
   const lockReason   = ((account as { lockReason?: string }).lockReason) ?? ""
@@ -118,7 +126,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           {(() => {
             const sparkData     = stats?.sparkline && stats.sparkline.length > 1 ? stats.sparkline : flatLine
             const sparkPos      = stats ? stats.netPnl >= 0 : true
-            const currentEquity = initialBalance + (stats?.netPnl ?? 0)
+            const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
             return (
               <>
                 <div className="flex justify-between items-center mb-2">
@@ -132,9 +140,22 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
                   <span>Balance inicial → actual</span>
                   <span className="font-mono font-semibold text-[var(--ink)]">
-                    ${initialBalance.toLocaleString()} → ${currentEquity.toFixed(2)}
+                    {formatMoney(initialBalance, { currency: account.currency })} → {formatMoney(currentEquity, { currency: account.currency, decimals: 2 })}
                   </span>
                 </div>
+                {lastSyncedBalance != null && (
+                  <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
+                    <span>Broker{syncedAgo ? ` · ${syncedAgo}` : ""}</span>
+                    <span className="font-mono font-semibold text-[var(--ink)]">
+                      ${lastSyncedBalance.toFixed(2)}
+                      {Math.abs(lastSyncedBalance - currentEquity) >= 0.01 && (
+                        <span className={lastSyncedBalance - currentEquity >= 0 ? "text-[var(--win)] ml-1" : "text-[var(--loss)] ml-1"}>
+                          ({lastSyncedBalance - currentEquity >= 0 ? "+" : ""}{(lastSyncedBalance - currentEquity).toFixed(2)})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
               </>
             )
           })()}
@@ -144,7 +165,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
         <div className="grid grid-cols-2 gap-2">
           {(() => {
             const netPnl      = stats?.netPnl ?? 0
-            const currentEq   = initialBalance + netPnl
+            const currentEq   = initialBalance + netPnl + balanceAdjustment
             const pnlMesStr   = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"
             const pnlMesColor = stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
             const wrStr   = stats?.winRate != null ? `${stats.winRate.toFixed(2)}%` : "—"
@@ -202,7 +223,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                   <div className="flex justify-between mb-1">
                     <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({Number(account.targetPct)}%)</span>
                     <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                      {stats ? `${(stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(account.targetPct)}%
+                      {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(account.targetPct)}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
@@ -267,7 +288,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           <div className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3 border border-[var(--line)] flex flex-col gap-2">
             {[
               ["Broker",          account.broker],
-              ["Balance inicial", `$${Number(account.initialBalance).toLocaleString()}`],
+              ["Balance inicial", formatMoney(Number(account.initialBalance), { currency: account.currency })],
               ["Divisa",          account.currency],
               ["Timezone",        account.timezone],
             ].map(([k, v]) => (

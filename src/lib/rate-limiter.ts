@@ -1,7 +1,10 @@
-// Rate limiter abstraction for AI test endpoint.
+// Rate limiter for the AI test endpoint.
 // InMemoryRateLimiter: always available; per-process (resets on cold start).
-// UpstashRateLimiter: Redis-backed sliding window; requires UPSTASH_REDIS_REST_URL + TOKEN env vars.
-// createRateLimiter() returns Upstash when env vars are present, InMemory otherwise.
+//
+// A Redis-backed limiter (Upstash) can be reintroduced here once the optional
+// @upstash/ratelimit + @upstash/redis packages are added to the dependency tree.
+// The previous Upstash adapter was removed because those packages were never
+// declared, so its require() always threw and silently fell back to memory.
 
 export interface RateLimiter {
   check(userId: string): Promise<{ allowed: boolean; retryAfter: number }>
@@ -33,42 +36,9 @@ export class InMemoryRateLimiter implements RateLimiter {
   }
 }
 
-export class UpstashRateLimiter implements RateLimiter {
-  // Lazy-loaded to avoid breaking builds when @upstash packages are not installed.
-  // Falls back to InMemoryRateLimiter when packages or Redis connection are unavailable.
-  private fallback = new InMemoryRateLimiter()
-
-  async check(userId: string): Promise<{ allowed: boolean; retryAfter: number }> {
-    try {
-      // Use require() to avoid TS2307: @upstash packages are optional peer deps not installed by default.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-      const rl  = require("@upstash/ratelimit") as any
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-      const rdm = require("@upstash/redis") as any
-      const redis = rdm.Redis.fromEnv()
-      const ratelimit = new rl.Ratelimit({
-        redis,
-        limiter: rl.Ratelimit.slidingWindow(RATE_LIMIT_MAX, `${RATE_LIMIT_WINDOW / 1000} s`),
-        prefix: "tj:ai-test",
-      })
-      const result = await ratelimit.limit(userId)
-      return {
-        allowed: result.success,
-        retryAfter: result.success ? 0 : Math.ceil((result.reset - Date.now()) / 1000),
-      }
-    } catch {
-      return this.fallback.check(userId)
-    }
-  }
-}
-
 let _limiter: RateLimiter | null = null
 
 export function createRateLimiter(): RateLimiter {
-  if (!_limiter) {
-    _limiter = process.env.UPSTASH_REDIS_REST_URL
-      ? new UpstashRateLimiter()
-      : new InMemoryRateLimiter()
-  }
+  if (!_limiter) _limiter = new InMemoryRateLimiter()
   return _limiter
 }

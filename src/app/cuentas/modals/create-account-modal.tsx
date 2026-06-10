@@ -139,7 +139,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                   const m = TYPE_META[t]
                   return (
                     <button key={t} onClick={() => set("tipo", t)}
-                      className="flex flex-col items-center gap-1.5 py-3 rounded-[var(--radius-sm)] border transition-all"
+                      className="flex flex-col items-center gap-1.5 py-3 rounded-[var(--radius-sm)] border transition-[color,background-color,border-color,box-shadow,transform,opacity]"
                       style={{ borderColor: form.tipo === t ? m.color : "var(--line)", background: form.tipo === t ? m.bg : "var(--panel-2)" }}>
                       <span className="text-[11px] font-bold" style={{ color: form.tipo === t ? m.color : "var(--ink-3)" }}>{TYPE_META[t].label}</span>
                     </button>
@@ -259,7 +259,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                   <div className="grid grid-cols-2 gap-2">
                     {(["FIXED", "TRAILING"] as const).map(m => (
                       <button key={m} onClick={() => set("ddModel", m)}
-                        className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold text-left border transition-all",
+                        className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                           form.ddModel === m
                             ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
                             : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
@@ -275,7 +275,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                     <div className="flex flex-col gap-1">
                       {(["PHASE_1","PHASE_2","FUNDED","NONE"] as const).map(p => (
                         <button key={p} onClick={() => set("phase", p)}
-                          className={cn("py-1.5 px-3 rounded-[var(--radius-sm)] text-[11px] font-medium text-left border transition-all",
+                          className={cn("py-1.5 px-3 rounded-[var(--radius-sm)] text-[11px] font-medium text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                             form.phase === p
                               ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
                               : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"

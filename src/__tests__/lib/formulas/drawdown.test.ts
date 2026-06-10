@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { computeMaxDrawdown, calcDrawdownPct } from '@/lib/formulas'
+import { computeMaxDrawdown, computeDrawdownFromInitial, calcDrawdownPct } from '@/lib/formulas'
 
 describe('computeMaxDrawdown()', () => {
   it('returns 0 for empty array', () => {
@@ -52,6 +52,37 @@ describe('computeMaxDrawdown()', () => {
   it('handles decimal values', () => {
     const dd = computeMaxDrawdown([10.5, -5.2, 3.1])
     expect(dd).toBeCloseTo(5.2, 5)
+  })
+})
+
+describe('computeDrawdownFromInitial()', () => {
+  it('returns 0 for empty array', () => {
+    expect(computeDrawdownFromInitial([])).toBe(0)
+  })
+
+  it('returns 0 while equity stays at or above initial', () => {
+    // Cumulative: [100, 300, 200] — never below initial (0)
+    expect(computeDrawdownFromInitial([100, 200, -100])).toBe(0)
+  })
+
+  it('ignores prior profit — only counts drop below initial (FTMO rule)', () => {
+    // Cumulative: [200, -100] → deepest point -100 below initial
+    // (peak-to-trough would be 300; from-initial is 100)
+    expect(computeDrawdownFromInitial([200, -300])).toBe(100)
+  })
+
+  it('matches the worst point below initial across the sequence', () => {
+    // Cumulative: [-100, -50, -150] → deepest -150
+    expect(computeDrawdownFromInitial([-100, 50, -100])).toBe(150)
+  })
+
+  it('reproduces the FTMO card scenario (small win then losses)', () => {
+    // +164 then two losses to net -6236 → deepest below initial = 6236
+    expect(computeDrawdownFromInitial([164, -3200, -3200])).toBe(6236)
+  })
+
+  it('single losing trade', () => {
+    expect(computeDrawdownFromInitial([-500])).toBe(500)
   })
 })
 

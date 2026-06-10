@@ -41,6 +41,8 @@ function serializeAccount(a: RawAccount) {
     ddTotalPct:    a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:     a.targetPct   != null ? Number(a.targetPct)   : null,
     lockedAt:      a.lockedAt != null ? a.lockedAt.toISOString() : null,
+    lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
+    lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
     createdAt:     a.createdAt.toISOString(),
     updatedAt:     a.updatedAt.toISOString(),
   }
@@ -262,7 +264,7 @@ export const accountsRouter = router({
       })
 
       const { computeRunningBalance } = await import("@/domains/trading/services/account-service")
-      const computedBalance = computeRunningBalance(
+      const tradeEquity = computeRunningBalance(
         Number(account.initialBalance),
         trades.map(t => ({
           pnl:  t.pnl != null ? Number(t.pnl) : null,
@@ -270,7 +272,21 @@ export const accountsRouter = router({
         })),
       )
 
-      const variance = input.actualBalance - computedBalance
+      // Adjustments already applied by previous syncs — the new correction is
+      // measured from the *adjusted* equity so repeated syncs don't double-count
+      // and the running balance always reconciles to the broker.
+      const priorLogs = await ctx.prisma.accountLog.findMany({
+        where:  { accountId: input.accountId, userId: ctx.userId, event: "BALANCE_CORRECTION" },
+        select: { payload: true },
+      })
+      const priorAdjustments = priorLogs.reduce((sum, log) => {
+        const p = log.payload as { variance?: number }
+        return sum + (typeof p.variance === "number" ? p.variance : 0)
+      }, 0)
+
+      const currentEquity = tradeEquity + priorAdjustments
+      // Incremental adjustment needed to make displayed equity match the broker.
+      const variance = input.actualBalance - currentEquity
 
       const payload: AccountLogPayload = {
         event:    "BALANCE_CORRECTION",
@@ -287,8 +303,14 @@ export const accountsRouter = router({
         },
       })
 
+      // Remember the broker balance + when, for "última sincronización" display.
+      await ctx.prisma.account.update({
+        where: { id: input.accountId, userId: ctx.userId },
+        data:  { lastSyncedBalance: input.actualBalance, lastSyncedAt: new Date() },
+      })
+
       return {
-        computedBalance: parseFloat(computedBalance.toFixed(2)),
+        computedBalance: parseFloat(currentEquity.toFixed(2)),
         actualBalance:   input.actualBalance,
         variance:        parseFloat(variance.toFixed(2)),
       }

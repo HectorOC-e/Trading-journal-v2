@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#4f6ef7",
+  colorScheme: "light dark",
   width: "device-width",
   initialScale: 1,
   // No maximumScale lock — users must be able to zoom (WCAG 1.4.4 / m4).

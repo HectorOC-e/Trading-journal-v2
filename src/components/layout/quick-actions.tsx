@@ -60,6 +60,7 @@ export function QuickActions() {
     onSuccess: () => {
       utils.trades.list.invalidate()
       utils.trades.dashboardStats.invalidate()
+      utils.accounts.list.invalidate()
       closeRegister()
       toast.success("Trade registrado")
     },
