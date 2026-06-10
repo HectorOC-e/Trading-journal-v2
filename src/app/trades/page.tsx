@@ -55,14 +55,28 @@ export default function TradesPage() {
   )
   const trades = tradePages?.pages.flatMap(p => p.items) ?? []
 
-  const { data: accounts = [] } =
+  const { data: accounts = [], isLoading: accountsLoading } =
     trpc.accounts.list.useQuery()
 
-  const { data: setups = [] } =
+  const { data: setups = [], isLoading: setupsLoading } =
     trpc.setups.list.useQuery()
 
-  const { data: markets = [] } =
+  const { data: markets = [], isLoading: marketsLoading } =
     trpc.markets.list.useQuery()
+
+  // Onboarding: instruments are seeded lazily on first visit to /mercados, but a
+  // user following the checklist (cuenta → playbook → trade) may never go there
+  // and would hit an empty symbol picker. Seed defaults here too so the first
+  // trade is never blocked. seedDefaults is a no-op when markets already exist.
+  const seedMarkets = trpc.markets.seedDefaults.useMutation({
+    onSuccess: () => utils.markets.list.invalidate(),
+  })
+  useEffect(() => {
+    if (!marketsLoading && markets.length === 0 && seedMarkets.isIdle) {
+      seedMarkets.mutate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketsLoading, markets.length])
 
   const { data: customTagsRaw = [] } =
     trpc.tradeTags.list.useQuery()
@@ -433,6 +447,7 @@ export default function TradesPage() {
         accounts={accounts}
         setups={setups}
         markets={markets}
+        loading={accountsLoading || setupsLoading || marketsLoading}
         customTags={customTags}
         tradeCountToday={tradeCountToday}
         onSubmit={handleModalSubmit}

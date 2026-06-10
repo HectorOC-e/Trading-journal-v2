@@ -185,6 +185,8 @@ interface RegisterTradeModalProps {
   accounts?: AccountLike[]
   setups?: SetupLike[]
   markets?: MarketLike[]
+  /** True while accounts/setups/markets are still being fetched. */
+  loading?: boolean
   customTags?: string[]
   tradeCountToday?: number
   onSubmit?: (data: RegisterTradeFormData) => void
@@ -198,6 +200,7 @@ export function RegisterTradeModal({
   accounts = [],
   setups = [],
   markets = [],
+  loading = false,
   customTags = [],
   tradeCountToday = 0,
   onSubmit,
@@ -300,6 +303,14 @@ export function RegisterTradeModal({
     }
   }, [calcContracts, sizeManual])
 
+  // Futures/equities trade in whole units. If the risk %-derived size is below
+  // one unit, a single contract/share already exceeds the intended risk — warn.
+  const wholeUnitMarket = selectedMarket?.category === "FUTUROS" || selectedMarket?.category === "EQUITIES"
+  const subOneUnit = calcContracts !== null && wholeUnitMarket && calcContracts > 0 && calcContracts < 1
+  const riskPerUnit = pointValue && parseFloat(form.entry) && parseFloat(form.stop)
+    ? Math.abs(parseFloat(form.entry) - parseFloat(form.stop)) * pointValue
+    : null
+
   // ── Checklist helpers ──────────────────────────────────────────────────
   const selectSetup = (setupId: string) => {
     setForm(f => ({ ...f, setupId, checklistItems: {} }))
@@ -374,7 +385,7 @@ export function RegisterTradeModal({
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-[var(--ink-3)]">No hay cuentas activas. Crea una en Cuentas primero.</p>
+              <p className="text-xs text-[var(--ink-3)]">{loading ? "Cargando cuentas…" : "No hay cuentas activas. Crea una en Cuentas primero."}</p>
             )}
           </div>
 
@@ -406,7 +417,7 @@ export function RegisterTradeModal({
           <div>
             <p className="text-eyebrow mb-2">Símbolo *</p>
             {markets.length === 0 ? (
-              <p className="text-xs text-[var(--ink-3)]">No hay mercados. Agrégalos en la sección Mercados.</p>
+              <p className="text-xs text-[var(--ink-3)]">{loading ? "Cargando mercados…" : "No hay mercados. Agrégalos en la sección Mercados."}</p>
             ) : (
               <>
                 <SymbolCombobox
@@ -509,6 +520,13 @@ export function RegisterTradeModal({
                         <span className="text-[var(--accent)] font-semibold">{calcContracts.toFixed(2)} contratos</span>
                       </>
                     )}
+                  </p>
+                )}
+
+                {/* Whole-unit warning: <1 contract means 1 unit already over-risks */}
+                {subOneUnit && riskPerUnit !== null && (
+                  <p className="text-[10px] text-[var(--loss)] leading-snug">
+                    ⚠ 1 {selectedMarket?.category === "EQUITIES" ? "acción" : "contrato"} arriesga ${riskPerUnit.toFixed(0)} ({(riskPerUnit / balance * 100).toFixed(1)}% del balance), por encima de tu {form.riskPct}%. Considera un micro (MNQ/MES) o un stop más ajustado.
                   </p>
                 )}
 
@@ -696,7 +714,7 @@ export function RegisterTradeModal({
                 )}
               </>
             ) : (
-              <p className="text-xs text-[var(--ink-3)]">No hay setups activos. Crea uno en Playbook primero.</p>
+              <p className="text-xs text-[var(--ink-3)]">{loading ? "Cargando setups…" : "No hay setups activos. Crea uno en Playbook primero."}</p>
             )}
           </div>
 

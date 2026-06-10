@@ -1,5 +1,11 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
+
+/** Prisma unique-constraint violation code. */
+function isUniqueViolation(e: unknown): boolean {
+  return !!e && typeof e === "object" && "code" in e && (e as { code?: string }).code === "P2002"
+}
 
 const MarketInput = z.object({
   symbol:        z.string().min(1),
@@ -33,11 +39,21 @@ export const marketsRouter = router({
 
   create: protectedProcedure
     .input(MarketInput)
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.market.create({
-        data: { ...input, userId: ctx.userId },
-      })
-    ),
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.prisma.market.create({
+          data: { ...input, userId: ctx.userId },
+        })
+      } catch (e) {
+        if (isUniqueViolation(e)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: `Ya tienes un instrumento con el símbolo "${input.symbol}".`,
+          })
+        }
+        throw e
+      }
+    }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).merge(MarketInput.partial()))
