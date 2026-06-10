@@ -37,6 +37,12 @@ const CYCLE: ThemeMode[] = ["light", "dark", "system"]
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("system")
+  // Until mounted, resolvedTheme must match what the server rendered, otherwise
+  // getSystemTheme() (matchMedia) makes the first client render diverge from SSR
+  // and the theme toggle icon/title trigger a hydration mismatch. The actual
+  // <html> class is already set pre-hydration by the no-flash script in layout.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   // /login is the only route reachable without a session (middleware redirects
   // the rest), so skip the protected preferences query there — it would only
   // 401 and retry. The theme falls back to localStorage when prefs is absent.
@@ -132,7 +138,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setTheme(next)
   }
 
-  const resolvedTheme = resolveTheme(theme)
+  const resolvedTheme = mounted ? resolveTheme(theme) : "dark"
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggle }}>

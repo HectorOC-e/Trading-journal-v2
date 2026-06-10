@@ -169,8 +169,11 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
         <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-eyebrow mb-1">Balance actual</p>
-            <p className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none truncate">
-              {formatMoney(currentEquity, { currency: rawAccount.currency, decimals: 2 })}
+            <p
+              className="text-[22px] font-mono font-bold text-[var(--ink)] leading-none tabular-nums"
+              title={formatMoney(currentEquity, { currency: rawAccount.currency, decimals: 2 })}
+            >
+              {formatMoney(currentEquity, { currency: rawAccount.currency, compact: true })}
             </p>
             <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial {formatMoney(initialBalance, { currency: rawAccount.currency })}</p>
           </div>
