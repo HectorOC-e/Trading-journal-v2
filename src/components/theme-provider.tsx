@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
 import { applyColorTheme, parseCustomTheme, type ColorTheme } from "@/lib/themes"
 
@@ -36,7 +37,14 @@ const CYCLE: ThemeMode[] = ["light", "dark", "system"]
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>("system")
-  const { data: prefs }  = trpc.preferences.get.useQuery()
+  // /login is the only route reachable without a session (middleware redirects
+  // the rest), so skip the protected preferences query there — it would only
+  // 401 and retry. The theme falls back to localStorage when prefs is absent.
+  const pathname = usePathname()
+  const { data: prefs }  = trpc.preferences.get.useQuery(undefined, {
+    enabled: pathname !== "/login",
+    retry: false,
+  })
   const updatePrefs      = trpc.preferences.update.useMutation()
   const mediaListenerRef = useRef<(() => void) | null>(null)
 
