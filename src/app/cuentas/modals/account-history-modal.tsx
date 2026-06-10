@@ -30,11 +30,19 @@ export function AccountHistoryModal({ accountId, accountName, onClose }: {
 
   useEffect(() => {
     if (!data) return
-    // Prevent double-appending the same page (StrictMode double-effect or re-render)
+    const newItems = data.items as Log[]
+    // First page: always reflect the latest data. This page is re-fetched after
+    // account mutations (phase change, lock, withdrawal…) write new audit entries,
+    // and we must show them — a cursor-only dedup guard would otherwise swallow
+    // the refreshed first page and leave the list stale until a full reload.
+    if (!cursor) {
+      setAllLogs(newItems)
+      return
+    }
+    // Pagination pages are immutable; guard against double-appending the same one.
     if (seenCursors.current.has(cursor)) return
     seenCursors.current.add(cursor)
-    const newItems = data.items as Log[]
-    setAllLogs(prev => cursor ? [...prev, ...newItems] : newItems)
+    setAllLogs(prev => [...prev, ...newItems])
   }, [data, cursor])
 
   const hasMore = !!data?.nextCursor

@@ -7,3 +7,6 @@ node_modules/
 .claude/skills/
 .impeccable/
 skills-lock.json
+
+# Local QA / E2E scratch harness (contains test credentials + session tokens)
+qa-e2e/
