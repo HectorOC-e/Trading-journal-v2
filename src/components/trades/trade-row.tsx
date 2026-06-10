@@ -175,7 +175,7 @@ export function TradeRow({ trade, account, setup, selected = false, onClick }: T
             className="font-mono text-[13px] font-bold tabular-nums"
             style={{ color: rc.color }}
           >
-            {pnl >= 0 ? "+" : ""}${Math.abs(pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {pnl >= 0 ? "+" : "-"}${Math.abs(pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         ) : (
           <span className="text-[11px] text-[var(--ink-3)]">open</span>
