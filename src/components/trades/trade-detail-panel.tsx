@@ -67,12 +67,14 @@ interface TradeDetailPanelProps {
   onPositionLog?: () => void
   onCloseTrade?: (data: { closePrice: number; closeTime: string; commission: number }) => void
   closingTrade?: boolean
+  /** Dollar value of one full point for this trade's instrument (e.g. NQ = $20). */
+  pointValue?: number
   className?: string
 }
 
 export function TradeDetailPanel({
   trade, account, setup, onClose, onDelete, deleting,
-  onEdit, onPositionLog, onCloseTrade, closingTrade, className
+  onEdit, onPositionLog, onCloseTrade, closingTrade, pointValue = 1, className
 }: TradeDetailPanelProps) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [closeFormOpen, setCloseFormOpen] = useState(false)
@@ -111,16 +113,17 @@ export function TradeDetailPanel({
     const comm = parseFloat(commission)
     if (isNaN(cp)) return null
     const commVal = isNaN(comm) ? 0 : comm
-    const rawPnl = trade.direction === "LONG"
+    const rawPnl = (trade.direction === "LONG"
       ? (cp - trade.entry) * trade.size
-      : (trade.entry - cp) * trade.size
+      : (trade.entry - cp) * trade.size) * pointValue
     return rawPnl - commVal
   })()
 
   const handleCloseTrade = () => {
     const cp = parseFloat(closePrice)
     const comm = parseFloat(commission)
-    if (isNaN(comm) && commission !== "0") {
+    // Commission is optional: empty means $0. Only block on non-empty garbage.
+    if (commission.trim() !== "" && isNaN(comm)) {
       setCommissionError(true)
       return
     }
@@ -286,7 +289,7 @@ export function TradeDetailPanel({
                       </div>
                       {/* R múltiplo preview */}
                       {previewPnl != null && (() => {
-                        const risk = Math.abs(trade.entry - trade.stop) * trade.size
+                        const risk = Math.abs(trade.entry - trade.stop) * trade.size * pointValue
                         const r = risk > 0 ? previewPnl / risk : null
                         return r != null ? (
                           <span className={cn("text-xs font-bold font-mono", r >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
@@ -366,7 +369,7 @@ export function TradeDetailPanel({
                       "text-[10px] font-medium block mb-1",
                       commissionError ? "text-[var(--loss)]" : "text-[var(--ink-3)]"
                     )}>
-                      Comisión $ *
+                      Comisión $
                     </label>
                     <input
                       type="number"
@@ -383,7 +386,7 @@ export function TradeDetailPanel({
                       onChange={e => { setCommission(e.target.value); setCommissionError(false) }}
                     />
                     {commissionError && (
-                      <p className="text-[9px] text-[var(--loss)] mt-0.5">Requerida (puede ser $0)</p>
+                      <p className="text-[9px] text-[var(--loss)] mt-0.5">Valor inválido — déjalo vacío para $0</p>
                     )}
                   </div>
                 </div>

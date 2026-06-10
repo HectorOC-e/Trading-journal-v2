@@ -8,6 +8,7 @@ import { SkeletonTableRows } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
+import { parsePointValue } from "@/domains/trading/services/trade-service"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
@@ -311,6 +312,7 @@ export default function TradesPage() {
       onPositionLog={() => setPositionLogTrade(selected.id)}
       onCloseTrade={(data) => closeTrade.mutate({ id: selected.id, ...data })}
       closingTrade={closeTrade.isPending}
+      pointValue={parsePointValue(markets.find(m => m.symbol === selected.symbol)?.pointValue)}
     />
   ) : null
 

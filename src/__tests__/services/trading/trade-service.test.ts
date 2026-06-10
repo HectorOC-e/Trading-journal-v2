@@ -3,6 +3,7 @@ import {
   computeClosedTradePnl,
   computeRMultiple,
   computeScaleInAvgEntry,
+  parsePointValue,
 } from "@/domains/trading/services/trade-service"
 
 // ── computeClosedTradePnl ─────────────────────────────────────────────────
@@ -43,6 +44,18 @@ describe("computeClosedTradePnl", () => {
     expect(rawPnl).toBe(30)
     expect(netPnl).toBe(30)
   })
+
+  it("pointValue scales dollar P&L (NQ: $20/pt)", () => {
+    // LONG NQ 0.71 contracts, +140 pts: 140 * 0.71 * 20 = 1988.0
+    const { rawPnl, netPnl } = computeClosedTradePnl("LONG", 21450, 21590, 0.71, 0, 20)
+    expect(rawPnl).toBeCloseTo(1988, 6)
+    expect(netPnl).toBeCloseTo(1988, 6)
+  })
+
+  it("defaults to pointValue 1 (price-difference instruments)", () => {
+    const { rawPnl } = computeClosedTradePnl("LONG", 100, 110, 2, 0)
+    expect(rawPnl).toBe(20)
+  })
 })
 
 // ── computeRMultiple ──────────────────────────────────────────────────────
@@ -73,6 +86,29 @@ describe("computeRMultiple", () => {
     // entry 100, stop 110 → |100-110| * 2 = 20
     // pnl 20 → R = 1
     expect(computeRMultiple(20, 100, 110, 2)).toBeCloseTo(1, 10)
+  })
+
+  it("pointValue cancels in the ratio (R unchanged): NQ 2R", () => {
+    // risk = |21450-21380| * 0.71 * 20 = 994; pnl 1988 → R = 2
+    expect(computeRMultiple(1988, 21450, 21380, 0.71, 20)).toBeCloseTo(2, 6)
+  })
+})
+
+// ── parsePointValue ───────────────────────────────────────────────────────
+
+describe("parsePointValue", () => {
+  it.each([
+    ["$20", 20],
+    ["$50", 50],
+    ["$10 / lot", 10],
+    ["1 BTC", 1],
+    ["$1,000", 1000],
+    ["", 1],
+    [null, 1],
+    [undefined, 1],
+    ["garbage", 1],
+  ])("parses %p → %p", (input, expected) => {
+    expect(parsePointValue(input as string | null | undefined)).toBe(expected)
   })
 })
 
