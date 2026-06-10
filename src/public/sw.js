@@ -13,7 +13,11 @@ const STATIC_ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      // Cache each asset independently: a protected route that redirects to
+      // /login while logged out must not abort the whole install (addAll would).
+      Promise.allSettled(STATIC_ASSETS.map((url) => cache.add(url)))
+    )
   )
   self.skipWaiting()
 })
