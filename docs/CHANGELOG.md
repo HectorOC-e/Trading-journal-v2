@@ -1,11 +1,43 @@
 # Changelog — Trading Journal v2
 
 > Historial consolidado único, por hito. Formato inspirado en Keep a Changelog.
-> Última actualización: 2026-06-05. Detalle verboso por sprint en `docs/archive/changelog-detailed.md`.
+> Última actualización: 2026-06-10. Detalle verboso por sprint en `docs/archive/changelog-detailed.md`.
 
 ---
 
-## [Unreleased] — 2026-06-05 · AI config, migraciones y consolidación documental
+## [2026-06-10] · Hardening: P&L, enforcement, CI/migraciones y rendimiento
+
+> Tanda de fixes a partir de pruebas E2E (Playwright) de onboarding, ciclo de vida del trade y enforcement prop-firm. PRs #6–#17.
+
+### Fixed — financiero (core)
+- **P&L de cierre manual ignoraba el point value** (#14): un NQ daba +$99.40 en vez de +$1.988 (×$20). `computeClosedTradePnl`/`computeRMultiple` ahora reciben `pointValue` (default 1) + nuevo helper `parsePointValue`; la mutación `close` lo resuelve desde el catálogo de mercados. El import CSV no se vio afectado (usa el P&L del broker). **Nota:** trades cerrados manualmente antes de este fix sobre futuros/FX conservan su `pnl` antiguo (requeriría recompute).
+- **Comisión** en el cierre pasó a ser opcional (vacío = $0); antes bloqueaba con "Requerida" (#14).
+- **Signo negativo en pérdidas** (#17): la tabla mostraba "$7,000.00" (rojo, sin "−") → ahora "−$7,000.00".
+- Drawdown prop-firm + enforcement de límites unificado (#6).
+
+### Fixed — UX / reglas
+- **Locks temporales** (diario/semanal/mensual) ya no ofrecen "Desbloquear cuenta" (re-bloqueaba al instante); muestran "se reactiva solo al renovarse el periodo". El desbloqueo manual queda solo para locks permanentes (#17).
+- **Onboarding** (#10): mercados se siembran también desde Trades (antes quedaba bloqueado en "No hay mercados"); hydration del toggle de tema; `markets.create` duplicado → 409 + toast (antes 500); warning de `<Script>` inline; balance truncado en tarjeta; estados de carga en el modal de trade; aviso de contratos fraccionarios en futuros.
+- **401 de `preferences.get` en `/login`** evitado gateando el query del tema (#9).
+- **Service worker** ya no es redirigido por el middleware de auth (excluido del matcher) (#8).
+
+### Performance
+- `QueryClient` con `staleTime 30s` + sin refetch-on-focus + `retry 1` (antes refetcheaba todas las queries en cada navegación) (#10).
+- Índice `trades(user_id, status, date desc)` para acelerar `dashboardStats` (#11).
+
+### Infra / CI / migraciones
+- Node fijado a **20.12+** (`.nvmrc` + `engines`); el toolchain no arranca con Node 18 (#7).
+- Migración advisor hecha replay-safe (`user_ai_settings` faltante rompía el `db reset` del CI) (#11).
+- Nombre de la migración `add_color_theme_preferences` alineado con la versión aplicada en prod → `db push` limpio (#12).
+- GitHub Actions actualizadas (Node 20 → 24): `checkout@v5`, `setup-node@v5`, `pnpm/action-setup@v5` (#13).
+- Secrets de GitHub Actions creados → job `migrate-deploy` verde por primera vez.
+
+### Tests
+- **577/577** unitarios (12 nuevos para `pointValue`/`parsePointValue`).
+
+---
+
+## [2026-06-05] · AI config, migraciones y consolidación documental
 
 ### Added
 - **Motor de resolución de IA `lib/ai/resolve-provider.ts`**: único punto que resuelve provider+modelo+key por usuario/feature. Orden de key: clave persistida del usuario (`user_ai_configs`) → env → none.
