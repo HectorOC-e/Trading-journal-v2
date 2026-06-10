@@ -28,8 +28,25 @@ CREATE POLICY user_ai_configs_user ON public.user_ai_configs
   USING ((select auth.uid()) = user_id)
   WITH CHECK ((select auth.uid()) = user_id);
 
--- user_ai_settings already had RLS on but no policy (deny-all). Add the standard
--- per-user policy for consistency.
+-- user_ai_settings predates the migration system (it was created via an early
+-- prisma db push, so no migration creates it). Recreate it here IF NOT EXISTS so
+-- a from-scratch replay (db reset / CI) reaches the same state as production —
+-- otherwise the policy statements below fail with 42P01 on a fresh database.
+CREATE TABLE IF NOT EXISTS public.user_ai_settings (
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           uuid        NOT NULL UNIQUE REFERENCES public.users(id) ON DELETE CASCADE,
+  default_provider  text        NOT NULL DEFAULT 'anthropic',
+  default_model     text        NOT NULL DEFAULT 'claude-sonnet-4-6',
+  fallback_provider text,
+  fallback_model    text,
+  cost_priority     text        NOT NULL DEFAULT 'quality',
+  feature_models    jsonb       NOT NULL DEFAULT '{}'::jsonb,
+  created_at        timestamp   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        timestamp   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE public.user_ai_settings ENABLE ROW LEVEL SECURITY;
+
+-- Add the standard per-user policy for consistency.
 DROP POLICY IF EXISTS user_ai_settings_user ON public.user_ai_settings;
 CREATE POLICY user_ai_settings_user ON public.user_ai_settings
   FOR ALL TO authenticated
