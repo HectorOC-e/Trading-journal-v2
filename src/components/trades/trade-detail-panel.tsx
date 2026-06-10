@@ -222,7 +222,7 @@ export function TradeDetailPanel({
                 "text-2xl font-bold font-mono text-center",
                 isWin ? "text-[var(--win)]" : isLoss ? "text-[var(--loss)]" : "text-[var(--ink-2)]"
               )}>
-                {(trade.pnl ?? 0) > 0 ? "+" : ""}${trade.pnl?.toLocaleString()}
+                {(trade.pnl ?? 0) >= 0 ? "+" : "-"}${Math.abs(trade.pnl ?? 0).toLocaleString()}
               </p>
             )}
           </div>
@@ -308,7 +308,7 @@ export function TradeDetailPanel({
                         : "text-[var(--ink-2)]"
                     )}>
                       {previewPnl == null ? "—"
-                        : `${previewPnl >= 0 ? "+" : ""}$${previewPnl.toFixed(2)}`}
+                        : `${previewPnl >= 0 ? "+" : "-"}$${Math.abs(previewPnl).toFixed(2)}`}
                     </p>
 
                     {/* Price range bar: stop ←→ target */}
