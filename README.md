@@ -48,7 +48,9 @@ Trade → Journal → Reflect → Learn → Improve → Trade
 
 ## 🚀 Cómo iniciar el proyecto
 
-> **Requisitos:** Node 20+, [pnpm](https://pnpm.io) 10+, y un proyecto Supabase (o Postgres local).
+> **Requisitos:** Node **20.12+** (ideal: el del [`.nvmrc`](.nvmrc) — `nvm use`), [pnpm](https://pnpm.io) 10+, y un proyecto Supabase (o Postgres local).
+>
+> ⚠️ El toolchain (Vitest 4 / Next 16) **no arranca con Node 18**. Si ves un error tipo `does not provide an export named 'styleText'`, estás en una versión vieja: corre `nvm use` en la raíz del repo.
 
 El código de la app vive en [`src/`](src). Los comandos de la app se corren **desde `src/`**.
 
@@ -56,7 +58,9 @@ El código de la app vive en [`src/`](src). Los comandos de la app se corren **d
 
 ```bash
 git clone https://github.com/HectorOC-e/Trading-journal-v2.git
-cd Trading-journal-v2/src
+cd Trading-journal-v2
+nvm use            # toma la versión de Node del .nvmrc (instálala con `nvm install` si falta)
+cd src
 pnpm install
 ```
 
