@@ -1,13 +1,14 @@
 # QA Status — Trading Journal v2
 
-> Estado actual de calidad. Última actualización: 2026-06-05.
+> Estado actual de calidad. Última actualización: 2026-06-10.
 
 ## Gates (verificados contra código)
 | Gate | Resultado |
 |---|---|
-| `next build` | ✅ Pasa (23 rutas) |
+| `next build` | ✅ Pasa |
 | `tsc --noEmit` | ✅ 0 errores, 0 `any` en código de producción |
-| Tests unitarios (Vitest) | ✅ **540/540** (42 archivos) |
+| Tests unitarios (Vitest) | ✅ **577/577** (45 archivos) |
+| CI completo (incl. `migrate-deploy`) | ✅ Verde en `main` (secrets configurados) |
 | Lint (ESLint) | 🟡 Aceptable — warnings preexistentes (TD-037); 0 errores nuevos |
 | Render purity / a11y | ✅ Correcto (ARIA, focus rings, landmarks) |
 
@@ -32,6 +33,29 @@ Ver [TECHNICAL_DEBT.md](TECHNICAL_DEBT.md) (migración en prod, claves IA, SW st
 
 ## Cobertura funcional validada
 Trade CRUD + import CSV · Account CRUD + fases + drawdown/lock · Enforcement prop-firm · Dashboard server-side · Setups (sparklines/versiones/diff) · Reviews (discipline score + resumen IA) · Learning SRS · Retiros · IA Coach (claves per-usuario, diagnóstico, health check) · Metas · Tags/markets/reglas.
+
+## Flujos E2E (Playwright, manual) — 2026-06-10
+Recorridos end-to-end contra el dev server real + Supabase, como un trader profesional, capturando consola/red/screenshots.
+
+### ✅ Validados
+- **Onboarding completo**: login → cuenta prop-firm → setup → mercado → primer trade → dashboard. (Fixes en #10.)
+- **Ciclo de vida del trade**: registrar → cerrar (precio de salida) → P&L realizado → equity de cuenta → dashboard → analytics. (Fixes en #14.)
+- **Enforcement prop-firm**: pérdida que rompe el límite diario → auto-lock (`DAILY_LOSS_LIMIT`) → nuevo trade rechazado con 403 + banner. Correcto.
+- **Desbloqueo / reactivación**: lock temporal no operable mientras el breach sigue vivo (re-lock); manual unlock solo para permanentes. (Fix en #17.)
+
+### ⏳ Próximos flujos a validar
+| Prioridad | Flujo | Qué ejercita |
+|---|---|---|
+| Alta | **Gestión de posición** (scale-in / cierre parcial) | `position-log-modal`, promedio de entrada (`computeScaleInAvgEntry`), P&L parcial con point value |
+| Alta | **Promoción de fase** (Phase 1 → 2 → Funded) | reset de reglas/objetivo por fase, audit log |
+| Media | **Retiros / payouts** | impacto en balance/equity, historial, interacción con drawdown |
+| Media | **Sync de balance** (`lastSyncedBalance`) | ajuste de equity como adjustment real, journal-vs-broker |
+| Media | **Review semanal/mensual** (+ IA) | agregación del periodo, discipline score, resumen IA |
+| Media | **CSV import (MT4)** | parseo, dedup, P&L del broker, ticket de importación |
+| Baja | **Analytics de setups / edge** | win rate y avg R por setup, edge esperado vs real |
+| Baja | **Psicología / journaling** | log de sesión, correlaciones |
+
+> Recomendación pendiente: portar estos recorridos a specs Playwright versionadas y añadirlos al CI (B-03).
 
 ## Seguridad validada
 RLS en todas las tablas · `protectedProcedure` (userId de sesión) · IDOR fix en `ai-embed` · rate limiting IA · SQL parametrizado · `CRON_SECRET` · claves IA cifradas (AES-256-GCM) · cap 16KB en webhook body.
