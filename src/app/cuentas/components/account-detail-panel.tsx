@@ -11,6 +11,7 @@ import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { formatMoney } from "@/lib/format/money"
 import { trpc } from "@/lib/trpc/client"
+import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import {
   TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike, formatSyncAgo,
 } from "./account-card"
@@ -69,6 +70,10 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
     MANUAL:             "Bloqueo manual",
   }
   const lockLabel = LOCK_LABELS[lockReason] ?? (lockReason || "Cuenta bloqueada")
+  // Temporal locks (daily/weekly/monthly loss) auto-reactivate when the period
+  // rolls over — a manual unlock while still in breach just re-locks on the next
+  // trade. Only permanent locks (max drawdown / manual) need the manual unlock.
+  const isTemporalLock = locked && !isPermanentLockReason(lockReason)
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -113,7 +118,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-bold text-[var(--loss)]">{lockLabel}</p>
               <p className="text-[10px] text-[var(--ink-3)] mt-0.5">
-                No se permiten nuevos trades ni importaciones hasta desbloquear.
+                {isTemporalLock
+                  ? "No se permiten nuevos trades. Se reactiva automáticamente al renovarse el periodo."
+                  : "No se permiten nuevos trades ni importaciones hasta desbloquear."}
               </p>
             </div>
           </div>
@@ -320,10 +327,18 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
         {/* HALLAZGO 1B — manual lock / unlock */}
         {(onLock || onUnlock) && (
           locked ? (
+            isTemporalLock ? (
+              // Manual unlock can't help while the period limit is still breached
+              // — it auto-reactivates. Don't offer a misleading "unlock" button.
+              <p className="w-full text-center py-2.5 rounded-[var(--radius-sm)] text-[11px] text-[var(--ink-3)] bg-[var(--chip)]">
+                Bloqueo temporal — se reactiva solo al renovarse el periodo.
+              </p>
+            ) : (
             <button onClick={onUnlock} disabled={locking}
               className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--win)] text-[var(--win)] hover:bg-[var(--win)] hover:text-white transition-colors disabled:opacity-50">
               <Unlock size={13} /> {locking ? "Desbloqueando…" : "Desbloquear cuenta"}
             </button>
+            )
           ) : (
             <button onClick={onLock} disabled={locking}
               className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[var(--radius-sm)] text-[12px] font-semibold border border-[var(--loss)] text-[var(--loss)] hover:bg-[var(--loss)] hover:text-white transition-colors disabled:opacity-50">
