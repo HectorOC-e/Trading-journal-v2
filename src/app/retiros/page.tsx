@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import {
   Plus, X, Loader2, DollarSign, Clock, CheckCircle2,
-  XCircle, ArrowDownToLine, Filter, ChevronDown,
+  XCircle, ArrowDownToLine, Filter, ChevronDown, Trash2, Check,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,16 @@ const STATUS_META: Record<WithdrawalStatus, { label: string; color: string; bg: 
 }
 
 const STATUS_ORDER: WithdrawalStatus[] = ["SOLICITADO", "EN_PROCESO", "PAGADO", "RECHAZADO"]
+
+/** Format an amount in its own currency — never mix currencies into one figure. */
+function fmtMoney(amount: number, currency: string): string {
+  try {
+    return amount.toLocaleString("en-US", { style: "currency", currency, maximumFractionDigits: 2 })
+  } catch {
+    // Unknown currency code → fall back to plain number + code suffix
+    return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
+  }
+}
 
 /* ── StatusBadge ── */
 function StatusBadge({ status }: { status: WithdrawalStatus }) {
@@ -76,8 +86,13 @@ function StatusSelect({ current, onSelect, loading }: {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
     document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
+    document.addEventListener("keydown", keyHandler)
+    return () => {
+      document.removeEventListener("mousedown", handler)
+      document.removeEventListener("keydown", keyHandler)
+    }
   }, [open])
   const m = STATUS_META[current]
   return (
@@ -85,6 +100,9 @@ function StatusSelect({ current, onSelect, loading }: {
       <button
         onClick={() => setOpen(v => !v)}
         disabled={loading}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Cambiar estado — actual: ${m.label}`}
         style={{
           display: "inline-flex", alignItems: "center", gap: 5,
           padding: "4px 10px", borderRadius: 999,
@@ -95,10 +113,10 @@ function StatusSelect({ current, onSelect, loading }: {
       >
         {loading ? <Loader2 size={11} className="animate-spin" /> : m.icon}
         {m.label}
-        <ChevronDown size={10} />
+        <ChevronDown size={10} aria-hidden />
       </button>
       {open && (
-        <div style={{
+        <div role="menu" style={{
           position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50,
           background: "var(--panel)", border: "1px solid var(--line)",
           borderRadius: 10, padding: 4, minWidth: 150,
@@ -107,7 +125,7 @@ function StatusSelect({ current, onSelect, loading }: {
           {STATUS_ORDER.map(s => {
             const sm = STATUS_META[s]
             return (
-              <button key={s} onClick={() => { onSelect(s); setOpen(false) }}
+              <button key={s} role="menuitem" onClick={() => { onSelect(s); setOpen(false) }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   width: "100%", padding: "7px 10px", borderRadius: 7,
@@ -126,11 +144,14 @@ function StatusSelect({ current, onSelect, loading }: {
 }
 
 /* ── Withdrawal row ── */
-function WithdrawalRow({ w, onStatusChange, updating = false }: {
+function WithdrawalRow({ w, onStatusChange, onDelete, updating = false, deleting = false }: {
   w: WithdrawalItem
   onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
+  onDelete: (id: string) => void
   updating?: boolean
+  deleting?: boolean
 }) {
+  const [confirming, setConfirming] = useState(false)
   const date    = new Date(w.date)
   const dateStr = date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 
@@ -145,7 +166,7 @@ function WithdrawalRow({ w, onStatusChange, updating = false }: {
       {/* Amount */}
       <div className="flex-1 min-w-[90px]">
         <p className="font-mono text-[16px] font-bold tabular-nums" style={{ color: "var(--win)" }}>
-          +${Number(w.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          +{fmtMoney(Number(w.amount), w.currency)}
         </p>
         <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--ink-3)" }}>{w.currency}</p>
       </div>
@@ -167,6 +188,40 @@ function WithdrawalRow({ w, onStatusChange, updating = false }: {
           onSelect={(s) => onStatusChange(w.id, s)}
           loading={updating}
         />
+      </div>
+
+      {/* Delete (two-step inline confirm) */}
+      <div className="shrink-0">
+        {confirming ? (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { onDelete(w.id); setConfirming(false) }}
+              disabled={deleting}
+              aria-label="Confirmar eliminación del retiro"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-md"
+              style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "none", cursor: "pointer" }}
+            >
+              {deleting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              aria-label="Cancelar eliminación"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-md"
+              style={{ background: "var(--chip)", color: "var(--ink-3)", border: "none", cursor: "pointer" }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            aria-label={`Eliminar retiro de ${fmtMoney(Number(w.amount), w.currency)}`}
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md transition-colors hover:bg-[var(--chip)]"
+            style={{ background: "transparent", color: "var(--ink-3)", border: "none", cursor: "pointer" }}
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
       </div>
     </div>
   )
@@ -249,7 +304,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
             <div>
               <label className="text-eyebrow block mb-2">Monto *</label>
-              <Input placeholder="5,000" value={form.amount} mono onChange={e => set("amount", e.target.value)} />
+              <Input placeholder="5,000…" inputMode="decimal" value={form.amount} mono onChange={e => set("amount", e.target.value)} />
             </div>
             <div style={{ display: "flex", gap: 4, paddingBottom: 2 }}>
               {["USD", "EUR", "MXN"].map(c => (
@@ -307,6 +362,7 @@ export default function RetirosPage() {
   const [filterAccount, setFilterAccount] = useState<string>("all")
   const [filterStatus, setFilterStatus]   = useState<string>("all")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const { data: withdrawals = [], isLoading } = trpc.withdrawals.list.useQuery({})
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
@@ -317,6 +373,11 @@ export default function RetirosPage() {
     onError:   (err) => { setUpdatingId(null); toast.error(formatErrorForUser(err)) },
   })
 
+  const deleteWithdrawal = trpc.withdrawals.delete.useMutation({
+    onSuccess: () => { utils.withdrawals.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
+    onError:   (err) => { setDeletingId(null); toast.error(formatErrorForUser(err)) },
+  })
+
   // Filtered
   const filtered = withdrawals.filter(w => {
     if (filterAccount !== "all" && w.accountId !== filterAccount) return false
@@ -324,10 +385,20 @@ export default function RetirosPage() {
     return true
   })
 
-  // KPIs
-  const totalPagado    = withdrawals.filter(w => w.status === "PAGADO").reduce((s, w) => s + Number(w.amount), 0)
-  const totalPendiente = withdrawals.filter(w => w.status === "SOLICITADO" || w.status === "EN_PROCESO").reduce((s, w) => s + Number(w.amount), 0)
-  const totalCount     = withdrawals.length
+  // KPIs — agrupados por moneda (no se mezclan divisas sin tasa de cambio)
+  const byCurrency = (() => {
+    const map = new Map<string, { pagado: number; pendiente: number }>()
+    for (const w of withdrawals) {
+      const cur = w.currency || "USD"
+      const e = map.get(cur) ?? { pagado: 0, pendiente: 0 }
+      const amt = Number(w.amount)
+      if (w.status === "PAGADO") e.pagado += amt
+      else if (w.status === "SOLICITADO" || w.status === "EN_PROCESO") e.pendiente += amt
+      map.set(cur, e)
+    }
+    return [...map.entries()].map(([currency, v]) => ({ currency, ...v }))
+  })()
+  const totalCount = withdrawals.length
 
   // Group by account for summary
   const byAccount = accounts.map(a => {
@@ -343,11 +414,18 @@ export default function RetirosPage() {
         actions={[{ label: "Nuevo retiro", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
       />
 
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
-        <KpiBox label="Total pagado"    value={`$${totalPagado.toLocaleString()}`}    sub="retiros confirmados"  color="var(--win)" />
-        <KpiBox label="Pendiente"       value={`$${totalPendiente.toLocaleString()}`} sub="en proceso o solicitado" />
-        <KpiBox label="Total retiros"   value={String(totalCount)}                    sub="histórico completo" />
+      {/* KPIs — una tarjeta por moneda: Pagado es el héroe, Pendiente va como sub-dato */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
+        {byCurrency.map(c => (
+          <KpiBox
+            key={c.currency}
+            label={`Pagado · ${c.currency}`}
+            value={fmtMoney(c.pagado, c.currency)}
+            sub={`${fmtMoney(c.pendiente, c.currency)} pendiente`}
+            color="var(--win)"
+          />
+        ))}
+        <KpiBox label="Total retiros" value={String(totalCount)} sub="histórico completo" />
       </div>
 
       {/* By-account summary */}
@@ -368,7 +446,7 @@ export default function RetirosPage() {
                   <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.count} retiros</p>
                 </div>
                 <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: "var(--win)", marginLeft: 8 }}>
-                  ${a.totalPagado.toLocaleString()}
+                  {fmtMoney(a.totalPagado, a.currency)}
                 </p>
               </div>
             ))}
@@ -378,12 +456,13 @@ export default function RetirosPage() {
 
       {/* Filters */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <Filter size={13} style={{ color: "var(--ink-3)" }} />
+        <Filter size={13} aria-hidden style={{ color: "var(--ink-3)" }} />
 
         {/* Account filter */}
         <select
           value={filterAccount}
           onChange={e => setFilterAccount(e.target.value)}
+          aria-label="Filtrar por cuenta"
           style={{
             background: "var(--panel)", border: "1px solid var(--line)",
             borderRadius: 8, padding: "6px 10px", fontSize: 12,
@@ -398,6 +477,7 @@ export default function RetirosPage() {
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
+          aria-label="Filtrar por estado"
           style={{
             background: "var(--panel)", border: "1px solid var(--line)",
             borderRadius: 8, padding: "6px 10px", fontSize: 12,
@@ -429,6 +509,8 @@ export default function RetirosPage() {
               {h}
             </p>
           ))}
+          {/* spacer for the per-row delete action */}
+          <span aria-hidden style={{ width: 28, flexShrink: 0 }} />
         </div>
 
         {isLoading && (
@@ -453,7 +535,12 @@ export default function RetirosPage() {
               setUpdatingId(id)
               updateStatus.mutate({ id, status })
             }}
+            onDelete={(id) => {
+              setDeletingId(id)
+              deleteWithdrawal.mutate(id)
+            }}
             updating={updatingId === w.id && updateStatus.isPending}
+            deleting={deletingId === w.id && deleteWithdrawal.isPending}
           />
         ))}
       </div>

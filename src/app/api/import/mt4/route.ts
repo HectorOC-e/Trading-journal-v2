@@ -7,9 +7,23 @@ import type { ParsedTrade } from "@/domains/trading/services/csv-import"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Build a dedup key from a trade — used to skip already-imported rows */
-function dupKey(t: ParsedTrade): string {
-  return `${t.symbol}|${t.openTime}|${t.size}`
+/**
+ * Build a dedup key in the SAME shape for both parsed rows and stored trades.
+ * Stored trades keep `date` (YYYY-MM-DD) + `openTime` ("HH:MM") separately, so the
+ * parsed full-ISO openTime must be reduced to date + HH:MM to ever match (bug fix:
+ * the old key compared full ISO against "HH:MM" and never matched).
+ */
+function dupKey(symbol: string, isoOpenTime: string, size: number): string {
+  const d = new Date(isoOpenTime)
+  const dateStr = isNaN(d.getTime()) ? isoOpenTime : d.toISOString().slice(0, 10)
+  const hhmm    = isNaN(d.getTime()) ? "" : d.toISOString().slice(11, 16)
+  return `${symbol}|${dateStr}|${hhmm}|${size}`
+}
+
+/** Same key shape, built from a stored trade's separate date + "HH:MM" fields. */
+function storedKey(symbol: string, date: Date | string, openTime: string, size: number): string {
+  const dateStr = new Date(date).toISOString().slice(0, 10)
+  return `${symbol}|${dateStr}|${openTime}|${size}`
 }
 
 /** Convert ParsedTrade direction to DB direction */
@@ -85,11 +99,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Fallback for MT4 and missing tickets: check by (symbol, openTime, size).
   const existingTrades = await prisma.trade.findMany({
     where:  { accountId, userId },
-    select: { symbol: true, openTime: true, size: true, importTicket: true },
+    select: { symbol: true, date: true, openTime: true, size: true, importTicket: true },
   })
 
   type ExistingTrade = {
     symbol: string
+    date: Date | string
     openTime: string
     size: { toNumber?: () => number } | number | string
     importTicket: string | null
@@ -101,22 +116,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   )
   const existingKeys = new Set(
     (existingTrades as ExistingTrade[]).map(t => {
-      const openTimeStr = t.openTime ?? ""
       const sizeNum = typeof t.size === "object" && t.size !== null && typeof (t.size as { toNumber?: () => number }).toNumber === "function"
         ? (t.size as { toNumber: () => number }).toNumber()
         : Number(t.size)
-      return `${t.symbol}|${openTimeStr}|${sizeNum}`
+      return storedKey(t.symbol, t.date, t.openTime ?? "", sizeNum)
     })
   )
 
   const toCreate: ParsedTrade[] = []
   let skipped = 0
+  // Also dedup within the same file (a statement that lists the same fill twice).
+  const seenInBatch = new Set<string>()
   for (const row of rows) {
+    const key = dupKey(row.symbol, row.openTime, row.size)
     const isDup = (row.ticket && existingTickets.has(row.ticket)) ||
-                  existingKeys.has(dupKey(row))
+                  existingKeys.has(key) ||
+                  seenInBatch.has(row.ticket ? `t:${row.ticket}` : key)
     if (isDup) {
       skipped++
     } else {
+      seenInBatch.add(row.ticket ? `t:${row.ticket}` : key)
       toCreate.push(row)
     }
   }
