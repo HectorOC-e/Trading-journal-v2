@@ -94,6 +94,7 @@ type DashboardOutput = {
     costoIndisciplina: number
     rachaDiasLimpios:  number
   }
+  baseCurrency: string
 }
 import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { VIOLATION_TAGS } from "@/types"
@@ -405,6 +406,7 @@ export const tradesRouter = router({
         recentTrades,
         executionStats,
         discipline,
+        baseCurrency,
       }
 
       if (isCacheEnabled()) {

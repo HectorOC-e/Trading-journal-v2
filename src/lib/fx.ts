@@ -45,6 +45,18 @@ export function convertToBase(amount: number, from: string, base: string, rates?
   return amount * fxFactor(from, base, rates)
 }
 
+/** Symbol for a currency code (e.g. "USD" → "$", "EUR" → "€"). Falls back to the code. */
+export function currencySymbol(code: string): string {
+  try {
+    const part = new Intl.NumberFormat("en-US", { style: "currency", currency: code })
+      .formatToParts(0)
+      .find(p => p.type === "currency")
+    return part?.value ?? code
+  } catch {
+    return code
+  }
+}
+
 /**
  * Parse the user's stored FX overrides (a JSON string column). Returns a clean
  * map of positive numbers keyed by upper-cased 3-letter codes; tolerant of

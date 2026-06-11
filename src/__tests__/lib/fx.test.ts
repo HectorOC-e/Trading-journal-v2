@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { fxFactor, convertToBase, USD_VALUE, parseFxRates } from "@/lib/fx"
+import { fxFactor, convertToBase, USD_VALUE, parseFxRates, currencySymbol } from "@/lib/fx"
 
 describe("fx", () => {
   it("same currency → factor 1 (no conversion)", () => {
@@ -64,5 +64,16 @@ describe("parseFxRates", () => {
   })
   it("drops invalid keys and non-positive values; upper-cases codes", () => {
     expect(parseFxRates('{"eur":1.08,"US":1,"GBP":-1,"JPY":0,"CHF":"x"}')).toEqual({ EUR: 1.08 })
+  })
+})
+
+describe("currencySymbol", () => {
+  it("returns the symbol for known codes", () => {
+    expect(currencySymbol("USD")).toBe("$")
+    expect(currencySymbol("EUR")).toBe("€")
+    expect(currencySymbol("GBP")).toBe("£")
+  })
+  it("falls back to the code for unknown/invalid input", () => {
+    expect(currencySymbol("ZZZ")).toBe("ZZZ")
   })
 })

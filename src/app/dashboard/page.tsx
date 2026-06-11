@@ -178,6 +178,7 @@ export default function DashboardPage() {
             equityCurve={stats.equityCurve}
             discipline={stats.discipline}
             accounts={accounts}
+            baseCurrency={stats.baseCurrency}
             period={period}
             onPeriodChange={handlePeriodChange}
           />
