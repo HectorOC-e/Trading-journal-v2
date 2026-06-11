@@ -5,7 +5,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
 } from "recharts"
-import { TrendingUp, TrendingDown, Target, BarChart2, CheckCircle2, Percent, Activity, Award } from "lucide-react"
+import { TrendingUp, TrendingDown, Target, BarChart2, CheckCircle2, Percent, Activity, Award, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
 import { Card } from "../components/card"
@@ -13,6 +13,7 @@ import { ChartTooltip } from "../components/chart-tooltip"
 import { PropFirmRules } from "../components/prop-firm-rules"
 import { TYPE_META, fmtDate } from "../components/shared"
 import { GoalProgressWidget } from "../components/goal-progress-widget"
+import { currencySymbol } from "@/lib/fx"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
@@ -28,7 +29,7 @@ const ACCOUNT_COLORS = [
 ]
 
 export function TabPortfolio({
-  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, discipline, accounts, period, onPeriodChange,
+  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, discipline, accounts, baseCurrency, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   pnlByDate:      DashboardStats["pnlByDate"]
@@ -37,9 +38,11 @@ export function TabPortfolio({
   equityCurve:    DashboardStats["equityCurve"]
   discipline:     DashboardStats["discipline"]
   accounts:       AccountMeta[]
+  baseCurrency:   string
   period:         Period
   onPeriodChange: (p: Period) => void
 }) {
+  const cur = currencySymbol(baseCurrency || "USD")
   const totalInitial = useMemo(
     () => accounts.reduce((s, a) => s + Number(a.initialBalance), 0),
     [accounts],
@@ -72,7 +75,7 @@ export function TabPortfolio({
   const accountsTable = useMemo(() => {
     return accountStats.map(s => {
       const a = accounts.find(acc => acc.id === s.accountId)
-      return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", status: a?.status ?? "ACTIVE" }
+      return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", status: a?.status ?? "ACTIVE", locked: a?.locked ?? false }
     })
   }, [accountStats, accounts])
 
@@ -121,7 +124,7 @@ export function TabPortfolio({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <KpiCard label="Net P&L total"
-          value={`${netPnl >= 0 ? "+" : "-"}$${Math.abs(netPnl).toFixed(2)}`}
+          value={`${netPnl >= 0 ? "+" : "-"}${cur}${Math.abs(netPnl).toFixed(2)}`}
           sub={`${total} operaciones cerradas`}
           color={netPnl >= 0 ? "var(--win)" : "var(--loss)"}
           icon={netPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />} />
@@ -144,17 +147,17 @@ export function TabPortfolio({
           color={sharpeRatio != null && sharpeRatio >= 1 ? "var(--win)" : sharpeRatio != null && sharpeRatio < 0 ? "var(--loss)" : undefined}
           icon={<BarChart2 size={15} />} />
         <KpiCard label="Expectancy $"
-          value={`${expectancyDollar >= 0 ? "+" : "-"}$${Math.abs(expectancyDollar).toFixed(2)}`}
+          value={`${expectancyDollar >= 0 ? "+" : "-"}${cur}${Math.abs(expectancyDollar).toFixed(2)}`}
           sub="por trade promedio"
           color={expectancyDollar >= 0 ? "var(--win)" : "var(--loss)"}
           icon={<CheckCircle2 size={15} />} />
         <KpiCard label="Mejor día"
-          value={bestDay ? `+$${bestDay.pnl.toFixed(2)}` : "—"}
+          value={bestDay ? `+${cur}${bestDay.pnl.toFixed(2)}` : "—"}
           sub={bestDay ? fmtDate(bestDay.date) : "sin datos"}
           color="var(--win)"
           icon={<TrendingUp size={15} />} />
         <KpiCard label="Peor día"
-          value={worstDay && worstDay.pnl < 0 ? `-$${Math.abs(worstDay.pnl).toFixed(2)}` : "—"}
+          value={worstDay && worstDay.pnl < 0 ? `-${cur}${Math.abs(worstDay.pnl).toFixed(2)}` : "—"}
           sub={worstDay && worstDay.pnl < 0 ? fmtDate(worstDay.date) : "sin datos"}
           color="var(--loss)"
           icon={<TrendingDown size={15} />} />
@@ -202,7 +205,7 @@ export function TabPortfolio({
                 <BarChart data={barData} barSize={10} barCategoryGap="28%">
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-                    tickFormatter={v => v >= 0 ? `+$${v}` : `-$${Math.abs(v)}`} />
+                    tickFormatter={v => v >= 0 ? `+${cur}${v}` : `-${cur}${Math.abs(v)}`} />
                   <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
                   {barAccountNames.map((name, i) => {
                     const meta = accounts.find(a => a.name === name)
@@ -241,7 +244,7 @@ export function TabPortfolio({
               <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-                tickFormatter={v => `$${(v as number).toLocaleString()}`} width={60} />
+                tickFormatter={v => `${cur}${(v as number).toLocaleString()}`} width={60} />
               <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--line)", strokeWidth: 1 }} />
               {accountStats.map((s, i) => {
                 const acct  = accounts.find(a => a.id === s.accountId)
@@ -299,22 +302,29 @@ export function TabPortfolio({
               {accountsTable.map(a => (
                 <tr key={a.accountId} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
                   <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
-                  <td className="py-3 font-mono text-sm text-[var(--ink)]">${a.balance.toFixed(2)}</td>
+                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{cur}{a.balance.toFixed(2)}</td>
                   <td className={cn("py-3 font-mono text-sm font-semibold", a.pnlMonth >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {a.pnlMonth >= 0 ? "+" : "-"}${Math.abs(a.pnlMonth).toFixed(2)}
+                    {a.pnlMonth >= 0 ? "+" : "-"}{cur}{Math.abs(a.pnlMonth).toFixed(2)}
                   </td>
                   <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</td>
                   <td className={cn("py-3 font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
                     {a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}
                   </td>
                   <td className="py-3">
-                    <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
-                      a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]"
-                      : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]"
-                      : "bg-[var(--chip)] text-[var(--ink-3)]"
-                    )}>
-                      {a.status === "ACTIVE" ? "Activa" : a.status === "PAUSED" ? "Pausada" : a.status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
+                        a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]"
+                        : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]"
+                        : "bg-[var(--chip)] text-[var(--ink-3)]"
+                      )}>
+                        {a.status === "ACTIVE" ? "Activa" : a.status === "PAUSED" ? "Pausada" : a.status}
+                      </span>
+                      {a.locked && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">
+                          <Lock size={9} aria-hidden /> Bloqueada
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
