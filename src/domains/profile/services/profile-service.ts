@@ -10,6 +10,7 @@ export const PROFILE_PUBLIC_FIELDS = {
   role:               true,
   timezone:           true,
   baseCurrency:       true,
+  fxRates:            true,
   language:           true,
   weeklyGoalMinutes:  true,
   emailNotifications: true,
@@ -28,6 +29,7 @@ export interface UpdateProfileInput {
   emailNotifications?: boolean
   weeklyTradesGoal?:   number | null
   weeklyPnlGoal?:      number | null
+  fxRates?:            Record<string, number>
 }
 
 function isValidIanaTimezone(tz: string): boolean {
@@ -61,15 +63,36 @@ export function validateProfileUpdate(input: UpdateProfileInput): void {
       })
     }
   }
+
+  if (input.fxRates !== undefined) {
+    for (const [cur, rate] of Object.entries(input.fxRates)) {
+      if (!/^[A-Z]{3}$/.test(cur.toUpperCase())) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Código de divisa inválido en tasas FX: "${cur}"` })
+      }
+      if (typeof rate !== "number" || !isFinite(rate) || rate <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `La tasa FX de ${cur} debe ser un número positivo` })
+      }
+    }
+  }
 }
 
-/** Returns normalized input (trimmed strings, uppercase currency). */
+/** Returns normalized input (trimmed strings, uppercase currency, sanitized FX rates). */
 export function normalizeProfileInput(input: UpdateProfileInput): UpdateProfileInput {
+  let fxRates = input.fxRates
+  if (fxRates !== undefined) {
+    // Uppercase keys, drop USD (always 1) and non-positive values.
+    fxRates = Object.fromEntries(
+      Object.entries(fxRates)
+        .map(([k, v]) => [k.trim().toUpperCase(), v] as const)
+        .filter(([k, v]) => k !== "USD" && typeof v === "number" && isFinite(v) && v > 0),
+    )
+  }
   return {
     ...input,
     name:         input.name?.trim(),
     timezone:     input.timezone?.trim(),
     baseCurrency: input.baseCurrency?.trim().toUpperCase(),
+    ...(fxRates !== undefined ? { fxRates } : {}),
   }
 }
 
@@ -82,7 +105,7 @@ export async function invalidateAnalyticsCacheIfNeeded(
   userId: string,
   input: UpdateProfileInput,
 ): Promise<void> {
-  if (input.baseCurrency !== undefined || input.timezone !== undefined) {
+  if (input.baseCurrency !== undefined || input.timezone !== undefined || input.fxRates !== undefined) {
     await prisma.tradeStatsCache.deleteMany({ where: { userId } })
   }
 }

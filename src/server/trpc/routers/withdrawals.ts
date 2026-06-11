@@ -29,7 +29,9 @@ export const withdrawalsRouter = router({
       reference: z.string().default(""),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Validate amount does not exceed current balance (QA-020)
+      // Validate amount does not exceed *available* balance (QA-020 + D-02).
+      // Available = initialBalance + closed P&L − retiros previos no rechazados.
+      // Excluir RECHAZADO; PAGADO/EN_PROCESO/SOLICITADO sí reservan saldo.
       const account = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.accountId, userId: ctx.userId },
         select: { initialBalance: true },
@@ -38,12 +40,17 @@ export const withdrawalsRouter = router({
         where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
         select: { pnl: true },
       })
+      const priorWithdrawals = await ctx.prisma.withdrawal.findMany({
+        where: { accountId: input.accountId, userId: ctx.userId, status: { not: "RECHAZADO" } },
+        select: { amount: true },
+      })
       const totalPnl       = closedTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const currentBalance = Number(account.initialBalance) + totalPnl
-      if (input.amount > currentBalance) {
+      const withdrawnTotal = priorWithdrawals.reduce((s, w) => s + Number(w.amount), 0)
+      const availableBalance = Number(account.initialBalance) + totalPnl - withdrawnTotal
+      if (input.amount > availableBalance) {
         throw new TRPCError({
           code:    "BAD_REQUEST",
-          message: `El monto del retiro ($${input.amount}) supera el balance actual ($${currentBalance.toFixed(2)}).`,
+          message: `El monto del retiro ($${input.amount}) supera el saldo disponible ($${availableBalance.toFixed(2)}), ya descontados los retiros previos ($${withdrawnTotal.toFixed(2)}).`,
         })
       }
 

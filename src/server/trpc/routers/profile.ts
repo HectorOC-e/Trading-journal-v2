@@ -10,6 +10,7 @@ import {
   type UpdateProfileInput,
 } from "@/domains/profile/services/profile-service"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { parseFxRates } from "@/lib/fx"
 
 export const profileRouter = router({
   get: protectedProcedure
@@ -21,6 +22,7 @@ export const profileRouter = router({
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Perfil no encontrado" })
       return {
         ...user,
+        fxRates:        parseFxRates(user.fxRates),
         lastReviewDate: user.lastReviewDate?.toISOString() ?? null,
         createdAt:      user.createdAt.toISOString(),
       }
@@ -37,19 +39,25 @@ export const profileRouter = router({
       // Goal fields (TASK-050a)
       weeklyTradesGoal:   z.number().int().min(1).max(500).nullable().optional(),
       weeklyPnlGoal:      z.number().min(100).max(1_000_000).nullable().optional(),
+      // Per-user FX overrides (D-03): { "<CUR>": usdValue }
+      fxRates:            z.record(z.string(), z.number().positive()).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const raw = input as UpdateProfileInput
       validateProfileUpdate(raw)
       const normalized = normalizeProfileInput(raw)
       await invalidateAnalyticsCacheIfNeeded(ctx.prisma, ctx.userId, normalized)
+      // fxRates is stored as a JSON string column → serialize before persisting.
+      const { fxRates, ...rest } = normalized
+      const data = fxRates !== undefined ? { ...rest, fxRates: JSON.stringify(fxRates) } : rest
       const user = await ctx.prisma.user.update({
         where:  { id: ctx.userId },
-        data:   normalized,
+        data,
         select: PROFILE_PUBLIC_FIELDS,
       })
       return {
         ...user,
+        fxRates:        parseFxRates(user.fxRates),
         lastReviewDate: user.lastReviewDate?.toISOString() ?? null,
         createdAt:      user.createdAt.toISOString(),
       }
@@ -85,7 +93,7 @@ export const profileRouter = router({
 
       return {
         exportedAt: new Date().toISOString(),
-        user,
+        user: user ? { ...user, fxRates: parseFxRates(user.fxRates) } : null,
         trades:        trades.map(t => ({ ...t, pnl: t.pnl?.toString() ?? null, rMultiple: t.rMultiple?.toString() ?? null })),
         accounts:      accounts.map(a => ({ ...a, initialBalance: a.initialBalance.toString() })),
         rules,

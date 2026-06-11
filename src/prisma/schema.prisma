@@ -14,6 +14,7 @@ model User {
   role               String   @default("Single-trader")
   timezone           String   @default("America/Tegucigalpa")
   baseCurrency       String   @default("USD") @map("base_currency")
+  fxRates            String   @default("{}") @map("fx_rates") // per-user FX overrides JSON: { "<CUR>": usdValue }
   language           String   @default("es")
   weeklyGoalMinutes   Int?     @default(300) @map("weekly_goal_minutes")
   emailNotifications  Boolean  @default(true) @map("email_notifications")

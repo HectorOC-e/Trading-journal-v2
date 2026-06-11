@@ -24,7 +24,8 @@ function makeMockPrisma() {
       findMany: vi.fn().mockResolvedValue([]),
     },
     withdrawal: {
-      findMany: vi.fn(),
+      // Default: no prior withdrawals so D-02 reservation is 0
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -115,6 +116,47 @@ describe("withdrawals router", () => {
       }),
     })
     expect(result).toEqual(fakeWithdrawal)
+  })
+
+  it("create: rejects when amount exceeds available balance after prior withdrawals (D-02)", async () => {
+    // initialBalance 100000, P&L 0, prior non-rejected withdrawals 98000 → available 2000
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ initialBalance: 100000 })
+    mockPrisma.trade.findMany.mockResolvedValue([])
+    mockPrisma.withdrawal.findMany.mockResolvedValue([
+      { amount: 50000 }, { amount: 48000 },
+    ])
+
+    await expect(
+      caller.withdrawals.create({
+        accountId: ACCOUNT_ID,
+        amount: 5000, // > available 2000
+        currency: "USD",
+        date: "2025-01-15",
+        note: "",
+        reference: "",
+      })
+    ).rejects.toThrow(/saldo disponible/i)
+
+    expect(mockPrisma.withdrawal.create).not.toHaveBeenCalled()
+  })
+
+  it("create: excludes RECHAZADO withdrawals from the reservation (D-02)", async () => {
+    // Only non-rejected withdrawals reserve balance; query must filter status != RECHAZADO
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ initialBalance: 10000 })
+    mockPrisma.trade.findMany.mockResolvedValue([])
+    mockPrisma.withdrawal.findMany.mockResolvedValue([{ amount: 1000 }]) // 1 prior, available 9000
+    mockPrisma.withdrawal.create.mockResolvedValue({ id: WITHDRAWAL_ID, status: "SOLICITADO", accountId: ACCOUNT_ID })
+    mockPrisma.accountLog.create.mockResolvedValue({ id: "log-x" })
+
+    await caller.withdrawals.create({
+      accountId: ACCOUNT_ID, amount: 8000, currency: "USD", date: "2025-01-15", note: "", reference: "",
+    })
+
+    expect(mockPrisma.withdrawal.findMany).toHaveBeenCalledWith({
+      where: { accountId: ACCOUNT_ID, userId: USER_ID, status: { not: "RECHAZADO" } },
+      select: { amount: true },
+    })
+    expect(mockPrisma.withdrawal.create).toHaveBeenCalled()
   })
 
   it("updateStatus: updates status and creates log", async () => {

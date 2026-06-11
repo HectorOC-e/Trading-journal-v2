@@ -97,6 +97,7 @@ type DashboardOutput = {
 }
 import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { VIOLATION_TAGS } from "@/types"
+import { fxFactor, parseFxRates } from "@/lib/fx"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -245,12 +246,22 @@ export const tradesRouter = router({
       const activeAccounts = await ctx.prisma.account.findMany({
         where: { userId: ctx.userId, status: { in: ["ACTIVE", "PAUSED"] } },
         select: {
-          id: true, name: true, type: true, status: true,
+          id: true, name: true, type: true, status: true, currency: true,
           initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
           ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
         },
       })
       const activeAccountIds = activeAccounts.map(a => a.id)
+
+      // ── FX normalization (D-03) ───────────────────────────────────────────
+      // Dashboard is portfolio-wide in the user's base currency. Convert each
+      // account's amounts (P&L, balance) by its currency→base factor so the
+      // aggregates and the account table stay consistent (no mixed divisas).
+      const userProfile = await ctx.prisma.user.findUnique({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } })
+      const baseCurrency = userProfile?.baseCurrency ?? "USD"
+      const fxRates = parseFxRates(userProfile?.fxRates)
+      const fxByAccount = new Map(activeAccounts.map(a => [a.id, fxFactor(a.currency, baseCurrency, fxRates)]))
+      const fx = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
       const [tradeRows, setupRows, checklistRows] = await Promise.all([
         ctx.prisma.trade.findMany({
@@ -296,7 +307,7 @@ export const tradesRouter = router({
         session:   t.session as string | null,
         openTime:  t.openTime as string | null,
         closeTime: t.closeTime as string | null,
-        pnl:       t.pnl       != null ? Number(t.pnl)       : 0,
+        pnl:       t.pnl       != null ? Number(t.pnl) * fx(t.accountId) : 0,
         rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
         tags:      t.tags      as string[],
         date:      (t.date as Date).toISOString().slice(0, 10),
@@ -308,12 +319,12 @@ export const tradesRouter = router({
       }))
 
       const accounts = activeAccounts
-      const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) }))
+      const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) * fx(a.id) }))
       const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
         id:              a.id,
         name:            a.name,
         type:            a.type,
-        initialBalance:  Number(a.initialBalance),
+        initialBalance:  Number(a.initialBalance) * fx(a.id),
         ddDailyPct:      a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
         ddTotalPct:      a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
         ddModel:         a.ddModel,
