@@ -7,6 +7,7 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { createClient } from "@/lib/supabase/client"
+import { USD_VALUE, SUPPORTED_CURRENCIES } from "@/lib/fx"
 import { Loader2, RotateCcw } from "lucide-react"
 import { AiModelsCard } from "./components/ai-models-card"
 import {
@@ -71,11 +72,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function TextInput({ value, onChange, placeholder, disabled }: {
+function TextInput({ value, onChange, placeholder, disabled, inputMode }: {
   value: string
   onChange?: (v: string) => void
   placeholder?: string
   disabled?: boolean
+  inputMode?: "decimal" | "numeric" | "text"
 }) {
   return (
     <input
@@ -83,6 +85,7 @@ function TextInput({ value, onChange, placeholder, disabled }: {
       onChange={e => onChange?.(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
+      inputMode={inputMode}
       style={{
         height: 38, padding: "0 12px",
         borderRadius: "var(--radius-sm)",
@@ -255,6 +258,7 @@ export default function PerfilPage() {
   const [timezone,           setTimezone]           = useState("")
   const [language,           setLanguage]           = useState<"es" | "en">("es")
   const [baseCurrency,       setBaseCurrency]       = useState("")
+  const [fxRates,            setFxRates]            = useState<Record<string, number>>({})
   const [weeklyGoalMinutes,  setWeeklyGoalMinutes]  = useState(300)
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [formInitialized,    setFormInitialized]    = useState(false)
@@ -277,6 +281,7 @@ export default function PerfilPage() {
     setTimezone(profile.timezone ?? "America/Tegucigalpa")
     setLanguage((profile.language as "es" | "en") ?? "es")
     setBaseCurrency(profile.baseCurrency ?? "USD")
+    setFxRates(profile.fxRates ?? {})
     setWeeklyGoalMinutes(profile.weeklyGoalMinutes ?? 300)
     setEmailNotifications(profile.emailNotifications ?? true)
     setFormInitialized(true)
@@ -432,6 +437,7 @@ export default function PerfilPage() {
     const patch: {
       name?: string; timezone?: string; language?: "es" | "en"
       baseCurrency?: string; weeklyGoalMinutes?: number; emailNotifications?: boolean
+      fxRates?: Record<string, number>
     } = {}
     if (name              !== (profile.name               ?? ""))    patch.name               = name
     if (timezone          !== (profile.timezone            ?? ""))    patch.timezone           = timezone
@@ -439,6 +445,7 @@ export default function PerfilPage() {
     if (baseCurrency      !== (profile.baseCurrency        ?? ""))    patch.baseCurrency       = baseCurrency
     if (weeklyGoalMinutes !== (profile.weeklyGoalMinutes   ?? 300))   patch.weeklyGoalMinutes  = weeklyGoalMinutes
     if (emailNotifications !== (profile.emailNotifications ?? true))  patch.emailNotifications = emailNotifications
+    if (JSON.stringify(fxRates) !== JSON.stringify(profile.fxRates ?? {})) patch.fxRates = fxRates
     if (Object.keys(patch).length === 0) {
       toast.info("Sin cambios para guardar")
       return
@@ -600,6 +607,37 @@ export default function PerfilPage() {
                   placeholder="300"
                 />
               </Field>
+            </div>
+
+            {/* ── Tasas de cambio (FX) ── */}
+            <div style={{ marginTop: 8 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)", marginBottom: 4 }}>
+                Tasas de cambio (FX)
+              </p>
+              <p style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 12 }}>
+                El dashboard convierte cada cuenta a tu moneda base. Define el valor de 1 unidad en USD.
+                Déjalo vacío para usar el valor por defecto.
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
+                {SUPPORTED_CURRENCIES.filter(c => c !== "USD").map(cur => (
+                  <Field key={cur} label={`1 ${cur} = ? USD`}>
+                    <TextInput
+                      value={fxRates[cur] != null ? String(fxRates[cur]) : ""}
+                      placeholder={String(USD_VALUE[cur])}
+                      inputMode="decimal"
+                      onChange={v => {
+                        const n = parseFloat(v.replace(",", "."))
+                        setFxRates(prev => {
+                          const next = { ...prev }
+                          if (v.trim() === "" || !isFinite(n) || n <= 0) delete next[cur]
+                          else next[cur] = n
+                          return next
+                        })
+                      }}
+                    />
+                  </Field>
+                ))}
+              </div>
             </div>
           </div>
           <div style={{ marginTop: 20 }}>
