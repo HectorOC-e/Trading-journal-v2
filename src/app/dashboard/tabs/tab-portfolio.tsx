@@ -127,20 +127,20 @@ export function TabPortfolio({
           value={`${netPnl >= 0 ? "+" : "-"}${cur}${Math.abs(netPnl).toFixed(2)}`}
           sub={`${total} operaciones cerradas`}
           color={netPnl >= 0 ? "var(--win)" : "var(--loss)"}
-          icon={netPnl >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />} />
+          explain={`Mi Net P&L total es ${cur}${netPnl.toFixed(2)} en ${total} trades. ¿Qué me dice esto y en qué debería enfocarme?`} />
         <KpiCard label="Profit Factor"
           value={pf === 999 ? "∞" : pf.toFixed(4)}
           sub="todas las cuentas"
-          icon={<Activity size={15} />} />
+          explain={`Mi profit factor es ${pf === 999 ? "infinito" : pf.toFixed(2)}. ¿Qué significa y cómo lo mejoro?`} />
         <KpiCard label="Win Rate"
           value={`${winRate.toFixed(2)}%`}
           sub={`${wins} / ${total} operaciones`}
-          icon={<Percent size={15} />} />
+          explain={`Mi win rate es ${winRate.toFixed(1)}% con avg R ${avgR.toFixed(2)}. ¿Es bueno para mi estilo y qué implica la combinación?`} />
         <KpiCard label="Avg R"
           value={`${avgR >= 0 ? "+" : ""}${avgR.toFixed(4)}R`}
           sub="promedio rMultiple"
           color={avgR >= 0 ? "var(--win)" : "var(--loss)"}
-          icon={<Target size={15} />} />
+          explain={`Mi avg R es ${avgR.toFixed(2)}. ¿Qué significa y cómo lo subo?`} />
         <KpiCard label="Sharpe Ratio"
           value={sharpeRatio != null ? sharpeRatio.toFixed(4) : "—"}
           sub="avgR / desv. estándar R"
