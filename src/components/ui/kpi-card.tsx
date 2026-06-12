@@ -1,4 +1,6 @@
+import { Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { askCoach } from "@/lib/coach-bus"
 import type { KpiCard as KpiCardType } from "@/types"
 
 interface KpiCardProps extends KpiCardType {
@@ -7,9 +9,11 @@ interface KpiCardProps extends KpiCardType {
   color?: string
   delta?: string
   onClick?: () => void
+  /** When set, shows a sparkle button that opens the AI coach pre-asked this question. */
+  explain?: string
 }
 
-export function KpiCard({ label, value, sub, trend, mono = true, className, icon, color, delta, onClick }: KpiCardProps) {
+export function KpiCard({ label, value, sub, trend, mono = true, className, icon, color, delta, onClick, explain }: KpiCardProps) {
   const valueColor = color ?? (
     trend === "up"      ? "var(--win)"    :
     trend === "down"    ? "var(--loss)"   :
@@ -38,11 +42,21 @@ export function KpiCard({ label, value, sub, trend, mono = true, className, icon
         <p className="text-[10px] font-semibold text-[var(--ink-3)] uppercase tracking-[0.08em] leading-none">
           {label}
         </p>
-        {icon && (
+        {explain ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); askCoach(explain) }}
+            aria-label={`Explícame: ${label}`}
+            title="Explícame esta métrica"
+            className="shrink-0 text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors opacity-60 hover:opacity-100"
+          >
+            <Sparkles size={13} />
+          </button>
+        ) : icon ? (
           <span className="text-[var(--ink-3)] opacity-60 shrink-0" aria-hidden="true">
             {icon}
           </span>
-        )}
+        ) : null}
       </div>
 
       <div className="flex items-end gap-2 mt-0.5">

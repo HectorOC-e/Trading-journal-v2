@@ -6,6 +6,8 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { trpc } from "@/lib/trpc/client"
+import { askCoach } from "@/lib/coach-bus"
+import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
 
@@ -31,11 +33,19 @@ const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 
 const money = (n: number) => `${n >= 0 ? "+" : "−"}$${fmt(Math.abs(n))}`
 
 /* ── Presentational helpers ────────────────────────────────────────────── */
-function Stat({ label, value, tone, sub }: { label: string; value: string; tone?: "win" | "loss" | "ink"; sub?: string }) {
+function Stat({ label, value, tone, sub, explain }: { label: string; value: string; tone?: "win" | "loss" | "ink"; sub?: string; explain?: string }) {
   const color = tone === "win" ? "var(--win)" : tone === "loss" ? "var(--loss)" : "var(--ink)"
   return (
     <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
-      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)]">{label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)]">{label}</p>
+        {explain && (
+          <button type="button" onClick={() => askCoach(explain)} aria-label={`Explícame: ${label}`} title="Explícame esta métrica"
+            className="shrink-0 text-[var(--ink-3)] hover:text-[var(--accent)] opacity-60 hover:opacity-100 transition-colors">
+            <Sparkles size={13} />
+          </button>
+        )}
+      </div>
       <p className="num text-[20px] font-bold leading-tight mt-1" style={{ color }}>{value}</p>
       {sub && <p className="text-[10.5px] text-[var(--ink-3)] mt-0.5">{sub}</p>}
     </div>
@@ -78,11 +88,11 @@ function Performance({ d }: { d: Overview }) {
   const p = d.performance
   return (
     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-      <Stat label="Net P&L" value={money(p.netPnl)} tone={p.netPnl >= 0 ? "win" : "loss"} sub={`${p.totalTrades} trades`} />
-      <Stat label="Win Rate" value={`${p.winRate}%`} sub={`${p.wins}G · ${p.losses}P`} />
-      <Stat label="Profit Factor" value={p.profitFactor != null ? String(p.profitFactor) : "—"} sub="ganancia / pérdida" />
-      <Stat label="Expectancy" value={money(p.expectancy)} tone={p.expectancy >= 0 ? "win" : "loss"} sub="por trade" />
-      <Stat label="Avg R" value={`${p.avgR}R`} sub="r múltiplo medio" />
+      <Stat label="Net P&L" value={money(p.netPnl)} tone={p.netPnl >= 0 ? "win" : "loss"} sub={`${p.totalTrades} trades`} explain={`Mi Net P&L es ${money(p.netPnl)} en ${p.totalTrades} trades. ¿Qué me dice y en qué enfocarme?`} />
+      <Stat label="Win Rate" value={`${p.winRate}%`} sub={`${p.wins}G · ${p.losses}P`} explain={`Mi win rate es ${p.winRate}% con avg R ${p.avgR}. ¿Es saludable la combinación?`} />
+      <Stat label="Profit Factor" value={p.profitFactor != null ? String(p.profitFactor) : "—"} sub="ganancia / pérdida" explain={`Mi profit factor es ${p.profitFactor ?? "n/d"}. ¿Qué significa y cómo lo mejoro?`} />
+      <Stat label="Expectancy" value={money(p.expectancy)} tone={p.expectancy >= 0 ? "win" : "loss"} sub="por trade" explain={`Mi expectancy es ${money(p.expectancy)} por trade. ¿Qué implica para escalar el tamaño?`} />
+      <Stat label="Avg R" value={`${p.avgR}R`} sub="r múltiplo medio" explain={`Mi avg R es ${p.avgR}. ¿Cómo lo subo sin bajar el win rate?`} />
       <Stat label="Avg Win" value={`$${fmt(p.avgWin)}`} tone="win" />
       <Stat label="Avg Loss" value={`$${fmt(p.avgLoss)}`} tone="loss" />
       <Stat label="Holding medio" value={p.avgHoldMinutes != null ? `${p.avgHoldMinutes} min` : "—"} />

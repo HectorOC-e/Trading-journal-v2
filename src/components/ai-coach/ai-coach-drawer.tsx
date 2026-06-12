@@ -40,6 +40,7 @@ export function AiCoachDrawer() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
   const dragRef   = useRef<{ dx: number; dy: number } | null>(null)
+  const sendRef   = useRef<(t?: string) => void>(() => {})
   const isMobile  = useIsMobile()
 
   // Restore last floating position
@@ -98,8 +99,8 @@ export function AiCoachDrawer() {
     document.addEventListener("pointerup", onPointerUp)
   }
 
-  async function sendMessage() {
-    const text = input.trim()
+  async function sendMessage(textArg?: string) {
+    const text = (textArg ?? input).trim()
     if (!text || streaming) return
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text }
@@ -156,6 +157,24 @@ export function AiCoachDrawer() {
       void sendMessage()
     }
   }
+
+  // Keep a live ref to sendMessage so the (once-attached) event listener always
+  // calls the latest closure (current messages/streaming state).
+  sendRef.current = sendMessage
+  // External trigger: other parts of the app dispatch `coach:ask` to open the
+  // coach with a pre-filled question (e.g. "explícame esta métrica").
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const q = (e as CustomEvent<{ question?: string }>).detail?.question
+      if (!q) return
+      setOpen(true)
+      setMode("panel")
+      // let the panel mount before sending
+      setTimeout(() => sendRef.current(q), 50)
+    }
+    window.addEventListener("coach:ask", handler)
+    return () => window.removeEventListener("coach:ask", handler)
+  }, [])
 
   // ── Floating launcher (collapsed) ─────────────────────────────────────────
   if (!open) {
