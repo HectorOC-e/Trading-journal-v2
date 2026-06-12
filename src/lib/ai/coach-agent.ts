@@ -78,6 +78,20 @@ export async function streamCoachAgent(opts: CoachAgentOptions): Promise<Readabl
   type OAIMsg = { role: string; content: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[]; tool_call_id?: string }
   const messages: OAIMsg[] = [{ role: "system", content: systemToString(opts.system) }, ...opts.messages.map(m => ({ role: m.role, content: m.content }))]
 
+  // Cache identical tool calls within this turn (avoid redundant DB queries).
+  const toolCache = new Map<string, string>()
+  const runTool = async (name: string, args: Record<string, unknown>) => {
+    const key = `${name}:${JSON.stringify(args)}`
+    const hit = toolCache.get(key)
+    if (hit != null) return hit
+    const out = await executeCoachTool(name, args, tctx)
+    toolCache.set(key, out)
+    return out
+  }
+
+  // Non-streaming tool-resolution loop. Runs before returning the stream so a
+  // tool rejection (model without tool support) throws synchronously and the
+  // caller falls back to the static streaming path.
   let answer = ""
   for (let round = 0; round < MAX_ROUNDS; round++) {
     const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -92,8 +106,7 @@ export async function streamCoachAgent(opts: CoachAgentOptions): Promise<Readabl
       for (const tc of msg.tool_calls) {
         let args: Record<string, unknown> = {}
         try { args = JSON.parse(tc.function.arguments || "{}") } catch { /* ignore */ }
-        const out = await executeCoachTool(tc.function.name, args, tctx)
-        messages.push({ role: "tool", tool_call_id: tc.id, content: out })
+        messages.push({ role: "tool", tool_call_id: tc.id, content: await runTool(tc.function.name, args) })
       }
       continue
     }
