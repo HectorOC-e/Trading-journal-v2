@@ -75,7 +75,7 @@ export async function streamCoachAgent(opts: CoachAgentOptions): Promise<Readabl
     headers["HTTP-Referer"] = process.env.NEXT_PUBLIC_APP_URL ?? "https://trading-journal.app"
     headers["X-Title"] = "Trading Journal AI Coach"
   }
-  type OAIMsg = { role: string; content: string | null; tool_calls?: { id: string; function: { name: string; arguments: string } }[]; tool_call_id?: string }
+  type OAIMsg = { role: string; content: string | null; tool_calls?: { id: string; type: "function"; function: { name: string; arguments: string } }[]; tool_call_id?: string }
   const messages: OAIMsg[] = [{ role: "system", content: systemToString(opts.system) }, ...opts.messages.map(m => ({ role: m.role, content: m.content }))]
 
   // Cache identical tool calls within this turn (avoid redundant DB queries).
@@ -89,35 +89,68 @@ export async function streamCoachAgent(opts: CoachAgentOptions): Promise<Readabl
     return out
   }
 
-  // Non-streaming tool-resolution loop. Runs before returning the stream so a
-  // tool rejection (model without tool support) throws synchronously and the
-  // caller falls back to the static streaming path.
-  let answer = ""
-  for (let round = 0; round < MAX_ROUNDS; round++) {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST", headers,
-      body: JSON.stringify({ model: opts.model, max_tokens: 4096, tools, tool_choice: "auto", messages }),
-    })
-    if (!res.ok) throw new Error(`${opts.provider} tools error ${res.status}: ${await res.text().catch(() => "")}`)
-    const json = await res.json() as { choices?: { message?: OAIMsg }[] }
-    const msg = json.choices?.[0]?.message
-    if (msg?.tool_calls?.length) {
-      messages.push(msg)
-      for (const tc of msg.tool_calls) {
-        let args: Record<string, unknown> = {}
-        try { args = JSON.parse(tc.function.arguments || "{}") } catch { /* ignore */ }
-        messages.push({ role: "tool", tool_call_id: tc.id, content: await runTool(tc.function.name, args) })
-      }
-      continue
-    }
-    answer = msg?.content ?? ""
-    break
+  const doFetch = () => fetch(`${baseUrl}/chat/completions`, {
+    method: "POST", headers,
+    body: JSON.stringify({ model: opts.model, max_tokens: 4096, tools, tool_choice: "auto", stream: true, messages }),
+  })
+
+  // Pre-flight the first request OUTSIDE the stream: if the model rejects tools,
+  // this throws synchronously and the caller falls back to the static path.
+  const firstRes = await doFetch()
+  if (!firstRes.ok || !firstRes.body) {
+    throw new Error(`${opts.provider} tools error ${firstRes.status}: ${await firstRes.text().catch(() => "")}`)
   }
 
   return new ReadableStream<Uint8Array>({
-    start(controller) {
-      if (answer) controller.enqueue(encoder.encode(answer))
-      controller.close()
+    async start(controller) {
+      try {
+        let res: Response = firstRes
+        for (let round = 0; round < MAX_ROUNDS; round++) {
+          if (round > 0) {
+            res = await doFetch()
+            if (!res.ok || !res.body) break
+          }
+          // Parse the SSE stream: emit content deltas live, accumulate tool_calls (by index).
+          const calls = new Map<number, { id: string; name: string; args: string }>()
+          let assistantText = ""
+          const reader = res.body!.getReader(); const decoder = new TextDecoder(); let buf = ""
+          const handle = (line: string) => {
+            const t = line.replace(/^data:\s*/, "")
+            if (!t || t === "[DONE]") return
+            try {
+              const j = JSON.parse(t) as { choices?: { delta?: { content?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] } }[] }
+              const d = j.choices?.[0]?.delta
+              if (d?.content) { assistantText += d.content; controller.enqueue(encoder.encode(d.content)) }
+              for (const tc of d?.tool_calls ?? []) {
+                const cur = calls.get(tc.index) ?? { id: "", name: "", args: "" }
+                if (tc.id) cur.id = tc.id
+                if (tc.function?.name) cur.name = tc.function.name
+                if (tc.function?.arguments) cur.args += tc.function.arguments
+                calls.set(tc.index, cur)
+              }
+            } catch { /* skip malformed SSE */ }
+          }
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buf += decoder.decode(value, { stream: true })
+            const lines = buf.split("\n"); buf = lines.pop() ?? ""
+            for (const l of lines) handle(l)
+          }
+          if (buf.trim()) handle(buf)
+
+          if (calls.size === 0) break // final answer already streamed
+
+          // Execute the requested tools and loop with their results.
+          messages.push({ role: "assistant", content: assistantText || null, tool_calls: [...calls.values()].map(c => ({ id: c.id, type: "function" as const, function: { name: c.name, arguments: c.args } })) })
+          for (const c of calls.values()) {
+            let args: Record<string, unknown> = {}
+            try { args = JSON.parse(c.args || "{}") } catch { /* ignore */ }
+            messages.push({ role: "tool", tool_call_id: c.id, content: await runTool(c.name, args) })
+          }
+        }
+        controller.close()
+      } catch (err) { controller.error(err) }
     },
   })
 }
