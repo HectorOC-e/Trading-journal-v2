@@ -19,6 +19,12 @@ import { streamChat } from "@/lib/ai/chat"
 const mockBuildTraderContext = buildTraderContext as ReturnType<typeof vi.fn>
 const mockStreamChat         = streamChat as ReturnType<typeof vi.fn>
 
+// system is now an array of { text, cache } blocks (prompt caching) — flatten for assertions.
+function systemText(): string {
+  const s = mockStreamChat.mock.calls[0][0].system
+  return Array.isArray(s) ? s.map((b: { text: string }) => b.text).join("\n\n") : (s ?? "")
+}
+
 const MOCK_CONTEXT = {
   performance: {
     totalTrades: 20, winRate: 60, avgR: 1.2, netPnl: 500, pnlMonth: 150,
@@ -72,25 +78,19 @@ describe("coach-service (TASK-065)", () => {
     const messages = [{ role: "user" as const, content: "¿Cómo mejorar mi win rate?" }]
     await streamCoachReply({ userId: "user-123", messages, prisma: mockPrisma })
 
-    expect(mockStreamChat).toHaveBeenCalledWith(
-      expect.objectContaining({
-        messages: messages,
-        system:   expect.stringContaining("coach de trading"),
-      }),
-    )
+    expect(mockStreamChat).toHaveBeenCalledWith(expect.objectContaining({ messages }))
+    expect(systemText()).toContain("coach de trading")
   })
 
   it("includes trader performance data in the system prompt", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-
-    const callArgs = mockStreamChat.mock.calls[0][0]
-    expect(callArgs.system).toContain("60%") // win rate
-    expect(callArgs.system).toContain("500")  // netPnl
+    expect(systemText()).toContain("60%") // win rate
+    expect(systemText()).toContain("500") // netPnl
   })
 
   it("includes global context (accounts + setups by name) in the system prompt", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    const system = mockStreamChat.mock.calls[0][0].system
+    const system = systemText()
     expect(system).toContain("FTMO 100K")        // account by name
     expect(system).toContain("Breakout London")  // setup by name
     expect(system).toContain("PROP_FIRM")
@@ -98,9 +98,18 @@ describe("coach-service (TASK-065)", () => {
 
   it("includes the app-usage knowledge block", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    const system = mockStreamChat.mock.calls[0][0].system
+    const system = systemText()
     expect(system).toContain("Cómo funciona la app")
     expect(system).toContain("Cómo hacer tareas clave")
+  })
+
+  it("sends system as cacheable static block + dynamic data block", async () => {
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+    const system = mockStreamChat.mock.calls[0][0].system
+    expect(Array.isArray(system)).toBe(true)
+    expect(system[0].cache).toBe(true)                       // static block cached
+    expect(system[0].text).toContain("Cómo funciona la app") // app-knowledge is static
+    expect(system[1].text).toContain("FTMO 100K")            // trader data is dynamic
   })
 
   it("returns the ReadableStream from streamChat directly", async () => {
