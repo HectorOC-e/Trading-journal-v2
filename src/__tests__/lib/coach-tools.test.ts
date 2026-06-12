@@ -4,8 +4,34 @@ import { executeCoachTool, COACH_TOOLS } from "@/lib/ai/coach-tools"
 const ctx = (prisma: unknown) => ({ userId: "u1", prisma: prisma as never })
 
 describe("coach tools", () => {
-  it("exposes 3 read-only tool definitions", () => {
-    expect(COACH_TOOLS.map(t => t.name)).toEqual(["get_account_detail", "get_setup_detail", "search_trades"])
+  it("exposes the read-only tool definitions", () => {
+    expect(COACH_TOOLS.map(t => t.name)).toEqual([
+      "get_account_detail", "get_setup_detail", "search_trades",
+      "get_trade_detail", "get_period_stats", "semantic_search",
+    ])
+  })
+
+  it("get_trade_detail returns full trade incl. events + psychology", async () => {
+    const prisma = {
+      trade: { findFirst: vi.fn().mockResolvedValue({
+        id: "t1", date: new Date("2026-06-01"), symbol: "EURUSD", direction: "LONG",
+        entry: 1.1, stop: 1.09, target: 1.12, size: 1, closePrice: 1.12, pnl: 400, rMultiple: 2, commission: -3.5,
+        tags: ["A+"], notes: "buena entrada", emotionBefore: "calm", confidenceRating: 4, executionQuality: 5, fomoFlag: false, revengeFlag: false,
+        setup: { name: "Breakout" }, account: { name: "FTMO", currency: "USD" },
+        events: [{ type: "OPEN", price: 1.1, contracts: 1, notes: "" }],
+      }) },
+    }
+    const out = JSON.parse(await executeCoachTool("get_trade_detail", { id: "t1" }, ctx(prisma)))
+    expect(out.symbol).toBe("EURUSD")
+    expect(out.setup).toBe("Breakout")
+    expect(out.psychology.emotionBefore).toBe("calm")
+    expect(out.events).toHaveLength(1)
+  })
+
+  it("get_trade_detail returns error when not found", async () => {
+    const prisma = { trade: { findFirst: vi.fn().mockResolvedValue(null) } }
+    const out = JSON.parse(await executeCoachTool("get_trade_detail", { id: "x" }, ctx(prisma)))
+    expect(out.error).toMatch(/No encontré/)
   })
 
   it("get_account_detail returns computed balance + win rate", async () => {
