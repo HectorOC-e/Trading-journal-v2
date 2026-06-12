@@ -116,13 +116,13 @@ function useReviewFilters() {
 }
 
 function ReviewsPageContent() {
+  const router = useRouter()
   const [activeTab,         setActiveTab]         = useState<ReviewTab>("weekly")
   const [modalOpen,         setModalOpen]          = useState(false)
   const [selectedReview,    setSelectedReview]     = useState<ReviewFromDB | null>(null)
   const [editingReview,     setEditingReview]      = useState<ReviewFromDB | null>(null)
   const [monthlyModalOpen,  setMonthlyModalOpen]   = useState(false)
   const [editingMonthly,    setEditingMonthly]     = useState<MonthlyReviewFromDB | null>(null)
-  const [selectedMonthlyId, setSelectedMonthlyId] = useState<string | null>(null)
 
   const now   = new Date()
   const [monthlyYear,  setMonthlyYear]  = useState(now.getFullYear())
@@ -281,8 +281,8 @@ function ReviewsPageContent() {
                     <MonthlyReviewCard
                       key={review.id}
                       review={review}
-                      isSelected={selectedMonthlyId === review.id}
-                      onClick={() => setSelectedMonthlyId(s => s === review.id ? null : review.id)}
+                      isSelected={false}
+                      onClick={() => router.push(`/reviews/mensual/${review.year}-${String(review.month).padStart(2, "0")}`)}
                       onEdit={() => {
                         setEditingMonthly(review)
                         setMonthlyYear(review.year)

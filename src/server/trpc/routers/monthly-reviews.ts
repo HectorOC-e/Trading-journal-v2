@@ -2,6 +2,9 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { MonthlyReview } from "@/lib/generated/prisma/client"
+import { buildMonthlyReport, type ReportTrade } from "@/domains/analytics/services/monthly-report"
+import { fxFactor, parseFxRates } from "@/lib/fx"
+import { VIOLATION_TAGS } from "@/types"
 
 type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt"> & {
   createdAt: string
@@ -80,6 +83,55 @@ export const monthlyReviewsRouter = router({
       }
       await ctx.prisma.monthlyReview.delete({ where: { id: input, userId: ctx.userId } })
       return { ok: true }
+    }),
+
+  // Full visual report for a month (trades-based, FX-normalized, deltas vs prev month)
+  report: protectedProcedure
+    .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
+    .query(async ({ ctx, input }) => {
+      const { year, month } = input
+      const monthStart = new Date(year, month - 1, 1)
+      const monthEnd   = new Date(year, month, 1)       // exclusive
+      const prevStart  = new Date(year, month - 2, 1)   // previous month start
+
+      const [user, accounts, setups, monthRows, prevRows, weeklies, saved] = await Promise.all([
+        ctx.prisma.user.findUnique({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } }),
+        ctx.prisma.account.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true, currency: true } }),
+        ctx.prisma.setup.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true } }),
+        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: monthStart, lt: monthEnd } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
+        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: prevStart, lt: monthStart } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
+        ctx.prisma.weeklyReview.findMany({ where: { userId: ctx.userId, weekStart: { gte: prevStart, lt: monthEnd } }, select: { weekStart: true, disciplineScore: true } }),
+        ctx.prisma.monthlyReview.findFirst({ where: { userId: ctx.userId, year, month } }),
+      ])
+
+      const baseCurrency = user?.baseCurrency ?? "USD"
+      const fxRates      = parseFxRates(user?.fxRates)
+      const curById      = new Map(accounts.map(a => [a.id, a.currency]))
+      const toReport = (rows: typeof monthRows): ReportTrade[] => rows.map(t => ({
+        accountId: t.accountId,
+        pnl:       (t.pnl != null ? Number(t.pnl) : 0) * fxFactor(curById.get(t.accountId) ?? baseCurrency, baseCurrency, fxRates),
+        rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
+        date:      (t.date as Date).toISOString().slice(0, 10),
+        setupId:   t.setupId,
+        tags:      t.tags as string[],
+      }))
+
+      const avgScore = (rows: { weekStart: Date; disciplineScore: number }[], from: Date, to: Date) => {
+        const s = rows.filter(r => r.weekStart >= from && r.weekStart < to).map(r => r.disciplineScore).filter(n => n > 0)
+        return s.length ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : null
+      }
+
+      return buildMonthlyReport({
+        year, month, baseCurrency,
+        monthTrades: toReport(monthRows),
+        prevTrades:  toReport(prevRows),
+        accountNames: Object.fromEntries(accounts.map(a => [a.id, a.name])),
+        setupNames:   Object.fromEntries(setups.map(s => [s.id, s.name])),
+        violationTags: VIOLATION_TAGS,
+        monthScore: saved?.overallScore ?? avgScore(weeklies, monthStart, monthEnd),
+        prevScore:  avgScore(weeklies, prevStart, monthStart),
+        saved: saved ? { summary: saved.summary, keyThemes: saved.keyThemes, goalsSet: saved.goalsSet, goalsMet: saved.goalsMet, overallScore: saved.overallScore } : null,
+      })
     }),
 
   // Aggregate weekly reviews for the given month to suggest fields
