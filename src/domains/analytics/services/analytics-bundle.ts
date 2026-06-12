@@ -6,6 +6,7 @@
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
+import { fxFactor, parseFxRates } from "@/lib/fx"
 import { computeSetupStats, type SetupStats } from "./setup-analytics"
 import type { AnalyticsTrade } from "./insights-engine"
 
@@ -22,6 +23,7 @@ export interface EmotionIntel { emotion: string; trades: number; avgPnl: number;
 
 export interface AnalyticsBundle {
   window: { from: string | null; to: string | null }
+  baseCurrency: string
   performance: {
     totalTrades: number; wins: number; losses: number
     winRate: number; profitFactor: number | null; expectancy: number
@@ -39,6 +41,7 @@ export interface AnalyticsBundle {
     byEmotion: EmotionIntel[]
     violationRate: number; fomoCount: number; revengeCount: number
     disciplineScore: number
+    sessions: number; avgPreMood: number | null; avgEnergy: number | null
   }
   goals: {
     weeklyPnlGoal: number | null; weeklyTradesGoal: number | null
@@ -74,7 +77,7 @@ export async function buildAnalyticsBundle(
 ): Promise<AnalyticsBundle> {
   const dateFilter = window ? { gte: window.from, lte: window.to } : undefined
 
-  const [tradeRows, accountRows, setupRows, withdrawalRows, userRow] = await Promise.all([
+  const [tradeRows, accountRows, setupRows, withdrawalRows, userRow, sessionRows] = await Promise.all([
     prisma.trade.findMany({
       where: { userId, status: "CLOSED", ...(dateFilter ? { date: dateFilter } : {}) },
       select: {
@@ -88,7 +91,7 @@ export async function buildAnalyticsBundle(
     }),
     prisma.account.findMany({
       where: { userId },
-      select: { id: true, name: true, type: true, initialBalance: true, ddTotalPct: true, locked: true },
+      select: { id: true, name: true, type: true, currency: true, initialBalance: true, ddTotalPct: true, locked: true },
     }),
     prisma.setup.findMany({
       where: { userId },
@@ -96,20 +99,30 @@ export async function buildAnalyticsBundle(
     }),
     prisma.withdrawal.findMany({
       where: { userId, ...(dateFilter ? { date: dateFilter } : {}) },
-      select: { amount: true, date: true },
+      select: { amount: true, currency: true, date: true },
       orderBy: { date: "asc" },
     }),
     prisma.user.findUnique({
       where: { id: userId },
-      select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true },
+      select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true, baseCurrency: true, fxRates: true },
+    }),
+    prisma.tradingSessionLog.findMany({
+      where: { userId, ...(dateFilter ? { date: dateFilter } : {}) },
+      select: { preMood: true, energyLevel: true },
     }),
   ])
+
+  // ── FX normalization to base currency (consistency with dashboard) ──────────
+  const baseCurrency = userRow?.baseCurrency ?? "USD"
+  const fxRates      = parseFxRates(userRow?.fxRates)
+  const fxByAccount  = new Map(accountRows.map(a => [a.id, fxFactor(a.currency, baseCurrency, fxRates)]))
+  const fxOf = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
   // Normalize trades
   const trades: AnalyticsTrade[] = tradeRows.map((t) => ({
     id: t.id, accountId: t.accountId, symbol: t.symbol, direction: t.direction,
     session: t.session as string | null, openTime: t.openTime as string | null, closeTime: t.closeTime as string | null,
-    pnl: t.pnl != null ? Number(t.pnl) : 0, rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
+    pnl: (t.pnl != null ? Number(t.pnl) : 0) * fxOf(t.accountId), rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
     tags: (t.tags as string[]) ?? [], date: (t.date as Date).toISOString().slice(0, 10),
     setupId: t.setupId, entry: Number(t.entry), stop: Number(t.stop), target: Number(t.target), size: Number(t.size),
     emotionBefore: t.emotionBefore as string | null, fomoFlag: t.fomoFlag, revengeFlag: t.revengeFlag,
@@ -141,7 +154,7 @@ export async function buildAnalyticsBundle(
 
   // ── Risk: overall equity curve + per-account drawdown ────────────────────────
   const sortedTrades = [...trades].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-  const initialTotal = accountRows.reduce((s, a) => s + Number(a.initialBalance), 0)
+  const initialTotal = accountRows.reduce((s, a) => s + Number(a.initialBalance) * fxOf(a.id), 0)
   let runningBalance = initialTotal
   let peak = initialTotal
   let worstDrawdownPct = 0
@@ -158,15 +171,16 @@ export async function buildAnalyticsBundle(
     const at = trades.filter((t) => t.accountId === a.id)
     const aWins = at.filter((t) => isWin({ pnl: t.pnl })).length
     const aPnl = at.reduce((s, t) => s + t.pnl, 0)
-    // per-account drawdown
-    let bal = Number(a.initialBalance), pk = bal, ddMax = 0
+    // per-account drawdown (initial balance converted to base; pnl already converted)
+    const acctInitial = Number(a.initialBalance) * fxOf(a.id)
+    let bal = acctInitial, pk = bal, ddMax = 0
     for (const t of [...at].sort((x, y) => x.date.localeCompare(y.date))) {
       bal += t.pnl; pk = Math.max(pk, bal)
       if (pk > 0) ddMax = Math.max(ddMax, ((pk - bal) / pk) * 100)
     }
     return {
       id: a.id, name: a.name, type: a.type,
-      balance: round2(Number(a.initialBalance) + aPnl), initialBalance: Number(a.initialBalance),
+      balance: round2(acctInitial + aPnl), initialBalance: round2(acctInitial),
       netPnl: round2(aPnl), trades: at.length, winRate: round1(calcWinRate(aWins, at.length)),
       ddLimitPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null, maxDrawdownPct: round1(ddMax), locked: a.locked,
     }
@@ -203,12 +217,18 @@ export async function buildAnalyticsBundle(
     winRate: round1(calcWinRate(ts.filter((t) => isWin({ pnl: t.pnl })).length, ts.length)),
   })).sort((a, b) => b.trades - a.trades)
   const violationCount = trades.filter((t) => t.fomoFlag || t.revengeFlag || t.tags.some((x) => VIOLATION_TAGS.includes(x))).length
+  const moods    = sessionRows.map((s) => s.preMood).filter((n): n is number => n != null)
+  const energies = sessionRows.map((s) => s.energyLevel).filter((n): n is number => n != null)
+  const avgOf = (xs: number[]) => xs.length ? round2(xs.reduce((a, b) => a + b, 0) / xs.length) : null
   const psychology = {
     byEmotion,
     violationRate: round1(total ? (violationCount / total) * 100 : 0),
     fomoCount: trades.filter((t) => t.fomoFlag).length,
     revengeCount: trades.filter((t) => t.revengeFlag).length,
     disciplineScore: Math.max(0, Math.round(100 - (total ? (violationCount / total) * 100 : 0))),
+    sessions: sessionRows.length,
+    avgPreMood: avgOf(moods),
+    avgEnergy:  avgOf(energies),
   }
 
   // ── Goals (with this-week progress) ────────────────────────────────────────────
@@ -226,7 +246,7 @@ export async function buildAnalyticsBundle(
   }
 
   // ── Withdrawals ────────────────────────────────────────────────────────────────
-  const wAmounts = withdrawalRows.map((w) => ({ amount: Number(w.amount), date: (w.date as Date).toISOString().slice(0, 10) }))
+  const wAmounts = withdrawalRows.map((w) => ({ amount: Number(w.amount) * fxFactor(w.currency, baseCurrency, fxRates), date: (w.date as Date).toISOString().slice(0, 10) }))
   const totalWithdrawn = wAmounts.reduce((s, w) => s + Math.abs(w.amount), 0)
   const byMonthMap = new Map<string, number>()
   for (const w of wAmounts) { const m = w.date.slice(0, 7); byMonthMap.set(m, (byMonthMap.get(m) ?? 0) + Math.abs(w.amount)) }
@@ -238,6 +258,7 @@ export async function buildAnalyticsBundle(
 
   return {
     window: { from: window?.from.toISOString().slice(0, 10) ?? null, to: window?.to.toISOString().slice(0, 10) ?? null },
+    baseCurrency,
     performance, risk: { worstDrawdownPct: round1(worstDrawdownPct), equityCurve, accounts },
     setups, markets, psychology, goals, withdrawals,
     raw: {
