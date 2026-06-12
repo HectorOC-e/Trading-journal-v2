@@ -6,6 +6,10 @@ vi.mock("@/domains/analytics/ai-context", () => ({
 vi.mock("@/lib/ai/chat", () => ({
   streamChat: vi.fn(),
 }))
+// Anthropic (the platform default provider) routes through the agentic path.
+vi.mock("@/lib/ai/coach-agent", () => ({
+  streamCoachAgent: vi.fn(),
+}))
 // resolve-provider falls back to the env key via getProviderKey when no persisted
 // user key exists; return a stub key so a usable candidate is available.
 vi.mock("@/lib/ai/config", () => ({
@@ -14,14 +18,14 @@ vi.mock("@/lib/ai/config", () => ({
 
 import { streamCoachReply } from "@/lib/ai/coach-service"
 import { buildTraderContext } from "@/domains/analytics/ai-context"
-import { streamChat } from "@/lib/ai/chat"
+import { streamCoachAgent } from "@/lib/ai/coach-agent"
 
 const mockBuildTraderContext = buildTraderContext as ReturnType<typeof vi.fn>
-const mockStreamChat         = streamChat as ReturnType<typeof vi.fn>
+const mockAgent              = streamCoachAgent as ReturnType<typeof vi.fn>
 
-// system is now an array of { text, cache } blocks (prompt caching) — flatten for assertions.
+// system is an array of { text, cache } blocks (prompt caching) — flatten for assertions.
 function systemText(): string {
-  const s = mockStreamChat.mock.calls[0][0].system
+  const s = mockAgent.mock.calls[0][0].system
   return Array.isArray(s) ? s.map((b: { text: string }) => b.text).join("\n\n") : (s ?? "")
 }
 
@@ -66,7 +70,7 @@ const mockPrisma = {
 describe("coach-service (TASK-065)", () => {
   beforeEach(() => {
     mockBuildTraderContext.mockResolvedValue(MOCK_CONTEXT)
-    mockStreamChat.mockResolvedValue(MOCK_STREAM)
+    mockAgent.mockResolvedValue(MOCK_STREAM)
   })
 
   it("calls buildTraderContext with the correct userId", async () => {
@@ -78,7 +82,7 @@ describe("coach-service (TASK-065)", () => {
     const messages = [{ role: "user" as const, content: "¿Cómo mejorar mi win rate?" }]
     await streamCoachReply({ userId: "user-123", messages, prisma: mockPrisma })
 
-    expect(mockStreamChat).toHaveBeenCalledWith(expect.objectContaining({ messages }))
+    expect(mockAgent).toHaveBeenCalledWith(expect.objectContaining({ messages }))
     expect(systemText()).toContain("coach de trading")
   })
 
@@ -105,7 +109,7 @@ describe("coach-service (TASK-065)", () => {
 
   it("sends system as cacheable static block + dynamic data block", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    const system = mockStreamChat.mock.calls[0][0].system
+    const system = mockAgent.mock.calls[0][0].system
     expect(Array.isArray(system)).toBe(true)
     expect(system[0].cache).toBe(true)                       // static block cached
     expect(system[0].text).toContain("Cómo funciona la app") // app-knowledge is static
@@ -119,14 +123,15 @@ describe("coach-service (TASK-065)", () => {
 
   it("resolves the default model from settings (platform default)", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    const callArgs = mockStreamChat.mock.calls[0][0]
+    const callArgs = mockAgent.mock.calls[0][0]
     expect(callArgs.model).toBe("claude-sonnet-4-6")
   })
 
-  it("threads the resolved provider and api key to streamChat", async () => {
+  it("routes the Anthropic default through the agentic path with key + prisma + userId", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    const callArgs = mockStreamChat.mock.calls[0][0]
-    expect(callArgs.provider).toBe("anthropic")  // platform default provider
-    expect(callArgs.apiKey).toBe("test-key")      // from env fallback
+    const callArgs = mockAgent.mock.calls[0][0]
+    expect(callArgs.apiKey).toBe("test-key") // from env fallback
+    expect(callArgs.prisma).toBe(mockPrisma) // tools need DB access
+    expect(callArgs.userId).toBe("user-123")
   })
 })
