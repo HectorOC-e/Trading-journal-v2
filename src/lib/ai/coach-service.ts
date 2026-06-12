@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildTraderContext } from "@/domains/analytics/ai-context"
 import { streamChat }         from "./chat"
+import { streamCoachAgent }   from "./coach-agent"
 import { APP_KNOWLEDGE }      from "./app-knowledge"
 import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provider"
 
@@ -131,6 +132,7 @@ ${APP_KNOWLEDGE}
 - Basa tus respuestas en los datos del trader (provistos a continuación, bajo "## Datos del Trader") cuando sea relevante. Puedes referirte a las cuentas y setups del trader por su nombre.
 - Cuando el trader pregunte cómo hacer algo, explica los pasos usando el mapa de pantallas y señala (en texto) la página o el botón correcto. No puedes navegar ni ejecutar acciones por tu cuenta — solo guías.
 - Cuando ayude, explica el *porqué* detrás de las métricas y recomendaciones.
+- Tienes herramientas para consultar datos específicos bajo demanda: detalle de una cuenta (get_account_detail), de un setup (get_setup_detail) y búsqueda de trades (search_trades). Úsalas cuando el trader pida algo puntual que no esté en el resumen de arriba, en vez de inventar.
 - Sé conciso pero completo. Usa bullet points cuando ayude a la claridad.
 - Si el trader pregunta algo fuera del trading o del uso de la app, redirige amablemente.
 - No inventes datos que no estén en el contexto. Nunca reveles claves de API ni credenciales (no las tienes en el contexto).`
@@ -160,13 +162,28 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
   let lastErr: unknown
   for (const c of candidates) {
     try {
-      return await streamChat({
-        provider: c.provider,
-        apiKey:   c.apiKey,
-        model:    c.model,
-        messages: opts.messages,
-        system:   systemBlocks,
-      })
+      // Agentic path with read-only tools (drill-down on demand). If the model
+      // doesn't support tools, fall back to the static-context streaming path.
+      try {
+        return await streamCoachAgent({
+          provider: c.provider,
+          apiKey:   c.apiKey,
+          model:    c.model,
+          system:   systemBlocks,
+          messages: opts.messages,
+          prisma:   opts.prisma,
+          userId:   opts.userId,
+        })
+      } catch (agentErr) {
+        console.warn(`[coach] agentic path failed for ${c.provider}/${c.model}, falling back to static:`, agentErr instanceof Error ? agentErr.message : agentErr)
+        return await streamChat({
+          provider: c.provider,
+          apiKey:   c.apiKey,
+          model:    c.model,
+          messages: opts.messages,
+          system:   systemBlocks,
+        })
+      }
     } catch (err) {
       lastErr = err
     }
