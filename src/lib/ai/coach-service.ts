@@ -12,7 +12,7 @@ export interface CoachStreamOptions {
   prisma:   PrismaClient
 }
 
-function buildSystemPrompt(ctx: Awaited<ReturnType<typeof buildTraderContext>>): string {
+function buildSystemPrompt(ctx: Awaited<ReturnType<typeof buildTraderContext>>): { static: string; dynamic: string } {
   const { performance, behavior, learning, goals, recentTrades, patterns } = ctx
 
   const goalLines: string[] = []
@@ -69,9 +69,8 @@ function buildSystemPrompt(ctx: Awaited<ReturnType<typeof buildTraderContext>>):
 
   const marketsSummary = ctx.markets.length > 0 ? ctx.markets.map(m => m.symbol).join(", ") : "ninguno en watchlist"
 
-  return `Eres un coach de trading profesional que ayuda a un trader a mejorar su desempeño y disciplina. Hablas en español, eres directo, empático y basas tus observaciones en datos reales. Conoces a fondo la app (un trading journal) y puedes guiar al trader sobre cómo usarla y por qué.
-
-## Datos del Trader
+  // Dynamic block — per-trader data (changes per request, not cached).
+  const dynamic = `## Datos del Trader
 
 ### Rendimiento
 - Trades totales: ${performance.totalTrades}
@@ -120,18 +119,23 @@ ${rulesSummary}
 ${psychSummary}
 
 ### Mercados en watchlist
-  - ${marketsSummary}
+  - ${marketsSummary}`
+
+  // Static block — identical across requests; marked for provider-side prompt caching.
+  const staticPart = `Eres un coach de trading profesional que ayuda a un trader a mejorar su desempeño y disciplina. Hablas en español, eres directo, empático y basas tus observaciones en datos reales. Conoces a fondo la app (un trading journal) y puedes guiar al trader sobre cómo usarla y por qué.
 
 ${APP_KNOWLEDGE}
 
 ## Instrucciones
 - Responde siempre en español.
-- Basa tus respuestas en los datos anteriores cuando sea relevante. Puedes referirte a las cuentas y setups del trader por su nombre.
+- Basa tus respuestas en los datos del trader (provistos a continuación, bajo "## Datos del Trader") cuando sea relevante. Puedes referirte a las cuentas y setups del trader por su nombre.
 - Cuando el trader pregunte cómo hacer algo, explica los pasos usando el mapa de pantallas y señala (en texto) la página o el botón correcto. No puedes navegar ni ejecutar acciones por tu cuenta — solo guías.
 - Cuando ayude, explica el *porqué* detrás de las métricas y recomendaciones.
 - Sé conciso pero completo. Usa bullet points cuando ayude a la claridad.
 - Si el trader pregunta algo fuera del trading o del uso de la app, redirige amablemente.
 - No inventes datos que no estén en el contexto. Nunca reveles claves de API ni credenciales (no las tienes en el contexto).`
+
+  return { static: staticPart, dynamic }
 }
 
 /**
@@ -143,7 +147,8 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
     buildTraderContext(opts.userId, opts.prisma),
     resolveAiCall(opts.prisma, opts.userId, "ai_chat"),
   ])
-  const systemPrompt = buildSystemPrompt(traderCtx)
+  const { static: staticSystem, dynamic } = buildSystemPrompt(traderCtx)
+  const systemBlocks = [{ text: staticSystem, cache: true }, { text: dynamic }]
 
   // Use the user's resolved provider + key (primary, then fallback). Each candidate
   // already carries its own provider/model/apiKey — no env guessing.
@@ -160,7 +165,7 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
         apiKey:   c.apiKey,
         model:    c.model,
         messages: opts.messages,
-        system:   systemPrompt,
+        system:   systemBlocks,
       })
     } catch (err) {
       lastErr = err

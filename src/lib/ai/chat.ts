@@ -9,13 +9,22 @@ import type { AiProvider } from "./config"
 
 export type ChatMessage = { role: "user" | "assistant"; content: string }
 
+/** A system-prompt segment. `cache: true` marks it for provider-side prompt caching. */
+export type SystemBlock = { text: string; cache?: boolean }
+
 export type StreamChatOptions = {
   provider:  AiProvider
   apiKey:    string
   model:     string
   messages:  ChatMessage[]
-  system?:   string
+  system?:   string | SystemBlock[]
   maxTokens?: number
+}
+
+/** Flatten system blocks (or a plain string) into one string — for providers without explicit caching. */
+function systemToString(system: string | SystemBlock[] | undefined): string | undefined {
+  if (system == null) return undefined
+  return typeof system === "string" ? system : system.map(b => b.text).join("\n\n")
 }
 
 /**
@@ -34,10 +43,20 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
     const { default: Anthropic } = await import("@anthropic-ai/sdk")
     const client = new Anthropic({ apiKey: key })
 
+    // System blocks → cache_control for prompt caching (large static block reused
+    // across requests within the 5-min window). Plain string passes through.
+    const systemParam = typeof opts.system === "string" || opts.system == null
+      ? opts.system
+      : opts.system.map(b => ({
+          type: "text" as const,
+          text: b.text,
+          ...(b.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+        }))
+
     const stream = await client.messages.stream({
       model:      opts.model,
       max_tokens: opts.maxTokens ?? 1024,
-      ...(opts.system ? { system: opts.system } : {}),
+      ...(systemParam ? { system: systemParam } : {}),
       messages:   opts.messages,
     })
 
@@ -66,12 +85,15 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
     ? "https://openrouter.ai/api/v1"
     : "https://api.openai.com/v1"
 
+  // OpenAI/OpenRouter cache automatically by prefix (no flag) — flatten blocks to
+  // one system message; keeping the static part first maximizes prefix-cache hits.
+  const systemText = systemToString(opts.system)
   const body: Record<string, unknown> = {
     model:      opts.model,
     max_tokens: opts.maxTokens ?? 1024,
     stream:     true,
-    messages:   opts.system
-      ? [{ role: "system", content: opts.system }, ...opts.messages]
+    messages:   systemText
+      ? [{ role: "system", content: systemText }, ...opts.messages]
       : opts.messages,
   }
 
