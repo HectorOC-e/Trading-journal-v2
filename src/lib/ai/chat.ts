@@ -55,7 +55,7 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
 
     const stream = await client.messages.stream({
       model:      opts.model,
-      max_tokens: opts.maxTokens ?? 1024,
+      max_tokens: opts.maxTokens ?? 4096,
       ...(systemParam ? { system: systemParam } : {}),
       messages:   opts.messages,
     })
@@ -90,7 +90,7 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
   const systemText = systemToString(opts.system)
   const body: Record<string, unknown> = {
     model:      opts.model,
-    max_tokens: opts.maxTokens ?? 1024,
+    max_tokens: opts.maxTokens ?? 4096,
     stream:     true,
     messages:   systemText
       ? [{ role: "system", content: systemText }, ...opts.messages]
@@ -125,6 +125,18 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
       const decoder = new TextDecoder()
       let   buffer  = ""
 
+      const processLine = (line: string) => {
+        const trimmed = line.replace(/^data:\s*/, "")
+        if (!trimmed || trimmed === "[DONE]") return
+        try {
+          const json = JSON.parse(trimmed) as { choices?: { delta?: { content?: string } }[] }
+          const text = json.choices?.[0]?.delta?.content
+          if (text) controller.enqueue(encoder.encode(text))
+        } catch {
+          // skip malformed SSE lines
+        }
+      }
+
       try {
         while (true) {
           const { done, value } = await reader.read()
@@ -133,21 +145,12 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
 
           const lines = buffer.split("\n")
           buffer = lines.pop() ?? ""
-
-          for (const line of lines) {
-            const trimmed = line.replace(/^data:\s*/, "")
-            if (!trimmed || trimmed === "[DONE]") continue
-            try {
-              const json = JSON.parse(trimmed) as {
-                choices?: { delta?: { content?: string } }[]
-              }
-              const text = json.choices?.[0]?.delta?.content
-              if (text) controller.enqueue(encoder.encode(text))
-            } catch {
-              // skip malformed SSE lines
-            }
-          }
+          for (const line of lines) processLine(line)
         }
+        // Flush any trailing buffered line that arrived without a final newline
+        // (otherwise the last chunk of the reply is silently dropped → truncation).
+        buffer += decoder.decode()
+        if (buffer.trim()) processLine(buffer)
         controller.close()
       } catch (err) {
         console.error(`[streamChat:${provider}] stream error`, { model: opts.model, err })

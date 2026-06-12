@@ -53,7 +53,7 @@ export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promi
   let lastErr: unknown
   for (const c of candidates) {
     try {
-      return await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, system: SYSTEM, messages: [{ role: "user", content: ctx }], maxTokens: 2000 })
+      return await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, system: SYSTEM, messages: [{ role: "user", content: ctx }], maxTokens: 4096 })
     } catch (err) { lastErr = err }
   }
   throw lastErr
