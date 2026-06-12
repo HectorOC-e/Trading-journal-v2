@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate, calcSharpeRatio } from "@/lib/formulas"
+import { calcSetupHealth } from "@/lib/formulas/setup"
+import { fxFactor, parseFxRates } from "@/lib/fx"
 import { VIOLATION_TAGS } from "@/types"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
@@ -48,6 +50,38 @@ export type TraderContext = {
     session: string | null
   }[]
   patterns: DetectedPattern[]
+  // ── Global context (read-only; never includes credentials) ──────────────────
+  baseCurrency: string
+  accounts: {
+    name: string
+    type: string
+    currency: string
+    phase: string | null
+    status: string
+    locked: boolean
+    lockReason: string | null
+    balance: number          // equity in baseCurrency (initial + closed P&L, FX-converted)
+    ddDailyPct: number | null
+    ddTotalPct: number | null
+    targetPct: number | null
+  }[]
+  setups: {
+    name: string
+    abbreviation: string
+    market: string
+    direction: string
+    status: string
+    expectedWr: number | null
+    expectedAvgR: number | null
+    winRate: number
+    avgR: number
+    tradeCount: number
+    health: string
+  }[]
+  withdrawals: Record<string, Record<string, { count: number; amount: number }>> // { currency: { status: {...} } }
+  rules: { name: string; severity: string }[]
+  psychology: { sessions: number; avgPreMood: number | null; avgEnergy: number | null }
+  markets: { symbol: string; name: string }[]
 }
 
 // ── Explicit raw row types (avoid Prisma any-cascade in worktree) ─────────────
@@ -89,7 +123,33 @@ type RawReviewRow = {
 type RawSetupRow = {
   id: string
   name: string
+  abbreviation: string
+  market: string
+  direction: string
+  status: string
+  expectedWr: unknown
+  expectedAvgR: unknown
 }
+
+type RawAccountRow = {
+  id: string
+  name: string
+  type: string
+  currency: string
+  phase: string | null
+  status: string
+  locked: boolean
+  lockReason: string | null
+  initialBalance: unknown
+  ddDailyPct: unknown
+  ddTotalPct: unknown
+  targetPct: unknown
+}
+
+type RawWithdrawalRow = { currency: string; status: string; amount: unknown }
+type RawRuleRow = { name: string; severity: string }
+type RawSessionRow = { preMood: number | null; energyLevel: number | null }
+type RawMarketRow = { symbol: string; name: string }
 
 export async function buildTraderContext(
   userId: string,
@@ -103,8 +163,9 @@ export async function buildTraderContext(
     ? { gte: window.from, lte: window.to }
     : undefined
 
-  // ── 5 parallel sub-fetches ────────────────────────────────────────────────
-  const [tradeRows, violationRows, learningRows, reviewRows, setupRows, goalRow] = await Promise.all([
+  // ── parallel sub-fetches ──────────────────────────────────────────────────
+  const [tradeRows, violationRows, learningRows, reviewRows, setupRows, goalRow,
+         accountRows, withdrawalRows, ruleRows, sessionRows, marketRows] = await Promise.all([
     // 1. Closed trades for performance & patterns
     prisma.trade.findMany({
       where: {
@@ -148,20 +209,51 @@ export async function buildTraderContext(
       select: { id: true, status: true },
     }) as Promise<RawReviewRow[]>,
 
-    // 5. Setup metadata for best/worst setup
+    // 5. Setup catalog (name + edge + meta for per-setup stats)
     prisma.setup.findMany({
       where: { userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, abbreviation: true, market: true, direction: true, status: true, expectedWr: true, expectedAvgR: true },
     }) as Promise<RawSetupRow[]>,
 
-    // 6. Personal goals (HALLAZGO 3)
+    // 6. Personal goals + base currency / FX overrides
     prisma.user.findUnique({
       where:  { id: userId },
-      select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true },
+      select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true, baseCurrency: true, fxRates: true },
     }),
+
+    // 7. Accounts (no credentials)
+    prisma.account.findMany({
+      where:  { userId },
+      select: { id: true, name: true, type: true, currency: true, phase: true, status: true, locked: true, lockReason: true, initialBalance: true, ddDailyPct: true, ddTotalPct: true, targetPct: true },
+    }) as Promise<RawAccountRow[]>,
+
+    // 8. Withdrawals (for aggregation)
+    prisma.withdrawal.findMany({
+      where:  { userId },
+      select: { currency: true, status: true, amount: true },
+    }) as Promise<RawWithdrawalRow[]>,
+
+    // 9. Active rules
+    prisma.rule.findMany({
+      where:  { userId, enabled: true },
+      select: { name: true, severity: true },
+    }) as Promise<RawRuleRow[]>,
+
+    // 10. Trading session logs (psychology)
+    prisma.tradingSessionLog.findMany({
+      where:  { userId },
+      select: { preMood: true, energyLevel: true },
+    }) as Promise<RawSessionRow[]>,
+
+    // 11. Watchlisted markets
+    prisma.market.findMany({
+      where:  { userId, isWatchlisted: true },
+      select: { symbol: true, name: true },
+    }) as Promise<RawMarketRow[]>,
   ]) as [RawTradeRow[], RawViolationRow[], RawLearningRow[], RawReviewRow[], RawSetupRow[], {
     weeklyPnlGoal: unknown; weeklyTradesGoal: number | null; disciplineGoal: number | null; weeklyGoalMinutes: number | null
-  } | null]
+    baseCurrency: string | null; fxRates: unknown
+  } | null, RawAccountRow[], RawWithdrawalRow[], RawRuleRow[], RawSessionRow[], RawMarketRow[]]
 
   // ── Normalize trades to MinimalTrade ──────────────────────────────────────
   const trades: MinimalTrade[] = tradeRows.map((t: RawTradeRow) => ({
@@ -298,7 +390,74 @@ export async function buildTraderContext(
     weekTrades:        weekTradesArr.length,
   }
 
+  // ── Global context (read-only) ────────────────────────────────────────────
+  const baseCurrency = goalRow?.baseCurrency ?? "USD"
+  const fxRates      = parseFxRates(goalRow?.fxRates)
+
+  // Per-account closed P&L (in the account's own currency)
+  const netByAccount = new Map<string, number>()
+  for (const t of trades) netByAccount.set(t.accountId, (netByAccount.get(t.accountId) ?? 0) + t.pnl)
+
+  const accounts: TraderContext["accounts"] = accountRows.map(a => {
+    const initial = Number(a.initialBalance)
+    const equity  = initial + (netByAccount.get(a.id) ?? 0)
+    return {
+      name:       a.name,
+      type:       a.type,
+      currency:   a.currency,
+      phase:      a.phase,
+      status:     a.status,
+      locked:     a.locked,
+      lockReason: a.lockReason || null,
+      balance:    parseFloat((equity * fxFactor(a.currency, baseCurrency, fxRates)).toFixed(2)),
+      ddDailyPct: a.ddDailyPct != null ? Number(a.ddDailyPct) : null,
+      ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null,
+      targetPct:  a.targetPct  != null ? Number(a.targetPct)  : null,
+    }
+  })
+
+  // Per-setup stats + health
+  const setups: TraderContext["setups"] = setupRows.map(s => {
+    const st = trades.filter(t => t.setupId === s.id)
+    const wins = st.filter(t => isWin({ pnl: t.pnl })).length
+    const withRs = st.filter(t => t.rMultiple != null)
+    const winRate = parseFloat(calcWinRate(wins, st.length).toFixed(2))
+    const avgRs   = withRs.length > 0 ? parseFloat((withRs.reduce((a, t) => a + t.rMultiple!, 0) / withRs.length).toFixed(4)) : 0
+    const expWr   = s.expectedWr   != null ? Number(s.expectedWr)   : null
+    const expR    = s.expectedAvgR != null ? Number(s.expectedAvgR) : null
+    return {
+      name: s.name, abbreviation: s.abbreviation, market: s.market, direction: s.direction, status: s.status,
+      expectedWr: expWr, expectedAvgR: expR, winRate, avgR: avgRs, tradeCount: st.length,
+      health: calcSetupHealth({ winRate, avgR: avgRs, expectedWr: expWr, expectedAvgR: expR, tradeCount: st.length }),
+    }
+  })
+
+  // Withdrawals aggregated by currency → status
+  const withdrawals: TraderContext["withdrawals"] = {}
+  for (const w of withdrawalRows) {
+    const cur = (withdrawals[w.currency] ??= {})
+    const cell = (cur[w.status] ??= { count: 0, amount: 0 })
+    cell.count += 1
+    cell.amount = parseFloat((cell.amount + Number(w.amount)).toFixed(2))
+  }
+
+  const rules = ruleRows.map(r => ({ name: r.name, severity: r.severity }))
+
+  const moods   = sessionRows.map(s => s.preMood).filter((n): n is number => n != null)
+  const energies = sessionRows.map(s => s.energyLevel).filter((n): n is number => n != null)
+  const avg = (xs: number[]) => xs.length ? parseFloat((xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2)) : null
+  const psychology = { sessions: sessionRows.length, avgPreMood: avg(moods), avgEnergy: avg(energies) }
+
+  const markets = marketRows.map(m => ({ symbol: m.symbol, name: m.name }))
+
   return {
+    baseCurrency,
+    accounts,
+    setups,
+    withdrawals,
+    rules,
+    psychology,
+    markets,
     performance: {
       totalTrades: total,
       winRate,
