@@ -35,6 +35,17 @@ const MOCK_CONTEXT = {
   },
   recentTrades: [],
   patterns:     [],
+  baseCurrency: "USD",
+  accounts: [
+    { name: "FTMO 100K", type: "PROP_FIRM", currency: "USD", phase: "FUNDED", status: "ACTIVE", locked: false, lockReason: null, balance: 107680, ddDailyPct: 5, ddTotalPct: 10, targetPct: 8 },
+  ],
+  setups: [
+    { name: "Breakout London", abbreviation: "BL", market: "Forex", direction: "AMBAS", status: "ACTIVO", expectedWr: 55, expectedAvgR: 1.2, winRate: 60, avgR: 1.4, tradeCount: 12, health: "healthy" },
+  ],
+  withdrawals: { USD: { PAGADO: { count: 2, amount: 8500 } } },
+  rules:       [{ name: "Max 2 trades/día", severity: "CRÍTICA" }],
+  psychology:  { sessions: 4, avgPreMood: 3.5, avgEnergy: 4 },
+  markets:     [{ symbol: "EURUSD", name: "Euro / Dólar" }],
 }
 
 const MOCK_STREAM = new ReadableStream()
@@ -75,6 +86,21 @@ describe("coach-service (TASK-065)", () => {
     const callArgs = mockStreamChat.mock.calls[0][0]
     expect(callArgs.system).toContain("60%") // win rate
     expect(callArgs.system).toContain("500")  // netPnl
+  })
+
+  it("includes global context (accounts + setups by name) in the system prompt", async () => {
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+    const system = mockStreamChat.mock.calls[0][0].system
+    expect(system).toContain("FTMO 100K")        // account by name
+    expect(system).toContain("Breakout London")  // setup by name
+    expect(system).toContain("PROP_FIRM")
+  })
+
+  it("includes the app-usage knowledge block", async () => {
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+    const system = mockStreamChat.mock.calls[0][0].system
+    expect(system).toContain("Cómo funciona la app")
+    expect(system).toContain("Cómo hacer tareas clave")
   })
 
   it("returns the ReadableStream from streamChat directly", async () => {
