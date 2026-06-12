@@ -5,6 +5,7 @@ import { X, Star, ChevronDown, ChevronUp, Trophy } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { cn } from "@/lib/utils"
+import { MASTERY_STAGES, masteryStageIndex } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceType, ResourceStatus } from "@/types"
 
 // ─── Mastery sparkline (L024) ─────────────────────────────────────────────────
@@ -259,6 +260,21 @@ export function ResourceDrawer({
             <p className="text-[11px] text-[var(--ink-3)] mt-0.5">
               {[resource.author, resource.date, resource.source].filter(Boolean).join(" · ")}
             </p>
+            {/* Stepper de dominio */}
+            <div className="flex items-center gap-1 mt-2 flex-wrap" aria-label="Etapa de dominio">
+              {MASTERY_STAGES.map((s, i) => {
+                const cur = masteryStageIndex(resource.status as ResourceStatus)
+                return (
+                  <span key={s} className="inline-flex items-center gap-1">
+                    <span className={cn(
+                      "text-[10px] px-1.5 py-0.5 rounded",
+                      i === cur ? "bg-[var(--accent)] text-white font-semibold" : i < cur ? "text-[var(--ink-2)]" : "text-[var(--ink-3)] opacity-40",
+                    )}>{s}</span>
+                    {i < MASTERY_STAGES.length - 1 && <span className="text-[var(--ink-3)] opacity-50 text-[10px]">›</span>}
+                  </span>
+                )
+              })}
+            </div>
           </div>
           <button
             className="text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors shrink-0 p-1"

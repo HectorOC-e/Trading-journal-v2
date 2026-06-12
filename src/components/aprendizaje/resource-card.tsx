@@ -5,7 +5,24 @@ import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy
 import { cn } from "@/lib/utils"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
+import { masteryLevel, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
+
+/** Pequeño anillo de dominio (n/5). */
+function MasteryRing({ level }: { level: number }) {
+  const r = 9, circ = 2 * Math.PI * r
+  const done = level >= MASTERY_MAX
+  return (
+    <span title={`Dominio ${level}/${MASTERY_MAX}`} aria-label={`Dominio ${level} de ${MASTERY_MAX}`} className="inline-flex items-center gap-1 shrink-0">
+      <svg width="20" height="20" viewBox="0 0 22 22" aria-hidden>
+        <circle cx="11" cy="11" r={r} fill="none" stroke="var(--line)" strokeWidth="2.5" />
+        <circle cx="11" cy="11" r={r} fill="none" stroke={done ? "var(--win)" : "var(--accent)"} strokeWidth="2.5"
+          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={circ * (1 - level / MASTERY_MAX)} transform="rotate(-90 11 11)" />
+      </svg>
+      <span className="text-[10px] font-semibold tabular-nums" style={{ color: done ? "var(--win)" : "var(--ink-3)" }}>{level}/{MASTERY_MAX}</span>
+    </span>
+  )
+}
 
 const TYPE_COLORS: Record<ResourceType, string> = {
   LIBRO:       "#f59e0b",
@@ -241,6 +258,7 @@ export function ResourceCard({
             >
               {STATUS_CONFIG[resource.status].label}
             </span>
+            <MasteryRing level={masteryLevel(resource.status)} />
           </div>
 
           {/* ··· dropdown — always visible & touch-friendly (C1 fix) */}
@@ -414,12 +432,19 @@ export function ResourceCard({
           </div>
         )}
 
-        {/* nextReviewAt countdown */}
-        {reviewCountdown(resource.nextReviewAt) && (
+        {/* nextReviewAt countdown — CTA cuando vence, texto cuando falta */}
+        {isReviewDue(resource.nextReviewAt) ? (
+          <button
+            onClick={() => onReview?.(resource)}
+            className="self-start inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] bg-[#f59e0b] text-white hover:opacity-90 transition-opacity"
+          >
+            ⏰ Repasar hoy →
+          </button>
+        ) : reviewCountdown(resource.nextReviewAt) ? (
           <span className="text-[10px] font-medium" style={{ color: "#b45309" }}>
             ⏰ {reviewCountdown(resource.nextReviewAt)}
           </span>
-        )}
+        ) : null}
 
         {/* Tags */}
         {resource.tags.length > 0 && (
