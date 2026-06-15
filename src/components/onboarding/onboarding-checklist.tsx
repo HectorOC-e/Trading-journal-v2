@@ -39,14 +39,24 @@ export function OnboardingChecklist() {
     try { return localStorage.getItem("tj-onboarding-dismissed") === "1" } catch { return false }
   })
 
-  const { data: accounts  = [] } = trpc.accounts.list.useQuery(undefined,          { staleTime: 60_000 })
-  const { data: setups    = [] } = trpc.setups.list.useQuery(undefined,             { staleTime: 60_000 })
-  const { data: tradePg        } = trpc.trades.list.useQuery({ limit: 1 },          { staleTime: 60_000 })
-  const { data: profile        } = trpc.profile.get.useQuery(undefined,             { staleTime: 60_000 })
+  const accountsQ = trpc.accounts.list.useQuery(undefined,  { staleTime: 60_000 })
+  const setupsQ   = trpc.setups.list.useQuery(undefined,    { staleTime: 60_000 })
+  const tradesQ   = trpc.trades.list.useQuery({ limit: 1 }, { staleTime: 60_000 })
+  const profileQ  = trpc.profile.get.useQuery(undefined,    { staleTime: 60_000 })
 
   if (dismissed) return null
 
-  const tradeCount = tradePg?.items.length ?? 0
+  // Fallback: until every query has resolved, render nothing instead of a
+  // misleading 0/4 that flashes for returning, fully-onboarded users. On error
+  // we also stay hidden (the dashboard already surfaces load failures).
+  const queries = [accountsQ, setupsQ, tradesQ, profileQ]
+  if (queries.some(q => q.isLoading)) return null
+  if (queries.some(q => q.isError))   return null
+
+  const accounts = accountsQ.data ?? []
+  const setups   = setupsQ.data ?? []
+  const profile  = profileQ.data
+  const tradeCount = tradesQ.data?.items.length ?? 0
 
   const items: ChecklistItem[] = [
     {
