@@ -101,8 +101,8 @@ export function SimpleTable<T>({
                 {stagger && (
                   <motion.span aria-hidden initial={{ opacity: 0.4 }} animate={{ opacity: 0 }} transition={{ duration: 0.7, delay, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
                 )}
-                {/* Hover accent bar — always, so read-only tables react to hover too. */}
-                <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+                {/* Accent bar — hover (desktop) + active/tap (mobile). */}
+                <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 group-active:scale-y-100 transition-transform duration-200" />
                 {columns.map(c => (
                   <div
                     key={c.key}

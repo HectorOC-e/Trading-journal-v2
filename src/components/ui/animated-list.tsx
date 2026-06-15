@@ -61,6 +61,7 @@ export function AnimatedList<T>({
                 y: { type: "spring", duration: m.spring.duration, bounce: m.spring.bounce, delay },
               }}
               whileHover={isCard ? { y: m.hoverLift } : undefined}
+              whileTap={isCard ? { scale: 0.985 } : undefined}
               onClick={onItemClick ? () => onItemClick(item, i) : undefined}
               {...(onItemClick ? roving.getItemProps(i) : {})}
               className={cn(
@@ -78,9 +79,9 @@ export function AnimatedList<T>({
                 transition={{ duration: 0.7, delay, ease: EASE_OUT }}
                 className="pointer-events-none absolute inset-0 rounded-[var(--radius)] bg-[var(--accent)]"
               />
-              {/* List preset: hover accent bar on the left edge (always). */}
+              {/* List preset: accent bar — hover (desktop) + active/tap (mobile). */}
               {!isCard && (
-                <span aria-hidden className="pointer-events-none absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+                <span aria-hidden className="pointer-events-none absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 group-active:scale-y-100 transition-transform duration-200" />
               )}
               <div className="relative">{renderItem(item, i)}</div>
             </motion.div>
