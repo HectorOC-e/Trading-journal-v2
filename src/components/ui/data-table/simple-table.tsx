@@ -90,8 +90,9 @@ export function SimpleTable<T>({
                 {...(onRowClick ? roving.getItemProps(i) : {})}
                 className={cn(
                   "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none transition-[background-color,box-shadow] duration-100",
+                  "hover:bg-[var(--panel-2)]",
                   "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
-                  onRowClick && "cursor-pointer hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
+                  onRowClick && "cursor-pointer active:bg-[var(--accent-soft)]",
                   rowClassName?.(row, i),
                 )}
                 style={{ gridTemplateColumns: cols }}
@@ -100,9 +101,8 @@ export function SimpleTable<T>({
                 {stagger && (
                   <motion.span aria-hidden initial={{ opacity: 0.4 }} animate={{ opacity: 0 }} transition={{ duration: 0.7, delay, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
                 )}
-                {onRowClick && (
-                  <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
-                )}
+                {/* Hover accent bar — always, so read-only tables react to hover too. */}
+                <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
                 {columns.map(c => (
                   <div
                     key={c.key}

@@ -78,8 +78,8 @@ export function AnimatedList<T>({
                 transition={{ duration: 0.7, delay, ease: EASE_OUT }}
                 className="pointer-events-none absolute inset-0 rounded-[var(--radius)] bg-[var(--accent)]"
               />
-              {/* List preset: hover accent bar on the left edge */}
-              {!isCard && onItemClick && (
+              {/* List preset: hover accent bar on the left edge (always). */}
+              {!isCard && (
                 <span aria-hidden className="pointer-events-none absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
               )}
               <div className="relative">{renderItem(item, i)}</div>
