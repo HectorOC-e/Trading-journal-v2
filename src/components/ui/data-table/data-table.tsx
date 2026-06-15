@@ -5,12 +5,11 @@ import { flexRender, type Row as TRow, type Table } from "@tanstack/react-table"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowUp, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { EASE_OUT } from "@/lib/motion"
+import { COLLECTION, EASE_OUT, staggerDelay } from "@/lib/motion"
+import { useRovingFocus } from "@/hooks/useRovingFocus"
 import type { Density } from "./use-data-table"
 
-// Cascade cap: stagger the first N rows so a full page doesn't take ~1s to land.
-const STAGGER_STEP = 0.03
-const STAGGER_CAP = 14
+type RovingItemProps = { tabIndex: number; ref: (el: HTMLElement | null) => void; onFocus: () => void }
 
 // Render as a div-grid (not a real <table>) with ARIA grid roles. This is what
 // lets each row be a `motion.div` with layout animation — real <tr> elements
@@ -49,6 +48,9 @@ export function DataTable<TData>({
   const cols = gridTemplate(table)
   const rows = table.getRowModel().rows
   const colCount = table.getVisibleLeafColumns().length
+  const roving = useRovingFocus(rows.length, {
+    onActivate: onRowClick ? (i) => onRowClick(rows[i].original) : undefined,
+  })
 
   return (
     <div
@@ -118,7 +120,7 @@ export function DataTable<TData>({
       </div>
 
       {/* Body */}
-      <div role="rowgroup">
+      <div role="rowgroup" {...(onRowClick ? roving.containerProps : {})}>
         {isLoading ? (
           <TableSkeleton cols={cols} colCount={colCount} density={density} />
         ) : rows.length === 0 ? (
@@ -133,6 +135,7 @@ export function DataTable<TData>({
                 cols={cols}
                 density={density}
                 onRowClick={onRowClick}
+                rovingProps={onRowClick ? roving.getItemProps(i) : undefined}
               />
             ))}
           </AnimatePresence>
@@ -143,32 +146,36 @@ export function DataTable<TData>({
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────
-function Row<TData>({ row, index, cols, density, onRowClick }: {
+function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
   row: TRow<TData>
   index: number
   cols: string
   density: Density
   onRowClick?: (row: TData) => void
+  rovingProps?: RovingItemProps
 }) {
   const selected = row.getIsSelected()
-  const delay = Math.min(index, STAGGER_CAP) * STAGGER_STEP
+  const delay = staggerDelay(index, "table")
+  const spring = COLLECTION.table.spring
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: COLLECTION.table.enterY }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
       transition={{
         layout:  { type: "spring", duration: 0.34, bounce: 0.25 },
         opacity: { duration: 0.22, delay, ease: EASE_OUT },
-        y:       { type: "spring", duration: 0.4, bounce: 0.3, delay },
+        y:       { type: "spring", duration: spring.duration, bounce: spring.bounce, delay },
       }}
       role="row"
       aria-selected={selected}
       onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+      {...rovingProps}
       className={cn(
-        "group relative grid items-center border-b border-[var(--line)] last:border-b-0",
+        "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none",
         "transition-[background-color,box-shadow] duration-150",
+        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
         onRowClick && "cursor-pointer hover:z-[1] hover:shadow-[var(--shadow-sm)]",
         selected
           ? "bg-[var(--accent-soft)]"

@@ -5,6 +5,7 @@ import { Star, Plus, X, Loader2, Search, Pencil, Trash2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AnimatedList } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
@@ -391,16 +392,16 @@ export default function MercadosPage() {
 
       {/* Grid */}
       {!isLoading && !seedDefaults.isPending && visible.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-          {visible.map(m => (
+        <AnimatedList
+          items={visible}
+          getKey={(m) => m.id}
+          preset="card"
+          className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]"
+          renderItem={(m) => (
             <MarketCard
-              key={m.id}
               market={m}
               toggling={togglingId === m.id}
-              onToggleWatch={() => {
-                setTogglingId(m.id)
-                toggleWatch.mutate({ id: m.id, isWatchlisted: !m.isWatchlisted })
-              }}
+              onToggleWatch={() => { setTogglingId(m.id); toggleWatch.mutate({ id: m.id, isWatchlisted: !m.isWatchlisted }) }}
               onEdit={() => setEditing({
                 id: m.id, symbol: m.symbol, name: m.name,
                 category: m.category as MarketCategory,
@@ -410,8 +411,8 @@ export default function MercadosPage() {
               })}
               onDelete={() => deleteMarket.mutate(m.id)}
             />
-          ))}
-        </div>
+          )}
+        />
       )}
 
       {/* Modals */}

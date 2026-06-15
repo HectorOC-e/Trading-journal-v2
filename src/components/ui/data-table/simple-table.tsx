@@ -3,7 +3,8 @@
 import { type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { EASE_OUT } from "@/lib/motion"
+import { COLLECTION, EASE_OUT, staggerDelay, type CollectionPreset } from "@/lib/motion"
+import { useRovingFocus } from "@/hooks/useRovingFocus"
 import type { Density } from "./use-data-table"
 
 // Lightweight, read-only table that shares the DataTable look (header style,
@@ -20,8 +21,6 @@ export interface SimpleColumn<T> {
   cellClassName?: string
 }
 
-const STAGGER_STEP = 0.03
-const STAGGER_CAP = 12
 const ROW_PAD: Record<Density, string> = { compact: "py-1.5", comfortable: "py-2.5" }
 
 export function SimpleTable<T>({
@@ -34,6 +33,7 @@ export function SimpleTable<T>({
   className,
   stagger = true,
   rowClassName,
+  preset = "table",
 }: {
   columns: SimpleColumn<T>[]
   data: T[]
@@ -44,8 +44,13 @@ export function SimpleTable<T>({
   className?: string
   stagger?: boolean
   rowClassName?: (row: T, index: number) => string | undefined
+  /** Motion preset — defaults to dense "table". */
+  preset?: CollectionPreset
 }) {
   const cols = columns.map(c => c.width ?? "minmax(80px, 1fr)").join(" ")
+  const roving = useRovingFocus(data.length, {
+    onActivate: onRowClick ? (i) => onRowClick(data[i]) : undefined,
+  })
 
   return (
     <div role="table" className={cn("rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden", className)}>
@@ -67,48 +72,57 @@ export function SimpleTable<T>({
       </div>
 
       {/* Body */}
-      {data.length === 0 ? (
-        <div className="py-10 text-center text-[13px] text-[var(--ink-3)]">{empty ?? "Sin datos"}</div>
-      ) : (
-        data.map((row, i) => {
-          const delay = stagger ? Math.min(i, STAGGER_CAP) * STAGGER_STEP : 0
-          return (
-            <motion.div
-              key={getRowKey?.(row, i) ?? i}
-              initial={stagger ? { opacity: 0, y: 8 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.24, delay, ease: EASE_OUT }}
-              role="row"
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={cn(
-                "group relative grid items-center border-b border-[var(--line)] last:border-b-0 transition-colors duration-100",
-                onRowClick && "cursor-pointer hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
-                rowClassName?.(row, i),
-              )}
-              style={{ gridTemplateColumns: cols }}
-            >
-              {onRowClick && (
-                <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
-              )}
-              {columns.map(c => (
-                <div
-                  key={c.key}
-                  role="cell"
-                  className={cn(
-                    "px-3 text-[13px] text-[var(--ink-2)] min-w-0",
-                    ROW_PAD[density],
-                    c.align === "right" && "text-right",
-                    c.align === "center" && "text-center",
-                    c.cellClassName,
-                  )}
-                >
-                  {c.render ? c.render(row, i) : ((row as Record<string, unknown>)[c.key] as ReactNode)}
-                </div>
-              ))}
-            </motion.div>
-          )
-        })
-      )}
+      <div role="rowgroup" {...(onRowClick ? roving.containerProps : {})}>
+        {data.length === 0 ? (
+          <div className="py-10 text-center text-[13px] text-[var(--ink-3)]">{empty ?? "Sin datos"}</div>
+        ) : (
+          data.map((row, i) => {
+            const delay = stagger ? staggerDelay(i, preset) : 0
+            const spring = COLLECTION[preset].spring
+            return (
+              <motion.div
+                key={getRowKey?.(row, i) ?? i}
+                initial={stagger ? { opacity: 0, y: COLLECTION[preset].enterY } : false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ opacity: { duration: 0.24, delay, ease: EASE_OUT }, y: { type: "spring", duration: spring.duration, bounce: spring.bounce, delay } }}
+                role="row"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                {...(onRowClick ? roving.getItemProps(i) : {})}
+                className={cn(
+                  "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none transition-[background-color,box-shadow] duration-100",
+                  "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
+                  onRowClick && "cursor-pointer hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
+                  rowClassName?.(row, i),
+                )}
+                style={{ gridTemplateColumns: cols }}
+              >
+                {/* Enter flash — parity with DataTable. */}
+                {stagger && (
+                  <motion.span aria-hidden initial={{ opacity: 0.4 }} animate={{ opacity: 0 }} transition={{ duration: 0.7, delay, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
+                )}
+                {onRowClick && (
+                  <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+                )}
+                {columns.map(c => (
+                  <div
+                    key={c.key}
+                    role="cell"
+                    className={cn(
+                      "relative px-3 text-[13px] text-[var(--ink-2)] min-w-0",
+                      ROW_PAD[density],
+                      c.align === "right" && "text-right",
+                      c.align === "center" && "text-center",
+                      c.cellClassName,
+                    )}
+                  >
+                    {c.render ? c.render(row, i) : ((row as Record<string, unknown>)[c.key] as ReactNode)}
+                  </div>
+                ))}
+              </motion.div>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }

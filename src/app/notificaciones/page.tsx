@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Lock, Clock, BookOpen, ShieldCheck, Check, CheckCheck, BellOff } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
+import { AnimatedList } from "@/components/ui/data-table"
 import { useNotifications, type AppNotification, type NotifCategory } from "@/lib/notifications"
 
 const TONE_ICON = { danger: Lock, warning: Clock, info: BookOpen, reminder: ShieldCheck } as const
@@ -48,18 +49,16 @@ export default function NotificacionesPage() {
           {grouped.map(({ cat, items }) => (
             <section key={cat}>
               <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--ink-3)] mb-2">{cat}</p>
-              <div className="flex flex-col gap-2">
-                {items.map((n) => {
+              <AnimatedList
+                items={items}
+                getKey={(n) => n.id}
+                preset="list"
+                className="flex flex-col gap-2"
+                renderItem={(n) => {
                   const Icon = TONE_ICON[n.tone]
                   return (
-                    <div
-                      key={n.id}
-                      className="flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3 card-hover"
-                    >
-                      <span
-                        className="mt-0.5 shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
-                        style={{ background: "var(--panel-2)", color: toneColor(n.tone) }}
-                      >
+                    <div className="flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3 card-hover">
+                      <span className="mt-0.5 shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--panel-2)", color: toneColor(n.tone) }}>
                         <Icon size={16} />
                       </span>
                       <Link href={n.href} className="min-w-0 flex-1">
@@ -71,8 +70,8 @@ export default function NotificacionesPage() {
                       </Button>
                     </div>
                   )
-                })}
-              </div>
+                }}
+              />
             </section>
           ))}
         </div>

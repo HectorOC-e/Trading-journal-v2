@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc/client"
 import { askCoach } from "@/lib/coach-bus"
 import { currencySymbol } from "@/lib/fx"
 import { CountUp } from "@/components/ui/count-up"
+import { SimpleTable } from "@/components/ui/data-table"
 import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
@@ -65,14 +66,6 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
   )
 }
 
-function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
-  return <th className={`text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)] py-2 px-3 ${right ? "text-right" : "text-left"}`}>{children}</th>
-}
-function Td({ children, right, tone }: { children: React.ReactNode; right?: boolean; tone?: "win" | "loss" }) {
-  const color = tone === "win" ? "var(--win)" : tone === "loss" ? "var(--loss)" : "var(--ink-2)"
-  return <td className={`text-[12px] py-2 px-3 ${right ? "text-right num" : ""}`} style={{ color }}>{children}</td>
-}
-
 function Sparkline({ points }: { points: number[] }) {
   if (points.length < 2) return null
   const min = Math.min(...points), max = Math.max(...points)
@@ -117,28 +110,18 @@ function Risk({ d }: { d: Overview }) {
           <Sparkline points={d.risk.equityCurve.map(e => e.balance)} />
         </div>
       </div>
-      <Table head={["Cuenta", "Balance", "Drawdown", "Límite DD", "Estado"]}>
-        {d.risk.accounts.map(a => (
-          <tr key={a.id} className="border-t border-[var(--line)]">
-            <Td>{a.name}</Td>
-            <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{amt(a.balance, sym)}</Td>
-            <Td right tone={a.maxDrawdownPct > 0 ? "loss" : undefined}>{a.maxDrawdownPct}%</Td>
-            <Td right>{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</Td>
-            <Td><span style={{ color: a.locked ? "var(--loss)" : "var(--win)" }}>{a.locked ? "Bloqueada" : "Activa"}</span></Td>
-          </tr>
-        ))}
-      </Table>
-    </div>
-  )
-}
-
-function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
-  return (
-    <div className="rounded-[var(--radius)] border border-[var(--line)] overflow-x-auto" style={{ background: "var(--panel)" }}>
-      <table className="w-full border-collapse min-w-[480px]">
-        <thead><tr>{head.map((h, i) => <Th key={h} right={i > 0}>{h}</Th>)}</tr></thead>
-        <tbody>{children}</tbody>
-      </table>
+      <SimpleTable
+        data={d.risk.accounts}
+        getRowKey={(a) => a.id}
+        density="compact"
+        columns={[
+          { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="text-[var(--ink)]">{a.name}</span> },
+          { key: "balance", header: "Balance", align: "right", render: (a) => <span className="num" style={{ color: a.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{amt(a.balance, sym)}</span> },
+          { key: "dd", header: "Drawdown", align: "right", render: (a) => <span className="num" style={{ color: a.maxDrawdownPct > 0 ? "var(--loss)" : "var(--ink-2)" }}>{a.maxDrawdownPct}%</span> },
+          { key: "ddlimit", header: "Límite DD", align: "right", render: (a) => <span className="num">{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</span> },
+          { key: "estado", header: "Estado", render: (a) => <span style={{ color: a.locked ? "var(--loss)" : "var(--win)" }}>{a.locked ? "Bloqueada" : "Activa"}</span> },
+        ]}
+      />
     </div>
   )
 }
@@ -146,17 +129,18 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
 function AccountsIntel({ d }: { d: Overview }) {
   const sym = currencySymbol(d.baseCurrency)
   return (
-    <Table head={["Cuenta", "Balance", "Net P&L", "Trades", "Win Rate"]}>
-      {d.risk.accounts.map(a => (
-        <tr key={a.id} className="border-t border-[var(--line)]">
-          <Td>{a.name}</Td>
-          <Td right>{amt(a.balance, sym)}</Td>
-          <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{money(a.netPnl, sym)}</Td>
-          <Td right>{a.trades}</Td>
-          <Td right>{a.winRate}%</Td>
-        </tr>
-      ))}
-    </Table>
+    <SimpleTable
+      data={d.risk.accounts}
+      getRowKey={(a) => a.id}
+      density="compact"
+      columns={[
+        { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="text-[var(--ink)]">{a.name}</span> },
+        { key: "balance", header: "Balance", align: "right", render: (a) => <span className="num">{amt(a.balance, sym)}</span> },
+        { key: "netPnl", header: "Net P&L", align: "right", render: (a) => <span className="num" style={{ color: a.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(a.netPnl, sym)}</span> },
+        { key: "trades", header: "Trades", align: "right", render: (a) => <span className="num">{a.trades}</span> },
+        { key: "winRate", header: "Win Rate", align: "right", render: (a) => <span className="num">{a.winRate}%</span> },
+      ]}
+    />
   )
 }
 
@@ -190,17 +174,18 @@ function Markets({ d }: { d: Overview }) {
   const sym = currencySymbol(d.baseCurrency)
   if (d.markets.length === 0) return <Empty msg="Sin datos de mercado en este periodo." />
   return (
-    <Table head={["Símbolo", "Trades", "Net P&L", "Win Rate", "Avg R"]}>
-      {d.markets.map(m => (
-        <tr key={m.symbol} className="border-t border-[var(--line)]">
-          <Td>{m.symbol}</Td>
-          <Td right>{m.trades}</Td>
-          <Td right tone={m.netPnl >= 0 ? "win" : "loss"}>{money(m.netPnl, sym)}</Td>
-          <Td right>{m.winRate}%</Td>
-          <Td right>{m.avgR}</Td>
-        </tr>
-      ))}
-    </Table>
+    <SimpleTable
+      data={d.markets}
+      getRowKey={(m) => m.symbol}
+      density="compact"
+      columns={[
+        { key: "symbol", header: "Símbolo", width: "minmax(100px, 1.4fr)", render: (m) => <span className="font-mono font-bold text-[var(--ink)]">{m.symbol}</span> },
+        { key: "trades", header: "Trades", align: "right", render: (m) => <span className="num">{m.trades}</span> },
+        { key: "netPnl", header: "Net P&L", align: "right", render: (m) => <span className="num" style={{ color: m.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(m.netPnl, sym)}</span> },
+        { key: "winRate", header: "Win Rate", align: "right", render: (m) => <span className="num">{m.winRate}%</span> },
+        { key: "avgR", header: "Avg R", align: "right", render: (m) => <span className="num">{m.avgR}</span> },
+      ]}
+    />
   )
 }
 
@@ -215,16 +200,17 @@ function Psychology({ d }: { d: Overview }) {
         <Stat label="FOMO" value={String(p.fomoCount)} tone={p.fomoCount > 0 ? "loss" : undefined} explain={`Tengo ${p.fomoCount} trades marcados como FOMO y ${p.revengeCount} de revancha. ¿Qué patrón emocional revela y cómo lo corto?`} />
         <Stat label="Revancha" value={String(p.revengeCount)} tone={p.revengeCount > 0 ? "loss" : undefined} explain={`Tengo ${p.revengeCount} trades de revancha. ¿Qué disparador los causa y qué regla me protege?`} />
       </div>
-      <Table head={["Emoción", "Trades", "P&L medio", "Win Rate"]}>
-        {p.byEmotion.map(e => (
-          <tr key={e.emotion} className="border-t border-[var(--line)]">
-            <Td><span className="capitalize">{e.emotion}</span></Td>
-            <Td right>{e.trades}</Td>
-            <Td right tone={e.avgPnl >= 0 ? "win" : "loss"}>{money(e.avgPnl, sym)}</Td>
-            <Td right>{e.winRate}%</Td>
-          </tr>
-        ))}
-      </Table>
+      <SimpleTable
+        data={p.byEmotion}
+        getRowKey={(e) => e.emotion}
+        density="compact"
+        columns={[
+          { key: "emotion", header: "Emoción", width: "minmax(120px, 1.6fr)", render: (e) => <span className="capitalize text-[var(--ink)]">{e.emotion}</span> },
+          { key: "trades", header: "Trades", align: "right", render: (e) => <span className="num">{e.trades}</span> },
+          { key: "avgPnl", header: "P&L medio", align: "right", render: (e) => <span className="num" style={{ color: e.avgPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(e.avgPnl, sym)}</span> },
+          { key: "winRate", header: "Win Rate", align: "right", render: (e) => <span className="num">{e.winRate}%</span> },
+        ]}
+      />
     </div>
   )
 }

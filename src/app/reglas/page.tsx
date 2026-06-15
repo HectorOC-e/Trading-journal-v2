@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Plus, AlertTriangle, Info, Zap, Pencil, Trash2, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Toggle } from "@/components/ui/toggle"
-import { Stagger, StaggerItem } from "@/components/ui/motion"
+import { AnimatedList } from "@/components/ui/data-table"
 import { trpc }   from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -315,13 +315,12 @@ export default function ReglasPage() {
                 <p className="text-eyebrow">Sistema · automáticas</p>
                 <span className="text-[10px] text-[var(--ink-3)]">Se verifican automáticamente</span>
               </div>
-              <Stagger>
-                {visibleSystem.map(r => (
-                  <StaggerItem key={r.id}>
-                    <RuleRow rule={r} onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })} />
-                  </StaggerItem>
-                ))}
-              </Stagger>
+              <AnimatedList
+                items={visibleSystem}
+                getKey={(r) => r.id}
+                preset="list"
+                renderItem={(r) => <RuleRow rule={r} onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })} />}
+              />
             </div>
           )}
 
@@ -332,17 +331,18 @@ export default function ReglasPage() {
                 <p className="text-eyebrow">Personalizadas · manuales</p>
                 <span className="text-[10px] text-[var(--ink-3)]">Marcas al revisar cada trade</span>
               </div>
-              <Stagger>
-                {visibleCustom.map(r => (
-                  <StaggerItem key={r.id}>
-                    <RuleRow rule={r}
-                      onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })}
-                      onEdit={rule => { setEditRule(rule); setModalOpen(true) }}
-                      onDelete={setDeleteRule}
-                    />
-                  </StaggerItem>
-                ))}
-              </Stagger>
+              <AnimatedList
+                items={visibleCustom}
+                getKey={(r) => r.id}
+                preset="list"
+                renderItem={(r) => (
+                  <RuleRow rule={r}
+                    onToggle={(id, v) => toggleMut.mutate({ id, enabled: v })}
+                    onEdit={rule => { setEditRule(rule); setModalOpen(true) }}
+                    onDelete={setDeleteRule}
+                  />
+                )}
+              />
             </div>
           ) : filter !== "sistema" && (
             <div className="border border-dashed border-[var(--line)] rounded-[var(--radius)] py-12 flex flex-col items-center gap-3 text-center">
