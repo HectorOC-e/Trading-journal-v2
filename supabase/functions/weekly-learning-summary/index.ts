@@ -17,11 +17,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE)
 
 // ─── Auth check ──────────────────────────────────────────────────────────────
 
-function isAuthorized(req: Request): boolean {
+// "unconfigured" = server precondition not met (no secret) → 412.
+// "unauthorized" = caller presented a wrong/missing token → 401.
+function checkAuth(req: Request): "ok" | "unconfigured" | "unauthorized" {
   // Reject immediately if CRON_SECRET is not configured — never allow bypass
-  if (!CRON_SECRET) return false
+  if (!CRON_SECRET) return "unconfigured"
   const auth = req.headers.get("authorization") ?? ""
   return auth === `Bearer ${CRON_SECRET}` || auth === `Bearer ${SUPABASE_SERVICE_ROLE}`
+    ? "ok"
+    : "unauthorized"
 }
 
 // ─── Timezone check ───────────────────────────────────────────────────────────
@@ -445,7 +449,13 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 })
   }
 
-  if (!isAuthorized(req)) {
+  const auth = checkAuth(req)
+  if (auth === "unconfigured") {
+    // Precondition failed: the function can't run until CRON_SECRET is set on the
+    // server. Distinct from 401 so ops don't misread it as a bad caller token.
+    return new Response("CRON_SECRET not configured on server", { status: 412 })
+  }
+  if (auth === "unauthorized") {
     return new Response("Unauthorized", { status: 401 })
   }
 
