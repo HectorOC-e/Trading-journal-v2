@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SimpleTable } from "@/components/ui/data-table"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -239,64 +240,30 @@ export function PositionLogModal({
         </div>
 
         {/* Event log table */}
-        <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden mb-4">
-          <table className="w-full border-collapse text-[11px]">
-            <thead>
-              <tr className="bg-[var(--panel-2)] border-b border-[var(--line)]">
-                {["Hora", "Tipo", "Precio", "Cts", "Nota"].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-[9px] font-bold uppercase tracking-wide text-[var(--ink-3)]">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {events.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-[var(--ink-3)] text-xs">
-                    Sin eventos registrados aún.
-                  </td>
-                </tr>
-              ) : (
-                events.map((ev) => {
-                  const t = ev.type as EventType
-                  const isOpenEv = t === "OPEN"
-                  const colorClass = isOpenEv
-                    ? openColor
-                    : (EVENT_COLORS[t] ?? "bg-[var(--chip)] text-[var(--ink-2)]")
-
-                  return (
-                    <tr
-                      key={ev.id}
-                      className={cn(
-                        "border-b border-[var(--line)] last:border-0",
-                        isOpenEv && "bg-[var(--panel-2)]"
-                      )}
-                    >
-                      <td className="px-3 py-2 whitespace-nowrap text-[var(--ink-3)]">
-                        <span className="block">{fmt(ev.timestamp, "date")}</span>
-                        <span className="block font-mono">{fmt(ev.timestamp, "time")}</span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap", colorClass)}>
-                          {EVENT_LABELS[t] ?? t}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
-                        {ev.price != null ? ev.price : <span className="text-[var(--ink-3)]">—</span>}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[var(--ink-2)]">
-                        {ev.contracts != null ? ev.contracts : <span className="text-[var(--ink-3)]">—</span>}
-                      </td>
-                      <td className="px-3 py-2 text-[var(--ink-2)] max-w-[140px]">
-                        <span className="block truncate" title={ev.notes}>{ev.notes || "—"}</span>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+        <div className="mb-4">
+          <SimpleTable
+            data={events}
+            getRowKey={(ev) => ev.id}
+            density="compact"
+            empty="Sin eventos registrados aún."
+            rowClassName={(ev) => ((ev.type as EventType) === "OPEN" ? "bg-[var(--panel-2)]" : undefined)}
+            columns={[
+              { key: "time", header: "Hora", width: "minmax(70px, 1fr)", render: (ev) => (
+                <span className="whitespace-nowrap text-[var(--ink-3)] text-[11px]">
+                  <span className="block">{fmt(ev.timestamp, "date")}</span>
+                  <span className="block font-mono">{fmt(ev.timestamp, "time")}</span>
+                </span>
+              ) },
+              { key: "type", header: "Tipo", width: "minmax(70px, 1fr)", render: (ev) => {
+                const t = ev.type as EventType
+                const colorClass = t === "OPEN" ? openColor : (EVENT_COLORS[t] ?? "bg-[var(--chip)] text-[var(--ink-2)]")
+                return <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold whitespace-nowrap", colorClass)}>{EVENT_LABELS[t] ?? t}</span>
+              } },
+              { key: "price", header: "Precio", render: (ev) => <span className="font-mono text-[11px] text-[var(--ink-2)]">{ev.price != null ? ev.price : <span className="text-[var(--ink-3)]">—</span>}</span> },
+              { key: "contracts", header: "Cts", render: (ev) => <span className="font-mono text-[11px] text-[var(--ink-2)]">{ev.contracts != null ? ev.contracts : <span className="text-[var(--ink-3)]">—</span>}</span> },
+              { key: "notes", header: "Nota", width: "minmax(100px, 1.4fr)", render: (ev) => <span className="block truncate text-[11px] text-[var(--ink-2)]" title={ev.notes}>{ev.notes || "—"}</span> },
+            ]}
+          />
         </div>
 
         {/* Add event form */}

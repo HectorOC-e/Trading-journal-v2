@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
+import { SimpleTable } from "@/components/ui/data-table"
 
 function sessionCellColor(pct: number) {
   if (pct >= 65) return { bg: "rgba(34,197,94,0.20)",  text: "var(--win)"  }
@@ -324,43 +325,28 @@ export function TabPlaybook() {
           <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] p-5">
             <p className="text-[13px] font-semibold text-[var(--ink)] mb-0.5">Rendimiento por dirección</p>
             <p className="text-[11px] text-[var(--ink-3)] mb-4">Long vs Short por setup · solo setups con ambas direcciones.</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-[var(--ink-3)] text-[11px] uppercase tracking-wider">
-                    <th className="text-left pb-2 font-semibold">Setup</th>
-                    <th className="text-right pb-2 font-semibold">Long</th>
-                    <th className="text-right pb-2 font-semibold">Long WR%</th>
-                    <th className="text-right pb-2 font-semibold">Long avgR</th>
-                    <th className="text-right pb-2 font-semibold">Short</th>
-                    <th className="text-right pb-2 font-semibold">Short WR%</th>
-                    <th className="text-right pb-2 font-semibold">Short avgR</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--line)]">
-                  {directionStats.map(d => {
-                    const setup = setupStats.find(s => s.setupId === d.setupId)
-                    return (
-                      <tr key={d.setupId}>
-                        <td className="py-2">
-                          <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                              style={{ background: setup?.color ?? "var(--accent)" }}>{setup?.abbr ?? "?"}</span>
-                            <span className="text-[var(--ink)]">{setup?.name ?? d.setupId}</span>
-                          </div>
-                        </td>
-                        <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.longCount}</td>
-                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</td>
-                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</td>
-                        <td className="py-2 text-right font-mono text-[var(--ink-3)]">{d.shortCount}</td>
-                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</td>
-                        <td className="py-2 text-right font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <SimpleTable
+              data={directionStats}
+              getRowKey={(d) => d.setupId}
+              density="compact"
+              columns={[
+                { key: "setup", header: "Setup", width: "minmax(120px, 1.6fr)", render: (d) => {
+                  const setup = setupStats.find(s => s.setupId === d.setupId)
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-[4px] flex items-center justify-center text-[9px] font-bold text-white shrink-0" style={{ background: setup?.color ?? "var(--accent)" }}>{setup?.abbr ?? "?"}</span>
+                      <span className="text-[var(--ink)]">{setup?.name ?? d.setupId}</span>
+                    </div>
+                  )
+                } },
+                { key: "longCount", header: "Long", align: "right", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.longCount}</span> },
+                { key: "longWr", header: "Long WR%", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</span> },
+                { key: "longAvgR", header: "Long avgR", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</span> },
+                { key: "shortCount", header: "Short", align: "right", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.shortCount}</span> },
+                { key: "shortWr", header: "Short WR%", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</span> },
+                { key: "shortAvgR", header: "Short avgR", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</span> },
+              ]}
+            />
           </div>
         )}
 

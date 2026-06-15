@@ -1,12 +1,16 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import { flexRender, type Table } from "@tanstack/react-table"
+import { flexRender, type Row as TRow, type Table } from "@tanstack/react-table"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react"
+import { ArrowUp, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { DUR, EASE_OUT } from "@/lib/motion"
+import { EASE_OUT } from "@/lib/motion"
 import type { Density } from "./use-data-table"
+
+// Cascade cap: stagger the first N rows so a full page doesn't take ~1s to land.
+const STAGGER_STEP = 0.03
+const STAGGER_CAP = 14
 
 // Render as a div-grid (not a real <table>) with ARIA grid roles. This is what
 // lets each row be a `motion.div` with layout animation — real <tr> elements
@@ -81,22 +85,30 @@ export function DataTable<TData>({
                   aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                   onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                   className={cn(
-                    "px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--ink-3)] whitespace-nowrap select-none",
-                    "flex items-center gap-1",
+                    "relative px-3 py-2.5 text-[10px] font-bold uppercase tracking-[0.08em] whitespace-nowrap select-none",
+                    "flex items-center gap-1 transition-colors",
+                    sorted ? "text-[var(--accent)]" : "text-[var(--ink-3)]",
                     align === "right" && "justify-end",
                     align === "center" && "justify-center",
-                    canSort && "cursor-pointer hover:text-[var(--ink-2)] transition-colors",
+                    canSort && "cursor-pointer hover:text-[var(--ink-2)]",
                   )}
                 >
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   {canSort && (
-                    <span className="shrink-0 text-[var(--ink-3)]">
-                      {sorted === "asc"
-                        ? <ArrowUp size={11} className="text-[var(--accent)]" />
-                        : sorted === "desc"
-                          ? <ArrowDown size={11} className="text-[var(--accent)]" />
-                          : <ChevronsUpDown size={11} className="opacity-40" />}
+                    <span className="shrink-0">
+                      {sorted
+                        ? <motion.span initial={false} animate={{ rotate: sorted === "desc" ? 180 : 0 }} transition={{ type: "spring", duration: 0.3, bounce: 0.35 }} className="inline-flex"><ArrowUp size={11} className="text-[var(--accent)]" /></motion.span>
+                        : <ChevronsUpDown size={11} className="opacity-40" />}
                     </span>
+                  )}
+                  {/* Active-sort underline — grows in under the sorted column. */}
+                  {sorted && (
+                    <motion.span
+                      initial={{ scaleX: 0, opacity: 0 }}
+                      animate={{ scaleX: 1, opacity: 1 }}
+                      transition={{ type: "spring", duration: 0.35, bounce: 0.2 }}
+                      className="absolute left-2 right-2 bottom-0 h-[2px] rounded-full bg-[var(--accent)] origin-left"
+                    />
                   )}
                 </div>
               )
@@ -112,54 +124,91 @@ export function DataTable<TData>({
         ) : rows.length === 0 ? (
           <div className="py-14">{empty ?? <DefaultEmpty />}</div>
         ) : (
-          <AnimatePresence initial={false}>
-            {rows.map(row => {
-              const selected = row.getIsSelected()
-              return (
-                <motion.div
-                  key={row.id}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ layout: { type: "spring", duration: 0.32, bounce: 0.15 }, opacity: { duration: DUR.item, ease: EASE_OUT } }}
-                  role="row"
-                  aria-selected={selected}
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                  className={cn(
-                    "grid items-center border-b border-[var(--line)] last:border-b-0",
-                    "transition-colors duration-100",
-                    onRowClick && "cursor-pointer",
-                    selected
-                      ? "bg-[var(--accent-soft)]"
-                      : onRowClick && "hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
-                  )}
-                  style={{ gridTemplateColumns: cols }}
-                >
-                  {row.getVisibleCells().map(cell => {
-                    const align = cell.column.columnDef.meta?.align ?? "left"
-                    return (
-                      <div
-                        key={cell.id}
-                        role="cell"
-                        className={cn(
-                          "px-3 text-[13px] text-[var(--ink-2)] min-w-0",
-                          ROW_PAD[density],
-                          align === "right" && "text-right",
-                          align === "center" && "text-center",
-                        )}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </div>
-                    )
-                  })}
-                </motion.div>
-              )
-            })}
+          <AnimatePresence initial>
+            {rows.map((row, i) => (
+              <Row
+                key={row.id}
+                row={row}
+                index={i}
+                cols={cols}
+                density={density}
+                onRowClick={onRowClick}
+              />
+            ))}
           </AnimatePresence>
         )}
       </div>
     </div>
+  )
+}
+
+// ── Row ───────────────────────────────────────────────────────────────────────
+function Row<TData>({ row, index, cols, density, onRowClick }: {
+  row: TRow<TData>
+  index: number
+  cols: string
+  density: Density
+  onRowClick?: (row: TData) => void
+}) {
+  const selected = row.getIsSelected()
+  const delay = Math.min(index, STAGGER_CAP) * STAGGER_STEP
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+      transition={{
+        layout:  { type: "spring", duration: 0.34, bounce: 0.25 },
+        opacity: { duration: 0.22, delay, ease: EASE_OUT },
+        y:       { type: "spring", duration: 0.4, bounce: 0.3, delay },
+      }}
+      role="row"
+      aria-selected={selected}
+      onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+      className={cn(
+        "group relative grid items-center border-b border-[var(--line)] last:border-b-0",
+        "transition-[background-color,box-shadow] duration-150",
+        onRowClick && "cursor-pointer hover:z-[1] hover:shadow-[var(--shadow-sm)]",
+        selected
+          ? "bg-[var(--accent-soft)]"
+          : onRowClick && "hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
+      )}
+      style={{ gridTemplateColumns: cols }}
+    >
+      {/* Enter flash — new rows pulse accent then settle (skipped on reorder). */}
+      <motion.span
+        aria-hidden
+        initial={{ opacity: 0.45 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.7, delay, ease: EASE_OUT }}
+        className="pointer-events-none absolute inset-0 bg-[var(--accent)]"
+        style={{ gridColumn: "1 / -1" }}
+      />
+      {/* Hover accent bar — slides down the left edge. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200"
+        style={{ gridColumn: "1 / 2" }}
+      />
+      {row.getVisibleCells().map(cell => {
+        const align = cell.column.columnDef.meta?.align ?? "left"
+        return (
+          <div
+            key={cell.id}
+            role="cell"
+            className={cn(
+              "relative px-3 text-[13px] text-[var(--ink-2)] min-w-0",
+              ROW_PAD[density],
+              align === "right" && "text-right",
+              align === "center" && "text-center",
+            )}
+          >
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </div>
+        )
+      })}
+    </motion.div>
   )
 }
 

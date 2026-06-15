@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Upload, FileText, AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react"
+import { Upload, FileText, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { SimpleTable } from "@/components/ui/data-table"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { ParsedTrade } from "@/domains/trading/services/csv-import"
@@ -225,40 +226,21 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
 
               {/* Preview table */}
               {state.dryRun.toCreate.length > 0 && (
-                <div className="rounded-[var(--radius-sm)] border border-[var(--line)] overflow-hidden">
-                  <div className="overflow-x-auto max-h-48 overflow-y-auto">
-                    <table className="w-full text-[11px]">
-                      <thead className="bg-[var(--panel-2)] sticky top-0">
-                        <tr>
-                          {["Ticket", "Símbolo", "Tipo", "Lotes", "Apertura", "Cierre", "P&L"].map(h => (
-                            <th key={h} className="px-2 py-1.5 text-left font-semibold text-[var(--ink-3)]">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {state.dryRun.toCreate.map((t, i) => (
-                          <tr key={i} className="border-t border-[var(--line)] hover:bg-[var(--panel-2)] transition-colors">
-                            <td className="px-2 py-1 font-mono text-[var(--ink-3)]">{t.ticket}</td>
-                            <td className="px-2 py-1 font-mono font-semibold text-[var(--ink)]">{t.symbol}</td>
-                            <td className="px-2 py-1">
-                              <span className={cn(
-                                "px-1.5 py-0.5 rounded text-[9px] font-bold",
-                                t.type === "buy" ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
-                              )}>
-                                {t.type.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-2 py-1 font-mono">{t.size}</td>
-                            <td className="px-2 py-1 font-mono text-[var(--ink-3)]">{new Date(t.openTime).toLocaleDateString()}</td>
-                            <td className="px-2 py-1 font-mono text-[var(--ink-3)]">{new Date(t.closeTime).toLocaleDateString()}</td>
-                            <td className={cn("px-2 py-1 font-mono font-semibold", t.profit >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                              {t.profit >= 0 ? "+" : ""}${t.profit.toFixed(2)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="max-h-48 overflow-y-auto">
+                  <SimpleTable
+                    data={state.dryRun.toCreate}
+                    density="compact"
+                    getRowKey={(_t, i) => String(i)}
+                    columns={[
+                      { key: "ticket", header: "Ticket", render: (t) => <span className="font-mono text-[11px] text-[var(--ink-3)]">{t.ticket}</span> },
+                      { key: "symbol", header: "Símbolo", render: (t) => <span className="font-mono text-[11px] font-semibold text-[var(--ink)]">{t.symbol}</span> },
+                      { key: "type", header: "Tipo", render: (t) => <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold", t.type === "buy" ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]")}>{t.type.toUpperCase()}</span> },
+                      { key: "size", header: "Lotes", align: "right", render: (t) => <span className="font-mono text-[11px]">{t.size}</span> },
+                      { key: "openTime", header: "Apertura", render: (t) => <span className="font-mono text-[11px] text-[var(--ink-3)]">{new Date(t.openTime).toLocaleDateString()}</span> },
+                      { key: "closeTime", header: "Cierre", render: (t) => <span className="font-mono text-[11px] text-[var(--ink-3)]">{new Date(t.closeTime).toLocaleDateString()}</span> },
+                      { key: "profit", header: "P&L", align: "right", render: (t) => <span className={cn("font-mono text-[11px] font-semibold", t.profit >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.profit >= 0 ? "+" : ""}${t.profit.toFixed(2)}</span> },
+                    ]}
+                  />
                 </div>
               )}
 

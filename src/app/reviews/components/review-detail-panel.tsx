@@ -5,6 +5,7 @@ import Link from "next/link"
 import { X, ArrowLeft, Pencil, Trash2, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { SimpleTable } from "@/components/ui/data-table"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
@@ -213,37 +214,18 @@ export function ReviewDetailPanel({
 
         <div>
           <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "var(--ink-3)" }}>Trades de la semana</p>
-          <div className="rounded-lg overflow-hidden" style={{ border: "1px solid var(--line)" }}>
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ background: "var(--panel-2)" }}>
-                  {["Símbolo", "Sesión", "R múlt.", "P&L"].map((h) => (
-                    <th key={h} className="px-3 py-2 text-left font-medium" style={{ color: "var(--ink-3)", borderBottom: "1px solid var(--line)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {weekTrades.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-3 py-4 text-center italic" style={{ color: "var(--ink-3)" }}>Sin trades registrados para esta semana</td>
-                  </tr>
-                ) : (
-                  weekTrades.map((t, i) => (
-                    <tr key={t.id} style={{ borderBottom: i < weekTrades.length - 1 ? "1px solid var(--line)" : undefined }}>
-                      <td className="px-3 py-2 font-mono font-bold" style={{ color: "var(--ink)" }}>{t.symbol}</td>
-                      <td className="px-3 py-2 text-[11px]" style={{ color: "var(--ink-3)" }}>{t.session}</td>
-                      <td className="px-3 py-2 font-mono font-semibold" style={{ color: (t.rMultiple ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>
-                        {t.rMultiple != null ? `${t.rMultiple >= 0 ? "+" : ""}${t.rMultiple.toFixed(1)}R` : "—"}
-                      </td>
-                      <td className="px-3 py-2 font-mono font-semibold" style={{ color: (t.pnl ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>
-                        {t.pnl != null ? formatPnl(t.pnl) : "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <SimpleTable
+            data={weekTrades}
+            getRowKey={(t) => t.id}
+            density="compact"
+            empty="Sin trades registrados para esta semana"
+            columns={[
+              { key: "symbol", header: "Símbolo", width: "minmax(80px, 1.4fr)", render: (t) => <span className="font-mono font-bold" style={{ color: "var(--ink)" }}>{t.symbol}</span> },
+              { key: "session", header: "Sesión", width: "minmax(80px, 1.2fr)", render: (t) => <span className="text-[11px]" style={{ color: "var(--ink-3)" }}>{t.session}</span> },
+              { key: "rMultiple", header: "R múlt.", align: "right", render: (t) => <span className="font-mono font-semibold" style={{ color: (t.rMultiple ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>{t.rMultiple != null ? `${t.rMultiple >= 0 ? "+" : ""}${t.rMultiple.toFixed(1)}R` : "—"}</span> },
+              { key: "pnl", header: "P&L", align: "right", render: (t) => <span className="font-mono font-semibold" style={{ color: (t.pnl ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>{t.pnl != null ? formatPnl(t.pnl) : "—"}</span> },
+            ]}
+          />
         </div>
 
         {/* "Última edición" timestamp — shown only when review was edited after creation */}

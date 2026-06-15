@@ -16,6 +16,7 @@ import {
   multiSelectFilter,
 } from "@/components/ui/data-table"
 import { exportTableToCsv } from "@/components/ui/data-table/export-csv"
+import { DirectionCell, ResultCell, TrendNumber, RBar } from "@/components/ui/data-table/cells"
 import { cn } from "@/lib/utils"
 import type { Trade, Account, Setup, TradeTag } from "@/types"
 
@@ -34,12 +35,6 @@ const TAG_CFG: Record<string, { color: string; bg: string }> = {
   "Impulsivo": { color: "var(--loss)",   bg: "var(--loss-soft)"     },
   "BE":        { color: "var(--be)",     bg: "var(--be-soft)"       },
 }
-const RESULT_CFG: Record<string, { label: string; color: string; bg: string }> = {
-  WIN:  { label: "W",    color: "var(--win)",    bg: "var(--win-soft)"    },
-  LOSS: { label: "L",    color: "var(--loss)",   bg: "var(--loss-soft)"   },
-  BE:   { label: "BE",   color: "var(--be)",     bg: "var(--be-soft)"     },
-  OPEN: { label: "OPEN", color: "var(--accent)", bg: "var(--accent-soft)" },
-}
 const RESULT_LABELS: Record<string, string> = { WIN: "Win", LOSS: "Loss", BE: "BE", OPEN: "Abierto" }
 const QUALITY_TAGS: TradeTag[] = ["A+", "A", "Plan", "Off-plan", "Impulsivo", "BE"] as TradeTag[]
 
@@ -55,8 +50,8 @@ function shortAccount(name: string) {
   const parts = name.split(" ")
   return parts.length <= 2 ? name : parts.slice(0, 2).join(" ")
 }
-function fmtPnl(pnl: number): string {
-  return `${pnl >= 0 ? "+" : "-"}$${Math.abs(pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+function moneyAbs(v: number): string {
+  return `$${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 interface TradesTableProps {
@@ -100,23 +95,12 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       filterFn: multiSelectFilter,
       meta: { width: "84px", headerLabel: "Dir / Res", facet: { label: "Resultado" } },
       header: () => <span>Dir / Res</span>,
-      cell: ({ row }) => {
-        const t = row.original
-        const rc = RESULT_CFG[getResult(t)]
-        const isOpen = getResult(t) === "OPEN"
-        return (
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center justify-center w-[38px] h-[18px] rounded-[4px] text-[9px] font-bold tracking-wider"
-              style={{ background: t.direction === "LONG" ? "var(--win-soft)" : "var(--loss-soft)", color: t.direction === "LONG" ? "var(--win)" : "var(--loss)" }}>
-              {t.direction}
-            </span>
-            <span className="inline-flex items-center justify-center w-[38px] h-[18px] rounded-[4px] text-[9px] font-bold tracking-wider"
-              style={{ background: rc.bg, color: rc.color, border: isOpen ? `1px solid ${rc.color}40` : "none" }}>
-              {rc.label}
-            </span>
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <div className="flex flex-col gap-1 items-start">
+          <DirectionCell direction={row.original.direction} />
+          <ResultCell result={getResult(row.original)} />
+        </div>
+      ),
     },
     {
       id: "symbol",
@@ -180,15 +164,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       sortUndefined: "last",
       meta: { width: "72px", headerLabel: "R", align: "right" },
       header: () => <span>R</span>,
-      cell: ({ row }) => {
-        const t = row.original
-        const r = t.rMultiple ?? null
-        const rc = RESULT_CFG[getResult(t)]
-        if (getResult(t) === "OPEN") {
-          return <span className="font-mono text-[11px] text-[var(--ink-3)]">{r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}</span>
-        }
-        return <span className="inline-flex items-center justify-center min-w-[46px] px-2 py-[3px] rounded-[5px] font-mono text-[12px] font-bold" style={{ background: rc.bg, color: rc.color }}>{r != null ? `${r > 0 ? "+" : ""}${r.toFixed(1)}R` : "—"}</span>
-      },
+      cell: ({ row }) => <RBar r={row.original.rMultiple ?? null} />,
     },
     {
       id: "pnl",
@@ -196,13 +172,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       sortUndefined: "last",
       meta: { width: "minmax(80px, 0.9fr)", headerLabel: "P&L", align: "right", csvLabel: "PnL" },
       header: () => <span>P&L</span>,
-      cell: ({ row }) => {
-        const t = row.original
-        const rc = RESULT_CFG[getResult(t)]
-        return t.pnl != null
-          ? <span className="font-mono text-[13px] font-bold tabular-nums" style={{ color: rc.color }}>{fmtPnl(t.pnl)}</span>
-          : <span className="text-[11px] text-[var(--ink-3)]">open</span>
-      },
+      cell: ({ row }) => <TrendNumber value={row.original.pnl ?? null} format={moneyAbs} className="text-[13px] justify-end w-full" />,
     },
     {
       id: "quality",
