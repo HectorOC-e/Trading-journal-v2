@@ -157,6 +157,7 @@ function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
   const selected = row.getIsSelected()
   const delay = staggerDelay(index, "table")
   const spring = COLLECTION.table.spring
+  const [pulse, setPulse] = useState(0)
   return (
     <motion.div
       layout
@@ -171,6 +172,7 @@ function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
       role="row"
       aria-selected={selected}
       onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+      onTap={onRowClick ? () => setPulse(p => p + 1) : undefined}
       {...rovingProps}
       className={cn(
         "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none",
@@ -192,6 +194,10 @@ function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
         className="pointer-events-none absolute inset-0 bg-[var(--accent)]"
         style={{ gridColumn: "1 / -1" }}
       />
+      {/* Tap/click pulse — perceptible press feedback on mobile (and desktop). */}
+      {pulse > 0 && (
+        <motion.span aria-hidden key={pulse} initial={{ opacity: 0.32 }} animate={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" style={{ gridColumn: "1 / -1" }} />
+      )}
       {/* Hover accent bar — slides down the left edge. */}
       <span
         aria-hidden

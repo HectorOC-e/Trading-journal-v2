@@ -1,6 +1,6 @@
 "use client"
 
-import { type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { COLLECTION, EASE_OUT, staggerDelay, type CollectionPreset } from "@/lib/motion"
@@ -76,53 +76,89 @@ export function SimpleTable<T>({
         {data.length === 0 ? (
           <div className="py-10 text-center text-[13px] text-[var(--ink-3)]">{empty ?? "Sin datos"}</div>
         ) : (
-          data.map((row, i) => {
-            const delay = stagger ? staggerDelay(i, preset) : 0
-            const spring = COLLECTION[preset].spring
-            return (
-              <motion.div
-                key={getRowKey?.(row, i) ?? i}
-                initial={stagger ? { opacity: 0, y: COLLECTION[preset].enterY } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ opacity: { duration: 0.24, delay, ease: EASE_OUT }, y: { type: "spring", duration: spring.duration, bounce: spring.bounce, delay } }}
-                role="row"
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                {...(onRowClick ? roving.getItemProps(i) : {})}
-                className={cn(
-                  "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none transition-[background-color,box-shadow] duration-100",
-                  "hover:bg-[var(--panel-2)]",
-                  "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
-                  onRowClick && "cursor-pointer active:bg-[var(--accent-soft)]",
-                  rowClassName?.(row, i),
-                )}
-                style={{ gridTemplateColumns: cols }}
-              >
-                {/* Enter flash — parity with DataTable. */}
-                {stagger && (
-                  <motion.span aria-hidden initial={{ opacity: 0.4 }} animate={{ opacity: 0 }} transition={{ duration: 0.7, delay, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
-                )}
-                {/* Accent bar — hover (desktop) + active/tap (mobile). */}
-                <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 group-active:scale-y-100 transition-transform duration-200" />
-                {columns.map(c => (
-                  <div
-                    key={c.key}
-                    role="cell"
-                    className={cn(
-                      "relative px-3 text-[13px] text-[var(--ink-2)] min-w-0",
-                      ROW_PAD[density],
-                      c.align === "right" && "text-right",
-                      c.align === "center" && "text-center",
-                      c.cellClassName,
-                    )}
-                  >
-                    {c.render ? c.render(row, i) : ((row as Record<string, unknown>)[c.key] as ReactNode)}
-                  </div>
-                ))}
-              </motion.div>
-            )
-          })
+          data.map((row, i) => (
+            <SimpleRow
+              key={getRowKey?.(row, i) ?? i}
+              cols={cols}
+              delay={stagger ? staggerDelay(i, preset) : 0}
+              spring={COLLECTION[preset].spring}
+              enterY={COLLECTION[preset].enterY}
+              stagger={stagger}
+              clickable={!!onRowClick}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              rovingProps={onRowClick ? roving.getItemProps(i) : undefined}
+              className={rowClassName?.(row, i)}
+            >
+              {columns.map(c => (
+                <div
+                  key={c.key}
+                  role="cell"
+                  className={cn(
+                    "relative px-3 text-[13px] text-[var(--ink-2)] min-w-0",
+                    ROW_PAD[density],
+                    c.align === "right" && "text-right",
+                    c.align === "center" && "text-center",
+                    c.cellClassName,
+                  )}
+                >
+                  {c.render ? c.render(row, i) : ((row as Record<string, unknown>)[c.key] as ReactNode)}
+                </div>
+              ))}
+            </SimpleRow>
+          ))
         )}
       </div>
     </div>
+  )
+}
+
+// ── Row with tap-pulse ────────────────────────────────────────────────────────
+// A bare :active state is imperceptible on a quick mobile tap (it ends the moment
+// the finger lifts). Instead, every tap/click replays a short accent flash that
+// fades out on its own — visible regardless of how brief the touch was.
+function SimpleRow({
+  children, cols, delay, spring, enterY, stagger, clickable, onClick, rovingProps, className,
+}: {
+  children: ReactNode
+  cols: string
+  delay: number
+  spring: { duration: number; bounce: number }
+  enterY: number
+  stagger: boolean
+  clickable: boolean
+  onClick?: () => void
+  rovingProps?: { tabIndex: number; ref: (el: HTMLElement | null) => void; onFocus: () => void }
+  className?: string
+}) {
+  const [pulse, setPulse] = useState(0)
+  return (
+    <motion.div
+      initial={stagger ? { opacity: 0, y: enterY } : false}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ opacity: { duration: 0.24, delay, ease: EASE_OUT }, y: { type: "spring", duration: spring.duration, bounce: spring.bounce, delay } }}
+      role="row"
+      onClick={onClick}
+      onTap={() => setPulse(p => p + 1)}
+      {...rovingProps}
+      className={cn(
+        "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none transition-[background-color,box-shadow] duration-100",
+        "hover:bg-[var(--panel-2)]",
+        "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
+        clickable && "cursor-pointer",
+        className,
+      )}
+      style={{ gridTemplateColumns: cols }}
+    >
+      {stagger && (
+        <motion.span aria-hidden initial={{ opacity: 0.4 }} animate={{ opacity: 0 }} transition={{ duration: 0.7, delay, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
+      )}
+      {/* Tap/click pulse — replays on every interaction, fades out on its own. */}
+      {pulse > 0 && (
+        <motion.span key={pulse} aria-hidden initial={{ opacity: 0.32 }} animate={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
+      )}
+      {/* Hover accent bar (desktop). */}
+      <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+      {children}
+    </motion.div>
   )
 }
