@@ -44,7 +44,7 @@ type LinkedSetup = { id: string; name: string }
 
 type ResourceInput = LearningResource & {
   linkedSetups?: LinkedSetup[]
-  reviews?: { createdAt: Date }[]
+  reviews?: { createdAt: Date; masteryLevel: number }[]
 }
 
 type SerializedResource = Omit<
@@ -59,6 +59,9 @@ type SerializedResource = Omit<
   completedAt:  string | null
   linkedSetups: LinkedSetup[]
   lastReviewAt: string | null
+  // Real SRS mastery (1–5) from the most recent ResourceReview; null when never
+  // reviewed. The mastery ring prefers this over the status-derived level.
+  latestMasteryLevel: number | null
 }
 
 function serializeResource(r: ResourceInput): SerializedResource {
@@ -73,6 +76,7 @@ function serializeResource(r: ResourceInput): SerializedResource {
     completedAt:  completedAt ? completedAt.toISOString() : null,
     linkedSetups: linkedSetups ?? [],
     lastReviewAt: reviews && reviews.length > 0 ? reviews[0].createdAt.toISOString() : null,
+    latestMasteryLevel: reviews && reviews.length > 0 ? reviews[0].masteryLevel : null,
   }
 }
 
@@ -110,7 +114,7 @@ export const learningResourcesRouter = router({
         orderBy: { date: "desc" },
         include: {
           linkedSetups: { select: { id: true, name: true } },
-          reviews: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
+          reviews: { select: { createdAt: true, masteryLevel: true }, orderBy: { createdAt: "desc" }, take: 1 },
         },
       })
       return resources.map(serializeResource)

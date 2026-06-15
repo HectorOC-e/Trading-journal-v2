@@ -23,9 +23,28 @@ export function masteryLevel(status: ResourceStatus): number {
   return STATUS_TO_LEVEL[status] ?? 0
 }
 
+/**
+ * Nivel de dominio real (1–5) del SRS: usa el masteryLevel del último repaso
+ * cuando existe, y cae al nivel derivado del status si el recurso nunca se ha
+ * repasado. Así el anillo refleja la progresión ganada repaso a repaso, no solo
+ * el status. MASTERED siempre fija el máximo.
+ */
+export function effectiveMasteryLevel(status: ResourceStatus, latestReviewLevel: number | null | undefined): number {
+  if (status === "MASTERED") return MASTERY_MAX
+  if (latestReviewLevel != null && latestReviewLevel > 0) {
+    return Math.min(MASTERY_MAX, Math.max(0, latestReviewLevel))
+  }
+  return masteryLevel(status)
+}
+
+/** Índice de etapa (0–4) para el stepper, a partir de un nivel numérico 0–5. */
+export function masteryStageIndexFromLevel(level: number): number {
+  return Math.min(MASTERY_STAGES.length - 1, Math.max(0, Math.round(level / MASTERY_MAX * (MASTERY_STAGES.length - 1))))
+}
+
 /** Índice de etapa (0–4) para el stepper, a partir del status. */
 export function masteryStageIndex(status: ResourceStatus): number {
-  return Math.min(MASTERY_STAGES.length - 1, Math.round(masteryLevel(status) / MASTERY_MAX * (MASTERY_STAGES.length - 1)))
+  return masteryStageIndexFromLevel(masteryLevel(status))
 }
 
 /** ¿El recurso está dominado? */

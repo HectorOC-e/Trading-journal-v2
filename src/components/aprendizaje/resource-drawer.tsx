@@ -5,7 +5,7 @@ import { X, Star, ChevronDown, ChevronUp, Trophy } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { cn } from "@/lib/utils"
-import { MASTERY_STAGES, masteryStageIndex } from "@/app/aprendizaje/utils/mastery"
+import { MASTERY_STAGES, masteryStageIndexFromLevel, effectiveMasteryLevel } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceType, ResourceStatus } from "@/types"
 
 // ─── Mastery sparkline (L024) ─────────────────────────────────────────────────
@@ -263,7 +263,8 @@ export function ResourceDrawer({
             {/* Stepper de dominio */}
             <div className="flex items-center gap-1 mt-2 flex-wrap" aria-label="Etapa de dominio">
               {MASTERY_STAGES.map((s, i) => {
-                const cur = masteryStageIndex(resource.status as ResourceStatus)
+                const latestLevel = masteryLevels.length > 0 ? masteryLevels[masteryLevels.length - 1] : null
+                const cur = masteryStageIndexFromLevel(effectiveMasteryLevel(resource.status as ResourceStatus, latestLevel))
                 return (
                   <span key={s} className="inline-flex items-center gap-1">
                     <span className={cn(
