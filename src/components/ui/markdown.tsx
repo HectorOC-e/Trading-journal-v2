@@ -1,8 +1,34 @@
 "use client"
 
-import { useMemo, type ReactNode } from "react"
-import { Info, Lightbulb, AlertTriangle, ShieldAlert, Target, TrendingUp } from "lucide-react"
+import { useMemo, useState, type ReactNode } from "react"
+import katex from "katex"
+import "katex/dist/katex.min.css"
+import { Info, Lightbulb, AlertTriangle, ShieldAlert, Target, TrendingUp, Copy, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+// ── Math (KaTeX) ───────────────────────────────────────────────────────────
+// Render LaTeX the model emits ($$…$$, \[…\], \(…\), and guarded $…$) as real
+// equations instead of raw "/2%&" text. throwOnError:false → a half-streamed or
+// malformed expression degrades to its source rather than throwing.
+function renderMath(tex: string, display: boolean): string {
+  try {
+    return katex.renderToString(tex.trim(), { displayMode: display, throwOnError: false, output: "html" })
+  } catch {
+    return tex
+  }
+}
+
+function MathBlock({ tex }: { tex: string }) {
+  return <div className="my-2 overflow-x-auto" dangerouslySetInnerHTML={{ __html: renderMath(tex, true) }} />
+}
+
+function MathInline({ tex }: { tex: string }) {
+  return <span dangerouslySetInnerHTML={{ __html: renderMath(tex, false) }} />
+}
+
+// A bare `$…$` is only math when it carries a LaTeX signal char; otherwise it is
+// almost certainly currency ("gané $100 y perdí $50") and must stay literal.
+const LATEX_SIGNAL = /[\\^_{}]/
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dependency-free Markdown renderer for AI-generated content.
@@ -33,7 +59,9 @@ const CALLOUT_ALIASES: Record<string, CalloutType> = {
 }
 
 // ── Inline ────────────────────────────────────────────────────────────────────
-const INLINE_RE = /(\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\*[^*\n]+\*|_[^_\n]+_|`[^`]+`|\[[^\]]+\]\([^)\s]+\))/g
+// Order matters: math (\(…\) and $…$) and inline code are matched before emphasis
+// so a `_` or `*` inside an equation/code isn't mistaken for italics.
+const INLINE_RE = /(\\\([^\n]+?\\\)|\$[^$\n]+\$|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\*[^*\n]+\*|_[^_\n]+_|\[[^\]]+\]\([^)\s]+\))/g
 
 function safeHref(url: string): string | null {
   const u = url.trim()
@@ -50,7 +78,13 @@ function parseInline(text: string, keyPrefix: string): ReactNode[] {
     if (m.index > last) out.push(text.slice(last, m.index))
     const tok = m[0]
     const k = `${keyPrefix}-${i++}`
-    if (tok.startsWith("**") || tok.startsWith("__")) out.push(<strong key={k}>{tok.slice(2, -2)}</strong>)
+    if (tok.startsWith("\\(")) out.push(<MathInline key={k} tex={tok.slice(2, -2)} />)
+    else if (tok.startsWith("$")) {
+      const inner = tok.slice(1, -1)
+      if (LATEX_SIGNAL.test(inner)) out.push(<MathInline key={k} tex={inner} />)
+      else out.push(tok) // currency / plain — keep literal
+    }
+    else if (tok.startsWith("**") || tok.startsWith("__")) out.push(<strong key={k}>{tok.slice(2, -2)}</strong>)
     else if (tok.startsWith("~~")) out.push(<del key={k} className="opacity-70">{tok.slice(2, -2)}</del>)
     else if (tok.startsWith("`")) out.push(<code key={k} className="px-1 py-0.5 rounded text-[0.85em] font-mono" style={{ background: "var(--chip)", color: "var(--ink)" }}>{tok.slice(1, -1)}</code>)
     else if (tok.startsWith("[")) {
@@ -76,6 +110,7 @@ type Block =
   | { t: "callout"; kind: CalloutType; title?: string; lines: string[] }
   | { t: "code"; lang?: string; code: string }
   | { t: "table"; head: string[]; rows: string[][] }
+  | { t: "math"; tex: string }
   | { t: "hr" }
 
 function detectCallout(firstLine: string): { kind: CalloutType; title?: string } | null {
@@ -108,6 +143,25 @@ export function parseBlocks(src: string): Block[] {
       while (i < lines.length && !/^```/.test(lines[i].trim())) { buf.push(lines[i]); i++ }
       i++ // closing fence
       blocks.push({ t: "code", lang, code: buf.join("\n") })
+      continue
+    }
+
+    // Block math: $$…$$ or \[…\] (single- or multi-line)
+    const blockMath = /^(\$\$|\\\[)/.exec(trimmed)
+    if (blockMath) {
+      const open = blockMath[1]
+      const close = open === "$$" ? "$$" : "\\]"
+      // Single-line form, e.g. $$x = y$$
+      const oneLine = open === "$$"
+        ? /^\$\$(.+)\$\$$/.exec(trimmed)
+        : /^\\\[(.+)\\\]$/.exec(trimmed)
+      if (oneLine) { blocks.push({ t: "math", tex: oneLine[1] }); i++; continue }
+      // Multi-line: collect until the closing delimiter
+      const buf: string[] = [trimmed.slice(open.length)]
+      i++
+      while (i < lines.length && !lines[i].trim().endsWith(close)) { buf.push(lines[i]); i++ }
+      if (i < lines.length) { buf.push(lines[i].trim().slice(0, -close.length)); i++ }
+      blocks.push({ t: "math", tex: buf.join("\n") })
       continue
     }
 
@@ -177,7 +231,7 @@ export function parseBlocks(src: string): Block[] {
     // Paragraph (gather consecutive plain lines)
     const buf: string[] = [trimmed]
     i++
-    while (i < lines.length && lines[i].trim() !== "" && !/^(#{1,6}\s|>|[-*+]\s|\d+\.\s|```|:::|\|)/.test(lines[i].trim())) {
+    while (i < lines.length && lines[i].trim() !== "" && !/^(#{1,6}\s|>|[-*+]\s|\d+\.\s|```|:::|\||\$\$|\\\[)/.test(lines[i].trim())) {
       buf.push(lines[i].trim()); i++
     }
     blocks.push({ t: "p", text: buf.join(" ") })
@@ -197,6 +251,54 @@ function Callout({ kind, title, lines }: { kind: CalloutType; title?: string; li
       <div className="text-[13px] leading-relaxed" style={{ color: "var(--ink)" }}>
         {lines.filter(l => l.trim() !== "").map((l, j) => <p key={j} className="mb-1 last:mb-0">{parseInline(l, `co-${j}`)}</p>)}
       </div>
+    </div>
+  )
+}
+
+// ── Code block: language label + copy + light dependency-free highlight ───────
+const CODE_KEYWORDS = new Set([
+  "const", "let", "var", "function", "return", "if", "else", "for", "while", "import",
+  "from", "export", "default", "class", "new", "await", "async", "true", "false", "null",
+  "undefined", "def", "print", "in", "not", "and", "or", "lambda", "try", "except",
+  "SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER", "BY", "LIMIT", "AS", "ON",
+])
+const CODE_TOKEN_RE = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g
+
+function highlightCode(code: string): ReactNode[] {
+  const out: ReactNode[] = []
+  let last = 0, m: RegExpExecArray | null, i = 0
+  CODE_TOKEN_RE.lastIndex = 0
+  while ((m = CODE_TOKEN_RE.exec(code)) !== null) {
+    if (m.index > last) out.push(code.slice(last, m.index))
+    const k = i++
+    if (m[1])      out.push(<span key={k} style={{ color: "var(--ink-3)", fontStyle: "italic" }}>{m[1]}</span>)
+    else if (m[2]) out.push(<span key={k} style={{ color: "var(--win)" }}>{m[2]}</span>)
+    else if (m[3]) out.push(<span key={k} style={{ color: "var(--be)" }}>{m[3]}</span>)
+    else if (m[4]) out.push(CODE_KEYWORDS.has(m[4])
+      ? <span key={k} style={{ color: "var(--accent)", fontWeight: 600 }}>{m[4]}</span>
+      : m[4])
+    last = m.index + m[0].length
+  }
+  if (last < code.length) out.push(code.slice(last))
+  return out
+}
+
+function CodeBlock({ lang, code }: { lang?: string; code: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500) } catch { /* blocked */ }
+  }
+  return (
+    <div className="my-2 rounded-[var(--radius)] overflow-hidden border" style={{ borderColor: "var(--line)" }}>
+      <div className="flex items-center justify-between px-3 py-1.5" style={{ background: "var(--panel-2)", borderBottom: "1px solid var(--line)" }}>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--ink-3)]">{lang || "code"}</span>
+        <button onClick={copy} className="text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors active:scale-90" aria-label="Copiar código" title="Copiar">
+          {copied ? <Check size={12} className="text-[var(--win)]" /> : <Copy size={12} />}
+        </button>
+      </div>
+      <pre className="p-3 overflow-x-auto text-[12px]" style={{ background: "var(--panel-2)" }}>
+        <code className="font-mono" style={{ color: "var(--ink)" }}>{highlightCode(code)}</code>
+      </pre>
     </div>
   )
 }
@@ -265,11 +367,7 @@ export function Markdown({ content, className }: { content: string; className?: 
           case "callout":
             return <Callout key={idx} kind={b.kind} title={b.title} lines={b.lines} />
           case "code":
-            return (
-              <pre key={idx} className="my-2 p-3 rounded-[var(--radius)] overflow-x-auto text-[12px]" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
-                <code className="font-mono" style={{ color: "var(--ink)" }}>{b.code}</code>
-              </pre>
-            )
+            return <CodeBlock key={idx} lang={b.lang} code={b.code} />
           case "table":
             return (
               <div key={idx} className="my-2 overflow-x-auto rounded-[var(--radius)] border" style={{ borderColor: "var(--line)" }}>
@@ -285,6 +383,8 @@ export function Markdown({ content, className }: { content: string; className?: 
                 </table>
               </div>
             )
+          case "math":
+            return <MathBlock key={idx} tex={b.tex} />
           case "hr":
             return <hr key={idx} className="my-3" style={{ border: "none", borderTop: "1px solid var(--line)" }} />
         }
