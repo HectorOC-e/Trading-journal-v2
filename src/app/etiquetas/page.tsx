@@ -166,16 +166,16 @@ function TagsTable({
         const tag = row.original.tag
         if (renaming === tag) {
           return (
-            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-1.5 w-full min-w-0" onClick={e => e.stopPropagation()}>
               <input
                 autoFocus value={renameValue}
                 onChange={e => setRenameValue(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") onCommitRename(); if (e.key === "Escape") onCancelRename() }}
                 maxLength={30}
-                className="h-7 w-[160px] px-2 rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] focus:outline-none"
+                className="h-7 flex-1 min-w-0 px-2 rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] focus:outline-none"
               />
-              <button onClick={onCommitRename} disabled={renamePending} className="text-[var(--win)]"><Check size={14} /></button>
-              <button onClick={onCancelRename} className="text-[var(--ink-3)]"><X size={14} /></button>
+              <button type="button" onClick={onCommitRename} disabled={renamePending} className="shrink-0 p-1 rounded text-[var(--win)] hover:bg-[var(--win-soft)] transition-colors active:scale-90"><Check size={14} /></button>
+              <button type="button" onClick={onCancelRename} className="shrink-0 p-1 rounded text-[var(--ink-3)] hover:bg-[var(--panel-2)] transition-colors active:scale-90"><X size={14} /></button>
             </div>
           )
         }

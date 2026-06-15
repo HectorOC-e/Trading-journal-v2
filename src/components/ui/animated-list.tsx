@@ -42,26 +42,32 @@ export function AnimatedList<T>({
   })
   const m = COLLECTION[preset]
   const isCard = preset === "card"
+  const [activeKey, setActiveKey] = useState<string | null>(null)
 
   return (
     <div className={className} {...(onItemClick ? roving.containerProps : {})}>
       <AnimatePresence initial>
-        {items.map((item, i) => (
+        {items.map((item, i) => {
+          const key = getKey(item, i)
+          return (
           <AnimatedItem
-            key={getKey(item, i)}
+            key={key}
             delay={staggerDelay(i, preset)}
             spring={m.spring}
             enterY={m.enterY}
             isCard={isCard}
             hoverLift={m.hoverLift}
             clickable={!!onItemClick}
+            active={key === activeKey}
+            onActivate={() => setActiveKey(key)}
             onClick={onItemClick ? () => onItemClick(item, i) : undefined}
             rovingProps={onItemClick ? roving.getItemProps(i) : undefined}
             itemClassName={itemClassName}
           >
             {renderItem(item, i)}
           </AnimatedItem>
-        ))}
+          )
+        })}
       </AnimatePresence>
     </div>
   )
@@ -70,7 +76,7 @@ export function AnimatedList<T>({
 // Tap/click replays a short accent pulse that fades out on its own — perceptible
 // on mobile where a bare :active ends the instant the finger lifts.
 function AnimatedItem({
-  children, delay, spring, enterY, isCard, hoverLift, clickable, onClick, rovingProps, itemClassName,
+  children, delay, spring, enterY, isCard, hoverLift, clickable, active, onActivate, onClick, rovingProps, itemClassName,
 }: {
   children: ReactNode
   delay: number
@@ -79,6 +85,8 @@ function AnimatedItem({
   isCard: boolean
   hoverLift: number
   clickable: boolean
+  active?: boolean
+  onActivate?: () => void
   onClick?: () => void
   rovingProps?: { tabIndex: number; ref: (el: HTMLElement | null) => void; onFocus: () => void }
   itemClassName?: string
@@ -98,7 +106,7 @@ function AnimatedItem({
       whileHover={isCard ? { y: hoverLift } : undefined}
       whileTap={isCard ? { scale: 0.985 } : undefined}
       onClick={onClick}
-      onTap={() => setPulse(p => p + 1)}
+      onTap={() => { setPulse(p => p + 1); onActivate?.() }}
       {...rovingProps}
       className={cn(
         "group relative outline-none rounded-[var(--radius)]",
@@ -113,9 +121,13 @@ function AnimatedItem({
       {pulse > 0 && (
         <motion.span key={pulse} aria-hidden initial={{ opacity: 0.3 }} animate={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 rounded-[var(--radius)] bg-[var(--accent)]" />
       )}
-      {/* List preset: hover accent bar (desktop). */}
+      {/* Active tint — stays until another item is tapped. */}
+      {active && (
+        <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[var(--radius)] bg-[var(--accent)] opacity-[0.10]" />
+      )}
+      {/* List preset: accent bar — hover, and stays while active. */}
       {!isCard && (
-        <span aria-hidden className="pointer-events-none absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+        <span aria-hidden className={cn("pointer-events-none absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-[var(--accent)] origin-top transition-transform duration-200 group-hover:scale-y-100", active ? "scale-y-100" : "scale-y-0")} />
       )}
       <div className="relative">{children}</div>
     </motion.div>
