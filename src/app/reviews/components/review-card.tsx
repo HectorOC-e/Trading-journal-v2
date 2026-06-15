@@ -1,7 +1,9 @@
 "use client"
 
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { DUR, EASE_OUT } from "@/lib/motion"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type ReviewFromDB = RouterOutputs["weeklyReviews"]["list"][number]
@@ -78,9 +80,12 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
   const isLoss  = review.netPnl < 0
 
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: DUR.hover, ease: EASE_OUT }}
       className={cn(
-        "rounded-[var(--radius)] border bg-[var(--panel)] transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 overflow-hidden cursor-pointer",
+        "rounded-[var(--radius)] border bg-[var(--panel)] transition-[color,background-color,border-color,box-shadow] duration-150 overflow-hidden cursor-pointer",
         isSelected
           ? "border-[var(--accent)] shadow-[0_0_0_2px_rgba(79,110,247,0.18)]"
           : "border-[var(--line)] hover:border-[var(--accent)] hover:shadow-sm"
@@ -139,6 +144,6 @@ export function ReviewCard({ review, onClick, isSelected, accountName }: {
           <Button variant="ghost" size="sm" onClick={onClick}>Ver review completa</Button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

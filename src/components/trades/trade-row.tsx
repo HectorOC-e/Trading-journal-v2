@@ -67,7 +67,11 @@ export function TradeRow({ trade, account, setup, selected = false, onClick }: T
       aria-selected={selected}
       className={cn(
         "cursor-pointer border-b border-[var(--line)] transition-colors duration-100",
-        selected ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--panel-2)]"
+        // Press feedback: a quick tint confirms the tap (rows can't scale without
+        // breaking table layout). Hover lift handled via bg shift.
+        selected
+          ? "bg-[var(--accent-soft)]"
+          : "hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]"
       )}
     >
       {/* Result indicator — dot + direction pills, no side stripe */}

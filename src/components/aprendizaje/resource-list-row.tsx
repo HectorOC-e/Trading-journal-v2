@@ -50,7 +50,7 @@ export function ResourceListRow({ resource, onClick, className }: ResourceListRo
       onKeyDown={(e) => e.key === "Enter" && onClick?.()}
       className={cn(
         "flex items-center gap-2 h-9 px-3 rounded-[var(--radius-sm)] border border-transparent",
-        "hover:bg-[var(--panel-2)] hover:border-[var(--line)] transition-colors cursor-pointer",
+        "hover:bg-[var(--panel-2)] hover:border-[var(--line)] active:bg-[var(--accent-soft)] transition-colors cursor-pointer",
         "select-none",
         className
       )}

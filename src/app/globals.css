@@ -243,9 +243,19 @@ body {
   border-radius: var(--radius-xs);
 }
 
-/* ── Modal keyframes (referenced by Dialog) ── */
+/* ── Modal keyframes (referenced by Dialog) ──
+   Enter: fade + scale up from 0.96 (never from 0 — modals stay centered).
+   Exit:  reverse, but FASTER (Emil: the system responds snappily on dismiss). */
 @keyframes fadeIn  { from { opacity: 0; }             to { opacity: 1; } }
 @keyframes scaleIn { from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes fadeOut { from { opacity: 1; }             to { opacity: 0; } }
+@keyframes scaleOut { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -48%) scale(0.96); } }
+
+/* Radix Dialog drives these via data-state; Presence waits for the exit anim. */
+.dialog-overlay[data-state="open"]    { animation: fadeIn  0.15s ease; }
+.dialog-overlay[data-state="closed"]  { animation: fadeOut 0.12s ease; }
+.dialog-content[data-state="open"]    { animation: scaleIn  0.18s var(--ease-out); }
+.dialog-content[data-state="closed"]  { animation: scaleOut 0.12s var(--ease-out); }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -353,11 +363,17 @@ body {
 }
 .scale-pop { animation: scale-pop 0.18s var(--ease-out) both; }
 
-/* ── Reduced motion ── */
+/* ── Reduced motion ──
+   Emil's rule: reduced ≠ zero. Neutralize movement-heavy KEYFRAME animations
+   (shimmer, draw-line, rise, scale-pop, modal scale) and smooth-scroll, but
+   KEEP transitions — opacity/color/border changes aid comprehension and carry
+   no vestibular risk. framer-motion transforms are stripped separately by
+   <MotionConfig reducedMotion="user">. */
 @media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

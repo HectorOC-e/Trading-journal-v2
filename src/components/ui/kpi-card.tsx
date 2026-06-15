@@ -1,6 +1,11 @@
+"use client"
+
 import { Sparkles } from "lucide-react"
+import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { askCoach } from "@/lib/coach-bus"
+import { CountUp } from "@/components/ui/count-up"
+import { DUR, EASE_OUT } from "@/lib/motion"
 import type { KpiCard as KpiCardType } from "@/types"
 
 interface KpiCardProps extends KpiCardType {
@@ -24,14 +29,17 @@ export function KpiCard({ label, value, sub, trend, mono = true, className, icon
   const ariaLabel = sub ? `${label}: ${value}, ${sub}` : `${label}: ${value}`
 
   return (
-    <div
+    <motion.div
       className={cn(
         "bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)]",
         "px-4 py-3.5 flex flex-col gap-1",
-        "transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150",
-        onClick && "cursor-pointer hover:border-[var(--line-2)] hover:shadow-[var(--shadow-xs)]",
+        "transition-[color,background-color,border-color,box-shadow] duration-150",
+        onClick && "cursor-pointer hover:border-[var(--line-2)] hover:shadow-[var(--shadow-sm)]",
         className
       )}
+      whileHover={onClick ? { y: -2 } : undefined}
+      whileTap={onClick ? { scale: 0.98 } : undefined}
+      transition={{ duration: DUR.hover, ease: EASE_OUT }}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
@@ -64,7 +72,7 @@ export function KpiCard({ label, value, sub, trend, mono = true, className, icon
           className={cn("text-[22px] font-bold leading-none tracking-tight", mono && "font-mono")}
           style={{ color: valueColor, fontVariantNumeric: "tabular-nums" }}
         >
-          {value}
+          <CountUp value={value} />
         </p>
         {delta && (
           <span
@@ -79,6 +87,6 @@ export function KpiCard({ label, value, sub, trend, mono = true, className, icon
       {sub && (
         <p className="text-[11px] text-[var(--ink-3)] leading-none">{sub}</p>
       )}
-    </div>
+    </motion.div>
   )
 }

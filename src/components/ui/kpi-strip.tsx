@@ -1,7 +1,9 @@
 // KpiStrip molecule — spec: Dashboard > Portfolio, Trades header
-// 4-column grid of KpiCard atoms
+// 4-column grid of KpiCard atoms, staggered in on mount.
+"use client"
 
 import { KpiCard } from "@/components/ui/kpi-card"
+import { Stagger, StaggerItem } from "@/components/ui/motion"
 import { cn } from "@/lib/utils"
 import type { KpiCard as KpiCardType } from "@/types"
 
@@ -14,10 +16,12 @@ interface KpiStripProps {
 
 export function KpiStrip({ items, className }: KpiStripProps) {
   return (
-    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-3", className)}>
+    <Stagger className={cn("grid grid-cols-2 md:grid-cols-4 gap-3", className)}>
       {items.map((item) => (
-        <KpiCard key={item.label} {...item} />
+        <StaggerItem key={item.label}>
+          <KpiCard {...item} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   )
 }

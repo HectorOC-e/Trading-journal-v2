@@ -8,6 +8,7 @@ import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { trpc } from "@/lib/trpc/client"
 import { askCoach } from "@/lib/coach-bus"
 import { currencySymbol } from "@/lib/fx"
+import { CountUp } from "@/components/ui/count-up"
 import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
@@ -49,7 +50,7 @@ function Stat({ label, value, tone, sub, explain }: { label: string; value: stri
           </button>
         )}
       </div>
-      <p className="num text-[20px] font-bold leading-tight mt-1" style={{ color }}>{value}</p>
+      <p className="num text-[20px] font-bold leading-tight mt-1" style={{ color }}><CountUp value={value} /></p>
       {sub && <p className="text-[10.5px] text-[var(--ink-3)] mt-0.5">{sub}</p>}
     </div>
   )

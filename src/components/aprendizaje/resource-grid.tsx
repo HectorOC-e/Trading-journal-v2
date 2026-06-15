@@ -5,6 +5,7 @@ import { Search, ChevronDown, ChevronUp, SlidersHorizontal, LayoutGrid, List } f
 import { FilterBar } from "@/components/ui/filter-bar"
 import { ResourceCard } from "@/components/aprendizaje/resource-card"
 import { ResourceListRow } from "@/components/aprendizaje/resource-list-row"
+import { Stagger, StaggerItem } from "@/components/ui/motion"
 import { cn } from "@/lib/utils"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
@@ -362,34 +363,35 @@ export function ResourceGrid({
             <span className="w-[64px] text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] text-right">Estado</span>
             <span className="w-[52px] text-[9px] font-bold uppercase tracking-wider text-[var(--ink-3)] text-right">Review</span>
           </div>
-          {filtered.map((r) => (
-            <ResourceListRow
-              key={r.id}
-              resource={r}
-              onClick={() => onViewDetail?.(r)}
-            />
-          ))}
+          <Stagger className="flex flex-col">
+            {filtered.map((r) => (
+              <StaggerItem key={r.id}>
+                <ResourceListRow resource={r} onClick={() => onViewDetail?.(r)} />
+              </StaggerItem>
+            ))}
+          </Stagger>
         </div>
       ) : (
         /* Grid view — 1-col mobile, 2-col md+ */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Stagger className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtered.map((r) => (
-            <ResourceCard
-              key={r.id}
-              resource={r}
-              onReview={onReview}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onUpdateStatus={onUpdateStatus}
-              onToggleFavorite={onToggleFavorite}
-              onUpdateProgress={onUpdateProgress}
-              onLinkSetup={onLinkSetup}
-              onUnlinkSetup={onUnlinkSetup}
-              onViewImpact={onViewImpact}
-              onViewDetail={onViewDetail}
-            />
+            <StaggerItem key={r.id}>
+              <ResourceCard
+                resource={r}
+                onReview={onReview}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onUpdateStatus={onUpdateStatus}
+                onToggleFavorite={onToggleFavorite}
+                onUpdateProgress={onUpdateProgress}
+                onLinkSetup={onLinkSetup}
+                onUnlinkSetup={onUnlinkSetup}
+                onViewImpact={onViewImpact}
+                onViewDetail={onViewDetail}
+              />
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       )}
 
     </div>

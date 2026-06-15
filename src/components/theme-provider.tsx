@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
+import { MotionConfig } from "framer-motion"
 import { usePathname } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
 import { applyColorTheme, parseCustomTheme, type ColorTheme } from "@/lib/themes"
@@ -142,7 +143,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggle }}>
-      {children}
+      {/* reducedMotion="user" ⇒ all framer-motion transforms are stripped when the
+          OS requests reduced motion, while opacity transitions stay (Emil: reduced
+          ≠ zero). CSS animations are handled separately in globals.css. */}
+      <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </ThemeContext.Provider>
   )
 }
