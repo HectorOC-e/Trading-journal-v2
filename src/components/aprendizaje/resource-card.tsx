@@ -5,7 +5,7 @@ import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy
 import { cn } from "@/lib/utils"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
-import { masteryLevel, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
+import { effectiveMasteryLevel, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
 /** Pequeño anillo de dominio (n/5). */
@@ -258,7 +258,7 @@ export function ResourceCard({
             >
               {STATUS_CONFIG[resource.status].label}
             </span>
-            <MasteryRing level={masteryLevel(resource.status)} />
+            <MasteryRing level={effectiveMasteryLevel(resource.status, resource.latestMasteryLevel)} />
           </div>
 
           {/* ··· dropdown — always visible & touch-friendly (C1 fix) */}

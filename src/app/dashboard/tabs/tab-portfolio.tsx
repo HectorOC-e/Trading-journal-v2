@@ -145,28 +145,33 @@ export function TabPortfolio({
           value={sharpeRatio != null ? sharpeRatio.toFixed(4) : "—"}
           sub="avgR / desv. estándar R"
           color={sharpeRatio != null && sharpeRatio >= 1 ? "var(--win)" : sharpeRatio != null && sharpeRatio < 0 ? "var(--loss)" : undefined}
-          icon={<BarChart2 size={15} />} />
+          icon={<BarChart2 size={15} />}
+          explain={sharpeRatio != null ? `Mi Sharpe Ratio es ${sharpeRatio.toFixed(2)}. ¿Qué dice de la consistencia de mis retornos ajustados al riesgo?` : undefined} />
         <KpiCard label="Expectancy $"
           value={`${expectancyDollar >= 0 ? "+" : "-"}${cur}${Math.abs(expectancyDollar).toFixed(2)}`}
           sub="por trade promedio"
           color={expectancyDollar >= 0 ? "var(--win)" : "var(--loss)"}
-          icon={<CheckCircle2 size={15} />} />
+          icon={<CheckCircle2 size={15} />}
+          explain={`Mi expectancy es ${expectancyDollar >= 0 ? "+" : "-"}${cur}${Math.abs(expectancyDollar).toFixed(2)} por trade. ¿Qué implica para escalar el tamaño de mis posiciones?`} />
         <KpiCard label="Mejor día"
           value={bestDay ? `+${cur}${bestDay.pnl.toFixed(2)}` : "—"}
           sub={bestDay ? fmtDate(bestDay.date) : "sin datos"}
           color="var(--win)"
-          icon={<TrendingUp size={15} />} />
+          icon={<TrendingUp size={15} />}
+          explain={bestDay ? `Mi mejor día fue ${fmtDate(bestDay.date)} con +${cur}${bestDay.pnl.toFixed(2)}. ¿Qué hice bien ese día que pueda repetir?` : undefined} />
         <KpiCard label="Peor día"
           value={worstDay && worstDay.pnl < 0 ? `-${cur}${Math.abs(worstDay.pnl).toFixed(2)}` : "—"}
           sub={worstDay && worstDay.pnl < 0 ? fmtDate(worstDay.date) : "sin datos"}
           color="var(--loss)"
-          icon={<TrendingDown size={15} />} />
+          icon={<TrendingDown size={15} />}
+          explain={worstDay && worstDay.pnl < 0 ? `Mi peor día fue ${fmtDate(worstDay.date)} con -${cur}${Math.abs(worstDay.pnl).toFixed(2)}. ¿Qué falló y qué regla me hubiera protegido?` : undefined} />
         {tradeStreak && (
           <KpiCard label="Racha actual"
             value={`${tradeStreak.count}${tradeStreak.isWin ? "W" : "L"}`}
             sub={tradeStreak.isWin ? "victorias consecutivas" : "pérdidas consecutivas"}
             color={tradeStreak.isWin ? "var(--win)" : "var(--loss)"}
-            icon={<Award size={15} />} />
+            icon={<Award size={15} />}
+            explain={`Llevo ${tradeStreak.count} ${tradeStreak.isWin ? "victorias" : "pérdidas"} consecutivas. ¿Cómo gestiono mi tamaño y psicología en esta racha?`} />
         )}
       </div>
 

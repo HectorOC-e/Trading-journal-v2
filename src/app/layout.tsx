@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
         {/* No-flash: apply dark class + color theme before hydration.
             Inline native <script> (dangerouslySetInnerHTML) is the sanctioned
             React 19 pattern — next/script with inline children warns. */}

@@ -525,3 +525,26 @@ body {
 /* modal      50 */
 /* toast      60 */
 /* tooltip    70 */
+
+/* ── Print / PDF ──────────────────────────────────────────────────────────
+   Reports (review mensual/semanal) print via window.print(). Browsers drop
+   background colors by default, which would blank the win/loss bars, chips and
+   chart fills. Force exact color rendering and a clean page so the visual
+   report exports to PDF intact. */
+@media print {
+  html, body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Every element keeps its declared colors/backgrounds in the PDF. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* App chrome (sidebar, top bar, floating coach) shouldn't appear in the PDF. */
+  aside, nav, .print\:hidden { display: none !important; }
+  @page { margin: 14mm; }
+  /* SVG charts (recharts/sparklines) must not be clipped across page breaks. */
+  svg { break-inside: avoid; page-break-inside: avoid; }
+}

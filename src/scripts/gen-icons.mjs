@@ -45,7 +45,10 @@ function inRoundRect(x, y, w, h, r) {
   return x >= 0 && x <= w && y >= 0 && y <= h
 }
 
-function render(size) {
+// opaque=true → fill the whole square with the blue tile (no transparent corners,
+// no rounding). iOS apple-touch-icon needs this: transparency renders as black
+// corners and iOS applies its own rounded mask.
+function render(size, opaque = false) {
   const SS = 4 // supersample factor for anti-aliasing
   const S = size * SS
   const scale = S / 512
@@ -63,8 +66,8 @@ function render(size) {
       const i = (y * S + x) * 4
       const px = x + 0.5, py = y + 0.5
 
-      // outside rounded tile → transparent
-      if (!inRoundRect(px, py, S, S, radius)) {
+      // outside rounded tile → transparent (skipped when opaque)
+      if (!opaque && !inRoundRect(px, py, S, S, radius)) {
         buf[i + 3] = 0
         continue
       }
@@ -143,6 +146,15 @@ for (const size of [192, 512]) {
   const rgba = render(size)
   const png = encodePNG(rgba, size)
   const path = resolve(OUT_DIR, `icon-${size}.png`)
+  writeFileSync(path, png)
+  console.log(`wrote ${path} (${png.length} bytes)`)
+}
+
+// iOS apple-touch-icon: opaque 180×180 (no transparent corners).
+{
+  const rgba = render(180, true)
+  const png = encodePNG(rgba, 180)
+  const path = resolve(OUT_DIR, "apple-touch-icon.png")
   writeFileSync(path, png)
   console.log(`wrote ${path} (${png.length} bytes)`)
 }

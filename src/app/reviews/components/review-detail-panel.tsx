@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, ArrowLeft, Pencil, Trash2 } from "lucide-react"
+import Link from "next/link"
+import { X, ArrowLeft, Pencil, Trash2, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
@@ -109,6 +110,14 @@ export function ReviewDetailPanel({
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <Link
+            href={`/reviews/semanal/${review.weekStart}`}
+            title="Ver reporte visual"
+            className="p-1.5 rounded-lg transition-colors hover:bg-[var(--panel-2)]"
+            style={{ color: "var(--ink-3)" }}
+          >
+            <BarChart3 size={14} />
+          </Link>
           {onEdit && (
             <button
               onClick={() => onEdit(review)}
