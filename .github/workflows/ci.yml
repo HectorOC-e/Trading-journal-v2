@@ -12,6 +12,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
+# Run JS-based actions (e.g. supabase/setup-cli) on Node 24 so the Node 20
+# deprecation warning stops annotating every run. Safe before the June 2026 flip.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # ── 1. Code gates ───────────────────────────────────────────────────────────
   checks:
@@ -59,6 +64,65 @@ jobs:
       - name: Build
         working-directory: src
         run: pnpm run build
+
+  # ── 1b. Authenticated E2E (Playwright) ───────────────────────────────────────
+  # Builds the app, starts it, and runs the authenticated Playwright specs against
+  # the seeded test user. The specs `test.skip` themselves when E2E_USER_EMAIL /
+  # E2E_USER_PASSWORD are absent, so this job stays green until those secrets are
+  # added — adding them (pointing at the seeded user) turns the suite live.
+  e2e:
+    name: E2E (authenticated)
+    needs: [checks]
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      AI_KEY_ENCRYPTION_SECRET: ${{ secrets.AI_KEY_ENCRYPTION_SECRET }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: src/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: src
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        working-directory: src
+        run: pnpm exec prisma generate
+
+      - name: Install Playwright browsers
+        working-directory: src
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        working-directory: src
+        run: pnpm run build
+
+      - name: Start app & wait for it
+        working-directory: src
+        run: |
+          pnpm start &
+          npx --yes wait-on -t 120000 http://localhost:3000
+
+      - name: Run authenticated E2E
+        working-directory: src
+        run: pnpm e2e
 
   # ── 2. Migration validation (antierrores) ───────────────────────────────────
   # Boots a fresh local Supabase stack and replays EVERY migration from zero.
