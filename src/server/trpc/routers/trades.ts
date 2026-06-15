@@ -879,4 +879,40 @@ export const tradesRouter = router({
         similarity: rows.map(r => r.similarity),
       }
     }),
+
+  // Backfill: embed trade notes that were written before semantic search existed
+  // (or before a key was configured). Idempotent — only touches rows whose notes
+  // are non-empty and notes_embedding IS NULL. Call repeatedly until remaining=0.
+  backfillEmbeddings: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(500).default(200) }).optional())
+    .mutation(async ({ ctx, input }) => {
+      const emb = await resolveEmbeddingCall(ctx.prisma, ctx.userId)
+      if (emb.source === "none") {
+        return { embedded: 0, failed: 0, remaining: 0, error: "NO_EMBEDDING_KEY" as const }
+      }
+      const limit = input?.limit ?? 200
+      const pending = await ctx.prisma.$queryRaw<{ id: string; notes: string }[]>`
+        SELECT id, notes FROM trades
+        WHERE user_id = ${ctx.userId}::uuid
+          AND notes <> ''
+          AND notes_embedding IS NULL
+        ORDER BY date DESC
+        LIMIT ${limit}
+      `
+      let embedded = 0, failed = 0
+      for (const t of pending) {
+        const vector = await embedText(t.notes, { model: emb.model, apiKey: emb.apiKey })
+        if (!vector) { failed++; continue }
+        await ctx.prisma.$executeRaw`
+          UPDATE trades SET notes_embedding = ${`[${vector.join(",")}]`}::vector
+          WHERE id = ${t.id}::uuid
+        `
+        embedded++
+      }
+      const remainingRows = await ctx.prisma.$queryRaw<{ remaining: number }[]>`
+        SELECT COUNT(*)::int AS remaining FROM trades
+        WHERE user_id = ${ctx.userId}::uuid AND notes <> '' AND notes_embedding IS NULL
+      `
+      return { embedded, failed, remaining: remainingRows[0]?.remaining ?? 0 }
+    }),
 })
