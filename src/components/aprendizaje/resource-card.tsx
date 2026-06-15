@@ -1,8 +1,10 @@
 "use client"
 
 import { useRef, useState, useEffect, useCallback } from "react"
+import { motion } from "framer-motion"
 import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy, CheckCircle2, Link } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { DUR, EASE_OUT } from "@/lib/motion"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
 import { effectiveMasteryLevel, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
@@ -223,10 +225,12 @@ export function ResourceCard({
   }
 
   return (
-    <div
+    <motion.div
+      whileHover={{ y: -3 }}
+      transition={{ duration: DUR.hover, ease: EASE_OUT }}
       className={cn(
         "relative flex gap-0 rounded-[var(--radius)] bg-[var(--panel)] border border-[var(--line)]",
-        "hover:border-[var(--accent)] transition-colors group overflow-hidden",
+        "hover:border-[var(--accent)] hover:shadow-[var(--shadow-sm)] transition-[border-color,box-shadow] group overflow-hidden",
         className
       )}
     >
@@ -578,6 +582,6 @@ export function ResourceCard({
         )}
 
       </div>
-    </div>
+    </motion.div>
   )
 }

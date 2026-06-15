@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
+import { motion } from "framer-motion"
 import {
   Target, Shield, BarChart3, ChevronRight,
   CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown, Lock,
 } from "lucide-react"
+import { DUR, EASE_OUT } from "@/lib/motion"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { formatMoney } from "@/lib/format/money"
@@ -119,12 +121,15 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const isBlocked  = (isLocked && isPermanentLockReason(lockReason)) || !!stats?.risk.breach
 
   return (
-    <div
+    <motion.div
       onClick={onClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[color,background-color,border-color,box-shadow,transform,opacity] duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: DUR.hover, ease: EASE_OUT }}
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[color,background-color,border-color,box-shadow] duration-150 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow: selected
@@ -304,6 +309,6 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

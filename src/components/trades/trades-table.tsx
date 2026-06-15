@@ -50,7 +50,7 @@ function FilterChip({
           border: `1px solid ${isActive ? "var(--accent)" : "var(--line)"}`,
           fontSize: 12.5, fontWeight: isActive ? 600 : 400,
           cursor: "pointer", whiteSpace: "nowrap",
-          transition: "all .12s",
+          transition: "background-color .12s, color .12s, border-color .12s",
         }}
       >
         {displayLabel}

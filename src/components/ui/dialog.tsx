@@ -16,30 +16,22 @@ export function DialogContent({
 }: React.ComponentPropsWithoutRef<typeof RadixDialog.Content>) {
   return (
     <RadixDialog.Portal>
-      <RadixDialog.Overlay
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[3px]"
-        style={{
-          animation: "fadeIn 0.15s ease",
-        }}
-      />
+      <RadixDialog.Overlay className="dialog-overlay fixed inset-0 z-50 bg-black/50 backdrop-blur-[3px]" />
       <RadixDialog.Content
         aria-describedby={ariaDescribedBy}
         className={cn(
+          "dialog-content",
           "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
           "w-full max-h-[90dvh] flex flex-col overflow-hidden",
           "bg-[var(--panel)] rounded-[var(--radius-lg)]",
           "shadow-[var(--shadow-lg)]",
           className
         )}
-        style={{
-          animation: "scaleIn 0.18s cubic-bezier(0.16,1,0.3,1)",
-        }}
         {...props}
       >
         {/* Close button — pinned top-right */}
         <RadixDialog.Close
-          className="absolute right-3 top-3 z-20 p-1.5 rounded-[var(--radius-xs)] transition-colors"
-          style={{ color: "var(--ink-3)" }}
+          className="absolute right-3 top-3 z-20 p-1.5 rounded-[var(--radius-xs)] text-[var(--ink-3)] transition-[color,background-color,transform] duration-150 hover:bg-[var(--chip)] hover:text-[var(--ink)] active:scale-95"
           aria-label="Cerrar"
         >
           <X size={15} />

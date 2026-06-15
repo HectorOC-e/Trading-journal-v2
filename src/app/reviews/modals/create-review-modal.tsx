@@ -412,7 +412,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
         <div className="flex gap-1 p-1 rounded-[var(--radius-sm)] mx-0" style={{ background: "var(--panel-2)", border: "1px solid var(--line)" }}>
           {(["config", "analisis"] as const).map((s) => (
             <button key={s} onClick={() => setStep(s)}
-              className={cn("flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-all duration-100", step === s ? "text-[var(--ink)]" : "text-[var(--ink-3)] hover:text-[var(--ink-2)]")}
+              className={cn("flex-1 text-xs font-semibold py-1.5 px-3 rounded transition-[color,background-color,box-shadow] duration-100", step === s ? "text-[var(--ink)]" : "text-[var(--ink-3)] hover:text-[var(--ink-2)]")}
               style={step === s ? { background: "var(--panel)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" } : {}}>
               {s === "config" ? "1 · Configuración" : "2 · Análisis"}
             </button>
@@ -549,7 +549,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
                       {reviewResources.map((res) => (
                         <label key={res.id} className="flex items-start gap-3 cursor-pointer">
                           <div
-                            className="mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-all"
+                            className="mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 border transition-[background-color,border-color] duration-150 active:scale-90"
                             style={{ background: linkedResources.includes(res.id) ? "var(--accent)" : "var(--panel)", borderColor: linkedResources.includes(res.id) ? "var(--accent)" : "var(--line)" }}
                             onClick={() => toggleResource(res.id)}
                           >
