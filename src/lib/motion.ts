@@ -58,3 +58,31 @@ export const pressable = {
   whileTap: { scale: 0.98 },
   transition: { duration: DUR.hover, ease: EASE_OUT },
 } as const
+
+// ── Collection presets ────────────────────────────────────────────────────────
+// Shared, per-surface motion presets so tables, cards and lists feel coherent
+// while keeping context-appropriate nuance. All share enter-flash + focus.
+export type CollectionPreset = "table" | "card" | "list"
+
+export interface CollectionMotion {
+  staggerStep: number   // seconds between consecutive items
+  staggerCap: number    // cap so long collections still land quickly
+  enterY: number        // initial Y offset (px)
+  spring: { duration: number; bounce: number }
+  hoverLift: number     // Y on hover (0 = no lift, e.g. dense tables)
+}
+
+export const COLLECTION: Record<CollectionPreset, CollectionMotion> = {
+  // dense, fast, no lift — pairs with the hover accent bar
+  table: { staggerStep: 0.03,  staggerCap: 14, enterY: 12, spring: { duration: 0.40, bounce: 0.30 }, hoverLift: 0 },
+  // expressive — lift + more bounce
+  card:  { staggerStep: 0.05,  staggerCap: 10, enterY: 14, spring: { duration: 0.45, bounce: 0.42 }, hoverLift: -3 },
+  // marked cascade, slight lift
+  list:  { staggerStep: 0.045, staggerCap: 12, enterY: 10, spring: { duration: 0.42, bounce: 0.36 }, hoverLift: -1 },
+}
+
+/** Stagger delay (s) for the item at `index` under a preset. */
+export function staggerDelay(index: number, preset: CollectionPreset = "table"): number {
+  const p = COLLECTION[preset]
+  return Math.min(index, p.staggerCap) * p.staggerStep
+}

@@ -2,14 +2,18 @@
 
 // TASK-051: Custom Tags Management — create, rename, delete, merge
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
 import { Pencil, Trash2, Merge, Check, X } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { DataTable, DataTableToolbar, DataTablePagination, useDataTable } from "@/components/ui/data-table"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+
+type TagRow = { tag: string; count: number }
 
 export default function EtiquetasPage() {
   const utils = trpc.useUtils()
@@ -53,94 +57,19 @@ export default function EtiquetasPage() {
         subtitle="Gestiona los tags usados en tus trades"
       />
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20 text-[var(--ink-3)] text-sm">
-          Cargando…
-        </div>
-      ) : tags.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-2">
-          <p className="text-[var(--ink-3)] text-sm">No has usado etiquetas todavía.</p>
-          <p className="text-[var(--ink-3)] text-xs">Añade tags al registrar trades.</p>
-        </div>
-      ) : (
-        <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr style={{ background: "var(--panel-2)", borderBottom: "1px solid var(--line)" }}>
-                <th className="px-4 py-3 text-left font-semibold text-[var(--ink)]">Etiqueta</th>
-                <th className="px-4 py-3 text-right font-semibold text-[var(--ink)] w-24">Usos</th>
-                <th className="px-4 py-3 text-right w-28" />
-              </tr>
-            </thead>
-            <tbody>
-              {tags.map(({ tag, count }, idx) => (
-                <tr
-                  key={tag}
-                  style={{ borderTop: idx > 0 ? "1px solid var(--line)" : undefined }}
-                >
-                  <td className="px-4 py-3">
-                    {renaming === tag ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          value={renameValue}
-                          onChange={e => setRenameValue(e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setRenaming(null) }}
-                          maxLength={30}
-                          className="h-7 px-2 rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] focus:outline-none"
-                          style={{ width: 160 }}
-                        />
-                        <button onClick={commitRename} disabled={renameMutation.isPending} className="text-[var(--win)]">
-                          <Check size={14} />
-                        </button>
-                        <button onClick={() => setRenaming(null)} className="text-[var(--ink-3)]">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <span
-                        className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                        style={{ background: "var(--chip)", color: "var(--ink-2)" }}
-                      >
-                        {tag}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-[var(--ink-3)]">{count}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => startRename(tag)}
-                        title="Renombrar"
-                        className="p-1.5 rounded hover:bg-[var(--panel-2)] transition-colors"
-                        style={{ color: "var(--ink-3)" }}
-                      >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        onClick={() => { setMerging({ dying: tag }); setMergeSurvivor("") }}
-                        title="Fusionar con otro tag"
-                        className="p-1.5 rounded hover:bg-[var(--panel-2)] transition-colors"
-                        style={{ color: "var(--ink-3)" }}
-                      >
-                        <Merge size={13} />
-                      </button>
-                      <button
-                        onClick={() => setDeletingTag(tag)}
-                        title="Eliminar"
-                        className="p-1.5 rounded hover:bg-[var(--loss-soft)] transition-colors"
-                        style={{ color: "var(--ink-3)" }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <TagsTable
+        tags={tags}
+        isLoading={isLoading}
+        renaming={renaming}
+        renameValue={renameValue}
+        setRenameValue={setRenameValue}
+        onStartRename={startRename}
+        onCommitRename={commitRename}
+        onCancelRename={() => setRenaming(null)}
+        renamePending={renameMutation.isPending}
+        onMerge={(tag) => { setMerging({ dying: tag }); setMergeSurvivor("") }}
+        onDelete={setDeletingTag}
+      />
 
       {/* Delete confirmation */}
       <Dialog open={deletingTag !== null} onOpenChange={() => setDeletingTag(null)}>
@@ -202,6 +131,108 @@ export default function EtiquetasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+// ── Tags table (DataTable: search + sort by usage + usage bar) ────────────────
+function TagsTable({
+  tags, isLoading,
+  renaming, renameValue, setRenameValue,
+  onStartRename, onCommitRename, onCancelRename, renamePending,
+  onMerge, onDelete,
+}: {
+  tags: TagRow[]
+  isLoading: boolean
+  renaming: string | null
+  renameValue: string
+  setRenameValue: (v: string) => void
+  onStartRename: (tag: string) => void
+  onCommitRename: () => void
+  onCancelRename: () => void
+  renamePending: boolean
+  onMerge: (tag: string) => void
+  onDelete: (tag: string) => void
+}) {
+  const maxCount = useMemo(() => Math.max(1, ...tags.map(t => t.count)), [tags])
+
+  const columns = useMemo<ColumnDef<TagRow>[]>(() => [
+    {
+      id: "tag",
+      accessorKey: "tag",
+      meta: { width: "minmax(160px, 2fr)", headerLabel: "Etiqueta" },
+      header: () => <span>Etiqueta</span>,
+      cell: ({ row }) => {
+        const tag = row.original.tag
+        if (renaming === tag) {
+          return (
+            <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+              <input
+                autoFocus value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") onCommitRename(); if (e.key === "Escape") onCancelRename() }}
+                maxLength={30}
+                className="h-7 w-[160px] px-2 rounded border border-[var(--accent)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] focus:outline-none"
+              />
+              <button onClick={onCommitRename} disabled={renamePending} className="text-[var(--win)]"><Check size={14} /></button>
+              <button onClick={onCancelRename} className="text-[var(--ink-3)]"><X size={14} /></button>
+            </div>
+          )
+        }
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: "var(--chip)", color: "var(--ink-2)" }}>{tag}</span>
+      },
+    },
+    {
+      id: "count",
+      accessorKey: "count",
+      meta: { width: "minmax(120px, 1fr)", headerLabel: "Usos", align: "right" },
+      header: () => <span>Usos</span>,
+      cell: ({ row }) => (
+        <div className="flex items-center justify-end gap-2 w-full">
+          <div className="h-1.5 flex-1 max-w-[80px] rounded-full bg-[var(--line)] overflow-hidden">
+            <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${(row.original.count / maxCount) * 100}%` }} />
+          </div>
+          <span className="font-mono text-[12px] font-semibold text-[var(--ink-2)] tabular-nums w-7 text-right">{row.original.count}</span>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      enableSorting: false,
+      meta: { width: "120px", align: "right" },
+      header: () => null,
+      cell: ({ row }) => {
+        const tag = row.original.tag
+        return (
+          <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+            <button onClick={() => onStartRename(tag)} title="Renombrar" className="p-1.5 rounded text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--panel-2)] transition-colors active:scale-90"><Pencil size={13} /></button>
+            <button onClick={() => onMerge(tag)} title="Fusionar" className="p-1.5 rounded text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--panel-2)] transition-colors active:scale-90"><Merge size={13} /></button>
+            <button onClick={() => onDelete(tag)} title="Eliminar" className="p-1.5 rounded text-[var(--ink-3)] hover:text-[var(--loss)] hover:bg-[var(--loss-soft)] transition-colors active:scale-90"><Trash2 size={13} /></button>
+          </div>
+        )
+      },
+    },
+  ], [renaming, renameValue, renamePending, maxCount, setRenameValue, onCommitRename, onCancelRename, onStartRename, onMerge, onDelete])
+
+  const { table, density, setDensity } = useDataTable<TagRow>({
+    data: tags, columns, storageKey: "tj-tags-table", pageSize: 50,
+    getRowId: (t) => t.tag,
+    initialSorting: [{ id: "count", desc: true }],
+  })
+
+  return (
+    <div className="flex flex-col gap-3">
+      <DataTableToolbar
+        table={table} density={density} onDensityChange={setDensity}
+        searchPlaceholder="Buscar etiqueta…" exportFilename="etiquetas.csv"
+        enableColumnToggle={false}
+      />
+      <DataTable
+        table={table} density={density} isLoading={isLoading}
+        empty={<div className="flex flex-col items-center gap-1"><p className="text-[13px] font-medium text-[var(--ink-2)]">Sin etiquetas</p><p className="text-[12px] text-[var(--ink-3)]">Añade tags al registrar trades.</p></div>}
+      />
+      <DataTablePagination table={table} />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
 import { TrendingUp, TrendingDown, Target, BarChart2, CheckCircle2, Percent, Activity, Award, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
+import { SimpleTable, TrendNumber, type SimpleColumn } from "@/components/ui/data-table"
 import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
 import { PropFirmRules } from "../components/prop-firm-rules"
@@ -294,51 +295,27 @@ export function TabPortfolio({
       <PropFirmRules propFirmStatus={propFirmStatus} />
 
       <Card title="Comparación de cuentas">
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full min-w-[480px]">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Cuenta","Balance","P&L mes","Win %","Drawdown","Estado"].map(h => (
-                  <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {accountsTable.map(a => (
-                <tr key={a.accountId} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-3 font-medium text-[var(--ink)] text-sm">{a.name}</td>
-                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{cur}{a.balance.toFixed(2)}</td>
-                  <td className={cn("py-3 font-mono text-sm font-semibold", a.pnlMonth >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {a.pnlMonth >= 0 ? "+" : "-"}{cur}{Math.abs(a.pnlMonth).toFixed(2)}
-                  </td>
-                  <td className="py-3 font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</td>
-                  <td className={cn("py-3 font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
-                    {a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}
-                  </td>
-                  <td className="py-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
-                        a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]"
-                        : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]"
-                        : "bg-[var(--chip)] text-[var(--ink-3)]"
-                      )}>
-                        {a.status === "ACTIVE" ? "Activa" : a.status === "PAUSED" ? "Pausada" : a.status}
-                      </span>
-                      {a.locked && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">
-                          <Lock size={9} aria-hidden /> Bloqueada
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {accountsTable.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin cuentas registradas</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SimpleTable
+          data={accountsTable}
+          getRowKey={(a) => a.accountId}
+          empty="Sin cuentas registradas"
+          columns={[
+            { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="font-medium text-[var(--ink)] text-sm">{a.name}</span> },
+            { key: "balance", header: "Balance", align: "right", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{cur}{a.balance.toFixed(2)}</span> },
+            { key: "pnlMonth", header: "P&L mes", align: "right", render: (a) => <TrendNumber value={a.pnlMonth} format={(v) => `${cur}${v.toFixed(2)}`} className="text-sm justify-end w-full" /> },
+            { key: "winRate", header: "Win %", align: "right", width: "minmax(70px, 0.8fr)", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</span> },
+            { key: "drawdownPct", header: "Drawdown", align: "right", width: "minmax(80px, 0.9fr)", render: (a) => <span className={cn("font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>{a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}</span> },
+            { key: "status", header: "Estado", width: "minmax(110px, 1.2fr)", render: (a) => (
+              <div className="flex items-center gap-1.5">
+                <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
+                  a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]" : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]" : "bg-[var(--chip)] text-[var(--ink-3)]")}>
+                  {a.status === "ACTIVE" ? "Activa" : a.status === "PAUSED" ? "Pausada" : a.status}
+                </span>
+                {a.locked && <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]"><Lock size={9} aria-hidden /> Bloqueada</span>}
+              </div>
+            ) },
+          ] satisfies SimpleColumn<typeof accountsTable[number]>[]}
+        />
       </Card>
     </div>
   )

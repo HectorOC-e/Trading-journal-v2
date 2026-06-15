@@ -6,6 +6,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { cn } from "@/lib/utils"
+import { SimpleTable } from "@/components/ui/data-table"
 import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
 import { TYPE_META, fmtDate } from "../components/shared"
@@ -203,153 +204,79 @@ export function TabOperador({
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full min-w-[480px]">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Símbolo · Setup","R","P&L Neto","Sesión · Tags","Fecha"].map(h => (
-                  <th key={h} className="pb-2.5 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTrades.map(t => (
-                <tr key={t.id} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-base leading-none", t.direction === "LONG" ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                        {t.direction === "LONG" ? "↑" : "↓"}
-                      </span>
-                      <div>
-                        <p className="font-mono font-bold text-[var(--ink)] text-sm">
-                          {t.symbol}<span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.direction}</span>
-                        </p>
-                        <p className="text-[10px] text-[var(--ink-3)]">{t.setupName ?? "—"}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className={cn("py-3 font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R
-                  </td>
-                  <td className={cn("py-3 font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {t.pnl >= 0 ? "+" : ""}${Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3">
-                    <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
-                    <div className="flex gap-1 flex-wrap">
-                      {t.tags.map(tag => (
-                        <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
-                          style={{
-                            background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)",
-                            color: tag === "A+" ? "var(--accent)" : "var(--ink-2)",
-                          }}>
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-3 text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</td>
-                </tr>
-              ))}
-              {filteredTrades.length === 0 && (
-                <tr><td colSpan={5} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin trades</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SimpleTable
+          data={filteredTrades}
+          getRowKey={(t) => t.id}
+          empty="Sin trades"
+          columns={[
+            { key: "symbol", header: "Símbolo · Setup", width: "minmax(150px, 2fr)", render: (t) => (
+              <div className="flex items-center gap-2">
+                <span className={cn("text-base leading-none", t.direction === "LONG" ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.direction === "LONG" ? "↑" : "↓"}</span>
+                <div>
+                  <p className="font-mono font-bold text-[var(--ink)] text-sm">{t.symbol}<span className="font-sans font-normal text-[var(--ink-3)] text-xs ml-1">· {t.direction}</span></p>
+                  <p className="text-[10px] text-[var(--ink-3)]">{t.setupName ?? "—"}</p>
+                </div>
+              </div>
+            ) },
+            { key: "r", header: "R", align: "right", width: "minmax(60px, 0.7fr)", render: (t) => <span className={cn("font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R</span> },
+            { key: "pnl", header: "P&L Neto", align: "right", render: (t) => <span className={cn("font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.pnl >= 0 ? "+" : "-"}${Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
+            { key: "session", header: "Sesión · Tags", width: "minmax(120px, 1.4fr)", render: (t) => (
+              <div>
+                <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
+                <div className="flex gap-1 flex-wrap">
+                  {t.tags.map(tag => <span key={tag} className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ background: tag === "A+" ? "var(--accent-soft)" : "var(--chip)", color: tag === "A+" ? "var(--accent)" : "var(--ink-2)" }}>{tag}</span>)}
+                </div>
+              </div>
+            ) },
+            { key: "date", header: "Fecha", width: "minmax(80px, 0.9fr)", render: (t) => <span className="text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</span> },
+          ]}
+        />
       </div>
 
       {/* ── Rendimiento por sesión ── */}
       <Card title="Rendimiento por sesión">
-        <div className="overflow-x-auto -mx-1">
-          <table className="w-full min-w-[320px]">
-            <thead>
-              <tr className="border-b border-[var(--line)]">
-                {["Sesión","Trades","Win %","Avg R"].map(h => (
-                  <th key={h} className="pb-2 text-left" style={{ fontSize: 10, fontWeight: 600, color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: ".07em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sessionStats.map(s => (
-                <tr key={s.session} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                  <td className="py-2.5 text-sm text-[var(--ink)]">{s.session}</td>
-                  <td className="py-2.5 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
-                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.winRate.toFixed(1)}%
-                  </td>
-                  <td className={cn("py-2.5 font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                    {s.avgR > 0 ? "+" : ""}{s.avgR.toFixed(2)}R
-                  </td>
-                </tr>
-              ))}
-              {sessionStats.length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-[var(--ink-3)] text-sm">Sin datos de sesiones</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SimpleTable
+          data={sessionStats}
+          getRowKey={(s) => s.session}
+          empty="Sin datos de sesiones"
+          columns={[
+            { key: "session", header: "Sesión", width: "minmax(120px, 2fr)", render: (s) => <span className="text-sm text-[var(--ink)]">{s.session}</span> },
+            { key: "trades", header: "Trades", align: "right", render: (s) => <span className="font-mono text-sm text-[var(--ink-2)]">{s.trades}</span> },
+            { key: "winRate", header: "Win %", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.winRate.toFixed(1)}%</span> },
+            { key: "avgR", header: "Avg R", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.avgR > 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.avgR > 0 ? "+" : ""}{s.avgR.toFixed(2)}R</span> },
+          ]}
+        />
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="P&L por símbolo" sub="Rendimiento neto acumulado por instrumento">
-          {pnlBySymbol.length === 0 ? (
-            <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos</p>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[var(--line)]">
-                  {["Símbolo","Trades","Win %","Net P&L"].map(h => (
-                    <th key={h} className="pb-2 text-left text-[10px] font-semibold text-[var(--ink-3)] uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {pnlBySymbol.map(s => (
-                  <tr key={s.symbol} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{s.symbol}</td>
-                    <td className="py-2 font-mono text-sm text-[var(--ink-2)]">{s.trades}</td>
-                    <td className={cn("py-2 font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                      {s.winRate.toFixed(2)}%
-                    </td>
-                    <td className={cn("py-2 font-mono text-sm font-semibold", s.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                      {s.pnl >= 0 ? "+" : "-"}${Math.abs(s.pnl).toFixed(2)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <SimpleTable
+            data={pnlBySymbol}
+            getRowKey={(s) => s.symbol}
+            density="compact"
+            empty="Sin datos"
+            columns={[
+              { key: "symbol", header: "Símbolo", width: "minmax(80px, 1.4fr)", render: (s) => <span className="font-mono font-bold text-sm text-[var(--ink)]">{s.symbol}</span> },
+              { key: "trades", header: "Trades", align: "right", render: (s) => <span className="font-mono text-sm text-[var(--ink-2)]">{s.trades}</span> },
+              { key: "winRate", header: "Win %", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.winRate.toFixed(2)}%</span> },
+              { key: "pnl", header: "Net P&L", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.pnl >= 0 ? "+" : "-"}${Math.abs(s.pnl).toFixed(2)}</span> },
+            ]}
+          />
         </Card>
 
         <Card title="Horario óptimo" sub="Por hora de apertura · avg R desc.">
-          {hourStats.length === 0 ? (
-            <p className="text-center text-[var(--ink-3)] text-sm py-4">Sin datos de openTime</p>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[var(--line)]">
-                  {["Hora","Trades","Win %","Avg R"].map(h => (
-                    <th key={h} className="pb-2 text-left text-[10px] font-semibold text-[var(--ink-3)] uppercase tracking-wider">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {hourStats.slice(0, 8).map(h => (
-                  <tr key={h.hour} className="border-b border-[var(--line)] last:border-0 hover:bg-[var(--panel-2)] transition-colors">
-                    <td className="py-2 font-mono font-bold text-sm text-[var(--ink)]">{String(h.hour).padStart(2, "0")}:00</td>
-                    <td className="py-2 font-mono text-sm text-[var(--ink-2)]">{h.trades}</td>
-                    <td className={cn("py-2 font-mono text-sm font-semibold", h.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                      {h.winRate.toFixed(2)}%
-                    </td>
-                    <td className={cn("py-2 font-mono text-sm font-semibold", h.avgR >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
-                      {h.avgR >= 0 ? "+" : ""}{h.avgR.toFixed(4)}R
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <SimpleTable
+            data={hourStats.slice(0, 8)}
+            getRowKey={(h) => String(h.hour)}
+            density="compact"
+            empty="Sin datos de openTime"
+            columns={[
+              { key: "hour", header: "Hora", width: "minmax(70px, 1.2fr)", render: (h) => <span className="font-mono font-bold text-sm text-[var(--ink)]">{String(h.hour).padStart(2, "0")}:00</span> },
+              { key: "trades", header: "Trades", align: "right", render: (h) => <span className="font-mono text-sm text-[var(--ink-2)]">{h.trades}</span> },
+              { key: "winRate", header: "Win %", align: "right", render: (h) => <span className={cn("font-mono text-sm font-semibold", h.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{h.winRate.toFixed(2)}%</span> },
+              { key: "avgR", header: "Avg R", align: "right", render: (h) => <span className={cn("font-mono text-sm font-semibold", h.avgR >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{h.avgR >= 0 ? "+" : ""}{h.avgR.toFixed(4)}R</span> },
+            ]}
+          />
         </Card>
       </div>
 

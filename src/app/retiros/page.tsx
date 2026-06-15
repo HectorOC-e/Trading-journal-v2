@@ -8,6 +8,7 @@ import {
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AnimatedList } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
@@ -527,22 +528,23 @@ export default function RetirosPage() {
           </div>
         )}
 
-        {!isLoading && filtered.map(w => (
-          <WithdrawalRow
-            key={w.id}
-            w={w}
-            onStatusChange={(id, status) => {
-              setUpdatingId(id)
-              updateStatus.mutate({ id, status })
-            }}
-            onDelete={(id) => {
-              setDeletingId(id)
-              deleteWithdrawal.mutate(id)
-            }}
-            updating={updatingId === w.id && updateStatus.isPending}
-            deleting={deletingId === w.id && deleteWithdrawal.isPending}
+        {!isLoading && (
+          <AnimatedList
+            items={filtered}
+            getKey={(w) => w.id}
+            preset="list"
+            className="flex flex-col gap-2.5"
+            renderItem={(w) => (
+              <WithdrawalRow
+                w={w}
+                onStatusChange={(id, status) => { setUpdatingId(id); updateStatus.mutate({ id, status }) }}
+                onDelete={(id) => { setDeletingId(id); deleteWithdrawal.mutate(id) }}
+                updating={updatingId === w.id && updateStatus.isPending}
+                deleting={deletingId === w.id && deleteWithdrawal.isPending}
+              />
+            )}
           />
-        ))}
+        )}
       </div>
 
       <NuevoRetiroModal open={modalOpen} onOpenChange={setModalOpen} accounts={accounts.map(a => ({ id: a.id, name: a.name, currency: a.currency }))} />
