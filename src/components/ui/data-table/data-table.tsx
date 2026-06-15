@@ -45,6 +45,7 @@ export function DataTable<TData>({
   maxHeight?: number | string
 }) {
   const [scrolled, setScrolled] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const cols = gridTemplate(table)
   const rows = table.getRowModel().rows
   const colCount = table.getVisibleLeafColumns().length
@@ -135,6 +136,8 @@ export function DataTable<TData>({
                 cols={cols}
                 density={density}
                 onRowClick={onRowClick}
+                active={row.id === activeId}
+                onActivate={() => setActiveId(row.id)}
                 rovingProps={onRowClick ? roving.getItemProps(i) : undefined}
               />
             ))}
@@ -146,15 +149,18 @@ export function DataTable<TData>({
 }
 
 // ── Row ───────────────────────────────────────────────────────────────────────
-function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
+function Row<TData>({ row, index, cols, density, onRowClick, active, onActivate, rovingProps }: {
   row: TRow<TData>
   index: number
   cols: string
   density: Density
   onRowClick?: (row: TData) => void
+  active?: boolean
+  onActivate?: () => void
   rovingProps?: RovingItemProps
 }) {
   const selected = row.getIsSelected()
+  const highlighted = selected || active
   const delay = staggerDelay(index, "table")
   const spring = COLLECTION.table.spring
   const [pulse, setPulse] = useState(0)
@@ -172,16 +178,14 @@ function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
       role="row"
       aria-selected={selected}
       onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-      onTap={onRowClick ? () => setPulse(p => p + 1) : undefined}
+      onTap={() => { setPulse(p => p + 1); onActivate?.() }}
       {...rovingProps}
       className={cn(
         "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none",
         "transition-[background-color,box-shadow] duration-150",
         "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
         onRowClick && "cursor-pointer hover:z-[1] hover:shadow-[var(--shadow-sm)]",
-        selected
-          ? "bg-[var(--accent-soft)]"
-          : onRowClick && "hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)]",
+        highlighted ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--panel-2)]",
       )}
       style={{ gridTemplateColumns: cols }}
     >
@@ -198,10 +202,13 @@ function Row<TData>({ row, index, cols, density, onRowClick, rovingProps }: {
       {pulse > 0 && (
         <motion.span aria-hidden key={pulse} initial={{ opacity: 0.32 }} animate={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" style={{ gridColumn: "1 / -1" }} />
       )}
-      {/* Hover accent bar — slides down the left edge. */}
+      {/* Accent bar — slides in on hover and stays while the row is active. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200"
+        className={cn(
+          "pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top transition-transform duration-200 group-hover:scale-y-100",
+          active ? "scale-y-100" : "scale-y-0",
+        )}
         style={{ gridColumn: "1 / 2" }}
       />
       {row.getVisibleCells().map(cell => {

@@ -48,6 +48,7 @@ export function SimpleTable<T>({
   preset?: CollectionPreset
 }) {
   const cols = columns.map(c => c.width ?? "minmax(80px, 1fr)").join(" ")
+  const [activeKey, setActiveKey] = useState<string | null>(null)
   const roving = useRovingFocus(data.length, {
     onActivate: onRowClick ? (i) => onRowClick(data[i]) : undefined,
   })
@@ -76,15 +77,19 @@ export function SimpleTable<T>({
         {data.length === 0 ? (
           <div className="py-10 text-center text-[13px] text-[var(--ink-3)]">{empty ?? "Sin datos"}</div>
         ) : (
-          data.map((row, i) => (
+          data.map((row, i) => {
+            const rowKey = getRowKey?.(row, i) ?? String(i)
+            return (
             <SimpleRow
-              key={getRowKey?.(row, i) ?? i}
+              key={rowKey}
               cols={cols}
               delay={stagger ? staggerDelay(i, preset) : 0}
               spring={COLLECTION[preset].spring}
               enterY={COLLECTION[preset].enterY}
               stagger={stagger}
               clickable={!!onRowClick}
+              active={rowKey === activeKey}
+              onActivate={() => setActiveKey(rowKey)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               rovingProps={onRowClick ? roving.getItemProps(i) : undefined}
               className={rowClassName?.(row, i)}
@@ -105,7 +110,7 @@ export function SimpleTable<T>({
                 </div>
               ))}
             </SimpleRow>
-          ))
+          )})
         )}
       </div>
     </div>
@@ -117,7 +122,7 @@ export function SimpleTable<T>({
 // the finger lifts). Instead, every tap/click replays a short accent flash that
 // fades out on its own — visible regardless of how brief the touch was.
 function SimpleRow({
-  children, cols, delay, spring, enterY, stagger, clickable, onClick, rovingProps, className,
+  children, cols, delay, spring, enterY, stagger, clickable, active, onActivate, onClick, rovingProps, className,
 }: {
   children: ReactNode
   cols: string
@@ -126,6 +131,8 @@ function SimpleRow({
   enterY: number
   stagger: boolean
   clickable: boolean
+  active?: boolean
+  onActivate?: () => void
   onClick?: () => void
   rovingProps?: { tabIndex: number; ref: (el: HTMLElement | null) => void; onFocus: () => void }
   className?: string
@@ -138,11 +145,11 @@ function SimpleRow({
       transition={{ opacity: { duration: 0.24, delay, ease: EASE_OUT }, y: { type: "spring", duration: spring.duration, bounce: spring.bounce, delay } }}
       role="row"
       onClick={onClick}
-      onTap={() => setPulse(p => p + 1)}
+      onTap={() => { setPulse(p => p + 1); onActivate?.() }}
       {...rovingProps}
       className={cn(
         "group relative grid items-center border-b border-[var(--line)] last:border-b-0 outline-none transition-[background-color,box-shadow] duration-100",
-        "hover:bg-[var(--panel-2)]",
+        active ? "bg-[var(--accent-soft)]" : "hover:bg-[var(--panel-2)]",
         "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
         clickable && "cursor-pointer",
         className,
@@ -156,8 +163,8 @@ function SimpleRow({
       {pulse > 0 && (
         <motion.span key={pulse} aria-hidden initial={{ opacity: 0.32 }} animate={{ opacity: 0 }} transition={{ duration: 0.45, ease: EASE_OUT }} className="pointer-events-none absolute inset-0 bg-[var(--accent)]" />
       )}
-      {/* Hover accent bar (desktop). */}
-      <span aria-hidden className="pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top scale-y-0 group-hover:scale-y-100 transition-transform duration-200" />
+      {/* Accent bar — hover, and stays while active. */}
+      <span aria-hidden className={cn("pointer-events-none absolute left-0 top-0 bottom-0 w-[3px] bg-[var(--accent)] origin-top transition-transform duration-200 group-hover:scale-y-100", active ? "scale-y-100" : "scale-y-0")} />
       {children}
     </motion.div>
   )
