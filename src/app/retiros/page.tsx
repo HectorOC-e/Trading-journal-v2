@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import {
   Plus, X, Loader2, DollarSign, Clock, CheckCircle2,
-  XCircle, ArrowDownToLine, Filter, ChevronDown, Trash2, Check,
+  XCircle, ArrowDownToLine, ChevronDown, Trash2, Check,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { AnimatedList } from "@/components/ui/data-table"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable, DataTableToolbar, DataTablePagination, FacetedFilter, useDataTable, multiSelectFilter } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
@@ -144,86 +145,140 @@ function StatusSelect({ current, onSelect, loading }: {
   )
 }
 
-/* ── Withdrawal row ── */
-function WithdrawalRow({ w, onStatusChange, onDelete, updating = false, deleting = false }: {
-  w: WithdrawalItem
-  onStatusChange: (id: string, status: WithdrawalStatus, reference?: string) => void
+/* ── Retiros DataTable ── */
+function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPending, deletePending, onStatusChange, onDelete }: {
+  withdrawals: WithdrawalItem[]
+  isLoading: boolean
+  updatingId: string | null
+  deletingId: string | null
+  statusPending: boolean
+  deletePending: boolean
+  onStatusChange: (id: string, status: WithdrawalStatus) => void
   onDelete: (id: string) => void
-  updating?: boolean
-  deleting?: boolean
 }) {
-  const [confirming, setConfirming] = useState(false)
-  const date    = new Date(w.date)
-  const dateStr = date.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+  const columns = useMemo<ColumnDef<WithdrawalItem>[]>(() => [
+    {
+      id: "date",
+      accessorFn: (w) => new Date(w.date).getTime(),
+      meta: { width: "minmax(110px, 1.2fr)", headerLabel: "Fecha" },
+      header: () => <span>Fecha</span>,
+      cell: ({ row }) => <span className="text-[13px] font-semibold text-[var(--ink)]">{new Date(row.original.date).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span>,
+    },
+    {
+      id: "account",
+      accessorFn: (w) => w.account.name,
+      filterFn: multiSelectFilter,
+      meta: { width: "minmax(110px, 1.3fr)", headerLabel: "Cuenta", facet: { label: "Cuenta" } },
+      header: () => <span>Cuenta</span>,
+      cell: ({ getValue }) => <span className="text-[12px] text-[var(--ink-2)] truncate">{String(getValue())}</span>,
+    },
+    {
+      id: "amount",
+      accessorFn: (w) => Number(w.amount),
+      meta: { width: "minmax(110px, 1.1fr)", headerLabel: "Monto", align: "right" },
+      header: () => <span>Monto</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-[14px] font-bold tabular-nums" style={{ color: "var(--win)" }}>+{fmtMoney(Number(row.original.amount), row.original.currency)}</span>
+      ),
+    },
+    {
+      id: "currency",
+      accessorKey: "currency",
+      filterFn: multiSelectFilter,
+      meta: { width: "minmax(70px, 0.7fr)", headerLabel: "Divisa", facet: { label: "Divisa" } },
+      header: () => <span>Divisa</span>,
+      cell: ({ getValue }) => <span className="text-[11px] font-semibold text-[var(--ink-3)]">{String(getValue())}</span>,
+    },
+    {
+      id: "note",
+      accessorFn: (w) => `${w.note ?? ""} ${w.reference ?? ""}`.trim(),
+      enableSorting: false,
+      meta: { width: "minmax(100px, 1.6fr)", headerLabel: "Nota / Ref." },
+      header: () => <span>Nota / Ref.</span>,
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          {row.original.note && <p className="text-[12px] text-[var(--ink-2)] truncate">{row.original.note}</p>}
+          {row.original.reference && <p className="font-mono text-[10px] text-[var(--ink-3)] truncate">{row.original.reference}</p>}
+          {!row.original.note && !row.original.reference && <span className="text-[var(--ink-3)] text-[11px]">—</span>}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      accessorFn: (w) => w.status,
+      filterFn: multiSelectFilter,
+      meta: { width: "minmax(130px, 1fr)", headerLabel: "Estado", facet: { label: "Estado" } },
+      header: () => <span>Estado</span>,
+      cell: ({ row }) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <StatusSelect current={row.original.status as WithdrawalStatus} onSelect={(s) => onStatusChange(row.original.id, s)} loading={updatingId === row.original.id && statusPending} />
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      enableSorting: false,
+      meta: { width: "60px", align: "right" },
+      header: () => null,
+      cell: ({ row }) => (
+        <DeleteCell w={row.original} onDelete={onDelete} deleting={deletingId === row.original.id && deletePending} />
+      ),
+    },
+  ], [updatingId, deletingId, statusPending, deletePending, onStatusChange, onDelete])
+
+  const { table, density, setDensity } = useDataTable<WithdrawalItem>({
+    data: withdrawals,
+    columns,
+    storageKey: "tj-retiros-table",
+    pageSize: 25,
+    getRowId: (w) => w.id,
+    initialSorting: [{ id: "date", desc: true }],
+  })
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--line)] last:border-0 flex-wrap sm:flex-nowrap">
-      {/* Date + account */}
-      <div className="shrink-0 min-w-[110px]">
-        <p className="text-[13px] font-semibold" style={{ color: "var(--ink)" }}>{dateStr}</p>
-        <p className="text-[11px] mt-0.5" style={{ color: "var(--ink-3)" }}>{w.account.name}</p>
-      </div>
-
-      {/* Amount */}
-      <div className="flex-1 min-w-[90px]">
-        <p className="font-mono text-[16px] font-bold tabular-nums" style={{ color: "var(--win)" }}>
-          +{fmtMoney(Number(w.amount), w.currency)}
-        </p>
-        <p className="text-[10px] font-semibold mt-0.5" style={{ color: "var(--ink-3)" }}>{w.currency}</p>
-      </div>
-
-      {/* Note / reference */}
-      <div className="flex-1 min-w-[80px] hidden sm:block">
-        {w.note && <p className="text-[12px]" style={{ color: "var(--ink-2)" }}>{w.note}</p>}
-        {w.reference && (
-          <p className="font-mono text-[10px] mt-0.5" style={{ color: "var(--ink-3)" }}>
-            {w.reference}
-          </p>
-        )}
-      </div>
-
-      {/* Status */}
-      <div className="shrink-0">
-        <StatusSelect
-          current={w.status as WithdrawalStatus}
-          onSelect={(s) => onStatusChange(w.id, s)}
-          loading={updating}
-        />
-      </div>
-
-      {/* Delete (two-step inline confirm) */}
-      <div className="shrink-0">
-        {confirming ? (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => { onDelete(w.id); setConfirming(false) }}
-              disabled={deleting}
-              aria-label="Confirmar eliminación del retiro"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-md"
-              style={{ background: "rgba(239,68,68,0.12)", color: "#ef4444", border: "none", cursor: "pointer" }}
-            >
-              {deleting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            </button>
-            <button
-              onClick={() => setConfirming(false)}
-              aria-label="Cancelar eliminación"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-md"
-              style={{ background: "var(--chip)", color: "var(--ink-3)", border: "none", cursor: "pointer" }}
-            >
-              <X size={13} />
-            </button>
+    <div className="flex flex-col gap-3">
+      <DataTableToolbar table={table} density={density} onDensityChange={setDensity} searchPlaceholder="Buscar cuenta / nota…" exportFilename="retiros.csv">
+        <FacetedFilter column={table.getColumn("status")} title="Estado" format={(v) => STATUS_META[v as WithdrawalStatus]?.label ?? v} order={STATUS_ORDER} />
+        <FacetedFilter column={table.getColumn("account")} title="Cuenta" />
+        <FacetedFilter column={table.getColumn("currency")} title="Divisa" />
+      </DataTableToolbar>
+      <DataTable
+        table={table}
+        density={density}
+        isLoading={isLoading}
+        empty={
+          <div className="flex flex-col items-center gap-1.5 text-center">
+            <ArrowDownToLine size={26} className="text-[var(--ink-3)] mb-1" />
+            <p className="text-[13px] font-medium text-[var(--ink-2)]">Sin retiros</p>
+            <p className="text-[12px] text-[var(--ink-3)]">Registra tu primer retiro con el botón de arriba.</p>
           </div>
-        ) : (
-          <button
-            onClick={() => setConfirming(true)}
-            aria-label={`Eliminar retiro de ${fmtMoney(Number(w.amount), w.currency)}`}
-            className="inline-flex items-center justify-center w-7 h-7 rounded-md transition-colors hover:bg-[var(--chip)]"
-            style={{ background: "transparent", color: "var(--ink-3)", border: "none", cursor: "pointer" }}
-          >
-            <Trash2 size={13} />
+        }
+      />
+      <DataTablePagination table={table} />
+    </div>
+  )
+}
+
+/* Two-step inline delete confirm. */
+function DeleteCell({ w, onDelete, deleting }: { w: WithdrawalItem; onDelete: (id: string) => void; deleting: boolean }) {
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <div onClick={(e) => e.stopPropagation()}>
+      {confirming ? (
+        <div className="flex items-center justify-end gap-1">
+          <button onClick={() => { onDelete(w.id); setConfirming(false) }} disabled={deleting} aria-label="Confirmar eliminación" className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--loss)] bg-[var(--loss-soft)] hover:opacity-80 transition active:scale-90">
+            {deleting ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
           </button>
-        )}
-      </div>
+          <button onClick={() => setConfirming(false)} aria-label="Cancelar" className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--ink-3)] bg-[var(--chip)] hover:bg-[var(--line)] transition active:scale-90">
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        <button onClick={() => setConfirming(true)} aria-label={`Eliminar retiro de ${fmtMoney(Number(w.amount), w.currency)}`} className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--ink-3)] hover:text-[var(--loss)] hover:bg-[var(--loss-soft)] transition active:scale-90">
+          <Trash2 size={13} />
+        </button>
+      )}
     </div>
   )
 }
@@ -360,8 +415,6 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
 ══════════════════════════════════════ */
 export default function RetirosPage() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [filterAccount, setFilterAccount] = useState<string>("all")
-  const [filterStatus, setFilterStatus]   = useState<string>("all")
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -377,13 +430,6 @@ export default function RetirosPage() {
   const deleteWithdrawal = trpc.withdrawals.delete.useMutation({
     onSuccess: () => { utils.withdrawals.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
     onError:   (err) => { setDeletingId(null); toast.error(formatErrorForUser(err)) },
-  })
-
-  // Filtered
-  const filtered = withdrawals.filter(w => {
-    if (filterAccount !== "all" && w.accountId !== filterAccount) return false
-    if (filterStatus !== "all" && w.status !== filterStatus) return false
-    return true
   })
 
   // KPIs — agrupados por moneda (no se mezclan divisas sin tasa de cambio)
@@ -455,97 +501,17 @@ export default function RetirosPage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <Filter size={13} aria-hidden style={{ color: "var(--ink-3)" }} />
-
-        {/* Account filter */}
-        <select
-          value={filterAccount}
-          onChange={e => setFilterAccount(e.target.value)}
-          aria-label="Filtrar por cuenta"
-          style={{
-            background: "var(--panel)", border: "1px solid var(--line)",
-            borderRadius: 8, padding: "6px 10px", fontSize: 12,
-            color: "var(--ink)", cursor: "pointer",
-          }}
-        >
-          <option value="all">Todas las cuentas</option>
-          {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-
-        {/* Status filter */}
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          aria-label="Filtrar por estado"
-          style={{
-            background: "var(--panel)", border: "1px solid var(--line)",
-            borderRadius: 8, padding: "6px 10px", fontSize: 12,
-            color: "var(--ink)", cursor: "pointer",
-          }}
-        >
-          <option value="all">Todos los estados</option>
-          {STATUS_ORDER.map(s => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
-        </select>
-
-        {(filterAccount !== "all" || filterStatus !== "all") && (
-          <button onClick={() => { setFilterAccount("all"); setFilterStatus("all") }}
-            style={{ fontSize: 11, color: "var(--ink-3)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
-            Limpiar
-          </button>
-        )}
-      </div>
-
-      {/* Table */}
-      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)" }}>
-        {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 12, padding: "10px 16px",
-          borderBottom: "1px solid var(--line)",
-          background: "var(--panel-2)",
-        }}>
-          {["Fecha / Cuenta", "Monto", "Nota / Referencia", "Estado"].map(h => (
-            <p key={h} style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ink-3)", flex: h === "Nota / Referencia" ? 2 : 1, minWidth: h === "Estado" ? 120 : undefined }}>
-              {h}
-            </p>
-          ))}
-          {/* spacer for the per-row delete action */}
-          <span aria-hidden style={{ width: 28, flexShrink: 0 }} />
-        </div>
-
-        {isLoading && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40, gap: 10, color: "var(--ink-3)" }}>
-            <Loader2 size={16} className="animate-spin" /> Cargando retiros…
-          </div>
-        )}
-
-        {!isLoading && filtered.length === 0 && (
-          <div style={{ textAlign: "center", padding: 48 }}>
-            <ArrowDownToLine size={28} style={{ color: "var(--ink-3)", margin: "0 auto 12px" }} />
-            <p style={{ fontWeight: 600, color: "var(--ink)" }}>Sin retiros registrados</p>
-            <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>Registra tu primer retiro con el botón de arriba.</p>
-          </div>
-        )}
-
-        {!isLoading && (
-          <AnimatedList
-            items={filtered}
-            getKey={(w) => w.id}
-            preset="list"
-            className="flex flex-col gap-2.5"
-            renderItem={(w) => (
-              <WithdrawalRow
-                w={w}
-                onStatusChange={(id, status) => { setUpdatingId(id); updateStatus.mutate({ id, status }) }}
-                onDelete={(id) => { setDeletingId(id); deleteWithdrawal.mutate(id) }}
-                updating={updatingId === w.id && updateStatus.isPending}
-                deleting={deletingId === w.id && deleteWithdrawal.isPending}
-              />
-            )}
-          />
-        )}
-      </div>
+      {/* Table — sortable columns, faceted filters, search */}
+      <RetirosTable
+        withdrawals={withdrawals}
+        isLoading={isLoading}
+        updatingId={updatingId}
+        deletingId={deletingId}
+        statusPending={updateStatus.isPending}
+        deletePending={deleteWithdrawal.isPending}
+        onStatusChange={(id, status) => { setUpdatingId(id); updateStatus.mutate({ id, status }) }}
+        onDelete={(id) => { setDeletingId(id); deleteWithdrawal.mutate(id) }}
+      />
 
       <NuevoRetiroModal open={modalOpen} onOpenChange={setModalOpen} accounts={accounts.map(a => ({ id: a.id, name: a.name, currency: a.currency }))} />
     </>
