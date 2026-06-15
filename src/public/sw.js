@@ -1,7 +1,7 @@
-// Trading Journal Service Worker — v1
+// Trading Journal Service Worker — v2
 // Strategy: network-first for API, cache-first for static assets
 
-const CACHE_NAME = "tj-v1"
+const CACHE_NAME = "tj-v2"
 const STATIC_ASSETS = [
   "/",
   "/dashboard",
