@@ -7,6 +7,7 @@ import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { trpc } from "@/lib/trpc/client"
 import { askCoach } from "@/lib/coach-bus"
+import { currencySymbol } from "@/lib/fx"
 import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
@@ -30,7 +31,9 @@ const SECTIONS = [
 ]
 
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })
-const money = (n: number) => `${n >= 0 ? "+" : "−"}$${fmt(Math.abs(n))}`
+// Currency-aware: sym comes from the user's base currency (d.baseCurrency).
+const money = (n: number, sym = "$") => `${n >= 0 ? "+" : "−"}${sym}${fmt(Math.abs(n))}`
+const amt   = (n: number, sym = "$") => `${sym}${fmt(n)}`
 
 /* ── Presentational helpers ────────────────────────────────────────────── */
 function Stat({ label, value, tone, sub, explain }: { label: string; value: string; tone?: "win" | "loss" | "ink"; sub?: string; explain?: string }) {
@@ -86,25 +89,27 @@ function Sparkline({ points }: { points: number[] }) {
 /* ── Sections ──────────────────────────────────────────────────────────── */
 function Performance({ d }: { d: Overview }) {
   const p = d.performance
+  const sym = currencySymbol(d.baseCurrency)
   return (
     <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-      <Stat label="Net P&L" value={money(p.netPnl)} tone={p.netPnl >= 0 ? "win" : "loss"} sub={`${p.totalTrades} trades`} explain={`Mi Net P&L es ${money(p.netPnl)} en ${p.totalTrades} trades. ¿Qué me dice y en qué enfocarme?`} />
+      <Stat label="Net P&L" value={money(p.netPnl, sym)} tone={p.netPnl >= 0 ? "win" : "loss"} sub={`${p.totalTrades} trades`} explain={`Mi Net P&L es ${money(p.netPnl, sym)} en ${p.totalTrades} trades. ¿Qué me dice y en qué enfocarme?`} />
       <Stat label="Win Rate" value={`${p.winRate}%`} sub={`${p.wins}G · ${p.losses}P`} explain={`Mi win rate es ${p.winRate}% con avg R ${p.avgR}. ¿Es saludable la combinación?`} />
       <Stat label="Profit Factor" value={p.profitFactor != null ? String(p.profitFactor) : "—"} sub="ganancia / pérdida" explain={`Mi profit factor es ${p.profitFactor ?? "n/d"}. ¿Qué significa y cómo lo mejoro?`} />
-      <Stat label="Expectancy" value={money(p.expectancy)} tone={p.expectancy >= 0 ? "win" : "loss"} sub="por trade" explain={`Mi expectancy es ${money(p.expectancy)} por trade. ¿Qué implica para escalar el tamaño?`} />
+      <Stat label="Expectancy" value={money(p.expectancy, sym)} tone={p.expectancy >= 0 ? "win" : "loss"} sub="por trade" explain={`Mi expectancy es ${money(p.expectancy, sym)} por trade. ¿Qué implica para escalar el tamaño?`} />
       <Stat label="Avg R" value={`${p.avgR}R`} sub="r múltiplo medio" explain={`Mi avg R es ${p.avgR}. ¿Cómo lo subo sin bajar el win rate?`} />
-      <Stat label="Avg Win" value={`$${fmt(p.avgWin)}`} tone="win" />
-      <Stat label="Avg Loss" value={`$${fmt(p.avgLoss)}`} tone="loss" />
-      <Stat label="Holding medio" value={p.avgHoldMinutes != null ? `${p.avgHoldMinutes} min` : "—"} />
+      <Stat label="Avg Win" value={amt(p.avgWin, sym)} tone="win" explain={`Mi ganancia media por trade es ${amt(p.avgWin, sym)} y mi pérdida media ${amt(p.avgLoss, sym)}. ¿Está sana la relación riesgo/recompensa?`} />
+      <Stat label="Avg Loss" value={amt(p.avgLoss, sym)} tone="loss" explain={`Mi pérdida media por trade es ${amt(p.avgLoss, sym)}. ¿Cómo la reduzco sin cortar ganadores antes de tiempo?`} />
+      <Stat label="Holding medio" value={p.avgHoldMinutes != null ? `${p.avgHoldMinutes} min` : "—"} explain={p.avgHoldMinutes != null ? `Mantengo mis trades ${p.avgHoldMinutes} min en promedio. ¿Qué dice eso de mi estilo y gestión?` : undefined} />
     </div>
   )
 }
 
 function Risk({ d }: { d: Overview }) {
+  const sym = currencySymbol(d.baseCurrency)
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-        <Stat label="Peor drawdown" value={`${d.risk.worstDrawdownPct}%`} tone="loss" sub="pico a valle global" />
+        <Stat label="Peor drawdown" value={`${d.risk.worstDrawdownPct}%`} tone="loss" sub="pico a valle global" explain={`Mi peor drawdown global es ${d.risk.worstDrawdownPct}%. ¿Es manejable y cómo protejo mi capital de caídas así?`} />
         <Stat label="Cuentas" value={String(d.risk.accounts.length)} sub={`${d.risk.accounts.filter(a => a.locked).length} bloqueadas`} />
         <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)] mb-1">Curva de equity</p>
@@ -115,7 +120,7 @@ function Risk({ d }: { d: Overview }) {
         {d.risk.accounts.map(a => (
           <tr key={a.id} className="border-t border-[var(--line)]">
             <Td>{a.name}</Td>
-            <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>${fmt(a.balance)}</Td>
+            <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{amt(a.balance, sym)}</Td>
             <Td right tone={a.maxDrawdownPct > 0 ? "loss" : undefined}>{a.maxDrawdownPct}%</Td>
             <Td right>{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</Td>
             <Td><span style={{ color: a.locked ? "var(--loss)" : "var(--win)" }}>{a.locked ? "Bloqueada" : "Activa"}</span></Td>
@@ -138,13 +143,14 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
 }
 
 function AccountsIntel({ d }: { d: Overview }) {
+  const sym = currencySymbol(d.baseCurrency)
   return (
     <Table head={["Cuenta", "Balance", "Net P&L", "Trades", "Win Rate"]}>
       {d.risk.accounts.map(a => (
         <tr key={a.id} className="border-t border-[var(--line)]">
           <Td>{a.name}</Td>
-          <Td right>${fmt(a.balance)}</Td>
-          <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{money(a.netPnl)}</Td>
+          <Td right>{amt(a.balance, sym)}</Td>
+          <Td right tone={a.netPnl >= 0 ? "win" : "loss"}>{money(a.netPnl, sym)}</Td>
           <Td right>{a.trades}</Td>
           <Td right>{a.winRate}%</Td>
         </tr>
@@ -154,6 +160,7 @@ function AccountsIntel({ d }: { d: Overview }) {
 }
 
 function Setups({ d }: { d: Overview }) {
+  const sym = currencySymbol(d.baseCurrency)
   const max = Math.max(1, ...d.setups.map(s => Math.abs(s.netPnl)))
   if (d.setups.length === 0) return <Empty msg="Sin trades con setup asignado en este periodo." />
   return (
@@ -165,7 +172,7 @@ function Setups({ d }: { d: Overview }) {
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: s.color }} />
               <span className="text-[13px] font-semibold text-[var(--ink)] truncate">{s.name}</span>
             </span>
-            <span className="num text-[13px] font-bold shrink-0" style={{ color: s.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(s.netPnl)}</span>
+            <span className="num text-[13px] font-bold shrink-0" style={{ color: s.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(s.netPnl, sym)}</span>
           </div>
           <Bar value={s.netPnl} max={max} color={s.netPnl >= 0 ? "var(--win)" : "var(--loss)"} />
           <div className="flex gap-4 mt-2 text-[11px] text-[var(--ink-3)]">
@@ -179,6 +186,7 @@ function Setups({ d }: { d: Overview }) {
 }
 
 function Markets({ d }: { d: Overview }) {
+  const sym = currencySymbol(d.baseCurrency)
   if (d.markets.length === 0) return <Empty msg="Sin datos de mercado en este periodo." />
   return (
     <Table head={["Símbolo", "Trades", "Net P&L", "Win Rate", "Avg R"]}>
@@ -186,7 +194,7 @@ function Markets({ d }: { d: Overview }) {
         <tr key={m.symbol} className="border-t border-[var(--line)]">
           <Td>{m.symbol}</Td>
           <Td right>{m.trades}</Td>
-          <Td right tone={m.netPnl >= 0 ? "win" : "loss"}>{money(m.netPnl)}</Td>
+          <Td right tone={m.netPnl >= 0 ? "win" : "loss"}>{money(m.netPnl, sym)}</Td>
           <Td right>{m.winRate}%</Td>
           <Td right>{m.avgR}</Td>
         </tr>
@@ -197,20 +205,21 @@ function Markets({ d }: { d: Overview }) {
 
 function Psychology({ d }: { d: Overview }) {
   const p = d.psychology
+  const sym = currencySymbol(d.baseCurrency)
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-        <Stat label="Disciplina" value={`${p.disciplineScore}/100`} tone={p.disciplineScore >= 70 ? "win" : "loss"} />
-        <Stat label="Violaciones" value={`${p.violationRate}%`} tone={p.violationRate > 0 ? "loss" : "win"} sub="de tus trades" />
-        <Stat label="FOMO" value={String(p.fomoCount)} tone={p.fomoCount > 0 ? "loss" : undefined} />
-        <Stat label="Revancha" value={String(p.revengeCount)} tone={p.revengeCount > 0 ? "loss" : undefined} />
+        <Stat label="Disciplina" value={`${p.disciplineScore}/100`} tone={p.disciplineScore >= 70 ? "win" : "loss"} explain={`Mi score de disciplina es ${p.disciplineScore}/100 con ${p.violationRate}% de trades con violaciones. ¿Qué hábito ataco primero?`} />
+        <Stat label="Violaciones" value={`${p.violationRate}%`} tone={p.violationRate > 0 ? "loss" : "win"} sub="de tus trades" explain={`El ${p.violationRate}% de mis trades tiene violaciones de reglas. ¿Cómo lo bajo?`} />
+        <Stat label="FOMO" value={String(p.fomoCount)} tone={p.fomoCount > 0 ? "loss" : undefined} explain={`Tengo ${p.fomoCount} trades marcados como FOMO y ${p.revengeCount} de revancha. ¿Qué patrón emocional revela y cómo lo corto?`} />
+        <Stat label="Revancha" value={String(p.revengeCount)} tone={p.revengeCount > 0 ? "loss" : undefined} explain={`Tengo ${p.revengeCount} trades de revancha. ¿Qué disparador los causa y qué regla me protege?`} />
       </div>
       <Table head={["Emoción", "Trades", "P&L medio", "Win Rate"]}>
         {p.byEmotion.map(e => (
           <tr key={e.emotion} className="border-t border-[var(--line)]">
             <Td><span className="capitalize">{e.emotion}</span></Td>
             <Td right>{e.trades}</Td>
-            <Td right tone={e.avgPnl >= 0 ? "win" : "loss"}>{money(e.avgPnl)}</Td>
+            <Td right tone={e.avgPnl >= 0 ? "win" : "loss"}>{money(e.avgPnl, sym)}</Td>
             <Td right>{e.winRate}%</Td>
           </tr>
         ))}
@@ -219,13 +228,14 @@ function Psychology({ d }: { d: Overview }) {
   )
 }
 
-function GoalRow({ label, current, goal, unit }: { label: string; current: number; goal: number | null; unit?: string }) {
+function GoalRow({ label, current, goal, unit, unitLeading }: { label: string; current: number; goal: number | null; unit?: string; unitLeading?: boolean }) {
   const pct = goal && goal > 0 ? Math.min(100, (current / goal) * 100) : 0
+  const u = (n: number) => unitLeading ? `${unit}${fmt(n)}` : `${fmt(n)}${unit ?? ""}`
   return (
     <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[12px] font-medium text-[var(--ink)]">{label}</span>
-        <span className="num text-[12px] text-[var(--ink-2)]">{fmt(current)}{unit} {goal != null ? `/ ${fmt(goal)}${unit}` : ""}</span>
+        <span className="num text-[12px] text-[var(--ink-2)]">{u(current)} {goal != null ? `/ ${u(goal)}` : ""}</span>
       </div>
       {goal != null
         ? <Bar value={pct} max={100} color={pct >= 100 ? "var(--win)" : "var(--accent)"} />
@@ -236,9 +246,10 @@ function GoalRow({ label, current, goal, unit }: { label: string; current: numbe
 
 function Goals({ d }: { d: Overview }) {
   const g = d.goals
+  const sym = currencySymbol(d.baseCurrency)
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <GoalRow label="P&L semanal" current={g.weekPnl} goal={g.weeklyPnlGoal} unit="$" />
+      <GoalRow label="P&L semanal" current={g.weekPnl} goal={g.weeklyPnlGoal} unit={sym} unitLeading />
       <GoalRow label="Trades semanales" current={g.weekTrades} goal={g.weeklyTradesGoal} />
       <GoalRow label="Disciplina" current={d.psychology.disciplineScore} goal={g.disciplineGoal} unit="/100" />
       <GoalRow label="Minutos de estudio (meta)" current={0} goal={g.weeklyGoalMinutes} unit="min" />
@@ -248,11 +259,12 @@ function Goals({ d }: { d: Overview }) {
 
 function Withdrawals({ d }: { d: Overview }) {
   const w = d.withdrawals
+  const sym = currencySymbol(d.baseCurrency)
   const max = Math.max(1, ...w.byMonth.map(m => m.amount))
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
-        <Stat label="Total retirado" value={`$${fmt(w.total)}`} />
+        <Stat label="Total retirado" value={amt(w.total, sym)} explain={`He retirado ${amt(w.total, sym)} en ${w.count} retiros (${w.impactPct}% de mi P&L neto). ¿Es sostenible mi ritmo de retiros?`} />
         <Stat label="Nº de retiros" value={String(w.count)} />
         <Stat label="Impacto en P&L" value={`${w.impactPct}%`} tone={w.impactPct > 50 ? "loss" : undefined} sub="del P&L neto" />
       </div>
@@ -262,7 +274,7 @@ function Withdrawals({ d }: { d: Overview }) {
             <div key={m.month} className="flex items-center gap-3">
               <span className="text-[11px] text-[var(--ink-3)] w-16 shrink-0">{m.month}</span>
               <div className="flex-1"><Bar value={m.amount} max={max} color="var(--accent)" /></div>
-              <span className="num text-[11px] text-[var(--ink-2)] w-20 text-right shrink-0">${fmt(m.amount)}</span>
+              <span className="num text-[11px] text-[var(--ink-2)] w-20 text-right shrink-0">{amt(m.amount, sym)}</span>
             </div>
           ))}
         </div>
