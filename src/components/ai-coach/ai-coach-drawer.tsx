@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizontal, Wrench, Copy, Check, RotateCcw, Plus } from "lucide-react"
+import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizontal, Wrench, Copy, Check, RotateCcw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
 
@@ -38,11 +38,9 @@ type ViewMode = "panel" | "expanded" | "minimized"
 
 type XY = { x: number; y: number }
 
-const POS_KEY      = "tj-coach-pos"
 const HISTORY_KEY  = "tj-coach-history"
 
-/** Keep a saved anchor inside the viewport (it may have been saved at a different
- *  size/orientation). Prevents the chat from reopening off-screen. */
+/** Keep the in-session drag anchor inside the viewport (e.g. after a resize). */
 function clampPos(p: XY | null, w: number, h: number): XY | null {
   if (!p || typeof window === "undefined") return p
   return {
@@ -86,7 +84,6 @@ export function AiCoachDrawer() {
   const bottomRef    = useRef<HTMLDivElement>(null)
   const inputRef     = useRef<HTMLTextAreaElement>(null)
   const dragRef      = useRef<{ dx: number; dy: number } | null>(null)
-  const launcherDrag = useRef<{ sx: number; sy: number; moved: boolean } | null>(null)
   const sendRef      = useRef<(t?: string) => void>(() => {})
   const abortRef     = useRef<AbortController | null>(null)
   const isMobile     = useIsMobile()
@@ -94,7 +91,6 @@ export function AiCoachDrawer() {
   // ── Mount: restore positions + conversation history ─────────────────────────
   useEffect(() => {
     try {
-      const p = localStorage.getItem(POS_KEY); if (p) setPos(JSON.parse(p))
       const h = localStorage.getItem(HISTORY_KEY)
       if (h) {
         const parsed = JSON.parse(h) as Message[]
@@ -135,7 +131,6 @@ export function AiCoachDrawer() {
     dragRef.current = null
     document.removeEventListener("pointermove", onPointerMove)
     document.removeEventListener("pointerup", onPointerUp)
-    setPos(p => { if (p) try { localStorage.setItem(POS_KEY, JSON.stringify(p)) } catch { /* ignore */ } ; return p })
   }, [onPointerMove])
 
   function startDrag(e: React.PointerEvent) {
@@ -147,30 +142,12 @@ export function AiCoachDrawer() {
     document.addEventListener("pointerup", onPointerUp)
   }
 
-  // ── Launcher bubble dragging — shares the single `pos` anchor with the panel,
-  //    so closing/reopening always lands the chat where you left it. ───────────
-  const launcherMove = useCallback((e: PointerEvent) => {
-    const d = launcherDrag.current
-    if (!d) return
-    if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 6) d.moved = true
-    if (d.moved) {
-      setPos({
-        x: Math.max(8, Math.min(window.innerWidth - 64, e.clientX - 28)),
-        y: Math.max(8, Math.min(window.innerHeight - 64, e.clientY - 28)),
-      })
-    }
-  }, [])
-
-  const launcherUp = useCallback(() => {
-    document.removeEventListener("pointermove", launcherMove)
-    document.removeEventListener("pointerup", launcherUp)
-    setPos(p => { if (p) try { localStorage.setItem(POS_KEY, JSON.stringify(p)) } catch { /* ignore */ } ; return p })
-  }, [launcherMove])
-
-  function launcherDown(e: React.PointerEvent) {
-    launcherDrag.current = { sx: e.clientX, sy: e.clientY, moved: false }
-    document.addEventListener("pointermove", launcherMove)
-    document.addEventListener("pointerup", launcherUp)
+  // Close = forget any in-session drag, so the chat always reopens at its home
+  // position (bottom-right). The drag is only to temporarily uncover data.
+  function closeCoach() {
+    setOpen(false)
+    setPos(null)
+    setMode("panel")
   }
 
   // ── Streaming core (shared by send + regenerate) ────────────────────────────
@@ -303,23 +280,17 @@ export function AiCoachDrawer() {
     return () => window.removeEventListener("coach:ask", handler)
   }, [])
 
-  // ── Floating launcher (collapsed) ─────────────────────────────────────────
+  // ── Floating launcher (collapsed) — fixed home position. ──────────────────
   if (!open) {
-    const lp = clampPos(pos, 56, 56)
-    const launcherStyle: React.CSSProperties = lp
-      ? { left: lp.x, top: lp.y, right: "auto", bottom: "auto" }
-      : { bottom: isMobile ? 132 : 96, right: 24 }
     return (
       <button
-        onPointerDown={launcherDown}
-        onClick={() => { if (launcherDrag.current?.moved) return; setOpen(true); setMode("panel") }}
-        aria-label="Abrir AI Coach (arrastrable)"
+        onClick={() => { setOpen(true); setMode("panel") }}
+        aria-label="Abrir AI Coach"
         className={cn(
-          "fixed z-[55] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center touch-none",
-          "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors",
-          "cursor-grab active:cursor-grabbing",
+          "fixed z-[55] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center",
+          "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors active:scale-95",
         )}
-        style={launcherStyle}
+        style={{ bottom: isMobile ? 132 : 96, right: 24 }}
       >
         <MessageCircle size={24} />
       </button>
@@ -365,14 +336,14 @@ export function AiCoachDrawer() {
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0" onPointerDown={e => e.stopPropagation()}>
-          {!minimized && (
+          {!minimized && messages.length > 1 && (
             <button
               onClick={newChat}
-              className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] hover:bg-[var(--chip)] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors active:scale-95"
-              aria-label="Nuevo chat — limpiar conversación"
-              title="Nuevo chat — limpiar conversación"
+              className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] hover:bg-[var(--loss-soft)] text-[var(--ink-3)] hover:text-[var(--loss)] transition-colors active:scale-95"
+              aria-label="Borrar conversación"
+              title="Borrar conversación"
             >
-              <Plus size={16} />
+              <Trash2 size={15} />
             </button>
           )}
           {/* Expand/contract — hidden while minimized (that's what caused the
@@ -394,7 +365,7 @@ export function AiCoachDrawer() {
             {minimized ? <Maximize2 size={15} /> : <Minus size={16} />}
           </button>
           <button
-            onClick={() => setOpen(false)}
+            onClick={closeCoach}
             className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] hover:bg-[var(--chip)] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors active:scale-95"
             aria-label="Cerrar coach"
           >
