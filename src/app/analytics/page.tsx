@@ -118,7 +118,7 @@ function Risk({ d }: { d: Overview }) {
           { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="text-[var(--ink)]">{a.name}</span> },
           { key: "balance", header: "Balance", align: "right", render: (a) => <span className="num" style={{ color: a.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{amt(a.balance, sym)}</span> },
           { key: "dd", header: "Drawdown", align: "right", render: (a) => <span className="num" style={{ color: a.maxDrawdownPct > 0 ? "var(--loss)" : "var(--ink-2)" }}>{a.maxDrawdownPct}%</span> },
-          { key: "ddlimit", header: "Límite DD", align: "right", render: (a) => <span className="num">{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</span> },
+          { key: "ddlimit", header: "Límite DD", align: "right", hideBelow: "lg", render: (a) => <span className="num">{a.ddLimitPct != null ? `${a.ddLimitPct}%` : "—"}</span> },
           { key: "estado", header: "Estado", render: (a) => <span style={{ color: a.locked ? "var(--loss)" : "var(--win)" }}>{a.locked ? "Bloqueada" : "Activa"}</span> },
         ]}
       />
@@ -137,8 +137,8 @@ function AccountsIntel({ d }: { d: Overview }) {
         { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="text-[var(--ink)]">{a.name}</span> },
         { key: "balance", header: "Balance", align: "right", render: (a) => <span className="num">{amt(a.balance, sym)}</span> },
         { key: "netPnl", header: "Net P&L", align: "right", render: (a) => <span className="num" style={{ color: a.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(a.netPnl, sym)}</span> },
-        { key: "trades", header: "Trades", align: "right", render: (a) => <span className="num">{a.trades}</span> },
-        { key: "winRate", header: "Win Rate", align: "right", render: (a) => <span className="num">{a.winRate}%</span> },
+        { key: "trades", header: "Trades", align: "right", hideBelow: "md", render: (a) => <span className="num">{a.trades}</span> },
+        { key: "winRate", header: "Win Rate", align: "right", hideBelow: "sm", render: (a) => <span className="num">{a.winRate}%</span> },
       ]}
     />
   )
@@ -180,10 +180,10 @@ function Markets({ d }: { d: Overview }) {
       density="compact"
       columns={[
         { key: "symbol", header: "Símbolo", width: "minmax(100px, 1.4fr)", render: (m) => <span className="font-mono font-bold text-[var(--ink)]">{m.symbol}</span> },
-        { key: "trades", header: "Trades", align: "right", render: (m) => <span className="num">{m.trades}</span> },
+        { key: "trades", header: "Trades", align: "right", hideBelow: "md", render: (m) => <span className="num">{m.trades}</span> },
         { key: "netPnl", header: "Net P&L", align: "right", render: (m) => <span className="num" style={{ color: m.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(m.netPnl, sym)}</span> },
-        { key: "winRate", header: "Win Rate", align: "right", render: (m) => <span className="num">{m.winRate}%</span> },
-        { key: "avgR", header: "Avg R", align: "right", render: (m) => <span className="num">{m.avgR}</span> },
+        { key: "winRate", header: "Win Rate", align: "right", hideBelow: "sm", render: (m) => <span className="num">{m.winRate}%</span> },
+        { key: "avgR", header: "Avg R", align: "right", hideBelow: "lg", render: (m) => <span className="num">{m.avgR}</span> },
       ]}
     />
   )
@@ -206,9 +206,9 @@ function Psychology({ d }: { d: Overview }) {
         density="compact"
         columns={[
           { key: "emotion", header: "Emoción", width: "minmax(120px, 1.6fr)", render: (e) => <span className="capitalize text-[var(--ink)]">{e.emotion}</span> },
-          { key: "trades", header: "Trades", align: "right", render: (e) => <span className="num">{e.trades}</span> },
+          { key: "trades", header: "Trades", align: "right", hideBelow: "md", render: (e) => <span className="num">{e.trades}</span> },
           { key: "avgPnl", header: "P&L medio", align: "right", render: (e) => <span className="num" style={{ color: e.avgPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(e.avgPnl, sym)}</span> },
-          { key: "winRate", header: "Win Rate", align: "right", render: (e) => <span className="num">{e.winRate}%</span> },
+          { key: "winRate", header: "Win Rate", align: "right", hideBelow: "sm", render: (e) => <span className="num">{e.winRate}%</span> },
         ]}
       />
     </div>

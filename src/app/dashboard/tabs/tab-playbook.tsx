@@ -339,12 +339,12 @@ export function TabPlaybook() {
                     </div>
                   )
                 } },
-                { key: "longCount", header: "Long", align: "right", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.longCount}</span> },
+                { key: "longCount", header: "Long", align: "right", hideBelow: "md", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.longCount}</span> },
                 { key: "longWr", header: "Long WR%", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.longWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.longWr.toFixed(2)}%</span> },
-                { key: "longAvgR", header: "Long avgR", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</span> },
-                { key: "shortCount", header: "Short", align: "right", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.shortCount}</span> },
+                { key: "longAvgR", header: "Long avgR", align: "right", hideBelow: "lg", render: (d) => <span className="font-mono font-bold" style={{ color: d.longAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.longAvgR.toFixed(4)}R</span> },
+                { key: "shortCount", header: "Short", align: "right", hideBelow: "md", render: (d) => <span className="font-mono text-[var(--ink-3)]">{d.shortCount}</span> },
                 { key: "shortWr", header: "Short WR%", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.shortWr >= 50 ? "var(--win)" : "var(--loss)" }}>{d.shortWr.toFixed(2)}%</span> },
-                { key: "shortAvgR", header: "Short avgR", align: "right", render: (d) => <span className="font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</span> },
+                { key: "shortAvgR", header: "Short avgR", align: "right", hideBelow: "lg", render: (d) => <span className="font-mono font-bold" style={{ color: d.shortAvgR >= 0 ? "var(--win)" : "var(--loss)" }}>{d.shortAvgR.toFixed(4)}R</span> },
               ]}
             />
           </div>

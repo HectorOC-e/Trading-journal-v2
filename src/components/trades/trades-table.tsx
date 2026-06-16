@@ -127,14 +127,14 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       id: "account",
       accessorFn: (t) => accountName(t.accountId),
       filterFn: multiSelectFilter,
-      meta: { width: "minmax(90px, 1fr)", headerLabel: "Cuenta", facet: { label: "Cuenta" } },
+      meta: { width: "minmax(90px, 1fr)", headerLabel: "Cuenta", facet: { label: "Cuenta" }, hideBelow: "lg" },
       header: () => <span>Cuenta</span>,
       cell: ({ getValue }) => <span className="text-[12px] text-[var(--ink-2)] truncate block">{shortAccount(String(getValue()))}</span>,
     },
     {
       id: "date",
       accessorKey: "date",
-      meta: { width: "minmax(90px, 1fr)", headerLabel: "Fecha" },
+      meta: { width: "minmax(90px, 1fr)", headerLabel: "Fecha", hideBelow: "md" },
       header: () => <span>Fecha</span>,
       cell: ({ row }) => {
         const t = row.original
@@ -150,7 +150,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       id: "session",
       accessorKey: "session",
       filterFn: multiSelectFilter,
-      meta: { width: "minmax(80px, 0.9fr)", headerLabel: "Sesión", facet: { label: "Sesión" } },
+      meta: { width: "minmax(80px, 0.9fr)", headerLabel: "Sesión", facet: { label: "Sesión" }, hideBelow: "lg" },
       header: () => <span>Sesión</span>,
       cell: ({ getValue }) => {
         const s = String(getValue())
@@ -162,7 +162,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       id: "rMultiple",
       accessorFn: (t) => t.rMultiple ?? undefined,
       sortUndefined: "last",
-      meta: { width: "72px", headerLabel: "R", align: "right" },
+      meta: { width: "72px", headerLabel: "R", align: "right", hideBelow: "sm" },
       header: () => <span>R</span>,
       cell: ({ row }) => <RBar r={row.original.rMultiple ?? null} />,
     },
@@ -178,7 +178,7 @@ export function TradesTable({ trades, accounts = [], setups = [], selectedId, on
       id: "quality",
       accessorFn: qualityOf,
       filterFn: multiSelectFilter,
-      meta: { width: "minmax(80px, 0.9fr)", headerLabel: "Calidad", facet: { label: "Calidad" } },
+      meta: { width: "minmax(80px, 0.9fr)", headerLabel: "Calidad", facet: { label: "Calidad" }, hideBelow: "md" },
       header: () => <span>Calidad</span>,
       cell: ({ getValue }) => {
         const q = String(getValue())
