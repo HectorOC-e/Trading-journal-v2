@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { COLLECTION, EASE_OUT, staggerDelay, type CollectionPreset } from "@/lib/motion"
 import { useRovingFocus } from "@/hooks/useRovingFocus"
+import { useViewportWidth, isHiddenAt, type Breakpoint } from "@/hooks/useViewportWidth"
 import type { Density } from "./use-data-table"
 
 // Lightweight, read-only table that shares the DataTable look (header style,
@@ -19,6 +20,7 @@ export interface SimpleColumn<T> {
   width?: string                 // grid-template width; default minmax(80px,1fr)
   render?: (row: T, index: number) => ReactNode
   cellClassName?: string
+  hideBelow?: Breakpoint         // auto-hide on viewports narrower than this
 }
 
 const ROW_PAD: Record<Density, string> = { compact: "py-1.5", comfortable: "py-2.5" }
@@ -47,7 +49,9 @@ export function SimpleTable<T>({
   /** Motion preset — defaults to dense "table". */
   preset?: CollectionPreset
 }) {
-  const cols = columns.map(c => c.width ?? "minmax(80px, 1fr)").join(" ")
+  const width = useViewportWidth()
+  const visibleColumns = columns.filter(c => !isHiddenAt(c.hideBelow, width))
+  const cols = visibleColumns.map(c => c.width ?? "minmax(80px, 1fr)").join(" ")
   const [activeKey, setActiveKey] = useState<string | null>(null)
   const roving = useRovingFocus(data.length, {
     onActivate: onRowClick ? (i) => onRowClick(data[i]) : undefined,
@@ -57,7 +61,7 @@ export function SimpleTable<T>({
     <div role="table" className={cn("rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden", className)}>
       {/* Header */}
       <div role="row" className="grid items-center bg-[var(--panel-2)] border-b border-[var(--line)]" style={{ gridTemplateColumns: cols }}>
-        {columns.map(c => (
+        {visibleColumns.map(c => (
           <div
             key={c.key}
             role="columnheader"
@@ -94,7 +98,7 @@ export function SimpleTable<T>({
               rovingProps={onRowClick ? roving.getItemProps(i) : undefined}
               className={rowClassName?.(row, i)}
             >
-              {columns.map(c => (
+              {visibleColumns.map(c => (
                 <div
                   key={c.key}
                   role="cell"

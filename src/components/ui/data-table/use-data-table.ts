@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useViewportWidth, isHiddenAt, type Breakpoint } from "@/hooks/useViewportWidth"
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -26,6 +27,7 @@ declare module "@tanstack/react-table" {
     headerLabel?: string                 // plain label for the column-visibility menu
     csvLabel?: string                    // override CSV header
     facet?: { label: string; format?: (v: string) => string }
+    hideBelow?: Breakpoint               // auto-hide on viewports narrower than this
   }
 }
 import type { RowData } from "@tanstack/react-table"
@@ -84,6 +86,23 @@ export function useDataTable<TData>({
     () => loadJSON<Density>(storageKey, "density", "comfortable"),
   )
 
+  // Responsive overrides: columns with meta.hideBelow are force-hidden on
+  // narrow viewports so tables don't overflow horizontally on mobile.
+  const width = useViewportWidth()
+  const responsiveHidden = useMemo(() => {
+    const v: VisibilityState = {}
+    for (const c of columns) {
+      const id = c.id ?? ("accessorKey" in c ? String(c.accessorKey) : undefined)
+      const hb = c.meta?.hideBelow as Breakpoint | undefined
+      if (id && hb && isHiddenAt(hb, width)) v[id] = false
+    }
+    return v
+  }, [columns, width])
+  const effectiveVisibility = useMemo(
+    () => ({ ...columnVisibility, ...responsiveHidden }),
+    [columnVisibility, responsiveHidden],
+  )
+
   // Persist density + column visibility.
   useEffect(() => {
     if (!storageKey) return
@@ -97,7 +116,7 @@ export function useDataTable<TData>({
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, columnFilters, globalFilter, columnVisibility, rowSelection },
+    state: { sorting, columnFilters, globalFilter, columnVisibility: effectiveVisibility, rowSelection },
     onSortingChange:          setSorting,
     onColumnFiltersChange:    setColumnFilters,
     onGlobalFilterChange:     setGlobalFilter,

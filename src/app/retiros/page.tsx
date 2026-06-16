@@ -168,7 +168,7 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       id: "account",
       accessorFn: (w) => w.account.name,
       filterFn: multiSelectFilter,
-      meta: { width: "minmax(110px, 1.3fr)", headerLabel: "Cuenta", facet: { label: "Cuenta" } },
+      meta: { width: "minmax(110px, 1.3fr)", headerLabel: "Cuenta", facet: { label: "Cuenta" }, hideBelow: "md" },
       header: () => <span>Cuenta</span>,
       cell: ({ getValue }) => <span className="text-[12px] text-[var(--ink-2)] truncate">{String(getValue())}</span>,
     },
@@ -185,7 +185,7 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       id: "currency",
       accessorKey: "currency",
       filterFn: multiSelectFilter,
-      meta: { width: "minmax(70px, 0.7fr)", headerLabel: "Divisa", facet: { label: "Divisa" } },
+      meta: { width: "minmax(70px, 0.7fr)", headerLabel: "Divisa", facet: { label: "Divisa" }, hideBelow: "sm" },
       header: () => <span>Divisa</span>,
       cell: ({ getValue }) => <span className="text-[11px] font-semibold text-[var(--ink-3)]">{String(getValue())}</span>,
     },
@@ -193,7 +193,7 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       id: "note",
       accessorFn: (w) => `${w.note ?? ""} ${w.reference ?? ""}`.trim(),
       enableSorting: false,
-      meta: { width: "minmax(100px, 1.6fr)", headerLabel: "Nota / Ref." },
+      meta: { width: "minmax(100px, 1.6fr)", headerLabel: "Nota / Ref.", hideBelow: "lg" },
       header: () => <span>Nota / Ref.</span>,
       cell: ({ row }) => (
         <div className="min-w-0">

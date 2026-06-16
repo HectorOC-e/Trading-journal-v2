@@ -303,9 +303,9 @@ export function TabPortfolio({
             { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="font-medium text-[var(--ink)] text-sm">{a.name}</span> },
             { key: "balance", header: "Balance", align: "right", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{cur}{a.balance.toFixed(2)}</span> },
             { key: "pnlMonth", header: "P&L mes", align: "right", render: (a) => <TrendNumber value={a.pnlMonth} format={(v) => `${cur}${v.toFixed(2)}`} className="text-sm justify-end w-full" /> },
-            { key: "winRate", header: "Win %", align: "right", width: "minmax(70px, 0.8fr)", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</span> },
-            { key: "drawdownPct", header: "Drawdown", align: "right", width: "minmax(80px, 0.9fr)", render: (a) => <span className={cn("font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>{a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}</span> },
-            { key: "status", header: "Estado", width: "minmax(110px, 1.2fr)", render: (a) => (
+            { key: "winRate", header: "Win %", align: "right", hideBelow: "sm", width: "minmax(70px, 0.8fr)", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</span> },
+            { key: "drawdownPct", header: "Drawdown", align: "right", hideBelow: "md", width: "minmax(80px, 0.9fr)", render: (a) => <span className={cn("font-mono text-sm", a.drawdownPct > 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>{a.drawdownPct > 0 ? `-${a.drawdownPct.toFixed(1)}%` : "0.0%"}</span> },
+            { key: "status", header: "Estado", hideBelow: "lg", width: "minmax(110px, 1.2fr)", render: (a) => (
               <div className="flex items-center gap-1.5">
                 <span className={cn("text-[10px] font-semibold px-2 py-1 rounded-full",
                   a.status === "ACTIVE" ? "bg-[var(--win-soft)] text-[var(--win)]" : a.status === "PAUSED" ? "bg-[var(--be-soft)] text-[var(--be)]" : "bg-[var(--chip)] text-[var(--ink-3)]")}>

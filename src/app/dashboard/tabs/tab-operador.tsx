@@ -220,7 +220,7 @@ export function TabOperador({
             ) },
             { key: "r", header: "R", align: "right", width: "minmax(60px, 0.7fr)", render: (t) => <span className={cn("font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R</span> },
             { key: "pnl", header: "P&L Neto", align: "right", render: (t) => <span className={cn("font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.pnl >= 0 ? "+" : "-"}${Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
-            { key: "session", header: "Sesión · Tags", width: "minmax(120px, 1.4fr)", render: (t) => (
+            { key: "session", header: "Sesión · Tags", width: "minmax(120px, 1.4fr)", hideBelow: "md", render: (t) => (
               <div>
                 <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
                 <div className="flex gap-1 flex-wrap">
@@ -228,7 +228,7 @@ export function TabOperador({
                 </div>
               </div>
             ) },
-            { key: "date", header: "Fecha", width: "minmax(80px, 0.9fr)", render: (t) => <span className="text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</span> },
+            { key: "date", header: "Fecha", width: "minmax(80px, 0.9fr)", hideBelow: "lg", render: (t) => <span className="text-xs text-[var(--ink-3)]">{fmtDate(t.date)}</span> },
           ]}
         />
       </div>
