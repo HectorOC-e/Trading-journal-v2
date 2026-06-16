@@ -28,6 +28,7 @@ Usa SOLO los datos del contexto. Responde en español, en markdown, usando bloqu
 > [!WARNING] para riesgos conductuales
 > [!RECOMMENDATION] para acciones concretas
 Estructura: 1) Patrones detectados, 2) Sesgos/riesgos, 3) Hábitos (positivos y negativos), 4) Plan de acción priorizado.
+Formato: para saltos de línea usa líneas o listas reales, NUNCA la etiqueta <br> (ni dentro de celdas de tabla: usa una lista o separa con "·"). Para fórmulas usa LaTeX ($...$ / $$...$$), nunca símbolos sueltos; los importes de dinero ($100) déjalos como texto normal.
 No inventes datos. Sé directo y empático, como un coach experto.`
 
 export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promise<ReadableStream<Uint8Array>> {

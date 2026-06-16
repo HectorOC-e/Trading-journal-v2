@@ -46,6 +46,7 @@ Usa bloques de callout cuando aporten:
 > [!WARNING] para riesgos
 > [!RECOMMENDATION] para acciones concretas
 Estructura: 1) **Qué está pasando** (hallazgos con números), 2) **Por qué** (correlaciones/causas), 3) **Qué hacer** (recomendaciones priorizadas).
+Formato: para saltos de línea usa líneas o listas reales, NUNCA la etiqueta <br> (ni dentro de celdas de tabla: usa una lista o separa con "·"). Para fórmulas/expresiones matemáticas usa LaTeX ($...$ en línea, $$...$$ en bloque), nunca símbolos sueltos; los importes de dinero ($100) déjalos como texto normal.
 No inventes datos. Si faltan datos, dilo brevemente.`
 
 export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise<ReadableStream<Uint8Array>> {
