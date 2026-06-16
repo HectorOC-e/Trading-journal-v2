@@ -39,8 +39,17 @@ type ViewMode = "panel" | "expanded" | "minimized"
 type XY = { x: number; y: number }
 
 const POS_KEY      = "tj-coach-pos"
-const LAUNCHER_KEY = "tj-coach-launcher-pos"
 const HISTORY_KEY  = "tj-coach-history"
+
+/** Keep a saved anchor inside the viewport (it may have been saved at a different
+ *  size/orientation). Prevents the chat from reopening off-screen. */
+function clampPos(p: XY | null, w: number, h: number): XY | null {
+  if (!p || typeof window === "undefined") return p
+  return {
+    x: Math.max(8, Math.min(window.innerWidth - w - 8, p.x)),
+    y: Math.max(8, Math.min(window.innerHeight - h - 8, p.y)),
+  }
+}
 
 const WELCOME: Message = {
   id:      "welcome",
@@ -72,7 +81,6 @@ export function AiCoachDrawer() {
   const [streaming,   setStreaming]   = useState(false)
   const [apiError,    setApiError]    = useState<ApiError>(null)
   const [pos,         setPos]         = useState<XY | null>(null)
-  const [launcherPos, setLauncherPos] = useState<XY | null>(null)
   const [copiedId,    setCopiedId]    = useState<string | null>(null)
 
   const bottomRef    = useRef<HTMLDivElement>(null)
@@ -86,8 +94,7 @@ export function AiCoachDrawer() {
   // ── Mount: restore positions + conversation history ─────────────────────────
   useEffect(() => {
     try {
-      const p = localStorage.getItem(POS_KEY);      if (p) setPos(JSON.parse(p))
-      const l = localStorage.getItem(LAUNCHER_KEY); if (l) setLauncherPos(JSON.parse(l))
+      const p = localStorage.getItem(POS_KEY); if (p) setPos(JSON.parse(p))
       const h = localStorage.getItem(HISTORY_KEY)
       if (h) {
         const parsed = JSON.parse(h) as Message[]
@@ -140,13 +147,14 @@ export function AiCoachDrawer() {
     document.addEventListener("pointerup", onPointerUp)
   }
 
-  // ── Launcher bubble dragging (click vs drag via movement threshold) ──────────
+  // ── Launcher bubble dragging — shares the single `pos` anchor with the panel,
+  //    so closing/reopening always lands the chat where you left it. ───────────
   const launcherMove = useCallback((e: PointerEvent) => {
     const d = launcherDrag.current
     if (!d) return
     if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 6) d.moved = true
     if (d.moved) {
-      setLauncherPos({
+      setPos({
         x: Math.max(8, Math.min(window.innerWidth - 64, e.clientX - 28)),
         y: Math.max(8, Math.min(window.innerHeight - 64, e.clientY - 28)),
       })
@@ -156,7 +164,7 @@ export function AiCoachDrawer() {
   const launcherUp = useCallback(() => {
     document.removeEventListener("pointermove", launcherMove)
     document.removeEventListener("pointerup", launcherUp)
-    setLauncherPos(p => { if (p) try { localStorage.setItem(LAUNCHER_KEY, JSON.stringify(p)) } catch { /* ignore */ } ; return p })
+    setPos(p => { if (p) try { localStorage.setItem(POS_KEY, JSON.stringify(p)) } catch { /* ignore */ } ; return p })
   }, [launcherMove])
 
   function launcherDown(e: React.PointerEvent) {
@@ -297,8 +305,9 @@ export function AiCoachDrawer() {
 
   // ── Floating launcher (collapsed) ─────────────────────────────────────────
   if (!open) {
-    const launcherStyle: React.CSSProperties = launcherPos
-      ? { left: launcherPos.x, top: launcherPos.y, right: "auto", bottom: "auto" }
+    const lp = clampPos(pos, 56, 56)
+    const launcherStyle: React.CSSProperties = lp
+      ? { left: lp.x, top: lp.y, right: "auto", bottom: "auto" }
       : { bottom: isMobile ? 132 : 96, right: 24 }
     return (
       <button
@@ -322,8 +331,10 @@ export function AiCoachDrawer() {
   const minimized = mode === "minimized"
   const sheet     = isMobile && !pos // mobile bottom-sheet only when not custom-positioned
 
-  const posStyle: React.CSSProperties = pos
-    ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" }
+  // Clamp the saved anchor so the panel never reopens off-screen (keep ~80px on screen).
+  const pp = clampPos(pos, 80, 80)
+  const posStyle: React.CSSProperties = pp
+    ? { left: pp.x, top: pp.y, right: "auto", bottom: "auto" }
     : sheet ? {} : { right: 24, bottom: 24 }
 
   const width  = sheet ? "100vw" : expanded ? "min(720px, 95vw)" : isMobile ? "min(400px, 95vw)" : 400
@@ -358,8 +369,8 @@ export function AiCoachDrawer() {
             <button
               onClick={newChat}
               className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] hover:bg-[var(--chip)] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors active:scale-95"
-              aria-label="Nuevo chat"
-              title="Nuevo chat"
+              aria-label="Nuevo chat — limpiar conversación"
+              title="Nuevo chat — limpiar conversación"
             >
               <Plus size={16} />
             </button>
@@ -475,6 +486,17 @@ export function AiCoachDrawer() {
                 </div>
               )
             })}
+
+            {/* Typing indicator for the gap between sending and the assistant
+                placeholder being created (so the dots show the instant the stop
+                button appears). */}
+            {streaming && messages[messages.length - 1]?.role === "user" && (
+              <div className="flex flex-col gap-1 items-start">
+                <div className="max-w-[85%] rounded-[var(--radius)] px-3 py-2 bg-[var(--panel-2)] border border-[var(--line)]">
+                  <TypingIndicator consulting={false} />
+                </div>
+              </div>
+            )}
 
             {/* Suggested starter prompts (empty conversation) */}
             {messages.length <= 1 && !streaming && (

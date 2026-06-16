@@ -61,7 +61,7 @@ const CALLOUT_ALIASES: Record<string, CalloutType> = {
 // ── Inline ────────────────────────────────────────────────────────────────────
 // Order matters: math (\(…\) and $…$) and inline code are matched before emphasis
 // so a `_` or `*` inside an equation/code isn't mistaken for italics.
-const INLINE_RE = /(\\\([^\n]+?\\\)|\$[^$\n]+\$|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\*[^*\n]+\*|_[^_\n]+_|\[[^\]]+\]\([^)\s]+\))/g
+const INLINE_RE = /(<br\s*\/?>|\\\([^\n]+?\\\)|\$[^$\n]+\$|`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|~~[^~]+~~|\*[^*\n]+\*|_[^_\n]+_|\[[^\]]+\]\([^)\s]+\))/gi
 
 function safeHref(url: string): string | null {
   const u = url.trim()
@@ -78,7 +78,8 @@ function parseInline(text: string, keyPrefix: string): ReactNode[] {
     if (m.index > last) out.push(text.slice(last, m.index))
     const tok = m[0]
     const k = `${keyPrefix}-${i++}`
-    if (tok.startsWith("\\(")) out.push(<MathInline key={k} tex={tok.slice(2, -2)} />)
+    if (/^<br/i.test(tok)) out.push(<br key={k} />)
+    else if (tok.startsWith("\\(")) out.push(<MathInline key={k} tex={tok.slice(2, -2)} />)
     else if (tok.startsWith("$")) {
       const inner = tok.slice(1, -1)
       if (LATEX_SIGNAL.test(inner)) out.push(<MathInline key={k} tex={inner} />)
