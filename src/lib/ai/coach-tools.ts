@@ -73,6 +73,40 @@ export const COACH_TOOLS = [
       required: ["query"],
     },
   },
+  {
+    name: "get_learning_resources",
+    description: "Lista los recursos de aprendizaje del trader (libros, cursos, vídeos…) con su progreso, estado, si están marcados para repaso y los setups del Playbook vinculados. Úsalo para '¿qué estoy estudiando?' o para recomendar qué retomar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: { type: "string", enum: ["PENDING", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "MASTERED", "ABANDONED"], description: "Filtrar por estado (opcional)" },
+        type:   { type: "string", description: "Tipo de recurso, p.ej. book/course/video (opcional)" },
+        limit:  { type: "number", description: "Máx. resultados (default 20, máx 50)" },
+      },
+    },
+  },
+  {
+    name: "get_study_agenda",
+    description: "Agenda de aprendizaje: repasos (SRS) que vencen y sesiones de estudio recientes/planificadas en los próximos N días y los últimos N días. Úsalo para '¿qué tengo que repasar/estudiar esta semana?'.",
+    input_schema: {
+      type: "object" as const,
+      properties: { days: { type: "number", description: "Ventana en días hacia delante y atrás (default 14, máx 60)" } },
+    },
+  },
+  {
+    name: "suggest_study",
+    description: "Cruza las debilidades del trader (peor setup por win rate, tag de indisciplina más frecuente) con sus recursos vinculados para sugerir QUÉ estudiar para mejorar. Devuelve 1-3 recomendaciones con su razón. Úsalo cuando el trader pida 'qué debería estudiar' o 'cómo mejoro X'.",
+    input_schema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: "search_learning_resources",
+    description: "Búsqueda semántica sobre las NOTAS de los recursos de aprendizaje (significado, no filtros exactos). Útil para 'dónde anoté algo sobre gestión de riesgo'. Requiere notas embebidas y una clave de embeddings configurada.",
+    input_schema: {
+      type: "object" as const,
+      properties: { query: { type: "string", description: "Qué buscar, en lenguaje natural" }, limit: { type: "number", description: "Máx. resultados (default 8)" } },
+      required: ["query"],
+    },
+  },
 ] as const
 
 export type CoachToolName = (typeof COACH_TOOLS)[number]["name"]
@@ -242,6 +276,130 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
           id: t!.id, date: (t!.date as Date).toISOString().slice(0, 10), symbol: t!.symbol, direction: t!.direction,
           pnl: t!.pnl != null ? parseFloat(Number(t!.pnl).toFixed(2)) : 0, tags: t!.tags as string[],
           notes: (t!.notes || "").slice(0, 200), similarity: parseFloat((simById.get(t!.id) ?? 0).toFixed(3)),
+        })),
+      })
+    }
+
+    if (name === "get_learning_resources") {
+      const status = typeof input.status === "string" ? input.status : undefined
+      const type   = input.type ? String(input.type).trim() : undefined
+      const limit  = Math.min(50, Math.max(1, Number(input.limit) || 20))
+      const rows = await prisma.learningResource.findMany({
+        where: { userId, ...(status ? { status } : {}), ...(type ? { type: { contains: type, mode: "insensitive" } } : {}) },
+        select: { id: true, title: true, type: true, status: true, progressPct: true, markedForReview: true, nextReviewAt: true, linkedSetups: { select: { name: true } } },
+        orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
+        take: limit,
+      })
+      return JSON.stringify({
+        count: rows.length,
+        resources: rows.map(r => ({
+          id: r.id, title: r.title, type: r.type, status: r.status,
+          progressPct: r.progressPct, markedForReview: r.markedForReview,
+          nextReviewAt: r.nextReviewAt ? (r.nextReviewAt as Date).toISOString().slice(0, 10) : null,
+          linkedSetups: r.linkedSetups.map(s => s.name),
+        })),
+      })
+    }
+
+    if (name === "get_study_agenda") {
+      const days = Math.min(60, Math.max(1, Number(input.days) || 14))
+      const now = new Date()
+      const todayISO = now.toISOString().slice(0, 10)
+      const ahead = new Date(now); ahead.setDate(now.getDate() + days)
+      const back  = new Date(now); back.setDate(now.getDate() - days)
+      const [resources, sessions] = await Promise.all([
+        prisma.learningResource.findMany({
+          where: { userId, status: { not: "ABANDONED" }, nextReviewAt: { not: null, lte: ahead } },
+          select: { id: true, title: true, type: true, nextReviewAt: true, status: true },
+        }),
+        prisma.studySession.findMany({
+          where: { userId, status: { in: ["completed", "planned"] }, startedAt: { gte: back, lte: ahead } },
+          select: { status: true, startedAt: true, durationMin: true, plannedMin: true, resource: { select: { title: true, type: true } } },
+          orderBy: { startedAt: "asc" },
+        }),
+      ])
+      const dueReviews = resources
+        .filter(r => r.status !== "MASTERED" && r.nextReviewAt)
+        .map(r => ({ date: (r.nextReviewAt as Date).toISOString().slice(0, 10), title: r.title, type: r.type, overdue: (r.nextReviewAt as Date).toISOString().slice(0, 10) <= todayISO }))
+      return JSON.stringify({
+        windowDays: days,
+        dueReviews,
+        sessions: sessions.map(s => ({
+          status: s.status, date: (s.startedAt as Date).toISOString().slice(0, 10),
+          minutes: s.status === "planned" ? s.plannedMin : s.durationMin,
+          resource: s.resource.title, type: s.resource.type,
+        })),
+      })
+    }
+
+    if (name === "suggest_study") {
+      const [setups, resources] = await Promise.all([
+        prisma.setup.findMany({ where: { userId }, select: { id: true, name: true } }),
+        prisma.learningResource.findMany({
+          where: { userId, status: { notIn: ["ABANDONED", "MASTERED"] } },
+          select: { id: true, title: true, type: true, status: true, progressPct: true, linkedSetups: { select: { id: true } } },
+        }),
+      ])
+      const trades = await prisma.trade.findMany({
+        where: { userId, status: "CLOSED", setupId: { not: null } },
+        select: { setupId: true, pnl: true },
+      })
+      const stats = new Map<string, { wins: number; trades: number }>()
+      for (const t of trades) {
+        if (!t.setupId) continue
+        const s = stats.get(t.setupId) ?? { wins: 0, trades: 0 }
+        s.trades++
+        if (t.pnl != null && Number(t.pnl) > 0) s.wins++
+        stats.set(t.setupId, s)
+      }
+      const nameById = new Map(setups.map(s => [s.id, s.name]))
+      // Rank linked resources by the win rate of their weakest linked setup (asc).
+      const ranked = resources
+        .map(r => {
+          let worstWr: number | null = null, worstSetup = ""
+          for (const ls of r.linkedSetups) {
+            const st = stats.get(ls.id)
+            if (!st || st.trades < 3) continue
+            const wr = Math.round((st.wins / st.trades) * 100)
+            if (worstWr == null || wr < worstWr) { worstWr = wr; worstSetup = nameById.get(ls.id) ?? "" }
+          }
+          return worstWr == null ? null : { id: r.id, title: r.title, type: r.type, status: r.status, progressPct: r.progressPct, setup: worstSetup, setupWinRate: worstWr }
+        })
+        .filter((x): x is NonNullable<typeof x> => x != null)
+        .sort((a, b) => a.setupWinRate - b.setupWinRate)
+        .slice(0, 3)
+      if (ranked.length === 0) {
+        return JSON.stringify({ suggestions: [], note: "No hay recursos vinculados a setups con suficientes trades para detectar una debilidad clara. Sugiere vincular recursos a setups en el Playbook." })
+      }
+      return JSON.stringify({
+        suggestions: ranked.map(r => ({
+          resourceId: r.id, title: r.title, type: r.type, status: r.status, progressPct: r.progressPct,
+          reason: `Refuerza el setup "${r.setup}" (${r.setupWinRate}% WR).`,
+        })),
+      })
+    }
+
+    if (name === "search_learning_resources") {
+      const query = String(input.query ?? "").trim()
+      if (!query) return JSON.stringify({ error: "Falta la consulta." })
+      const limit = Math.min(20, Math.max(1, Number(input.limit) || 8))
+      const emb = await resolveEmbeddingCall(prisma, userId)
+      if (emb.source === "none") return JSON.stringify({ error: "El trader no tiene una clave de embeddings configurada para búsqueda semántica.", resources: [] })
+      const vec = await embedText(query, { model: emb.model, apiKey: emb.apiKey })
+      if (!vec) return JSON.stringify({ error: "No se pudo generar el embedding de la consulta.", resources: [] })
+      type Row = { id: string; similarity: number }
+      const hits = await prisma.$queryRaw<Row[]>`
+        SELECT id, (1 - (notes_embedding <=> ${`[${vec.join(",")}]`}::vector)) AS similarity
+        FROM learning_resources WHERE user_id = ${userId}::uuid AND notes_embedding IS NOT NULL
+        ORDER BY notes_embedding <=> ${`[${vec.join(",")}]`}::vector LIMIT ${limit}`
+      if (!hits.length) return JSON.stringify({ resources: [], note: "Sin recursos con notas embebidas que coincidan." })
+      const ids = hits.map(h => h.id)
+      const found = await prisma.learningResource.findMany({ where: { id: { in: ids }, userId }, select: { id: true, title: true, type: true, status: true, notes: true } })
+      const simById = new Map(hits.map(h => [h.id, h.similarity]))
+      return JSON.stringify({
+        resources: ids.map(id => found.find(r => r.id === id)).filter(Boolean).map(r => ({
+          id: r!.id, title: r!.title, type: r!.type, status: r!.status,
+          notes: (r!.notes || "").slice(0, 240), similarity: parseFloat((simById.get(r!.id) ?? 0).toFixed(3)),
         })),
       })
     }

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Clock, BookOpen, Play, Flame, Sparkles, CheckCircle2, CalendarClock, ArrowRight } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Clock, BookOpen, Play, Flame, Sparkles, CheckCircle2, CalendarClock, ArrowRight, HelpCircle } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { cn } from "@/lib/utils"
@@ -9,15 +9,44 @@ import { CountUp } from "@/components/ui/count-up"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Stagger, StaggerItem } from "@/components/ui/motion"
 import { useStudySessionStore } from "@/lib/study-session-store"
+import { askCoach } from "@/lib/coach-bus"
+import { SpotlightTour, type TourStep } from "@/components/onboarding/spotlight-tour"
 import { PlanSessionModal } from "./plan-session-modal"
 import type { ResourceType } from "@/types"
 
 const DOW = ["L", "M", "X", "J", "V", "S", "D"]
 
+const TOUR_SEEN_KEY = "tj-aprendizaje-tour-seen"
+const TOUR_STEPS: TourStep[] = [
+  { anchor: "week-strip", title: "Tu semana de un vistazo", body: "Repasos que vencen, sesiones hechas y lo que planificaste, día a día." },
+  { anchor: "start-session", title: "Estudia con foco", body: "Inicia una sesión cronometrada; puedes minimizarla a una píldora y seguir leyendo el recurso." },
+  { anchor: "coach-suggestion", title: "Sugerencia del coach", body: "Según tus trades, el coach propone qué estudiar. Pulsa para profundizar en el chat." },
+  { anchor: "streak", title: "Tu constancia", body: "Racha de días estudiando y minutos frente a tu meta semanal." },
+  { anchor: "agenda", title: "Lo que viene", body: "Repasos próximos y sesiones planificadas, ordenados por fecha." },
+]
+
 export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
   const { openPicker } = useStudySessionStore()
   const [planOpen, setPlanOpen] = useState(false)
+  const [tourOpen, setTourOpen] = useState(false)
   const { data, isLoading } = trpc.studySessions.home.useQuery()
+
+  // Auto-open the guided tour on the first visit, once the data has resolved
+  // (so the spotlight lands on real content, not the loading skeleton).
+  useEffect(() => {
+    if (isLoading || !data) return
+    let seen = false
+    try { seen = localStorage.getItem(TOUR_SEEN_KEY) === "1" } catch { /* noop */ }
+    if (!seen) {
+      const t = setTimeout(() => setTourOpen(true), 400)
+      return () => clearTimeout(t)
+    }
+  }, [isLoading, data])
+
+  function closeTour() {
+    setTourOpen(false)
+    try { localStorage.setItem(TOUR_SEEN_KEY, "1") } catch { /* noop */ }
+  }
   const utils = trpc.useUtils()
   const completePlanned = trpc.studySessions.completePlanned.useMutation({
     onSuccess: () => { utils.studySessions.invalidate(); utils.learningResources.invalidate(); toast.success("Sesión planificada completada") },
@@ -34,7 +63,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
     )
   }
 
-  const { weekDays, due, inProgress, week, agenda } = data
+  const { weekDays, due, inProgress, week, agenda, suggestion } = data
   const goalH = (week.goalMin / 60).toFixed(0)
   const doneH = (week.hoursMin / 60)
   const pct = week.goalMin > 0 ? Math.min(100, Math.round((week.hoursMin / week.goalMin) * 100)) : 0
@@ -43,10 +72,19 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
   return (
     <>
     <PlanSessionModal open={planOpen} onClose={() => setPlanOpen(false)} />
+    <SpotlightTour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
+
+    <div className="flex justify-end -mb-1">
+      <button onClick={() => setTourOpen(true)} title="Ver tutorial de la página"
+        className="inline-flex items-center gap-1 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors active:scale-95">
+        <HelpCircle size={13} /> Cómo funciona
+      </button>
+    </div>
+
     <Stagger className="flex flex-col gap-3">
       {/* Week strip */}
       <StaggerItem>
-        <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-3 py-3">
+        <div data-tour="week-strip" className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-3 py-3">
           <div className="grid grid-cols-7 gap-1 text-center">
             {weekDays.map((d, i) => (
               <div key={d.date} className={cn("rounded-[var(--radius-sm)] py-1.5", d.isToday && "bg-[var(--accent-soft)]")}>
@@ -98,7 +136,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <button onClick={openPicker}
+              <button data-tour="start-session" onClick={openPicker}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-[13px] font-medium hover:bg-[var(--accent-h)] transition-colors active:scale-[0.97]">
                 <Play size={14} className="fill-current" /> Iniciar sesión
               </button>
@@ -108,15 +146,26 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
               </button>
             </div>
 
-            {/* Coach suggestion slot — filled by SP2 */}
-            <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--line-2)] bg-[var(--panel-2)] px-3 py-2 flex items-center gap-2">
-              <Sparkles size={14} className="text-[var(--accent)] shrink-0" />
-              <p className="text-[11.5px] text-[var(--ink-3)]">El coach mostrará aquí sugerencias de estudio basadas en tus trades.</p>
+            {/* Coach suggestion slot (SP2) — server-side heuristic + deep-link to coach */}
+            <div data-tour="coach-suggestion" className="rounded-[var(--radius-sm)] border border-[var(--line-2)] bg-[var(--accent-soft)]/40 px-3 py-2.5 flex items-start gap-2">
+              <Sparkles size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
+              {suggestion ? (
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-semibold text-[var(--ink)] leading-tight">{suggestion.title}</p>
+                  <p className="text-[11px] text-[var(--ink-2)] mt-0.5">{suggestion.reason}</p>
+                  <button onClick={() => askCoach(suggestion.coachPrompt)}
+                    className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-[var(--accent)] hover:underline active:scale-95 transition">
+                    Preguntar al coach <ArrowRight size={11} />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11.5px] text-[var(--ink-3)] mt-0.5">Vas al día. El coach sugerirá estudio aquí cuando detecte algo útil en tus trades.</p>
+              )}
             </div>
           </div>
 
           {/* Racha */}
-          <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-2">
+          <div data-tour="streak" className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-2">
             <p className="text-eyebrow">RACHA</p>
             <div className="flex items-center gap-2">
               <Flame size={22} style={{ color: week.streak > 0 ? "var(--win)" : "var(--ink-3)" }} />
@@ -134,7 +183,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
 
       {/* Agenda */}
       <StaggerItem>
-        <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4">
+        <div data-tour="agenda" className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4">
           <p className="text-eyebrow mb-2 flex items-center gap-1.5"><CalendarClock size={13} /> ESTA SEMANA</p>
           {agenda.length === 0 ? (
             <p className="text-[12.5px] text-[var(--ink-3)] py-2">Sin repasos ni sesiones planificadas próximas. Planifica una desde un recurso.</p>

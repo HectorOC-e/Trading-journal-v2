@@ -6,6 +6,7 @@ import {
   studyStreak,
   minutesThisWeek,
   startOfWeekUTC,
+  pickStudySuggestion,
 } from "@/domains/learning/services/study-session-service"
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null)
@@ -168,10 +169,10 @@ export const studySessionsRouter = router({
     const todayKey = dayKey(now)
     const horizonEnd = new Date(now); horizonEnd.setUTCDate(now.getUTCDate() + 7)
 
-    const [resources, weekSessions, streakSessions, plannedUpcoming, user] = await Promise.all([
+    const [resources, weekSessions, streakSessions, plannedUpcoming, user, setupTrades] = await Promise.all([
       ctx.prisma.learningResource.findMany({
         where: { userId: ctx.userId, status: { not: "ABANDONED" } },
-        select: { id: true, title: true, type: true, status: true, progressPct: true, currentUnits: true, totalUnits: true, progressType: true, nextReviewAt: true },
+        select: { id: true, title: true, type: true, status: true, progressPct: true, currentUnits: true, totalUnits: true, progressType: true, nextReviewAt: true, linkedSetups: { select: { id: true, name: true } } },
       }),
       ctx.prisma.studySession.findMany({
         where: { userId: ctx.userId, status: { in: ["completed", "planned"] }, startedAt: { gte: weekStart, lt: weekEnd } },
@@ -187,6 +188,10 @@ export const studySessionsRouter = router({
         orderBy: { startedAt: "asc" },
       }),
       ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { weeklyGoalMinutes: true } }),
+      ctx.prisma.trade.findMany({
+        where: { userId: ctx.userId, status: "CLOSED", setupId: { not: null } },
+        select: { setupId: true, pnl: true },
+      }),
     ])
 
     // Week strip: 7 days with counts
@@ -224,12 +229,43 @@ export const studySessionsRouter = router({
     }))
     const agenda = [...agendaReviews, ...agendaPlanned].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 12)
 
+    // Coach suggestion (heuristic): weakest setup with a linked, not-mastered resource.
+    const setupWins = new Map<string, { wins: number; trades: number }>()
+    for (const t of setupTrades) {
+      if (!t.setupId) continue
+      const s = setupWins.get(t.setupId) ?? { wins: 0, trades: 0 }
+      s.trades++
+      if (t.pnl != null && Number(t.pnl) > 0) s.wins++
+      setupWins.set(t.setupId, s)
+    }
+    let weakness: { setup: string; winRate: number; resource: { id: string; title: string } } | null = null
+    for (const r of resources) {
+      if (r.status === "MASTERED") continue
+      for (const ls of r.linkedSetups) {
+        const w = setupWins.get(ls.id)
+        if (!w || w.trades < 3) continue
+        const wr = Math.round((w.wins / w.trades) * 100)
+        if (!weakness || wr < weakness.winRate) {
+          weakness = { setup: ls.name, winRate: wr, resource: { id: r.id, title: r.title } }
+        }
+      }
+    }
+    const goalMin = user.weeklyGoalMinutes ?? 300
+    const suggestion = pickStudySuggestion({
+      overdueReviews: due.map(d => ({ id: d.id, title: d.title })),
+      weakness,
+      weekMinutes: hoursMin,
+      goalMinutes: goalMin,
+      streak,
+    })
+
     return {
       weekDays,
       due,
       inProgress,
-      week: { hoursMin, goalMin: user.weeklyGoalMinutes ?? 300, streak },
+      week: { hoursMin, goalMin, streak },
       agenda,
+      suggestion,
     }
   }),
 })
