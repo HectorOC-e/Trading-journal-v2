@@ -73,3 +73,80 @@ export function startOfWeekUTC(now: Date): Date {
   d.setUTCDate(d.getUTCDate() - dow)
   return d
 }
+
+// ── SP2: Hoy coach suggestion (server-side heuristic, no LLM cost) ─────────────
+
+export type StudySuggestionKind = "overdue_review" | "weakness" | "goal_gap" | "streak"
+
+export interface StudySuggestion {
+  kind: StudySuggestionKind
+  title: string         // short headline
+  reason: string        // one-line rationale
+  resourceId: string | null
+  coachPrompt: string   // pre-fills the coach chat when the user clicks through
+}
+
+export interface SuggestionInput {
+  overdueReviews: { id: string; title: string }[]
+  /** Weakest setup that has a linked, not-yet-mastered resource to study. */
+  weakness: { setup: string; winRate: number; resource: { id: string; title: string } } | null
+  weekMinutes: number
+  goalMinutes: number
+  streak: number
+}
+
+/**
+ * Pick the single most useful study nudge for the Hoy tab. Priority:
+ * overdue reviews → weakness→resource → weekly-goal gap → streak nudge → null.
+ * Pure + deterministic so it's free to compute on every page load.
+ */
+export function pickStudySuggestion(input: SuggestionInput): StudySuggestion | null {
+  const { overdueReviews, weakness, weekMinutes, goalMinutes, streak } = input
+
+  if (overdueReviews.length > 0) {
+    const first = overdueReviews[0]
+    const extra = overdueReviews.length - 1
+    return {
+      kind: "overdue_review",
+      title: extra > 0 ? `${overdueReviews.length} repasos vencidos` : `Repaso pendiente: ${first.title}`,
+      reason: extra > 0
+        ? `Tienes ${overdueReviews.length} recursos esperando repaso. Empieza por "${first.title}".`
+        : `"${first.title}" vence hoy. Un repaso corto consolida lo aprendido.`,
+      resourceId: first.id,
+      coachPrompt: `¿Cómo debería enfocar el repaso de "${first.title}" hoy?`,
+    }
+  }
+
+  if (weakness) {
+    return {
+      kind: "weakness",
+      title: `Refuerza: ${weakness.resource.title}`,
+      reason: `Tu setup "${weakness.setup}" rinde ${weakness.winRate}% WR. "${weakness.resource.title}" está vinculado y puede ayudarte.`,
+      resourceId: weakness.resource.id,
+      coachPrompt: `Mi setup "${weakness.setup}" va flojo (${weakness.winRate}% WR). ¿Qué debería estudiar de "${weakness.resource.title}" para mejorarlo?`,
+    }
+  }
+
+  if (goalMinutes > 0 && weekMinutes < goalMinutes) {
+    const left = goalMinutes - weekMinutes
+    return {
+      kind: "goal_gap",
+      title: `Te faltan ${left} min esta semana`,
+      reason: `Llevas ${weekMinutes}/${goalMinutes} min de estudio. Una sesión de foco te acerca a la meta.`,
+      resourceId: null,
+      coachPrompt: `Me faltan ${left} minutos para mi meta de estudio semanal. ¿Qué me recomiendas estudiar ahora?`,
+    }
+  }
+
+  if (streak === 0) {
+    return {
+      kind: "streak",
+      title: "Retoma tu racha",
+      reason: "No has estudiado en los últimos días. Una sesión corta reinicia el hábito.",
+      resourceId: null,
+      coachPrompt: "Quiero retomar el hábito de estudio. ¿Por dónde empiezo según mis trades?",
+    }
+  }
+
+  return null
+}

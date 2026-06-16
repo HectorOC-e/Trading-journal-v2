@@ -6,6 +6,7 @@ import { VIOLATION_TAGS } from "@/types"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
 import type { MinimalTrade } from "./services/dashboard-analytics"
+import { studyStreak, minutesThisWeek } from "@/domains/learning/services/study-session-service"
 
 export type TraderContext = {
   performance: {
@@ -29,6 +30,13 @@ export type TraderContext = {
     pendingReviews: number
     reviewsDoneThisMonth: number
     masteredResources: number
+    // SP2 — richer accompaniment context
+    activeResources: { title: string; type: string; progressPct: number | null }[]
+    dueReviews: { count: number; nextTitles: string[] }
+    studyMinutesWeek: number
+    studyStreak: number
+    sessionsLast7d: number
+    weaknessResource: { setup: string; resource: string } | null
   }
   // HALLAZGO 3 — personal goals + this-week progress so AI can reference them
   goals: {
@@ -113,6 +121,16 @@ type RawViolationRow = {
 
 type RawLearningRow = {
   status: string
+  title: string
+  type: string
+  progressPct: number | null
+  nextReviewAt: Date | null
+  linkedSetups: { name: string }[]
+}
+
+type RawStudySessionRow = {
+  startedAt: Date
+  durationMin: number | null
 }
 
 type RawReviewRow = {
@@ -164,8 +182,9 @@ export async function buildTraderContext(
     : undefined
 
   // ── parallel sub-fetches ──────────────────────────────────────────────────
+  const studySince = new Date(now); studySince.setDate(now.getDate() - 60)
   const [tradeRows, violationRows, learningRows, reviewRows, setupRows, goalRow,
-         accountRows, withdrawalRows, ruleRows, sessionRows, marketRows] = await Promise.all([
+         accountRows, withdrawalRows, ruleRows, sessionRows, marketRows, studyRows] = await Promise.all([
     // 1. Closed trades for performance & patterns
     prisma.trade.findMany({
       where: {
@@ -194,10 +213,10 @@ export async function buildTraderContext(
       select: { tags: true, pnl: true, date: true },
     }) as Promise<RawViolationRow[]>,
 
-    // 3. Learning resources
+    // 3. Learning resources (status + progress + reviews + linked setups)
     prisma.learningResource.findMany({
       where: { userId },
-      select: { status: true },
+      select: { status: true, title: true, type: true, progressPct: true, nextReviewAt: true, linkedSetups: { select: { name: true } } },
     }) as Promise<RawLearningRow[]>,
 
     // 4. Weekly reviews this month
@@ -250,10 +269,16 @@ export async function buildTraderContext(
       where:  { userId, isWatchlisted: true },
       select: { symbol: true, name: true },
     }) as Promise<RawMarketRow[]>,
+
+    // 12. Completed study sessions (last 60d) — streak / minutes (SP2)
+    prisma.studySession.findMany({
+      where:  { userId, status: "completed", startedAt: { gte: studySince } },
+      select: { startedAt: true, durationMin: true },
+    }) as Promise<RawStudySessionRow[]>,
   ]) as [RawTradeRow[], RawViolationRow[], RawLearningRow[], RawReviewRow[], RawSetupRow[], {
     weeklyPnlGoal: unknown; weeklyTradesGoal: number | null; disciplineGoal: number | null; weeklyGoalMinutes: number | null
     baseCurrency: string | null; fxRates: unknown
-  } | null, RawAccountRow[], RawWithdrawalRow[], RawRuleRow[], RawSessionRow[], RawMarketRow[]]
+  } | null, RawAccountRow[], RawWithdrawalRow[], RawRuleRow[], RawSessionRow[], RawMarketRow[], RawStudySessionRow[]]
 
   // ── Normalize trades to MinimalTrade ──────────────────────────────────────
   const trades: MinimalTrade[] = tradeRows.map((t: RawTradeRow) => ({
@@ -357,6 +382,29 @@ export async function buildTraderContext(
   const reviewsDoneThisMonth = reviewRows.filter(
     (r: RawReviewRow) => r.status === "submitted",
   ).length
+
+  // SP2 — richer learning slice
+  const activeResources = learningRows
+    .filter(r => r.status === "IN_PROGRESS")
+    .slice(0, 6)
+    .map(r => ({ title: r.title, type: r.type, progressPct: r.progressPct }))
+  const todayISO = now.toISOString().slice(0, 10)
+  const dueRows = learningRows.filter(
+    r => r.status !== "MASTERED" && r.nextReviewAt && r.nextReviewAt.toISOString().slice(0, 10) <= todayISO,
+  )
+  const dueReviews = { count: dueRows.length, nextTitles: dueRows.slice(0, 3).map(r => r.title) }
+  const studyMinutesWeek = minutesThisWeek(studyRows, now)
+  const studyStreakDays = studyStreak(studyRows.map(s => s.startedAt), now)
+  const weekStartStudy = new Date(now); weekStartStudy.setDate(now.getDate() - 7)
+  const sessionsLast7d = studyRows.filter(s => s.startedAt >= weekStartStudy).length
+  // Weakness → resource: a non-mastered resource linked to the worst setup
+  let weaknessResource: TraderContext["learning"]["weaknessResource"] = null
+  if (worstSetup) {
+    const linked = learningRows.find(
+      r => r.status !== "MASTERED" && r.linkedSetups.some(ls => ls.name === worstSetup!.name),
+    )
+    if (linked) weaknessResource = { setup: worstSetup.name, resource: linked.title }
+  }
 
   // ── Recent trades (last 10) ───────────────────────────────────────────────
   const recentTrades = [...trades]
@@ -479,6 +527,12 @@ export async function buildTraderContext(
       pendingReviews,
       reviewsDoneThisMonth,
       masteredResources,
+      activeResources,
+      dueReviews,
+      studyMinutesWeek,
+      studyStreak: studyStreakDays,
+      sessionsLast7d,
+      weaknessResource,
     },
     goals,
     recentTrades,

@@ -4,6 +4,7 @@ import {
   studyStreak,
   minutesThisWeek,
   startOfWeekUTC,
+  pickStudySuggestion,
 } from "@/domains/learning/services/study-session-service"
 
 describe("applyStudyFinish", () => {
@@ -65,5 +66,38 @@ describe("minutesThisWeek", () => {
       now,
     )
     expect(total).toBe(75)
+  })
+})
+
+describe("pickStudySuggestion", () => {
+  const base = { overdueReviews: [], weakness: null, weekMinutes: 300, goalMinutes: 300, streak: 3 }
+
+  it("prioritises overdue reviews", () => {
+    const s = pickStudySuggestion({ ...base, overdueReviews: [{ id: "r1", title: "Wyckoff" }, { id: "r2", title: "ICT" }] })
+    expect(s?.kind).toBe("overdue_review")
+    expect(s?.resourceId).toBe("r1")
+    expect(s?.title).toContain("2 repasos")
+  })
+
+  it("falls back to weakness→resource when nothing is due", () => {
+    const s = pickStudySuggestion({ ...base, weakness: { setup: "Breakout", winRate: 32, resource: { id: "r9", title: "Trading in the Zone" } } })
+    expect(s?.kind).toBe("weakness")
+    expect(s?.resourceId).toBe("r9")
+    expect(s?.reason).toContain("32%")
+  })
+
+  it("suggests closing the weekly-goal gap", () => {
+    const s = pickStudySuggestion({ ...base, weekMinutes: 120, goalMinutes: 300 })
+    expect(s?.kind).toBe("goal_gap")
+    expect(s?.title).toContain("180 min")
+  })
+
+  it("nudges to restart a broken streak", () => {
+    const s = pickStudySuggestion({ ...base, streak: 0 })
+    expect(s?.kind).toBe("streak")
+  })
+
+  it("returns null when on track", () => {
+    expect(pickStudySuggestion(base)).toBeNull()
   })
 })

@@ -6,6 +6,30 @@ import { computeNewStreak } from "@/domains/learning/services/streak-service"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { computeSetupStats } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
+import { embedText } from "@/lib/ai/embeddings"
+import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
+
+/** Fire-and-forget: embed a resource's notes and store the vector (SP2). Errors silent.
+ *  Clears the embedding when notes are empty. */
+function scheduleResourceEmbedding(resourceId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
+  void (async () => {
+    try {
+      if (!notes.trim()) {
+        await prismaClient.$executeRaw`UPDATE learning_resources SET notes_embedding = NULL WHERE id = ${resourceId}::uuid`
+        return
+      }
+      const emb = await resolveEmbeddingCall(prismaClient, userId)
+      if (emb.source === "none") return
+      const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
+      if (!vector) return
+      await prismaClient.$executeRaw`
+        UPDATE learning_resources SET notes_embedding = ${`[${vector.join(",")}]`}::vector
+        WHERE id = ${resourceId}::uuid`
+    } catch {
+      // best-effort, never throw
+    }
+  })()
+}
 
 const RESOURCE_TYPES = [
   "LIBRO", "VIDEO", "NOTA", "BACKTEST", "PODCAST", "DRILL", "HERRAMIENTA",
@@ -122,14 +146,14 @@ export const learningResourcesRouter = router({
 
   create: protectedProcedure
     .input(LearningResourceInput)
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { date, type, currentUnits, totalUnits, progressPct, ...rest } = input
       const progressType = PROGRESS_TYPE_MAP[type] ?? null
       const computedPct =
         currentUnits != null && totalUnits != null && totalUnits > 0
           ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
           : (progressPct ?? null)
-      return ctx.prisma.learningResource.create({
+      const created = await ctx.prisma.learningResource.create({
         data: {
           ...rest,
           type,
@@ -141,18 +165,20 @@ export const learningResourcesRouter = router({
           progressPct:  computedPct,
         },
       })
+      scheduleResourceEmbedding(created.id, created.notes, ctx.userId, ctx.prisma)
+      return created
     }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).merge(LearningResourceInput.partial()))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, date, type, currentUnits, totalUnits, progressPct, ...rest } = input
       const progressType = type ? (PROGRESS_TYPE_MAP[type] ?? null) : undefined
       const computedPct =
         currentUnits != null && totalUnits != null && totalUnits > 0
           ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
           : progressPct
-      return ctx.prisma.learningResource.update({
+      const updated = await ctx.prisma.learningResource.update({
         where: { id, userId: ctx.userId },
         data: {
           ...rest,
@@ -164,6 +190,9 @@ export const learningResourcesRouter = router({
           ...(computedPct  !== undefined ? { progressPct: computedPct } : {}),
         },
       })
+      // Re-embed when notes were part of this update.
+      if (rest.notes !== undefined) scheduleResourceEmbedding(updated.id, updated.notes, ctx.userId, ctx.prisma)
+      return updated
     }),
 
   delete: protectedProcedure

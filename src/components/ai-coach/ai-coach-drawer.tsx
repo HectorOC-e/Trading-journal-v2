@@ -21,6 +21,10 @@ const TOOL_LABELS: Record<string, string> = {
   get_trade_detail:   "revisó un trade",
   get_period_stats:   "calculó stats del periodo",
   semantic_search:    "búsqueda semántica en notas",
+  get_learning_resources:    "revisó tus recursos de estudio",
+  get_study_agenda:          "consultó tu agenda de estudio",
+  suggest_study:             "cruzó tus debilidades con recursos",
+  search_learning_resources: "búsqueda semántica en recursos",
 }
 
 // Starter prompts shown on an empty conversation.
