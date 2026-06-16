@@ -35,6 +35,7 @@ model User {
   weeklyReviews     WeeklyReview[]
   learningResources LearningResource[]
   resourceReviews   ResourceReview[]
+  studySessions     StudySession[]
   markets           Market[]
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
@@ -364,12 +365,37 @@ model LearningResource {
   weekDeltaResetAt DateTime? @map("week_delta_reset_at")
   archiveReason   String?   @map("archive_reason") // "irrelevant" | "mastered" | "no_time"
 
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviews      ResourceReview[]
-  linkedSetups Setup[]          @relation("ResourceSetups")
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews       ResourceReview[]
+  studySessions StudySession[]
+  linkedSetups  Setup[]          @relation("ResourceSetups")
 
   @@index([userId, date(sort: Desc)])
   @@map("learning_resources")
+}
+
+// Aprendizaje SP1 — timed study blocks (active while running, completed when
+// finished, or planned for a future date). Distinct from SRS reviews.
+model StudySession {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  resourceId  String    @map("resource_id") @db.Uuid
+  status      String    @default("active") // active | completed | planned
+  source      String    @default("focus")  // focus | manual | planned
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  durationMin Int?      @map("duration_min")
+  plannedMin  Int?      @map("planned_min")
+  note        String    @default("")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([resourceId])
+  @@map("study_sessions")
 }
 
 model ResourceReview {
