@@ -42,6 +42,7 @@ function makePrisma() {
     rule:             { findMany: vi.fn().mockResolvedValue([{ name: "Max 2 trades/día", severity: "CRÍTICA" }]) },
     tradingSessionLog:{ findMany: vi.fn().mockResolvedValue([{ preMood: 4, energyLevel: 5 }, { preMood: 2, energyLevel: 3 }]) },
     market:           { findMany: vi.fn().mockResolvedValue([{ symbol: "EURUSD", name: "Euro / Dólar" }]) },
+    studySession:     { findMany: vi.fn().mockResolvedValue([]) },
   }
 }
 
