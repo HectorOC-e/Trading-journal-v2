@@ -18,6 +18,7 @@ import { SetupImpactModal } from "./modals/impact-modal"
 import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
 import { ResourceRightRail } from "./components/resource-right-rail"
+import { HoyTab } from "./components/hoy-tab"
 import { useResourceActions } from "./hooks/use-resource-actions"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
@@ -34,17 +35,17 @@ export default function AprendizajePage() {
     handleOpen, handleEditOpen,
   } = useResourceActions()
 
-  type Tab = "biblioteca" | "repaso" | "progreso"
-  const [tab, setTab] = useState<Tab>("biblioteca")
+  type Tab = "hoy" | "biblioteca" | "repaso" | "progreso"
+  const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab")
-    if (t === "repaso" || t === "progreso") setTab(t)
+    if (t === "repaso" || t === "progreso" || t === "biblioteca") setTab(t)
   }, [])
   function selectTab(t: Tab) {
     setTab(t)
     const url = new URL(window.location.href)
-    if (t === "biblioteca") url.searchParams.delete("tab")
+    if (t === "hoy") url.searchParams.delete("tab")
     else url.searchParams.set("tab", t)
     window.history.replaceState(null, "", url.toString())
   }
@@ -152,6 +153,7 @@ export default function AprendizajePage() {
       {/* Tabs */}
       <div role="tablist" aria-label="Secciones de aprendizaje" className="flex gap-1 mb-4 border-b border-[var(--line)]">
         {([
+          { id: "hoy",        label: "Hoy" },
           { id: "biblioteca", label: "Biblioteca" },
           { id: "repaso",     label: "Repaso", count: dueResources.length },
           { id: "progreso",   label: "Progreso" },
@@ -180,6 +182,8 @@ export default function AprendizajePage() {
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>
+      ) : tab === "hoy" ? (
+        <HoyTab onGoRepaso={() => selectTab("repaso")} />
       ) : tab === "progreso" ? (
         <ResourceRightRail
           resources={resources}

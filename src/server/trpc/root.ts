@@ -9,6 +9,7 @@ import { setupsRouter }           from "./routers/setups"
 import { rulesRouter }            from "./routers/rules"
 import { weeklyReviewsRouter }    from "./routers/weekly-reviews"
 import { learningResourcesRouter }  from "./routers/learning-resources"
+import { studySessionsRouter }      from "./routers/study-sessions"
 import { tradingSessionsRouter }    from "./routers/trading-sessions"
 import { profileRouter }            from "./routers/profile"
 import { preferencesRouter }        from "./routers/preferences"
@@ -31,6 +32,7 @@ export const appRouter = router({
   weeklyReviews:    weeklyReviewsRouter,
   monthlyReviews:   monthlyReviewsRouter,
   learningResources: learningResourcesRouter,
+  studySessions:     studySessionsRouter,
   tradingSessions:   tradingSessionsRouter,
   profile:           profileRouter,
   preferences:       preferencesRouter,

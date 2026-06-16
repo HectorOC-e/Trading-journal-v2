@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { AiCoachDrawer } from "@/components/ai-coach/ai-coach-drawer"
 import { QuickActions } from "@/components/layout/quick-actions"
 import { CommandPalette } from "@/components/ui/command-palette"
+import { FocusSession } from "@/app/aprendizaje/components/focus-session"
 import { FadeIn } from "@/components/ui/motion"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <QuickActions />
       <CommandPalette />
       <AiCoachDrawer />
+      <FocusSession />
     </div>
   )
 }
