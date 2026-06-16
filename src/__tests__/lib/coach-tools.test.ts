@@ -8,6 +8,7 @@ describe("coach tools", () => {
     expect(COACH_TOOLS.map(t => t.name)).toEqual([
       "get_account_detail", "get_setup_detail", "search_trades",
       "get_trade_detail", "get_period_stats", "semantic_search",
+      "get_learning_resources", "get_study_agenda", "suggest_study", "search_learning_resources",
     ])
   })
 

@@ -29,6 +29,8 @@ describe("KpiCard (TASK-024 / TASK-070)", () => {
 
   it("renders value text visually", () => {
     render(<KpiCard label="Avg R" value="+1.8R" trend="up" />)
-    expect(screen.getByText("+1.8R")).toBeInTheDocument()
+    // Value is rendered via <CountUp>, which splits it into prefix/number/suffix
+    // spans (and animates from 0), so the literal string lives in the aria-label.
+    expect(screen.getByLabelText("Avg R: +1.8R")).toBeInTheDocument()
   })
 })

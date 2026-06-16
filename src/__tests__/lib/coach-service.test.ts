@@ -38,7 +38,13 @@ const MOCK_CONTEXT = {
     violationCount: 2, violationsByTag: { "Off-plan": 2 },
     costoIndisciplina: 120, rachaDiasLimpios: 5, offPlanPct: 10,
   },
-  learning:     { pendingReviews: 3, reviewsDoneThisMonth: 5, masteredResources: 2 },
+  learning:     {
+    pendingReviews: 3, reviewsDoneThisMonth: 5, masteredResources: 2,
+    activeResources: [{ title: "Order Flow Mechanics", type: "COURSE", progressPct: 40 }],
+    dueReviews: { count: 1, nextTitles: ["Risk Management Masterclass"] },
+    studyMinutesWeek: 120, studyStreak: 2, sessionsLast7d: 3,
+    weaknessResource: null,
+  },
   goals: {
     weeklyPnlGoal: 1000, weeklyTradesGoal: 15, disciplineGoal: 80, weeklyGoalMinutes: 300,
     weekPnl: 250, weekTrades: 8,
