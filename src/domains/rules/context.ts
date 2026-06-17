@@ -1,0 +1,78 @@
+// Builds the EvalContext (field → value) for a trade trigger. One closed-trades
+// query computes the account metrics; trade fields come from the input (pre) or the
+// saved trade (post). Returned lazily by the trade hooks (only when rules exist).
+
+import type { PrismaClient } from "@/lib/generated/prisma/client"
+import type { EvalContext } from "./types"
+
+export interface ContextTrade {
+  symbol: string
+  direction: string
+  session: string | null
+  setupId: string | null
+  size: number
+  entry: number
+  stop: number
+  tags: string[]
+  date: string                 // YYYY-MM-DD
+  pnl?: number | null          // known post-trade
+  rMultiple?: number | null    // known post-trade
+}
+export interface ContextAccount { id: string; initialBalance: number }
+
+function mondayOf(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`)
+  const dow = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+export async function buildContext(
+  prisma: PrismaClient,
+  userId: string,
+  account: ContextAccount,
+  t: ContextTrade,
+): Promise<EvalContext> {
+  const closed = await prisma.trade.findMany({
+    where:   { userId, accountId: account.id, status: "CLOSED" },
+    select:  { pnl: true, date: true, createdAt: true },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  })
+  const rows = closed.map((c) => ({ pnl: Number(c.pnl ?? 0), day: (c.date as Date).toISOString().slice(0, 10), createdAt: c.createdAt as Date }))
+
+  const weekStart = mondayOf(t.date)
+  const dayPnl  = rows.filter((r) => r.day === t.date).reduce((s, r) => s + r.pnl, 0)
+  const weekPnl = rows.filter((r) => r.day >= weekStart).reduce((s, r) => s + r.pnl, 0)
+  const tradesToday = rows.filter((r) => r.day === t.date).length
+  const wins = rows.filter((r) => r.pnl > 0).length
+  const winRate = rows.length ? (wins / rows.length) * 100 : 0
+
+  // Max drawdown % over the closed-trade equity path.
+  let bal = account.initialBalance, peak = bal, ddMax = 0
+  for (const r of rows) { bal += r.pnl; peak = Math.max(peak, bal); if (peak > 0) ddMax = Math.max(ddMax, ((peak - bal) / peak) * 100) }
+
+  // Minutes since the most recent losing trade (for revenge-trade rules).
+  const lastLoss = [...rows].reverse().find((r) => r.pnl < 0)
+  const minsSinceLastLoss = lastLoss ? Math.max(0, Math.round((Date.now() - lastLoss.createdAt.getTime()) / 60000)) : 999999
+
+  const ib = account.initialBalance
+  const risk = Math.abs(t.entry - t.stop) * t.size
+
+  return {
+    symbol: t.symbol,
+    direction: t.direction,
+    session: t.session,
+    setupId: t.setupId ?? "",
+    size: t.size,
+    tags: t.tags,
+    pnl: t.pnl ?? null,
+    rMultiple: t.rMultiple ?? null,
+    riskPct: ib > 0 ? (risk / ib) * 100 : 0,
+    dayPnlPct: ib > 0 ? (dayPnl / ib) * 100 : 0,
+    weekPnlPct: ib > 0 ? (weekPnl / ib) * 100 : 0,
+    drawdownPct: ddMax,
+    winRate,
+    tradesToday,
+    minsSinceLastLoss,
+  }
+}

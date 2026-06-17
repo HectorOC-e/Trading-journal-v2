@@ -41,6 +41,20 @@ export const MESSAGES = {
     es: { title: "Regla disparada: {rule}", body: "{detail}" },
     actions: [{ labelCode: "VIEW_RULE", href: "/reglas", style: "ghost" }],
   },
+  RULE_CRITICAL: {
+    type: "CRITICAL", priority: "P0", category: "Reglas", persist: true,
+    es: { title: "Alerta: {rule}", body: "{detail}" },
+    actions: [{ labelCode: "VIEW_RULE", href: "/reglas", style: "primary" }],
+  },
+  RULE_REMINDER: {
+    type: "INFO", priority: "P2", category: "Reglas", persist: true,
+    es: { title: "Recordatorio: {rule}", body: "{detail}" },
+    actions: [{ labelCode: "VIEW_RULE", href: "/reglas", style: "ghost" }],
+  },
+  RULE_BLOCKED: {
+    type: "WARNING", priority: "P2", category: "Reglas", persist: false,
+    es: { title: "Operación bloqueada", body: "{detail}" },
+  },
 
   // ── Reviews / learning (persisted) ────────────────────────────────────────
   WEEKLY_REPORT_READY: {

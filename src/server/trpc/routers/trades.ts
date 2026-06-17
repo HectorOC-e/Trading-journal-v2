@@ -17,6 +17,9 @@ import type {
 } from "@/domains/analytics/services/dashboard-analytics"
 import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
+import { runAutomations } from "@/domains/rules/engine"
+import { buildContext } from "@/domains/rules/context"
+import { AppError } from "@/lib/errors/app-error"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
@@ -530,13 +533,47 @@ export const tradesRouter = router({
         }
       }
 
+      // 4) User automations — PRE-trade (may block the operation / mutate tags)
+      const preRules = await runAutomations(ctx.prisma, ctx.userId, "TRADE_PRE_CREATE", () =>
+        buildContext(ctx.prisma, ctx.userId, { id: input.accountId, initialBalance: Number(account.initialBalance) }, {
+          symbol: input.symbol, direction: input.direction, session: input.session ?? null,
+          setupId: input.setupId ?? null, size: input.size, entry: input.entry, stop: input.stop,
+          tags: input.tags, date: input.date,
+        }),
+      )
+      if (preRules.blocked) throw new AppError("RULE_BLOCKED", { detail: preRules.blockMessage ?? "" })
+      const effectiveTags = (preRules.addTags.length || preRules.removeTags.length)
+        ? [...new Set([...input.tags, ...preRules.addTags])].filter((t) => !preRules.removeTags.includes(t))
+        : input.tags
+
       const trade = await ctx.prisma.trade.create({
-        data: { ...input, userId: ctx.userId, date: new Date(input.date) },
+        data: { ...input, tags: effectiveTags, userId: ctx.userId, date: new Date(input.date) },
         include: { account: true, setup: true, events: true },
       })
 
       // Keep the tag catalog in sync with any new tag names used here.
-      if (input.tags.length) await ensureTagRows(ctx.prisma, ctx.userId, input.tags)
+      if (effectiveTags.length) await ensureTagRows(ctx.prisma, ctx.userId, effectiveTags)
+
+      // User automations — POST-trade (best-effort; never break the write).
+      try {
+        const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_CREATED"
+        const postRules = await runAutomations(ctx.prisma, ctx.userId, postTrigger, () =>
+          buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(account.initialBalance) }, {
+            symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
+            setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
+            tags: trade.tags as string[], date: input.date,
+            pnl: trade.pnl != null ? Number(trade.pnl) : null,
+            rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
+          }),
+        )
+        if (postRules.addTags.length || postRules.removeTags.length) {
+          const newTags = [...new Set([...(trade.tags as string[]), ...postRules.addTags])].filter((t) => !postRules.removeTags.includes(t))
+          await ctx.prisma.trade.update({ where: { id: trade.id }, data: { tags: newTags } })
+          if (postRules.addTags.length) await ensureTagRows(ctx.prisma, ctx.userId, postRules.addTags)
+        }
+      } catch (err) {
+        console.warn("[rules] post-trade automations failed:", err instanceof Error ? err.message : err)
+      }
 
       const openTimeSafe = input.openTime || "00:00"
       await ctx.prisma.tradeEvent.create({
@@ -598,6 +635,29 @@ export const tradesRouter = router({
         include: { account: true, setup: true, events: true },
       })
       if (input.tags?.length) await ensureTagRows(ctx.prisma, ctx.userId, input.tags)
+
+      // User automations — post-update (best-effort; never break the write).
+      try {
+        const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
+        const dateStr = (trade.date as Date).toISOString().slice(0, 10)
+        const postRules = await runAutomations(ctx.prisma, ctx.userId, postTrigger, () =>
+          buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(trade.account.initialBalance) }, {
+            symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
+            setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
+            tags: trade.tags as string[], date: dateStr,
+            pnl: trade.pnl != null ? Number(trade.pnl) : null,
+            rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
+          }),
+        )
+        if (postRules.addTags.length || postRules.removeTags.length) {
+          const newTags = [...new Set([...(trade.tags as string[]), ...postRules.addTags])].filter((t) => !postRules.removeTags.includes(t))
+          await ctx.prisma.trade.update({ where: { id: trade.id }, data: { tags: newTags } })
+          if (postRules.addTags.length) await ensureTagRows(ctx.prisma, ctx.userId, postRules.addTags)
+        }
+      } catch (err) {
+        console.warn("[rules] post-update automations failed:", err instanceof Error ? err.message : err)
+      }
+
       // Editing realized P&L can push the account over a limit → re-evaluate lock.
       if (input.pnl !== undefined) {
         const a = trade.account
