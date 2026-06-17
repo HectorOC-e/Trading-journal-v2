@@ -51,6 +51,7 @@ model User {
   monthlyReviews       MonthlyReview[]
   notifications            Notification[]
   notificationPreferences  NotificationPreference[]
+  tags                     Tag[]
 
   @@map("users")
 }
@@ -290,6 +291,37 @@ model Rule {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("rules")
+}
+
+// ─────────────────────────────────────────────
+// TAG  (Epic 2 — metadata catalog keyed by name)
+// Trades keep `tags String[]`; the `name` is the join key. This table decorates
+// those strings with color/icon/category/order/displayMode.
+// displayMode: icon_color | dot | text
+// semantic:    violation | quality | null   (drives analytics meaning; system tags)
+// System tags (Off-plan/Impulsivo/Revanche = violation; A+ = quality) are seeded
+// with isSystem=true and their name is locked (renaming would break analytics).
+// ─────────────────────────────────────────────
+model Tag {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  color       String   @default("#6b7280")
+  icon        String?
+  description String   @default("")
+  category    String   @default("")
+  displayMode String   @default("icon_color") @map("display_mode")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isSystem    Boolean  @default(false) @map("is_system")
+  semantic    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
 }
 
 // ─────────────────────────────────────────────
