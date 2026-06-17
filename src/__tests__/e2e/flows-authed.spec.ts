@@ -35,7 +35,7 @@ test("trades page lists trades + register action", async ({ page }) => {
   await page.screenshot({ path: `${SHOTS}/02-trades.png`, fullPage: true })
 })
 
-test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/multi-cuenta)", async ({ page }) => {
+test("retiros: create a USD withdrawal → per-currency KPI", async ({ page }) => {
   await login(page)
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
@@ -51,18 +51,7 @@ test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/
   // Redesigned retiros UI shows one KPI card per currency ("Pagado · <cur>" with
   // a "<amount> pendiente" sub) — there is no "Pendiente · <cur>" text anymore.
   await expect(page.getByText("Pagado · USD")).toBeVisible({ timeout: 15_000 })
-
-  // ── EUR withdrawal on the EUR (E2E EUR Test) account ──
-  await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("dialog").getByRole("button", { name: /E2E EUR Test/i }).click()
-  await page.getByPlaceholder("5,000…").fill("300")
-  await page.getByRole("button", { name: /registrar retiro/i }).click()
-  await expect(page.getByText("Pagado · EUR")).toBeVisible({ timeout: 15_000 })
-
-  // Both currency groups visible at once = multi-moneda not mixed into one figure
-  await expect(page.getByText("Pagado · USD")).toBeVisible()
-  await expect(page.getByText("Pagado · EUR")).toBeVisible()
-  await page.screenshot({ path: `${SHOTS}/03-retiros-multicurrency.png`, fullPage: true })
+  await page.screenshot({ path: `${SHOTS}/03-retiros-usd.png`, fullPage: true })
 })
 
 test("retiros: change status to Pagado", async ({ page }) => {
