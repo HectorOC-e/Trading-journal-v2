@@ -1,79 +1,111 @@
 "use client"
 
-import Link from "next/link"
-import { Lock, Clock, BookOpen, ShieldCheck, Check, CheckCheck, BellOff } from "lucide-react"
+import { useState, useMemo } from "react"
+import { CheckCheck, BellOff, Search } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
-import { Button } from "@/components/ui/button"
-import { AnimatedList } from "@/components/ui/data-table"
-import { useNotifications, type AppNotification, type NotifCategory } from "@/lib/notifications"
+import { trpc } from "@/lib/trpc/client"
+import { groupByTime, type AppNotification } from "@/lib/notifications"
+import { NotificationItem } from "@/components/notifications/notification-item"
 
-const TONE_ICON = { danger: Lock, warning: Clock, info: BookOpen, reminder: ShieldCheck } as const
-const CATEGORY_ORDER: NotifCategory[] = ["Cuenta", "Aprendizaje", "Reviews", "Reglas"]
-
-function toneColor(t: AppNotification["tone"]) {
-  return t === "danger" ? "var(--loss)" : t === "warning" ? "var(--be)" : t === "reminder" ? "var(--ink-3)" : "var(--accent)"
-}
+const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
 
 export default function NotificacionesPage() {
-  const { active, count, dismiss, clearAll } = useNotifications()
+  const utils = trpc.useUtils()
+  const [category, setCategory] = useState<string | null>(null)
+  const [unreadOnly, setUnreadOnly] = useState(false)
+  const [includeArchived, setIncludeArchived] = useState(false)
+  const [search, setSearch] = useState("")
+  const [limit, setLimit] = useState(30)
 
-  const grouped = CATEGORY_ORDER
-    .map((cat) => ({ cat, items: active.filter((n) => n.category === cat) }))
-    .filter((g) => g.items.length > 0)
+  const query = trpc.notifications.list.useQuery(
+    { limit, unreadOnly, includeArchived, ...(category ? { category: category as typeof CATEGORIES[number] } : {}) },
+    { staleTime: 30_000 },
+  )
+  const { data: unread = 0 } = trpc.notifications.unreadCount.useQuery(undefined, { staleTime: 30_000 })
+
+  const invalidate = () => { void utils.notifications.list.invalidate(); void utils.notifications.unreadCount.invalidate() }
+  const markRead    = trpc.notifications.markRead.useMutation({ onSuccess: invalidate })
+  const markAllRead = trpc.notifications.markAllRead.useMutation({ onSuccess: invalidate })
+  const archive     = trpc.notifications.archive.useMutation({ onSuccess: invalidate })
+
+  const items = useMemo<AppNotification[]>(() => (query.data?.items ?? []) as AppNotification[], [query.data])
+  const hasMore = !!query.data?.nextCursor
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return items
+    return items.filter((n) => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
+  }, [items, search])
+  const groups = groupByTime(visible)
+
+  const chip = (active: boolean, label: string, onClick: () => void) => (
+    <button
+      onClick={onClick}
+      className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] transition-colors ${
+        active ? "bg-[var(--ink)] text-[var(--panel)]" : "border border-[var(--line)] text-[var(--ink-3)] hover:text-[var(--ink)]"
+      }`}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <main aria-label="Notificaciones">
       <TopBar
         title="Notificaciones"
-        subtitle={count > 0 ? `${count} pendiente${count !== 1 ? "s" : ""}` : "Sin alertas"}
-        actions={count > 0 ? [{
-          label: "Limpiar todas",
-          icon: <CheckCheck size={14} />,
-          variant: "ghost" as const,
-          onClick: clearAll,
-        }] : []}
+        subtitle={unread > 0 ? `${unread} sin leer` : "Todo al día"}
+        actions={unread > 0 ? [{ label: "Marcar leídas", icon: <CheckCheck size={14} />, variant: "ghost" as const, onClick: () => markAllRead.mutate() }] : []}
       />
 
-      {count === 0 ? (
+      <div className="mb-4 flex max-w-[760px] flex-col gap-3">
+        <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3">
+          <Search size={14} className="text-[var(--ink-3)]" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar notificaciones…"
+            className="h-9 flex-1 bg-transparent text-[13px] text-[var(--ink)] outline-none placeholder:text-[var(--ink-3)]"
+          />
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {chip(!category && !unreadOnly && !includeArchived, "Todas", () => { setCategory(null); setUnreadOnly(false); setIncludeArchived(false) })}
+          {chip(unreadOnly, "No leídas", () => { setUnreadOnly((v) => !v) })}
+          {CATEGORIES.map((c) => chip(category === c, c, () => setCategory((cur) => (cur === c ? null : c))))}
+          {chip(includeArchived, "Incluir archivadas", () => setIncludeArchived((v) => !v))}
+        </div>
+      </div>
+
+      {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
-          <div className="w-12 h-12 rounded-full bg-[var(--win-soft)] flex items-center justify-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--win-soft)]">
             <BellOff size={22} className="text-[var(--win)]" />
           </div>
-          <p className="text-[14px] font-semibold text-[var(--ink)]">Todo al día</p>
-          <p className="text-[12px] text-[var(--ink-3)] max-w-[320px]">
-            No tienes alertas pendientes. Aquí verás cuentas bloqueadas, reviews vencidas, recordatorios de reglas y avisos de aprendizaje.
+          <p className="text-[14px] font-semibold text-[var(--ink)]">{query.isLoading ? "Cargando…" : "Sin notificaciones"}</p>
+          <p className="max-w-[320px] text-[12px] text-[var(--ink-3)]">
+            Aquí verás cuentas bloqueadas, reglas disparadas, reviews vencidas, importaciones y avisos del sistema.
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6 max-w-[760px]">
-          {grouped.map(({ cat, items }) => (
-            <section key={cat}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--ink-3)] mb-2">{cat}</p>
-              <AnimatedList
-                items={items}
-                getKey={(n) => n.id}
-                preset="list"
-                className="flex flex-col gap-2"
-                renderItem={(n) => {
-                  const Icon = TONE_ICON[n.tone]
-                  return (
-                    <div className="flex items-start gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3 card-hover">
-                      <span className="mt-0.5 shrink-0 w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--panel-2)", color: toneColor(n.tone) }}>
-                        <Icon size={16} />
-                      </span>
-                      <Link href={n.href} className="min-w-0 flex-1">
-                        <p className="text-[13px] font-semibold text-[var(--ink)] leading-snug">{n.title}</p>
-                        {n.body && <p className="text-[11.5px] text-[var(--ink-3)] leading-snug mt-0.5">{n.body}</p>}
-                      </Link>
-                      <Button variant="subtle" size="xs" onClick={() => dismiss(n.id)} className="shrink-0">
-                        <Check size={12} /> Listo
-                      </Button>
-                    </div>
-                  )
-                }}
-              />
-            </section>
+        <div className="max-w-[760px] overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)]">
+          {groups.map((g) => (
+            <div key={g.bucket}>
+              <div className="border-b border-[var(--line)] bg-[var(--panel-2)] px-4 py-2 text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)]">{g.bucket}</div>
+              {g.items.map((n) => (
+                <NotificationItem key={n.id} n={n} onMarkRead={markRead.mutate} onArchive={archive.mutate} />
+              ))}
+            </div>
           ))}
+        </div>
+      )}
+
+      {hasMore && (
+        <div className="mt-4 flex max-w-[760px] justify-center">
+          <button
+            onClick={() => setLimit((l) => l + 30)}
+            disabled={query.isFetching}
+            className="rounded-[var(--radius-sm)] border border-[var(--line)] px-4 py-2 text-[12px] font-medium text-[var(--ink-2)] transition-colors hover:bg-[var(--chip)] disabled:opacity-50"
+          >
+            {query.isFetching ? "Cargando…" : "Cargar más"}
+          </button>
         </div>
       )}
     </main>

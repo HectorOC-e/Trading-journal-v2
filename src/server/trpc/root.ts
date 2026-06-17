@@ -19,6 +19,7 @@ import { aiSettingsRouter }         from "./routers/ai-settings"
 import { tradeTagsRouter }          from "./routers/trade-tags"
 import { monthlyReviewsRouter }     from "./routers/monthly-reviews"
 import { analyticsRouter }          from "./routers/analytics"
+import { notificationsRouter }      from "./routers/notifications"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -40,6 +41,7 @@ export const appRouter = router({
   aiConfig:          aiConfigRouter,
   aiSettings:        aiSettingsRouter,
   tradeTags:         tradeTagsRouter,
+  notifications:     notificationsRouter,
 })
 
 export type AppRouter     = typeof appRouter

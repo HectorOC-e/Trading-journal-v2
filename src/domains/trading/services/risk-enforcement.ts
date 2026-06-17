@@ -15,6 +15,15 @@
 import { TRPCError } from "@trpc/server"
 import type { AccountLogPayload } from "@/types"
 import { computeAccountRisk, accountDrawdown, isPermanentLockReason, type AccountRisk } from "./risk-engine"
+import { emitNotification } from "@/server/services/notifications/emit"
+
+/** Human-readable text for an auto-lock reason code. */
+const LOCK_REASON_TEXT: Record<string, string> = {
+  DAILY_LOSS_LIMIT:   "Límite de pérdida diario alcanzado",
+  WEEKLY_LOSS_LIMIT:  "Límite de pérdida semanal alcanzado",
+  MONTHLY_LOSS_LIMIT: "Límite de pérdida mensual alcanzado",
+  MAX_DRAWDOWN:       "Límite de drawdown total alcanzado",
+}
 
 type PrismaClient = typeof import("@/lib/prisma").prisma
 
@@ -60,12 +69,24 @@ async function lockAccount(
   limitPct?: number,
   currentPct?: number,
 ): Promise<void> {
-  await prisma.account.update({
+  const acc = await prisma.account.update({
     where: { id: accountId, userId },
     data:  { locked: true, lockReason: reason, lockedAt: new Date() },
+    select: { name: true },
   })
   const payload: AccountLogPayload = { event: "LOCKED", reason, limitPct, currentPct, auto: true }
   await prisma.accountLog.create({ data: { userId, accountId, event: "LOCKED", payload } })
+
+  // Notify the trader (secondary to the lock — never let it break enforcement).
+  try {
+    await emitNotification(prisma, userId, "ACCOUNT_LOCKED", {
+      params:    { name: acc.name, reason: LOCK_REASON_TEXT[reason] ?? reason },
+      sourceId:  accountId,
+      dedupeKey: `lock:${accountId}`,
+    })
+  } catch (err) {
+    console.warn("[risk-enforcement] emitNotification failed:", err instanceof Error ? err.message : err)
+  }
 }
 
 /** Clear an auto temporal lock once its period has elapsed (with audit). */

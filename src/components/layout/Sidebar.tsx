@@ -103,11 +103,11 @@ export function Sidebar() {
   const pathname  = usePathname()
   const { resolvedTheme, toggle } = useTheme()
   const openRegister = useQuickActions(s => s.openRegister)
-  const { active: notifs } = useNotifications()
+  const { count: unreadCount, unreadByCategory } = useNotifications()
   const navBadge: Record<string, number> = {
-    "/notificaciones": notifs.length,
-    "/cuentas":     notifs.filter(n => n.category === "Cuenta").length,
-    "/aprendizaje": notifs.filter(n => n.category === "Aprendizaje").length,
+    "/notificaciones": unreadCount,
+    "/cuentas":     unreadByCategory["Cuenta"] ?? 0,
+    "/aprendizaje": unreadByCategory["Aprendizaje"] ?? 0,
   }
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
