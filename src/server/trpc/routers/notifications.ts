@@ -9,7 +9,7 @@ export const notificationsRouter = router({
     .input(
       z.object({
         cursor:    z.string().uuid().nullish(),
-        limit:     z.number().min(1).max(50).default(20),
+        limit:     z.number().min(1).max(100).default(20),
         unreadOnly: z.boolean().default(false),
         includeArchived: z.boolean().default(false),
         category:  z.enum(CATEGORIES).optional(),

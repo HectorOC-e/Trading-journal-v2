@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { CheckCheck, BellOff, Search } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc } from "@/lib/trpc/client"
-import { groupByTime } from "@/lib/notifications"
+import { groupByTime, type AppNotification } from "@/lib/notifications"
 import { NotificationItem } from "@/components/notifications/notification-item"
 
 const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
@@ -15,10 +15,11 @@ export default function NotificacionesPage() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [includeArchived, setIncludeArchived] = useState(false)
   const [search, setSearch] = useState("")
+  const [limit, setLimit] = useState(30)
 
-  const query = trpc.notifications.list.useInfiniteQuery(
-    { limit: 30, unreadOnly, includeArchived, ...(category ? { category: category as typeof CATEGORIES[number] } : {}) },
-    { getNextPageParam: (last) => last.nextCursor, staleTime: 30_000 },
+  const query = trpc.notifications.list.useQuery(
+    { limit, unreadOnly, includeArchived, ...(category ? { category: category as typeof CATEGORIES[number] } : {}) },
+    { staleTime: 30_000 },
   )
   const { data: unread = 0 } = trpc.notifications.unreadCount.useQuery(undefined, { staleTime: 30_000 })
 
@@ -27,7 +28,8 @@ export default function NotificacionesPage() {
   const markAllRead = trpc.notifications.markAllRead.useMutation({ onSuccess: invalidate })
   const archive     = trpc.notifications.archive.useMutation({ onSuccess: invalidate })
 
-  const items = useMemo(() => query.data?.pages.flatMap((p) => p.items) ?? [], [query.data])
+  const items = useMemo<AppNotification[]>(() => (query.data?.items ?? []) as AppNotification[], [query.data])
+  const hasMore = !!query.data?.nextCursor
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return items
@@ -95,14 +97,14 @@ export default function NotificacionesPage() {
         </div>
       )}
 
-      {query.hasNextPage && (
+      {hasMore && (
         <div className="mt-4 flex max-w-[760px] justify-center">
           <button
-            onClick={() => query.fetchNextPage()}
-            disabled={query.isFetchingNextPage}
+            onClick={() => setLimit((l) => l + 30)}
+            disabled={query.isFetching}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] px-4 py-2 text-[12px] font-medium text-[var(--ink-2)] transition-colors hover:bg-[var(--chip)] disabled:opacity-50"
           >
-            {query.isFetchingNextPage ? "Cargando…" : "Cargar más"}
+            {query.isFetching ? "Cargando…" : "Cargar más"}
           </button>
         </div>
       )}

@@ -6,10 +6,30 @@
 
 import { useMemo } from "react"
 import { trpc } from "@/lib/trpc/client"
-import type { RouterOutputs } from "@/server/trpc/root"
 
-export type AppNotification = RouterOutputs["notifications"]["list"]["items"][number]
-export type NotifCategory = AppNotification["category"]
+// Explicit row shape (not inferred from RouterOutputs) — keeps TS instantiation
+// shallow when these flow through array methods, and tolerates JSON-serialized
+// Date fields (string over the wire).
+export interface AppNotification {
+  id: string
+  code: string
+  type: string
+  priority: string
+  category: string
+  title: string
+  body: string
+  href: string | null
+  actions: unknown
+  params: unknown
+  channel: string
+  sourceId: string | null
+  groupKey: string | null
+  dedupeKey: string | null
+  readAt: string | Date | null
+  archivedAt: string | Date | null
+  createdAt: string | Date
+}
+export type NotifCategory = string
 
 /** Priority → accent color (drives the left bar / icon tint in the center). */
 export function priorityColor(priority: string): string {
@@ -57,7 +77,7 @@ export function useNotifications() {
   const markAllRead = trpc.notifications.markAllRead.useMutation({ onSuccess: invalidate })
   const archive     = trpc.notifications.archive.useMutation({ onSuccess: invalidate })
 
-  const items = useMemo(() => list?.items ?? [], [list])
+  const items = useMemo<AppNotification[]>(() => (list?.items ?? []) as AppNotification[], [list])
 
   const unreadByCategory = useMemo(() => {
     const m: Record<string, number> = {}

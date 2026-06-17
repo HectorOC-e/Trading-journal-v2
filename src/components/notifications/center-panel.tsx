@@ -7,12 +7,12 @@ import { useNotifications, groupByTime } from "@/lib/notifications"
 import { NotificationItem } from "@/components/notifications/notification-item"
 
 /** Bell dropdown content: filter chips, time-grouped list, footer to full center. */
-export function CenterPanel({ onClose }: { onClose: () => void }) {
+export function CenterPanel({ onClose, swipeable = false }: { onClose: () => void; swipeable?: boolean }) {
   const { items, count, markRead, markAllRead, archive } = useNotifications()
   const [filter, setFilter] = useState<"all" | "unread" | string>("all")
 
-  const categories = useMemo(
-    () => Array.from(new Set(items.map((n) => n.category))),
+  const categories = useMemo<string[]>(
+    () => Array.from(new Set(items.map((n) => n.category as string))),
     [items],
   )
 
@@ -69,7 +69,7 @@ export function CenterPanel({ onClose }: { onClose: () => void }) {
             <div key={g.bucket}>
               <div className="px-4 pb-1 pt-2.5 text-[10px] font-bold uppercase tracking-wide text-[var(--ink-3)]">{g.bucket}</div>
               {g.items.map((n) => (
-                <NotificationItem key={n.id} n={n} onMarkRead={markRead} onArchive={archive} onNavigate={onClose} />
+                <NotificationItem key={n.id} n={n} onMarkRead={markRead} onArchive={archive} onNavigate={onClose} swipeable={swipeable} />
               ))}
             </div>
           ))

@@ -4,8 +4,10 @@ import { useState, useRef, useEffect, useLayoutEffect } from "react"
 import { createPortal } from "react-dom"
 import { Bell } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useViewportWidth } from "@/hooks/useViewportWidth"
 import { useNotifications } from "@/lib/notifications"
 import { CenterPanel } from "@/components/notifications/center-panel"
+import { CenterSheet } from "@/components/notifications/center-sheet"
 
 /**
  * Notification center bell. The dropdown is portalled to document.body and
@@ -28,6 +30,8 @@ export function NotificationBell({
   const panelRef = useRef<HTMLDivElement>(null)
 
   const { count } = useNotifications()
+  const width = useViewportWidth()
+  const isMobile = width != null && width < 768
 
   useEffect(() => setMounted(true), [])
 
@@ -86,7 +90,8 @@ export function NotificationBell({
         )}
       </button>
 
-      {mounted && open && createPortal(
+      {/* Desktop / tablet: positioned dropdown */}
+      {mounted && open && !isMobile && createPortal(
         <div
           ref={panelRef}
           className="w-[380px] max-w-[calc(100vw-16px)] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden scale-pop"
@@ -96,6 +101,11 @@ export function NotificationBell({
         </div>,
         document.body,
       )}
+
+      {/* Mobile: draggable bottom sheet with swipe-actions */}
+      <CenterSheet open={open && isMobile} onClose={() => setOpen(false)}>
+        <CenterPanel onClose={() => setOpen(false)} swipeable />
+      </CenterSheet>
     </div>
   )
 }

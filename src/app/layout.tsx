@@ -3,7 +3,7 @@ import "./globals.css"
 import { AppShell } from "@/components/layout/AppShell"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TRPCProvider } from "@/lib/trpc/provider"
-import { Toaster } from "sonner"
+import { AppToaster } from "@/components/notifications/app-toaster"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 
 export const metadata: Metadata = {
@@ -52,8 +52,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TRPCProvider>
           <ThemeProvider>
             <AppShell>{children}</AppShell>
-            {/* Custom Direction-B toasts (unstyled per-toast); Sonner handles the stack/timers. */}
-            <Toaster position="bottom-right" gap={10} />
+            {/* Custom Direction-B toasts; responsive position (bottom-center on mobile). */}
+            <AppToaster />
           </ThemeProvider>
         </TRPCProvider>
         <ServiceWorkerRegister />
