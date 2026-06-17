@@ -9,6 +9,7 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { computeSetupStats, type SetupStats } from "./setup-analytics"
 import { isPracticeType } from "@/domains/trading/account-reality"
+import { isViolationTag } from "@/types"
 import type { AnalyticsTrade } from "./insights-engine"
 
 export interface AccountIntel {
@@ -63,8 +64,6 @@ export interface AnalyticsBundle {
     withdrawals: { amount: number; date: string }[]
   }
 }
-
-const VIOLATION_TAGS = ["Off-plan", "Impulsivo", "Revanche"]
 
 function holdMinutes(openTime: string | null, closeTime: string | null): number | null {
   if (!openTime || !closeTime) return null
@@ -232,7 +231,7 @@ export async function buildAnalyticsBundle(
     avgPnl: round2(ts.reduce((s, t) => s + t.pnl, 0) / ts.length),
     winRate: round1(calcWinRate(ts.filter((t) => isWin({ pnl: t.pnl })).length, ts.length)),
   })).sort((a, b) => b.trades - a.trades)
-  const violationCount = trades.filter((t) => t.fomoFlag || t.revengeFlag || t.tags.some((x) => VIOLATION_TAGS.includes(x))).length
+  const violationCount = trades.filter((t) => t.fomoFlag || t.revengeFlag || t.tags.some((x) => isViolationTag(x))).length
   const moods    = sessionRows.map((s) => s.preMood).filter((n): n is number => n != null)
   const energies = sessionRows.map((s) => s.energyLevel).filter((n): n is number => n != null)
   const avgOf = (xs: number[]) => xs.length ? round2(xs.reduce((a, b) => a + b, 0) / xs.length) : null

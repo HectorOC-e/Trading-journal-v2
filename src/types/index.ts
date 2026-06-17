@@ -43,6 +43,11 @@ export type TradeTag = "A+" | "A" | "B" | "Plan" | "Off-plan" | "Impulsivo" | "B
 // Shared violation tag list — must match tags used in RegisterTradeModal (T-V-001 risk mitigation)
 export const VIOLATION_TAGS = ["Impulsivo", "Off-plan", "Revanche"] as const
 export type ViolationTag = typeof VIOLATION_TAGS[number]
+// Quality/discipline-positive tags (e.g. A+ setups) — single source for analytics + tag seed.
+export const QUALITY_TAGS = ["A+"] as const
+export type QualityTag = typeof QUALITY_TAGS[number]
+/** True when a tag name is a behavioural violation (string-friendly; avoids literal-union casts). */
+export const isViolationTag = (tag: string): boolean => (VIOLATION_TAGS as readonly string[]).includes(tag)
 export type AccountType = "PERSONAL" | "PROP_FIRM" | "DEMO_PERSONAL" | "DEMO_PROP" | "BACKTEST" | "QA"
 export type AccountStatus = "ACTIVE" | "PAUSED" | "INACTIVE" | "LOST"
 export type RulesSeverity = "CRÍTICA" | "MENOR" | "INFORMACIÓN"

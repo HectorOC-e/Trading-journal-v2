@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { isWin, calcWinRate } from "@/lib/formulas"
+import { isViolationTag } from "@/types"
 import type { MinimalTrade } from "./dashboard-analytics"
 
 export type InsightCategory = "pattern" | "correlation" | "anomaly" | "risk" | "opportunity"
@@ -44,11 +45,10 @@ export interface InsightInput {
 
 const MIN_SAMPLE = 20
 const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
-const VIOLATION_TAGS = ["Off-plan", "Impulsivo", "Revanche"]
 
 function pct(n: number): number { return Math.round(n * 10) / 10 }
 function hasViolation(t: AnalyticsTrade): boolean {
-  return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(tag => VIOLATION_TAGS.includes(tag))
+  return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(tag => isViolationTag(tag))
 }
 function bySymbolDate(a: AnalyticsTrade, b: AnalyticsTrade): number {
   return a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
