@@ -48,18 +48,20 @@ test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/
   await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
   await page.getByPlaceholder("5,000…").fill("500")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
-  await expect(page.getByText("Pendiente · USD")).toBeVisible({ timeout: 15_000 })
+  // Redesigned retiros UI shows one KPI card per currency ("Pagado · <cur>" with
+  // a "<amount> pendiente" sub) — there is no "Pendiente · <cur>" text anymore.
+  await expect(page.getByText("Pagado · USD")).toBeVisible({ timeout: 15_000 })
 
   // ── EUR withdrawal on the EUR (E2E EUR Test) account ──
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
   await page.getByRole("dialog").getByRole("button", { name: /E2E EUR Test/i }).click()
   await page.getByPlaceholder("5,000…").fill("300")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
-  await expect(page.getByText("Pendiente · EUR")).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText("Pagado · EUR")).toBeVisible({ timeout: 15_000 })
 
   // Both currency groups visible at once = multi-moneda not mixed into one figure
-  await expect(page.getByText("Pendiente · USD")).toBeVisible()
-  await expect(page.getByText("Pendiente · EUR")).toBeVisible()
+  await expect(page.getByText("Pagado · USD")).toBeVisible()
+  await expect(page.getByText("Pagado · EUR")).toBeVisible()
   await page.screenshot({ path: `${SHOTS}/03-retiros-multicurrency.png`, fullPage: true })
 })
 
