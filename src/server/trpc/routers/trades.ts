@@ -16,6 +16,7 @@ import type {
   SessionStat, HourStat, SymbolStat, PropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
 import { isPracticeType } from "@/domains/trading/account-reality"
+import { ensureTagRows } from "@/server/services/tags/seed"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
@@ -534,6 +535,9 @@ export const tradesRouter = router({
         include: { account: true, setup: true, events: true },
       })
 
+      // Keep the tag catalog in sync with any new tag names used here.
+      if (input.tags.length) await ensureTagRows(ctx.prisma, ctx.userId, input.tags)
+
       const openTimeSafe = input.openTime || "00:00"
       await ctx.prisma.tradeEvent.create({
         data: {
@@ -593,6 +597,7 @@ export const tradesRouter = router({
         data,
         include: { account: true, setup: true, events: true },
       })
+      if (input.tags?.length) await ensureTagRows(ctx.prisma, ctx.userId, input.tags)
       // Editing realized P&L can push the account over a limit → re-evaluate lock.
       if (input.pnl !== undefined) {
         const a = trade.account

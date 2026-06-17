@@ -113,6 +113,9 @@ function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
     tradeEvent: {
       create: vi.fn().mockResolvedValue({ id: "ev-1", type: "OPEN", timestamp: new Date() }),
     },
+    tag: {
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
     accountLog: {
       create: vi.fn().mockResolvedValue({ id: "log-1" }),
     },
