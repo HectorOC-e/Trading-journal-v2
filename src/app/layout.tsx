@@ -52,7 +52,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <TRPCProvider>
           <ThemeProvider>
             <AppShell>{children}</AppShell>
-            <Toaster position="bottom-right" richColors closeButton />
+            {/* Custom Direction-B toasts (unstyled per-toast); Sonner handles the stack/timers. */}
+            <Toaster position="bottom-right" gap={10} />
           </ThemeProvider>
         </TRPCProvider>
         <ServiceWorkerRegister />
