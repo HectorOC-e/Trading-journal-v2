@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
-import { createClient } from "@/lib/supabase/client"
+import { useLogout } from "@/hooks/useLogout"
 import { USD_VALUE, SUPPORTED_CURRENCIES } from "@/lib/fx"
 import { Loader2, RotateCcw } from "lucide-react"
 import { AiModelsCard } from "./components/ai-models-card"
@@ -247,7 +246,7 @@ const TIMEZONES = [
 
 export default function PerfilPage() {
   const utils   = trpc.useUtils()
-  const router  = useRouter()
+  const handleSignOut = useLogout()
 
   /* ── Server data ── */
   const { data: profile, isLoading, isError } = trpc.profile.get.useQuery()
@@ -453,12 +452,6 @@ export default function PerfilPage() {
     updateMut.mutate(patch)
   }
 
-  async function handleSignOut() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
 
   async function handleExport() {
     setExportLoading(true)

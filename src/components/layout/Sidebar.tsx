@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useTheme } from "@/components/theme-provider"
 import { useState, useEffect } from "react"
 import {
@@ -12,6 +12,7 @@ import {
   Brain, LineChart, Plus, Bell,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { useLogout } from "@/hooks/useLogout"
 import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
 import { NotificationBell } from "@/components/layout/notification-bell"
@@ -100,7 +101,6 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
 
 export function Sidebar() {
   const pathname  = usePathname()
-  const router    = useRouter()
   const { resolvedTheme, toggle } = useTheme()
   const openRegister = useQuickActions(s => s.openRegister)
   const { active: notifs } = useNotifications()
@@ -127,12 +127,7 @@ export function Sidebar() {
     })
   }, [])
 
-  async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
+  const handleLogout = useLogout()
 
   const isMobile = width < 768
   const isTablet = width >= 768 && width < 1024
