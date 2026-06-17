@@ -4,7 +4,9 @@ import { useState } from "react"
 import { TopBar } from "@/components/layout/top-bar"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
+import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
+import { usePracticeScope } from "@/lib/practice-scope-store"
 import { trpc } from "@/lib/trpc/client"
 import { askCoach } from "@/lib/coach-bus"
 import { currencySymbol } from "@/lib/fx"
@@ -278,7 +280,8 @@ function Empty({ msg }: { msg: string }) {
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("3M")
   const [section, setSection] = useState("performance")
-  const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period }, { staleTime: 30_000 })
+  const includePractice = usePracticeScope((s) => s.includePractice)
+  const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period, includePractice }, { staleTime: 30_000 })
 
   return (
     <main aria-label="Analytics">
@@ -286,11 +289,14 @@ export default function AnalyticsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <SegmentedTabs variant="pill" options={SECTIONS} value={section} onChange={setSection} ariaLabel="Secciones de analytics" className="flex-wrap" />
-        <FilterBar options={PERIODS} value={period} onChange={(v) => setPeriod(v as Period)} ariaLabel="Periodo" />
+        <div className="flex flex-wrap items-center gap-4">
+          <PracticeToggle />
+          <FilterBar options={PERIODS} value={period} onChange={(v) => setPeriod(v as Period)} ariaLabel="Periodo" />
+        </div>
       </div>
 
       <div className="mb-5">
-        <AiInsightsPanel period={period} />
+        <AiInsightsPanel period={period} includePractice={includePractice} />
       </div>
 
       {isLoading ? (

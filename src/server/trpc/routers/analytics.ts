@@ -7,7 +7,12 @@ import { generatePsychologyInsights } from "@/domains/analytics/services/psychol
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 type Period = typeof PERIODS[number]
 
-const PeriodInput = z.object({ period: z.enum(PERIODS).default("3M") })
+const PeriodInput = z.object({
+  period: z.enum(PERIODS).default("3M"),
+  // Fold demo/backtest accounts into the financial sections. Off by default;
+  // psychology always counts them regardless.
+  includePractice: z.boolean().optional().default(false),
+})
 
 function resolveWindow(period: Period): { from: Date; to: Date } | undefined {
   if (period === "ALL") return undefined
@@ -28,7 +33,7 @@ export const analyticsRouter = router({
   overview: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period))
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
       // strip raw payload (only needed by the insights engine / AI) to keep the wire small
       const { raw: _raw, ...sections } = bundle
       void _raw
@@ -39,7 +44,7 @@ export const analyticsRouter = router({
   insights: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period))
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
       return generateInsights({
         trades:      bundle.raw.trades,
         setups:      bundle.raw.setupsMeta,
@@ -53,6 +58,7 @@ export const analyticsRouter = router({
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
       const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period))
-      return generatePsychologyInsights(bundle.raw.trades)
+      // Psychology always counts practice (demo/backtest) accounts: behaviour is real.
+      return generatePsychologyInsights(bundle.raw.allTrades)
     }),
 })

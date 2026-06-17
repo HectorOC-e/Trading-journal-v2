@@ -3,6 +3,7 @@ import { isWin, calcWinRate, calcSharpeRatio } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { VIOLATION_TAGS } from "@/types"
+import { isPracticeType } from "@/domains/trading/account-reality"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
 import type { MinimalTrade } from "./services/dashboard-analytics"
@@ -300,19 +301,26 @@ export async function buildTraderContext(
     size:      Number(t.size),
   }))
 
-  // ── Performance ───────────────────────────────────────────────────────────
-  const total   = trades.length
-  const wins    = trades.filter((t: MinimalTrade) => isWin({ pnl: t.pnl })).length
+  // ── Practice (demo/backtest) partition ────────────────────────────────────
+  // Financial/performance metrics use only real accounts: unreal money must not
+  // inflate the track record the coach reasons about. Behaviour (violations,
+  // streaks, patterns) below still counts every account — the habit is real.
+  const practiceAccountIds = new Set(accountRows.filter(a => isPracticeType(a.type)).map(a => a.id))
+  const finTrades = trades.filter((t: MinimalTrade) => !practiceAccountIds.has(t.accountId))
+
+  // ── Performance (real accounts only) ──────────────────────────────────────
+  const total   = finTrades.length
+  const wins    = finTrades.filter((t: MinimalTrade) => isWin({ pnl: t.pnl })).length
   const winRate = parseFloat(calcWinRate(wins, total).toFixed(2))
-  const withR   = trades.filter((t: MinimalTrade) => t.rMultiple != null)
+  const withR   = finTrades.filter((t: MinimalTrade) => t.rMultiple != null)
   const avgR    = withR.length > 0
     ? parseFloat((withR.reduce((s: number, t: MinimalTrade) => s + t.rMultiple!, 0) / withR.length).toFixed(4))
     : 0
-  const netPnl  = parseFloat(trades.reduce((s: number, t: MinimalTrade) => s + t.pnl, 0).toFixed(2))
+  const netPnl  = parseFloat(finTrades.reduce((s: number, t: MinimalTrade) => s + t.pnl, 0).toFixed(2))
 
   const monthStartISO = monthStart.toISOString().slice(0, 10)
   const pnlMonth = parseFloat(
-    trades.filter((t: MinimalTrade) => t.date >= monthStartISO)
+    finTrades.filter((t: MinimalTrade) => t.date >= monthStartISO)
       .reduce((s: number, t: MinimalTrade) => s + t.pnl, 0).toFixed(2),
   )
 
@@ -324,7 +332,7 @@ export async function buildTraderContext(
   // Best / worst setup
   const setupMap = new Map<string, string>(setupRows.map((s: RawSetupRow) => [s.id, s.name]))
   const setupStats = new Map<string, { wins: number; trades: number }>()
-  for (const t of trades) {
+  for (const t of finTrades) {
     if (!t.setupId) continue
     const s = setupStats.get(t.setupId) ?? { wins: 0, trades: 0 }
     s.trades++
@@ -370,7 +378,9 @@ export async function buildTraderContext(
       (tag: string) => VIOLATION_TAGS.includes(tag as typeof VIOLATION_TAGS[number]),
     ),
   ).length
-  const offPlanPct   = total > 0 ? parseFloat(((offPlanCount / total) * 100).toFixed(2)) : 0
+  // Behavioural: denominator is ALL trades (practice included), not just real.
+  const allTotal     = trades.length
+  const offPlanPct   = allTotal > 0 ? parseFloat(((offPlanCount / allTotal) * 100).toFixed(2)) : 0
 
   // ── Learning ──────────────────────────────────────────────────────────────
   const pendingReviews = learningRows.filter(
@@ -428,7 +438,7 @@ export async function buildTraderContext(
   const weekStartD = new Date(now)
   weekStartD.setDate(now.getDate() - ((now.getDay() + 6) % 7)) // Monday
   const weekStartStr = weekStartD.toISOString().slice(0, 10)
-  const weekTradesArr = trades.filter(t => t.date >= weekStartStr)
+  const weekTradesArr = finTrades.filter(t => t.date >= weekStartStr)
   const goals = {
     weeklyPnlGoal:     goalRow?.weeklyPnlGoal != null ? Number(goalRow.weeklyPnlGoal) : null,
     weeklyTradesGoal:  goalRow?.weeklyTradesGoal ?? null,
@@ -466,7 +476,7 @@ export async function buildTraderContext(
 
   // Per-setup stats + health
   const setups: TraderContext["setups"] = setupRows.map(s => {
-    const st = trades.filter(t => t.setupId === s.id)
+    const st = finTrades.filter(t => t.setupId === s.id)
     const wins = st.filter(t => isWin({ pnl: t.pnl })).length
     const withRs = st.filter(t => t.rMultiple != null)
     const winRate = parseFloat(calcWinRate(wins, st.length).toFixed(2))

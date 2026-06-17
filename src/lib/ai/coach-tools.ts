@@ -6,6 +6,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
+import { isPracticeType } from "@/domains/trading/account-reality"
 import { embedText } from "@/lib/ai/embeddings"
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 
@@ -223,14 +224,19 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
       const period = typeof input.period === "string" && input.period in PERIOD_DAYS ? input.period : "3M"
       const days   = PERIOD_DAYS[period]
       const from   = days != null ? new Date(Date.now() - days * 86_400_000) : undefined
-      const [user, accounts, rows] = await Promise.all([
+      const [user, accounts, allRows] = await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
-        prisma.account.findMany({ where: { userId }, select: { id: true, currency: true } }),
+        prisma.account.findMany({ where: { userId }, select: { id: true, currency: true, type: true } }),
         prisma.trade.findMany({ where: { userId, status: "CLOSED", ...(from ? { date: { gte: from } } : {}) }, select: { accountId: true, pnl: true, rMultiple: true, date: true } }),
       ])
       const base   = user?.baseCurrency ?? "USD"
       const rates  = parseFxRates(user?.fxRates)
       const fxOf   = new Map(accounts.map(a => [a.id, fxFactor(a.currency, base, rates)]))
+      // Financial performance excludes practice (demo/backtest): unreal money must
+      // not inflate the real track record. The model is told what was excluded.
+      const practiceIds = new Set(accounts.filter(a => isPracticeType(a.type)).map(a => a.id))
+      const rows   = allRows.filter(t => !practiceIds.has(t.accountId))
+      const excludedPracticeTrades = allRows.length - rows.length
       const ps     = rows.map(t => (t.pnl != null ? Number(t.pnl) : 0) * (fxOf.get(t.accountId) ?? 1))
       const total  = ps.length
       const wins   = ps.filter(p => p > 0).length
@@ -243,7 +249,7 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
       const best = dayEntries.length ? dayEntries.reduce((a, b) => b[1] > a[1] ? b : a) : null
       const worst = dayEntries.length ? dayEntries.reduce((a, b) => b[1] < a[1] ? b : a) : null
       return JSON.stringify({
-        period, baseCurrency: base, trades: total,
+        period, baseCurrency: base, scope: "real_accounts_only", excludedPracticeTrades, trades: total,
         winRate: parseFloat(calcWinRate(wins, total).toFixed(2)),
         profitFactor: parseFloat(calcProfitFactor(gW, gL).toFixed(2)),
         netPnl: parseFloat(net.toFixed(2)),

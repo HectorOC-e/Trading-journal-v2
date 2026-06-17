@@ -15,6 +15,7 @@ import type {
   KpiSummary, AccountStat, EquityCurvePoint, PnlByDatePoint,
   SessionStat, HourStat, SymbolStat, PropFirmStatus,
 } from "@/domains/analytics/services/dashboard-analytics"
+import { isPracticeType } from "@/domains/trading/account-reality"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
@@ -212,10 +213,14 @@ export const tradesRouter = router({
 
   dashboardStats: protectedProcedure
     .input(z.object({
-      accountId: z.string().uuid().optional(),
-      from:      z.string().optional(),
-      to:        z.string().optional(),
-      period:    z.enum(["7d", "1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
+      accountId:       z.string().uuid().optional(),
+      from:            z.string().optional(),
+      to:              z.string().optional(),
+      period:          z.enum(["7d", "1M", "3M", "6M", "1Y", "ALL"]).optional().default("3M"),
+      // Include demo/backtest ("practice") accounts in the financial/performance
+      // aggregates. Off by default so unreal money never inflates real stats.
+      // Behavioural metrics (discipline) always count practice regardless.
+      includePractice: z.boolean().optional().default(false),
     }).optional())
     .query(async ({ ctx, input }) => {
       const now        = new Date()
@@ -234,8 +239,15 @@ export const tradesRouter = router({
       const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
       const grain      = grainMap[period]
 
+      // ── Practice (demo/backtest) scope ────────────────────────────────────
+      // A single explicit account selection always wins (the user picked it on
+      // purpose, even if it is a demo account).
+      const singleAccount   = !!input?.accountId
+      const includePractice = input?.includePractice ?? false
+      const financialScope  = (includePractice || singleAccount) ? "all" : "real"
+
       // ── Cache lookup (feature-flagged) ────────────────────────────────────
-      const cacheKey = `${period}:${input?.accountId ?? "all"}`
+      const cacheKey = `${period}:${input?.accountId ?? "all"}:${financialScope}`
       if (isCacheEnabled()) {
         const hit = await getCachedStats<DashboardOutput>(ctx.prisma, ctx.userId, cacheKey)
         if (hit) return hit
@@ -300,7 +312,7 @@ export const tradesRouter = router({
       const checklistMap  = new Map(checklistRows.map(r => [r.tradeId, { checked: r.itemsChecked.length, total: r.itemsTotal }]))
 
       // ── Normalize trades ──────────────────────────────────────────────────
-      const trades: MinimalTrade[] = tradeRows.map(t => ({
+      const allTrades: MinimalTrade[] = tradeRows.map(t => ({
         id:        t.id,
         accountId: t.accountId,
         symbol:    t.symbol,
@@ -319,7 +331,14 @@ export const tradesRouter = router({
         size:      Number(t.size),
       }))
 
-      const accounts = activeAccounts
+      // ── Practice partition ────────────────────────────────────────────────
+      // Financial/performance builders see only real accounts by default;
+      // `allTrades` is reserved for behavioural (discipline) metrics, which count
+      // practice (demo/backtest) accounts too.
+      const practiceIds = new Set(activeAccounts.filter(a => isPracticeType(a.type)).map(a => a.id))
+      const trades   = financialScope === "all" ? allTrades      : allTrades.filter(t => !practiceIds.has(t.accountId))
+      const accounts = financialScope === "all" ? activeAccounts : activeAccounts.filter(a => !practiceIds.has(a.id))
+
       const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) * fx(a.id) }))
       const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
         id:              a.id,
@@ -389,7 +408,8 @@ export const tradesRouter = router({
 
       // ── Execution stats + discipline (service delegation) ─────────────────
       const executionStats = buildExecutionStats(trades)
-      const discipline     = buildDiscipline(trades, kpis.total)
+      // Discipline is behavioural: it always counts practice accounts too.
+      const discipline     = buildDiscipline(allTrades, allTrades.length)
 
       const result: DashboardOutput = {
         kpis,

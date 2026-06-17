@@ -4,8 +4,8 @@ import { trpc } from "@/lib/trpc/client"
 import { IntelligencePanel } from "@/components/ui/intelligence-panel"
 
 /** Analytics AI layer (WHY + WHAT NEXT). Thin wrapper over IntelligencePanel. */
-export function AiInsightsPanel({ period }: { period: string }) {
-  const { data: insights = [], isLoading } = trpc.analytics.insights.useQuery({ period: period as never }, { staleTime: 30_000 })
+export function AiInsightsPanel({ period, includePractice = false }: { period: string; includePractice?: boolean }) {
+  const { data: insights = [], isLoading } = trpc.analytics.insights.useQuery({ period: period as never, includePractice }, { staleTime: 30_000 })
   return (
     <IntelligencePanel
       insights={insights}
