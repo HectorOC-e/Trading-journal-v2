@@ -49,6 +49,8 @@ model User {
   aiConfigs            UserAiConfig[]
   aiSettings           UserAiSettings?
   monthlyReviews       MonthlyReview[]
+  notifications            Notification[]
+  notificationPreferences  NotificationPreference[]
 
   @@map("users")
 }
@@ -288,6 +290,59 @@ model Rule {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("rules")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATION  (Epic 1 — event-sourced)
+// type:     SUCCESS | INFO | WARNING | ERROR | CRITICAL | TRADING_ALERT
+// priority: P0 | P1 | P2 | P3
+// category: Cuenta | Reglas | Reviews | Aprendizaje | Trading | Sistema
+// `code` references the central message catalog (lib/messages/catalog.ts).
+// Dedupe: a partial UNIQUE index on (user_id, dedupe_key) WHERE dedupe_key IS NOT
+// NULL is created in the migration SQL (Prisma can't express partial indexes).
+// ─────────────────────────────────────────────
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  code       String
+  type       String
+  priority   String
+  category   String
+  title      String
+  body       String    @default("")
+  params     Json      @default("{}")
+  href       String?
+  actions    Json      @default("[]")
+  channel    String    @default("in_app")
+  dedupeKey  String?   @map("dedupe_key")
+  groupKey   String?   @map("group_key")
+  sourceId   String?   @map("source_id")
+  readAt     DateTime? @map("read_at")
+  archivedAt DateTime? @map("archived_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  category    String
+  channels    String[] @default(["in_app"])
+  minPriority String   @default("P3") @map("min_priority")
+  muted       Boolean  @default(false)
+  quietStart  String?  @map("quiet_start")
+  quietEnd    String?  @map("quiet_end")
+  timezone    String   @default("America/New_York")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
+  @@map("notification_preferences")
 }
 
 // ─────────────────────────────────────────────
