@@ -1,137 +1,76 @@
 "use client"
 
+// Notifications client hook — backed by the persisted `notifications` tRPC router
+// (Epic 1). Replaces the old derived list (which leaked every active Rule as a
+// notification). The bell, panel, page and sidebar badges all read from here.
+
 import { useMemo } from "react"
-import { create } from "zustand"
 import { trpc } from "@/lib/trpc/client"
+import type { RouterOutputs } from "@/server/trpc/root"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Notifications (Fase 6)
-// Derived from existing data (no dedicated table): locked accounts, overdue /
-// pending reviews, active trading rules. Dismissal state is shared app-wide via a
-// zustand store backed by localStorage, so the bell and /notificaciones stay in sync.
-// Extensible: add new builders in buildNotifications() as event sources appear
-// (e.g. an email/event log for "review sent to email").
-// ─────────────────────────────────────────────────────────────────────────────
+export type AppNotification = RouterOutputs["notifications"]["list"]["items"][number]
+export type NotifCategory = AppNotification["category"]
 
-export type NotifTone = "danger" | "warning" | "info" | "reminder"
-export type NotifCategory = "Cuenta" | "Reviews" | "Aprendizaje" | "Reglas"
-
-export interface AppNotification {
-  id:       string
-  category: NotifCategory
-  title:    string
-  body?:    string
-  href:     string
-  tone:     NotifTone
+/** Priority → accent color (drives the left bar / icon tint in the center). */
+export function priorityColor(priority: string): string {
+  switch (priority) {
+    case "P0": return "var(--loss)"
+    case "P1": return "#f59e0b"
+    case "P2": return "var(--accent)"
+    default:   return "var(--ink-3)"
+  }
 }
 
-const LS_KEY = "tj-dismissed-notifs"
+export type TimeBucket = "Hoy" | "Esta semana" | "Antes"
 
-function readDismissed(): string[] {
-  if (typeof window === "undefined") return []
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]") as string[] } catch { return [] }
-}
-function writeDismissed(ids: string[]) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(ids)) } catch { /* ignore */ }
-}
-
-interface DismissedState {
-  dismissed: string[]
-  dismiss:   (id: string) => void
-  dismissMany: (ids: string[]) => void
-  restore:   (id: string) => void
+export function timeBucket(createdAt: string | Date, now = new Date()): TimeBucket {
+  const d = new Date(createdAt)
+  const sameDay = d.toDateString() === now.toDateString()
+  if (sameDay) return "Hoy"
+  const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7)
+  return d >= weekAgo ? "Esta semana" : "Antes"
 }
 
-export const useDismissedNotifs = create<DismissedState>((set) => ({
-  dismissed: readDismissed(),
-  dismiss: (id) => set((s) => {
-    const next = s.dismissed.includes(id) ? s.dismissed : [...s.dismissed, id]
-    writeDismissed(next); return { dismissed: next }
-  }),
-  dismissMany: (ids) => set((s) => {
-    const next = Array.from(new Set([...s.dismissed, ...ids]))
-    writeDismissed(next); return { dismissed: next }
-  }),
-  restore: (id) => set((s) => {
-    const next = s.dismissed.filter((d) => d !== id)
-    writeDismissed(next); return { dismissed: next }
-  }),
-}))
+/** Group items into ordered time buckets, preserving input order within a bucket. */
+export function groupByTime(items: AppNotification[]): { bucket: TimeBucket; items: AppNotification[] }[] {
+  const order: TimeBucket[] = ["Hoy", "Esta semana", "Antes"]
+  const map = new Map<TimeBucket, AppNotification[]>()
+  for (const n of items) {
+    const b = timeBucket(n.createdAt)
+    const arr = map.get(b) ?? []; arr.push(n); map.set(b, arr)
+  }
+  return order.filter((b) => map.has(b)).map((b) => ({ bucket: b, items: map.get(b)! }))
+}
 
-const TONE_RANK: Record<NotifTone, number> = { danger: 0, warning: 1, info: 2, reminder: 3 }
-
-/**
- * Aggregates notifications + dismissal state. Use in any client component.
- * Queries are cached so navigating pages does not refetch.
- */
 export function useNotifications() {
-  const opts = { staleTime: 60_000, refetchOnWindowFocus: false }
-  const { data: accounts = [] } = trpc.accounts.list.useQuery(undefined, opts)
-  const { data: stats }         = trpc.learningResources.stats.useQuery(undefined, opts)
-  const { data: rules = [] }    = trpc.rules.list.useQuery(undefined, opts)
+  const utils = trpc.useUtils()
+  const opts  = { staleTime: 30_000, refetchOnWindowFocus: false }
 
-  const { dismissed, dismiss, dismissMany, restore } = useDismissedNotifs()
+  const { data: list }  = trpc.notifications.list.useQuery({ limit: 20 }, opts)
+  const { data: count = 0 } = trpc.notifications.unreadCount.useQuery(undefined, opts)
 
-  const all = useMemo<AppNotification[]>(() => {
-    const list: AppNotification[] = []
+  const invalidate = () => {
+    void utils.notifications.list.invalidate()
+    void utils.notifications.unreadCount.invalidate()
+  }
+  const markRead    = trpc.notifications.markRead.useMutation({ onSuccess: invalidate })
+  const markAllRead = trpc.notifications.markAllRead.useMutation({ onSuccess: invalidate })
+  const archive     = trpc.notifications.archive.useMutation({ onSuccess: invalidate })
 
-    // Cuentas bloqueadas
-    for (const a of accounts) {
-      if (a.locked) {
-        list.push({
-          id: `lock-${a.id}`, category: "Cuenta", tone: "danger",
-          title: `${a.name} bloqueada`,
-          body: a.lockReason || "Límite de riesgo alcanzado. Desbloquéala en Cuentas.",
-          href: "/cuentas",
-        })
-      }
-    }
+  const items = useMemo(() => list?.items ?? [], [list])
 
-    // Reviews vencidas
-    const urgent = stats?.urgentReviews ?? []
-    if (urgent.length > 0) {
-      list.push({
-        id: `reviews-urgent-${urgent.length}`, category: "Aprendizaje", tone: "warning",
-        title: `${urgent.length} review${urgent.length !== 1 ? "s" : ""} vencida${urgent.length !== 1 ? "s" : ""}`,
-        body: "Tienes recursos cuyo repaso ya venció. Repásalos para no perder retención.",
-        href: "/aprendizaje",
-      })
-    }
-
-    // Reviews pendientes
-    const pending = stats?.pendingReviewsCount ?? 0
-    if (pending > 0) {
-      list.push({
-        id: `reviews-pending-${pending}`, category: "Aprendizaje", tone: "info",
-        title: `${pending} recurso${pending !== 1 ? "s" : ""} por repasar`,
-        body: "Recursos marcados para review esta semana.",
-        href: "/aprendizaje",
-      })
-    }
-
-    // Reglas activas (recordatorios de disciplina)
-    for (const r of rules) {
-      if (r.enabled) {
-        list.push({
-          id: `rule-${r.id}`, category: "Reglas", tone: "reminder",
-          title: r.name,
-          body: r.description || `Regla activa · ${r.severity}`,
-          href: "/reglas",
-        })
-      }
-    }
-
-    return list.sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone])
-  }, [accounts, stats, rules])
-
-  const active = useMemo(() => all.filter((n) => !dismissed.includes(n.id)), [all, dismissed])
+  const unreadByCategory = useMemo(() => {
+    const m: Record<string, number> = {}
+    for (const n of items) if (!n.readAt) m[n.category] = (m[n.category] ?? 0) + 1
+    return m
+  }, [items])
 
   return {
-    all,
-    active,
-    count: active.length,
-    dismiss,
-    clearAll: () => dismissMany(active.map((n) => n.id)),
-    restore,
+    items,
+    count,
+    unreadByCategory,
+    markRead:    (id: string) => markRead.mutate(id),
+    markAllRead: () => markAllRead.mutate(),
+    archive:     (id: string) => archive.mutate(id),
   }
 }
