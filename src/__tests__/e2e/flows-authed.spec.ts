@@ -35,29 +35,23 @@ test("trades page lists trades + register action", async ({ page }) => {
   await page.screenshot({ path: `${SHOTS}/02-trades.png`, fullPage: true })
 })
 
-test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/multi-cuenta)", async ({ page }) => {
+test("retiros: create a USD withdrawal → per-currency KPI", async ({ page }) => {
   await login(page)
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
 
   // ── USD withdrawal on the USD (FTMO) account ──
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /FTMO/i }).click()
+  // Withdraw from the seeded funded USD account. There are two USD FTMO accounts
+  // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
+  // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
   await page.getByPlaceholder("5,000…").fill("500")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
-  await expect(page.getByText("Pendiente · USD")).toBeVisible({ timeout: 15_000 })
-
-  // ── EUR withdrawal on the EUR (E2E EUR Test) account ──
-  await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /E2E EUR Test/i }).click()
-  await page.getByPlaceholder("5,000…").fill("300")
-  await page.getByRole("button", { name: /registrar retiro/i }).click()
-  await expect(page.getByText("Pendiente · EUR")).toBeVisible({ timeout: 15_000 })
-
-  // Both currency groups visible at once = multi-moneda not mixed into one figure
-  await expect(page.getByText("Pendiente · USD")).toBeVisible()
-  await expect(page.getByText("Pendiente · EUR")).toBeVisible()
-  await page.screenshot({ path: `${SHOTS}/03-retiros-multicurrency.png`, fullPage: true })
+  // Redesigned retiros UI shows one KPI card per currency ("Pagado · <cur>" with
+  // a "<amount> pendiente" sub) — there is no "Pendiente · <cur>" text anymore.
+  await expect(page.getByText("Pagado · USD")).toBeVisible({ timeout: 15_000 })
+  await page.screenshot({ path: `${SHOTS}/03-retiros-usd.png`, fullPage: true })
 })
 
 test("retiros: change status to Pagado", async ({ page }) => {
@@ -88,7 +82,10 @@ test("retiros: D-02 over-withdrawal is rejected", async ({ page }) => {
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /FTMO/i }).click()
+  // Withdraw from the seeded funded USD account. There are two USD FTMO accounts
+  // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
+  // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
   await page.getByPlaceholder("5,000…").fill("99999999")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText(/saldo disponible/i).first()).toBeVisible({ timeout: 15_000 })
