@@ -20,6 +20,7 @@ import { monthlyReviewsRouter }     from "./routers/monthly-reviews"
 import { analyticsRouter }          from "./routers/analytics"
 import { notificationsRouter }      from "./routers/notifications"
 import { tagsRouter }               from "./routers/tags"
+import { automationsRouter }        from "./routers/automations"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -42,6 +43,7 @@ export const appRouter = router({
   aiSettings:        aiSettingsRouter,
   notifications:     notificationsRouter,
   tags:              tagsRouter,
+  automations:       automationsRouter,
 })
 
 export type AppRouter     = typeof appRouter
