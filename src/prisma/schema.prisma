@@ -52,6 +52,7 @@ model User {
   notifications            Notification[]
   notificationPreferences  NotificationPreference[]
   tags                     Tag[]
+  automations              Automation[]
 
   @@map("users")
 }
@@ -322,6 +323,36 @@ model Tag {
   @@unique([userId, name])
   @@index([userId])
   @@map("tags")
+}
+
+// ─────────────────────────────────────────────
+// AUTOMATION  (Epic 3 — WHEN/IF/THEN rules engine)
+// trigger:    TRADE_PRE_CREATE | TRADE_CREATED | TRADE_CLOSED | TRADE_UPDATED
+// conditions: ConditionNode tree (JSON). {} = always.
+// actions:    RuleAction[] (JSON). See domains/rules/.
+// Pre-trade rules run synchronously and may BLOCK the operation; post-trade rules
+// react (notify/tag) best-effort. The hardcoded risk-enforcement is independent.
+// ─────────────────────────────────────────────
+model Automation {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  name        String
+  description String    @default("")
+  enabled     Boolean   @default(true)
+  priority    Int       @default(0)
+  trigger     String
+  conditions  Json      @default("{}")
+  actions     Json      @default("[]")
+  category    String    @default("")
+  isSystem    Boolean   @default(false) @map("is_system")
+  lastFiredAt DateTime? @map("last_fired_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, trigger, enabled])
+  @@map("automations")
 }
 
 // ─────────────────────────────────────────────
