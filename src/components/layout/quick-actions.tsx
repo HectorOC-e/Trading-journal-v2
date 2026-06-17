@@ -10,7 +10,6 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import { useQuickActions } from "@/lib/quick-actions-store"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 
-const SYSTEM_TAGS = new Set(["A+", "Plan", "Off-plan", "Impulsivo", "Revanche"])
 
 /**
  * Global Quick Actions (Fase 3 · resolves M2).
@@ -53,8 +52,8 @@ export function QuickActions() {
   const { data: accounts = [] } = trpc.accounts.list.useQuery(undefined, q)
   const { data: setups = [] }   = trpc.setups.list.useQuery(undefined, q)
   const { data: markets = [] }  = trpc.markets.list.useQuery(undefined, q)
-  const { data: customTagsRaw = [] } = trpc.tradeTags.list.useQuery(undefined, q)
-  const customTags = customTagsRaw.map(t => t.tag).filter(t => !SYSTEM_TAGS.has(t))
+  const { data: tagRows = [] } = trpc.tags.list.useQuery(undefined, q)
+  const customTags = (tagRows as { name: string; isSystem: boolean }[]).filter(t => !t.isSystem).map(t => t.name)
 
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: () => {
