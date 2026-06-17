@@ -27,7 +27,7 @@ test.describe("Smoke: Login → Dashboard", () => {
     await page.goto("/login")
 
     await page.getByLabel(/email/i).fill(EMAIL)
-    await page.getByLabel(/password|contraseña/i).fill(PASSWORD)
+    await page.locator("#password").fill(PASSWORD)
     await page.getByRole("button", { name: /entrar|iniciar|login|sign in/i }).click()
 
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
@@ -42,7 +42,7 @@ test.describe("Smoke: Create Trade → Verify in list", () => {
     // Login
     await page.goto("/login")
     await page.getByLabel(/email/i).fill(EMAIL)
-    await page.getByLabel(/password|contraseña/i).fill(PASSWORD)
+    await page.locator("#password").fill(PASSWORD)
     await page.getByRole("button", { name: /entrar|iniciar|login|sign in/i }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
   })
@@ -60,7 +60,7 @@ test.describe("Smoke: Reviews page accessibility", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login")
     await page.getByLabel(/email/i).fill(EMAIL)
-    await page.getByLabel(/password|contraseña/i).fill(PASSWORD)
+    await page.locator("#password").fill(PASSWORD)
     await page.getByRole("button", { name: /entrar|iniciar|login|sign in/i }).click()
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
   })

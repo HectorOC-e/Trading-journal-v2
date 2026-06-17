@@ -42,14 +42,14 @@ test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/
 
   // ── USD withdrawal on the USD (FTMO) account ──
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /FTMO/i }).click()
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO/i }).click()
   await page.getByPlaceholder("5,000…").fill("500")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText("Pendiente · USD")).toBeVisible({ timeout: 15_000 })
 
   // ── EUR withdrawal on the EUR (E2E EUR Test) account ──
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /E2E EUR Test/i }).click()
+  await page.getByRole("dialog").getByRole("button", { name: /E2E EUR Test/i }).click()
   await page.getByPlaceholder("5,000…").fill("300")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText("Pendiente · EUR")).toBeVisible({ timeout: 15_000 })
@@ -88,7 +88,7 @@ test("retiros: D-02 over-withdrawal is rejected", async ({ page }) => {
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  await page.getByRole("button", { name: /FTMO/i }).click()
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO/i }).click()
   await page.getByPlaceholder("5,000…").fill("99999999")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText(/saldo disponible/i).first()).toBeVisible({ timeout: 15_000 })
