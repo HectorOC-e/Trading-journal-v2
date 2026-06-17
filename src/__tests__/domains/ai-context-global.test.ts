@@ -87,3 +87,44 @@ describe("buildTraderContext — global context (Fase 1 IA)", () => {
     }
   })
 })
+
+describe("buildTraderContext — practice (demo/backtest) isolation", () => {
+  // 3 real trades on a1 (net 500) + 2 demo trades on a2 (unreal +1000 each).
+  // One demo trade is off-plan, to prove behaviour still counts practice.
+  const MIXED = [
+    mkTrade({ id: "r1", accountId: "a1", pnl: 400, rMultiple: 2,  date: new Date("2026-06-01") }),
+    mkTrade({ id: "r2", accountId: "a1", pnl: -200, rMultiple: -1,date: new Date("2026-06-02") }),
+    mkTrade({ id: "r3", accountId: "a1", pnl: 300, rMultiple: 1.5,date: new Date("2026-06-03") }),
+    mkTrade({ id: "d1", accountId: "a2", pnl: 1000, rMultiple: 5, date: new Date("2026-06-04") }),
+    mkTrade({ id: "d2", accountId: "a2", pnl: 1000, rMultiple: 5, date: new Date("2026-06-05"), tags: ["Off-plan"] }),
+  ]
+
+  function makeMixedPrisma() {
+    const p = makePrisma()
+    p.trade.findMany = vi.fn().mockImplementation(({ where }: { where: { tags?: unknown } }) =>
+      Promise.resolve(where.tags ? [] : MIXED)) as never
+    p.account.findMany = vi.fn().mockResolvedValue([
+      { id: "a1", name: "Real",  type: "PERSONAL",      currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
+      { id: "a2", name: "Demo",  type: "DEMO_PERSONAL", currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
+    ]) as never
+    return p
+  }
+
+  it("excludes practice trades from financial performance", async () => {
+    const ctx = await buildTraderContext("u1", makeMixedPrisma() as never)
+    expect(ctx.performance.totalTrades).toBe(3)        // only real
+    expect(ctx.performance.netPnl).toBe(500)           // 400-200+300, no unreal +2000
+  })
+
+  it("counts practice trades in behavioural metrics (habit is real)", async () => {
+    const ctx = await buildTraderContext("u1", makeMixedPrisma() as never)
+    // off-plan rate is over ALL 5 trades (1/5 = 20%), even though the off-plan
+    // trade was on a demo account.
+    expect(ctx.behavior.offPlanPct).toBe(20)
+  })
+
+  it("still lists every account (practice included, labelled by type)", async () => {
+    const ctx = await buildTraderContext("u1", makeMixedPrisma() as never)
+    expect(ctx.accounts.map(a => a.type).sort()).toEqual(["DEMO_PERSONAL", "PERSONAL"])
+  })
+})

@@ -8,6 +8,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { computeSetupStats, type SetupStats } from "./setup-analytics"
+import { isPracticeType } from "@/domains/trading/account-reality"
 import type { AnalyticsTrade } from "./insights-engine"
 
 export interface AccountIntel {
@@ -51,7 +52,12 @@ export interface AnalyticsBundle {
   withdrawals: { total: number; count: number; impactPct: number; byMonth: { month: string; amount: number }[] }
   // Raw enriched trades + light meta for the insights engine
   raw: {
+    // Financial scope (real accounts only unless includePractice): feeds the
+    // deterministic financial insights engine.
     trades: AnalyticsTrade[]
+    // Every account incl. demo/backtest: feeds behavioural/psychology insights,
+    // which always count practice accounts.
+    allTrades: AnalyticsTrade[]
     setupsMeta: { id: string; name: string }[]
     accountsMeta: { id: string; name: string; locked: boolean; ddTotalPct: number | null }[]
     withdrawals: { amount: number; date: string }[]
@@ -74,6 +80,7 @@ export async function buildAnalyticsBundle(
   userId: string,
   prisma: PrismaClient,
   window?: { from: Date; to: Date },
+  includePractice = false,
 ): Promise<AnalyticsBundle> {
   const dateFilter = window ? { gte: window.from, lte: window.to } : undefined
 
@@ -129,18 +136,27 @@ export async function buildAnalyticsBundle(
     confidenceRating: t.confidenceRating,
   }))
 
+  // ── Practice (demo/backtest) partition ──────────────────────────────────────
+  // Financial/performance sections use only real accounts by default; behavioural
+  // (psychology) sections always count practice accounts. A toggle (includePractice)
+  // folds practice into the financial scope when the user asks.
+  const practiceId      = new Set(accountRows.filter((a) => isPracticeType(a.type)).map((a) => a.id))
+  const finTrades       = includePractice ? trades : trades.filter((t) => !practiceId.has(t.accountId))
+  const finAccountRows  = includePractice ? accountRows : accountRows.filter((a) => !isPracticeType(a.type))
+  const psychTotal      = trades.length
+
   // ── Performance ────────────────────────────────────────────────────────────
-  const total  = trades.length
-  const winsArr = trades.filter((t) => isWin({ pnl: t.pnl }))
-  const lossArr = trades.filter((t) => t.pnl < 0)
+  const total  = finTrades.length
+  const winsArr = finTrades.filter((t) => isWin({ pnl: t.pnl }))
+  const lossArr = finTrades.filter((t) => t.pnl < 0)
   const wins = winsArr.length
   const losses = lossArr.length
-  const netPnl = trades.reduce((s, t) => s + t.pnl, 0)
+  const netPnl = finTrades.reduce((s, t) => s + t.pnl, 0)
   const grossProfit = winsArr.reduce((s, t) => s + t.pnl, 0)
   const grossLoss = Math.abs(lossArr.reduce((s, t) => s + t.pnl, 0))
-  const withR = trades.filter((t) => t.rMultiple != null)
+  const withR = finTrades.filter((t) => t.rMultiple != null)
   const avgR = withR.length ? withR.reduce((s, t) => s + (t.rMultiple ?? 0), 0) / withR.length : 0
-  const holds = trades.map((t) => holdMinutes(t.openTime, t.closeTime)).filter((m): m is number => m != null)
+  const holds = finTrades.map((t) => holdMinutes(t.openTime, t.closeTime)).filter((m): m is number => m != null)
   const performance = {
     totalTrades: total, wins, losses,
     winRate: round1(calcWinRate(wins, total)),
@@ -153,8 +169,8 @@ export async function buildAnalyticsBundle(
   }
 
   // ── Risk: overall equity curve + per-account drawdown ────────────────────────
-  const sortedTrades = [...trades].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
-  const initialTotal = accountRows.reduce((s, a) => s + Number(a.initialBalance) * fxOf(a.id), 0)
+  const sortedTrades = [...finTrades].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+  const initialTotal = finAccountRows.reduce((s, a) => s + Number(a.initialBalance) * fxOf(a.id), 0)
   let runningBalance = initialTotal
   let peak = initialTotal
   let worstDrawdownPct = 0
@@ -167,8 +183,8 @@ export async function buildAnalyticsBundle(
     equityCurve.push({ date: t.date, balance: round2(runningBalance) })
   }
 
-  const accounts: AccountIntel[] = accountRows.map((a) => {
-    const at = trades.filter((t) => t.accountId === a.id)
+  const accounts: AccountIntel[] = finAccountRows.map((a) => {
+    const at = finTrades.filter((t) => t.accountId === a.id)
     const aWins = at.filter((t) => isWin({ pnl: t.pnl })).length
     const aPnl = at.reduce((s, t) => s + t.pnl, 0)
     // per-account drawdown (initial balance converted to base; pnl already converted)
@@ -188,13 +204,13 @@ export async function buildAnalyticsBundle(
 
   // ── Setups intelligence ──────────────────────────────────────────────────────
   const setups: SetupStats[] = setupRows
-    .map((s) => computeSetupStats(s.id, trades, { id: s.id, name: s.name, abbr: s.abbreviation, color: s.color }))
+    .map((s) => computeSetupStats(s.id, finTrades, { id: s.id, name: s.name, abbr: s.abbreviation, color: s.color }))
     .filter((s) => s.trades > 0)
     .sort((a, b) => b.netPnl - a.netPnl)
 
   // ── Markets intelligence ──────────────────────────────────────────────────────
   const bySymbol = new Map<string, AnalyticsTrade[]>()
-  for (const t of trades) { const arr = bySymbol.get(t.symbol) ?? []; arr.push(t); bySymbol.set(t.symbol, arr) }
+  for (const t of finTrades) { const arr = bySymbol.get(t.symbol) ?? []; arr.push(t); bySymbol.set(t.symbol, arr) }
   const markets: MarketIntel[] = [...bySymbol.entries()].map(([symbol, ts]) => {
     const w = ts.filter((t) => isWin({ pnl: t.pnl })).length
     const r = ts.filter((t) => t.rMultiple != null)
@@ -222,10 +238,10 @@ export async function buildAnalyticsBundle(
   const avgOf = (xs: number[]) => xs.length ? round2(xs.reduce((a, b) => a + b, 0) / xs.length) : null
   const psychology = {
     byEmotion,
-    violationRate: round1(total ? (violationCount / total) * 100 : 0),
+    violationRate: round1(psychTotal ? (violationCount / psychTotal) * 100 : 0),
     fomoCount: trades.filter((t) => t.fomoFlag).length,
     revengeCount: trades.filter((t) => t.revengeFlag).length,
-    disciplineScore: Math.max(0, Math.round(100 - (total ? (violationCount / total) * 100 : 0))),
+    disciplineScore: Math.max(0, Math.round(100 - (psychTotal ? (violationCount / psychTotal) * 100 : 0))),
     sessions: sessionRows.length,
     avgPreMood: avgOf(moods),
     avgEnergy:  avgOf(energies),
@@ -235,7 +251,7 @@ export async function buildAnalyticsBundle(
   const now = new Date()
   const weekStart = new Date(now); weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7))
   const weekStartStr = weekStart.toISOString().slice(0, 10)
-  const weekTrades = trades.filter((t) => t.date >= weekStartStr)
+  const weekTrades = finTrades.filter((t) => t.date >= weekStartStr)
   const goals = {
     weeklyPnlGoal: userRow?.weeklyPnlGoal != null ? Number(userRow.weeklyPnlGoal) : null,
     weeklyTradesGoal: userRow?.weeklyTradesGoal ?? null,
@@ -262,7 +278,8 @@ export async function buildAnalyticsBundle(
     performance, risk: { worstDrawdownPct: round1(worstDrawdownPct), equityCurve, accounts },
     setups, markets, psychology, goals, withdrawals,
     raw: {
-      trades,
+      trades: finTrades,
+      allTrades: trades,
       setupsMeta: setupRows.map((s) => ({ id: s.id, name: s.name })),
       accountsMeta: accountRows.map((a) => ({ id: a.id, name: a.name, locked: a.locked, ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null })),
       withdrawals: wAmounts,

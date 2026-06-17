@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
+import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
@@ -160,13 +161,15 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-      <SegmentedTabs
-        options={TABS}
-        value={tab}
-        onChange={(v) => handleTabChange(v as Tab)}
-        ariaLabel="Secciones del dashboard"
-        className="mb-6"
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <SegmentedTabs
+          options={TABS}
+          value={tab}
+          onChange={(v) => handleTabChange(v as Tab)}
+          ariaLabel="Secciones del dashboard"
+        />
+        <PracticeToggle />
+      </div>
       {tab === "portfolio" && (
         <div className="flex flex-col gap-4">
           <OnboardingChecklist />
