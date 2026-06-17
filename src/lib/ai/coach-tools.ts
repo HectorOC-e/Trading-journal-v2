@@ -108,6 +108,17 @@ export const COACH_TOOLS = [
       required: ["query"],
     },
   },
+  {
+    name: "get_recent_notifications",
+    description: "Notificaciones recientes del trader (eventos del centro: cuenta bloqueada, regla disparada, review vencida, importación, reporte semanal). Útil para referenciar qué pasó ('te bloquearon la cuenta el martes'). Solo lectura.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        limit:      { type: "number", description: "Máx. resultados (default 10, máx 25)" },
+        unreadOnly: { type: "boolean", description: "Solo no leídas (opcional)" },
+      },
+    },
+  },
 ] as const
 
 export type CoachToolName = (typeof COACH_TOOLS)[number]["name"]
@@ -406,6 +417,23 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
         resources: ids.map(id => found.find(r => r.id === id)).filter(Boolean).map(r => ({
           id: r!.id, title: r!.title, type: r!.type, status: r!.status,
           notes: (r!.notes || "").slice(0, 240), similarity: parseFloat((simById.get(r!.id) ?? 0).toFixed(3)),
+        })),
+      })
+    }
+
+    if (name === "get_recent_notifications") {
+      const limit = Math.min(25, Math.max(1, Number(input.limit) || 10))
+      const unreadOnly = input.unreadOnly === true
+      const rows = await prisma.notification.findMany({
+        where: { userId, archivedAt: null, ...(unreadOnly ? { readAt: null } : {}) },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: { title: true, body: true, type: true, priority: true, category: true, readAt: true, createdAt: true },
+      })
+      return JSON.stringify({
+        notifications: rows.map(r => ({
+          title: r.title, body: r.body, type: r.type, priority: r.priority, category: r.category,
+          read: r.readAt != null, date: (r.createdAt as Date).toISOString().slice(0, 10),
         })),
       })
     }

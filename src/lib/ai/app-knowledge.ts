@@ -8,6 +8,7 @@ export const APP_KNOWLEDGE = `## Cómo funciona la app (mapa de pantallas)
 - **Cuentas**: crear/gestionar cuentas (personal o prop-firm). Define límites de drawdown (diario/total), objetivo, fases (Phase 1/2/Funded) y registra el historial (audit log). Una cuenta puede bloquearse automáticamente al romper un límite de pérdida.
 - **Playbook**: catálogo de setups. Cada setup puede definir su "edge" esperado (win rate y avg R esperados) y se compara contra el desempeño real (health: healthy/warning/critical).
 - **Reglas**: reglas de disciplina propias.
+- **Notificaciones**: centro de notificaciones (campana + página /notificaciones). Los eventos importantes (cuenta bloqueada, regla disparada, review vencida, importación terminada, reporte semanal listo) se guardan con prioridad P0–P3, estado leído/no leído, y se pueden archivar. Las preferencias por categoría (silenciar, prioridad mínima, horas de silencio, canales) se configuran por usuario. Los **toasts** son avisos efímeros de acciones (p.ej. "Trade guardado"); solo los eventos significativos quedan en el centro. Las reglas ya NO aparecen como notificaciones por sí mismas: solo su *disparo* genera una.
 - **Mercados**: catálogo de símbolos y watchlist.
 - **Retiros**: registrar payouts por cuenta y divisa, con estados Solicitado → En proceso → Pagado / Rechazado.
 - **Aprendizaje**: biblioteca de recursos (libros, cursos, videos) con repaso espaciado (SRS). El "dominio" de un recurso se gana repasándolo en intervalos crecientes.
@@ -31,4 +32,5 @@ export const APP_KNOWLEDGE = `## Cómo funciona la app (mapa de pantallas)
 - **Expectancy**: valor esperado por trade. Combina win rate y tamaño medio de ganancia/pérdida.
 - **Drawdown**: caída desde un pico. Las prop-firms lo limitan (modelo fijo = desde el balance inicial; trailing = desde el pico). Romper el límite bloquea la cuenta.
 - **Discipline score**: qué tanto seguiste tu plan (setups asignados, sin trades off-plan/impulsivos/revenge).
-- **SRS / repaso espaciado**: repasar en intervalos crecientes consolida el aprendizaje; "Dominado" se alcanza tras varios repasos exitosos.`
+- **SRS / repaso espaciado**: repasar en intervalos crecientes consolida el aprendizaje; "Dominado" se alcanza tras varios repasos exitosos.
+- **Prioridad de notificación (P0–P3)**: P0 = crítico (persistente, requiere acción, no silenciable, p.ej. cuenta bloqueada); P1 = alto; P2 = medio; P3 = bajo (efímero, auto-desaparece).`
