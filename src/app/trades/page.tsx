@@ -79,14 +79,11 @@ export default function TradesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [marketsLoading, markets.length])
 
-  const { data: customTagsRaw = [] } =
-    trpc.tradeTags.list.useQuery()
-
-  // Exclude system tags — custom tags are user-created
-  const SYSTEM_TAGS = new Set(["A+", "Plan", "Off-plan", "Impulsivo", "Revanche"])
-  const customTags = customTagsRaw
-    .map(t => t.tag)
-    .filter(t => !SYSTEM_TAGS.has(t))
+  // Tag catalog (Epic 2): user-created tags = non-system entries.
+  const { data: tagRows = [] } = trpc.tags.list.useQuery(undefined, { staleTime: 60_000 })
+  const customTags = (tagRows as { name: string; isSystem: boolean }[])
+    .filter(t => !t.isSystem)
+    .map(t => t.name)
 
   const PROP_FIRM_MESSAGES: Record<string, string> = {
     PROP_FIRM_MAX_TRADES:         "Has alcanzado el máximo de trades diarios para esta cuenta.",

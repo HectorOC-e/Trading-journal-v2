@@ -4,20 +4,10 @@
 
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
+import { TagChip } from "@/components/tags/tag-chip"
 import { Button } from "@/components/ui/button"
 import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft } from "lucide-react"
-import type { Trade, TradeTag, TradeSession, Account, Setup } from "@/types"
-
-const TAG_VARIANT: Record<TradeTag, "aplus" | "accent" | "default" | "be" | "offplan"> = {
-  "A+":        "aplus",
-  "A":         "accent",
-  "B":         "default",
-  "Plan":      "accent",
-  "Off-plan":  "offplan",
-  "Impulsivo": "offplan",
-  "BE":        "be",
-}
+import type { Trade, TradeSession, Account, Setup } from "@/types"
 
 const SESSION_COLOR: Record<TradeSession, string> = {
   "New York":     "bg-blue-500/15 text-blue-400",
@@ -535,9 +525,9 @@ export function TradeDetailPanel({
       {trade.tags.length > 0 && (
         <div>
           <p className="text-eyebrow mb-2">Tags</p>
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap items-center">
             {(trade.tags as string[]).map((tag) => (
-              <Badge key={tag} variant={TAG_VARIANT[tag as TradeTag] ?? "default"}>{tag}</Badge>
+              <TagChip key={tag} name={tag} />
             ))}
           </div>
         </div>

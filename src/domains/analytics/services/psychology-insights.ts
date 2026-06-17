@@ -5,13 +5,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { isWin } from "@/lib/formulas"
+import { isViolationTag } from "@/types"
 import type { AnalyticsTrade, Insight } from "./insights-engine"
 
 const NEG_EMOTIONS = new Set(["anxious", "fearful", "frustrated", "overconfident", "angry"])
-const VIOLATION_TAGS = ["Off-plan", "Impulsivo", "Revanche"]
 
 function isImpulsive(t: AnalyticsTrade): boolean {
-  return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(x => VIOLATION_TAGS.includes(x))
+  return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(x => isViolationTag(x))
 }
 function isNegative(t: AnalyticsTrade): boolean {
   return (t.emotionBefore != null && NEG_EMOTIONS.has(t.emotionBefore)) || t.fomoFlag === true || t.revengeFlag === true
