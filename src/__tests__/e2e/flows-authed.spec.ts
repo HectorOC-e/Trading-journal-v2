@@ -42,9 +42,10 @@ test("retiros: create USD + EUR withdrawals → per-currency KPIs (multi-moneda/
 
   // ── USD withdrawal on the USD (FTMO) account ──
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  // Two seeded USD FTMO accounts ("FTMO 100K — Phase 1 USD", "FTMO Funded USD");
-  // either satisfies the USD-withdrawal assertions, so pick the first.
-  await page.getByRole("dialog").getByRole("button", { name: /FTMO/i }).first().click()
+  // Withdraw from the seeded funded USD account. There are two USD FTMO accounts
+  // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
+  // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
   await page.getByPlaceholder("5,000…").fill("500")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText("Pendiente · USD")).toBeVisible({ timeout: 15_000 })
@@ -90,9 +91,10 @@ test("retiros: D-02 over-withdrawal is rejected", async ({ page }) => {
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
   await page.getByRole("button", { name: /nuevo retiro/i }).first().click()
-  // Two seeded USD FTMO accounts ("FTMO 100K — Phase 1 USD", "FTMO Funded USD");
-  // either satisfies the USD-withdrawal assertions, so pick the first.
-  await page.getByRole("dialog").getByRole("button", { name: /FTMO/i }).first().click()
+  // Withdraw from the seeded funded USD account. There are two USD FTMO accounts
+  // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
+  // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
+  await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
   await page.getByPlaceholder("5,000…").fill("99999999")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText(/saldo disponible/i).first()).toBeVisible({ timeout: 15_000 })
