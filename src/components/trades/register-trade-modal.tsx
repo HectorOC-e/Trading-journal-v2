@@ -37,6 +37,8 @@ interface AccountLike {
   name: string
   type: string
   initialBalance: number
+  /** Equity = initial + realized P&L (from accounts.list). Sizing base. */
+  currentBalance?: number
   allowedSymbols?: string[]
   ddDailyPct?: number | null
   maxTradesPerDay?: number | null
@@ -263,7 +265,9 @@ export function RegisterTradeModal({
 
   // ── Lot size calculator ────────────────────────────────────────────────
   const pointValue = selectedMarket ? parsePointValue(selectedMarket.pointValue) : null
-  const balance    = selectedAccount?.initialBalance ?? 0
+  // Size off current equity (initial + realized P&L) — what the rest of the app
+  // shows as "Balance actual"; falls back to initial if equity isn't provided.
+  const balance    = selectedAccount?.currentBalance ?? selectedAccount?.initialBalance ?? 0
 
   // Cheap derived values — computed inline so the React Compiler can memoize
   // them (manual useMemo over `watch()` values trips its mutation analysis).
@@ -380,7 +384,7 @@ export function RegisterTradeModal({
                       </span>
                     </div>
                     <p className="text-[11px] text-[var(--ink-3)] mt-1 font-mono">
-                      ${acc.initialBalance.toLocaleString()}
+                      ${(acc.currentBalance ?? acc.initialBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </p>
                   </button>
                 ))}
@@ -554,6 +558,7 @@ export function RegisterTradeModal({
             {calcContracts === null && (() => {
               const missing: string[] = []
               if (!selectedAccount)            missing.push("cuenta")
+              if (selectedAccount && balance <= 0) missing.push("balance de la cuenta (edítala)")
               if (!form.symbol)                missing.push("símbolo")
               if (!parseFloat(form.entry))     missing.push("entry")
               if (!parseFloat(form.stop))      missing.push("stop")

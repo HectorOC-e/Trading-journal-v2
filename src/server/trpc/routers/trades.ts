@@ -114,6 +114,10 @@ function serializeAccount(a: RawAccount) {
   return {
     ...a,
     initialBalance: Number(a.initialBalance),
+    // Embedded (per-trade) account: realized P&L isn't aggregated here, so the
+    // current balance falls back to initial. The field exists to keep the shape
+    // aligned with accounts.list (the canonical source for sizing).
+    currentBalance: Number(a.initialBalance),
     ddDailyPct:     a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
     ddWeeklyPct:    a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
     ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,

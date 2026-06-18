@@ -163,7 +163,7 @@ export function EditTradeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[420px]">
+      <DialogContent className="max-w-[420px]">
         <DialogHeader>
           <DialogTitle>Editar trade — {trade.symbol}</DialogTitle>
         </DialogHeader>

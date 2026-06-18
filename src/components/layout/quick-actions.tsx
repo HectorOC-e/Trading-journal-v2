@@ -8,6 +8,7 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { useQuickActions } from "@/lib/quick-actions-store"
+import { useAnyDialogOpen } from "@/lib/dialog-open-store"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 
 
@@ -23,6 +24,7 @@ export function QuickActions() {
   const [dialOpen, setDialOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const { registerOpen, openRegister, closeRegister } = useQuickActions()
+  const anyDialogOpen = useAnyDialogOpen()
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -74,9 +76,11 @@ export function QuickActions() {
 
   return (
     <>
-      {/* Speed-dial FAB — desktop/tablet only (mobile uses the navbar center +) */}
-      {!isMobile && (
-        <div className="fixed z-[50] flex flex-col items-end gap-2" style={{ right: 24, bottom: 24 }}>
+      {/* Speed-dial FAB — desktop/tablet only (mobile uses the navbar center +).
+          Stacked ABOVE the AI coach launcher (which sits in the corner at b:24)
+          and hidden while a modal is open so neither covers it. */}
+      {!isMobile && !anyDialogOpen && (
+        <div className="fixed z-[45] flex flex-col items-end gap-2" style={{ right: 24, bottom: 92 }}>
           {dialOpen && (
             <div className="flex flex-col items-end gap-2 mb-1 fade-in">
               {dialActions.map((a) => (

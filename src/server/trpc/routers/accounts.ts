@@ -48,10 +48,16 @@ const AccountInput = z.object({
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
-function serializeAccount(a: RawAccount) {
+function serializeAccount(a: RawAccount, closedPnl = 0) {
+  const initialBalance = Number(a.initialBalance)
   return {
     ...a,
-    initialBalance: Number(a.initialBalance),
+    initialBalance,
+    // Current balance / equity = starting capital + realized (closed) P&L. This
+    // is what the rest of the app shows as "Balance actual" and what the trade
+    // modal sizes positions off (so a 0 initial balance no longer reads as $0
+    // and the contract calculator can run).
+    currentBalance: initialBalance + closedPnl,
     ddDailyPct:    a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
     ddWeeklyPct:   a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
     ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
@@ -91,7 +97,15 @@ export const accountsRouter = router({
           : { ...a, locked: r.locked, lockReason: r.lockReason, lockedAt: r.locked ? a.lockedAt : null }
       }))
 
-      return reconciled.map(serializeAccount)
+      // Realized P&L per account → current balance (equity) in serializeAccount.
+      const pnlByAccount = await ctx.prisma.trade.groupBy({
+        by: ["accountId"],
+        where: { userId: ctx.userId, status: "CLOSED" },
+        _sum: { pnl: true },
+      })
+      const pnlMap = new Map(pnlByAccount.map((r) => [r.accountId, Number(r._sum.pnl ?? 0)]))
+
+      return reconciled.map((a) => serializeAccount(a, pnlMap.get(a.id) ?? 0))
     }),
 
   create: protectedProcedure
