@@ -106,6 +106,10 @@ model Account {
   // ── Profit target (all account types) ────────
   targetPct     Decimal? @map("target_pct")     @db.Decimal(5, 2)
 
+  // ── Leverage (margin calculator) ──────────────
+  maxLeverage    Int? @map("max_leverage")     // broker max, e.g. 30 for 1:30
+  targetLeverage Int? @map("target_leverage")  // healthy effective-leverage target
+
   // ── Prop Firm extras ──────────────────────────
   ddModel           String?  @default("FIXED")   @map("dd_model")            // FIXED | TRAILING
   phase             String?  @default("PHASE_1") @map("phase")               // PHASE_1 | PHASE_2 | FUNDED | NONE

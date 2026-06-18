@@ -44,6 +44,8 @@ const AccountInput = z.object({
   maxTradesPerDay:  z.number().int().optional(),
   allowedSymbols:   z.array(z.string()).default([]),
   minTradingDays:   z.number().int().optional(),
+  maxLeverage:      z.number().int().positive().optional(),
+  targetLeverage:   z.number().int().positive().optional(),
 })
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"

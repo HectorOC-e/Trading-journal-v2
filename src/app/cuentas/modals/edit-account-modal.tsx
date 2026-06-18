@@ -37,6 +37,8 @@ function accountToForm(account: RawAccount): AccountFormValues {
     maxTrades:    account.maxTradesPerDay != null ? String(account.maxTradesPerDay) : "",
     symbols:      account.allowedSymbols ?? [],
     minDays:      account.minTradingDays  != null ? String(account.minTradingDays)  : "",
+    maxLeverage:    account.maxLeverage    != null ? String(account.maxLeverage)    : "",
+    targetLeverage: account.targetLeverage != null ? String(account.targetLeverage) : "",
   }
 }
 
@@ -87,6 +89,8 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
       maxTradesPerDay: isPropFirmLike(f.tipo) ? pi(f.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(f.tipo) ? pi(f.minDays)   : undefined,
       allowedSymbols:  f.symbols,
+      maxLeverage:     pi(f.maxLeverage),
+      targetLeverage:  pi(f.targetLeverage),
     })
   }
   const onInvalid = () => setTab("general")
@@ -173,6 +177,26 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
               <div className="flex items-center gap-2 max-w-[160px]">
                 <Input placeholder="8" mono {...register("targetPct")} />
                 <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-eyebrow mb-2">Apalancamiento</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-eyebrow block mb-1.5">Máximo (1:X)</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-[var(--ink-3)] shrink-0">1 :</span>
+                    <Input placeholder="30" mono {...register("maxLeverage")} />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-eyebrow block mb-1.5">Objetivo sano (efectivo)</label>
+                  <div className="flex items-center gap-2">
+                    <Input placeholder="5" mono {...register("targetLeverage")} />
+                    <span className="text-sm text-[var(--ink-3)] shrink-0">x</span>
+                  </div>
+                </div>
               </div>
             </div>
             {isPropFirmLike(form.tipo) && (

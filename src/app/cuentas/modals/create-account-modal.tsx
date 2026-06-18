@@ -30,6 +30,7 @@ const FORM_INIT: AccountFormValues = {
   timezone: "America/New_York",
   ddDailyPct: "", ddWeeklyPct: "", ddMonthlyPct: "", ddTotalPct: "", targetPct: "",
   ddModel: "FIXED", phase: "PHASE_1", maxTrades: "3", symbols: [], minDays: "",
+  maxLeverage: "", targetLeverage: "",
 }
 
 export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
@@ -78,6 +79,8 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
       maxTradesPerDay: isPropFirmLike(f.tipo) ? pi(f.maxTrades) : undefined,
       minTradingDays:  isPropFirmLike(f.tipo) ? pi(f.minDays)   : undefined,
       allowedSymbols:  f.symbols,
+      maxLeverage:     pi(f.maxLeverage),
+      targetLeverage:  pi(f.targetLeverage),
     }
   }
 
@@ -238,6 +241,28 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
               <div className="flex items-center gap-2 max-w-[160px]">
                 <Input placeholder="8" mono {...register("targetPct")} />
                 <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-eyebrow mb-2">Apalancamiento</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-eyebrow block mb-1.5">Máximo (1:X)</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-[var(--ink-3)] shrink-0">1 :</span>
+                    <Input placeholder="30" mono {...register("maxLeverage")} />
+                  </div>
+                  <p className="text-[10px] text-[var(--ink-3)] mt-1">Para calcular el margen requerido.</p>
+                </div>
+                <div>
+                  <label className="text-eyebrow block mb-1.5">Objetivo sano (efectivo)</label>
+                  <div className="flex items-center gap-2">
+                    <Input placeholder="5" mono {...register("targetLeverage")} />
+                    <span className="text-sm text-[var(--ink-3)] shrink-0">x</span>
+                  </div>
+                  <p className="text-[10px] text-[var(--ink-3)] mt-1">Verde ≤ objetivo · ámbar ≤ 2× · rojo más.</p>
+                </div>
               </div>
             </div>
 
