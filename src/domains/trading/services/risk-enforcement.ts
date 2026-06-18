@@ -17,6 +17,8 @@ import type { AccountLogPayload } from "@/types"
 import { computeAccountRisk, accountDrawdown, isPermanentLockReason, type AccountRisk } from "./risk-engine"
 import { emitNotification } from "@/server/services/notifications/emit"
 
+export { isPermanentLockReason }
+
 /** Human-readable text for an auto-lock reason code. */
 const LOCK_REASON_TEXT: Record<string, string> = {
   DAILY_LOSS_LIMIT:   "Límite de pérdida diario alcanzado",
@@ -170,6 +172,46 @@ export async function assertTradeable(
   if (account.locked) {
     await autoUnlock(prisma, userId, account.id, "Auto-reactivada: periodo del límite temporal finalizado")
   }
+}
+
+/**
+ * READ-path reconciliation. Re-evaluates a standing TEMPORAL lock against the
+ * reference date and clears it when the period has rolled over (or when limits /
+ * initial balance make the lock meaningless). Unlike `assertTradeable`, this
+ * never throws — it's safe to call from queries such as `accounts.list` so a
+ * card reflects the true lockable state without waiting for the next trade.
+ *
+ * Permanent locks (max-drawdown / manual) are returned untouched.
+ * Returns the reconciled lock state so the caller can reflect it immediately.
+ */
+export async function reconcileTemporalLock(
+  prisma: PrismaClient,
+  userId: string,
+  account: EnforceableAccount,
+  referenceDate: string,
+): Promise<{ locked: boolean; lockReason: string }> {
+  // Not locked, or a permanent lock → nothing to reconcile.
+  if (!account.locked || isPermanentLockReason(account.lockReason)) {
+    return { locked: account.locked, lockReason: account.lockReason }
+  }
+
+  // No active limits or no base balance → the temporal lock can't be evaluated
+  // and is therefore stale. Clear it.
+  if (!hasAnyLimit(account) || account.initialBalance <= 0) {
+    await autoUnlock(prisma, userId, account.id, "Auto-reactivada: sin límites activos")
+    return { locked: false, lockReason: "" }
+  }
+
+  const risk = await loadAccountRisk(prisma, userId, account, referenceDate)
+  if (risk.breach) {
+    // Still in breach for the current period → keep locked (reason may have
+    // shifted, e.g. weekly cleared but monthly now binds).
+    return { locked: true, lockReason: risk.breach.reason }
+  }
+
+  // Period rolled over (or the loss was corrected) → reactivate.
+  await autoUnlock(prisma, userId, account.id, "Auto-reactivada: periodo del límite temporal finalizado")
+  return { locked: false, lockReason: "" }
 }
 
 /**

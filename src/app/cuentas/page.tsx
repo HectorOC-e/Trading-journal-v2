@@ -21,6 +21,8 @@ import { EditarCuentaModal } from "./modals/edit-account-modal"
 import { AccountHistoryModal } from "./modals/account-history-modal"
 import { PromotePhaseModal } from "./modals/promote-phase-modal"
 import { SyncBalanceModal } from "./modals/sync-balance-modal"
+import { isPracticeType } from "@/domains/trading/account-reality"
+import { AnimatedNumber } from "@/components/ui/animated-number"
 
 type StatusFilter = "activas" | "pausadas" | "archivadas" | "todas"
 
@@ -52,7 +54,10 @@ export default function CuentasPage() {
     return true
   })
   const { data: markets = [] }             = trpc.markets.list.useQuery()
-  const { data: dashStats }                = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
+  // Per-account cards must show EVERY account's own trades (incl. demo/backtest),
+  // so request practice accounts too. The real-only financial aggregates for the
+  // top KPIs are derived client-side below.
+  const { data: dashStats }                = trpc.trades.dashboardStats.useQuery({ period: "ALL", includePractice: true }, { staleTime: 60_000 })
   const utils = trpc.useUtils()
 
   // Build accountStats from server-side aggregation (all trades, not just paginated)
@@ -92,11 +97,15 @@ export default function CuentasPage() {
   const historyAccount = accounts.find(a => a.id === historyId) ?? null
   const promoteAccount = accounts.find(a => a.id === promoteId) ?? null
 
+  // Top KPIs are FINANCIAL aggregates → real accounts only (demo/backtest never
+  // inflate them), even though per-card stats above include practice accounts.
+  const practiceIds = new Set(allAccounts.filter(a => isPracticeType(a.type)).map(a => a.id))
+  const realStats   = Object.entries(accountStats).filter(([id]) => !practiceIds.has(id)).map(([, v]) => v)
   const totalBal    = allAccounts.reduce((s, a) => s + Number(a.initialBalance), 0)
   const activeCount = allAccounts.filter(a => a.status === "ACTIVE").length
-  const totalPnlMonth  = Object.values(accountStats).reduce((s, v) => s + v.pnlMonth, 0)
-  const totalTradesAll = Object.values(accountStats).reduce((s, v) => s + v.tradesTotal, 0)
-  const pnlStr = `${totalPnlMonth >= 0 ? "+" : "-"}$${Math.abs(totalPnlMonth).toFixed(2)}`
+  const totalPnlMonth  = realStats.reduce((s, v) => s + v.pnlMonth, 0)
+  const totalTradesAll = realStats.reduce((s, v) => s + v.tradesTotal, 0)
+  const totalTradesMonth = realStats.reduce((s, v) => s + v.tradesMonth, 0)
 
   return (
     <>
@@ -132,17 +141,17 @@ export default function CuentasPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <KpiBox label="Balance total"  value={`$${totalBal.toLocaleString()}`}
+          <KpiBox label="Balance total"  value={<AnimatedNumber value={totalBal} format={(n) => `$${Math.round(n).toLocaleString()}`} />}
             sub={`${accounts.length} cuentas`}
             icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="P&L este mes" value={totalTradesAll > 0 ? pnlStr : "— sin trades"}
+          <KpiBox label="P&L este mes" value={totalTradesAll > 0 ? <AnimatedNumber value={totalPnlMonth} format={(n) => `${n >= 0 ? "+" : "-"}$${Math.abs(n).toFixed(2)}`} /> : "— sin trades"}
             positive={totalTradesAll > 0 ? totalPnlMonth >= 0 : undefined}
-            sub={totalTradesAll > 0 ? `${Object.values(accountStats).reduce((s, v) => s + v.tradesMonth, 0)} trades este mes` : "sin trades cerrados"}
+            sub={totalTradesAll > 0 ? `${totalTradesMonth} trades este mes` : "sin trades cerrados"}
             icon={<TrendingUp size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="Total trades" value={String(totalTradesAll)}
+          <KpiBox label="Total trades" value={<AnimatedNumber value={totalTradesAll} />}
             sub="trades cerrados"
             icon={<Shield size={15} className="text-[var(--ink-3)]" />} />
-          <KpiBox label="Cuentas activas" value={String(activeCount)}
+          <KpiBox label="Cuentas activas" value={<AnimatedNumber value={activeCount} />}
             sub={`de ${accounts.length} total`}
             icon={<CheckCircle2 size={15} className="text-[var(--ink-3)]" />} />
         </div>

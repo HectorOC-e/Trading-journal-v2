@@ -3,6 +3,23 @@ import { TRPCError } from "@trpc/server"
 import type { Prisma } from "@/lib/generated/prisma/client"
 import { router, protectedProcedure } from "../init"
 import type { AccountLogPayload } from "@/types"
+import { reconcileTemporalLock, isPermanentLockReason } from "@/domains/trading/services/risk-enforcement"
+
+/** Map a raw account row to the subset risk-enforcement needs. */
+function toEnforceable(a: RawAccount) {
+  return {
+    id:             a.id,
+    type:           a.type,
+    ddModel:        a.ddModel,
+    ddDailyPct:     a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
+    ddWeeklyPct:    a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
+    ddMonthlyPct:   a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
+    ddTotalPct:     a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
+    initialBalance: Number(a.initialBalance),
+    locked:         a.locked,
+    lockReason:     a.lockReason,
+  }
+}
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 
@@ -61,7 +78,20 @@ export const accountsRouter = router({
         },
         orderBy: { createdAt: "asc" },
       })
-      return rows.map(serializeAccount)
+
+      // Reconcile standing temporal locks on read: clear any daily/weekly/monthly
+      // lock whose period has rolled over so the card reflects reality without
+      // waiting for the next trade attempt. Permanent locks are left untouched.
+      const today = new Date().toISOString().slice(0, 10)
+      const reconciled = await Promise.all(rows.map(async (a) => {
+        if (!a.locked || isPermanentLockReason(a.lockReason)) return a
+        const r = await reconcileTemporalLock(ctx.prisma, ctx.userId, toEnforceable(a), today)
+        return r.locked === a.locked && r.lockReason === a.lockReason
+          ? a
+          : { ...a, locked: r.locked, lockReason: r.lockReason, lockedAt: r.locked ? a.lockedAt : null }
+      }))
+
+      return reconciled.map(serializeAccount)
     }),
 
   create: protectedProcedure

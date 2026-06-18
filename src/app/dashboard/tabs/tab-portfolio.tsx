@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
@@ -72,6 +72,9 @@ export function TabPortfolio({
     for (const entry of pnlByDate) names.add(accounts.find(a => a.id === entry.accountId)?.name ?? entry.accountId)
     return Array.from(names)
   }, [pnlByDate, accounts])
+
+  // Click a legend chip to focus one account's bars (dims the rest); click again to clear.
+  const [focusedAccount, setFocusedAccount] = useState<string | null>(null)
 
   const accountsTable = useMemo(() => {
     return accountStats.map(s => {
@@ -208,7 +211,7 @@ export function TabPortfolio({
           {barData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={175}>
-                <BarChart data={barData} barSize={10} barCategoryGap="28%">
+                <BarChart data={barData} barSize={10} barCategoryGap="28%" syncId="portfolio-time">
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
                     tickFormatter={v => v >= 0 ? `+${cur}${v}` : `-${cur}${Math.abs(v)}`} />
@@ -217,21 +220,37 @@ export function TabPortfolio({
                     const meta = accounts.find(a => a.name === name)
                     const color = meta ? (TYPE_META[meta.type]?.color ?? "var(--accent)") : "var(--accent)"
                     const isLast = i === barAccountNames.length - 1
+                    const dimmed = focusedAccount != null && focusedAccount !== name
                     return (
                       <Bar key={name} dataKey={name} stackId="a" fill={color}
-                        radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+                        fillOpacity={dimmed ? 0.22 : 1}
+                        radius={isLast ? [3, 3, 0, 0] : [0, 0, 0, 0]}
+                        animationDuration={260} animationEasing="ease-out" />
                     )
                   })}
                 </BarChart>
               </ResponsiveContainer>
-              <div className="flex gap-4 mt-1 flex-wrap">
+              <div className="flex gap-2 mt-1 flex-wrap">
                 {barAccountNames.map(name => {
                   const meta = accounts.find(a => a.name === name)
                   const color = meta ? (TYPE_META[meta.type]?.color ?? "var(--accent)") : "var(--accent)"
+                  const active = focusedAccount === name
+                  const dimmed = focusedAccount != null && !active
                   return (
-                    <span key={name} className="flex items-center gap-1.5 text-[10px] text-[var(--ink-3)]">
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setFocusedAccount(active ? null : name)}
+                      className="flex items-center gap-1.5 text-[10px] rounded-full px-1.5 py-0.5 transition-[color,background-color,opacity] active:scale-[0.97]"
+                      style={{
+                        color: active ? "var(--ink)" : "var(--ink-3)",
+                        background: active ? "var(--chip)" : "transparent",
+                        opacity: dimmed ? 0.5 : 1,
+                      }}
+                      title={focusedAccount ? "Quitar foco" : "Enfocar esta cuenta"}
+                    >
                       <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />{name}
-                    </span>
+                    </button>
                   )
                 })}
               </div>
@@ -246,7 +265,7 @@ export function TabPortfolio({
       {equityCurveByAccount.length > 1 && accountStats.length > 1 && (
         <Card title="Curva de equity por cuenta" sub="Balance acumulado en el período seleccionado">
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={equityCurveByAccount} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+            <LineChart data={equityCurveByAccount} margin={{ top: 4, right: 8, bottom: 0, left: 8 }} syncId="portfolio-time">
               <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
@@ -264,7 +283,9 @@ export function TabPortfolio({
                     stroke={color}
                     strokeWidth={1.8}
                     dot={false}
-                    activeDot={{ r: 3, stroke: color }}
+                    activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--panel)", fill: color }}
+                    animationDuration={280}
+                    animationEasing="ease-out"
                     connectNulls
                   />
                 )
