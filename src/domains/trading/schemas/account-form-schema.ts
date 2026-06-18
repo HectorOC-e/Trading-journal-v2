@@ -29,6 +29,8 @@ export const accountFormSchema = z.object({
   maxTrades: z.string(),
   symbols: z.array(z.string()),
   minDays: z.string(),
+  maxLeverage: z.string(),
+  targetLeverage: z.string(),
 })
 
 export type AccountFormValues = z.infer<typeof accountFormSchema>

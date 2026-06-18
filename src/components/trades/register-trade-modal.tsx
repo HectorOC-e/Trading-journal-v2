@@ -16,6 +16,7 @@ import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
+import { computeNotional, computeLeverageMetrics, leverageBand, LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
 
 // ── Psychology types ────────────────────────────────────────────────────────
@@ -39,6 +40,8 @@ interface AccountLike {
   initialBalance: number
   /** Equity = initial + realized P&L (from accounts.list). Sizing base. */
   currentBalance?: number
+  maxLeverage?: number | null
+  targetLeverage?: number | null
   allowedSymbols?: string[]
   ddDailyPct?: number | null
   maxTradesPerDay?: number | null
@@ -300,6 +303,22 @@ export function RegisterTradeModal({
     }
   }, [calcContracts, sizeManual]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Leverage / margin ────────────────────────────────────────────────────
+  // Notional exposure for the planned size at the entry price → effective
+  // leverage, required/free margin and a health band vs the account's target.
+  const sizeNum  = parseFloat(form.size)
+  const entryNum = parseFloat(form.entry)
+  const notional = selectedMarket && pointValue != null
+    ? computeNotional({ category: selectedMarket.category, pointValue, price: entryNum || 0, contracts: sizeNum || 0 })
+    : null
+  const leverage = notional != null
+    ? computeLeverageMetrics({ notional, balance, maxLeverage: selectedAccount?.maxLeverage ?? null })
+    : null
+  const levBand = leverage ? leverageBand(leverage.effectiveLeverage, selectedAccount?.targetLeverage ?? null) : null
+  const showLeverage = leverage != null && (
+    selectedAccount?.maxLeverage != null || selectedAccount?.targetLeverage != null
+  )
+
   // Futures/equities trade in whole units. If the risk %-derived size is below
   // one unit, a single contract/share already exceeds the intended risk — warn.
   const wholeUnitMarket = selectedMarket?.category === "FUTUROS" || selectedMarket?.category === "EQUITIES"
@@ -553,6 +572,35 @@ export function RegisterTradeModal({
             )}
 
             <FieldError message={errors.size?.message} />
+
+            {/* ── Leverage / margin ── */}
+            {showLeverage && leverage && (
+              <div className="mt-2 px-3 py-2.5 rounded-[var(--radius-sm)] bg-[var(--panel-2)] border border-[var(--line)] flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-eyebrow">Apalancamiento</p>
+                  {levBand && leverage.effectiveLeverage != null && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ color: LEVERAGE_BAND_META[levBand].color, background: LEVERAGE_BAND_META[levBand].soft }}>
+                      {leverage.effectiveLeverage.toFixed(1)}x · {LEVERAGE_BAND_META[levBand].label}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-[var(--ink-3)] font-mono leading-relaxed">
+                  Nocional <span className="text-[var(--ink-2)]">${Math.round(leverage.notional).toLocaleString()}</span>
+                  {leverage.marginRequired != null && (
+                    <>
+                      {" · "}Margen req <span className="text-[var(--ink-2)]">${Math.round(leverage.marginRequired).toLocaleString()}</span>
+                      {" · "}Libre <span style={{ color: (leverage.freeMargin ?? 0) >= 0 ? "var(--ink-2)" : "var(--loss)" }}>${Math.round(leverage.freeMargin ?? 0).toLocaleString()}</span>
+                    </>
+                  )}
+                </p>
+                {leverage.exceedsAccount && (
+                  <p className="text-[10px] text-[var(--loss)] leading-snug">
+                    ⚠ El margen requerido supera el balance de la cuenta con su apalancamiento (1:{selectedAccount?.maxLeverage}). Reduce el tamaño.
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Missing-fields hint — only when calc can't run */}
             {calcContracts === null && (() => {
