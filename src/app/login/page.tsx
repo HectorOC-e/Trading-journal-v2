@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { clearSessionStorageKeys } from "@/lib/storage-keys"
 
 // Hero signature: a realistic equity curve (climbs, dips, recovers). The peak is
 // the all-time high, the trough is the worst drawdown — the two truths every
@@ -18,6 +19,11 @@ export default function LoginPage() {
   const [showPwd,  setShowPwd]  = useState(false)
   const [error,    setError]    = useState("")
   const [loading,  setLoading]  = useState(false)
+
+  // Landing on /login means the session ended (explicit logout or expiry). Wipe
+  // session-scoped localStorage so the next login never inherits the previous
+  // user's AI chat history — covers expiry paths where useLogout never ran.
+  useEffect(() => { clearSessionStorageKeys() }, [])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

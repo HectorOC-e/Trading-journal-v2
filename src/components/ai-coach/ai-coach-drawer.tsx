@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizontal, Wrench, Copy, Check, RotateCcw, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
+import { STORAGE_KEYS } from "@/lib/storage-keys"
 
 type Message = {
   id:      string
@@ -42,7 +43,7 @@ type ViewMode = "panel" | "expanded" | "minimized"
 
 type XY = { x: number; y: number }
 
-const HISTORY_KEY  = "tj-coach-history"
+const HISTORY_KEY  = STORAGE_KEYS.coachHistory
 
 /** Keep the in-session drag anchor inside the viewport (e.g. after a resize). */
 function clampPos(p: XY | null, w: number, h: number): XY | null {
