@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizo
 import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
 import { STORAGE_KEYS } from "@/lib/storage-keys"
+import { useAnyDialogOpen } from "@/lib/dialog-open-store"
 
 type Message = {
   id:      string
@@ -92,6 +93,7 @@ export function AiCoachDrawer() {
   const sendRef      = useRef<(t?: string) => void>(() => {})
   const abortRef     = useRef<AbortController | null>(null)
   const isMobile     = useIsMobile()
+  const anyDialogOpen = useAnyDialogOpen()
 
   // ── Mount: restore positions + conversation history ─────────────────────────
   useEffect(() => {
@@ -285,17 +287,22 @@ export function AiCoachDrawer() {
     return () => window.removeEventListener("coach:ask", handler)
   }, [])
 
-  // ── Floating launcher (collapsed) — fixed home position. ──────────────────
+  // While any modal is open, stay out of the way — a fixed FAB/panel would sit
+  // on top of the dialog and cover its content and actions (mobile + desktop).
+  if (anyDialogOpen) return null
+
+  // ── Floating launcher (collapsed) — fixed home position (bottom-right corner,
+  // below the quick-actions FAB which stacks above it on desktop). ──────────────
   if (!open) {
     return (
       <button
         onClick={() => { setOpen(true); setMode("panel") }}
         aria-label="Abrir AI Coach"
         className={cn(
-          "fixed z-[55] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center",
+          "fixed z-[45] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center",
           "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors active:scale-95",
         )}
-        style={{ bottom: isMobile ? 132 : 96, right: 24 }}
+        style={{ bottom: isMobile ? 84 : 24, right: 24 }}
       >
         <MessageCircle size={24} />
       </button>

@@ -38,6 +38,10 @@ function makeMockPrisma() {
     accountLog: {
       create: vi.fn(),
     },
+    trade: {
+      // list() aggregates realized P&L per account for the current balance.
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
     withdrawal: {
       findMany: vi.fn(),
       create: vi.fn(),

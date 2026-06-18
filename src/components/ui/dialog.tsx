@@ -1,12 +1,29 @@
 "use client"
 
+import { useEffect } from "react"
 import * as RadixDialog from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useDialogOpenStore } from "@/lib/dialog-open-store"
 
 export const Dialog        = RadixDialog.Root
 export const DialogTrigger = RadixDialog.Trigger
 export const DialogClose   = RadixDialog.Close
+
+/**
+ * Mounted only while the dialog is actually open (Radix unmounts Content when
+ * closed), so it accurately counts open dialogs for the global store that lets
+ * floating FABs get out of the way. Rendering it inside DialogContent's body —
+ * which Radix mounts even when closed — would over-count.
+ */
+function DialogOpenTracker() {
+  const { inc, dec } = useDialogOpenStore.getState()
+  useEffect(() => {
+    inc()
+    return () => dec()
+  }, [inc, dec])
+  return null
+}
 
 export function DialogContent({
   className,
@@ -29,6 +46,7 @@ export function DialogContent({
         )}
         {...props}
       >
+        <DialogOpenTracker />
         {/* Close button — pinned top-right */}
         <RadixDialog.Close
           className="absolute right-3 top-3 z-20 p-1.5 rounded-[var(--radius-xs)] text-[var(--ink-3)] transition-[color,background-color,transform] duration-150 hover:bg-[var(--chip)] hover:text-[var(--ink)] active:scale-95"

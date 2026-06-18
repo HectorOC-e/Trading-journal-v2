@@ -204,7 +204,7 @@ export function PositionLogModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[520px]">
+      <DialogContent className="max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Gestión de posición — {trade.symbol}</DialogTitle>
         </DialogHeader>
