@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { FieldError } from "@/components/ui/field"
 import { isWin, calcWinRate } from "@/lib/formulas"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
@@ -222,6 +223,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showAllWeeks, setShowAllWeeks] = useState(false)
+  const [summaryError, setSummaryError] = useState("")
 
   const { data: accounts = [] } = trpc.accounts.list.useQuery()
   const { data: rawTrades } = trpc.trades.list.useQuery({ limit: 200 })
@@ -283,6 +285,7 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
     setStep("config"); setSelectedWeek(0); setGenerated(null); setAutoFields(new Set())
     setExecutiveSummary(""); setWhatWorked(""); setToImprove(""); setDisciplineScore(75)
     setLinkedResources([]); setResourcesOpen(false); setShowAllWeeks(false); setAutoSaveStatus("idle")
+    setSummaryError("")
   }
 
   const week = WEEK_OPTIONS[selectedWeek]
@@ -368,6 +371,12 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
   }
 
   function handleSave(status: "draft" | "submitted") {
+    // A submitted review should at least carry an executive summary; drafts are free.
+    if (status === "submitted" && !executiveSummary.trim()) {
+      setSummaryError("Escribe el resumen ejecutivo antes de enviar")
+      setStep("analisis")
+      return
+    }
     if (isEditMode && editReview) {
       updateReview.mutate({
         id: editReview.id,
@@ -534,7 +543,8 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
                       <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>✨ Auto-generado</span>
                     )}
                   </div>
-                  <Textarea value={value} onChange={(e) => { set(e.target.value); markEdited(key) }} placeholder={placeholder} rows={rows} />
+                  <Textarea value={value} error={key === "executiveSummary" && !!summaryError} onChange={(e) => { set(e.target.value); markEdited(key); if (key === "executiveSummary" && summaryError) setSummaryError("") }} placeholder={placeholder} rows={rows} />
+                  {key === "executiveSummary" && <FieldError message={summaryError} />}
                 </div>
               ))}
 

@@ -143,7 +143,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                     {stats ? `${stats.netPnl >= 0 ? "+" : "-"}$${Math.abs(stats.netPnl).toFixed(2)}` : "— sin trades"}
                   </span>
                 </div>
-                <MiniSparkline data={sparkData} positive={sparkPos} />
+                <MiniSparkline data={sparkData} positive={sparkPos} format={(v) => formatMoney(v, { currency: account.currency, decimals: 0 })} />
                 <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
                   <span>Balance inicial → actual</span>
                   <span className="font-mono font-semibold text-[var(--ink)]">
@@ -225,20 +225,29 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                 <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
                   displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(2)}% / ${Number(account.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(account.ddMonthlyPct)}%`} />
               )}
-              {account.targetPct != null && (
+              {account.targetPct != null && (() => {
+                const targetPct = Number(account.targetPct)
+                const hasBase   = initialBalance > 0 && targetPct > 0
+                const progPct   = hasBase && stats ? Math.max(0, stats.netPnl / initialBalance * 100) : null
+                const fillPct   = hasBase && stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * targetPct / 100) * 100)) : 0
+                return (
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({Number(account.targetPct)}%)</span>
+                    <span className="text-[11px] text-[var(--ink-3)]">Objetivo ({targetPct}%)</span>
                     <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                      {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(account.targetPct)}%
+                      {progPct != null ? `${progPct.toFixed(2)}%` : "—"} / {targetPct}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--line)] overflow-hidden">
                     <div className="h-full rounded-full bg-[var(--accent)]"
-                      style={{ width: `${stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * Number(account.targetPct) / 100) * 100)) : 0}%` }} />
+                      style={{ width: `${fillPct}%` }} />
                   </div>
+                  {!hasBase && (
+                    <p className="text-[10px] text-[var(--ink-3)] mt-1">Define un balance inicial para medir el progreso</p>
+                  )}
                 </div>
-              )}
+                )
+              })()}
               <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--line)]">
                 {([
                   account.ddTotalPct      != null ? ["Max DD",        `${Number(account.ddTotalPct)}%`]    : null,

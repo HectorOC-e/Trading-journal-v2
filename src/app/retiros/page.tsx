@@ -11,6 +11,9 @@ import { Input } from "@/components/ui/input"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable, DataTableToolbar, DataTablePagination, FacetedFilter, useDataTable, multiSelectFilter } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { FieldError } from "@/components/ui/field"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { z } from "zod"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -284,7 +287,21 @@ function DeleteCell({ w, onDelete, deleting }: { w: WithdrawalItem; onDelete: (i
 }
 
 /* ── New withdrawal modal ── */
-interface WForm { accountId: string; amount: string; currency: string; date: string; note: string; reference: string }
+const withdrawalSchema = z.object({
+  accountId: z.string().min(1, "Selecciona una cuenta"),
+  amount: z
+    .string()
+    .min(1, "Requerido")
+    .refine((v) => {
+      const n = parseFloat(v.replace(/,/g, ""))
+      return !Number.isNaN(n) && n > 0
+    }, "El monto debe ser mayor a 0"),
+  currency: z.string(),
+  date: z.string().min(1, "Indica la fecha"),
+  note: z.string(),
+  reference: z.string(),
+})
+type WForm = z.infer<typeof withdrawalSchema>
 const FORM_INIT: WForm = { accountId: "", amount: "", currency: "USD", date: new Date().toISOString().slice(0, 10), note: "", reference: "" }
 
 function NuevoRetiroModal({ open, onOpenChange, accounts }: {
@@ -292,34 +309,37 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
   onOpenChange: (v: boolean) => void
   accounts: { id: string; name: string; currency: string }[]
 }) {
-  const [form, setForm] = useState<WForm>(FORM_INIT)
+  const {
+    register, handleSubmit, watch, setValue, reset,
+    formState: { errors },
+  } = useZodForm(withdrawalSchema, { defaultValues: FORM_INIT })
+  const form = watch()
   const utils = trpc.useUtils()
 
   const create = trpc.withdrawals.create.useMutation({
     onSuccess: () => {
       utils.withdrawals.list.invalidate()
       onOpenChange(false)
-      setForm(FORM_INIT)
+      reset(FORM_INIT)
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
-  const set = <K extends keyof WForm>(k: K, v: WForm[K]) => setForm(f => ({ ...f, [k]: v }))
+  const set = <K extends keyof WForm>(k: K, v: WForm[K]) =>
+    setValue(k, v as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
-  function handleSubmit() {
-    if (!form.accountId || !form.amount) return
+  const onValid = (f: WForm) =>
     create.mutate({
-      accountId: form.accountId,
-      amount:    parseFloat(form.amount.replace(/,/g, "")),
-      currency:  form.currency,
-      date:      form.date,
-      note:      form.note,
-      reference: form.reference,
+      accountId: f.accountId,
+      amount:    parseFloat(f.amount.replace(/,/g, "")),
+      currency:  f.currency,
+      date:      f.date,
+      note:      f.note,
+      reference: f.reference,
     })
-  }
 
   return (
-    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) setForm(FORM_INIT) }}>
+    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(FORM_INIT) }}>
       <DialogContent className="max-w-[480px]">
         <DialogHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -341,7 +361,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
               {accounts.length === 0 ? (
                 <p style={{ fontSize: 12, color: "var(--ink-3)" }}>No tienes cuentas. Crea una primero.</p>
               ) : accounts.map(a => (
-                <button key={a.id} onClick={() => { set("accountId", a.id); set("currency", a.currency) }}
+                <button key={a.id} type="button" onClick={() => { set("accountId", a.id); set("currency", a.currency) }}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "10px 14px", borderRadius: 8,
@@ -354,17 +374,18 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
                 </button>
               ))}
             </div>
+            <FieldError message={errors.accountId?.message} />
           </div>
 
           {/* Amount + currency */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
             <div>
-              <label className="text-eyebrow block mb-2">Monto *</label>
-              <Input placeholder="5,000…" inputMode="decimal" value={form.amount} mono onChange={e => set("amount", e.target.value)} />
+              <label className="text-eyebrow block mb-2">Monto <span className="text-[var(--loss)]">*</span></label>
+              <Input placeholder="5,000…" inputMode="decimal" mono error={!!errors.amount} {...register("amount")} />
             </div>
             <div style={{ display: "flex", gap: 4, paddingBottom: 2 }}>
               {["USD", "EUR", "MXN"].map(c => (
-                <button key={c} onClick={() => set("currency", c)}
+                <button key={c} type="button" onClick={() => set("currency", c)}
                   className={cn("px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold transition-colors",
                     form.currency === c ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-3)]"
                   )}>
@@ -373,23 +394,25 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
               ))}
             </div>
           </div>
+          <FieldError message={errors.amount?.message} />
 
           {/* Fecha */}
           <div>
-            <label className="text-eyebrow block mb-2">Fecha del retiro *</label>
-            <Input type="date" value={form.date} onChange={e => set("date", e.target.value)} />
+            <label className="text-eyebrow block mb-2">Fecha del retiro <span className="text-[var(--loss)]">*</span></label>
+            <Input type="date" error={!!errors.date} {...register("date")} />
+            <FieldError message={errors.date?.message} />
           </div>
 
           {/* Nota */}
           <div>
             <label className="text-eyebrow block mb-2">Nota</label>
-            <Input placeholder="Ej. Retiro mensual Phase 2" value={form.note} onChange={e => set("note", e.target.value)} />
+            <Input placeholder="Ej. Retiro mensual Phase 2" {...register("note")} />
           </div>
 
           {/* Referencia */}
           <div>
             <label className="text-eyebrow block mb-2">Referencia / comprobante</label>
-            <Input placeholder="Ej. TXN-12345" value={form.reference} mono onChange={e => set("reference", e.target.value)} />
+            <Input placeholder="Ej. TXN-12345" mono {...register("reference")} />
           </div>
 
           {create.error && (
@@ -401,7 +424,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={create.isPending || !form.accountId || !form.amount}>
+          <Button variant="primary" onClick={handleSubmit(onValid)} disabled={create.isPending}>
             {create.isPending ? <><Loader2 size={13} className="animate-spin" /> Registrando…</> : "Registrar retiro"}
           </Button>
         </DialogFooter>

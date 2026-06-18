@@ -1,10 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { cn } from "@/lib/utils"
+import { z } from "zod"
 import { X, ArrowUpDown, Loader2 } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { FieldError } from "@/components/ui/field"
+import { useZodForm } from "@/lib/forms/use-zod-form"
 
 interface SyncBalanceModalProps {
   accountId:   string
@@ -12,8 +15,18 @@ interface SyncBalanceModalProps {
   onClose:     () => void
 }
 
+const syncSchema = z.object({
+  balance: z
+    .string()
+    .min(1, "Ingresa el balance real")
+    .refine((v) => !Number.isNaN(parseFloat(v)), "Número inválido"),
+})
+type SyncValues = z.infer<typeof syncSchema>
+
 export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanceModalProps) {
-  const [balanceInput, setBalanceInput] = useState("")
+  const { register, handleSubmit, formState: { errors } } = useZodForm(syncSchema, {
+    defaultValues: { balance: "" },
+  })
   const utils = trpc.useUtils()
 
   const syncBalance = trpc.accounts.syncBalance.useMutation({
@@ -25,11 +38,8 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
-  const handleSubmit = () => {
-    const val = parseFloat(balanceInput)
-    if (isNaN(val)) return
-    syncBalance.mutate({ accountId, actualBalance: val })
-  }
+  const onValid = (v: SyncValues) =>
+    syncBalance.mutate({ accountId, actualBalance: parseFloat(v.balance) })
 
   const result = syncBalance.data
   const isDone = !!result
@@ -62,19 +72,22 @@ export function SyncBalanceModal({ accountId, accountName, onClose }: SyncBalanc
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-base font-mono font-semibold text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  aria-invalid={!!errors.balance || undefined}
+                  className={cn(
+                    "w-full rounded-[var(--radius-sm)] border bg-[var(--panel)] px-3 py-2 text-base font-mono font-semibold text-[var(--ink)] focus:outline-none transition-colors",
+                    errors.balance
+                      ? "border-[var(--loss)] focus:border-[var(--loss)]"
+                      : "border-[var(--line)] focus:border-[var(--accent)]",
+                  )}
                   placeholder="0.00"
-                  value={balanceInput}
-                  onChange={e => setBalanceInput(e.target.value)}
                   disabled={syncBalance.isPending}
+                  {...register("balance")}
                 />
+                <FieldError message={errors.balance?.message} />
               </div>
-              {syncBalance.isError && (
-                <p className="text-xs text-[var(--loss)]">{syncBalance.error.message}</p>
-              )}
               <button
-                onClick={handleSubmit}
-                disabled={syncBalance.isPending || !balanceInput || isNaN(parseFloat(balanceInput))}
+                onClick={handleSubmit(onValid)}
+                disabled={syncBalance.isPending}
                 className="w-full py-2 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {syncBalance.isPending ? (

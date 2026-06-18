@@ -64,7 +64,7 @@ export function formatSyncAgo(iso: string | null | undefined, now: number = Date
 }
 
 export function KpiBox({ label, value, sub, positive, icon }: {
-  label: string; value: string; sub: string; positive?: boolean; icon: React.ReactNode
+  label: string; value: React.ReactNode; sub: string; positive?: boolean; icon: React.ReactNode
 }) {
   return (
     <div className="bg-[var(--panel)] border border-[var(--line)] rounded-[var(--radius)] px-4 py-3 flex gap-3 items-start">
@@ -197,7 +197,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
         </div>
 
         <div style={{ margin: "0 -4px" }}>
-          <MiniSparkline data={sparkData} positive={sparkPos} />
+          <MiniSparkline data={sparkData} positive={sparkPos} format={(v) => formatMoney(v, { currency: rawAccount.currency, decimals: 0 })} />
         </div>
 
         {(rawAccount.ddDailyPct != null || rawAccount.ddWeeklyPct != null || rawAccount.ddMonthlyPct != null || rawAccount.ddTotalPct != null || rawAccount.targetPct != null) && (
@@ -232,19 +232,31 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               <RuleBar label="Pérdida mensual" usedPct={stats?.risk.monthly.usedPct ?? 0}
                 displayRight={stats ? `${stats.risk.monthly.actualPct.toFixed(1)}% / ${Number(rawAccount.ddMonthlyPct).toFixed(1)}%` : `— / ${Number(rawAccount.ddMonthlyPct)}%`} />
             )}
-            {rawAccount.targetPct != null && (
+            {rawAccount.targetPct != null && (() => {
+              // Objective progress needs a positive base balance and a positive
+              // target; otherwise it's undefined (avoids Infinity/NaN when the
+              // account was created with an initial balance of 0).
+              const targetPct = Number(rawAccount.targetPct)
+              const hasBase   = initialBalance > 0 && targetPct > 0
+              const progPct   = hasBase && stats ? Math.max(0, stats.netPnl / initialBalance * 100) : null
+              const fillPct   = hasBase && stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * targetPct / 100) * 100)) : 0
+              return (
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-[11px] text-[var(--ink-3)]">{isPF ? "Progreso hacia objetivo" : "Objetivo"}</span>
                   <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
-                    {stats ? `${Math.max(0, stats.netPnl / initialBalance * 100).toFixed(2)}%` : "—"} / {Number(rawAccount.targetPct)}%
+                    {progPct != null ? `${progPct.toFixed(2)}%` : "—"} / {targetPct}%
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
-                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * Number(rawAccount.targetPct) / 100) * 100)) : 0}%` }} />
+                  <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${fillPct}%` }} />
                 </div>
+                {!hasBase && (
+                  <p className="text-[10px] text-[var(--ink-3)] mt-1">Define un balance inicial para medir el progreso</p>
+                )}
               </div>
-            )}
+              )
+            })()}
             {isPF && (rawAccount.maxTradesPerDay != null || rawAccount.allowedSymbols?.length > 0) && (
               <div className="flex justify-between text-[11px] pt-1">
                 {rawAccount.maxTradesPerDay != null && (

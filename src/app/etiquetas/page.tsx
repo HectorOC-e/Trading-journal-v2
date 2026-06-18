@@ -9,6 +9,7 @@ import { DynamicIcon, type IconName } from "lucide-react/dynamic"
 import { TopBar } from "@/components/layout/top-bar"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { FieldError } from "@/components/ui/field"
 import { TagChipView } from "@/components/tags/tag-chip"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
@@ -54,6 +55,7 @@ export default function EtiquetasPage() {
   const reorderMut = trpc.tags.reorder.useMutation({ onSuccess: invalidate })
 
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; draft: Partial<TagRow> } | null>(null)
+  const [nameError, setNameError] = useState("")
   const [merging, setMerging] = useState<TagRow | null>(null)
   const [mergeSurvivor, setMergeSurvivor] = useState("")
   const [deleting, setDeleting] = useState<TagRow | null>(null)
@@ -83,7 +85,7 @@ export default function EtiquetasPage() {
   function saveEditor() {
     if (!editor) return
     const d = editor.draft
-    if (!d.name?.trim()) return
+    if (!d.name?.trim()) { setNameError("Ponle un nombre a la etiqueta"); return }
     const mode = d.displayMode as "icon_color" | "dot" | "text" | undefined
     if (editor.mode === "create") {
       createMut.mutate({ name: d.name.trim(), color: d.color, icon: d.icon ?? null, category: d.category, displayMode: mode, description: d.description })
@@ -102,7 +104,7 @@ export default function EtiquetasPage() {
       <TopBar
         title="Etiquetas"
         subtitle={`${tags.length} etiquetas`}
-        actions={[{ label: "Nueva etiqueta", icon: <Plus size={14} />, variant: "primary" as const, onClick: () => setEditor({ mode: "create", draft: blankDraft() }) }]}
+        actions={[{ label: "Nueva etiqueta", icon: <Plus size={14} />, variant: "primary" as const, onClick: () => { setNameError(""); setEditor({ mode: "create", draft: blankDraft() }) } }]}
       />
 
       <div className="mb-4 flex max-w-[820px] items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3">
@@ -130,7 +132,7 @@ export default function EtiquetasPage() {
                     {t.isSystem && <span className="inline-flex items-center gap-1 rounded-full bg-[var(--chip)] px-2 py-0.5 text-[9px] font-bold uppercase text-[var(--ink-3)]"><Lock size={9} /> Sistema</span>}
                     <span className="ml-auto text-[11px] text-[var(--ink-3)]">{t.count} uso{t.count !== 1 ? "s" : ""}</span>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setEditor({ mode: "edit", draft: { ...t } })} aria-label="Editar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"><Pencil size={13} /></button>
+                      <button onClick={() => { setNameError(""); setEditor({ mode: "edit", draft: { ...t } }) }} aria-label="Editar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"><Pencil size={13} /></button>
                       {!t.isSystem && <button onClick={() => { setMerging(t); setMergeSurvivor("") }} aria-label="Fusionar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"><Merge size={13} /></button>}
                       {!t.isSystem && <button onClick={() => setDeleting(t)} aria-label="Eliminar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--loss-soft)] hover:text-[var(--loss)]"><Trash2 size={13} /></button>}
                     </div>
@@ -143,7 +145,7 @@ export default function EtiquetasPage() {
       )}
 
       {/* Create / Edit modal */}
-      <Dialog open={!!editor} onOpenChange={(v) => { if (!v) setEditor(null) }}>
+      <Dialog open={!!editor} onOpenChange={(v) => { if (!v) { setEditor(null); setNameError("") } }}>
         <DialogContent className="max-w-[460px]">
           <DialogHeader><DialogTitle>{editor?.mode === "create" ? "Nueva etiqueta" : "Editar etiqueta"}</DialogTitle></DialogHeader>
           {editor && (() => {
@@ -154,7 +156,8 @@ export default function EtiquetasPage() {
               <div className="flex flex-col gap-4">
                 <div>
                   <label className="input-label">Nombre {nameLocked && <span className="text-[var(--ink-3)]">(sistema · bloqueado)</span>}</label>
-                  <input value={editor.draft.name ?? ""} disabled={nameLocked} onChange={(e) => set({ name: e.target.value })} className="h-9 w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] outline-none disabled:opacity-60" />
+                  <input value={editor.draft.name ?? ""} disabled={nameLocked} aria-invalid={!!nameError || undefined} onChange={(e) => { set({ name: e.target.value }); if (nameError) setNameError("") }} className={`h-9 w-full rounded-[var(--radius-sm)] border bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] outline-none disabled:opacity-60 ${nameError ? "border-[var(--loss)]" : "border-[var(--line)]"}`} />
+                  <FieldError message={nameError} />
                 </div>
                 <div>
                   <label className="input-label">Color</label>
@@ -201,7 +204,7 @@ export default function EtiquetasPage() {
           })()}
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditor(null)}>Cancelar</Button>
-            <Button variant="primary" onClick={saveEditor} disabled={!editor?.draft.name?.trim()}>{editor?.mode === "create" ? "Crear" : "Guardar"}</Button>
+            <Button variant="primary" onClick={saveEditor}>{editor?.mode === "create" ? "Crear" : "Guardar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

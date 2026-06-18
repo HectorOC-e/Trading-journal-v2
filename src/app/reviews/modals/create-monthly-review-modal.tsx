@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/ui/field"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -89,6 +90,7 @@ export function NuevaMensualModal({ open, onOpenChange, year, month, editReview 
   const [goalsSet,  setGoalsSet]  = useState<string[]>([])
   const [goalsMet,  setGoalsMet]  = useState<string[]>([])
   const [score,     setScore]     = useState<number | "">("")
+  const [summaryError, setSummaryError] = useState("")
 
   const { data: prefill, isLoading: prefilling } = trpc.monthlyReviews.prefill.useQuery(
     { year, month },
@@ -111,6 +113,7 @@ export function NuevaMensualModal({ open, onOpenChange, year, month, editReview 
 
   function resetForm() {
     setSummary(""); setKeyThemes([]); setGoalsSet([]); setGoalsMet([]); setScore("")
+    setSummaryError("")
   }
 
   const upsert = trpc.monthlyReviews.upsert.useMutation({
@@ -134,6 +137,10 @@ export function NuevaMensualModal({ open, onOpenChange, year, month, editReview 
   })
 
   function handleSubmit() {
+    if (!summary.trim()) {
+      setSummaryError("Escribe un resumen del mes antes de guardar")
+      return
+    }
     const payload = {
       summary,
       keyThemes,
@@ -184,10 +191,12 @@ export function NuevaMensualModal({ open, onOpenChange, year, month, editReview 
             <Textarea
               id="monthly-summary"
               value={summary}
-              onChange={e => setSummary(e.target.value)}
+              error={!!summaryError}
+              onChange={e => { setSummary(e.target.value); if (summaryError) setSummaryError("") }}
               placeholder="¿Cómo fue el mes en general? Patrones, fortalezas, áreas a mejorar…"
               rows={4}
             />
+            <FieldError message={summaryError} />
           </div>
 
           <TagInput

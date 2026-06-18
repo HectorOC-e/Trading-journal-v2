@@ -1,51 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Shield, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { FieldError } from "@/components/ui/field"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { accountFormSchema, type AccountFormValues } from "@/domains/trading/schemas/account-form-schema"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
 
 type RawAccount = RouterOutputs["accounts"]["list"][number]
 
-interface AccountForm {
-  tipo: AccountType
-  nombre: string
-  broker: string
-  balance: string
-  currency: string
-  timezone: string
-  ddDailyPct: string
-  ddWeeklyPct: string
-  ddMonthlyPct: string
-  ddTotalPct: string
-  targetPct: string
-  ddModel: "FIXED" | "TRAILING"
-  phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
-  maxTrades: string
-  symbols: string[]
-  minDays: string
-}
-
-export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  account: RawAccount
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  markets?: any[]
-}) {
-  const utils = trpc.useUtils()
-  const [tab, setTab] = useState<"general" | "reglas">("general")
-
-  const [form, setForm] = useState<AccountForm>(() => ({
+function accountToForm(account: RawAccount): AccountFormValues {
+  return {
     tipo:         account.type as AccountType,
     nombre:       account.name,
     broker:       account.broker,
@@ -58,42 +33,63 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
     ddTotalPct:   account.ddTotalPct   != null ? String(Number(account.ddTotalPct))   : "",
     targetPct:    account.targetPct    != null ? String(Number(account.targetPct))    : "",
     ddModel:      (account.ddModel as "FIXED" | "TRAILING") ?? "FIXED",
-    phase:        (account.phase as AccountForm["phase"]) ?? "PHASE_1",
+    phase:        (account.phase as AccountFormValues["phase"]) ?? "PHASE_1",
     maxTrades:    account.maxTradesPerDay != null ? String(account.maxTradesPerDay) : "",
     symbols:      account.allowedSymbols ?? [],
     minDays:      account.minTradingDays  != null ? String(account.minTradingDays)  : "",
-  }))
+  }
+}
 
-  const set = <K extends keyof AccountForm>(k: K, v: AccountForm[K]) => setForm(f => ({ ...f, [k]: v }))
+export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  account: RawAccount
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  markets?: any[]
+}) {
+  const utils = trpc.useUtils()
+  const [tab, setTab] = useState<"general" | "reglas">("general")
+
+  const {
+    register, handleSubmit, watch, setValue, reset,
+    formState: { errors },
+  } = useZodForm(accountFormSchema, { defaultValues: accountToForm(account) })
+  const form = watch()
+
+  // Re-seed when pointed at a different account.
+  useEffect(() => { reset(accountToForm(account)) }, [account.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const set = <K extends keyof AccountFormValues>(k: K, v: AccountFormValues[K]) =>
+    setValue(k, v as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   const update = trpc.accounts.update.useMutation({
     onSuccess: () => { utils.accounts.list.invalidate(); onOpenChange(false) },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
-  function handleSave() {
-    if (!form.nombre.trim() || !form.broker.trim()) return
+  const onValid = (f: AccountFormValues) => {
     const pf = (v: string) => v ? parseFloat(v) : undefined
     const pi = (v: string) => v ? parseInt(v)   : undefined
     update.mutate({
       id:              account.id,
-      name:            form.nombre.trim(),
-      broker:          form.broker.trim(),
-      type:            form.tipo,
-      currency:        form.currency,
-      timezone:        form.timezone,
-      ddDailyPct:      pf(form.ddDailyPct),
-      ddWeeklyPct:     pf(form.ddWeeklyPct),
-      ddMonthlyPct:    pf(form.ddMonthlyPct),
-      ddTotalPct:      pf(form.ddTotalPct),
-      targetPct:       pf(form.targetPct),
-      ddModel:         isPropFirmLike(form.tipo) ? form.ddModel  : undefined,
-      phase:           isPropFirmLike(form.tipo) ? form.phase    : undefined,
-      maxTradesPerDay: isPropFirmLike(form.tipo) ? pi(form.maxTrades) : undefined,
-      minTradingDays:  isPropFirmLike(form.tipo) ? pi(form.minDays)   : undefined,
-      allowedSymbols:  form.symbols,
+      name:            f.nombre.trim(),
+      broker:          f.broker.trim(),
+      type:            f.tipo,
+      currency:        f.currency,
+      timezone:        f.timezone,
+      ddDailyPct:      pf(f.ddDailyPct),
+      ddWeeklyPct:     pf(f.ddWeeklyPct),
+      ddMonthlyPct:    pf(f.ddMonthlyPct),
+      ddTotalPct:      pf(f.ddTotalPct),
+      targetPct:       pf(f.targetPct),
+      ddModel:         isPropFirmLike(f.tipo) ? f.ddModel  : undefined,
+      phase:           isPropFirmLike(f.tipo) ? f.phase    : undefined,
+      maxTradesPerDay: isPropFirmLike(f.tipo) ? pi(f.maxTrades) : undefined,
+      minTradingDays:  isPropFirmLike(f.tipo) ? pi(f.minDays)   : undefined,
+      allowedSymbols:  f.symbols,
     })
   }
+  const onInvalid = () => setTab("general")
 
   const tm = TYPE_META[form.tipo]
 
@@ -126,12 +122,14 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
         {tab === "general" && (
           <div className="flex flex-col gap-4">
             <div>
-              <label className="text-eyebrow block mb-1.5">Nombre *</label>
-              <Input value={form.nombre} onChange={e => set("nombre", e.target.value)} />
+              <label className="text-eyebrow block mb-1.5">Nombre <span className="text-[var(--loss)]">*</span></label>
+              <Input error={!!errors.nombre} {...register("nombre")} />
+              <FieldError message={errors.nombre?.message} />
             </div>
             <div>
-              <label className="text-eyebrow block mb-1.5">Broker *</label>
-              <Input value={form.broker} onChange={e => set("broker", e.target.value)} />
+              <label className="text-eyebrow block mb-1.5">Broker <span className="text-[var(--loss)]">*</span></label>
+              <Input error={!!errors.broker} {...register("broker")} />
+              <FieldError message={errors.broker?.message} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
@@ -163,7 +161,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
                   <div key={field}>
                     <label className="text-eyebrow block mb-1.5">{label}</label>
                     <div className="flex items-center gap-2">
-                      <Input placeholder={ph} value={form[field]} mono onChange={e => set(field, e.target.value)} />
+                      <Input placeholder={ph} mono {...register(field)} />
                       <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
                     </div>
                   </div>
@@ -173,7 +171,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
             <div>
               <label className="text-eyebrow block mb-1.5">Objetivo de ganancia</label>
               <div className="flex items-center gap-2 max-w-[160px]">
-                <Input placeholder="8" value={form.targetPct} mono onChange={e => set("targetPct", e.target.value)} />
+                <Input placeholder="8" mono {...register("targetPct")} />
                 <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
               </div>
             </div>
@@ -193,11 +191,11 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-eyebrow block mb-1.5">Max trades / día</label>
-                    <Input placeholder="3" value={form.maxTrades} mono onChange={e => set("maxTrades", e.target.value)} />
+                    <Input placeholder="3" mono {...register("maxTrades")} />
                   </div>
                   <div>
                     <label className="text-eyebrow block mb-1.5">Min. días trading</label>
-                    <Input placeholder="10" value={form.minDays} mono onChange={e => set("minDays", e.target.value)} />
+                    <Input placeholder="10" mono {...register("minDays")} />
                   </div>
                 </div>
               </div>
@@ -213,7 +211,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSave} disabled={update.isPending}>
+          <Button variant="primary" onClick={handleSubmit(onValid, onInvalid)} disabled={update.isPending}>
             {update.isPending ? <><Loader2 size={13} className="animate-spin" /> Guardando…</> : "Guardar cambios"}
           </Button>
         </DialogFooter>

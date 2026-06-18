@@ -4,12 +4,15 @@ import { useState } from "react"
 import { Shield, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { FieldError } from "@/components/ui/field"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { MarketMultiSelect } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { accountFormSchema, type AccountFormValues } from "@/domains/trading/schemas/account-form-schema"
 import type { AccountType } from "@/types"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
 
@@ -22,26 +25,7 @@ const TIMEZONES = [
   { value: "Europe/Madrid",    label: "Europe/Madrid (CET)" },
 ]
 
-interface AccountForm {
-  tipo: AccountType
-  nombre: string
-  broker: string
-  balance: string
-  currency: string
-  timezone: string
-  ddDailyPct: string
-  ddWeeklyPct: string
-  ddMonthlyPct: string
-  ddTotalPct: string
-  targetPct: string
-  ddModel: "FIXED" | "TRAILING"
-  phase: "PHASE_1" | "PHASE_2" | "FUNDED" | "NONE"
-  maxTrades: string
-  symbols: string[]
-  minDays: string
-}
-
-const FORM_INIT: AccountForm = {
+const FORM_INIT: AccountFormValues = {
   tipo: "PROP_FIRM", nombre: "", broker: "", balance: "", currency: "USD",
   timezone: "America/New_York",
   ddDailyPct: "", ddWeeklyPct: "", ddMonthlyPct: "", ddTotalPct: "", targetPct: "",
@@ -54,7 +38,11 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   markets?: any[]
 }) {
-  const [form, setForm] = useState<AccountForm>(FORM_INIT)
+  const {
+    register, handleSubmit, watch, setValue, reset,
+    formState: { errors },
+  } = useZodForm(accountFormSchema, { defaultValues: FORM_INIT })
+  const form = watch()
   const [tab, setTab]   = useState<"general" | "reglas">("general")
   const utils = trpc.useUtils()
 
@@ -62,7 +50,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
     onSuccess: () => {
       utils.accounts.list.invalidate()
       onOpenChange(false)
-      setForm(FORM_INIT)
+      reset(FORM_INIT)
       setTab("general")
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
@@ -70,7 +58,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
 
   const creating = createAccount.isPending
 
-  function buildInput(f: AccountForm) {
+  function buildInput(f: AccountFormValues) {
     const pf = (v: string) => v ? parseFloat(v) : undefined
     const pi = (v: string) => v ? parseInt(v)   : undefined
     return {
@@ -93,19 +81,18 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
     }
   }
 
-  function handleCreate() {
-    if (!form.nombre.trim() || !form.broker.trim()) return
-    createAccount.mutate(buildInput(form))
-  }
+  const onValid = (values: AccountFormValues) => createAccount.mutate(buildInput(values))
+  // name/broker/balance all live on the General tab — jump there to show errors.
+  const onInvalid = () => setTab("general")
 
-  const set = <K extends keyof AccountForm>(k: K, v: AccountForm[K]) =>
-    setForm(f => ({ ...f, [k]: v }))
+  const set = <K extends keyof AccountFormValues>(k: K, v: AccountFormValues[K]) =>
+    setValue(k, v as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   const tm      = TYPE_META[form.tipo]
   const preview = form.nombre || "Nombre de la cuenta"
 
   return (
-    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setForm(FORM_INIT); setTab("general") } }}>
+    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { reset(FORM_INIT); setTab("general") } }}>
       <DialogContent className="max-w-[580px]">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -149,15 +136,16 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
             </div>
 
             <div>
-              <label className="text-eyebrow block mb-1.5">Nombre de la cuenta *</label>
-              <Input placeholder="FXify 100K — Phase 2" value={form.nombre} onChange={e => set("nombre", e.target.value)} />
+              <label className="text-eyebrow block mb-1.5">Nombre de la cuenta <span className="text-[var(--loss)]">*</span></label>
+              <Input placeholder="FXify 100K — Phase 2" error={!!errors.nombre} {...register("nombre")} />
+              <FieldError message={errors.nombre?.message} />
             </div>
 
             <div>
-              <label className="text-eyebrow block mb-1.5">Broker / Firma prop *</label>
+              <label className="text-eyebrow block mb-1.5">Broker / Firma prop <span className="text-[var(--loss)]">*</span></label>
               <div className="flex gap-1.5 flex-wrap mb-2">
                 {BROKERS.slice(0, 6).map(b => (
-                  <button key={b} onClick={() => set("broker", b)}
+                  <button key={b} type="button" onClick={() => set("broker", b)}
                     className={cn("px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium transition-colors",
                       form.broker === b ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
                     )}>
@@ -165,13 +153,15 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                   </button>
                 ))}
               </div>
-              <Input placeholder="O escribe el nombre…" value={form.broker} onChange={e => set("broker", e.target.value)} />
+              <Input placeholder="O escribe el nombre…" error={!!errors.broker} {...register("broker")} />
+              <FieldError message={errors.broker?.message} />
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="text-eyebrow block mb-1.5">Balance inicial *</label>
-                <Input placeholder="100,000" value={form.balance} onChange={e => set("balance", e.target.value)} mono />
+                <label className="text-eyebrow block mb-1.5">Balance inicial <span className="text-[var(--loss)]">*</span></label>
+                <Input placeholder="100,000" error={!!errors.balance} mono {...register("balance")} />
+                <FieldError message={errors.balance?.message} />
               </div>
               <div>
                 <label className="text-eyebrow block mb-1.5">Divisa</label>
@@ -234,7 +224,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                   <div key={field}>
                     <label className="text-eyebrow block mb-1.5">{label}</label>
                     <div className="flex items-center gap-2">
-                      <Input placeholder={ph} value={form[field]} mono onChange={e => set(field, e.target.value)} />
+                      <Input placeholder={ph} mono {...register(field)} />
                       <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
                     </div>
                     <p className="text-[10px] text-[var(--ink-3)] mt-1">{hint}</p>
@@ -246,7 +236,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
             <div>
               <label className="text-eyebrow block mb-1.5">Objetivo de ganancia</label>
               <div className="flex items-center gap-2 max-w-[160px]">
-                <Input placeholder="8" value={form.targetPct} mono onChange={e => set("targetPct", e.target.value)} />
+                <Input placeholder="8" mono {...register("targetPct")} />
                 <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
               </div>
             </div>
@@ -287,9 +277,9 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                   </div>
                   <div>
                     <label className="text-eyebrow block mb-1.5">Max trades / día</label>
-                    <Input placeholder="3" value={form.maxTrades} mono onChange={e => set("maxTrades", e.target.value)} />
+                    <Input placeholder="3" mono {...register("maxTrades")} />
                     <label className="text-eyebrow block mb-1.5 mt-3">Min. días trading</label>
-                    <Input placeholder="10" value={form.minDays} mono onChange={e => set("minDays", e.target.value)} />
+                    <Input placeholder="10" mono {...register("minDays")} />
                   </div>
                 </div>
               </div>
@@ -309,7 +299,7 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
           {tab === "reglas" && (
             <Button variant="ghost" onClick={() => setTab("general")}>← Volver</Button>
           )}
-          <Button variant="primary" onClick={handleCreate} disabled={creating}>
+          <Button variant="primary" onClick={handleSubmit(onValid, onInvalid)} disabled={creating}>
             {creating ? <><Loader2 size={13} className="animate-spin" /> Creando…</> : "Crear cuenta"}
           </Button>
         </DialogFooter>

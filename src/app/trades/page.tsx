@@ -114,6 +114,7 @@ export default function TradesPage() {
 
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: (trade) => {
+      setModalOpen(false)
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
       const pc = pendingChecklistRef.current
@@ -447,6 +448,7 @@ export default function TradesPage() {
         setups={setups}
         markets={markets}
         loading={accountsLoading || setupsLoading || marketsLoading}
+        submitting={createTrade.isPending}
         customTags={customTags}
         tradeCountToday={tradeCountToday}
         onSubmit={handleModalSubmit}

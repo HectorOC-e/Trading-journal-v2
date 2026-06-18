@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp, Brain } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import {
@@ -10,9 +10,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/ui/field"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
 
 // ── Psychology types ────────────────────────────────────────────────────────
@@ -107,35 +110,9 @@ function computeContracts(params: {
   return riskAmount / riskPerContract
 }
 
-// ── Form state ─────────────────────────────────────────────────────────────
+// ── Form defaults ────────────────────────────────────────────────────────────
 
-interface FormState {
-  direction: TradeDirection
-  symbol: string
-  accountId: string
-  setupId: string
-  entry: string
-  stop: string
-  target: string
-  size: string
-  riskPct: string
-  date: string
-  openTime: string
-  session: TradeSession
-  tags: TradeTag[]
-  notes: string
-  planNotes: string
-  checklistItems: Record<string, boolean>
-  screenshots: string[]
-  // Psychology fields (TASK-034)
-  emotionBefore: EmotionBefore | null
-  confidenceRating: number | null
-  executionQuality: number | null
-  fomoFlag: boolean
-  revengeFlag: boolean
-}
-
-const INITIAL: FormState = {
+const INITIAL: TradeFormValues = {
   direction: "LONG",
   symbol: "",
   accountId: "",
@@ -161,9 +138,12 @@ const INITIAL: FormState = {
   revengeFlag: false,
 }
 
+/** Order in which to surface/scroll to the first validation error. */
+const ERROR_FIELD_ORDER = ["accountId", "symbol", "date", "openTime", "entry", "stop", "target", "size"] as const
+
 // ── Auto quality tag ───────────────────────────────────────────────────────
 
-function computeAutoTag(form: FormState, setup: SetupLike | undefined): TradeTag | null {
+function computeAutoTag(form: TradeFormValues, setup: SetupLike | undefined): TradeTag | null {
   if (!setup) return null
   const stdTotal   = setup.standardChecklist.length
   const stdChecked = setup.standardChecklist.filter(i => form.checklistItems[i]).length
@@ -177,7 +157,7 @@ function computeAutoTag(form: FormState, setup: SetupLike | undefined): TradeTag
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
-export type RegisterTradeFormData = FormState
+export type RegisterTradeFormData = TradeFormValues
 
 interface RegisterTradeModalProps {
   open: boolean
@@ -187,6 +167,8 @@ interface RegisterTradeModalProps {
   markets?: MarketLike[]
   /** True while accounts/setups/markets are still being fetched. */
   loading?: boolean
+  /** True while the create mutation is in flight (modal stays open until success). */
+  submitting?: boolean
   customTags?: string[]
   tradeCountToday?: number
   onSubmit?: (data: RegisterTradeFormData) => void
@@ -201,14 +183,26 @@ export function RegisterTradeModal({
   setups = [],
   markets = [],
   loading = false,
+  submitting = false,
   customTags = [],
   tradeCountToday = 0,
   onSubmit,
 }: RegisterTradeModalProps) {
-  const [form, setForm] = useState<FormState>(INITIAL)
-  const [sizeManual, setSizeManual] = useState(false)
+  const {
+    register, handleSubmit, watch, setValue, getValues, reset,
+    formState: { errors },
+  } = useZodForm(tradeFormSchema, { defaultValues: INITIAL })
+
+  const form = watch()
+  // Purely-UI toggles that aren't part of the validated form payload.
   const [uploading, setUploading] = useState(false)
   const [psychOpen, setPsychOpen] = useState(false)
+  const [sizeManual, setSizeManual] = useState(false)
+
+  const update = <K extends keyof TradeFormValues>(key: K, value: TradeFormValues[K]) =>
+    // RHF's setValue value type is a per-key conditional; the cast is safe since
+    // K and value are tied together by the generic signature above.
+    setValue(key, value as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -225,27 +219,24 @@ export function RegisterTradeModal({
         urls.push(data.publicUrl)
       }
     }
-    setForm(f => ({ ...f, screenshots: [...f.screenshots, ...urls] }))
+    setValue("screenshots", [...getValues("screenshots"), ...urls])
     setUploading(false)
     e.target.value = ""
   }
 
   const removeScreenshot = (idx: number) =>
-    setForm(f => ({ ...f, screenshots: f.screenshots.filter((_, i) => i !== idx) }))
+    setValue("screenshots", getValues("screenshots").filter((_, i) => i !== idx))
 
   // Reset on close
   useEffect(() => {
     if (!open) {
       const t = setTimeout(() => {
-        setForm(INITIAL)
+        reset(INITIAL)
         setSizeManual(false)
       }, 200)
       return () => clearTimeout(t)
     }
-  }, [open])
-
-  const set = (key: keyof FormState) => (val: string) =>
-    setForm(f => ({ ...f, [key]: val }))
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedAccount = accounts.find(a => a.id === form.accountId)
   const selectedSetup   = setups.find(s => s.id === form.setupId)
@@ -274,7 +265,9 @@ export function RegisterTradeModal({
   const pointValue = selectedMarket ? parsePointValue(selectedMarket.pointValue) : null
   const balance    = selectedAccount?.initialBalance ?? 0
 
-  const calcContracts = useMemo(() => {
+  // Cheap derived values — computed inline so the React Compiler can memoize
+  // them (manual useMemo over `watch()` values trips its mutation analysis).
+  const calcContracts: number | null = (() => {
     if (!balance || !pointValue) return null
     return computeContracts({
       balance,
@@ -283,9 +276,9 @@ export function RegisterTradeModal({
       stop:     parseFloat(form.stop)    || 0,
       pointValue,
     })
-  }, [balance, pointValue, form.riskPct, form.entry, form.stop])
+  })()
 
-  const calcRR = useMemo(() => {
+  const calcRR: number | null = (() => {
     const entry  = parseFloat(form.entry)
     const stop   = parseFloat(form.stop)
     const target = parseFloat(form.target)
@@ -294,14 +287,14 @@ export function RegisterTradeModal({
     const reward = form.direction === "LONG" ? target - entry : entry - target
     if (risk === 0 || reward <= 0) return null
     return reward / risk
-  }, [form.entry, form.stop, form.target, form.direction])
+  })()
 
   // Auto-fill size when calculator has a valid result and user hasn't overridden
   useEffect(() => {
     if (calcContracts !== null && !sizeManual) {
-      setForm(f => ({ ...f, size: calcContracts.toFixed(2) }))
+      setValue("size", calcContracts.toFixed(2), { shouldValidate: true })
     }
-  }, [calcContracts, sizeManual])
+  }, [calcContracts, sizeManual]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Futures/equities trade in whole units. If the risk %-derived size is below
   // one unit, a single contract/share already exceeds the intended risk — warn.
@@ -313,27 +306,33 @@ export function RegisterTradeModal({
 
   // ── Checklist helpers ──────────────────────────────────────────────────
   const selectSetup = (setupId: string) => {
-    setForm(f => ({ ...f, setupId, checklistItems: {} }))
+    setValue("setupId", setupId)
+    setValue("checklistItems", {})
   }
 
   const toggleItem = (item: string) =>
-    setForm(f => ({
-      ...f,
-      checklistItems: { ...f.checklistItems, [item]: !f.checklistItems[item] },
-    }))
+    setValue("checklistItems", { ...getValues("checklistItems"), [item]: !getValues("checklistItems")[item] })
 
-  const toggleManualTag = (tag: TradeTag) =>
-    setForm(f => ({
-      ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag],
-    }))
+  const toggleManualTag = (tag: TradeTag) => {
+    const tags = getValues("tags")
+    update("tags", tags.includes(tag) ? tags.filter(t => t !== tag) : [...tags, tag])
+  }
 
   const showWarning = tradeCountToday >= 2
 
-  const handleSubmit = () => {
-    const finalTags: TradeTag[] = autoTag ? [autoTag] : form.tags
-    onSubmit?.({ ...form, tags: finalTags })
-    onOpenChange(false)
+  const onValid = (values: TradeFormValues) => {
+    const finalTags: TradeTag[] = (autoTag ? [autoTag] : values.tags) as TradeTag[]
+    onSubmit?.({ ...values, tags: finalTags })
+    // NOTE: the modal no longer closes here. The parent closes it on mutation
+    // success, so a server rejection keeps the modal open with input intact.
+  }
+
+  const onInvalid = () => {
+    const first = ERROR_FIELD_ORDER.find(k => k in errors)
+    if (first) {
+      const el = document.querySelector(`[data-field="${first}"]`)
+      el?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -345,11 +344,12 @@ export function RegisterTradeModal({
           <DialogTitle>Registrar trade</DialogTitle>
         </DialogHeader>
 
+        <form onSubmit={handleSubmit(onValid, onInvalid)} noValidate>
         <div className="flex flex-col gap-5">
 
           {/* ── Cuenta ── */}
-          <div>
-            <p className="text-eyebrow mb-2">Cuenta *</p>
+          <div data-field="accountId">
+            <p className="text-eyebrow mb-2">Cuenta <span className="text-[var(--loss)]">*</span></p>
             {accounts.length > 0 ? (
               <div className="flex gap-2 flex-wrap">
                 {accounts.map(acc => (
@@ -357,7 +357,8 @@ export function RegisterTradeModal({
                     key={acc.id}
                     type="button"
                     onClick={() => {
-                      setForm(f => ({ ...f, accountId: acc.id, symbol: "" }))
+                      setValue("accountId", acc.id, { shouldValidate: true, shouldTouch: true })
+                      setValue("symbol", "")
                       setSizeManual(false)
                     }}
                     className={cn(
@@ -387,6 +388,7 @@ export function RegisterTradeModal({
             ) : (
               <p className="text-xs text-[var(--ink-3)]">{loading ? "Cargando cuentas…" : "No hay cuentas activas. Crea una en Cuentas primero."}</p>
             )}
+            <FieldError message={errors.accountId?.message} />
           </div>
 
           {/* ── Dirección ── */}
@@ -397,7 +399,7 @@ export function RegisterTradeModal({
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, direction: d }))}
+                  onClick={() => update("direction", d)}
                   className={cn(
                     "flex-1 py-2 rounded-[var(--radius-sm)] text-sm font-semibold transition-colors",
                     form.direction === d
@@ -414,8 +416,8 @@ export function RegisterTradeModal({
           </div>
 
           {/* ── Símbolo desde mercados ── */}
-          <div>
-            <p className="text-eyebrow mb-2">Símbolo *</p>
+          <div data-field="symbol">
+            <p className="text-eyebrow mb-2">Símbolo <span className="text-[var(--loss)]">*</span></p>
             {markets.length === 0 ? (
               <p className="text-xs text-[var(--ink-3)]">{loading ? "Cargando mercados…" : "No hay mercados. Agrégalos en la sección Mercados."}</p>
             ) : (
@@ -423,7 +425,7 @@ export function RegisterTradeModal({
                 <SymbolCombobox
                   markets={visibleMarkets}
                   value={form.symbol}
-                  onChange={sym => { setForm(f => ({ ...f, symbol: sym })); setSizeManual(false) }}
+                  onChange={sym => { update("symbol", sym); setSizeManual(false) }}
                   placeholder="Buscar símbolo…"
                 />
                 {selectedMarket && (
@@ -433,56 +435,56 @@ export function RegisterTradeModal({
                 )}
               </>
             )}
+            <FieldError message={errors.symbol?.message} />
           </div>
 
           {/* ── Fecha + Hora ── */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-eyebrow block mb-1.5">Fecha *</label>
-              <Input type="date" value={form.date} onChange={e => set("date")(e.target.value)} />
+            <div data-field="date">
+              <label className="text-eyebrow block mb-1.5">Fecha <span className="text-[var(--loss)]">*</span></label>
+              <Input type="date" error={!!errors.date} {...register("date")} />
+              <FieldError message={errors.date?.message} />
             </div>
-            <div>
-              <label className="text-eyebrow block mb-1.5">Hora apertura *</label>
-              <Input type="time" value={form.openTime} onChange={e => set("openTime")(e.target.value)} />
+            <div data-field="openTime">
+              <label className="text-eyebrow block mb-1.5">Hora apertura <span className="text-[var(--loss)]">*</span></label>
+              <Input type="time" error={!!errors.openTime} {...register("openTime")} />
+              <FieldError message={errors.openTime?.message} />
             </div>
           </div>
 
           {/* ── Entry / Stop / Target ── */}
           <div className="grid grid-cols-3 gap-3">
             {(["entry", "stop", "target"] as const).map((key, i) => (
-              <div key={key}>
+              <div key={key} data-field={key}>
                 <label className="text-eyebrow block mb-1.5">
-                  {["Entry *", "Stop *", "Target *"][i]}
+                  {["Entry", "Stop", "Target"][i]} <span className="text-[var(--loss)]">*</span>
                 </label>
                 <Input
                   placeholder={["21,450.00", "21,380.00", "21,590.00"][i]}
-                  value={form[key]}
-                  onChange={e => {
-                    set(key)(e.target.value)
-                    setSizeManual(false)
-                  }}
                   inputMode="decimal"
                   mono
+                  error={!!errors[key]}
+                  {...register(key, { onChange: () => setSizeManual(false) })}
                 />
+                <FieldError message={errors[key]?.message} />
               </div>
             ))}
           </div>
 
           {/* ── Calculadora de contratos ── */}
-          <div>
+          <div data-field="size">
             <div className="flex items-center gap-1.5 mb-2">
               <Calculator size={12} className="text-[var(--ink-3)]" />
-              <p className="text-eyebrow">Tamaño (contratos) *</p>
+              <p className="text-eyebrow">Tamaño (contratos) <span className="text-[var(--loss)]">*</span></p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] text-[var(--ink-3)] block mb-1">Riesgo %</label>
                 <Input
                   placeholder="1"
-                  value={form.riskPct}
-                  onChange={e => { set("riskPct")(e.target.value); setSizeManual(false) }}
                   inputMode="decimal"
                   mono
+                  {...register("riskPct", { onChange: () => setSizeManual(false) })}
                 />
               </div>
               <div>
@@ -494,13 +496,10 @@ export function RegisterTradeModal({
                 </label>
                 <Input
                   placeholder="2"
-                  value={form.size}
-                  onChange={e => {
-                    set("size")(e.target.value)
-                    setSizeManual(true)
-                  }}
                   inputMode="decimal"
                   mono
+                  error={!!errors.size}
+                  {...register("size", { onChange: () => setSizeManual(true) })}
                 />
               </div>
             </div>
@@ -549,6 +548,8 @@ export function RegisterTradeModal({
               </div>
             )}
 
+            <FieldError message={errors.size?.message} />
+
             {/* Missing-fields hint — only when calc can't run */}
             {calcContracts === null && (() => {
               const missing: string[] = []
@@ -560,9 +561,9 @@ export function RegisterTradeModal({
               if (form.symbol && !pointValue)  missing.push("valor/pto del símbolo")
               if (missing.length === 0) return null
               return (
-                <p className="text-[10px] mt-1.5 flex items-center gap-1" style={{ color: "var(--loss)" }}>
-                  <span style={{ fontSize: 10 }}>⚠</span>
-                  Falta: {missing.join(", ")}
+                <p className="text-[10px] mt-1.5 flex items-center gap-1 text-[var(--ink-3)]">
+                  <Calculator size={10} />
+                  Calculadora: falta {missing.join(", ")}
                 </p>
               )
             })()}
@@ -570,14 +571,14 @@ export function RegisterTradeModal({
 
           {/* ── Setup + Checklists ── */}
           <div>
-            <p className="text-eyebrow mb-2">Setup *</p>
+            <p className="text-eyebrow mb-2">Setup <span className="text-[var(--loss)]">*</span></p>
             {setups.length > 0 ? (
               <>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {/* Deselect option */}
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, setupId: "", checklistItems: {} }))}
+                    onClick={() => { setValue("setupId", ""); setValue("checklistItems", {}) }}
                     className={cn(
                       "text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                       !form.setupId
@@ -763,14 +764,7 @@ export function RegisterTradeModal({
                       <button
                         key={tag}
                         type="button"
-                        onClick={() => {
-                          setForm(f => ({
-                            ...f,
-                            tags: (f.tags as string[]).includes(tag)
-                              ? f.tags.filter(t => t !== tag)
-                              : [...f.tags, tag as TradeTag],
-                          }))
-                        }}
+                        onClick={() => toggleManualTag(tag as TradeTag)}
                         className={cn(
                           "h-7 px-3 rounded-full text-xs font-medium transition-colors",
                           (form.tags as string[]).includes(tag)
@@ -793,7 +787,7 @@ export function RegisterTradeModal({
             <FilterBar
               options={SESSION_OPTIONS}
               value={form.session}
-              onChange={v => setForm(f => ({ ...f, session: v as TradeSession }))}
+              onChange={v => update("session", v as TradeSession)}
             />
           </div>
 
@@ -812,9 +806,9 @@ export function RegisterTradeModal({
             <label className="text-eyebrow block mb-1.5">Plan pre-operación</label>
             <Textarea
               placeholder="¿Por qué vas a tomar este trade? Nivel clave, catalizador, invalidación…"
-              value={form.planNotes}
-              onChange={e => setForm(f => ({ ...f, planNotes: e.target.value.slice(0, 500) }))}
               rows={2}
+              maxLength={500}
+              {...register("planNotes")}
             />
             {form.planNotes.length > 400 && (
               <p className="text-[10px] text-[var(--ink-3)] mt-1">{form.planNotes.length}/500</p>
@@ -826,8 +820,7 @@ export function RegisterTradeModal({
             <label className="text-eyebrow block mb-1.5">Notas</label>
             <Textarea
               placeholder="Entrada en zona de liquidez…"
-              value={form.notes}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              {...register("notes")}
             />
           </div>
 
@@ -836,7 +829,7 @@ export function RegisterTradeModal({
             <button
               type="button"
               className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--panel-2)] transition-colors"
-              onClick={() => setPsychOpen(v => !v)}
+              onClick={() => setPsychOpen(!psychOpen)}
             >
               <Brain size={12} className="text-[var(--ink-3)]" />
               <span className="text-eyebrow flex-1">Psicología</span>
@@ -852,7 +845,7 @@ export function RegisterTradeModal({
                   <div className="flex gap-1 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => setForm(f => ({ ...f, emotionBefore: null }))}
+                      onClick={() => update("emotionBefore", null)}
                       className={cn(
                         "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
                         !form.emotionBefore
@@ -866,7 +859,7 @@ export function RegisterTradeModal({
                       <button
                         key={value}
                         type="button"
-                        onClick={() => setForm(f => ({ ...f, emotionBefore: value }))}
+                        onClick={() => update("emotionBefore", value)}
                         className={cn(
                           "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
                           form.emotionBefore === value
@@ -889,7 +882,7 @@ export function RegisterTradeModal({
                         <button
                           key={n}
                           type="button"
-                          onClick={() => setForm(f => ({ ...f, confidenceRating: f.confidenceRating === n ? null : n }))}
+                          onClick={() => update("confidenceRating", form.confidenceRating === n ? null : n)}
                           className={cn(
                             "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
                             form.confidenceRating === n
@@ -909,7 +902,7 @@ export function RegisterTradeModal({
                         <button
                           key={n}
                           type="button"
-                          onClick={() => setForm(f => ({ ...f, executionQuality: f.executionQuality === n ? null : n }))}
+                          onClick={() => update("executionQuality", form.executionQuality === n ? null : n)}
                           className={cn(
                             "w-8 h-8 rounded-[var(--radius-sm)] text-xs font-bold transition-colors",
                             form.executionQuality === n
@@ -930,7 +923,7 @@ export function RegisterTradeModal({
                     <input
                       type="checkbox"
                       checked={form.fomoFlag}
-                      onChange={e => setForm(f => ({ ...f, fomoFlag: e.target.checked }))}
+                      onChange={e => update("fomoFlag", e.target.checked)}
                       className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                     <span className="text-xs text-[var(--ink-2)]">¿FOMO?</span>
@@ -939,7 +932,7 @@ export function RegisterTradeModal({
                     <input
                       type="checkbox"
                       checked={form.revengeFlag}
-                      onChange={e => setForm(f => ({ ...f, revengeFlag: e.target.checked }))}
+                      onChange={e => update("revengeFlag", e.target.checked)}
                       className="accent-[var(--accent)] w-3.5 h-3.5"
                     />
                     <span className="text-xs text-[var(--ink-2)]">¿Revanche?</span>
@@ -993,11 +986,12 @@ export function RegisterTradeModal({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSubmit}>
-            Registrar trade
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="submit" variant="primary" disabled={submitting}>
+            {submitting ? "Registrando…" : "Registrar trade"}
           </Button>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
