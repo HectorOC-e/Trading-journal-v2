@@ -4,6 +4,8 @@ import { useState } from "react"
 import { Code2, Eye } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
+import { cn } from "@/lib/utils"
 import { ConditionGroup, isGroup, type Group } from "@/components/rules/condition-group"
 import { ActionList } from "@/components/rules/action-list"
 import { PRE_TRIGGERS, type Trigger, type ConditionNode, type RuleAction } from "@/domains/rules/types"
@@ -45,6 +47,8 @@ export function RuleBuilder({ open, initial, onClose, onSave }: {
   const [jsonMode, setJsonMode] = useState(false)
   const [jsonText, setJsonText] = useState("")
   const [jsonError, setJsonError] = useState("")
+  const [nameError, setNameError] = useState("")
+  const [actionsError, setActionsError] = useState("")
 
   const allowBlock = PRE_TRIGGERS.includes(trigger)
   const conditions: ConditionNode = group.children.length ? group : {}
@@ -62,7 +66,10 @@ export function RuleBuilder({ open, initial, onClose, onSave }: {
   }
 
   function save() {
-    if (!name.trim() || actions.length === 0) return
+    let ok = true
+    if (!name.trim())        { setNameError("Ponle un nombre a la regla"); ok = false }
+    if (actions.length === 0) { setActionsError("Agrega al menos una acción"); ok = false }
+    if (!ok) return
     onSave({ id: initial?.id, name: name.trim(), trigger, conditions, actions, priority: initial?.priority })
   }
 
@@ -73,11 +80,23 @@ export function RuleBuilder({ open, initial, onClose, onSave }: {
           <DialogTitle>{initial?.id ? "Editar automatización" : "Nueva automatización"}</DialogTitle>
         </DialogHeader>
 
-        <div className="mb-3 flex items-center gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la regla" className="h-9 flex-1 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] outline-none" />
-          <button onClick={() => (jsonMode ? exitJson() : enterJson())} className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--line)] px-2.5 py-1.5 text-[11px] text-[var(--ink-2)]">
-            {jsonMode ? <><Eye size={12} /> Visual</> : <><Code2 size={12} /> JSON</>}
-          </button>
+        <div className="mb-3">
+          <div className="flex items-center gap-2">
+            <input
+              value={name}
+              onChange={(e) => { setName(e.target.value); if (nameError) setNameError("") }}
+              placeholder="Nombre de la regla"
+              aria-invalid={!!nameError || undefined}
+              className={cn(
+                "h-9 flex-1 rounded-[var(--radius-sm)] border bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] outline-none transition-colors",
+                nameError ? "border-[var(--loss)]" : "border-[var(--line)]",
+              )}
+            />
+            <button onClick={() => (jsonMode ? exitJson() : enterJson())} className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--line)] px-2.5 py-1.5 text-[11px] text-[var(--ink-2)]">
+              {jsonMode ? <><Eye size={12} /> Visual</> : <><Code2 size={12} /> JSON</>}
+            </button>
+          </div>
+          <FieldError message={nameError} />
         </div>
 
         {jsonMode ? (
@@ -99,7 +118,8 @@ export function RuleBuilder({ open, initial, onClose, onSave }: {
             </section>
             <section>
               <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-[var(--win)]">Entonces (THEN)</p>
-              <ActionList value={actions} onChange={setActions} allowBlock={allowBlock} />
+              <ActionList value={actions} onChange={(a) => { setActions(a); if (actionsError) setActionsError("") }} allowBlock={allowBlock} />
+              <FieldError message={actionsError} />
               {!allowBlock && actions.some((a) => a.type === "BLOCK") && <p className="mt-1 text-[11px] text-[var(--loss)]">«Bloquear» solo es válido en triggers pre-trade.</p>}
             </section>
           </div>
@@ -107,7 +127,7 @@ export function RuleBuilder({ open, initial, onClose, onSave }: {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={save} disabled={!name.trim() || actions.length === 0 || jsonMode}>Guardar</Button>
+          <Button variant="primary" onClick={save} disabled={jsonMode}>Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

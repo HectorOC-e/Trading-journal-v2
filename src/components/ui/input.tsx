@@ -1,3 +1,4 @@
+import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -5,9 +6,14 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: boolean
 }
 
-export function Input({ className, mono, error, ...props }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { className, mono, error, ...props },
+  ref,
+) {
   return (
     <input
+      ref={ref}
+      aria-invalid={error || undefined}
       className={cn(
         "w-full h-8 px-3 rounded-[var(--radius-sm)] text-[13px]",
         "bg-[var(--panel-2)] border text-[var(--ink)]",
@@ -24,4 +30,4 @@ export function Input({ className, mono, error, ...props }: InputProps) {
       {...props}
     />
   )
-}
+})

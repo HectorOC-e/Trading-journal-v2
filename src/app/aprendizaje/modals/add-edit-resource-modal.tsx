@@ -8,6 +8,7 @@ import {
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { FieldError } from "@/components/ui/field"
 import { cn } from "@/lib/utils"
 import type { RouterOutputs } from "@/server/trpc/root"
 import {
@@ -27,6 +28,7 @@ export function AddEditResourceModal({
   editTarget:   ResourceFromDB | null
 }) {
   const [form, setForm] = useState<FormState>(emptyForm())
+  const [titleError, setTitleError] = useState("")
   const utils = trpc.useUtils()
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export function AddEditResourceModal({
   const showProgress = PROGRESS_TYPES.includes(form.type)
 
   function handleSave() {
-    if (!form.title.trim()) return
+    if (!form.title.trim()) { setTitleError("Ponle un título al recurso"); return }
     const payload = {
       title:           form.title,
       type:            form.type,
@@ -95,7 +97,7 @@ export function AddEditResourceModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setForm(emptyForm()) }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setForm(emptyForm()); setTitleError("") } }}>
       <DialogContent className="max-w-lg w-full">
         <DialogHeader>
           <DialogTitle>{isEditMode ? "Editar recurso" : "Añadir recurso"}</DialogTitle>
@@ -125,13 +127,18 @@ export function AddEditResourceModal({
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-1.5 block">Título *</label>
+            <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-1.5 block">Título <span className="text-[var(--loss)]">*</span></label>
             <input
-              className="w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border border-[var(--line)] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+              aria-invalid={!!titleError || undefined}
+              className={cn(
+                "w-full h-9 px-3 rounded-[var(--radius-sm)] text-sm bg-[var(--panel-2)] border text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
+                titleError ? "border-[var(--loss)]" : "border-[var(--line)]",
+              )}
               placeholder="Ej. Trading in the Zone"
               value={form.title}
-              onChange={(e) => setField("title", e.target.value)}
+              onChange={(e) => { setField("title", e.target.value); if (titleError) setTitleError("") }}
             />
+            <FieldError message={titleError} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -259,7 +266,7 @@ export function AddEditResourceModal({
             variant="primary"
             size="sm"
             onClick={handleSave}
-            disabled={!form.title.trim() || createResource.isPending || updateResource.isPending}
+            disabled={createResource.isPending || updateResource.isPending}
           >
             {(createResource.isPending || updateResource.isPending)
               ? "Guardando…"

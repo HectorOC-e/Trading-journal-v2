@@ -1,12 +1,18 @@
+import { forwardRef } from "react"
 import { cn } from "@/lib/utils"
 
 export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean
 }
 
-export function Textarea({ className, error, ...props }: TextareaProps) {
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
+  { className, error, ...props },
+  ref,
+) {
   return (
     <textarea
+      ref={ref}
+      aria-invalid={error || undefined}
       className={cn(
         "w-full px-3 py-2 rounded-[var(--radius-sm)] text-[13px] resize-y",
         "bg-[var(--panel-2)] border text-[var(--ink)]",
@@ -22,4 +28,4 @@ export function Textarea({ className, error, ...props }: TextareaProps) {
       {...props}
     />
   )
-}
+})

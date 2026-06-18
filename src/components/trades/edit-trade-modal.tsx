@@ -6,6 +6,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { tradeEditSchema, type TradeEditValues } from "@/domains/trading/schemas/trade-form-schema"
 
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
@@ -71,10 +74,19 @@ export function EditTradeModal({
 }: EditTradeModalProps) {
   const [tab, setTab] = useState<Tab>("precios")
 
-  const [entry,  setEntry]  = useState(String(trade.entry))
-  const [stop,   setStop]   = useState(String(trade.stop))
-  const [target, setTarget] = useState(String(trade.target))
-  const [size,   setSize]   = useState(String(trade.size))
+  // Prices are validated via RHF + zod; the rest of the form stays local state.
+  const {
+    register, handleSubmit, reset,
+    formState: { errors },
+  } = useZodForm(tradeEditSchema, {
+    defaultValues: {
+      entry:  String(trade.entry),
+      stop:   String(trade.stop),
+      target: String(trade.target),
+      size:   String(trade.size),
+    },
+  })
+
   const [session, setSession] = useState(trade.session)
   const [notes,     setNotes]     = useState(trade.notes ?? "")
   const [planNotes, setPlanNotes] = useState(trade.planNotes ?? "")
@@ -95,6 +107,16 @@ export function EditTradeModal({
   const aplusItems = activeSetup?.aplusChecklist ?? []
   const hasChecklist = stdItems.length > 0 || aplusItems.length > 0
 
+  // Re-seed price fields when the modal is pointed at a different trade.
+  useEffect(() => {
+    reset({
+      entry:  String(trade.entry),
+      stop:   String(trade.stop),
+      target: String(trade.target),
+      size:   String(trade.size),
+    })
+  }, [trade.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reset checklist when setup changes
   useEffect(() => {
     if (!activeSetup) { setChecklist({}); return }
@@ -109,7 +131,7 @@ export function EditTradeModal({
   const toggleCheck = (item: string) =>
     setChecklist(prev => ({ ...prev, [item]: !prev[item] }))
 
-  const handleSave = () => {
+  const onValid = (prices: TradeEditValues) => {
     // Build tags from checklist: add "A+" if all A+ items checked
     let finalTags = [...tags]
     if (aplusItems.length > 0 && aplusItems.every(i => checklist[i])) {
@@ -119,10 +141,10 @@ export function EditTradeModal({
     }
 
     onSave?.({
-      entry:   parseFloat(entry)  || trade.entry,
-      stop:    parseFloat(stop)   || trade.stop,
-      target:  parseFloat(target) || trade.target,
-      size:    parseFloat(size)   || trade.size,
+      entry:   parseFloat(prices.entry),
+      stop:    parseFloat(prices.stop),
+      target:  parseFloat(prices.target),
+      size:    parseFloat(prices.size),
       session,
       notes,
       planNotes: planNotes || null,
@@ -135,6 +157,9 @@ export function EditTradeModal({
       revengeFlag,
     })
   }
+
+  // Validation errors only live on the Precios tab — jump there to reveal them.
+  const onInvalid = () => setTab("precios")
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -163,21 +188,28 @@ export function EditTradeModal({
 
         {tab === "precios" && (
           <div className="flex flex-col gap-3">
-            {[
-              { label: "Entry",   value: entry,  set: setEntry },
-              { label: "Stop",    value: stop,   set: setStop },
-              { label: "Target",  value: target, set: setTarget },
-              { label: "Tamaño",  value: size,   set: setSize },
-            ].map(({ label, value, set }) => (
-              <div key={label} className="flex flex-col gap-1">
+            {([
+              ["entry",  "Entry"],
+              ["stop",   "Stop"],
+              ["target", "Target"],
+              ["size",   "Tamaño"],
+            ] as const).map(([name, label]) => (
+              <div key={name} className="flex flex-col gap-1">
                 <label className="text-[10px] text-[var(--ink-3)] font-medium">{label}</label>
                 <input
                   type="number"
                   inputMode="decimal"
-                  className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-sm font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
-                  value={value}
-                  onChange={e => set(e.target.value)}
+                  step="any"
+                  aria-invalid={!!errors[name] || undefined}
+                  className={cn(
+                    "w-full rounded-[var(--radius-sm)] border bg-[var(--panel-2)] px-3 py-2 text-sm font-mono text-[var(--ink)] focus:outline-none transition-colors",
+                    errors[name]
+                      ? "border-[var(--loss)] focus:border-[var(--loss)]"
+                      : "border-[var(--line)] focus:border-[var(--accent)]",
+                  )}
+                  {...register(name)}
                 />
+                <FieldError message={errors[name]?.message} />
               </div>
             ))}
           </div>
@@ -444,7 +476,7 @@ export function EditTradeModal({
           <Button
             size="md"
             className="bg-[var(--accent)] text-white hover:opacity-90"
-            onClick={handleSave}
+            onClick={handleSubmit(onValid, onInvalid)}
             disabled={saving}
           >
             {saving ? "Guardando…" : "Guardar"}

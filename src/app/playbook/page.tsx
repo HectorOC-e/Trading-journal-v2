@@ -12,10 +12,13 @@ import { Input }     from "@/components/ui/input"
 import { Textarea }  from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FilterBar } from "@/components/ui/filter-bar"
+import { FieldError } from "@/components/ui/field"
 import { cn }        from "@/lib/utils"
 import { trpc }           from "@/lib/trpc/client"
 import { toast }           from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { useZodForm } from "@/lib/forms/use-zod-form"
+import { setupFormSchema, type SetupFormValues } from "@/domains/trading/schemas/setup-form-schema"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -693,19 +696,7 @@ function ChecklistEditor({ title, icon, items, onChange }: {
 const COLORS  = ["#f59e0b", "#ef4444", "#22c55e", "#4f6ef7", "#a855f7", "#14b8a6", "#f97316", "#ec4899", "#6b7280"]
 const MARKETS = ["NQ Futures", "ES Futures", "GC Futures", "FX", "Equities", "Crypto", "Otro"]
 
-interface SetupForm {
-  name: string; abbr: string; market: string
-  direction: Direction; status: SetupStatus
-  description: string; color: string
-  images: string[]
-  aplusChecklist: string[]; standardChecklist: string[]
-  // T-VIII-002 edge definition fields (stored as strings for input, converted on save)
-  expectedWr:   string
-  expectedAvgR: string
-  minR:         string
-  maxR:         string
-}
-const FORM_INIT: SetupForm = {
+const FORM_INIT: SetupFormValues = {
   name: "", abbr: "", market: "NQ Futures", direction: "AMBAS", status: "ACTIVO",
   description: "", color: "#4f6ef7",
   images: [],
@@ -719,7 +710,11 @@ function SetupModal({ open, onOpenChange, editSetup }: {
 }) {
   const isEdit = !!editSetup
   const utils  = trpc.useUtils()
-  const [form,        setForm]        = useState<SetupForm>(FORM_INIT)
+  const {
+    register, handleSubmit, watch, setValue, getValues, reset,
+    formState: { errors },
+  } = useZodForm(setupFormSchema, { defaultValues: FORM_INIT })
+  const form = watch()
   const [tab,         setTab]         = useState<"info" | "checklist" | "edge">("info")
   const [uploading,     setUploading]     = useState(false)
   const [uploadError,   setUploadError]   = useState<string | null>(null)
@@ -728,7 +723,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   useEffect(() => {
     if (open) {
       if (editSetup) {
-        setForm({
+        reset({
           name:             editSetup.name,
           abbr:             editSetup.abbreviation,
           market:           editSetup.market,
@@ -745,12 +740,12 @@ function SetupModal({ open, onOpenChange, editSetup }: {
           maxR:         editSetup.maxR         != null ? String(editSetup.maxR)         : "",
         })
       } else {
-        setForm(FORM_INIT)
+        reset(FORM_INIT)
         setTab("info")
       }
     } else {
       /* Small delay so form doesn't flash empty while modal animates out */
-      const t = setTimeout(() => { setForm(FORM_INIT); setTab("info") }, 200)
+      const t = setTimeout(() => { reset(FORM_INIT); setTab("info") }, 200)
       return () => clearTimeout(t)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -759,7 +754,8 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
   const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
 
-  const set = <K extends keyof SetupForm>(key: K, val: SetupForm[K]) => setForm(f => ({ ...f, [key]: val }))
+  const set = <K extends keyof SetupFormValues>(key: K, val: SetupFormValues[K]) =>
+    setValue(key, val as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   /* ── Image upload via validated Route Handler ── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -789,36 +785,37 @@ function SetupModal({ open, onOpenChange, editSetup }: {
         failed++
       }
     }
-    setForm(f => ({ ...f, images: [...f.images, ...urls] }))
+    setValue("images", [...getValues("images"), ...urls])
     setUploading(false)
     e.target.value = ""
     if (failed === 0) setUploadError(null)
   }
 
   const removeImage = (idx: number) =>
-    setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))
+    setValue("images", getValues("images").filter((_, i) => i !== idx))
 
-  const handleSave = () => {
+  const onValid = (f: SetupFormValues) => {
     const toNum = (s: string): number | undefined => {
       const n = parseFloat(s)
       return isNaN(n) ? undefined : n
     }
     const payload = {
-      name: form.name.trim(), abbreviation: form.abbr.trim().toUpperCase(),
-      market: form.market, direction: form.direction, status: form.status,
-      description: form.description.trim(), color: form.color,
-      images: form.images,
-      aplusChecklist: form.aplusChecklist.filter(Boolean),
-      standardChecklist: form.standardChecklist.filter(Boolean),
-      expectedWr:   toNum(form.expectedWr),
-      expectedAvgR: toNum(form.expectedAvgR),
-      minR:         toNum(form.minR),
-      maxR:         toNum(form.maxR),
+      name: f.name.trim(), abbreviation: f.abbr.trim().toUpperCase(),
+      market: f.market, direction: f.direction, status: f.status,
+      description: f.description.trim(), color: f.color,
+      images: f.images,
+      aplusChecklist: f.aplusChecklist.filter(Boolean),
+      standardChecklist: f.standardChecklist.filter(Boolean),
+      expectedWr:   toNum(f.expectedWr),
+      expectedAvgR: toNum(f.expectedAvgR),
+      minR:         toNum(f.minR),
+      maxR:         toNum(f.maxR),
     }
-    if (!payload.name || !payload.abbreviation) return
     if (isEdit && editSetup) updateMut.mutate({ id: editSetup.id, ...payload })
     else createMut.mutate(payload)
   }
+  // name + abbr live on the Información tab — jump there to surface errors.
+  const onInvalid = () => setTab("info")
 
   const isSaving = createMut.isPending || updateMut.isPending || uploading
 
@@ -852,13 +849,15 @@ function SetupModal({ open, onOpenChange, editSetup }: {
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-2">
-                <label className="text-eyebrow block mb-1.5">Nombre del setup *</label>
-                <Input placeholder="MMXM — Breaker Block" value={form.name} onChange={e => set("name", e.target.value)} />
+                <label className="text-eyebrow block mb-1.5">Nombre del setup <span className="text-[var(--loss)]">*</span></label>
+                <Input placeholder="MMXM — Breaker Block" error={!!errors.name} value={form.name} onChange={e => set("name", e.target.value)} />
+                <FieldError message={errors.name?.message} />
               </div>
               <div>
-                <label className="text-eyebrow block mb-1.5">Abreviatura *</label>
-                <Input placeholder="BB" value={form.abbr} maxLength={4}
+                <label className="text-eyebrow block mb-1.5">Abreviatura <span className="text-[var(--loss)]">*</span></label>
+                <Input placeholder="BB" value={form.abbr} maxLength={4} error={!!errors.abbr}
                   onChange={e => set("abbr", e.target.value.toUpperCase())} mono />
+                <FieldError message={errors.abbr?.message} />
               </div>
             </div>
 
@@ -1098,7 +1097,7 @@ function SetupModal({ open, onOpenChange, editSetup }: {
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
           {(tab === "checklist" || tab === "edge") && <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>}
-          <Button variant="primary" onClick={handleSave} disabled={isSaving || !form.name.trim() || !form.abbr.trim()}>
+          <Button variant="primary" onClick={handleSubmit(onValid, onInvalid)} disabled={isSaving}>
             {isSaving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear setup"}
           </Button>
         </DialogFooter>
