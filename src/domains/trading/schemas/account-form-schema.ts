@@ -34,3 +34,10 @@ export const accountFormSchema = z.object({
 })
 
 export type AccountFormValues = z.infer<typeof accountFormSchema>
+
+/**
+ * Edit form variant: the edit modal has no balance field (you can't change an
+ * account's initial balance there), so it must NOT require balance > 0 —
+ * otherwise existing accounts created with a 0 balance can never be saved.
+ */
+export const accountEditSchema = accountFormSchema.extend({ balance: z.string() })

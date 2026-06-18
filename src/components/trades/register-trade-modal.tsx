@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldError } from "@/components/ui/field"
 import { FilterBar } from "@/components/ui/filter-bar"
+import { SelectableTagChip } from "@/components/tags/tag-chip"
 import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { useZodForm } from "@/lib/forms/use-zod-form"
@@ -797,36 +798,22 @@ export function RegisterTradeModal({
               ) : (
                 <div>
                   <p className="text-xs text-[var(--ink-3)] mb-2">Sin setup — selecciona manualmente:</p>
-                  <div className="flex gap-1 flex-wrap">
-                    {MANUAL_TAG_OPTIONS.map(({ value, label }) => (
-                      <button
+                  <div className="flex gap-1.5 flex-wrap">
+                    {MANUAL_TAG_OPTIONS.map(({ value }) => (
+                      <SelectableTagChip
                         key={value}
-                        type="button"
-                        onClick={() => toggleManualTag(value)}
-                        className={cn(
-                          "h-7 px-3 rounded-full text-xs font-medium transition-colors",
-                          form.tags.includes(value)
-                            ? "bg-[var(--loss-soft)] text-[var(--loss)]"
-                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                        )}
-                      >
-                        {label}
-                      </button>
+                        name={value}
+                        selected={form.tags.includes(value)}
+                        onToggle={() => toggleManualTag(value)}
+                      />
                     ))}
                     {customTags.map(tag => (
-                      <button
+                      <SelectableTagChip
                         key={tag}
-                        type="button"
-                        onClick={() => toggleManualTag(tag as TradeTag)}
-                        className={cn(
-                          "h-7 px-3 rounded-full text-xs font-medium transition-colors",
-                          (form.tags as string[]).includes(tag)
-                            ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                        )}
-                      >
-                        {tag}
-                      </button>
+                        name={tag}
+                        selected={(form.tags as string[]).includes(tag)}
+                        onToggle={() => toggleManualTag(tag as TradeTag)}
+                      />
                     ))}
                   </div>
                 </div>

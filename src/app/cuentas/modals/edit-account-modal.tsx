@@ -12,7 +12,7 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { useZodForm } from "@/lib/forms/use-zod-form"
-import { accountFormSchema, type AccountFormValues } from "@/domains/trading/schemas/account-form-schema"
+import { accountEditSchema, type AccountFormValues } from "@/domains/trading/schemas/account-form-schema"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
@@ -55,7 +55,7 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
   const {
     register, handleSubmit, watch, setValue, reset,
     formState: { errors },
-  } = useZodForm(accountFormSchema, { defaultValues: accountToForm(account) })
+  } = useZodForm(accountEditSchema, { defaultValues: accountToForm(account) })
   const form = watch()
 
   // Re-seed when pointed at a different account.

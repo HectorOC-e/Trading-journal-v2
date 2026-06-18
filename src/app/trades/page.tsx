@@ -335,9 +335,9 @@ export default function TradesPage() {
           <button onClick={() => setLockedNotice(null)} className="text-[var(--loss)] opacity-60 hover:opacity-100">✕</button>
         </div>
       )}
-      <div className="flex" style={{ margin: "-28px -32px", minHeight: "100vh" }}>
-        {/* Main column */}
-        <div className="flex-1" style={{ padding: "28px 32px", minWidth: 0 }}>
+      {/* Main column — sits within the layout padding (no negative-margin
+          breakout, which overflowed the viewport on mobile where padding is 16px). */}
+      <div style={{ minWidth: 0 }}>
           <TopBar
             title="Trades"
             subtitle={tradesLoading ? "Cargando…" : `${trades.length} operaciones`}
@@ -427,8 +427,6 @@ export default function TradesPage() {
               </button>
             </div>
           )}
-        </div>
-
       </div>
 
       {/* Detail — unified overlay drawer (Fase 2): no longer strangles the table (C3) */}

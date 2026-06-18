@@ -41,3 +41,38 @@ export function TagChip({ name, size = "md" }: { name: string; size?: "sm" | "md
   const catalog = useTagCatalog()
   return <TagChipView meta={resolveTagMeta(name, catalog)} size={size} />
 }
+
+/**
+ * Toggleable tag chip that wears the catalog identity (color + icon). Selected =
+ * tinted in the tag's colour with a ring; unselected = quiet. Used where a tag
+ * is picked (e.g. the trade modal) so the picker reflects the real tag look.
+ */
+export function SelectableTagChip({
+  name, selected, onToggle,
+}: { name: string; selected: boolean; onToggle: () => void }) {
+  const catalog = useTagCatalog()
+  const meta = resolveTagMeta(name, catalog)
+  const hasIcon = meta.displayMode !== "text" && !!meta.icon
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-xs font-semibold transition-[color,background-color,box-shadow] active:scale-[0.97]"
+      style={
+        selected
+          ? {
+              background: `color-mix(in srgb, ${meta.color} 18%, transparent)`,
+              color: meta.color,
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${meta.color} 45%, transparent)`,
+            }
+          : { background: "var(--chip)", color: "var(--ink-3)" }
+      }
+    >
+      {hasIcon
+        ? <DynamicIcon name={meta.icon as IconName} size={12} />
+        : <span className="rounded-full" style={{ width: 7, height: 7, background: meta.color }} />}
+      {meta.name}
+    </button>
+  )
+}
