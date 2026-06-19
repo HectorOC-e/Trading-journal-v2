@@ -242,7 +242,7 @@ export default function TradesPage() {
     accountId: string; setupId: string; direction: "LONG" | "SHORT"
     symbol: string; entry: string; stop: string; target: string; size: string
     date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
-    tags: string[]; notes: string; screenshots: string[]
+    tags: string[]; notes: string; planNotes: string; screenshots: string[]
     checklistItems: Record<string, boolean>
     emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
     confidenceRating: number | null
@@ -279,6 +279,7 @@ export default function TradesPage() {
       session:          form.session,
       tags:             form.tags,
       notes:            form.notes,
+      planNotes:        form.planNotes,
       screenshotUrls:   form.screenshots,
       emotionBefore:    form.emotionBefore ?? undefined,
       confidenceRating: form.confidenceRating,

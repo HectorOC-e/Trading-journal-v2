@@ -59,6 +59,19 @@ describe("buildKpis", () => {
     expect(kpis.netPnl).toBe(50)
   })
 
+  it("expectancy $ equals mean P&L per trade, breakeven-safe", () => {
+    // 1 win (+100), 1 loss (-50), 1 breakeven (0) → net 50 over 3 trades.
+    // Must be 50/3, NOT the old avgWin*wr − avgLoss*(1−wr) which folded the
+    // breakeven into the loss weight and under-reported expectancy.
+    const trades = [
+      trade({ id: "1", date: "2026-05-01", pnl: 100 }),
+      trade({ id: "2", date: "2026-05-01", pnl: -50 }),
+      trade({ id: "3", date: "2026-05-01", pnl: 0 }),
+    ]
+    const kpis = buildKpis(trades, "2026-05-31", "2026-05-01")
+    expect(kpis.expectancyDollar).toBeCloseTo(50 / 3, 2)
+  })
+
   it("pnlToday includes only today's trades", () => {
     const trades = [
       trade({ id: "1", date: "2026-05-31", pnl: 200 }),

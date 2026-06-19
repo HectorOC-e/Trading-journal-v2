@@ -1,6 +1,7 @@
 import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import { computeEquityCurve } from "@/domains/trading/services/account-service"
 import { computeAccountRisk, accountDrawdown, type AccountRisk } from "@/domains/trading/services/risk-engine"
+import { computeNotional, computeLeverageMetrics, leverageBand, type LeverageBand } from "@/domains/trading/services/leverage"
 
 export type MinimalTrade = {
   id:        string
@@ -74,6 +75,45 @@ export type AccountStat = {
   drawdownPct:  number
   sparkline:    number[]
   risk:         AccountRisk   // single source of truth for limit gauges + breach
+  exposure?:    AccountExposure | null  // live open-position leverage, if any
+}
+
+/** Live market exposure from an account's currently OPEN positions. */
+export type AccountExposure = {
+  openPositions:     number
+  notional:          number
+  effectiveLeverage: number | null
+  band:              LeverageBand | null
+}
+
+/**
+ * Aggregate the notional + effective leverage of every account's OPEN positions.
+ * Effective leverage = total open notional / current balance, banded against the
+ * account's healthy target. Closed-only stats never see this, so it lives apart.
+ */
+export function buildAccountExposure(
+  openTrades:     { accountId: string; symbol: string; entry: number; size: number }[],
+  marketBySymbol: Map<string, { category: string; pointValue: number }>,
+  accounts:       { id: string; balance: number; maxLeverage: number | null; targetLeverage: number | null }[],
+): Record<string, AccountExposure> {
+  const byAccount: Record<string, AccountExposure> = {}
+  for (const a of accounts) {
+    const ot = openTrades.filter(t => t.accountId === a.id)
+    let notional = 0
+    for (const t of ot) {
+      const m = marketBySymbol.get(t.symbol)
+      const n = m ? computeNotional({ category: m.category, pointValue: m.pointValue, price: t.entry, contracts: t.size }) : null
+      if (n != null) notional += n
+    }
+    const lev = computeLeverageMetrics({ notional, balance: a.balance, maxLeverage: a.maxLeverage })
+    byAccount[a.id] = {
+      openPositions:     ot.length,
+      notional:          parseFloat(notional.toFixed(2)),
+      effectiveLeverage: lev.effectiveLeverage != null ? parseFloat(lev.effectiveLeverage.toFixed(2)) : null,
+      band:              leverageBand(lev.effectiveLeverage, a.targetLeverage),
+    }
+  }
+  return byAccount
 }
 
 export type AccountLimits = {
@@ -131,12 +171,12 @@ export function buildKpis(
   const expectancyR   = calcExpectancyR(trades.map(t => ({ rMultiple: t.rMultiple })))
   const sharpeRatio   = calcSharpeRatio(withR.map(t => t.rMultiple!))
 
-  const winsT   = trades.filter(t => t.pnl > 0)
-  const lossesT = trades.filter(t => t.pnl < 0)
-  const avgWin  = winsT.length   > 0 ? winsT.reduce((s, t) => s + t.pnl, 0) / winsT.length : 0
-  const avgLoss = lossesT.length > 0 ? Math.abs(lossesT.reduce((s, t) => s + t.pnl, 0) / lossesT.length) : 0
-  const wr      = total > 0 ? winsT.length / total : 0
-  const expectancyDollar = avgWin * wr - avgLoss * (1 - wr)
+  // Expectancy in $ is the average realized P&L per closed trade — the dollar
+  // analogue of expectancyR, and consistent with analytics-bundle (netPnl/total).
+  // The previous win/loss decomposition (avgWin*wr − avgLoss*(1−wr)) folded
+  // breakeven trades into the loss weight (1−wr counts them, but avgLoss excludes
+  // them), biasing the figure more negative than the true mean per trade.
+  const expectancyDollar = total > 0 ? netPnl / total : 0
 
   const pnlMonth        = trades.filter(t => t.date >= monthStart).reduce((s, t) => s + t.pnl, 0)
   const pnlToday        = trades.filter(t => t.date === today).reduce((s, t) => s + t.pnl, 0)

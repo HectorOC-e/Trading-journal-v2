@@ -132,7 +132,7 @@ function SetupCard({ setup, selected, onClick, stats, versionCount }: {
       aria-pressed={selected}
       onClick={onClick}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick?.() } }}
-      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[border-color,box-shadow,opacity] duration-150 overflow-hidden hover:border-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      className="rounded-[var(--radius)] border bg-[var(--panel)] flex flex-col cursor-pointer transition-[border-color,box-shadow,opacity,transform] duration-150 ease-[var(--ease-out)] overflow-hidden hover:border-[var(--accent-soft)] hover:-translate-y-[3px] active:scale-[0.99] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
       style={{
         borderColor: selected ? "var(--accent)" : "var(--line)",
         boxShadow:   selected ? "0 0 0 1px var(--accent)" : undefined,

@@ -4,13 +4,13 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import {
   Target, Shield, BarChart3, ChevronRight,
-  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown, Lock,
+  CheckCircle2, PauseCircle, Archive, XCircle, ArrowUpDown, Lock, AlertTriangle,
 } from "lucide-react"
 import { DUR, EASE_OUT } from "@/lib/motion"
+import { LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { formatMoney } from "@/lib/format/money"
-import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { trpc } from "@/lib/trpc/client"
@@ -18,6 +18,7 @@ import { trpc } from "@/lib/trpc/client"
 export type RawAccount = RouterOutputs["accounts"]["list"][number]
 
 type AccountRisk = RouterOutputs["trades"]["dashboardStats"]["accountStats"][number]["risk"]
+type AccountExposure = RouterOutputs["trades"]["dashboardStats"]["accountStats"][number]["exposure"]
 
 export interface TradeStats {
   netPnl: number
@@ -32,6 +33,7 @@ export interface TradeStats {
   drawdownPct: number
   sparkline: number[]
   risk: AccountRisk
+  exposure?: AccountExposure
 }
 
 export const TYPE_META: Record<AccountType, { label: string; color: string; bg: string }> = {
@@ -118,7 +120,11 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   // so they clear automatically once the period rolls over.
   const lockReason = (rawAccount as { lockReason?: string }).lockReason ?? ""
   const isLocked   = (rawAccount as { locked?: boolean }).locked ?? false
-  const isBlocked  = (isLocked && isPermanentLockReason(lockReason)) || !!stats?.risk.breach
+  // Honest badge: a real DB lock reads "BLOQUEADA"; a live limit breach that
+  // hasn't locked the account yet reads "EN RIESGO" — it's still operable until
+  // the next trade trips the server guard, so claiming it's blocked is wrong.
+  const isBlocked   = isLocked
+  const isAtRisk    = !isBlocked && !!stats?.risk.breach
 
   return (
     <motion.div
@@ -149,8 +155,16 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: tm.bg, color: tm.color }}>{tm.label}</span>
               {isBlocked && (
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  title={lockReason ? `Bloqueada: ${lockReason}` : "Cuenta bloqueada"}
                   style={{ background: "var(--loss-soft)", color: "var(--loss)" }}>
                   <Lock size={8} /> BLOQUEADA
+                </span>
+              )}
+              {isAtRisk && (
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                  title="Límite de riesgo superado — se bloqueará en el próximo trade"
+                  style={{ background: "var(--warn-soft, rgba(245,158,11,0.12))", color: "var(--warn, #f59e0b)" }}>
+                  <AlertTriangle size={8} /> EN RIESGO
                 </span>
               )}
             </div>
@@ -292,6 +306,21 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
             </p>
           </div>
         </div>
+
+        {/* ── Live leverage exposure from open positions ── */}
+        {stats?.exposure && stats.exposure.openPositions > 0 && stats.exposure.effectiveLeverage != null && (
+          <div className="flex items-center justify-between text-[11px] pt-2 border-t border-[var(--line)]">
+            <span className="text-[var(--ink-3)]">
+              Exposición abierta · {stats.exposure.openPositions} pos
+            </span>
+            <span className="font-mono font-semibold inline-flex items-center gap-1.5">
+              <span style={{ color: stats.exposure.band ? LEVERAGE_BAND_META[stats.exposure.band].color : "var(--ink-2)" }}>
+                {stats.exposure.effectiveLeverage.toFixed(1)}×
+              </span>
+              <span className="text-[var(--ink-3)]">${Math.round(stats.exposure.notional).toLocaleString()}</span>
+            </span>
+          </div>
+        )}
 
         {/* ── Balance adjustment from sync corrections (baked into equity above) ── */}
         {variance != null && variance !== 0 && (
