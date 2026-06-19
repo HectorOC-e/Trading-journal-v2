@@ -65,7 +65,14 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
     setValue(k, v as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   const update = trpc.accounts.update.useMutation({
-    onSuccess: () => { utils.accounts.list.invalidate(); onOpenChange(false) },
+    // Editing limits changes both the configured cap (accounts.list) AND the bar
+    // fill / actual% (computed server-side in trades.dashboardStats). Invalidate
+    // both so the risk gauges reflect the new limits immediately.
+    onSuccess: () => {
+      utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
+      onOpenChange(false)
+    },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 

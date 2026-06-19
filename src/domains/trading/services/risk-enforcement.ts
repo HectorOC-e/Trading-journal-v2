@@ -118,7 +118,10 @@ export async function loadAccountRisk(
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   })
   const rows = closed.map(t => ({ pnl: Number(t.pnl ?? 0), date: t.date as Date }))
-  const sumFrom = (from: Date) => rows.filter(r => r.date >= from).reduce((s, r) => s + r.pnl, 0)
+  const sumFrom   = (from: Date) => rows.filter(r => r.date >= from).reduce((s, r) => s + r.pnl, 0)
+  // Equity at the start of each window = initial + P&L realized before it opened.
+  // Loss limits use this moving base; total drawdown stays on the initial balance.
+  const sumBefore = (from: Date) => rows.filter(r => r.date <  from).reduce((s, r) => s + r.pnl, 0)
   const isPropFirm = account.type === "PROP_FIRM" || account.type === "DEMO_PROP"
 
   return computeAccountRisk({
@@ -130,6 +133,9 @@ export async function loadAccountRisk(
     dayPnl:         rows.filter(r => sameDay(r.date, bounds.day)).reduce((s, r) => s + r.pnl, 0),
     weekPnl:        sumFrom(bounds.weekStart),
     monthPnl:       sumFrom(bounds.monthStart),
+    dayBaseBalance:   account.initialBalance + sumBefore(bounds.day),
+    weekBaseBalance:  account.initialBalance + sumBefore(bounds.weekStart),
+    monthBaseBalance: account.initialBalance + sumBefore(bounds.monthStart),
     maxDrawdown:    accountDrawdown(rows.map(r => r.pnl), { isPropFirm, ddModel: account.ddModel }),
   })
 }

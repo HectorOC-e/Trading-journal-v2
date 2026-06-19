@@ -75,6 +75,35 @@ describe("computeAccountRisk — auto-lock breach (BUG#1 PROBLEMA B)", () => {
   })
 })
 
+describe("computeAccountRisk — moving period base (start-of-period equity)", () => {
+  it("loss limit measures against the period-start equity, not the static initial balance", () => {
+    // Account started at $100, lost $5 on a prior day → today's base is $95.
+    // A $4.75 loss today is exactly 5% of $95, so a 5% daily limit must breach.
+    const r = computeAccountRisk({
+      initialBalance: 100, ...NO_LIMITS, ddDailyPct: 5,
+      dayPnl: -4.75, weekPnl: 0, monthPnl: 0, maxDrawdown: 0,
+      dayBaseBalance: 95,
+    })
+    expect(r.daily.actualPct).toBeCloseTo(5, 1)   // 4.75 / 95 * 100 (not / 100)
+    expect(r.breach?.reason).toBe("DAILY_LOSS_LIMIT")
+  })
+
+  it("falls back to initialBalance when no period base is provided (day 1)", () => {
+    const r = base({ ddDailyPct: 5, dayPnl: -500 }) // 5% of 10k initial
+    expect(r.daily.actualPct).toBeCloseTo(5, 1)
+    expect(r.breach?.reason).toBe("DAILY_LOSS_LIMIT")
+  })
+
+  it("total drawdown stays anchored to the initial balance (not the moving base)", () => {
+    const r = computeAccountRisk({
+      initialBalance: 100, ...NO_LIMITS, ddTotalPct: 10,
+      dayPnl: 0, weekPnl: 0, monthPnl: 0, maxDrawdown: 10,
+      dayBaseBalance: 50, weekBaseBalance: 50, monthBaseBalance: 50,
+    })
+    expect(r.total.actualPct).toBeCloseTo(10, 1)  // 10 / 100 initial, ignores the $50 base
+  })
+})
+
 describe("maxDrawdownFromPnl", () => {
   it("peak-to-trough", () => {
     expect(maxDrawdownFromPnl([100, 200, -300, 200])).toBe(300)
