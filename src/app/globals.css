@@ -1,5 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap");
 @import "tailwindcss";
+/* Predefined full palettes (generated from src/lib/theme — run scripts/gen-theme-css.mjs).
+   Uses html[data-theme] selectors so it wins over :root regardless of @import order. */
+@import "./theme-palettes.generated.css";
 
 /* ── Design Tokens ── */
 :root {
@@ -93,97 +96,14 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   THEME PALETTES (Fase 1)
-   A theme changes ACCENT + ATMOSPHERE (bg/panel/line/chip) only.
-   win/loss/be are reserved and NEVER overridden here.
-   Applied via <html data-theme="violeta|turquesa|carmesi">.
-   "indigo" (default) = :root / .dark above — no block needed.
+   THEME PALETTES (full-palette redesign)
+   Predefined palettes (violeta/turquesa/carmesi/oceano/rosa/grafito/esmeralda)
+   are now GENERATED into theme-palettes.generated.css (imported at the top) from
+   src/lib/theme. A palette controls ACCENT + ATMOSPHERE (bg/panel/ink/line/chip);
+   win/loss/be stay reserved. "indigo" (default) = the :root / .dark base above.
+   Custom palettes (data-theme="custom") are derived at runtime and injected as
+   inline vars on <html> by ThemeProvider (see src/lib/theme/apply.ts).
    ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Tema 2 · Violeta (Purple Noguchi #60519b) — premium / creativo ── */
-[data-theme="violeta"] {
-  --bg:          oklch(98.5% 0.006 295);
-  --panel-2:     oklch(97.5% 0.006 295);
-  --line:        oklch(91% 0.009 295);
-  --line-2:      oklch(87% 0.011 295);
-  --chip:        oklch(94% 0.008 295);
-  --accent:      oklch(52% 0.15 295);
-  --accent-h:    oklch(47% 0.17 295);
-  --accent-soft: oklch(94% 0.045 295);
-}
-.dark[data-theme="violeta"] {
-  --bg:          oklch(13% 0.018 290);
-  --panel:       oklch(16% 0.018 290);
-  --panel-2:     oklch(19% 0.018 290);
-  --line:        oklch(24% 0.018 290);
-  --line-2:      oklch(28% 0.020 290);
-  --chip:        oklch(24% 0.018 290);
-  --ink:         oklch(94% 0.010 290);
-  --ink-2:       oklch(76% 0.012 290);
-  --ink-3:       oklch(52% 0.012 290);
-  --accent:      oklch(58% 0.17 295);
-  --accent-h:    oklch(64% 0.17 295);
-  --accent-soft: oklch(28% 0.07 295);
-}
-
-/* ── Tema 3 · Turquesa (Turquoise Noguchi #00a6c0) — calma / tech ── */
-[data-theme="turquesa"] {
-  --bg:          oklch(98.5% 0.006 215);
-  --panel-2:     oklch(97.5% 0.006 215);
-  --line:        oklch(91% 0.009 215);
-  --line-2:      oklch(87% 0.011 215);
-  --chip:        oklch(94% 0.008 215);
-  --accent:      oklch(58% 0.12 215);
-  --accent-h:    oklch(52% 0.13 215);
-  --accent-soft: oklch(94% 0.045 215);
-}
-.dark[data-theme="turquesa"] {
-  --bg:          oklch(15% 0.020 230);
-  --panel:       oklch(18% 0.022 230);
-  --panel-2:     oklch(21% 0.024 230);
-  --line:        oklch(27% 0.024 230);
-  --line-2:      oklch(31% 0.026 230);
-  --chip:        oklch(27% 0.024 230);
-  --ink:         oklch(94% 0.010 230);
-  --ink-2:       oklch(76% 0.012 230);
-  --ink-3:       oklch(54% 0.014 230);
-  --accent:      oklch(72% 0.13 210);
-  --accent-h:    oklch(78% 0.13 210);
-  --accent-soft: oklch(30% 0.07 215);
-  --accent-contrast: oklch(20% 0.03 230);
-}
-
-/* ── Tema 4 · Carmesí (Red Noguchi #75020f) — rojo SOLO atmósfera; accent dorado
-       para no chocar con --loss (rojo = pérdida). ── */
-[data-theme="carmesi"] {
-  --bg:          oklch(98.5% 0.007 25);
-  --panel-2:     oklch(97.5% 0.007 25);
-  --line:        oklch(91% 0.010 25);
-  --line-2:      oklch(87% 0.012 25);
-  --chip:        oklch(94% 0.009 25);
-  --accent:      oklch(64% 0.13 75);
-  --accent-h:    oklch(58% 0.14 75);
-  --accent-soft: oklch(95% 0.05 80);
-  --accent-contrast: oklch(20% 0.03 60);
-}
-.dark[data-theme="carmesi"] {
-  --bg:          oklch(13% 0.020 18);
-  --panel:       oklch(16% 0.024 18);
-  --panel-2:     oklch(19% 0.028 18);
-  --line:        oklch(26% 0.030 18);
-  --line-2:      oklch(30% 0.034 18);
-  --chip:        oklch(26% 0.030 18);
-  --ink:         oklch(94% 0.012 30);
-  --ink-2:       oklch(76% 0.014 30);
-  --ink-3:       oklch(54% 0.014 30);
-  --accent:      oklch(78% 0.14 80);
-  --accent-h:    oklch(84% 0.14 80);
-  --accent-soft: oklch(30% 0.07 60);
-  --accent-contrast: oklch(20% 0.03 60);
-}
-
-/* ── Custom theme overrides are injected inline on <html> by ThemeProvider
-       via --accent / --accent-soft etc. (see theme-provider.tsx). ── */
 
 @theme inline {
   --color-bg:          var(--bg);

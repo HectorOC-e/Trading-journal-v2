@@ -41,8 +41,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 var t = localStorage.getItem('tj-theme') || 'system';
                 var isDark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                 d.classList.toggle('dark', isDark);
-                var ct = localStorage.getItem('tj-color-theme');
-                if (ct && ct !== 'indigo') d.setAttribute('data-theme', ct);
+                var ct = localStorage.getItem('tj-color-theme') || 'indigo';
+                if (ct.indexOf('custom:') === 0) {
+                  d.setAttribute('data-theme', 'custom');
+                  var v = localStorage.getItem(isDark ? 'tj-custom-vars-dark' : 'tj-custom-vars-light');
+                  if (v) d.style.cssText += ';' + v;
+                } else if (ct !== 'indigo') {
+                  d.setAttribute('data-theme', ct);
+                }
               } catch(e) {}
             })();`,
           }}

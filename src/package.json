@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "gen:theme": "node ../scripts/gen-theme-css.mjs",
+    "build": "node ../scripts/gen-theme-css.mjs && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
