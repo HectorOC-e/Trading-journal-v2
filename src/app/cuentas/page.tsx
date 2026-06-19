@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Plus, TrendingUp,
-  Shield, CheckCircle2, BarChart3,
+  Shield, CheckCircle2, BarChart3, HelpCircle,
 } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
+import { SpotlightTour, type TourStep } from "@/components/onboarding/spotlight-tour"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
@@ -34,6 +35,22 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "todas",      label: "Todas"      },
 ]
 
+// Guided tour (same pattern as Aprendizaje › Hoy). Anchors whose element is not
+// present (e.g. límites/exposición on an account without them) are filtered out
+// at open time, so the spotlight only lands on real content.
+const TOUR_SEEN_KEY = "tj-cuentas-tour-seen"
+const TOUR_STEPS: TourStep[] = [
+  { anchor: "kpis",              title: "Tu portafolio de un vistazo", body: "Balance total, P&L del mes y cuentas activas. Estos KPIs suman solo cuentas reales — las demo y backtest nunca los inflan." },
+  { anchor: "status-tabs",       title: "Filtra por estado",            body: "Activas, pausadas, archivadas o todas. Las archivadas (perdidas/inactivas) quedan fuera de los KPIs y del dashboard." },
+  { anchor: "account-balance",   title: "Balance de cada cuenta",       body: "Balance actual frente al inicial. El equity = inicial + P&L realizado + ajustes de sincronización." },
+  { anchor: "account-limits",    title: "Límites y medidores de riesgo", body: "Pérdida diaria/semanal/mensual y drawdown total frente a tus límites. Las de periodo se reinician cada día/semana/mes. Si una fila no aparece, ese límite no está configurado." },
+  { anchor: "account-objective", title: "Progreso hacia el objetivo",    body: "Cuánto llevas avanzado hacia tu meta de ganancia para la cuenta." },
+  { anchor: "account-exposure",  title: "Exposición en vivo",            body: "Apalancamiento efectivo y nocional de tus posiciones abiertas, codificado por color de riesgo." },
+  { anchor: "account-sync",      title: "Sincroniza tu balance",         body: "Concilia con el balance real del broker; la diferencia entra como ajuste al equity sin tocar las métricas de tus trades." },
+  { anchor: "account-detail",    title: "Abre el detalle",               body: "Reglas completas, curva de equity, historial y acciones: editar, archivar, marcar perdida o bloquear." },
+  { anchor: "new-account",       title: "Crea una cuenta",               body: "Prop firm, personal, demo o backtest — cada tipo con sus reglas, límites y objetivo." },
+]
+
 export default function CuentasPage() {
   const [modalOpen,     setModalOpen]     = useState(false)
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
@@ -42,10 +59,24 @@ export default function CuentasPage() {
   const [promoteId,     setPromoteId]     = useState<string | null>(null)
   const [syncId,        setSyncId]        = useState<string | null>(null)
   const [statusFilter,  setStatusFilter]  = useState<StatusFilter>("activas")
+  const [tourOpen,      setTourOpen]      = useState(false)
+  const [tourSteps,     setTourSteps]     = useState<TourStep[]>(TOUR_STEPS)
 
   const { data: allAccounts = [], isLoading } = trpc.accounts.list.useQuery(
     { includeInactive: true },
   )
+
+  // Keep only steps whose anchor is actually in the DOM (cards without límites,
+  // exposición, etc.). Falls back to the full list if nothing matches yet.
+  function openTour() {
+    const present = TOUR_STEPS.filter(s => document.querySelector(`[data-tour="${s.anchor}"]`))
+    setTourSteps(present.length > 0 ? present : TOUR_STEPS)
+    setTourOpen(true)
+  }
+  function closeTour() {
+    setTourOpen(false)
+    try { localStorage.setItem(TOUR_SEEN_KEY, "1") } catch { /* noop */ }
+  }
 
   const accounts = allAccounts.filter(a => {
     if (statusFilter === "todas")      return true
@@ -80,6 +111,17 @@ export default function CuentasPage() {
     }]),
   )
 
+  // Auto-open the guided tour on the first visit, once accounts have rendered so
+  // the spotlight lands on real cards (not the skeletons).
+  useEffect(() => {
+    if (isLoading || allAccounts.length === 0) return
+    let seen = false
+    try { seen = localStorage.getItem(TOUR_SEEN_KEY) === "1" } catch { /* noop */ }
+    if (seen) return
+    const t = setTimeout(() => openTour(), 500)
+    return () => clearTimeout(t)
+  }, [isLoading, allAccounts.length])
+
   // Account mutations (phase change, lock/unlock, archive, withdrawals) write
   // audit entries; invalidate the history query too so the modal reflects them
   // without a full reload (staleTime would otherwise serve a stale first page).
@@ -111,15 +153,21 @@ export default function CuentasPage() {
 
   return (
     <>
+      <SpotlightTour steps={tourSteps} open={tourOpen} onClose={closeTour} />
+
       <div>
         <TopBar
           title="Cuentas"
           subtitle={`${allAccounts.length} cuentas`}
-          actions={[{ label: "Nueva cuenta", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) }]}
+          actionsAnchor="new-account"
+          actions={[
+            { label: "Cómo funciona", icon: <HelpCircle size={14} />, variant: "ghost", onClick: openTour },
+            { label: "Nueva cuenta", icon: <Plus size={14} />, variant: "primary", onClick: () => setModalOpen(true) },
+          ]}
         />
 
         {/* Status filter tabs */}
-        <div className="flex gap-1.5 mb-5 flex-wrap">
+        <div data-tour="status-tabs" className="flex gap-1.5 mb-5 flex-wrap">
           {STATUS_FILTER_OPTIONS.map(opt => (
             <button
               key={opt.value}
@@ -142,7 +190,7 @@ export default function CuentasPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div data-tour="kpis" className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <KpiBox label="Balance total"  value={<AnimatedNumber value={totalBal} format={(n) => `$${Math.round(n).toLocaleString()}`} />}
             sub={`${accounts.length} cuentas`}
             icon={<BarChart3 size={15} className="text-[var(--ink-3)]" />} />

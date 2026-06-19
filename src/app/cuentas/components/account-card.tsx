@@ -185,7 +185,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           )}
         </div>
 
-        <div className="flex items-start gap-4">
+        <div data-tour="account-balance" className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-eyebrow mb-1">Balance actual</p>
             <p
@@ -215,7 +215,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
         </div>
 
         {(rawAccount.ddDailyPct != null || rawAccount.ddWeeklyPct != null || rawAccount.ddMonthlyPct != null || rawAccount.ddTotalPct != null || rawAccount.targetPct != null) && (
-          <div className="flex flex-col gap-2.5 pt-3 border-t border-[var(--line)]">
+          <div data-tour="account-limits" className="flex flex-col gap-2.5 pt-3 border-t border-[var(--line)]">
             <div className="flex items-center gap-1.5 mb-0.5">
               <Shield size={11} className="text-[var(--ink-3)]" />
               <p className="text-eyebrow">
@@ -255,7 +255,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               const progPct   = hasBase && stats ? Math.max(0, stats.netPnl / initialBalance * 100) : null
               const fillPct   = hasBase && stats ? Math.min(100, Math.max(0, stats.netPnl / (initialBalance * targetPct / 100) * 100)) : 0
               return (
-              <div>
+              <div data-tour="account-objective">
                 <div className="flex justify-between mb-1">
                   <span className="text-[11px] text-[var(--ink-3)]">{isPF ? "Progreso hacia objetivo" : "Objetivo"}</span>
                   <span className="text-[11px] font-mono font-semibold text-[var(--ink-3)]">
@@ -309,7 +309,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
 
         {/* ── Live leverage exposure from open positions ── */}
         {stats?.exposure && stats.exposure.openPositions > 0 && stats.exposure.effectiveLeverage != null && (
-          <div className="flex items-center justify-between text-[11px] pt-2 border-t border-[var(--line)]">
+          <div data-tour="account-exposure" className="flex items-center justify-between text-[11px] pt-2 border-t border-[var(--line)]">
             <span className="text-[var(--ink-3)]">
               Exposición abierta · {stats.exposure.openPositions} pos
             </span>
@@ -335,6 +335,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
         <div className="flex items-center gap-2 pt-1 border-t border-[var(--line)]">
           {onSyncBalance && (
             <button
+              data-tour="account-sync"
               onClick={onSyncBalance}
               className="flex items-center gap-1 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors"
             >
@@ -345,7 +346,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           {syncedAgo && (
             <span className="text-[10px] text-[var(--ink-3)]">· {syncedAgo}</span>
           )}
-          <button className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors ml-auto">
+          <button data-tour="account-detail" className="flex items-center justify-center gap-1.5 text-[11px] font-medium text-[var(--ink-3)] hover:text-[var(--accent)] transition-colors ml-auto">
             Ver detalle <ChevronRight size={11} />
           </button>
         </div>

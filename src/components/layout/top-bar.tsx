@@ -25,9 +25,12 @@ interface TopBarProps {
   actions?:     TopBarAction[]
   className?:   string
   compact?:     boolean
+  /** Optional `data-tour` value on the actions group, so a SpotlightTour can
+   *  spotlight the primary action (e.g. "Nueva cuenta"). */
+  actionsAnchor?: string
 }
 
-export function TopBar({ title, subtitle, breadcrumbs, actions, className, compact }: TopBarProps) {
+export function TopBar({ title, subtitle, breadcrumbs, actions, className, compact, actionsAnchor }: TopBarProps) {
   return (
     <div className={cn(
       "flex items-start justify-between gap-3 flex-wrap",
@@ -70,7 +73,7 @@ export function TopBar({ title, subtitle, breadcrumbs, actions, className, compa
       </div>
 
       {actions && actions.length > 0 && (
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+        <div data-tour={actionsAnchor} className="flex items-center gap-1.5 shrink-0 flex-wrap">
           {actions.map((action) => (
             <Button
               key={action.label}

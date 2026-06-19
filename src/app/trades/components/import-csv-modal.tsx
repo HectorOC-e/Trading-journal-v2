@@ -110,6 +110,10 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
       const data = (await res.json()) as ImportResponse
       setState({ phase: "done", result: data })
       utils.trades.list.invalidate()
+      // Imports can add many trades (and even trip an account lock) — refresh the
+      // accounts view's stats too, not just the trades list.
+      utils.trades.dashboardStats.invalidate()
+      utils.accounts.list.invalidate()
     } catch (err) {
       setState({ phase: "error", message: err instanceof Error ? err.message : String(err) })
     }

@@ -117,6 +117,9 @@ export default function TradesPage() {
       setModalOpen(false)
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
+      // /cuentas + dashboard read trades.dashboardStats (staleTime 60s) — invalidate
+      // it too so account balances, P&L and loss/drawdown gauges refresh live.
+      utils.trades.dashboardStats.invalidate()
       const pc = pendingChecklistRef.current
       if (pc && pc.total > 0) {
         saveChecklist.mutate({ tradeId: trade.id, setupId: pc.setupId, itemsChecked: pc.items, itemsTotal: pc.total })
@@ -134,6 +137,8 @@ export default function TradesPage() {
     onSuccess: () => {
       setSelectedId(null)
       utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
@@ -142,6 +147,8 @@ export default function TradesPage() {
     onSuccess: () => {
       setEditingTrade(null)
       utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
@@ -150,6 +157,7 @@ export default function TradesPage() {
     onSuccess: (result) => {
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
       if (result.accountLocked) {
         const acct = accounts.find(a => a.id === result.trade.accountId)
         setLockedNotice({ name: acct?.name ?? "tu cuenta", reason: result.lockReason ?? "MAX_DRAWDOWN" })
