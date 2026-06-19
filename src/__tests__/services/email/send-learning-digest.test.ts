@@ -39,7 +39,7 @@ function fakePrisma(data: FakeData) {
 const enabledPref = { muted: false, channels: ["in_app", "email"], quietStart: null, quietEnd: null, timezone: "UTC" }
 
 function deps(prisma: unknown, sent: ReturnType<typeof vi.fn>): DigestDeps {
-  return { prisma: prisma as DigestDeps["prisma"], now, sendEmail: sent, appUrl: "https://x.test" }
+  return { prisma: prisma as DigestDeps["prisma"], now, sendEmail: sent as unknown as DigestDeps["sendEmail"], appUrl: "https://x.test" }
 }
 
 describe("sendLearningDigestForUser", () => {
