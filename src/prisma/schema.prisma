@@ -53,6 +53,7 @@ model User {
   notificationPreferences  NotificationPreference[]
   tags                     Tag[]
   automations              Automation[]
+  customPalettes           CustomPalette[]
 
   @@map("users")
 }
@@ -673,6 +674,27 @@ model UserPreferences {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_preferences")
+}
+
+// ─────────────────────────────────────────────
+// CUSTOM PALETTE (theme system · full-palette redesign)
+// A user's saved palette library. config = PaletteConfig JSON (see src/lib/theme).
+// Selected via user_preferences.color_theme = "custom:<id>". Limit (10) enforced
+// in the tRPC router, not the DB.
+// ─────────────────────────────────────────────
+model CustomPalette {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  config    Json
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("custom_palette")
 }
 
 // ─────────────────────────────────────────────

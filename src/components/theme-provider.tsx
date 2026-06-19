@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react"
 import { MotionConfig } from "framer-motion"
 import { usePathname } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
-import { applyColorTheme, parseCustomTheme, type ColorTheme } from "@/lib/themes"
+import { applyColorTheme, LS_COLOR_THEME, type ColorMode, type CustomPalette } from "@/lib/theme"
 
 export type ThemeMode = "light" | "dark" | "system"
 
@@ -53,6 +53,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     retry: false,
   })
   const updatePrefs      = trpc.preferences.update.useMutation()
+  const { data: customPalettes } = trpc.customPalettes.list.useQuery(undefined, {
+    enabled: pathname !== "/login",
+    retry: false,
+  })
   const mediaListenerRef = useRef<(() => void) | null>(null)
 
   // Bootstrap from DB prefs (takes precedence over localStorage)
@@ -97,32 +101,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme])
 
-  // Apply named/custom color theme from DB preferences.
-  // Falls back to localStorage so the theme survives before prefs load (no flash).
+  // Apply the active color-theme selection (predefined id or "custom:<id>").
+  // Predefined → static CSS via data-theme; custom → engine-derived inline vars
+  // for the current mode (re-injected when the resolved mode changes). Falls back
+  // to localStorage so the theme survives before prefs load (no flash).
   useEffect(() => {
-    const colorTheme = (prefs?.colorTheme as ColorTheme | undefined)
-      ?? (localStorage.getItem("tj-color-theme") as ColorTheme | null)
+    const selection = (prefs?.colorTheme as string | undefined)
+      ?? localStorage.getItem(LS_COLOR_THEME)
       ?? "indigo"
-    const custom = parseCustomTheme(
-      prefs?.customTheme ?? localStorage.getItem("tj-custom-theme"),
-    )
-    applyColorTheme(colorTheme, custom)
-    localStorage.setItem("tj-color-theme", colorTheme)
-    if (prefs?.customTheme) localStorage.setItem("tj-custom-theme", prefs.customTheme)
+    const palettes = (customPalettes ?? []) as CustomPalette[]
+    const resolved: ColorMode = (theme === "system" ? getSystemTheme() : theme) === "dark" ? "dark" : "light"
+    applyColorTheme(selection, palettes, resolved)
 
-    // Legacy quick accent-hue override still wins when set (and no full theme/custom).
     const root = document.documentElement
-    if (colorTheme !== "custom" && prefs?.accentHue != null) {
-      root.style.setProperty("--accent", `oklch(0.6 0.2 ${prefs.accentHue})`)
-      root.style.setProperty("--accent-soft", `oklch(0.95 0.05 ${prefs.accentHue})`)
-    }
-
     if (prefs?.colorScheme && prefs.colorScheme !== "default") {
       root.setAttribute("data-colorblind", prefs.colorScheme)
     } else {
       root.removeAttribute("data-colorblind")
     }
-  }, [prefs?.colorTheme, prefs?.customTheme, prefs?.accentHue, prefs?.colorScheme])
+  }, [prefs?.colorTheme, prefs?.colorScheme, customPalettes, theme])
 
   const prefsSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
