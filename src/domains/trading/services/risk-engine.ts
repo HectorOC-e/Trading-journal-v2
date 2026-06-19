@@ -24,7 +24,7 @@ export function isPermanentLockReason(reason: string): boolean {
 /** One limit's display state. `usedPct` is the bar fill (0–100 toward the limit). */
 export type LimitGauge = {
   configured: boolean
-  actualPct:  number   // realized loss / drawdown as % of initial balance
+  actualPct:  number   // realized loss as % of period-start equity (drawdown: % of initial balance)
   limitPct:   number   // configured limit %
   usedPct:    number   // actualPct / limitPct * 100, clamped 0–100 (bar fill)
 }
@@ -39,6 +39,16 @@ export type AccountRiskInput = {
   dayPnl:         number
   weekPnl:        number
   monthPnl:       number
+  /**
+   * Equity at the START of each loss window = initialBalance + P&L realized
+   * before the window opened. Loss limits are measured against this moving base
+   * (as real prop firms do: today's allowance is a % of yesterday's closing
+   * equity), not the static initial balance. Omitted → falls back to
+   * initialBalance (correct for day 1, when no prior P&L exists).
+   */
+  dayBaseBalance?:   number
+  weekBaseBalance?:  number
+  monthBaseBalance?: number
   /** Max peak-to-trough drawdown amount (absolute, ≥ 0) over account history. */
   maxDrawdown:    number
 }
@@ -77,9 +87,15 @@ function round1(n: number): number {
 export function computeAccountRisk(input: AccountRiskInput): AccountRisk {
   const { initialBalance } = input
 
-  const daily   = gauge(lossPct(input.dayPnl,   initialBalance), input.ddDailyPct)
-  const weekly  = gauge(lossPct(input.weekPnl,  initialBalance), input.ddWeeklyPct)
-  const monthly = gauge(lossPct(input.monthPnl, initialBalance), input.ddMonthlyPct)
+  // Loss limits use the start-of-period equity as their base (moving base);
+  // total drawdown stays anchored to the initial balance (static floor).
+  const dayBase   = input.dayBaseBalance   ?? initialBalance
+  const weekBase  = input.weekBaseBalance  ?? initialBalance
+  const monthBase = input.monthBaseBalance ?? initialBalance
+
+  const daily   = gauge(lossPct(input.dayPnl,   dayBase),   input.ddDailyPct)
+  const weekly  = gauge(lossPct(input.weekPnl,  weekBase),  input.ddWeeklyPct)
+  const monthly = gauge(lossPct(input.monthPnl, monthBase), input.ddMonthlyPct)
   const total   = gauge(calcDrawdownPct(input.maxDrawdown, initialBalance), input.ddTotalPct)
 
   // Precedence: daily → weekly → monthly → total

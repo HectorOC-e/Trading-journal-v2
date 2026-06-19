@@ -252,6 +252,13 @@ export function buildAccountStats(
     const pnlWeek  = weekT.reduce((s, t) => s + t.pnl, 0)
     const pnlToday = todayT.reduce((s, t) => s + t.pnl, 0)
 
+    // Equity at the start of each loss window = initial + P&L realized BEFORE the
+    // window opened. Loss limits measure against this moving base (real prop-firm
+    // behaviour), so today's daily allowance is a % of yesterday's closing equity.
+    const monthBaseBalance = initBal + at.filter(t => t.date <  monthStart).reduce((s, t) => s + t.pnl, 0)
+    const weekBaseBalance  = initBal + at.filter(t => t.date <  weekStart ).reduce((s, t) => s + t.pnl, 0)
+    const dayBaseBalance   = initBal + at.filter(t => t.date <  today     ).reduce((s, t) => s + t.pnl, 0)
+
     const limits = limitsById[a.id] ?? { id: a.id, type: undefined, ddModel: undefined, ddDailyPct: null, ddWeeklyPct: null, ddMonthlyPct: null, ddTotalPct: null }
     // Prop firms with a FIXED model measure max loss from the initial balance,
     // not peak-to-trough — single source of truth: risk-engine.accountDrawdown.
@@ -268,6 +275,9 @@ export function buildAccountStats(
       dayPnl:       pnlToday,
       weekPnl:      pnlWeek,
       monthPnl:     pnlMonth,
+      dayBaseBalance,
+      weekBaseBalance,
+      monthBaseBalance,
       maxDrawdown:  maxDd,
     })
 
