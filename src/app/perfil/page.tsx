@@ -98,14 +98,14 @@ function TextInput({ value, onChange, placeholder, disabled, inputMode }: {
   )
 }
 
-function ToggleRow({ label, sub, on, onChange }: { label: string; sub?: string; on: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({ label, sub, on, onChange, disabled }: { label: string; sub?: string; on: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 0", borderBottom: "1px solid var(--line)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 0", borderBottom: "1px solid var(--line)", opacity: disabled ? 0.5 : 1 }}>
       <div>
         <p style={{ fontSize: 13.5, fontWeight: 500, color: "var(--ink)" }}>{label}</p>
         {sub && <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2 }}>{sub}</p>}
       </div>
-      <Toggle on={on} onChange={onChange} />
+      <Toggle on={on} onChange={disabled ? () => {} : onChange} />
     </div>
   )
 }
@@ -251,6 +251,7 @@ export default function PerfilPage() {
   /* ── Server data ── */
   const { data: profile, isLoading, isError } = trpc.profile.get.useQuery()
   const { data: prefs } = trpc.preferences.get.useQuery()
+  const { data: notifPrefs } = trpc.notifications.preferences.list.useQuery()
 
   /* ── Local form state — initialized from server data ── */
   const [name,               setName]               = useState("")
@@ -374,6 +375,21 @@ export default function PerfilPage() {
   const updatePrefsMut = trpc.preferences.update.useMutation({
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
+
+  /* ── Per-category email channel (opt-in) ── */
+  const updateNotifPref = trpc.notifications.preferences.update.useMutation({
+    onSuccess: () => utils.notifications.preferences.list.invalidate(),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
+  })
+  const aprendizajePref   = notifPrefs?.find(p => p.category === "Aprendizaje")
+  const aprendizajeChans  = aprendizajePref?.channels ?? ["in_app"]
+  const aprendizajeEmailOn = aprendizajeChans.includes("email")
+  const setAprendizajeEmail = (on: boolean) => {
+    const channels = on
+      ? Array.from(new Set([...aprendizajeChans, "email"]))
+      : aprendizajeChans.filter(c => c !== "email")
+    updateNotifPref.mutate({ category: "Aprendizaje", channels })
+  }
 
   /* ── Goals ── */
   const { data: goalsData } = trpc.goals.get.useQuery()
@@ -898,12 +914,19 @@ export default function PerfilPage() {
           <SectionTitle>Notificaciones</SectionTitle>
           <ToggleRow
             label="Email · notificaciones"
-            sub="Recibe correos de recordatorio y alertas del sistema."
+            sub="Interruptor maestro de todos los correos. Si lo apagas, no recibes ninguno."
             on={emailNotifications}
             onChange={v => {
               setEmailNotifications(v)
               updateMut.mutate({ emailNotifications: v })
             }}
+          />
+          <ToggleRow
+            label="Email · Aprendizaje"
+            sub="Resumen diario con repasos vencidos, racha en riesgo y progreso."
+            on={emailNotifications && aprendizajeEmailOn}
+            disabled={!emailNotifications}
+            onChange={setAprendizajeEmail}
           />
         </Card>
 

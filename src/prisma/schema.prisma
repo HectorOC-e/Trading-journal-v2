@@ -689,7 +689,7 @@ model EmailLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, emailType, weekKey])
-  @@map("email_logs")
+  @@map("email_log")
 }
 
 // ─────────────────────────────────────────────

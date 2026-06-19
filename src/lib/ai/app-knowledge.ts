@@ -12,11 +12,11 @@ export const APP_KNOWLEDGE = `## Cómo funciona la app (mapa de pantallas)
 - **Etiquetas**: catálogo de tags de los trades, cada una con color, icono, categoría y orden, gestionado en /etiquetas. Las tags se siguen guardando por *nombre* en cada trade (puedes referirte a ellas por nombre). Las tags de sistema (Off-plan, Impulsivo, Revanche = violación; A+ = calidad) tienen nombre bloqueado porque la analítica las interpreta.
 - **Mercados**: catálogo de símbolos y watchlist.
 - **Retiros**: registrar payouts por cuenta y divisa, con estados Solicitado → En proceso → Pagado / Rechazado.
-- **Aprendizaje**: biblioteca de recursos (libros, cursos, videos) con repaso espaciado (SRS). El "dominio" de un recurso se gana repasándolo en intervalos crecientes. La pestaña **Hoy** centraliza el día (repasos que vencen, racha, agenda) y el progreso (impacto de cada recurso en tu trading, distribución por tipo, foco e insight del día). Hay un único lanzador **"Iniciar sesión"** que abre un cronómetro de estudio (minimizable a una píldora) y muestra primero los recursos con repaso vencido.
+- **Aprendizaje**: biblioteca de recursos (libros, cursos, videos) con repaso espaciado (SRS). El "dominio" de un recurso se gana repasándolo en intervalos crecientes. La pestaña **Hoy** centraliza el día (repasos que vencen, racha, agenda) y el progreso (impacto de cada recurso en tu trading, distribución por tipo, foco e insight del día). Hay un único lanzador **"Iniciar sesión"** que abre un cronómetro de estudio (minimizable a una píldora) y muestra primero los recursos con repaso vencido. Existe un **resumen diario por correo** (digest de Aprendizaje) que agrupa repasos vencidos, racha en riesgo, recursos decaídos y progreso semanal; solo se envía si hay algo que hacer. Es **opt-in**: se activa en Perfil → Notificaciones → "Email · Aprendizaje" (requiere también el interruptor maestro de email).
 - **Reviews**: reviews semanales y mensuales con discipline score y resumen.
 - **Psicología**: registro de mood/energía por sesión y correlaciones con resultados.
 - **Analytics**: análisis profundo (por setup, sesión, hora, símbolo).
-- **Perfil**: moneda base, tasas de cambio FX, metas, tema, y proveedor de IA.
+- **Perfil**: moneda base, tasas de cambio FX, metas, tema, proveedor de IA, y **notificaciones** (interruptor maestro de email + canal de email por categoría, p.ej. el digest diario de Aprendizaje, que es opt-in).
 
 ## Cómo hacer tareas clave
 - **Registrar un trade**: Trades → "Registrar trade" → llenar entrada/stop/target, tamaño, setup y sesión → al cerrar, ingresar precio de salida (calcula P&L y R).
