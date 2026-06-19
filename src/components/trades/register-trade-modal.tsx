@@ -319,6 +319,9 @@ export function RegisterTradeModal({
   const showLeverage = leverage != null && (
     selectedAccount?.maxLeverage != null || selectedAccount?.targetLeverage != null
   )
+  // Block registration when the required margin can't be covered by the balance:
+  // the position is impossible at this size with the account's leverage.
+  const marginExceeds = !!(showLeverage && leverage?.exceedsAccount)
 
   // Futures/equities trade in whole units. If the risk %-derived size is below
   // one unit, a single contract/share already exceeds the intended risk — warn.
@@ -596,9 +599,13 @@ export function RegisterTradeModal({
                   )}
                 </p>
                 {leverage.exceedsAccount && (
-                  <p className="text-[10px] text-[var(--loss)] leading-snug">
-                    ⚠ El margen requerido supera el balance de la cuenta con su apalancamiento (1:{selectedAccount?.maxLeverage}). Reduce el tamaño.
-                  </p>
+                  <div className="mt-0.5 flex items-start gap-1.5 px-2 py-1.5 rounded-[var(--radius-sm)]"
+                    style={{ background: "var(--loss-soft)", border: "1px solid var(--loss)" }}>
+                    <AlertTriangle size={12} className="text-[var(--loss)] shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-[var(--loss)] leading-snug font-medium">
+                      Margen insuficiente: el margen requerido supera el balance con el apalancamiento de la cuenta (1:{selectedAccount?.maxLeverage}). No puedes registrar este trade — reduce el tamaño.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
@@ -1027,7 +1034,8 @@ export function RegisterTradeModal({
 
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" variant="primary" disabled={submitting}>
+          <Button type="submit" variant="primary" disabled={submitting || marginExceeds}
+            title={marginExceeds ? "El margen requerido supera el balance — reduce el tamaño" : undefined}>
             {submitting ? "Registrando…" : "Registrar trade"}
           </Button>
         </DialogFooter>

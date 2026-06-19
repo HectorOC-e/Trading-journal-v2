@@ -132,6 +132,7 @@ export function QuickActions() {
             session:          form.session,
             tags:             form.tags,
             notes:            form.notes,
+            planNotes:        form.planNotes,
             screenshotUrls:   form.screenshots,
             emotionBefore:    form.emotionBefore ?? undefined,
             confidenceRating: form.confidenceRating,

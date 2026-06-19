@@ -13,6 +13,7 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { SkeletonAccountCards } from "@/components/ui/skeleton"
 import { AccountCard, KpiBox } from "./components/account-card"
+import { Stagger, StaggerItem } from "@/components/ui/motion"
 import type { TradeStats } from "./components/account-card"
 import { AccountDetailPanel } from "./components/account-detail-panel"
 import { DrawerPanel } from "@/components/ui/drawer-panel"
@@ -75,6 +76,7 @@ export default function CuentasPage() {
       drawdownPct: s.drawdownPct,
       sparkline:   s.sparkline,
       risk:        s.risk,
+      exposure:    s.exposure,
     }]),
   )
 
@@ -180,18 +182,19 @@ export default function CuentasPage() {
         )}
 
         {!isLoading && accounts.length > 0 && (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <Stagger className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {accounts.map(a => (
-              <AccountCard
-                key={a.id}
-                rawAccount={a}
-                selected={selectedId === a.id}
-                onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
-                stats={accountStats[a.id]}
-                onSyncBalance={(e) => { e.stopPropagation(); setSyncId(a.id) }}
-              />
+              <StaggerItem key={a.id}>
+                <AccountCard
+                  rawAccount={a}
+                  selected={selectedId === a.id}
+                  onClick={() => setSelectedId(s => s === a.id ? null : a.id)}
+                  stats={accountStats[a.id]}
+                  onSyncBalance={(e) => { e.stopPropagation(); setSyncId(a.id) }}
+                />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </div>
 

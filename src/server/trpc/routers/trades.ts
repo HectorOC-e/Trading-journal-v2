@@ -8,7 +8,7 @@ import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/dom
 import {
   buildKpis, buildAccountStats, buildEquityCurve, buildPnlByDate,
   buildSessionStats, buildHourStats, buildPnlBySymbol, buildPropFirmStatus,
-  buildExecutionStats, buildDiscipline,
+  buildExecutionStats, buildDiscipline, buildAccountExposure,
 } from "@/domains/analytics/services/dashboard-analytics"
 import type {
   MinimalTrade, AccountBalance, AccountWithLimits, AccountLimits, Grain,
@@ -270,6 +270,7 @@ export const tradesRouter = router({
           id: true, name: true, type: true, status: true, currency: true,
           initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
           ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
+          maxLeverage: true, targetLeverage: true,
         },
       })
       const activeAccountIds = activeAccounts.map(a => a.id)
@@ -284,7 +285,7 @@ export const tradesRouter = router({
       const fxByAccount = new Map(activeAccounts.map(a => [a.id, fxFactor(a.currency, baseCurrency, fxRates)]))
       const fx = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
-      const [tradeRows, setupRows, checklistRows] = await Promise.all([
+      const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows] = await Promise.all([
         ctx.prisma.trade.findMany({
           where: {
             userId:    ctx.userId,
@@ -313,6 +314,16 @@ export const tradesRouter = router({
         ctx.prisma.tradeChecklistResult.findMany({
           where:  { userId: ctx.userId },
           select: { tradeId: true, itemsChecked: true, itemsTotal: true },
+        }),
+        // OPEN positions + markets feed live leverage exposure (closed-only stats
+        // above never see open trades).
+        ctx.prisma.trade.findMany({
+          where:  { userId: ctx.userId, status: "OPEN", accountId: { in: activeAccountIds } },
+          select: { accountId: true, symbol: true, entry: true, size: true },
+        }),
+        ctx.prisma.market.findMany({
+          where:  { userId: ctx.userId },
+          select: { symbol: true, category: true, pointValue: true },
         }),
       ])
 
@@ -372,6 +383,24 @@ export const tradesRouter = router({
       // ── Core analytics (service delegation) ──────────────────────────────
       const kpis         = buildKpis(trades, today, monthStart, weekStart)
       const accountStats = buildAccountStats(trades, acctBalances, today, monthStart, weekStart, limitsById)
+
+      // ── Live leverage exposure from OPEN positions ───────────────────────────
+      const marketBySymbol = new Map(marketRows.map(m => [m.symbol, {
+        category:   m.category as string,
+        pointValue: parsePointValue(m.pointValue),
+      }]))
+      const balanceById = new Map(accountStats.map(s => [s.accountId, s.balance]))
+      const exposureById = buildAccountExposure(
+        openTradeRows.map(t => ({ accountId: t.accountId, symbol: t.symbol, entry: Number(t.entry), size: Number(t.size) })),
+        marketBySymbol,
+        accounts.map(a => ({
+          id: a.id,
+          balance: balanceById.get(a.id) ?? Number(a.initialBalance) * fx(a.id),
+          maxLeverage: a.maxLeverage ?? null,
+          targetLeverage: a.targetLeverage ?? null,
+        })),
+      )
+      for (const s of accountStats) s.exposure = exposureById[s.accountId] ?? null
       const equityCurve  = buildEquityCurve(trades, acctBalances)
       const pnlByDate    = buildPnlByDate(trades, grain)
       const pnlBySymbol  = buildPnlBySymbol(trades, 10)
