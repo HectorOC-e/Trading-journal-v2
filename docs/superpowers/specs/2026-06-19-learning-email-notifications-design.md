@@ -167,14 +167,13 @@ interface DigestModel {
 1. `user.emailNotifications` (maestro) — si `false` → no elegible.
 2. `NotificationPreference(userId, "Aprendizaje")`:
    - si no existe la fila → **default**: email **desactivado** (opt-in explícito por canal email),
-     aunque el maestro esté on. (Decisión: el canal email por categoría es opt-in; el digest no
-     se envía hasta que el usuario active "email" en Aprendizaje. *Confirmar en revisión.*)
+     aunque el maestro esté on. **Decisión confirmada: el canal email por categoría es opt-in**;
+     el digest no se envía hasta que el usuario active "email" en Aprendizaje.
    - `channels` debe incluir `"email"`; `muted=false`; fuera de `quietHours`.
 3. No enviado hoy (consulta `email_log`).
 
-> **Nota de decisión pendiente (§13):** ¿el canal email por categoría es opt-in (off por
-> defecto) u opt-out (on si el maestro está on)? El diseño asume **opt-in** para evitar enviar
-> a usuarios existentes sin consentimiento explícito del canal. A confirmar.
+> **Decisión confirmada:** el canal email por categoría es **opt-in** (off por defecto, aunque
+> el maestro esté on) para no enviar a usuarios existentes sin consentimiento explícito del canal.
 
 ---
 
@@ -270,7 +269,7 @@ Maquetas de referencia: `.superpowers/brainstorm/.../email-b-calm-v2.html` (ligh
 
 ## 13. Riesgos y decisiones pendientes
 
-1. **Opt-in vs opt-out del canal email por categoría** (§7) — asumido **opt-in**. Confirmar.
+1. **Opt-in vs opt-out del canal email por categoría** (§7) — **resuelto: opt-in**.
 2. **Deliverability con `resend.dev`** — solo entrega a la cuenta propia; los usuarios reales no
    recibirán hasta verificar dominio. Aceptado para esta fase (desarrollo).
 3. **Doble fuente temporal** — aprendizaje en la app, prop-firm en la edge function hasta su
