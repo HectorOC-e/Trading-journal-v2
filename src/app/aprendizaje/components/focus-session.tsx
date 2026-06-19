@@ -170,15 +170,33 @@ export function FocusSession() {
 }
 
 // ── Resource picker ───────────────────────────────────────────────────────────
+// The single "session" launcher. Reviews due today (nextReviewAt ≤ hoy or marked
+// for review) are surfaced first so a focus session naturally starts on what's
+// pending — the unified flow replaces the old separate "Iniciar sesión" review.
 function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
   const { data: resources = [], isLoading } = trpc.learningResources.list.useQuery()
   const [q, setQ] = useState("")
-  const list = useMemo(() => {
-    const active = resources.filter(r => r.status !== "ABANDONED" && r.status !== "MASTERED")
-    if (!q.trim()) return active
-    const s = q.toLowerCase()
-    return active.filter(r => r.title.toLowerCase().includes(s) || r.author.toLowerCase().includes(s))
-  }, [resources, q])
+  const today = new Date().toISOString().slice(0, 10)
+  const { due, rest } = useMemo(() => {
+    let active = resources.filter(r => r.status !== "ABANDONED" && r.status !== "MASTERED")
+    if (q.trim()) {
+      const s = q.toLowerCase()
+      active = active.filter(r => r.title.toLowerCase().includes(s) || r.author.toLowerCase().includes(s))
+    }
+    const isDue = (r: typeof active[number]) => r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt <= today)
+    return { due: active.filter(isDue), rest: active.filter(r => !isDue(r)) }
+  }, [resources, q, today])
+
+  const Row = (r: typeof rest[number]) => (
+    <button key={r.id} onClick={() => onPick(r.id)}
+      className="flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-sm)] text-left hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)] transition-colors">
+      <CategoryChip type={r.type as ResourceType} />
+      <span className="flex-1 min-w-0 text-[13px] text-[var(--ink)] truncate">{r.title}</span>
+      {(r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt <= today)) && (
+        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">vence</span>
+      )}
+    </button>
+  )
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose() }}>
@@ -194,15 +212,20 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
         <div className="flex flex-col gap-1 max-h-[50vh] overflow-y-auto">
           {isLoading ? (
             <p className="text-[13px] text-[var(--ink-3)] py-6 text-center">Cargando…</p>
-          ) : list.length === 0 ? (
+          ) : due.length + rest.length === 0 ? (
             <p className="text-[13px] text-[var(--ink-3)] py-6 text-center">Sin recursos. Añade uno primero.</p>
-          ) : list.map(r => (
-            <button key={r.id} onClick={() => onPick(r.id)}
-              className="flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-sm)] text-left hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)] transition-colors">
-              <CategoryChip type={r.type as ResourceType} />
-              <span className="flex-1 min-w-0 text-[13px] text-[var(--ink)] truncate">{r.title}</span>
-            </button>
-          ))}
+          ) : (
+            <>
+              {due.length > 0 && (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--loss)] px-2.5 pt-1 pb-0.5">Vencidas para repaso · {due.length}</p>
+                  {due.map(Row)}
+                  {rest.length > 0 && <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] px-2.5 pt-3 pb-0.5">Todos</p>}
+                </>
+              )}
+              {rest.map(Row)}
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

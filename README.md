@@ -26,13 +26,14 @@ Trade → Journal → Reflect → Learn → Improve → Trade
 |---|---|
 | 📊 **Dashboard** | 4 vistas (Portfolio · Operador · Disciplina · Playbook). KPIs server-side: Net P&L, Win Rate, Avg R, Sharpe, Profit Factor, Expectancy. Curva de equity multi-cuenta. |
 | 📝 **Trades** | Ciclo de vida open→partial→close con P&L y R-multiple. Import CSV (MT4 / cTrader) con dedup. Screenshots, campos de psicología, timeline de eventos inmutable. |
-| 🏦 **Cuentas** | Multi-cuenta, prop-firm y reales. Enforcement de drawdown, pérdida diaria, nº trades y símbolos permitidos. |
+| 🏦 **Cuentas** | Multi-cuenta (prop-firm, real, demo, backtest). Medidores en vivo de pérdida diaria/semanal/mensual y drawdown total vs límite, progreso al objetivo y exposición de apalancamiento. Auto-bloqueo al romper un límite. Tutorial guiado integrado. |
 | 🧠 **Psicología** | Emoción antes/después, flags FOMO/revenge, confianza y calidad por trade. |
-| 📐 **Reglas + Playbook** | Setups con checklist; las reglas se hacen cumplir al registrar el trade. |
-| 🤖 **AI Coach** | Análisis y resumen semanal vía Claude / OpenAI / OpenRouter. Embeddings para búsqueda semántica. |
-| 🎓 **Aprendizaje** | Recursos con repetición espaciada para cerrar el bucle de mejora. |
+| 📐 **Reglas + Playbook** | Motor de automatizaciones WHEN/IF/THEN (notificar, etiquetar, bloquear pre-trade…), enforcement de riesgo por cuenta y setups con checklist. |
+| 🔔 **Notificaciones + Etiquetas** | Centro de eventos con prioridad P0–P3 y preferencias por categoría; catálogo de tags con color/icono/categoría. |
+| 🤖 **AI Coach** | Análisis y resumen semanal vía Claude / OpenAI / OpenRouter. Embeddings para búsqueda semántica; conoce el mapa de pantallas de la app. |
+| 🎓 **Aprendizaje** | Recursos con repetición espaciada (SRS). La pestaña **Hoy** reúne repasos, sesión de estudio cronometrada e indicadores de progreso (impacto de cada recurso en tu trading). |
 
-> Catálogo completo en [`docs/FEATURES.md`](docs/FEATURES.md) · Guía de arquitectura en [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md).
+> Onboarding: tours guiados ("Cómo funciona") en pantallas clave. Catálogo completo en [`docs/FEATURES.md`](docs/FEATURES.md) · Guía de arquitectura en [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md).
 
 ---
 

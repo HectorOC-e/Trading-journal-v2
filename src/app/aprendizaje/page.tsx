@@ -13,11 +13,10 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import type { LearningResource } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { RevisarRecursoModal } from "./modals/revisar-recurso-modal"
-import { SessionReviewModal } from "./modals/session-review-modal"
 import { SetupImpactModal } from "./modals/impact-modal"
 import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
-import { ResourceRightRail } from "./components/resource-right-rail"
+import { ProgresoSections } from "./components/progreso-sections"
 import { HoyTab } from "./components/hoy-tab"
 import { useResourceActions } from "./hooks/use-resource-actions"
 
@@ -31,16 +30,15 @@ export default function AprendizajePage() {
     linkSetupTarget, setLinkSetupTarget,
     impactTarget, setImpactTarget,
     drawerResource, setDrawerResource,
-    sessionOpen, setSessionOpen,
     handleOpen, handleEditOpen,
   } = useResourceActions()
 
-  type Tab = "hoy" | "biblioteca" | "repaso" | "progreso"
+  type Tab = "hoy" | "biblioteca" | "repaso"
   const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab")
-    if (t === "repaso" || t === "progreso" || t === "biblioteca") setTab(t)
+    if (t === "repaso" || t === "biblioteca") setTab(t)
   }, [])
   function selectTab(t: Tab) {
     setTab(t)
@@ -156,7 +154,6 @@ export default function AprendizajePage() {
           { id: "hoy",        label: "Hoy" },
           { id: "biblioteca", label: "Biblioteca" },
           { id: "repaso",     label: "Repaso", count: dueResources.length },
-          { id: "progreso",   label: "Progreso" },
         ] as const).map((t) => (
           <button
             key={t.id}
@@ -183,16 +180,15 @@ export default function AprendizajePage() {
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>
       ) : tab === "hoy" ? (
-        <HoyTab onGoRepaso={() => selectTab("repaso")} />
-      ) : tab === "progreso" ? (
-        <ResourceRightRail
-          resources={resources}
-          rawResources={rawResources}
-          reviewPending={reviewPending}
-          completed={completed}
-          onStartSession={() => setSessionOpen(true)}
-          onRevisarResource={(r) => setRevisarResource(r)}
-        />
+        <>
+          <HoyTab onGoRepaso={() => selectTab("repaso")} />
+          <ProgresoSections
+            resources={resources}
+            rawResources={rawResources}
+            reviewPending={reviewPending}
+            onRevisarResource={(r) => setRevisarResource(r)}
+          />
+        </>
       ) : tab === "repaso" ? (
         dueResources.length === 0 ? (
           <div className="py-16 text-center text-sm text-[var(--ink-3)]">
@@ -228,15 +224,6 @@ export default function AprendizajePage() {
         resource={impactTarget}
         open={impactTarget !== null}
         onOpenChange={(v) => { if (!v) setImpactTarget(null) }}
-      />
-
-      <SessionReviewModal
-        queue={(stats?.urgentReviews ?? []).map(r => {
-          const match = rawResources.find(x => x.id === r.id)
-          return { id: r.id, title: r.title, type: r.type, reviewInterval: match?.reviewInterval ?? null }
-        })}
-        open={sessionOpen}
-        onClose={() => setSessionOpen(false)}
       />
 
       <ResourceDrawer

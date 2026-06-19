@@ -12,7 +12,6 @@ export function useResourceActions() {
   const [linkSetupTarget, setLinkSetupTarget] = useState<ResourceFromDB | null>(null)
   const [impactTarget,    setImpactTarget]    = useState<ResourceFromDB | null>(null)
   const [drawerResource,  setDrawerResource]  = useState<ResourceFromDB | null>(null)
-  const [sessionOpen,     setSessionOpen]     = useState(false)
 
   function handleOpen() {
     setEditTarget(null)
@@ -31,7 +30,6 @@ export function useResourceActions() {
     linkSetupTarget, setLinkSetupTarget,
     impactTarget,    setImpactTarget,
     drawerResource,  setDrawerResource,
-    sessionOpen,     setSessionOpen,
     handleOpen,
     handleEditOpen,
   }
