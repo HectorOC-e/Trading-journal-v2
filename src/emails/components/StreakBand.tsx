@@ -43,23 +43,29 @@ export function StreakBand({
           </tr>
         </tbody>
       </table>
-      <table cellPadding={0} cellSpacing={0}>
-        <tbody>
-          <tr>
-            <td style={{ verticalAlign: "bottom", paddingRight: 12 }}>
-              <span style={{ fontFamily: fontMono, fontWeight: 700, fontSize: 46, lineHeight: "0.9", letterSpacing: "-0.02em" }}>
-                {streak}
-              </span>
-            </td>
-            <td style={{ verticalAlign: "bottom", paddingBottom: 4 }}>
-              <p style={{ margin: "0 0 2px", fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>días de racha</p>
-              <p style={{ margin: 0, fontWeight: 500, fontSize: 12, lineHeight: 1.2, color: theme.onBandMuted }}>
-                {atRisk ? "En riesgo · estudia hoy para no perderla" : "¡Vas en racha! Mantenla hoy"}
-              </p>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {streak > 0 ? (
+        <table cellPadding={0} cellSpacing={0}>
+          <tbody>
+            <tr>
+              <td style={{ verticalAlign: "bottom", paddingRight: 12 }}>
+                <span style={{ fontFamily: fontMono, fontWeight: 700, fontSize: 46, lineHeight: "0.9", letterSpacing: "-0.02em" }}>
+                  {streak}
+                </span>
+              </td>
+              <td style={{ verticalAlign: "bottom", paddingBottom: 4 }}>
+                <p style={{ margin: "0 0 2px", fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>días de racha</p>
+                <p style={{ margin: 0, fontWeight: 500, fontSize: 12, lineHeight: 1.2, color: theme.onBandMuted }}>
+                  {atRisk ? "En riesgo · estudia hoy para no perderla" : "¡Vas en racha! Mantenla hoy"}
+                </p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <p style={{ margin: 0, fontWeight: 700, fontSize: 22, lineHeight: 1.25, letterSpacing: "-0.01em" }}>
+          Tu repaso de hoy
+        </p>
+      )}
     </div>
   )
 }
