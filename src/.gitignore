@@ -45,3 +45,7 @@ next-env.d.ts
 # Playwright
 test-results/
 playwright-report/
+
+# QA scripts (contain test-account UUIDs; keep local)
+scripts/qa/
+scripts/create-qa-user.mjs
