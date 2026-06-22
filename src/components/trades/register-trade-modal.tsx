@@ -16,6 +16,8 @@ import { SelectableTagChip } from "@/components/tags/tag-chip"
 import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { useZodForm } from "@/lib/forms/use-zod-form"
+import { trpc } from "@/lib/trpc/client"
+import { localDateISO } from "@/lib/datetime/local"
 import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
 import { computeNotional, computeLeverageMetrics, leverageBand, LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
@@ -128,7 +130,10 @@ const INITIAL: TradeFormValues = {
   target: "",
   size: "",
   riskPct: "1",
-  date: new Date().toISOString().slice(0, 10),
+  // Baseline = browser-local today; refreshed to the user's *profile* timezone when
+  // the modal opens (see effect below). Never UTC — a 23:00-local trade must default
+  // to the local day, not tomorrow.
+  date: localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone),
   openTime: "",
   session: "New York",
   tags: [],
@@ -200,6 +205,10 @@ export function RegisterTradeModal({
   } = useZodForm(tradeFormSchema, { defaultValues: INITIAL })
 
   const form = watch()
+  // User's profile timezone — drives the default trade date so it matches the
+  // backend's trading-day boundaries (which also use the profile tz).
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 })
+  const userTimezone = profile?.timezone
   // Purely-UI toggles that aren't part of the validated form payload.
   const [uploading, setUploading] = useState(false)
   const [psychOpen, setPsychOpen] = useState(false)
@@ -243,6 +252,16 @@ export function RegisterTradeModal({
       return () => clearTimeout(t)
     }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On open, default the date to *today in the user's profile timezone* (the module-level
+  // INITIAL baseline can be stale or browser-tz). Fires only on open / tz-resolved, so a
+  // date the user edits mid-session is never clobbered.
+  useEffect(() => {
+    if (open && userTimezone) {
+      const todayLocal = localDateISO(new Date(), userTimezone)
+      if (getValues("date") !== todayLocal) update("date", todayLocal)
+    }
+  }, [open, userTimezone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedAccount = accounts.find(a => a.id === form.accountId)
   const selectedSetup   = setups.find(s => s.id === form.setupId)

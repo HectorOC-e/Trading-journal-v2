@@ -1,11 +1,22 @@
 # Plan · Fix de timezone en fechas de trades y dashboard
 
-**Fecha:** 2026-06-19
-**Estado:** PENDIENTE — solo instrucciones, sin implementar.
+**Fecha:** 2026-06-19 · **Implementado:** 2026-06-21
+**Estado:** ✅ IMPLEMENTADO.
 **Rama:** `fix/timezone-trade-dates` (creada desde `main`).
 
-> Esta rama existe únicamente para arrancar el trabajo en una sesión futura. No hay
-> cambios de código todavía. Ver "Cómo retomar" al final.
+> Implementación 2026-06-21:
+> - **Paso 1 ✅** `src/lib/datetime/local.ts`: `localDateISO`/`localHour` (movidos desde
+>   `send-learning-digest.ts`, que ahora re-exporta) + helpers de calendario
+>   `monthStartISO`/`weekStartISO`/`addDaysISO`. Tests en `__tests__/lib/datetime-local.test.ts`.
+> - **Paso 2 ✅** `register-trade-modal.tsx`: el default de `date` usa la tz del perfil
+>   (`trpc.profile.get`), refrescado al abrir el modal; baseline = tz del navegador.
+> - **Paso 3 ✅** `trades.ts` `dashboardStats`: `today`/`monthStart`/`weekStart`/`periodFrom`
+>   se calculan en la tz del usuario (se carga `user.timezone`), no en UTC.
+> - **Pasos 4–5 (decisión):** `Trade.date` se mantiene como *trading-day string* almacenado
+>   como medianoche UTC; `create` (`new Date(input.date)`) y la agrupación por semana de
+>   `dashboard-analytics.ts` (`getISOWeekKey(new Date(t.date))`) **hacen round-trip
+>   consistente** con esa convención, así que NO se tocaron. Históricos quedan como están.
+>   La invalidación de caché por cambio de tz (`invalidateAnalyticsCacheIfNeeded`) ya cubre.
 
 ## Problema (confirmado)
 
