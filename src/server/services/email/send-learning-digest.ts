@@ -6,6 +6,7 @@
 import { render } from "@react-email/render"
 import React from "react"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
+import { localDateISO, localHour } from "@/lib/datetime/local"
 import { logger } from "@/lib/logger"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { buildLearningDigest, type DigestInput } from "@/domains/learning/services/digest-builder"
@@ -40,21 +41,8 @@ export interface DigestDeps {
 
 export type DigestStatus = "sent" | "empty" | "ineligible" | "already_sent" | "send_failed"
 
-export function localDateISO(now: Date, tz: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: tz }).format(now)
-  } catch {
-    return now.toISOString().slice(0, 10)
-  }
-}
-
-export function localHour(now: Date, tz: string): number {
-  try {
-    return Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hour12: false, timeZone: tz }).format(now)) % 24
-  } catch {
-    return now.getUTCHours()
-  }
-}
+// Re-exported from the shared util so existing importers keep working.
+export { localDateISO, localHour }
 
 function weekStartUTC(todayISO: string): Date {
   const d = new Date(`${todayISO}T00:00:00Z`)

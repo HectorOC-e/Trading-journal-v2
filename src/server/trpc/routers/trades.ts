@@ -104,6 +104,7 @@ type DashboardOutput = {
 import { isCacheEnabled, getCachedStats, setCachedStats, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { VIOLATION_TAGS } from "@/types"
 import { fxFactor, parseFxRates } from "@/lib/fx"
+import { localDateISO, monthStartISO, weekStartISO, addDaysISO } from "@/lib/datetime/local"
 
 type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 type RawTrade   = Prisma.TradeGetPayload<{
@@ -231,17 +232,19 @@ export const tradesRouter = router({
       includePractice: z.boolean().optional().default(false),
     }).optional())
     .query(async ({ ctx, input }) => {
+      // Trading-day boundaries ("today / this week / this month") are computed in the
+      // USER's timezone, not UTC — a trade logged at 23:00 local must count toward the
+      // local day. See lib/datetime/local.ts.
+      const { timezone } = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { timezone: true } })
       const now        = new Date()
-      const today      = now.toISOString().slice(0, 10)
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dayOfWeek  = now.getDay() // 0=Sun, 1=Mon ... 6=Sat
-      const daysToMon  = (dayOfWeek + 6) % 7  // days since last Monday
-      const weekStart  = new Date(Date.now() - daysToMon * 86_400_000).toISOString().slice(0, 10)
+      const today      = localDateISO(now, timezone)
+      const monthStart = monthStartISO(today)
+      const weekStart  = weekStartISO(today)
       const period     = input?.period ?? "3M"
 
       const periodDays: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
       const days       = periodDays[period]
-      const periodFrom = days != null ? new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10) : undefined
+      const periodFrom = days != null ? addDaysISO(today, -days) : undefined
       const queryFrom  = input?.from ?? periodFrom
       const queryTo    = input?.to
       const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
