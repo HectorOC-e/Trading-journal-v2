@@ -283,8 +283,13 @@ export function AiCoachDrawer() {
       setMode("panel")
       setTimeout(() => sendRef.current(q), 50)
     }
+    const openHandler = () => { setOpen(true); setMode("panel") }
     window.addEventListener("coach:ask", handler)
-    return () => window.removeEventListener("coach:ask", handler)
+    window.addEventListener("coach:open", openHandler)
+    return () => {
+      window.removeEventListener("coach:ask", handler)
+      window.removeEventListener("coach:open", openHandler)
+    }
   }, [])
 
   // While any modal is open, stay out of the way — a fixed FAB/panel would sit
