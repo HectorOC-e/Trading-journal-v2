@@ -147,6 +147,38 @@ function IconTab({ item, active }: { item: NavItem; active: boolean }) {
   )
 }
 
+/** Expanded desktop nav row (label + icon, active pill + right bar + badge). */
+function DeskItem({ item, active, badge }: { item: NavItem; active: boolean; badge: number }) {
+  const Icon = item.icon
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "relative flex items-center gap-3 h-[34px] px-3 mx-2.5 mb-0.5 rounded-[var(--radius-sm)] transition-colors duration-150",
+        active
+          ? "text-[var(--accent)] font-semibold"
+          : "text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
+      )}
+      style={{ fontSize: 13, background: active ? "var(--accent-soft)" : "transparent", textDecoration: "none" }}
+      aria-current={active ? "page" : undefined}
+    >
+      <Icon size={16} />
+      <span className="whitespace-nowrap flex-1">{item.label}</span>
+      {badge > 0 && (
+        <span
+          className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
+          style={{ background: "var(--loss)", color: "#fff" }}
+        >
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
+      {active && (
+        <span className="absolute right-1 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "var(--accent)" }} />
+      )}
+    </Link>
+  )
+}
+
 function openCoach() {
   window.dispatchEvent(new Event("coach:open"))
 }
@@ -163,7 +195,16 @@ export function Sidebar() {
   }
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
+  // Desktop accordion: which collapsible section is open (PRINCIPAL is pinned).
+  const [openSection,  setOpenSection]  = useState<string | null>(null)
   const width = useWindowWidth()
+
+  // Auto-open the collapsible section that holds the active route, so the current
+  // page is always visible without the user hunting for it.
+  useEffect(() => {
+    const group = NAV.slice(1).find(g => g.items.some(i => pathname.startsWith(i.href)))
+    if (group) setOpenSection(group.section)
+  }, [pathname])
 
   // Identity is read from the same source as /perfil (the `users` table via tRPC) so the
   // avatar initial, name and role stay coherent with the profile and update reactively
@@ -391,7 +432,23 @@ export function Sidebar() {
             </Link>
           </div>
 
-          <nav className="flex-1 py-2 overflow-y-auto" aria-label="Navegación">
+          {/* + Nuevo trade */}
+          <div className="flex justify-center pt-3 pb-1">
+            <button
+              onClick={openRegister}
+              title="Nuevo trade"
+              aria-label="Nuevo trade"
+              className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform"
+              style={{
+                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+                boxShadow: "0 6px 16px -6px color-mix(in oklch, var(--accent) 55%, transparent)",
+              }}
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          <nav className="flex-1 py-2 overflow-y-auto no-scrollbar" aria-label="Navegación">
             {allItems.map(item => {
               const active = pathname.startsWith(item.href)
               const Icon   = item.icon
@@ -468,6 +525,7 @@ export function Sidebar() {
 
   // ── Desktop — floating card sidebar ───────────────────────────────────────────
   const W = collapsed ? 76 : 248
+  const [principal, ...collapsibleGroups] = NAV
 
   return (
     <div
@@ -475,10 +533,10 @@ export function Sidebar() {
         width: W, minWidth: W,
         position: "sticky", top: 0, height: "100vh",
         padding: 12,
-        display: "flex", flexDirection: "column", gap: 10,
+        display: "flex", flexDirection: "column",
       }}
     >
-      {/* Main card — identity · nav · Coach CTA */}
+      {/* Single floating card — identity · + · nav (accordion) · Coach · footer */}
       <aside
         className="flex-1 min-h-0 flex flex-col overflow-hidden"
         style={{
@@ -539,87 +597,118 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* Nav */}
+        {/* + Nuevo trade — primary action (opens the register modal; same as "n") */}
+        <div style={{ padding: collapsed ? "12px 0 4px" : "12px 12px 4px" }}>
+          <button
+            onClick={openRegister}
+            title="Nuevo trade"
+            aria-label="Nuevo trade"
+            className={cn(
+              "flex items-center justify-center gap-2 text-[var(--accent-contrast)] active:scale-[0.98] transition-transform",
+              collapsed ? "w-9 h-9 mx-auto rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
+            )}
+            style={{
+              background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+              boxShadow: "0 8px 20px -8px color-mix(in oklch, var(--accent) 55%, transparent)",
+            }}
+          >
+            <Plus size={collapsed ? 18 : 17} />
+            {!collapsed && <span className="text-[13px] font-semibold">Nuevo trade</span>}
+          </button>
+        </div>
+
+        {/* Nav — collapsed: icon list · expanded: PRINCIPAL pinned + accordion */}
         <nav
-          style={{ padding: "12px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
+          className="no-scrollbar"
+          style={{ padding: "8px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
           aria-label="Navegación principal"
         >
-          {NAV.map((group, gi) => (
-            <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 16 }}>
-              {!collapsed ? (
-                <p
-                  className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5"
-                  style={{ color: "var(--ink-3)" }}
-                >
-                  {group.section}
-                </p>
-              ) : (
-                <div style={{ height: 1, margin: "10px 16px", background: "var(--line)" }} />
-              )}
-              {group.items.map(item => {
-                const active = pathname.startsWith(item.href)
-                const Icon   = item.icon
-                const badge  = navBadge[item.href] ?? 0
+          {collapsed ? (
+            NAV.map((group, gi) => (
+              <div key={group.section}>
+                {gi > 0 && <div style={{ height: 1, margin: "8px 16px", background: "var(--line)" }} />}
+                {group.items.map(item => {
+                  const active = pathname.startsWith(item.href)
+                  const Icon   = item.icon
+                  const badge  = navBadge[item.href] ?? 0
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={item.label}
+                      className={cn(
+                        "relative flex items-center justify-center h-[38px] mx-2 mb-1 rounded-[var(--radius-sm)] transition-colors",
+                        active ? "text-[var(--accent)]" : "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
+                      )}
+                      style={{ background: active ? "var(--accent-soft)" : "transparent" }}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <Icon size={16} />
+                      {badge > 0 && (
+                        <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }} />
+                      )}
+                      {active && (
+                        <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "var(--accent)" }} />
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))
+          ) : (
+            <>
+              {/* PRINCIPAL — pinned (always visible) */}
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5" style={{ color: "var(--ink-3)" }}>
+                {principal.section}
+              </p>
+              {principal.items.map(item => (
+                <DeskItem key={item.href} item={item} active={pathname.startsWith(item.href)} badge={navBadge[item.href] ?? 0} />
+              ))}
+
+              {/* Collapsible sections — one open at a time */}
+              {collapsibleGroups.map(group => {
+                const isOpen   = openSection === group.section
+                const hasSignal = group.items.some(i => pathname.startsWith(i.href) || (navBadge[i.href] ?? 0) > 0)
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      "relative flex items-center transition-colors duration-150",
-                      collapsed
-                        ? "justify-center h-[40px] mx-2 mb-1 rounded-[var(--radius-sm)]"
-                        : "gap-3 h-[38px] px-3 mx-2.5 mb-0.5 rounded-[var(--radius-sm)]",
-                      active
-                        ? "text-[var(--accent)] font-semibold"
-                        : "text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
-                    )}
-                    style={{
-                      fontSize: 13,
-                      background: active ? "var(--accent-soft)" : "transparent",
-                      textDecoration: "none",
-                    }}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    <Icon size={16} className="shrink-0" />
-                    {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
-
-                    {/* Count badge */}
-                    {badge > 0 && (
-                      !collapsed ? (
-                        <span
-                          className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                          style={{ background: "var(--loss)", color: "#fff" }}
-                        >
-                          {badge > 9 ? "9+" : badge}
-                        </span>
-                      ) : (
-                        <span
-                          className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                          style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }}
-                        />
-                      )
-                    )}
-
-                    {/* Active indicator bar — protrudes from the right edge */}
-                    {active && (
-                      <span
-                        className={cn(
-                          "absolute top-1/2 -translate-y-1/2 w-[3px] rounded-full",
-                          collapsed ? "right-0 h-4" : "-right-[11px] h-5"
-                        )}
-                        style={{ background: "var(--accent)" }}
+                  <div key={group.section} style={{ marginTop: 8 }}>
+                    <button
+                      onClick={() => setOpenSection(s => (s === group.section ? null : group.section))}
+                      className="w-full flex items-center gap-2 h-[30px] px-[18px] transition-colors hover:bg-[var(--chip)]"
+                      style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                      aria-expanded={isOpen}
+                    >
+                      <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--ink-3)" }}>
+                        {group.section}
+                      </span>
+                      {!isOpen && hasSignal && (
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} aria-hidden="true" />
+                      )}
+                      <ChevronRight
+                        size={12}
+                        className="ml-auto shrink-0 transition-transform duration-200"
+                        style={{ color: "var(--ink-3)", transform: isOpen ? "rotate(90deg)" : "none" }}
                       />
-                    )}
-                  </Link>
+                    </button>
+                    {/* grid 0fr→1fr animates height without measuring */}
+                    <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows 0.18s var(--ease-out)" }}>
+                      <div style={{ overflow: "hidden", minHeight: 0 }}>
+                        <div style={{ paddingTop: 2 }}>
+                          {group.items.map(item => (
+                            <DeskItem key={item.href} item={item} active={pathname.startsWith(item.href)} badge={navBadge[item.href] ?? 0} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )
               })}
-            </div>
-          ))}
+            </>
+          )}
         </nav>
 
-        {/* Coach IA — purple CTA at the bottom of the card */}
-        <div style={{ padding: collapsed ? "10px 0 12px" : "10px 12px 12px", borderTop: "1px solid var(--line)" }}>
+        {/* Coach IA — purple CTA */}
+        <div style={{ padding: collapsed ? "6px 0 8px" : "6px 12px 8px" }}>
           <button
             onClick={openCoach}
             title="Coach IA"
@@ -637,50 +726,47 @@ export function Sidebar() {
             {!collapsed && <span className="text-[13px] font-semibold">Coach IA</span>}
           </button>
         </div>
-      </aside>
 
-      {/* Secondary card — bell · theme · logout */}
-      <div
-        style={{
-          background: "var(--panel)",
-          border: "1px solid var(--line)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-sm)",
-          padding: collapsed ? "10px 0" : "10px 12px",
-          display: "flex",
-          flexDirection: collapsed ? "column" : "row",
-          alignItems: "center",
-          gap: collapsed ? 8 : 6,
-        }}
-      >
-        <NotificationBell placement="up" align="left" />
-        <button
-          onClick={toggle}
-          title={`Tema: ${resolvedTheme}`}
-          className={cn(
-            "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--chip)]",
-            collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
-          )}
-          style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+        {/* Footer — bell · theme · logout (merged into the card) */}
+        <div
+          style={{
+            borderTop: "1px solid var(--line)",
+            padding: collapsed ? "10px 0" : "10px 12px",
+            display: "flex",
+            flexDirection: collapsed ? "column" : "row",
+            alignItems: "center",
+            gap: collapsed ? 8 : 6,
+          }}
         >
-          <ThemeIcon theme={resolvedTheme} />
-          {!collapsed && (
-            <span className="text-[11px] font-medium capitalize">{resolvedTheme}</span>
-          )}
-        </button>
-        <button
-          onClick={handleLogout}
-          title="Cerrar sesión"
-          className={cn(
-            "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:text-[var(--loss)] hover:bg-[var(--loss-soft)]",
-            collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
-          )}
-          style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
-        >
-          <LogOut size={13} />
-          {!collapsed && <span className="text-[11px] font-medium">Salir</span>}
-        </button>
-      </div>
+          <NotificationBell placement="up" align="left" />
+          <button
+            onClick={toggle}
+            title={`Tema: ${resolvedTheme}`}
+            className={cn(
+              "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--chip)]",
+              collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
+            )}
+            style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+          >
+            <ThemeIcon theme={resolvedTheme} />
+            {!collapsed && (
+              <span className="text-[11px] font-medium capitalize">{resolvedTheme}</span>
+            )}
+          </button>
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            className={cn(
+              "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:text-[var(--loss)] hover:bg-[var(--loss-soft)]",
+              collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
+            )}
+            style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+          >
+            <LogOut size={13} />
+            {!collapsed && <span className="text-[11px] font-medium">Salir</span>}
+          </button>
+        </div>
+      </aside>
     </div>
   )
 }

@@ -296,9 +296,11 @@ export function AiCoachDrawer() {
   // on top of the dialog and cover its content and actions (mobile + desktop).
   if (anyDialogOpen) return null
 
-  // ── Floating launcher (collapsed) — fixed home position (bottom-right corner,
-  // below the quick-actions FAB which stacks above it on desktop). ──────────────
+  // ── Floating launcher (collapsed) — mobile only. On desktop/tablet the Coach
+  // is opened from the sidebar "Coach IA" CTA (via the `coach:open` event), so a
+  // floating bubble would be redundant clutter. ────────────────────────────────
   if (!open) {
+    if (!isMobile) return null
     return (
       <button
         onClick={() => { setOpen(true); setMode("panel") }}
@@ -307,7 +309,7 @@ export function AiCoachDrawer() {
           "fixed z-[45] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center",
           "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors active:scale-95",
         )}
-        style={{ bottom: isMobile ? 84 : 24, right: 24 }}
+        style={{ bottom: 84, right: 24 }}
       >
         <MessageCircle size={24} />
       </button>
