@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "@/components/theme-provider"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
@@ -114,51 +114,12 @@ function MobileClock({ tz }: { tz: string }) {
   )
 }
 
-/** Floating pill background with a concave notch under the center FAB.
- *  Drawn as an SVG path so the shadow follows the notch shape (a CSS mask would
- *  let the box-shadow bleed across the cutout). Width is measured so corner radii
- *  and the notch stay crisp at any viewport size. */
-function NotchedBarBg() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [w, setW] = useState(0)
-  const h = 64, r = 26, rx = 40, ry = 26
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const measure = () => setW(el.clientWidth)
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  const cx = w / 2
-  const d = w === 0 ? "" : [
-    `M ${r} 0`,
-    `L ${cx - rx} 0`,
-    `A ${rx} ${ry} 0 0 0 ${cx + rx} 0`,
-    `L ${w - r} 0`,
-    `A ${r} ${r} 0 0 1 ${w} ${r}`,
-    `L ${w} ${h - r}`,
-    `A ${r} ${r} 0 0 1 ${w - r} ${h}`,
-    `L ${r} ${h}`,
-    `A ${r} ${r} 0 0 1 0 ${h - r}`,
-    `L 0 ${r}`,
-    `A ${r} ${r} 0 0 1 ${r} 0`,
-    "Z",
-  ].join(" ")
-  return (
-    <div ref={ref} className="absolute inset-0" aria-hidden="true">
-      {w > 0 && (
-        <svg
-          width={w} height={h} viewBox={`0 0 ${w} ${h}`}
-          style={{ display: "block", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.18))" }}
-        >
-          <path d={d} fill="var(--panel)" stroke="var(--line)" strokeWidth={1} />
-        </svg>
-      )}
-    </div>
-  )
-}
+/** Circular notch carved into the top-center of the floating pill, sized to
+ *  cradle the 56px FAB. A CSS radial-gradient mask (no JS measurement, so it can
+ *  never silently render flat) carves the cutout; `filter: drop-shadow` is used
+ *  instead of box-shadow so the shadow follows the notch instead of bleeding
+ *  across it. Supported on iOS Safari via the -webkit- prefix. */
+const NOTCH_MASK = "radial-gradient(34px at 50% 0, transparent 0 33px, #000 34px)"
 
 function ThemeIcon({ theme }: { theme: string }) {
   if (theme === "dark")   return <Moon size={13} />
@@ -168,22 +129,20 @@ function ThemeIcon({ theme }: { theme: string }) {
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number | string }> }
 
-function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
+/** Icon-only tab (faithful to the reference bottom bar — no labels). */
+function IconTab({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon
   return (
     <Link
       href={item.href}
       className={cn(
-        "flex-1 flex flex-col items-center justify-center gap-0.5 h-16 transition-colors",
+        "flex-1 flex items-center justify-center h-full transition-colors",
         active ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
       )}
       aria-label={item.label}
       aria-current={active ? "page" : undefined}
     >
-      <Icon size={20} />
-      <span className={cn("text-[9px] leading-none", active ? "font-semibold" : "font-medium")}>
-        {item.label}
-      </span>
+      <Icon size={23} />
     </Link>
   )
 }
@@ -341,65 +300,70 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Bottom nav — floating pill with a concave notch under the FAB.
-            2 destinos · FAB central (Nuevo Trade) · 2 destinos */}
+        {/* Bottom nav — floating pill with a concave notch cradling the FAB.
+            Icon-only, faithful to the reference. 2 destinos · FAB · 2 destinos */}
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 px-3 pointer-events-none"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          className="fixed bottom-0 left-0 right-0 z-50 px-4 pointer-events-none"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)" }}
           aria-label="Navegación principal"
         >
-          <div className="relative h-16 pointer-events-auto">
-            <NotchedBarBg />
-
-            {/* Center FAB — Quick Action: Nuevo Trade */}
-            <button
-              onClick={openRegister}
-              aria-label="Nuevo trade"
-              className="absolute left-1/2 -translate-x-1/2 -top-[26px] w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform z-10"
+          <div className="relative mx-auto max-w-md pointer-events-auto">
+            {/* Pill — notch carved by a radial mask; drop-shadow follows the cut */}
+            <div
+              className="relative h-[62px] flex items-stretch"
               style={{
-                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
-                boxShadow: "0 10px 24px -6px color-mix(in oklch, var(--accent) 55%, transparent)",
+                background: "var(--panel)",
+                borderRadius: 30,
+                WebkitMask: NOTCH_MASK,
+                mask: NOTCH_MASK,
+                filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.12)) drop-shadow(0 10px 24px rgba(0,0,0,0.10))",
               }}
             >
-              <Plus size={26} />
-            </button>
-
-            {/* Tabs sit above the SVG background */}
-            <div className="relative h-full flex items-stretch">
               {leftItems.map(item => (
-                <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+                <IconTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
               ))}
 
-              {/* Spacer under the FAB / notch */}
-              <div className="w-16 shrink-0" aria-hidden="true" />
+              {/* Gap beneath the FAB / notch */}
+              <div className="w-[68px] shrink-0" aria-hidden="true" />
 
               {rightItems.map(item => (
-                <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+                <IconTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
               ))}
 
               <button
                 onClick={() => setDrawerOpen(v => !v)}
                 className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-0.5 h-16 transition-colors relative",
+                  "relative flex-1 flex items-center justify-center h-full transition-colors",
                   anyDrawerActive || drawerOpen ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
                 )}
                 style={{ background: "transparent", border: "none", cursor: "pointer" }}
                 aria-label="Más secciones"
                 aria-expanded={drawerOpen}
               >
-                <MoreHorizontal size={20} />
-                <span className={cn("text-[9px] leading-none", anyDrawerActive || drawerOpen ? "font-semibold" : "font-medium")}>
-                  Más
-                </span>
+                <MoreHorizontal size={23} />
                 {anyDrawerActive && !drawerOpen && (
                   <span
-                    className="absolute top-3 right-[28%] w-1.5 h-1.5 rounded-full"
-                    style={{ background: "var(--accent)", border: "1.5px solid var(--panel)" }}
+                    className="absolute top-2.5 right-[26%] w-1.5 h-1.5 rounded-full"
+                    style={{ background: "var(--accent)" }}
                     aria-hidden="true"
                   />
                 )}
               </button>
             </div>
+
+            {/* Center FAB — sibling of the masked pill so it isn't clipped.
+                Quick Action: Nuevo Trade */}
+            <button
+              onClick={openRegister}
+              aria-label="Nuevo trade"
+              className="absolute left-1/2 -translate-x-1/2 -top-7 w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform"
+              style={{
+                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+                boxShadow: "0 8px 22px -4px color-mix(in oklch, var(--accent) 60%, transparent), 0 2px 6px rgba(0,0,0,0.18)",
+              }}
+            >
+              <Plus size={26} />
+            </button>
           </div>
         </nav>
       </>
