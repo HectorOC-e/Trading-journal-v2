@@ -12,6 +12,8 @@ const MONTHS = [
 
 export type ReviewKind = "weekly" | "monthly"
 
+export interface AiMeta { analysis: string | null; at: string | null }
+
 export interface TrendPoint { label: string; pnl: number }
 
 export type NarrativeVM =
@@ -36,9 +38,10 @@ export interface ReviewReportVM {
   sessions:  WeeklyReport["sessions"]
   byAccount: WeeklyReport["byAccount"]
   narrative: NarrativeVM | null
+  ai:        AiMeta
 }
 
-export function weeklyToVM(r: WeeklyReport): ReviewReportVM {
+export function weeklyToVM(r: WeeklyReport & { ai: AiMeta }): ReviewReportVM {
   return {
     kind:         "weekly",
     title:        r.weekLabel,
@@ -56,10 +59,11 @@ export function weeklyToVM(r: WeeklyReport): ReviewReportVM {
     sessions:     r.sessions,
     byAccount:    r.byAccount,
     narrative:    r.saved ? { kind: "weekly", ...r.saved } : null,
+    ai:           r.ai,
   }
 }
 
-export function monthlyToVM(r: MonthlyReport): ReviewReportVM {
+export function monthlyToVM(r: MonthlyReport & { ai: AiMeta }): ReviewReportVM {
   return {
     kind:         "monthly",
     title:        `${MONTHS[r.month - 1]} ${r.year}`,
@@ -79,5 +83,6 @@ export function monthlyToVM(r: MonthlyReport): ReviewReportVM {
     narrative:    r.saved
       ? { kind: "monthly", summary: r.saved.summary, keyThemes: r.saved.keyThemes, goalsSet: r.saved.goalsSet, goalsMet: r.saved.goalsMet }
       : null,
+    ai:           r.ai,
   }
 }

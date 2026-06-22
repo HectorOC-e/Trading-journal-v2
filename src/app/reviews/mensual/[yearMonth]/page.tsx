@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
 import { ReviewReportShell } from "../../components/report/review-report-shell"
+import { AiAnalysisCard } from "../../components/report/ai-analysis-card"
 import { monthlyToVM } from "../../components/report/view-model"
 
 export default function MonthlyReportPage() {
@@ -20,5 +21,11 @@ export default function MonthlyReportPage() {
   if (!valid) return <div className="p-8 text-sm text-[var(--ink-3)]">Mes inválido.</div>
   if (isLoading || !r) return <div className="p-8 text-sm text-[var(--ink-3)]">Cargando reporte…</div>
 
-  return <ReviewReportShell vm={monthlyToVM(r)} />
+  const vm = monthlyToVM(r)
+  return (
+    <ReviewReportShell
+      vm={vm}
+      aiSlot={<AiAnalysisCard period={{ kind: "monthly", year, month }} initial={vm.ai} />}
+    />
+  )
 }
