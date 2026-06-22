@@ -79,11 +79,21 @@ export function PaletteStudio() {
   function apply(sel: string) {
     setSelection(sel)
     applyColorTheme(sel, lib, mode)
+    // Keep the global ThemeProvider — the single source of truth that applies the
+    // theme (incl. re-injecting on light/dark flips) — in sync immediately, without
+    // waiting for the debounced mutation to round-trip. Otherwise a mode flip right
+    // after picking would re-apply the still-stale persisted colorTheme.
+    utils.preferences.get.setData(undefined, (old) =>
+      old ? { ...old, colorTheme: sel } : old,
+    )
     persist(sel)
   }
 
-  // Re-inject when the resolved light/dark mode flips (custom palettes are inline).
-  useEffect(() => { applyColorTheme(selection, lib, mode) }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
+  // NOTE: applying the theme on mount / mode-change is intentionally NOT done here.
+  // The ThemeProvider owns global application (it re-injects custom inline vars when
+  // the resolved mode flips, since its effect depends on `theme`). Doing it here too
+  // raced the provider and — because the provider's effect doesn't re-run on route
+  // changes — clobbered the active palette every time the profile page mounted.
 
   // ── Creator modal ──
   const [open, setOpen] = useState(false)
