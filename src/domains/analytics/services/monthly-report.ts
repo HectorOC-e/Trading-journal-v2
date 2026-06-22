@@ -10,6 +10,20 @@ export type ReportTrade = {
   date: string         // YYYY-MM-DD
   setupId: string | null
   tags: string[]
+  session: string      // trading session / time-of-day bucket ("Sin sesión" when unset)
+}
+
+/** Aggregate P&L and count by trading session. Shared by weekly + monthly reports. */
+export function sessionsOf(trades: ReportTrade[]): { session: string; pnl: number; trades: number }[] {
+  const map: Record<string, { pnl: number; trades: number }> = {}
+  for (const t of trades) {
+    const key = t.session || "Sin sesión"
+    const e = (map[key] ??= { pnl: 0, trades: 0 })
+    e.pnl += t.pnl; e.trades++
+  }
+  return Object.entries(map)
+    .map(([session, v]) => ({ session, pnl: parseFloat(v.pnl.toFixed(2)), trades: v.trades }))
+    .sort((a, b) => b.trades - a.trades)
 }
 
 export type MonthlyReport = {
@@ -23,6 +37,7 @@ export type MonthlyReport = {
   worstDay: { date: string; pnl: number } | null
   discipline: { violations: number; costo: number; rachaDiasLimpios: number }
   setups:    { name: string; pnl: number; trades: number }[]
+  sessions:  { session: string; pnl: number; trades: number }[]
   byAccount: { name: string; pnl: number }[]
   saved: { summary: string; keyThemes: string[]; goalsSet: string[]; goalsMet: string[]; overallScore: number | null } | null
 }
@@ -126,6 +141,7 @@ export function buildMonthlyReport(opts: {
       rachaDiasLimpios: racha,
     },
     setups,
+    sessions: sessionsOf(monthTrades),
     byAccount,
     saved: opts.saved,
   }

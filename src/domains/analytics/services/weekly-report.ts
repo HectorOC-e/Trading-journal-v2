@@ -3,7 +3,7 @@
 // currency. Mirrors buildMonthlyReport but trends day-by-day instead of week.
 
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
-import type { ReportTrade } from "./monthly-report"
+import { sessionsOf, type ReportTrade } from "./monthly-report"
 
 export type { ReportTrade }
 
@@ -18,6 +18,7 @@ export type WeeklyReport = {
   worstDay: { date: string; pnl: number } | null
   discipline: { violations: number; costo: number; rachaDiasLimpios: number }
   setups:    { name: string; pnl: number; trades: number }[]
+  sessions:  { session: string; pnl: number; trades: number }[]
   byAccount: { name: string; pnl: number }[]
   saved: { executiveSummary: string; whatWorked: string; toImprove: string; status: string } | null
 }
@@ -124,6 +125,7 @@ export function buildWeeklyReport(opts: {
       rachaDiasLimpios: racha,
     },
     setups,
+    sessions: sessionsOf(weekTrades),
     byAccount,
     saved: opts.saved,
   }

@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest"
 import { buildMonthlyReport, type ReportTrade } from "@/domains/analytics/services/monthly-report"
 
 const month: ReportTrade[] = [
-  { accountId: "a1", pnl: 400, rMultiple: 2,    date: "2026-06-01", setupId: "s1", tags: [] },
-  { accountId: "a1", pnl: -100, rMultiple: -0.5, date: "2026-06-02", setupId: "s1", tags: ["Impulsivo"] },
-  { accountId: "a2", pnl: 200, rMultiple: 1,    date: "2026-06-08", setupId: null, tags: [] },
+  { accountId: "a1", pnl: 400, rMultiple: 2,    date: "2026-06-01", setupId: "s1", tags: [], session: "London" },
+  { accountId: "a1", pnl: -100, rMultiple: -0.5, date: "2026-06-02", setupId: "s1", tags: ["Impulsivo"], session: "London" },
+  { accountId: "a2", pnl: 200, rMultiple: 1,    date: "2026-06-08", setupId: null, tags: [], session: "NY" },
 ]
 const prev: ReportTrade[] = [
-  { accountId: "a1", pnl: 100, rMultiple: 1, date: "2026-05-10", setupId: "s1", tags: [] },
+  { accountId: "a1", pnl: 100, rMultiple: 1, date: "2026-05-10", setupId: "s1", tags: [], session: "London" },
 ]
 
 function build() {
@@ -51,5 +51,11 @@ describe("buildMonthlyReport", () => {
   })
   it("passes through the saved review", () => {
     expect(build().saved?.summary).toBe("Buen mes")
+  })
+  it("aggregates P&L by session", () => {
+    expect(build().sessions).toEqual([
+      { session: "London", pnl: 300, trades: 2 },
+      { session: "NY", pnl: 200, trades: 1 },
+    ])
   })
 })

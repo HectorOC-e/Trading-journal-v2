@@ -86,8 +86,8 @@ export const weeklyReviewsRouter = router({
         ctx.prisma.user.findUnique({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } }),
         ctx.prisma.account.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true, currency: true } }),
         ctx.prisma.setup.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: weekStart, lt: weekEnd } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: prevStart, lt: weekStart } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
+        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: weekStart, lt: weekEnd } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true, session: true } }),
+        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: prevStart, lt: weekStart } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true, session: true } }),
         ctx.prisma.weeklyReview.findFirst({ where: { userId: ctx.userId, weekStart } }),
         ctx.prisma.weeklyReview.findFirst({ where: { userId: ctx.userId, weekStart: prevStart } }),
       ])
@@ -102,6 +102,7 @@ export const weeklyReviewsRouter = router({
         date:      (t.date as Date).toISOString().slice(0, 10),
         setupId:   t.setupId,
         tags:      t.tags as string[],
+        session:   t.session ?? "Sin sesión",
       }))
 
       const isoStart = weekStart.toISOString().slice(0, 10)
