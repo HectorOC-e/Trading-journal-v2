@@ -18,6 +18,7 @@ import {
   type ReviewPeriod,
 } from "@/server/services/email/send-review"
 import { ensureReviewAnalysis } from "@/server/services/reviews/ensure-analysis"
+import { renderReviewPdf } from "@/server/services/reviews/render-pdf"
 import { REVIEWS_HOUR, duePeriods, previousWeekStart, previousMonth } from "@/server/services/reviews/review-schedule"
 
 export const dynamic = "force-dynamic"
@@ -67,7 +68,10 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           logger.warn(`[cron:reviews-digest] AI gen failed ${user.id}: ${e instanceof Error ? e.message : String(e)}`)
         }
-        const { status } = await sendReviewEmail({ prisma, now }, user, period)
+        const { status } = await sendReviewEmail(
+          { prisma, now, renderPdf: (a) => renderReviewPdf(prisma, a) },
+          user, period,
+        )
         tally[status]++
       } catch (err) {
         tally.error++

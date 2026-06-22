@@ -32,9 +32,12 @@ export function ReviewReportShell({ vm, aiSlot, actions }: {
         </Link>
         <div className="flex items-center gap-2">
           {actions}
-          <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white hover:opacity-90">
-            <Printer size={14} /> Imprimir / PDF
-          </button>
+          <a
+            href={`/api/reviews/pdf?type=${vm.kind}&period=${vm.printPeriod}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white hover:opacity-90"
+          >
+            <Printer size={14} /> Descargar PDF
+          </a>
         </div>
       </div>
 
