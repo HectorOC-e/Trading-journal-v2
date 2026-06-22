@@ -7,10 +7,11 @@ import { useState, useEffect } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
-  ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
+  ChevronLeft, ChevronRight, BarChart2,
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
   Brain, LineChart, Plus, Bell, MessageCircle,
 } from "lucide-react"
+import { MobileBottomBar } from "@/components/layout/mobile-bottom-bar"
 import { useLogout } from "@/hooks/useLogout"
 import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
@@ -114,13 +115,6 @@ function MobileClock({ tz }: { tz: string }) {
   )
 }
 
-/** Circular notch carved into the top-center of the floating pill, sized to
- *  cradle the 56px FAB. A CSS radial-gradient mask (no JS measurement, so it can
- *  never silently render flat) carves the cutout; `filter: drop-shadow` is used
- *  instead of box-shadow so the shadow follows the notch instead of bleeding
- *  across it. Supported on iOS Safari via the -webkit- prefix. */
-const NOTCH_MASK = "radial-gradient(34px at 50% 0, transparent 0 33px, #000 34px)"
-
 function ThemeIcon({ theme }: { theme: string }) {
   if (theme === "dark")   return <Moon size={13} />
   if (theme === "light")  return <Sun size={13} />
@@ -128,24 +122,6 @@ function ThemeIcon({ theme }: { theme: string }) {
 }
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ size?: number | string }> }
-
-/** Icon-only tab (faithful to the reference bottom bar — no labels). */
-function IconTab({ item, active }: { item: NavItem; active: boolean }) {
-  const Icon = item.icon
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        "flex-1 flex items-center justify-center h-full transition-colors",
-        active ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
-      )}
-      aria-label={item.label}
-      aria-current={active ? "page" : undefined}
-    >
-      <Icon size={23} />
-    </Link>
-  )
-}
 
 /** Expanded desktop nav row (label + icon, active pill + right bar + badge). */
 function DeskItem({ item, active, badge }: { item: NavItem; active: boolean; badge: number }) {
@@ -341,72 +317,15 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Bottom nav — floating pill with a concave notch cradling the FAB.
-            Icon-only, faithful to the reference. 2 destinos · FAB · 2 destinos */}
-        <nav
-          className="fixed bottom-0 left-0 right-0 z-50 px-4 pointer-events-none"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)" }}
-          aria-label="Navegación principal"
-        >
-          <div className="relative mx-auto max-w-md pointer-events-auto">
-            {/* Pill — notch carved by a radial mask; drop-shadow follows the cut */}
-            <div
-              className="relative h-[62px] flex items-stretch"
-              style={{
-                background: "var(--panel)",
-                borderRadius: 30,
-                WebkitMask: NOTCH_MASK,
-                mask: NOTCH_MASK,
-                filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.12)) drop-shadow(0 10px 24px rgba(0,0,0,0.10))",
-              }}
-            >
-              {leftItems.map(item => (
-                <IconTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
-              ))}
-
-              {/* Gap beneath the FAB / notch */}
-              <div className="w-[68px] shrink-0" aria-hidden="true" />
-
-              {rightItems.map(item => (
-                <IconTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
-              ))}
-
-              <button
-                onClick={() => setDrawerOpen(v => !v)}
-                className={cn(
-                  "relative flex-1 flex items-center justify-center h-full transition-colors",
-                  anyDrawerActive || drawerOpen ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
-                )}
-                style={{ background: "transparent", border: "none", cursor: "pointer" }}
-                aria-label="Más secciones"
-                aria-expanded={drawerOpen}
-              >
-                <MoreHorizontal size={23} />
-                {anyDrawerActive && !drawerOpen && (
-                  <span
-                    className="absolute top-2.5 right-[26%] w-1.5 h-1.5 rounded-full"
-                    style={{ background: "var(--accent)" }}
-                    aria-hidden="true"
-                  />
-                )}
-              </button>
-            </div>
-
-            {/* Center FAB — sibling of the masked pill so it isn't clipped.
-                Quick Action: Nuevo Trade */}
-            <button
-              onClick={openRegister}
-              aria-label="Nuevo trade"
-              className="absolute left-1/2 -translate-x-1/2 -top-7 w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform"
-              style={{
-                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
-                boxShadow: "0 8px 22px -4px color-mix(in oklch, var(--accent) 60%, transparent), 0 2px 6px rgba(0,0,0,0.18)",
-              }}
-            >
-              <Plus size={26} />
-            </button>
-          </div>
-        </nav>
+        {/* Bottom nav + create speed-dial (own component for the menu animation) */}
+        <MobileBottomBar
+          leftItems={leftItems}
+          rightItems={rightItems}
+          pathname={pathname}
+          drawerOpen={drawerOpen}
+          setDrawerOpen={setDrawerOpen}
+          anyDrawerActive={anyDrawerActive}
+        />
       </>
     )
   }

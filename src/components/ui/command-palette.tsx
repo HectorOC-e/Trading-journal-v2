@@ -41,8 +41,15 @@ export function CommandPalette() {
         setOpen(false)
       }
     }
+    // Programmatic open (e.g. the mobile create speed-dial "Buscar" action),
+    // mirroring the desktop ⌘K shortcut for devices without a keyboard.
+    const openHandler = () => setOpen(true)
     document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
+    window.addEventListener("palette:open", openHandler)
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      window.removeEventListener("palette:open", openHandler)
+    }
   }, [])
 
   useEffect(() => {
