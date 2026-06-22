@@ -465,6 +465,10 @@ body {
   }
 }
 
+/* Hide scrollbar chrome while keeping the element scrollable (sidebar nav). */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 /* ── Status dot ── */
 .status-dot {
   display: inline-block;
