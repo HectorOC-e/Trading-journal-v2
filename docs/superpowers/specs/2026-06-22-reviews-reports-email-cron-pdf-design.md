@@ -144,25 +144,32 @@ carry `session`). Pure functions → unit-tested.
 ### 5 · Server-side PDF (headless Chromium)
 
 - **Deps:** `playwright-core` + `@sparticuz/chromium` (serverless-friendly Chromium binary).
-- **Print route:** `/reviews/semanal/[weekStart]/print` and
-  `/reviews/mensual/[yearMonth]/print` (or `?print=1` variant) — forces light theme, hides
-  app chrome, disables animations (`isAnimationActive={false}`), and sets a DOM readiness
-  flag (e.g. `document.documentElement.dataset.printReady = "1"`) once charts have mounted,
-  so the PDF service waits deterministically instead of racing animations.
-- **Auth for headless render:** a **one-time HMAC-signed token** (`type|period|exp`,
-  signed with `CRON_SECRET`/dedicated secret) appended to the print URL; the print route
-  validates it server-side and renders for the owning user without a session cookie.
-- **Service:** `renderReviewPdf({ type, period, userId })` → launches Chromium, `page.goto`
-  the signed print URL, `waitForSelector('[data-print-ready="1"]')`, `page.pdf({ format: "A4",
-  printBackground: true })` → `Buffer`.
+- **Implementation note (changed from the original token+print-route plan):** rather than
+  navigating a live `/print` route (which fights the auth middleware, the app layout/sidebar,
+  and the no-flash theme script, and needs an HMAC token), the PDF is produced from a
+  **self-contained, server-rendered HTML string** fed to Chromium via `page.setContent`. This
+  removed the token, the print route, the middleware exemption, and the theme-forcing — at the
+  cost of not reusing recharts in the PDF (a purpose-built inline-**SVG** trend chart is used
+  instead). Still headless Chromium (the chosen engine), just `setContent` instead of `goto`.
+- **HTML builder:** `renderReviewReportHtml({ kind, title, subtitle, report, aiAnalysis })`
+  (pure, unit-tested) → a full `<!doctype html>` document with inline light-theme CSS, an
+  inline SVG P&L trend chart, KPI/setup/session/discipline/account blocks and the AI analysis.
+  HTML-escapes all user content.
+- **Service:** `renderReviewPdf(prisma, { userId, period })` → loads the report, builds the
+  HTML, launches Chromium (`@sparticuz/chromium` executablePath, or
+  `PLAYWRIGHT_CHROMIUM_EXECUTABLE` for local dev), `setContent` → `page.pdf({ format: "A4",
+  printBackground: true })` → `Buffer`. No token/session needed (userId is passed by the
+  trusted caller).
 - **Delivery:**
-  - **Email attachment:** extend `resend-client` `sendEmail` to accept `attachments`
-    (Resend base64 attachment API); `sendReviewEmail` attaches the PDF.
-  - **Download button:** `GET /api/reviews/pdf?type=&period=` (session-auth) streams the PDF;
-    report page "Descargar PDF" button replaces the current `window.print()`.
+  - **Email attachment:** `resend-client` `sendEmail` accepts `attachments` (Resend API);
+    the cron passes `renderPdf` into `sendReviewEmail`, which attaches the PDF (PDF failure
+    never blocks the email).
+  - **Download button:** `GET /api/reviews/pdf?type=&period=` (session-auth via Supabase)
+    streams the PDF; the report "Descargar PDF" button replaces `window.print()`.
 - **Deployment note:** headless Chromium is the heaviest piece on Vercel serverless (cold
-  starts, binary size, `maxDuration`). Document the env/runtime requirements; consider a
-  longer-timeout runtime for the cron + pdf routes.
+  starts, binary size, `maxDuration`). The cron route sets `maxDuration = 300` and the pdf
+  route `120`; confirm the deployment plan allows these. `@sparticuz/chromium` may need
+  graphics-mode/font tuning at deploy.
 
 ## Data flow
 
