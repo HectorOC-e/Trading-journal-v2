@@ -330,6 +330,15 @@ export default function PerfilPage() {
       : aprendizajeChans.filter(c => c !== "email")
     updateNotifPref.mutate({ category: "Aprendizaje", channels })
   }
+  const reviewsPref    = notifPrefs?.find(p => p.category === "Reviews")
+  const reviewsChans   = reviewsPref?.channels ?? ["in_app"]
+  const reviewsEmailOn = reviewsChans.includes("email")
+  const setReviewsEmail = (on: boolean) => {
+    const channels = on
+      ? Array.from(new Set([...reviewsChans, "email"]))
+      : reviewsChans.filter(c => c !== "email")
+    updateNotifPref.mutate({ category: "Reviews", channels })
+  }
 
   /* ── Goals ── */
   const { data: goalsData } = trpc.goals.get.useQuery()
@@ -748,6 +757,13 @@ export default function PerfilPage() {
             on={emailNotifications && aprendizajeEmailOn}
             disabled={!emailNotifications}
             onChange={setAprendizajeEmail}
+          />
+          <ToggleRow
+            label="Email · Reviews"
+            sub="Resumen semanal (lunes) y mensual (día 1) de tu trading con análisis IA y PDF."
+            on={emailNotifications && reviewsEmailOn}
+            disabled={!emailNotifications}
+            onChange={setReviewsEmail}
           />
         </Card>
 

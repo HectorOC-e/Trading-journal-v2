@@ -2,9 +2,10 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { MonthlyReview } from "@/lib/generated/prisma/client"
-import { buildMonthlyReport, type ReportTrade } from "@/domains/analytics/services/monthly-report"
-import { fxFactor, parseFxRates } from "@/lib/fx"
-import { VIOLATION_TAGS } from "@/types"
+import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
+import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
+import { sendReviewEmail } from "@/server/services/email/send-review"
 
 type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt"> & {
   createdAt: string
@@ -89,49 +90,61 @@ export const monthlyReviewsRouter = router({
   report: protectedProcedure
     .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
     .query(async ({ ctx, input }) => {
-      const { year, month } = input
-      const monthStart = new Date(year, month - 1, 1)
-      const monthEnd   = new Date(year, month, 1)       // exclusive
-      const prevStart  = new Date(year, month - 2, 1)   // previous month start
+      const { report, saved } = await loadMonthlyReport(ctx.prisma, ctx.userId, input.year, input.month)
+      return { ...report, ai: aiMetaOf(saved) }
+    }),
 
-      const [user, accounts, setups, monthRows, prevRows, weeklies, saved] = await Promise.all([
-        ctx.prisma.user.findUnique({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } }),
-        ctx.prisma.account.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true, currency: true } }),
-        ctx.prisma.setup.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: monthStart, lt: monthEnd } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: prevStart, lt: monthStart } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
-        ctx.prisma.weeklyReview.findMany({ where: { userId: ctx.userId, weekStart: { gte: prevStart, lt: monthEnd } }, select: { weekStart: true, disciplineScore: true } }),
-        ctx.prisma.monthlyReview.findFirst({ where: { userId: ctx.userId, year, month } }),
-      ])
-
-      const baseCurrency = user?.baseCurrency ?? "USD"
-      const fxRates      = parseFxRates(user?.fxRates)
-      const curById      = new Map(accounts.map(a => [a.id, a.currency]))
-      const toReport = (rows: typeof monthRows): ReportTrade[] => rows.map(t => ({
-        accountId: t.accountId,
-        pnl:       (t.pnl != null ? Number(t.pnl) : 0) * fxFactor(curById.get(t.accountId) ?? baseCurrency, baseCurrency, fxRates),
-        rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
-        date:      (t.date as Date).toISOString().slice(0, 10),
-        setupId:   t.setupId,
-        tags:      t.tags as string[],
-      }))
-
-      const avgScore = (rows: { weekStart: Date; disciplineScore: number }[], from: Date, to: Date) => {
-        const s = rows.filter(r => r.weekStart >= from && r.weekStart < to).map(r => r.disciplineScore).filter(n => n > 0)
-        return s.length ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : null
+  // T-XI: AI analysis of the computed monthly report. Upserts onto the month's review.
+  generateAnalysis: protectedProcedure
+    .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
+    .mutation(async ({ ctx, input }) => {
+      const aiCall = await resolveAiCall(ctx.prisma, ctx.userId, "weekly_reviews")
+      const candidates = usableCandidates(aiCall)
+      if (candidates.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Configura un proveedor de IA y su API key en Ajustes → Configuración de IA para generar el análisis.",
+        })
       }
 
-      return buildMonthlyReport({
-        year, month, baseCurrency,
-        monthTrades: toReport(monthRows),
-        prevTrades:  toReport(prevRows),
-        accountNames: Object.fromEntries(accounts.map(a => [a.id, a.name])),
-        setupNames:   Object.fromEntries(setups.map(s => [s.id, s.name])),
-        violationTags: VIOLATION_TAGS,
-        monthScore: saved?.overallScore ?? avgScore(weeklies, monthStart, monthEnd),
-        prevScore:  avgScore(weeklies, prevStart, monthStart),
-        saved: saved ? { summary: saved.summary, keyThemes: saved.keyThemes, goalsSet: saved.goalsSet, goalsMet: saved.goalsMet, overallScore: saved.overallScore } : null,
+      const { report } = await loadMonthlyReport(ctx.prisma, ctx.userId, input.year, input.month)
+      if (report.kpis.trades === 0) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en este mes para analizar." })
+      }
+
+      const periodLabel = `${String(input.month).padStart(2, "0")}/${input.year}`
+      let analysis: string
+      try {
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(periodLabel, "monthly", report))
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
+      }
+      if (!analysis) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "El análisis llegó vacío. Inténtalo de nuevo." })
+
+      const at = new Date()
+      await ctx.prisma.monthlyReview.upsert({
+        where:  { userId_year_month: { userId: ctx.userId, year: input.year, month: input.month } },
+        create: { userId: ctx.userId, year: input.year, month: input.month, aiAnalysis: analysis, aiAnalysisAt: at },
+        update: { aiAnalysis: analysis, aiAnalysisAt: at },
       })
+      return { analysis, at: at.toISOString() }
+    }),
+
+  // Manual "send by email" for the month's review. See weeklyReviews.sendEmail.
+  sendEmail: protectedProcedure
+    .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { id: true, email: true, name: true, emailNotifications: true, timezone: true },
+      })
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" })
+
+      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "monthly", year: input.year, month: input.month }, { manual: true })
+      if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
+      if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en este mes para enviar." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      return { status }
     }),
 
   // Aggregate weekly reviews for the given month to suggest fields

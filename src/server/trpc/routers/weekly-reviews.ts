@@ -6,9 +6,9 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { streamChat }        from "@/lib/ai/chat"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
-import { buildWeeklyReport, type ReportTrade } from "@/domains/analytics/services/weekly-report"
-import { fxFactor, parseFxRates } from "@/lib/fx"
-import { VIOLATION_TAGS } from "@/types"
+import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
+import { sendReviewEmail } from "@/server/services/email/send-review"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -78,49 +78,73 @@ export const weeklyReviewsRouter = router({
   report: protectedProcedure
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
-      const weekStart = new Date(input.weekStart + "T00:00:00")
-      const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7)   // exclusive
-      const prevStart = new Date(weekStart); prevStart.setDate(weekStart.getDate() - 7)
+      const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
+      return { ...report, ai: aiMetaOf(saved) }
+    }),
 
-      const [user, accounts, setups, weekRows, prevRows, saved, prevSaved] = await Promise.all([
-        ctx.prisma.user.findUnique({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } }),
-        ctx.prisma.account.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true, currency: true } }),
-        ctx.prisma.setup.findMany({ where: { userId: ctx.userId }, select: { id: true, name: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: weekStart, lt: weekEnd } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
-        ctx.prisma.trade.findMany({ where: { userId: ctx.userId, status: "CLOSED", date: { gte: prevStart, lt: weekStart } }, select: { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true } }),
-        ctx.prisma.weeklyReview.findFirst({ where: { userId: ctx.userId, weekStart } }),
-        ctx.prisma.weeklyReview.findFirst({ where: { userId: ctx.userId, weekStart: prevStart } }),
-      ])
+  // T-XI: AI analysis of the computed weekly report. Persists to the review row
+  // (creating a draft when none exists) so it's reused and embeddable in the email.
+  generateAnalysis: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const aiCall = await resolveAiCall(ctx.prisma, ctx.userId, "weekly_reviews")
+      const candidates = usableCandidates(aiCall)
+      if (candidates.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Configura un proveedor de IA y su API key en Ajustes → Configuración de IA para generar el análisis.",
+        })
+      }
 
-      const baseCurrency = user?.baseCurrency ?? "USD"
-      const fxRates      = parseFxRates(user?.fxRates)
-      const curById      = new Map(accounts.map(a => [a.id, a.currency]))
-      const toReport = (rows: typeof weekRows): ReportTrade[] => rows.map(t => ({
-        accountId: t.accountId,
-        pnl:       (t.pnl != null ? Number(t.pnl) : 0) * fxFactor(curById.get(t.accountId) ?? baseCurrency, baseCurrency, fxRates),
-        rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
-        date:      (t.date as Date).toISOString().slice(0, 10),
-        setupId:   t.setupId,
-        tags:      t.tags as string[],
-      }))
+      const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
+      if (report.kpis.trades === 0) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para analizar." })
+      }
 
-      const isoStart = weekStart.toISOString().slice(0, 10)
-      const weekLabel = saved?.weekLabel
-        ?? `Semana del ${weekStart.toLocaleDateString("es", { day: "numeric", month: "short" })}`
+      let analysis: string
+      try {
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report))
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
+      }
+      if (!analysis) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "El análisis llegó vacío. Inténtalo de nuevo." })
 
-      return buildWeeklyReport({
-        weekStart: isoStart,
-        weekLabel,
-        baseCurrency,
-        weekTrades: toReport(weekRows),
-        prevTrades: toReport(prevRows),
-        accountNames: Object.fromEntries(accounts.map(a => [a.id, a.name])),
-        setupNames:   Object.fromEntries(setups.map(s => [s.id, s.name])),
-        violationTags: VIOLATION_TAGS,
-        weekScore: saved?.disciplineScore ?? null,
-        prevScore: prevSaved?.disciplineScore ?? null,
-        saved: saved ? { executiveSummary: saved.executiveSummary, whatWorked: saved.whatWorked, toImprove: saved.toImprove, status: saved.status } : null,
+      const at = new Date()
+      if (saved) {
+        await ctx.prisma.weeklyReview.update({ where: { id: saved.id }, data: { aiAnalysis: analysis, aiAnalysisAt: at } })
+      } else {
+        const weekStart = new Date(input.weekStart + "T00:00:00")
+        const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
+        await ctx.prisma.weeklyReview.create({
+          data: {
+            userId: ctx.userId,
+            weekStart, weekEnd,
+            weekLabel: report.weekLabel,
+            weekRange: report.weekLabel,
+            aiAnalysis: analysis, aiAnalysisAt: at,
+            status: "draft",
+          },
+        })
+      }
+      return { analysis, at: at.toISOString() }
+    }),
+
+  // Manual "send by email" — bypasses quiet-hours/dedupe but requires the master
+  // email switch (the click is the opt-in). Cron uses the same service (Phase 4).
+  sendEmail: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { id: true, email: true, name: true, emailNotifications: true, timezone: true },
       })
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" })
+
+      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "weekly", weekStart: input.weekStart }, { manual: true })
+      if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
+      if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para enviar." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      return { status }
     }),
 
   create: protectedProcedure

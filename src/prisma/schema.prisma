@@ -448,6 +448,8 @@ model WeeklyReview {
   whatWorked       String   @default("") @map("what_worked")
   toImprove        String   @default("") @map("to_improve")
   status           String   @default("draft")
+  aiAnalysis       String?   @map("ai_analysis") @db.Text
+  aiAnalysisAt     DateTime? @map("ai_analysis_at")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
@@ -730,6 +732,8 @@ model MonthlyReview {
   goalsMet     String[] @map("goals_met")
   overallScore Int?     @map("overall_score") // 0–100, avg of weekly discipline scores
   weeklyIds    String[] @map("weekly_ids")    // soft refs to WeeklyReview.id
+  aiAnalysis   String?   @map("ai_analysis") @db.Text
+  aiAnalysisAt DateTime? @map("ai_analysis_at")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
