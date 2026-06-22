@@ -96,7 +96,7 @@ export function ReviewSummary({ model, theme = lightTheme, appUrl = "https://app
       )}
 
       <CtaButton theme={theme} href={`${appUrl}${model.reportPath}`} label="Ver reporte completo" />
-      <EmailFooter theme={theme} prefsUrl={`${appUrl}/perfil`} />
+      <EmailFooter theme={theme} prefsUrl={`${appUrl}/perfil`} reason="Recibes esto porque tienes activos los correos de Reviews." />
     </EmailLayout>
   )
 }
