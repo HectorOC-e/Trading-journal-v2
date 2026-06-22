@@ -5,6 +5,7 @@ import type { MonthlyReview } from "@/lib/generated/prisma/client"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
+import { sendReviewEmail } from "@/server/services/email/send-review"
 
 type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt"> & {
   createdAt: string
@@ -127,6 +128,23 @@ export const monthlyReviewsRouter = router({
         update: { aiAnalysis: analysis, aiAnalysisAt: at },
       })
       return { analysis, at: at.toISOString() }
+    }),
+
+  // Manual "send by email" for the month's review. See weeklyReviews.sendEmail.
+  sendEmail: protectedProcedure
+    .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { id: true, email: true, name: true, emailNotifications: true, timezone: true },
+      })
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" })
+
+      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "monthly", year: input.year, month: input.month }, { manual: true })
+      if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
+      if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en este mes para enviar." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      return { status }
     }),
 
   // Aggregate weekly reviews for the given month to suggest fields

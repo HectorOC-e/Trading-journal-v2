@@ -4,6 +4,7 @@ import { useParams } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
 import { ReviewReportShell } from "../../components/report/review-report-shell"
 import { AiAnalysisCard } from "../../components/report/ai-analysis-card"
+import { SendReviewEmailButton } from "../../components/report/send-email-button"
 import { monthlyToVM } from "../../components/report/view-model"
 
 export default function MonthlyReportPage() {
@@ -26,6 +27,7 @@ export default function MonthlyReportPage() {
     <ReviewReportShell
       vm={vm}
       aiSlot={<AiAnalysisCard period={{ kind: "monthly", year, month }} initial={vm.ai} />}
+      actions={<SendReviewEmailButton period={{ kind: "monthly", year, month }} />}
     />
   )
 }

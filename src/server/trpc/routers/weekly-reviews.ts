@@ -8,6 +8,7 @@ import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
+import { sendReviewEmail } from "@/server/services/email/send-review"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -126,6 +127,24 @@ export const weeklyReviewsRouter = router({
         })
       }
       return { analysis, at: at.toISOString() }
+    }),
+
+  // Manual "send by email" — bypasses quiet-hours/dedupe but requires the master
+  // email switch (the click is the opt-in). Cron uses the same service (Phase 4).
+  sendEmail: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { id: ctx.userId },
+        select: { id: true, email: true, name: true, emailNotifications: true, timezone: true },
+      })
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" })
+
+      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "weekly", weekStart: input.weekStart }, { manual: true })
+      if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
+      if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para enviar." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      return { status }
     }),
 
   create: protectedProcedure
