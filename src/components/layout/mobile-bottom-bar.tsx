@@ -75,12 +75,13 @@ export function MobileBottomBar({
     fn()
   }
 
-  // 2 left · [FAB] · 2 right — slots align with the nav tabs underneath.
+  // 2 left · [FAB] · 2 right — slots align with the nav tabs underneath. Closed
+  // dx pulls each circle toward the FAB so it appears to emerge from behind it.
   const actions: CreateAction[] = [
-    { label: "Trade",  icon: TrendingUp,    dx:  72, delay: 40, run: () => runAction(openRegister) },
-    { label: "Coach",  icon: MessageCircle, dx:  32, delay: 0,  run: () => runAction(() => window.dispatchEvent(new Event("coach:open"))) },
-    { label: "Buscar", icon: Search,        dx: -32, delay: 0,  run: () => runAction(() => window.dispatchEvent(new Event("palette:open"))) },
-    { label: "Review", icon: ClipboardList, dx: -72, delay: 40, run: () => runAction(() => router.push("/reviews")) },
+    { label: "Nuevo trade", icon: TrendingUp,    dx:  98, delay: 60, run: () => runAction(openRegister) },
+    { label: "Coach IA",    icon: MessageCircle, dx:  42, delay: 20, run: () => runAction(() => window.dispatchEvent(new Event("coach:open"))) },
+    { label: "Buscar",      icon: Search,        dx: -42, delay: 20, run: () => runAction(() => window.dispatchEvent(new Event("palette:open"))) },
+    { label: "Nueva review",icon: ClipboardList, dx: -98, delay: 60, run: () => runAction(() => router.push("/reviews")) },
   ]
 
   return (
@@ -162,25 +163,27 @@ export function MobileBottomBar({
                   <button
                     onClick={a.run}
                     tabIndex={menuOpen ? 0 : -1}
-                    className="flex flex-col items-center gap-1 active:scale-95 transition-transform"
+                    title={a.label}
                     aria-label={a.label}
+                    className="w-[46px] h-[46px] rounded-full flex items-center justify-center active:scale-90"
                     style={{
+                      background: "var(--panel)",
+                      color: "var(--ink)",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.16), 0 1px 3px rgba(0,0,0,0.10)",
                       opacity: menuOpen ? 1 : 0,
                       transform: reduce
                         ? "none"
-                        : menuOpen ? "translateX(0) scale(1)" : `translateX(${a.dx}px) scale(0.4)`,
+                        : menuOpen ? "translateX(0) scale(1)" : `translateX(${a.dx}px) scale(0)`,
                       transition: reduce
                         ? "opacity 0.16s ease"
-                        : `transform 0.26s var(--ease-out) ${menuOpen ? a.delay : 0}ms, opacity 0.2s ease ${menuOpen ? a.delay : 0}ms`,
+                        : menuOpen
+                          // emerge from the FAB with a gentle overshoot, staggered outward
+                          ? `transform 0.34s cubic-bezier(0.34,1.56,0.64,1) ${a.delay}ms, opacity 0.18s ease ${a.delay}ms`
+                          // retract quickly, no overshoot
+                          : `transform 0.2s var(--ease-out), opacity 0.16s ease`,
                     }}
                   >
-                    <span
-                      className="w-[42px] h-[42px] rounded-full flex items-center justify-center"
-                      style={{ background: "var(--panel)", color: "var(--ink)", boxShadow: "0 3px 10px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.10)" }}
-                    >
-                      <Icon size={20} />
-                    </span>
-                    <span className="text-[8.5px] font-semibold" style={{ color: "var(--ink-3)" }}>{a.label}</span>
+                    <Icon size={21} />
                   </button>
                 </div>
               )

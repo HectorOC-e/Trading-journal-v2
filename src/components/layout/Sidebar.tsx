@@ -171,16 +171,7 @@ export function Sidebar() {
   }
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
-  // Desktop accordion: which collapsible section is open (PRINCIPAL is pinned).
-  const [openSection,  setOpenSection]  = useState<string | null>(null)
   const width = useWindowWidth()
-
-  // Auto-open the collapsible section that holds the active route, so the current
-  // page is always visible without the user hunting for it.
-  useEffect(() => {
-    const group = NAV.slice(1).find(g => g.items.some(i => pathname.startsWith(i.href)))
-    if (group) setOpenSection(group.section)
-  }, [pathname])
 
   // Identity is read from the same source as /perfil (the `users` table via tRPC) so the
   // avatar initial, name and role stay coherent with the profile and update reactively
@@ -444,7 +435,6 @@ export function Sidebar() {
 
   // ── Desktop — floating card sidebar ───────────────────────────────────────────
   const W = collapsed ? 76 : 248
-  const [principal, ...collapsibleGroups] = NAV
 
   return (
     <div
@@ -455,7 +445,7 @@ export function Sidebar() {
         display: "flex", flexDirection: "column",
       }}
     >
-      {/* Single floating card — identity · + · nav (accordion) · Coach · footer */}
+      {/* Single floating card — identity · nav · actions (trade + coach) · footer */}
       <aside
         className="flex-1 min-h-0 flex flex-col overflow-hidden"
         style={{
@@ -516,30 +506,10 @@ export function Sidebar() {
           </button>
         </div>
 
-        {/* + Nuevo trade — primary action (opens the register modal; same as "n") */}
-        <div style={{ padding: collapsed ? "12px 0 4px" : "12px 12px 4px" }}>
-          <button
-            onClick={openRegister}
-            title="Nuevo trade"
-            aria-label="Nuevo trade"
-            className={cn(
-              "flex items-center justify-center gap-2 text-[var(--accent-contrast)] active:scale-[0.98] transition-transform",
-              collapsed ? "w-9 h-9 mx-auto rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
-            )}
-            style={{
-              background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
-              boxShadow: "0 8px 20px -8px color-mix(in oklch, var(--accent) 55%, transparent)",
-            }}
-          >
-            <Plus size={collapsed ? 18 : 17} />
-            {!collapsed && <span className="text-[13px] font-semibold">Nuevo trade</span>}
-          </button>
-        </div>
-
-        {/* Nav — collapsed: icon list · expanded: PRINCIPAL pinned + accordion */}
+        {/* Nav — all sections always visible (collapsed: icon list with dividers) */}
         <nav
           className="no-scrollbar"
-          style={{ padding: "8px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
+          style={{ padding: "10px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
           aria-label="Navegación principal"
         >
           {collapsed ? (
@@ -576,70 +546,53 @@ export function Sidebar() {
               </div>
             ))
           ) : (
-            <>
-              {/* PRINCIPAL — pinned (always visible) */}
-              <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5" style={{ color: "var(--ink-3)" }}>
-                {principal.section}
-              </p>
-              {principal.items.map(item => (
-                <DeskItem key={item.href} item={item} active={pathname.startsWith(item.href)} badge={navBadge[item.href] ?? 0} />
-              ))}
-
-              {/* Collapsible sections — one open at a time */}
-              {collapsibleGroups.map(group => {
-                const isOpen   = openSection === group.section
-                const hasSignal = group.items.some(i => pathname.startsWith(i.href) || (navBadge[i.href] ?? 0) > 0)
-                return (
-                  <div key={group.section} style={{ marginTop: 8 }}>
-                    <button
-                      onClick={() => setOpenSection(s => (s === group.section ? null : group.section))}
-                      className="w-full flex items-center gap-2 h-[30px] px-[18px] transition-colors hover:bg-[var(--chip)]"
-                      style={{ background: "transparent", border: "none", cursor: "pointer" }}
-                      aria-expanded={isOpen}
-                    >
-                      <span className="text-[9.5px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--ink-3)" }}>
-                        {group.section}
-                      </span>
-                      {!isOpen && hasSignal && (
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--accent)" }} aria-hidden="true" />
-                      )}
-                      <ChevronRight
-                        size={12}
-                        className="ml-auto shrink-0 transition-transform duration-200"
-                        style={{ color: "var(--ink-3)", transform: isOpen ? "rotate(90deg)" : "none" }}
-                      />
-                    </button>
-                    {/* grid 0fr→1fr animates height without measuring */}
-                    <div style={{ display: "grid", gridTemplateRows: isOpen ? "1fr" : "0fr", transition: "grid-template-rows 0.18s var(--ease-out)" }}>
-                      <div style={{ overflow: "hidden", minHeight: 0 }}>
-                        <div style={{ paddingTop: 2 }}>
-                          {group.items.map(item => (
-                            <DeskItem key={item.href} item={item} active={pathname.startsWith(item.href)} badge={navBadge[item.href] ?? 0} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </>
+            NAV.map((group, gi) => (
+              <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 14 }}>
+                <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5" style={{ color: "var(--ink-3)" }}>
+                  {group.section}
+                </p>
+                {group.items.map(item => (
+                  <DeskItem key={item.href} item={item} active={pathname.startsWith(item.href)} badge={navBadge[item.href] ?? 0} />
+                ))}
+              </div>
+            ))
           )}
         </nav>
 
-        {/* Coach IA — purple CTA */}
-        <div style={{ padding: collapsed ? "6px 0 8px" : "6px 12px 8px" }}>
+        {/* Bottom actions — Nuevo trade (primary) + Coach IA (secondary), together */}
+        <div
+          style={{
+            padding: collapsed ? "8px 0 8px" : "8px 12px 8px",
+            display: "flex", flexDirection: "column",
+            gap: collapsed ? 8 : 7,
+            alignItems: collapsed ? "center" : "stretch",
+          }}
+        >
           <button
-            onClick={openCoach}
-            title="Coach IA"
-            aria-label="Coach IA"
+            onClick={openRegister}
+            title="Nuevo trade"
+            aria-label="Nuevo trade"
             className={cn(
               "flex items-center justify-center gap-2 text-[var(--accent-contrast)] active:scale-[0.98] transition-transform",
-              collapsed ? "w-9 h-9 mx-auto rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
+              collapsed ? "w-9 h-9 rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
             )}
             style={{
               background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
               boxShadow: "0 8px 20px -8px color-mix(in oklch, var(--accent) 55%, transparent)",
             }}
+          >
+            <Plus size={collapsed ? 18 : 17} />
+            {!collapsed && <span className="text-[13px] font-semibold">Nuevo trade</span>}
+          </button>
+          <button
+            onClick={openCoach}
+            title="Coach IA"
+            aria-label="Coach IA"
+            className={cn(
+              "flex items-center justify-center gap-2 active:scale-[0.98] transition-colors hover:brightness-95",
+              collapsed ? "w-9 h-9 rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
+            )}
+            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
           >
             <MessageCircle size={collapsed ? 17 : 16} />
             {!collapsed && <span className="text-[13px] font-semibold">Coach IA</span>}

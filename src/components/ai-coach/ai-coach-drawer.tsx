@@ -296,25 +296,9 @@ export function AiCoachDrawer() {
   // on top of the dialog and cover its content and actions (mobile + desktop).
   if (anyDialogOpen) return null
 
-  // ── Floating launcher (collapsed) — mobile only. On desktop/tablet the Coach
-  // is opened from the sidebar "Coach IA" CTA (via the `coach:open` event), so a
-  // floating bubble would be redundant clutter. ────────────────────────────────
-  if (!open) {
-    if (!isMobile) return null
-    return (
-      <button
-        onClick={() => { setOpen(true); setMode("panel") }}
-        aria-label="Abrir AI Coach"
-        className={cn(
-          "fixed z-[45] w-14 h-14 rounded-full shadow-[var(--shadow-lg)] flex items-center justify-center",
-          "bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors active:scale-95",
-        )}
-        style={{ bottom: 84, right: 24 }}
-      >
-        <MessageCircle size={24} />
-      </button>
-    )
-  }
+  // No floating launcher. The Coach is opened from the sidebar "Coach IA" CTA
+  // (desktop/tablet) and the mobile create speed-dial — both via `coach:open`.
+  if (!open) return null
 
   // ── Geometry ──────────────────────────────────────────────────────────────
   const expanded  = mode === "expanded"
