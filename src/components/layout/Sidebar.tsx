@@ -11,8 +11,8 @@ import {
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
   Brain, LineChart, Plus, Bell,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import { useLogout } from "@/hooks/useLogout"
+import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
 import { NotificationBell } from "@/components/layout/notification-bell"
@@ -111,21 +111,17 @@ export function Sidebar() {
   }
   const [collapsed,    setCollapsed]    = useState(false)
   const [drawerOpen,   setDrawerOpen]   = useState(false)
-  const [userInitial,  setUserInitial]  = useState("")
-  const [userEmail,    setUserEmail]    = useState("")
   const width = useWindowWidth()
 
-  useEffect(() => {
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) return
-      const name  = data.user.user_metadata?.name as string | undefined
-      const email = data.user.email ?? ""
-      const letter = name ? name[0] : email[0]
-      if (letter) setUserInitial(letter.toUpperCase())
-      setUserEmail(email)
-    })
-  }, [])
+  // Identity is read from the same source as /perfil (the `users` table via tRPC) so the
+  // avatar initial, name and role stay coherent with the profile and update reactively
+  // when the user edits them — Supabase auth metadata would go stale after a name change.
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 })
+  const userName    = profile?.name?.trim() || ""
+  const userEmail   = profile?.email ?? ""
+  const userRole    = profile?.role || "Single-trader"
+  const displayName = userName || (userEmail ? userEmail.split("@")[0] : "Usuario")
+  const userInitial = (userName[0] || userEmail[0] || "").toUpperCase()
 
   const handleLogout = useLogout()
 
@@ -351,10 +347,11 @@ export function Sidebar() {
         </nav>
 
         <div className="flex flex-col items-center gap-2 py-3" style={{ borderTop: "1px solid var(--line)" }}>
-          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
+          <Link href="/perfil" title={userEmail || "Perfil"} aria-label="Perfil"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-opacity hover:opacity-80"
             style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
             {userInitial || "?"}
-          </div>
+          </Link>
           <NotificationBell placement="up" align="left" />
           <button
             onClick={toggle}
@@ -509,30 +506,36 @@ export function Sidebar() {
           display: "flex", flexDirection: "column", gap: 10,
         }}
       >
-        {/* User */}
-        <div
+        {/* User — links to /perfil; identity matches the profile page */}
+        <Link
+          href="/perfil"
+          title={userEmail || "Perfil"}
+          aria-label="Perfil"
+          className="rounded-[var(--radius-sm)] transition-colors hover:bg-[var(--chip)]"
           style={{
             display: "flex", alignItems: "center",
             gap: collapsed ? 0 : 10,
             justifyContent: collapsed ? "center" : "flex-start",
+            padding: collapsed ? 0 : "4px 6px",
+            margin: collapsed ? 0 : "0 -6px",
+            textDecoration: "none",
           }}
         >
           <div
             className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
             style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
-            title={userEmail || undefined}
           >
             {userInitial || "?"}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: "var(--ink)" }}>
-                {userEmail ? userEmail.split("@")[0] : "Usuario"}
+                {displayName}
               </p>
-              <p className="text-[10px] leading-tight" style={{ color: "var(--ink-3)" }}>Single-trader</p>
+              <p className="text-[10px] leading-tight truncate" style={{ color: "var(--ink-3)" }}>{userRole}</p>
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Actions */}
         <div

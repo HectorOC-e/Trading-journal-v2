@@ -209,7 +209,7 @@ describe("profile.changePassword", () => {
   })
 })
 
-describe("profile.deleteAccount — B-002 admin client fix", () => {
+describe("profile.deleteAccount — deletes Auth + app data, no orphans", () => {
   let mockPrisma: ReturnType<typeof makeMockPrisma>
   let caller: ReturnType<typeof appRouter.createCaller>
 
@@ -220,36 +220,44 @@ describe("profile.deleteAccount — B-002 admin client fix", () => {
     mockDeleteUser.mockResolvedValue({ error: null })
   })
 
-  it("deletes user via Prisma and returns { ok: true }", async () => {
+  it("deletes both the Auth user and the Prisma user, returns { ok: true }", async () => {
     const result = await caller.profile.deleteAccount()
 
+    expect(mockDeleteUser).toHaveBeenCalledWith(USER_ID)
     expect(mockPrisma.user.delete).toHaveBeenCalledWith({ where: { id: USER_ID } })
     expect(result).toEqual({ ok: true })
   })
 
-  it("calls the admin client deleteUser (not anon client) — B-002 fix", async () => {
+  it("uses the admin client deleteUser (service role), not the anon ctx client", async () => {
     await caller.profile.deleteAccount()
 
-    // The anon supabase ctx (ctx.supabase) must NOT have been used for admin.deleteUser.
-    // The mocked createAdminClient's deleteUser must have been called instead.
     expect(mockDeleteUser).toHaveBeenCalledWith(USER_ID)
   })
 
-  it("still returns { ok: true } when auth deletion fails (Prisma deletion already done)", async () => {
-    mockDeleteUser.mockResolvedValue({ error: { message: "Auth error" } })
-
-    const result = await caller.profile.deleteAccount()
-
-    expect(result).toEqual({ ok: true })
-  })
-
-  it("performs Prisma deletion before auth deletion", async () => {
+  it("deletes the Auth user BEFORE app data (so a failure never orphans Auth)", async () => {
     const callOrder: string[] = []
-    mockPrisma.user.delete.mockImplementation(() => { callOrder.push("prisma"); return Promise.resolve({}) })
     mockDeleteUser.mockImplementation(() => { callOrder.push("auth"); return Promise.resolve({ error: null }) })
+    mockPrisma.user.delete.mockImplementation(() => { callOrder.push("prisma"); return Promise.resolve({}) })
 
     await caller.profile.deleteAccount()
 
-    expect(callOrder).toEqual(["prisma", "auth"])
+    expect(callOrder).toEqual(["auth", "prisma"])
+  })
+
+  it("throws and does NOT delete app data when Auth deletion fails (no orphaned Auth user)", async () => {
+    mockDeleteUser.mockResolvedValue({ error: { message: "Auth error" } })
+
+    await expect(caller.profile.deleteAccount()).rejects.toThrow(TRPCError)
+    await expect(caller.profile.deleteAccount()).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR" })
+    expect(mockPrisma.user.delete).not.toHaveBeenCalled()
+  })
+
+  it("still returns { ok: true } if app-data deletion fails after Auth is gone (logged orphan)", async () => {
+    mockPrisma.user.delete.mockRejectedValue(new Error("FK constraint"))
+
+    const result = await caller.profile.deleteAccount()
+
+    expect(mockDeleteUser).toHaveBeenCalledWith(USER_ID)
+    expect(result).toEqual({ ok: true })
   })
 })

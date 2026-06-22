@@ -107,12 +107,33 @@ export const profileRouter = router({
 
   deleteAccount: protectedProcedure
     .mutation(async ({ ctx }) => {
-      // Delete all user data via cascade, then delete auth user
-      await ctx.prisma.user.delete({ where: { id: ctx.userId } })
+      // The account lives in TWO independent stores: Supabase Auth (the identity /
+      // login) and our `users` table (+ all cascaded app data). They are linked only
+      // by a matching id — there is NO DB-level FK or cascade between them, so BOTH
+      // must be deleted explicitly.
+      //
+      // Delete Auth FIRST. It is the source of truth for being able to log in, so once
+      // it is gone the account is effectively deleted from the user's perspective. If
+      // this call fails we abort with the real error and nothing is half-deleted — the
+      // old order (app data first, Auth second with the error swallowed) left an
+      // orphaned Auth user that could still log in but had no profile.
       const admin = createAdminClient()
       const { error } = await admin.auth.admin.deleteUser(ctx.userId)
       if (error) {
-        logger.error("Auth deletion failed after profile deletion", { userId: ctx.userId, error: error.message })
+        logger.error("Auth user deletion failed; aborting account deletion", { userId: ctx.userId, error: error.message })
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `No se pudo eliminar la cuenta: ${error.message}` })
+      }
+
+      // Auth is gone → remove all app data (Prisma relations cascade). If this fails the
+      // user can no longer authenticate anyway; log the orphaned rows for cleanup rather
+      // than surfacing a confusing error after the identity is already deleted.
+      try {
+        await ctx.prisma.user.delete({ where: { id: ctx.userId } })
+      } catch (err) {
+        logger.error("App-data deletion failed after Auth user was removed (orphaned rows)", {
+          userId: ctx.userId,
+          error: err instanceof Error ? err.message : String(err),
+        })
       }
       return { ok: true }
     }),
