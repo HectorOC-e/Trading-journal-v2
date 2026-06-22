@@ -53,8 +53,9 @@
   --shadow-lg: 0 8px 24px oklch(14% 0.018 264 / 0.11), 0 4px 8px oklch(14% 0.018 264 / 0.05);
 
   /* Easing */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in:  cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in:     cubic-bezier(0.4, 0, 1, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like drawer curve */
 
   /* Chart colors */
   --chart-1: #4f6ef7;

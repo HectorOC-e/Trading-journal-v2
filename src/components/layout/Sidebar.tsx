@@ -3,13 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "@/components/theme-provider"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   LayoutDashboard, Wallet, CandlestickChart, BookOpen,
   ShieldCheck, ClipboardList, GraduationCap, User,
   ChevronLeft, ChevronRight, MoreHorizontal, BarChart2,
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
-  Brain, LineChart, Plus, Bell,
+  Brain, LineChart, Plus, Bell, MessageCircle,
 } from "lucide-react"
 import { useLogout } from "@/hooks/useLogout"
 import { trpc } from "@/lib/trpc/client"
@@ -71,6 +71,95 @@ function useWindowWidth() {
   return width
 }
 
+/** Ticks once per minute, aligned to the minute boundary. Returns null until
+ *  mounted so server/client render the same markup (no hydration mismatch). */
+function useMinuteClock(): Date | null {
+  const [now, setNow] = useState<Date | null>(null)
+  useEffect(() => {
+    setNow(new Date())
+    let interval: ReturnType<typeof setInterval> | undefined
+    const msToNextMinute = 60_000 - (Date.now() % 60_000)
+    const timer = setTimeout(() => {
+      setNow(new Date())
+      interval = setInterval(() => setNow(new Date()), 60_000)
+    }, msToNextMinute)
+    return () => { clearTimeout(timer); if (interval) clearInterval(interval) }
+  }, [])
+  return now
+}
+
+/** Live clock for the mobile top bar — 24h time + short date in the user's tz. */
+function MobileClock({ tz }: { tz: string }) {
+  const now = useMinuteClock()
+  if (!now) {
+    // Reserve width to avoid a layout shift when the time appears on mount.
+    return <div className="h-[15px] w-[112px]" aria-hidden="true" />
+  }
+  const opts = tz ? { timeZone: tz } : {}
+  const time = new Intl.DateTimeFormat("es", {
+    hour: "2-digit", minute: "2-digit", hour12: false, ...opts,
+  }).format(now)
+  const date = new Intl.DateTimeFormat("es", {
+    weekday: "short", day: "numeric", month: "short", ...opts,
+  }).format(now)
+  return (
+    <div className="flex items-baseline gap-1.5 min-w-0" aria-label={`${time} · ${date}`}>
+      <span className="text-[15px] font-semibold tabular-nums leading-none" style={{ color: "var(--ink)" }}>
+        {time}
+      </span>
+      <span className="text-[11px] leading-none truncate" style={{ color: "var(--ink-3)" }}>
+        · {date}
+      </span>
+    </div>
+  )
+}
+
+/** Floating pill background with a concave notch under the center FAB.
+ *  Drawn as an SVG path so the shadow follows the notch shape (a CSS mask would
+ *  let the box-shadow bleed across the cutout). Width is measured so corner radii
+ *  and the notch stay crisp at any viewport size. */
+function NotchedBarBg() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(0)
+  const h = 64, r = 26, rx = 40, ry = 26
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setW(el.clientWidth)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  const cx = w / 2
+  const d = w === 0 ? "" : [
+    `M ${r} 0`,
+    `L ${cx - rx} 0`,
+    `A ${rx} ${ry} 0 0 0 ${cx + rx} 0`,
+    `L ${w - r} 0`,
+    `A ${r} ${r} 0 0 1 ${w} ${r}`,
+    `L ${w} ${h - r}`,
+    `A ${r} ${r} 0 0 1 ${w - r} ${h}`,
+    `L ${r} ${h}`,
+    `A ${r} ${r} 0 0 1 0 ${h - r}`,
+    `L 0 ${r}`,
+    `A ${r} ${r} 0 0 1 ${r} 0`,
+    "Z",
+  ].join(" ")
+  return (
+    <div ref={ref} className="absolute inset-0" aria-hidden="true">
+      {w > 0 && (
+        <svg
+          width={w} height={h} viewBox={`0 0 ${w} ${h}`}
+          style={{ display: "block", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.18))" }}
+        >
+          <path d={d} fill="var(--panel)" stroke="var(--line)" strokeWidth={1} />
+        </svg>
+      )}
+    </div>
+  )
+}
+
 function ThemeIcon({ theme }: { theme: string }) {
   if (theme === "dark")   return <Moon size={13} />
   if (theme === "light")  return <Sun size={13} />
@@ -85,7 +174,7 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       className={cn(
-        "flex-1 flex flex-col items-center justify-center gap-0.5 h-[56px] rounded-[8px] transition-colors",
+        "flex-1 flex flex-col items-center justify-center gap-0.5 h-16 transition-colors",
         active ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
       )}
       aria-label={item.label}
@@ -97,6 +186,10 @@ function BottomTab({ item, active }: { item: NavItem; active: boolean }) {
       </span>
     </Link>
   )
+}
+
+function openCoach() {
+  window.dispatchEvent(new Event("coach:open"))
 }
 
 export function Sidebar() {
@@ -120,6 +213,7 @@ export function Sidebar() {
   const userName    = profile?.name?.trim() || ""
   const userEmail   = profile?.email ?? ""
   const userRole    = profile?.role || "Single-trader"
+  const userTz      = profile?.timezone || ""
   const displayName = userName || (userEmail ? userEmail.split("@")[0] : "Usuario")
   const userInitial = (userName[0] || userEmail[0] || "").toUpperCase()
 
@@ -142,22 +236,22 @@ export function Sidebar() {
 
     return (
       <>
-        {/* Top header */}
+        {/* Top header — brand + live clock · actions */}
         <header
           className="fixed top-0 left-0 right-0 z-50 h-[52px] flex items-center px-4 gap-3"
           style={{ background: "var(--panel)", borderBottom: "1px solid var(--line)" }}
         >
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-7 h-7 rounded-[6px] flex items-center justify-center text-white font-mono font-bold text-[11px] relative shrink-0"
-              style={{ background: "var(--ink)" }}>
-              TJ
-              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border-[1.5px]"
-                style={{ background: "var(--win)", borderColor: "var(--panel)" }} />
-            </div>
-            <span className="text-[13px] font-semibold truncate" style={{ color: "var(--ink)" }}>
-              Trading Journal
-            </span>
+          <div className="w-7 h-7 rounded-[6px] flex items-center justify-center text-white font-mono font-bold text-[11px] relative shrink-0"
+            style={{ background: "var(--ink)" }}>
+            TJ
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border-[1.5px]"
+              style={{ background: "var(--win)", borderColor: "var(--panel)" }} />
           </div>
+
+          <div className="flex-1 min-w-0">
+            <MobileClock tz={userTz} />
+          </div>
+
           <NotificationBell placement="down" compact />
           <button
             onClick={toggle}
@@ -192,10 +286,10 @@ export function Sidebar() {
         <div
           className="fixed left-0 right-0 z-[49] rounded-t-[20px] overflow-hidden"
           style={{
-            bottom: drawerOpen ? 56 : "-100%",
+            bottom: drawerOpen ? 88 : "-100%",
             background: "var(--panel)",
             borderTop: "1px solid var(--line)",
-            transition: "bottom 0.28s cubic-bezier(0.32,0,0.67,0)",
+            transition: "bottom 0.32s var(--ease-drawer)",
             boxShadow: "0 -8px 40px rgba(0,0,0,0.20)",
           }}
         >
@@ -247,202 +341,94 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Bottom nav — 2 destinos · FAB central (Nuevo Trade) · 2 destinos */}
+        {/* Bottom nav — floating pill with a concave notch under the FAB.
+            2 destinos · FAB central (Nuevo Trade) · 2 destinos */}
         <nav
-          className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-between h-[60px] px-1"
-          style={{ background: "var(--panel)", borderTop: "1px solid var(--line)" }}
+          className="fixed bottom-0 left-0 right-0 z-50 px-3 pointer-events-none"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
           aria-label="Navegación principal"
         >
-          {leftItems.map(item => (
-            <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
-          ))}
+          <div className="relative h-16 pointer-events-auto">
+            <NotchedBarBg />
 
-          {/* Center FAB — Quick Action: Nuevo Trade */}
-          <div className="flex-1 flex justify-center">
+            {/* Center FAB — Quick Action: Nuevo Trade */}
             <button
               onClick={openRegister}
               aria-label="Nuevo trade"
-              className="w-14 h-14 -mt-5 rounded-full flex items-center justify-center shadow-[var(--shadow-lg)] bg-[var(--accent)] text-[var(--accent-contrast)] active:scale-95 transition-transform"
-              style={{ border: "3px solid var(--panel)" }}
+              className="absolute left-1/2 -translate-x-1/2 -top-[26px] w-14 h-14 rounded-full flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform z-10"
+              style={{
+                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+                boxShadow: "0 10px 24px -6px color-mix(in oklch, var(--accent) 55%, transparent)",
+              }}
             >
               <Plus size={26} />
             </button>
+
+            {/* Tabs sit above the SVG background */}
+            <div className="relative h-full flex items-stretch">
+              {leftItems.map(item => (
+                <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+              ))}
+
+              {/* Spacer under the FAB / notch */}
+              <div className="w-16 shrink-0" aria-hidden="true" />
+
+              {rightItems.map(item => (
+                <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
+              ))}
+
+              <button
+                onClick={() => setDrawerOpen(v => !v)}
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center gap-0.5 h-16 transition-colors relative",
+                  anyDrawerActive || drawerOpen ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
+                )}
+                style={{ background: "transparent", border: "none", cursor: "pointer" }}
+                aria-label="Más secciones"
+                aria-expanded={drawerOpen}
+              >
+                <MoreHorizontal size={20} />
+                <span className={cn("text-[9px] leading-none", anyDrawerActive || drawerOpen ? "font-semibold" : "font-medium")}>
+                  Más
+                </span>
+                {anyDrawerActive && !drawerOpen && (
+                  <span
+                    className="absolute top-3 right-[28%] w-1.5 h-1.5 rounded-full"
+                    style={{ background: "var(--accent)", border: "1.5px solid var(--panel)" }}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            </div>
           </div>
-
-          {rightItems.map(item => (
-            <BottomTab key={item.href} item={item} active={pathname.startsWith(item.href)} />
-          ))}
-
-          <button
-            onClick={() => setDrawerOpen(v => !v)}
-            className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-0.5 h-[56px] rounded-[8px] transition-colors relative",
-              anyDrawerActive || drawerOpen ? "text-[var(--accent)]" : "text-[var(--ink-3)]"
-            )}
-            style={{ background: "transparent", border: "none", cursor: "pointer" }}
-            aria-label="Más secciones"
-            aria-expanded={drawerOpen}
-          >
-            <MoreHorizontal size={20} />
-            <span className={cn("text-[9px] leading-none", anyDrawerActive || drawerOpen ? "font-semibold" : "font-medium")}>
-              Más
-            </span>
-            {anyDrawerActive && !drawerOpen && (
-              <span
-                className="absolute top-2 right-[26%] w-1.5 h-1.5 rounded-full"
-                style={{ background: "var(--accent)", border: "1.5px solid var(--panel)" }}
-                aria-hidden="true"
-              />
-            )}
-          </button>
         </nav>
       </>
     )
   }
 
-  // ── Tablet ───────────────────────────────────────────────────────────────────
+  // ── Tablet — floating rail card (collapsed language) ──────────────────────────
   if (isTablet) {
     const allItems = NAV.flatMap(g => g.items)
     return (
-      <aside
-        className="flex flex-col"
-        style={{
-          width: 52, minWidth: 52,
-          position: "sticky", top: 0, height: "100vh",
-          overflow: "hidden",
-          background: "var(--panel)",
-          borderRight: "1px solid var(--line)",
-        }}
-      >
-        {/* Logo */}
-        <div className="flex justify-center py-4" style={{ borderBottom: "1px solid var(--line)" }}>
-          <div className="w-7 h-7 rounded-[6px] flex items-center justify-center text-white font-mono font-bold text-[10px] relative"
-            style={{ background: "var(--ink)" }}>
-            TJ
-            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border-[1.5px]"
-              style={{ background: "var(--win)", borderColor: "var(--panel)" }} />
-          </div>
-        </div>
-
-        <nav className="flex-1 py-2 overflow-y-auto" aria-label="Navegación">
-          {allItems.map(item => {
-            const active = pathname.startsWith(item.href)
-            const Icon   = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={item.label}
-                className={cn(
-                  "flex items-center justify-center h-[38px] mx-1.5 mb-0.5 rounded-[var(--radius-xs)] transition-colors",
-                  active ? "text-[var(--accent)]" : "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
-                )}
-                style={{ background: active ? "var(--accent-soft)" : "transparent" }}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon size={16} />
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="flex flex-col items-center gap-2 py-3" style={{ borderTop: "1px solid var(--line)" }}>
-          <Link href="/perfil" title={userEmail || "Perfil"} aria-label="Perfil"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-opacity hover:opacity-80"
-            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-            {userInitial || "?"}
-          </Link>
-          <NotificationBell placement="up" align="left" />
-          <button
-            onClick={toggle}
-            className="w-7 h-7 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors hover:bg-[var(--chip)]"
-            style={{ color: "var(--ink-3)", border: "1px solid var(--line)" }}
-            aria-label="Cambiar tema"
-          >
-            <ThemeIcon theme={resolvedTheme} />
-          </button>
-        </div>
-      </aside>
-    )
-  }
-
-  // ── Desktop ───────────────────────────────────────────────────────────────────
-  const W = collapsed ? 72 : 240
-
-  return (
-    <aside
-      style={{
-        width: W, minWidth: W,
-        position: "sticky", top: 0, height: "100vh",
-        overflow: "hidden",
-        background: "var(--panel)",
-        borderRight: "1px solid var(--line)",
-        display: "flex", flexDirection: "column",
-      }}
-    >
-      {/* Brand */}
       <div
-        style={{
-          display: "flex", alignItems: "center",
-          gap: 10,
-          padding: collapsed ? "18px 0 16px" : "18px 18px 16px",
-          justifyContent: collapsed ? "center" : "flex-start",
-          borderBottom: "1px solid var(--line)",
-          position: "relative",
-        }}
+        className="flex flex-col gap-2.5"
+        style={{ width: 64, minWidth: 64, position: "sticky", top: 0, height: "100vh", padding: 10 }}
       >
-        <div className="w-7 h-7 rounded-[6px] flex items-center justify-center text-white font-mono font-bold text-[10px] relative shrink-0"
-          style={{ background: "var(--ink)" }}>
-          TJ
-          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border-[1.5px]"
-            style={{ background: "var(--win)", borderColor: "var(--panel)" }} />
-        </div>
-
-        {!collapsed && (
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold whitespace-nowrap" style={{ color: "var(--ink)" }}>
-              Trading Journal
-            </p>
-          </div>
-        )}
-
-        <button
-          onClick={() => setCollapsed(v => !v)}
-          title={collapsed ? "Expandir" : "Colapsar"}
-          className="flex items-center justify-center rounded-full transition-colors hover:bg-[var(--chip)] shrink-0"
-          style={{
-            width: 20, height: 20,
-            position: collapsed ? "absolute" : "static",
-            bottom: collapsed ? -10 : undefined,
-            right: collapsed ? -10 : undefined,
-            background: "var(--panel)",
-            border: "1px solid var(--line)",
-            color: "var(--ink-3)",
-            zIndex: 10, cursor: "pointer",
-          }}
+        <aside
+          className="flex-1 min-h-0 flex flex-col rounded-[var(--radius-lg)] overflow-hidden"
+          style={{ background: "var(--panel)", border: "1px solid var(--line)", boxShadow: "var(--shadow-lg)" }}
         >
-          {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
-        </button>
-      </div>
+          {/* Avatar top */}
+          <div className="flex justify-center py-3.5" style={{ borderBottom: "1px solid var(--line)" }}>
+            <Link href="/perfil" title={userEmail || "Perfil"} aria-label="Perfil"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-opacity hover:opacity-80"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+              {userInitial || "?"}
+            </Link>
+          </div>
 
-      {/* Nav — reference spacing: 16px gutter, 38px rows, 4px gaps, section labels */}
-      <nav
-        style={{ padding: collapsed ? "12px 0" : "12px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
-        aria-label="Navegación principal"
-      >
-        {NAV.map((group, gi) => (
-          <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 16 }}>
-            {!collapsed ? (
-              <p
-                className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5"
-                style={{ color: "var(--ink-3)" }}
-              >
-                {group.section}
-              </p>
-            ) : (
-              <div style={{ height: 1, margin: "10px 16px", background: "var(--line)" }} />
-            )}
-            {group.items.map(item => {
+          <nav className="flex-1 py-2 overflow-y-auto" aria-label="Navegación">
+            {allItems.map(item => {
               const active = pathname.startsWith(item.href)
               const Icon   = item.icon
               const badge  = navBadge[item.href] ?? 0
@@ -450,132 +436,287 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  title={collapsed ? item.label : undefined}
+                  title={item.label}
                   className={cn(
-                    "relative flex items-center transition-colors duration-150",
-                    collapsed
-                      ? "justify-center h-[40px] mx-2 mb-1 rounded-[var(--radius-sm)]"
-                      : "gap-3 h-[38px] px-3 mx-2.5 mb-0.5 rounded-[var(--radius-sm)]",
-                    active
-                      ? "text-[var(--accent)] font-semibold"
-                      : "text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
+                    "relative flex items-center justify-center h-[38px] mx-1.5 mb-1 rounded-[var(--radius-sm)] transition-colors",
+                    active ? "text-[var(--accent)]" : "text-[var(--ink-3)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
                   )}
-                  style={{
-                    fontSize: 13,
-                    background: active ? "var(--accent-soft)" : "transparent",
-                    textDecoration: "none",
-                  }}
+                  style={{ background: active ? "var(--accent-soft)" : "transparent" }}
                   aria-current={active ? "page" : undefined}
                 >
-                  <Icon size={16} className="shrink-0" />
-                  {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
-
-                  {/* Count badge */}
+                  <Icon size={16} />
                   {badge > 0 && (
-                    !collapsed ? (
-                      <span
-                        className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ background: "var(--loss)", color: "#fff" }}
-                      >
-                        {badge > 9 ? "9+" : badge}
-                      </span>
-                    ) : (
-                      <span
-                        className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
-                        style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }}
-                      />
-                    )
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full"
+                      style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }} />
                   )}
-
-                  {/* Active indicator bar (right edge) */}
-                  {active && !collapsed && (
-                    <span className="absolute right-1 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "var(--accent)" }} />
+                  {active && (
+                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[3px] h-4 rounded-full" style={{ background: "var(--accent)" }} />
                   )}
                 </Link>
               )
             })}
-          </div>
-        ))}
-      </nav>
+          </nav>
 
-      {/* Footer */}
-      <div
+          {/* Coach IA — purple chat square */}
+          <div className="flex justify-center pb-3 pt-1">
+            <button
+              onClick={openCoach}
+              title="Coach IA"
+              aria-label="Coach IA"
+              className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-[var(--accent-contrast)] active:scale-95 transition-transform"
+              style={{
+                background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+                boxShadow: "0 6px 16px -6px color-mix(in oklch, var(--accent) 55%, transparent)",
+              }}
+            >
+              <MessageCircle size={17} />
+            </button>
+          </div>
+        </aside>
+
+        {/* Secondary card — theme + logout */}
+        <div
+          className="flex flex-col items-center gap-1.5 py-2.5 rounded-[var(--radius-lg)]"
+          style={{ background: "var(--panel)", border: "1px solid var(--line)", boxShadow: "var(--shadow-sm)" }}
+        >
+          <button
+            onClick={toggle}
+            title={`Tema: ${resolvedTheme}`}
+            className="w-8 h-8 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors hover:bg-[var(--chip)]"
+            style={{ color: "var(--ink-3)" }}
+            aria-label="Cambiar tema"
+          >
+            <ThemeIcon theme={resolvedTheme} />
+          </button>
+          <button
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            className="w-8 h-8 rounded-[var(--radius-xs)] flex items-center justify-center transition-colors hover:text-[var(--loss)] hover:bg-[var(--loss-soft)]"
+            style={{ color: "var(--ink-3)" }}
+            aria-label="Cerrar sesión"
+          >
+            <LogOut size={15} />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop — floating card sidebar ───────────────────────────────────────────
+  const W = collapsed ? 76 : 248
+
+  return (
+    <div
+      style={{
+        width: W, minWidth: W,
+        position: "sticky", top: 0, height: "100vh",
+        padding: 12,
+        display: "flex", flexDirection: "column", gap: 10,
+      }}
+    >
+      {/* Main card — identity · nav · Coach CTA */}
+      <aside
+        className="flex-1 min-h-0 flex flex-col overflow-hidden"
         style={{
-          padding: collapsed ? "12px 0" : "14px 18px",
-          borderTop: "1px solid var(--line)",
-          display: "flex", flexDirection: "column", gap: 10,
+          background: "var(--panel)",
+          border: "1px solid var(--line)",
+          borderRadius: "var(--radius-xl)",
+          boxShadow: "var(--shadow-lg)",
+          position: "relative",
         }}
       >
-        {/* User — links to /perfil; identity matches the profile page */}
-        <Link
-          href="/perfil"
-          title={userEmail || "Perfil"}
-          aria-label="Perfil"
-          className="rounded-[var(--radius-sm)] transition-colors hover:bg-[var(--chip)]"
+        {/* Identity (top) — links to /perfil */}
+        <div
           style={{
             display: "flex", alignItems: "center",
             gap: collapsed ? 0 : 10,
             justifyContent: collapsed ? "center" : "flex-start",
-            padding: collapsed ? 0 : "4px 6px",
-            margin: collapsed ? 0 : "0 -6px",
-            textDecoration: "none",
+            padding: collapsed ? "16px 0 14px" : "16px 16px 14px",
+            borderBottom: "1px solid var(--line)",
+            position: "relative",
           }}
         >
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
-            style={{ background: "var(--accent-soft)", color: "var(--accent)" }}
+          <Link href="/perfil" title={userEmail || "Perfil"} aria-label="Perfil"
+            className="flex items-center gap-2.5 min-w-0 transition-opacity hover:opacity-80"
+            style={{ textDecoration: "none" }}
           >
-            {userInitial || "?"}
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold leading-tight truncate" style={{ color: "var(--ink)" }}>
-                {displayName}
-              </p>
-              <p className="text-[10px] leading-tight truncate" style={{ color: "var(--ink-3)" }}>{userRole}</p>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
+              style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+              {userInitial || "?"}
             </div>
-          )}
-        </Link>
-
-        {/* Actions */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: collapsed ? "column" : "row",
-            gap: 6,
-            alignItems: "center",
-          }}
-        >
-          <NotificationBell placement="up" align="left" />
-          <button
-            onClick={toggle}
-            title={`Tema: ${resolvedTheme}`}
-            className={cn(
-              "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--chip)]",
-              collapsed ? "w-7 h-7" : "h-7 flex-1 gap-1.5"
-            )}
-            style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
-          >
-            <ThemeIcon theme={resolvedTheme} />
             {!collapsed && (
-              <span className="text-[11px] font-medium capitalize">{resolvedTheme}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold leading-tight truncate" style={{ color: "var(--ink)" }}>
+                  {displayName}
+                </p>
+                <p className="text-[11px] leading-tight truncate" style={{ color: "var(--ink-3)" }}>
+                  {userEmail || userRole}
+                </p>
+              </div>
             )}
-          </button>
+          </Link>
 
           <button
-            onClick={handleLogout}
-            title="Cerrar sesión"
-            className={cn(
-              "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:text-[var(--loss)] hover:bg-[var(--loss-soft)]",
-              collapsed ? "w-7 h-7" : "h-7 flex-1 gap-1.5"
-            )}
-            style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+            onClick={() => setCollapsed(v => !v)}
+            title={collapsed ? "Expandir" : "Colapsar"}
+            className="flex items-center justify-center rounded-full transition-colors hover:bg-[var(--chip)] shrink-0"
+            style={{
+              width: 20, height: 20,
+              position: "absolute",
+              bottom: -10,
+              right: collapsed ? "calc(50% - 10px)" : 12,
+              background: "var(--panel)",
+              border: "1px solid var(--line)",
+              color: "var(--ink-3)",
+              zIndex: 10, cursor: "pointer",
+            }}
           >
-            <LogOut size={13} />
-            {!collapsed && <span className="text-[11px] font-medium">Salir</span>}
+            {collapsed ? <ChevronRight size={11} /> : <ChevronLeft size={11} />}
           </button>
         </div>
+
+        {/* Nav */}
+        <nav
+          style={{ padding: "12px 0", flex: 1, overflowY: "auto", overflowX: "hidden" }}
+          aria-label="Navegación principal"
+        >
+          {NAV.map((group, gi) => (
+            <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 16 }}>
+              {!collapsed ? (
+                <p
+                  className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5"
+                  style={{ color: "var(--ink-3)" }}
+                >
+                  {group.section}
+                </p>
+              ) : (
+                <div style={{ height: 1, margin: "10px 16px", background: "var(--line)" }} />
+              )}
+              {group.items.map(item => {
+                const active = pathname.startsWith(item.href)
+                const Icon   = item.icon
+                const badge  = navBadge[item.href] ?? 0
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={collapsed ? item.label : undefined}
+                    className={cn(
+                      "relative flex items-center transition-colors duration-150",
+                      collapsed
+                        ? "justify-center h-[40px] mx-2 mb-1 rounded-[var(--radius-sm)]"
+                        : "gap-3 h-[38px] px-3 mx-2.5 mb-0.5 rounded-[var(--radius-sm)]",
+                      active
+                        ? "text-[var(--accent)] font-semibold"
+                        : "text-[var(--ink-2)] hover:text-[var(--ink)] hover:bg-[var(--chip)]"
+                    )}
+                    style={{
+                      fontSize: 13,
+                      background: active ? "var(--accent-soft)" : "transparent",
+                      textDecoration: "none",
+                    }}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon size={16} className="shrink-0" />
+                    {!collapsed && <span className="whitespace-nowrap flex-1">{item.label}</span>}
+
+                    {/* Count badge */}
+                    {badge > 0 && (
+                      !collapsed ? (
+                        <span
+                          className="shrink-0 min-w-[18px] h-[18px] px-1.5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                          style={{ background: "var(--loss)", color: "#fff" }}
+                        >
+                          {badge > 9 ? "9+" : badge}
+                        </span>
+                      ) : (
+                        <span
+                          className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--loss)", border: "1.5px solid var(--panel)" }}
+                        />
+                      )
+                    )}
+
+                    {/* Active indicator bar — protrudes from the right edge */}
+                    {active && (
+                      <span
+                        className={cn(
+                          "absolute top-1/2 -translate-y-1/2 w-[3px] rounded-full",
+                          collapsed ? "right-0 h-4" : "-right-[11px] h-5"
+                        )}
+                        style={{ background: "var(--accent)" }}
+                      />
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Coach IA — purple CTA at the bottom of the card */}
+        <div style={{ padding: collapsed ? "10px 0 12px" : "10px 12px 12px", borderTop: "1px solid var(--line)" }}>
+          <button
+            onClick={openCoach}
+            title="Coach IA"
+            aria-label="Coach IA"
+            className={cn(
+              "flex items-center justify-center gap-2 text-[var(--accent-contrast)] active:scale-[0.98] transition-transform",
+              collapsed ? "w-9 h-9 mx-auto rounded-[var(--radius-sm)]" : "w-full h-10 rounded-[var(--radius-sm)]"
+            )}
+            style={{
+              background: "linear-gradient(145deg, var(--accent), var(--accent-h))",
+              boxShadow: "0 8px 20px -8px color-mix(in oklch, var(--accent) 55%, transparent)",
+            }}
+          >
+            <MessageCircle size={collapsed ? 17 : 16} />
+            {!collapsed && <span className="text-[13px] font-semibold">Coach IA</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Secondary card — bell · theme · logout */}
+      <div
+        style={{
+          background: "var(--panel)",
+          border: "1px solid var(--line)",
+          borderRadius: "var(--radius-lg)",
+          boxShadow: "var(--shadow-sm)",
+          padding: collapsed ? "10px 0" : "10px 12px",
+          display: "flex",
+          flexDirection: collapsed ? "column" : "row",
+          alignItems: "center",
+          gap: collapsed ? 8 : 6,
+        }}
+      >
+        <NotificationBell placement="up" align="left" />
+        <button
+          onClick={toggle}
+          title={`Tema: ${resolvedTheme}`}
+          className={cn(
+            "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:bg-[var(--chip)]",
+            collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
+          )}
+          style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+        >
+          <ThemeIcon theme={resolvedTheme} />
+          {!collapsed && (
+            <span className="text-[11px] font-medium capitalize">{resolvedTheme}</span>
+          )}
+        </button>
+        <button
+          onClick={handleLogout}
+          title="Cerrar sesión"
+          className={cn(
+            "flex items-center justify-center rounded-[var(--radius-xs)] transition-colors hover:text-[var(--loss)] hover:bg-[var(--loss-soft)]",
+            collapsed ? "w-8 h-8" : "h-8 flex-1 gap-1.5"
+          )}
+          style={{ color: "var(--ink-3)", border: "1px solid var(--line)", cursor: "pointer", fontSize: 11 }}
+        >
+          <LogOut size={13} />
+          {!collapsed && <span className="text-[11px] font-medium">Salir</span>}
+        </button>
       </div>
-    </aside>
+    </div>
   )
 }
