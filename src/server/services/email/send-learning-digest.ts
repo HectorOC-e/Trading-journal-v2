@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { buildLearningDigest, type DigestInput } from "@/domains/learning/services/digest-builder"
 import { LearningDigest } from "@/emails/templates/learning-digest"
-import { lightTheme } from "@/emails/theme"
+import { resolveEmailThemeFor } from "./email-theme"
 import { isEmailChannelEnabled, type EmailPrefRow } from "./eligibility"
 import { sendEmail as defaultSendEmail, type EmailSender } from "./resend-client"
 
@@ -133,7 +133,11 @@ export async function sendLearningDigestForUser(deps: DigestDeps, user: DigestUs
   const model = buildLearningDigest(input)
   if (model.isEmpty) return { status: "empty" }
 
-  const html = await render(React.createElement(LearningDigest, { model, theme: lightTheme, appUrl }))
+  const prefs = await deps.prisma.userPreferences.findUnique({
+    where: { userId: user.id },
+    select: { theme: true, colorTheme: true, customTheme: true },
+  })
+  const html = await render(React.createElement(LearningDigest, { model, theme: resolveEmailThemeFor(prefs), appUrl }))
   const subject = model.streak.atRisk
     ? `🔥 Tu racha de ${model.streak.current} días está en riesgo`
     : `📚 Tu repaso de hoy — ${model.reviewCount} recurso${model.reviewCount === 1 ? "" : "s"}`
