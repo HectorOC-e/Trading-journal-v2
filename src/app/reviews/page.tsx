@@ -236,6 +236,18 @@ function ReviewsPageContent() {
     setSelectedReview((prev: ReviewFromDB | null) => (prev?.id === review.id ? null : review))
   }
 
+  // Auto-first creation: a new review = opening the period's report (auto-draft),
+  // where the rich report, AI analysis, notes and Finalizar live. No create modal.
+  function goNewWeekly() {
+    const d = new Date()
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)) // back to Monday
+    router.push(`/reviews/semanal/${d.toISOString().slice(0, 10)}`)
+  }
+  function goNewMonthly() {
+    const d = new Date()
+    router.push(`/reviews/mensual/${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`)
+  }
+
   return (
     <>
       <div>
@@ -247,7 +259,7 @@ function ReviewsPageContent() {
               label: activeTab === "weekly" ? "Nueva review" : "Nueva review mensual",
               icon: activeTab === "weekly" ? <Plus size={14} /> : <Calendar size={14} />,
               variant: "primary",
-              onClick: () => activeTab === "weekly" ? setModalOpen(true) : setMonthlyModalOpen(true),
+              onClick: () => activeTab === "weekly" ? goNewWeekly() : goNewMonthly(),
             }]}
           />
 
@@ -271,7 +283,7 @@ function ReviewsPageContent() {
               ) : monthlyReviews.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3">
                   <p className="text-sm text-[var(--ink-3)]">No hay reviews mensuales todavía.</p>
-                  <Button variant="primary" onClick={() => setMonthlyModalOpen(true)}>
+                  <Button variant="primary" onClick={goNewMonthly}>
                     <Plus size={14} className="mr-1" /> Crear primera review mensual
                   </Button>
                 </div>
@@ -365,7 +377,7 @@ function ReviewsPageContent() {
           ) : reviews.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <p className="text-sm text-[var(--ink-3)]">No hay reviews todavía.</p>
-              <Button variant="primary" onClick={() => setModalOpen(true)}>
+              <Button variant="primary" onClick={goNewWeekly}>
                 <Plus size={14} className="mr-1" /> Crear primera review
               </Button>
             </div>
