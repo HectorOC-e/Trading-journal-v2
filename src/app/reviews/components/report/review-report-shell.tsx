@@ -6,9 +6,10 @@ import { ArrowLeft } from "lucide-react"
 import { staggerContainer, fadeUpItem } from "@/lib/motion"
 import { makeMoney, Card, Eyebrow } from "./primitives"
 import { DownloadPdfButton } from "./download-pdf-button"
-import { PnlTrendChart } from "./charts"
+import { PnlTrendChart, EquityCurveChart } from "./charts"
 import {
-  KpiGrid, DayExtremes, DisciplinePanel, SetupBreakdown, SessionBreakdown, AccountBreakdown, NarrativeCard,
+  KpiGrid, ExtraKpis, DayExtremes, DisciplinePanel, SetupBreakdown, SessionBreakdown,
+  MarketsBreakdown, PsychologyPanel, AccountBreakdown, NarrativeCard,
 } from "./sections"
 import type { ReviewReportVM } from "./view-model"
 
@@ -46,6 +47,19 @@ export function ReviewReportShell({ vm, aiSlot, actions, notesSlot }: {
           <KpiGrid kpis={vm.kpis} deltas={vm.deltas} money={money} />
         </motion.div>
 
+        <motion.div variants={fadeUpItem}>
+          <ExtraKpis analytics={vm.analytics} money={money} />
+        </motion.div>
+
+        {vm.kpis.trades > 0 && (
+          <motion.div variants={fadeUpItem}>
+            <Card>
+              <Eyebrow>Curva de equity · P&amp;L acumulado</Eyebrow>
+              <EquityCurveChart points={vm.analytics.equityCurve} money={money} />
+            </Card>
+          </motion.div>
+        )}
+
         {aiSlot && <motion.div variants={fadeUpItem}>{aiSlot}</motion.div>}
 
         <Card>
@@ -60,12 +74,16 @@ export function ReviewReportShell({ vm, aiSlot, actions, notesSlot }: {
           <DisciplinePanel discipline={vm.discipline} score={vm.kpis.disciplineScore} money={money} />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid md:grid-cols-3 gap-5">
           <SetupBreakdown setups={vm.setups} money={money} />
           <SessionBreakdown sessions={vm.sessions} money={money} />
+          <MarketsBreakdown markets={vm.analytics.markets} money={money} />
         </div>
 
-        <AccountBreakdown byAccount={vm.byAccount} money={money} />
+        <div className="grid md:grid-cols-2 gap-5">
+          <PsychologyPanel byEmotion={vm.analytics.byEmotion} money={money} />
+          <AccountBreakdown byAccount={vm.byAccount} money={money} />
+        </div>
 
         {vm.narrative && <NarrativeCard narrative={vm.narrative} />}
 

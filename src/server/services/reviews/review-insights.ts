@@ -28,3 +28,27 @@ export async function loadReviewInsights(prisma: PrismaClient, userId: string, p
     withdrawals: bundle.raw.withdrawals,
   })
 }
+
+// ── Phase 3: rich "/analytics-scoped-to-the-period" slice for the report page ──
+export interface ReviewAnalytics {
+  expectancy:  number
+  avgR:        number
+  avgWin:      number
+  avgLoss:     number
+  equityCurve: { date: string; balance: number }[]
+  markets:     { symbol: string; netPnl: number; trades: number; winRate: number }[]
+  byEmotion:   { emotion: string; trades: number; avgPnl: number; winRate: number }[]
+}
+
+export async function loadReviewAnalytics(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<ReviewAnalytics> {
+  const b = await buildAnalyticsBundle(userId, prisma, windowFor(period), true)
+  return {
+    expectancy:  b.performance.expectancy,
+    avgR:        b.performance.avgR,
+    avgWin:      b.performance.avgWin,
+    avgLoss:     b.performance.avgLoss,
+    equityCurve: b.risk.equityCurve,
+    markets:     b.markets.slice(0, 8).map(m => ({ symbol: m.symbol, netPnl: m.netPnl, trades: m.trades, winRate: m.winRate })),
+    byEmotion:   b.psychology.byEmotion.slice(0, 6).map(e => ({ emotion: e.emotion, trades: e.trades, avgPnl: e.avgPnl, winRate: e.winRate })),
+  }
+}
