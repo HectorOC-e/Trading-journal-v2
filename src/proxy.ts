@@ -50,6 +50,6 @@ export const config = {
     // Exclude framework internals, public PWA assets (sw.js, manifest, icons)
     // and unauthenticated endpoints so they are served directly instead of
     // being redirected to /login.
-    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|sw\\.js|manifest\\.json|icons/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|api/cron|sw\\.js|manifest\\.json|icons/).*)",
   ],
 }
