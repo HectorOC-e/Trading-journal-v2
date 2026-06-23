@@ -732,6 +732,7 @@ model MonthlyReview {
   goalsMet     String[] @map("goals_met")
   overallScore Int?     @map("overall_score") // 0–100, avg of weekly discipline scores
   weeklyIds    String[] @map("weekly_ids")    // soft refs to WeeklyReview.id
+  status       String   @default("draft")     // draft | submitted
   aiAnalysis   String?   @map("ai_analysis") @db.Text
   aiAnalysisAt DateTime? @map("ai_analysis_at")
   createdAt    DateTime @default(now()) @map("created_at")

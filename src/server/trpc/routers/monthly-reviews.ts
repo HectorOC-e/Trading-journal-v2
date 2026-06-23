@@ -93,13 +93,35 @@ export const monthlyReviewsRouter = router({
     .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadMonthlyReport(ctx.prisma, ctx.userId, input.year, input.month)
-      return { ...report, ai: aiMetaOf(saved) }
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft" }
     }),
 
   // Deterministic insight cards for the month (same engine as /analytics).
   insights: protectedProcedure
     .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
     .query(({ ctx, input }) => loadReviewInsights(ctx.prisma, ctx.userId, { kind: "monthly", year: input.year, month: input.month })),
+
+  // Save notes (maps to summary) and/or finalize. Upserts by (userId, year, month)
+  // so it works even when the report is just an auto-draft with no saved row yet.
+  saveReview: protectedProcedure
+    .input(z.object({
+      year:   z.number().int().min(2000).max(2100),
+      month:  z.number().int().min(1).max(12),
+      notes:  z.string().max(5000).optional(),
+      status: z.enum(["draft", "submitted"]).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const data: { summary?: string; status?: string } = {}
+      if (input.notes !== undefined) data.summary = input.notes
+      if (input.status) data.status = input.status
+      const row = await ctx.prisma.monthlyReview.upsert({
+        where:  { userId_year_month: { userId: ctx.userId, year: input.year, month: input.month } },
+        create: { userId: ctx.userId, year: input.year, month: input.month, summary: input.notes ?? "", status: input.status ?? "draft" },
+        update: data,
+        select: { status: true, summary: true },
+      })
+      return { status: row.status, notes: row.summary }
+    }),
 
   // T-XI: AI analysis of the computed monthly report. Upserts onto the month's review.
   generateAnalysis: protectedProcedure

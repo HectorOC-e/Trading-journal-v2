@@ -39,9 +39,13 @@ export interface ReviewReportVM {
   byAccount: WeeklyReport["byAccount"]
   narrative: NarrativeVM | null
   ai:        AiMeta
+  /** Lifecycle status: "draft" | "submitted". */
+  status:    string
+  /** The user's free-form notes (weekly: executiveSummary, monthly: summary). */
+  notes:     string
 }
 
-export function weeklyToVM(r: WeeklyReport & { ai: AiMeta }): ReviewReportVM {
+export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string }): ReviewReportVM {
   return {
     kind:         "weekly",
     title:        r.weekLabel,
@@ -60,10 +64,12 @@ export function weeklyToVM(r: WeeklyReport & { ai: AiMeta }): ReviewReportVM {
     byAccount:    r.byAccount,
     narrative:    r.saved ? { kind: "weekly", ...r.saved } : null,
     ai:           r.ai,
+    status:       r.status,
+    notes:        r.saved?.executiveSummary ?? "",
   }
 }
 
-export function monthlyToVM(r: MonthlyReport & { ai: AiMeta }): ReviewReportVM {
+export function monthlyToVM(r: MonthlyReport & { ai: AiMeta; status: string }): ReviewReportVM {
   return {
     kind:         "monthly",
     title:        `${MONTHS[r.month - 1]} ${r.year}`,
@@ -84,5 +90,7 @@ export function monthlyToVM(r: MonthlyReport & { ai: AiMeta }): ReviewReportVM {
       ? { kind: "monthly", summary: r.saved.summary, keyThemes: r.saved.keyThemes, goalsSet: r.saved.goalsSet, goalsMet: r.saved.goalsMet }
       : null,
     ai:           r.ai,
+    status:       r.status,
+    notes:        r.saved?.summary ?? "",
   }
 }
