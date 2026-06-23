@@ -20,6 +20,7 @@ interface FakeData {
 function fakePrisma(data: FakeData) {
   return {
     notificationPreference: { findUnique: vi.fn(async () => data.pref ?? null) },
+    userPreferences: { findUnique: vi.fn(async () => null) },
     emailLog: {
       findFirst: vi.fn(async () => (data.alreadyLogged ? { id: "log1" } : null)),
       create: vi.fn(async () => ({ id: "log2" })),

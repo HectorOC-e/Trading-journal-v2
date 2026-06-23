@@ -18,6 +18,12 @@ describe("renderReviewReportHtml", () => {
   const html = renderReviewReportHtml({
     kind: "weekly", title: "Semana del 15 jun", subtitle: "Review semanal · 2 trades · moneda base USD",
     report, aiAnalysis: "### Hallazgos clave\n- Breakout fue tu mejor setup.",
+    analytics: {
+      expectancy: 110, avgR: 0.55, avgWin: 300, avgLoss: -80,
+      equityCurve: [{ date: "2026-06-15", balance: 300 }, { date: "2026-06-16", balance: 220 }],
+      markets: [{ symbol: "EURUSD", netPnl: 220, trades: 2, winRate: 50 }],
+      byEmotion: [{ emotion: "calma", trades: 1, avgPnl: 300, winRate: 100 }],
+    },
   })
 
   it("produces a full HTML document with the title and an inline SVG chart", () => {

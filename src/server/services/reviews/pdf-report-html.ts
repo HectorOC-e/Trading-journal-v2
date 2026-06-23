@@ -5,6 +5,7 @@
 import { currencySymbol } from "@/lib/fx"
 import type { WeeklyReport } from "@/domains/analytics/services/weekly-report"
 import type { MonthlyReport } from "@/domains/analytics/services/monthly-report"
+import type { ReviewAnalytics } from "./review-insights"
 
 const C = {
   ink: "#14161d", ink2: "#4b5160", ink3: "#8b909c",
@@ -102,25 +103,59 @@ function analysisHtml(text: string): string {
   return out.join("")
 }
 
+// Inline SVG equity (cumulative P&L) line — no charting lib in the PDF.
+function equitySvg(points: { date: string; balance: number }[], money: (n: number) => string): string {
+  if (points.length < 2) return `<p style="color:${C.ink3};font-size:13px">Datos insuficientes para la curva.</p>`
+  const W = 680, H = 150, pad = 22
+  const bals = points.map(p => p.balance)
+  const min = Math.min(0, ...bals), max = Math.max(0, ...bals)
+  const span = Math.max(1, max - min)
+  const x = (i: number) => pad + (i / (points.length - 1)) * (W - pad * 2)
+  const y = (b: number) => H - pad - ((b - min) / span) * (H - pad * 2)
+  const last = bals[bals.length - 1]
+  const color = last >= 0 ? C.win : C.loss
+  const line = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`).join(" ")
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${y(min).toFixed(1)} L${x(0).toFixed(1)},${y(min).toFixed(1)} Z`
+  const zeroY = y(0).toFixed(1)
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">
+    <line x1="${pad}" y1="${zeroY}" x2="${W - pad}" y2="${zeroY}" stroke="${C.line}" stroke-width="1"/>
+    <path d="${area}" fill="${color}" fill-opacity="0.12"/>
+    <path d="${line}" fill="none" stroke="${color}" stroke-width="2"/>
+  </svg>`
+}
+
 export function renderReviewReportHtml(opts: {
   kind: "weekly" | "monthly"
   title: string
   subtitle: string
   report: WeeklyReport | MonthlyReport
   aiAnalysis: string | null
+  analytics: ReviewAnalytics
 }): string {
-  const { kind, report } = opts
+  const { kind, report, analytics } = opts
   const cur = currencySymbol(report.baseCurrency || "USD")
   const money = (n: number) => `${n < 0 ? "-" : ""}${cur}${Math.abs(n).toFixed(2)}`
   const k = report.kpis
   const hasTrades = k.trades > 0
 
-  const kpis = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
+  const kpis = `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px"><tr>
     ${kpiCell("Net P&L", money(k.netPnl), k.netPnl >= 0 ? C.win : C.loss).replace(`border-left:1px solid ${C.line};`, "")}
     ${kpiCell("Win rate", hasTrades ? `${k.winRate}%` : "—", C.ink)}
     ${kpiCell("Disciplina", k.disciplineScore != null ? String(k.disciplineScore) : "—", C.ink)}
     ${kpiCell("Profit factor", hasTrades ? `${k.profitFactor}` : "—", C.ink)}
+  </tr></table>
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr>
+    ${kpiCell("Expectancy", money(analytics.expectancy), analytics.expectancy >= 0 ? C.win : C.loss).replace(`border-left:1px solid ${C.line};`, "")}
+    ${kpiCell("avg R", `${analytics.avgR}`, analytics.avgR >= 0 ? C.win : C.loss)}
+    ${kpiCell("avg Win", money(analytics.avgWin), C.win)}
+    ${kpiCell("avg Loss", money(analytics.avgLoss), C.loss)}
   </tr></table>`
+
+  const equity = card("Curva de equity · P&L acumulado", equitySvg(analytics.equityCurve, money))
+  const markets = rowsTable("Mercados", analytics.markets.map(m => ({ name: m.symbol, pnl: m.netPnl, trades: m.trades })), money, "Sin datos de mercado.")
+  const psychology = card("Psicología · emoción vs P&L", analytics.byEmotion.length === 0
+    ? `<p style="color:${C.ink3};font-size:12px;margin:0">Sin datos emocionales.</p>`
+    : analytics.byEmotion.map(e => `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid ${C.panel2};font-size:12px"><span style="color:${C.ink2};text-transform:capitalize">${esc(e.emotion)} <span style="color:${C.ink3}">· ${e.trades} · WR ${e.winRate}%</span></span><span style="font-family:monospace;font-weight:600;color:${e.avgPnl >= 0 ? C.win : C.loss}">${money(e.avgPnl)}/t</span></div>`).join(""))
 
   const setups = rowsTable(kind === "weekly" ? "Setups" : "Setups del mes", report.setups, money, "Sin setups asignados.")
   const sessions = rowsTable("Por sesión", report.sessions.map(s => ({ name: s.session, pnl: s.pnl, trades: s.trades })), money, "Sin sesiones.")
@@ -146,11 +181,16 @@ export function renderReviewReportHtml(opts: {
     <h1>${esc(opts.title)}</h1>
     <p style="font-size:13px;color:${C.ink3};margin:4px 0 18px">${esc(opts.subtitle)}</p>
     ${kpis}
+    ${hasTrades ? equity : ""}
     ${ai}
     ${card(kind === "weekly" ? "Tendencia día a día" : "Tendencia semana a semana", trendSvg(trendPoints(kind, report), money))}
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td width="50%" style="vertical-align:top;padding-right:7px">${setups}</td>
       <td width="50%" style="vertical-align:top;padding-left:7px">${sessions}</td>
+    </tr></table>
+    <table width="100%" cellpadding="0" cellspacing="0"><tr>
+      <td width="50%" style="vertical-align:top;padding-right:7px">${markets}</td>
+      <td width="50%" style="vertical-align:top;padding-left:7px">${psychology}</td>
     </tr></table>
     <table width="100%" cellpadding="0" cellspacing="0"><tr>
       <td width="50%" style="vertical-align:top;padding-right:7px">${discipline}</td>

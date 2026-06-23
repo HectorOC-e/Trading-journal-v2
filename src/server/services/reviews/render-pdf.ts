@@ -13,6 +13,7 @@ import chromium from "@sparticuz/chromium"
 import puppeteer from "puppeteer-core"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { loadWeeklyReport, loadMonthlyReport } from "./report-data"
+import { loadReviewAnalytics } from "./review-insights"
 import { renderReviewReportHtml } from "./pdf-report-html"
 import type { ReviewPeriod } from "@/server/services/email/send-review"
 
@@ -22,6 +23,7 @@ const MONTHS = [
 ]
 
 async function buildHtml(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<string> {
+  const analytics = await loadReviewAnalytics(prisma, userId, period)
   if (period.kind === "weekly") {
     const { report, saved } = await loadWeeklyReport(prisma, userId, period.weekStart)
     return renderReviewReportHtml({
@@ -30,6 +32,7 @@ async function buildHtml(prisma: PrismaClient, userId: string, period: ReviewPer
       subtitle: `Review semanal · ${report.kpis.trades} trades · moneda base ${report.baseCurrency}`,
       report,
       aiAnalysis: saved?.aiAnalysis ?? null,
+      analytics,
     })
   }
   const { report, saved } = await loadMonthlyReport(prisma, userId, period.year, period.month)
@@ -39,6 +42,7 @@ async function buildHtml(prisma: PrismaClient, userId: string, period: ReviewPer
     subtitle: `Review mensual · ${report.kpis.trades} trades · moneda base ${report.baseCurrency}`,
     report,
     aiAnalysis: saved?.aiAnalysis ?? null,
+    analytics,
   })
 }
 

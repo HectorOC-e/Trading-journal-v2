@@ -4,6 +4,7 @@
 
 import type { WeeklyReport } from "@/domains/analytics/services/weekly-report"
 import type { MonthlyReport } from "@/domains/analytics/services/monthly-report"
+import type { ReviewAnalytics } from "@/server/services/reviews/review-insights"
 
 const MONTHS = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -43,9 +44,11 @@ export interface ReviewReportVM {
   status:    string
   /** The user's free-form notes (weekly: executiveSummary, monthly: summary). */
   notes:     string
+  /** Rich "/analytics scoped to the period" slice (equity, markets, psychology…). */
+  analytics: ReviewAnalytics
 }
 
-export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string }): ReviewReportVM {
+export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string; analytics: ReviewAnalytics }): ReviewReportVM {
   return {
     kind:         "weekly",
     title:        r.weekLabel,
@@ -66,10 +69,11 @@ export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string }): Re
     ai:           r.ai,
     status:       r.status,
     notes:        r.saved?.executiveSummary ?? "",
+    analytics:    r.analytics,
   }
 }
 
-export function monthlyToVM(r: MonthlyReport & { ai: AiMeta; status: string }): ReviewReportVM {
+export function monthlyToVM(r: MonthlyReport & { ai: AiMeta; status: string; analytics: ReviewAnalytics }): ReviewReportVM {
   return {
     kind:         "monthly",
     title:        `${MONTHS[r.month - 1]} ${r.year}`,
@@ -92,5 +96,6 @@ export function monthlyToVM(r: MonthlyReport & { ai: AiMeta; status: string }): 
     ai:           r.ai,
     status:       r.status,
     notes:        r.saved?.summary ?? "",
+    analytics:    r.analytics,
   }
 }

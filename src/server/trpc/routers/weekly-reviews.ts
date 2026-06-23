@@ -6,7 +6,7 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
-import { loadReviewInsights } from "@/server/services/reviews/review-insights"
+import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
@@ -80,7 +80,8 @@ export const weeklyReviewsRouter = router({
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft" }
+      const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics }
     }),
 
   // Deterministic insight cards for the week (same engine as /analytics).

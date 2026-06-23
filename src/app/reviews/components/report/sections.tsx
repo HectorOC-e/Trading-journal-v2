@@ -179,3 +179,66 @@ export function NarrativeCard({ narrative }: { narrative: NarrativeVM }) {
     </Card>
   )
 }
+
+// ── Phase 3: rich "/analytics scoped to the period" sections ──────────────────
+
+type Analytics = ReviewReportVM["analytics"]
+
+/** Two extra KPI cards the dashboard shows but the review lacked. */
+export function ExtraKpis({ analytics, money }: { analytics: Analytics; money: Money }) {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <Card>
+        <Eyebrow>Expectancy</Eyebrow>
+        <CountUp value={money(analytics.expectancy)} className="num text-[20px] font-bold block" style={{ color: pnlColor(analytics.expectancy) }} />
+        <span className="text-[11px] text-[var(--ink-3)]">por trade</span>
+      </Card>
+      <Card>
+        <Eyebrow>avg R</Eyebrow>
+        <CountUp value={`${analytics.avgR}`} className="num text-[20px] font-bold block" style={{ color: pnlColor(analytics.avgR) }} />
+        <span className="text-[11px] text-[var(--ink-3)]">riesgo-recompensa</span>
+      </Card>
+      <Card>
+        <Eyebrow>avg Win</Eyebrow>
+        <CountUp value={money(analytics.avgWin)} className="num text-[20px] font-bold block text-[var(--win)]" />
+      </Card>
+      <Card>
+        <Eyebrow>avg Loss</Eyebrow>
+        <CountUp value={money(analytics.avgLoss)} className="num text-[20px] font-bold block text-[var(--loss)]" />
+      </Card>
+    </div>
+  )
+}
+
+/** P&L by market/symbol. */
+export function MarketsBreakdown({ markets, money }: { markets: Analytics["markets"]; money: Money }) {
+  return (
+    <BreakdownBars
+      title="Mercados"
+      rows={markets.map(m => ({ name: m.symbol, pnl: m.netPnl, trades: m.trades }))}
+      money={money}
+      empty="Sin datos de mercado."
+    />
+  )
+}
+
+/** Emotion → P&L: where the edge appears or disappears. */
+export function PsychologyPanel({ byEmotion, money }: { byEmotion: Analytics["byEmotion"]; money: Money }) {
+  return (
+    <Card>
+      <Eyebrow>Psicología · emoción vs P&amp;L</Eyebrow>
+      {byEmotion.length === 0 ? (
+        <p className="text-sm text-[var(--ink-3)] mt-1">Registra tu estado emocional en los trades para ver este análisis.</p>
+      ) : (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {byEmotion.map((e) => (
+            <div key={e.emotion} className="flex items-center justify-between text-[12.5px]">
+              <span className="text-[var(--ink-2)] capitalize">{e.emotion} <span className="text-[var(--ink-3)]">· {e.trades} · WR {e.winRate}%</span></span>
+              <span className="num font-semibold" style={{ color: pnlColor(e.avgPnl) }}>{money(e.avgPnl)}<span className="text-[var(--ink-3)] font-normal">/trade</span></span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}

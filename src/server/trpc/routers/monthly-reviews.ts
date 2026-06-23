@@ -4,7 +4,7 @@ import { router, protectedProcedure } from "../init"
 import type { MonthlyReview } from "@/lib/generated/prisma/client"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
-import { loadReviewInsights } from "@/server/services/reviews/review-insights"
+import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
@@ -93,7 +93,8 @@ export const monthlyReviewsRouter = router({
     .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadMonthlyReport(ctx.prisma, ctx.userId, input.year, input.month)
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft" }
+      const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "monthly", year: input.year, month: input.month })
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics }
     }),
 
   // Deterministic insight cards for the month (same engine as /analytics).

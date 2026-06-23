@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger"
 import { loadWeeklyReport, loadMonthlyReport } from "@/server/services/reviews/report-data"
 import { buildReviewEmailModel } from "@/domains/analytics/services/review-email-model"
 import { ReviewSummary } from "@/emails/templates/review-summary"
-import { lightTheme } from "@/emails/theme"
+import { resolveEmailThemeFor } from "./email-theme"
 import { isEmailChannelEnabled, type EmailPrefRow } from "./eligibility"
 import { sendEmail as defaultSendEmail, type EmailSender, type EmailAttachment } from "./resend-client"
 
@@ -110,7 +110,12 @@ export async function sendReviewEmail(
   if (report.kpis.trades === 0) return { status: "empty" }
 
   const model = buildReviewEmailModel({ kind: period.kind, title, reportPath: reportPath(period), report, aiAnalysis })
-  const html = await render(React.createElement(ReviewSummary, { model, theme: lightTheme, appUrl }))
+  const prefs = await prisma.userPreferences.findUnique({
+    where: { userId: user.id },
+    select: { theme: true, colorTheme: true, customTheme: true },
+  })
+  const theme = resolveEmailThemeFor(prefs)
+  const html = await render(React.createElement(ReviewSummary, { model, theme, appUrl }))
 
   const sign = model.kpis.netPnl >= 0 ? "📈" : "📉"
   const subject = period.kind === "weekly"
