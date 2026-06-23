@@ -65,7 +65,7 @@ export async function sendReviewEmail(
   const prisma = deps.prisma
   const now = deps.now ?? new Date()
   const send = deps.sendEmail ?? defaultSendEmail
-  const appUrl = deps.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://app.tradingjournal.app"
+  const appUrl = deps.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://tjournalx.com"
   const manual = opts.manual === true
 
   // Eligibility. Manual sends only require the master switch (the click is the opt-in);

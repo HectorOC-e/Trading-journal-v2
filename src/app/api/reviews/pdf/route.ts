@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 import { createClient } from "@/lib/supabase/server"
 import { renderReviewPdf } from "@/server/services/reviews/render-pdf"
 import type { ReviewPeriod } from "@/server/services/email/send-review"
@@ -41,7 +42,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         "Cache-Control": "no-store",
       },
     })
-  } catch {
+  } catch (err) {
+    logger.error(`[pdf] renderReviewPdf failed for ${user.id} ${type}/${periodStr}: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
     return NextResponse.json({ error: "PDF_FAILED" }, { status: 500 })
   }
 }
