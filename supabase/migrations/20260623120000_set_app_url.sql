@@ -10,4 +10,8 @@
 -- Also set NEXT_PUBLIC_APP_URL=https://tjournalx.com and a verified Resend EMAIL_FROM
 -- in the Vercel env for links + multi-recipient delivery.
 
-ALTER DATABASE postgres SET app.app_url = 'https://tjournalx.com';
+-- Use current_database() so it's portable (prod = postgres; CI replay = whatever name).
+DO $$
+BEGIN
+  EXECUTE format('ALTER DATABASE %I SET app.app_url = %L', current_database(), 'https://tjournalx.com');
+END $$;
