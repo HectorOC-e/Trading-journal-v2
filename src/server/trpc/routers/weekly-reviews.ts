@@ -9,6 +9,7 @@ import { computeDisciplineScore } from "@/domains/analytics/services/discipline-
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
+import { emailFailureMessage } from "@/server/services/email/resend-client"
 
 const WeeklyReviewInput = z.object({
   accountId:        z.string().uuid().optional().nullable(),
@@ -143,7 +144,7 @@ export const weeklyReviewsRouter = router({
       const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "weekly", weekStart: input.weekStart }, { manual: true })
       if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
       if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para enviar." })
-      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: emailFailureMessage(error) })
       return { status }
     }),
 
