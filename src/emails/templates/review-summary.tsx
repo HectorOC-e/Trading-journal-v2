@@ -32,12 +32,33 @@ function Row({ theme, label, value, color }: { theme: EmailTheme; label: string;
   )
 }
 
-/** Lightweight markdown→email render: ### headers become eyebrows, bullets become rows. */
+// Callout palette for `> [!TYPE]` blocks (light variant; mirrors web + PDF).
+const EMAIL_CALLOUT: Record<string, { bd: string; bg: string; fg: string }> = {
+  INSIGHT:        { bd: "#4f6ef7", bg: "#eef1fe", fg: "#3b53c4" },
+  RECOMMENDATION: { bd: "#1aa35a", bg: "#e9f7ef", fg: "#157a45" },
+  TIP:            { bd: "#1aa35a", bg: "#e9f7ef", fg: "#157a45" },
+  WARNING:        { bd: "#d9a441", bg: "#fdf6e7", fg: "#9a6b16" },
+  DANGER:         { bd: "#e5484d", bg: "#fdecec", fg: "#b3272c" },
+  NOTE:           { bd: "#8b909c", bg: "#f4f5f8", fg: "#4b5160" },
+  METRIC:         { bd: "#8b909c", bg: "#f4f5f8", fg: "#4b5160" },
+}
+
+/** Lightweight markdown→email render: ### headers, bullets, and `> [!TYPE]` callouts. */
 function AnalysisBlock({ theme, text }: { theme: EmailTheme; text: string }) {
-  const lines = text.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 16)
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 24)
   return (
     <div>
       {lines.map((line, i) => {
+        const co = /^>\s*\[!(\w+)\]\s*(.*)$/.exec(line)
+        if (co) {
+          const c = EMAIL_CALLOUT[co[1].toUpperCase()] ?? EMAIL_CALLOUT.NOTE
+          return (
+            <div key={i} style={{ borderLeft: `3px solid ${c.bd}`, background: c.bg, borderRadius: 6, padding: "6px 10px", margin: "6px 0" }}>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", color: c.fg }}>{co[1].toUpperCase()}</span>
+              <p style={{ margin: "2px 0 0", fontSize: 13, lineHeight: 1.45, color: theme.ink2 }}>{co[2]}</p>
+            </div>
+          )
+        }
         if (line.startsWith("### ")) {
           return <p key={i} style={{ margin: "12px 0 6px", fontWeight: 700, fontSize: 12, color: theme.ink }}>{line.replace(/^###\s*/, "")}</p>
         }

@@ -7,6 +7,7 @@ import { streamChat }        from "@/lib/ai/chat"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { loadReviewInsights } from "@/server/services/reviews/review-insights"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
@@ -83,6 +84,11 @@ export const weeklyReviewsRouter = router({
       return { ...report, ai: aiMetaOf(saved) }
     }),
 
+  // Deterministic insight cards for the week (same engine as /analytics).
+  insights: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .query(({ ctx, input }) => loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })),
+
   // T-XI: AI analysis of the computed weekly report. Persists to the review row
   // (creating a draft when none exists) so it's reused and embeddable in the email.
   generateAnalysis: protectedProcedure
@@ -101,10 +107,11 @@ export const weeklyReviewsRouter = router({
       if (report.kpis.trades === 0) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para analizar." })
       }
+      const insights = await loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
 
       let analysis: string
       try {
-        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report))
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report, insights))
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
       }
