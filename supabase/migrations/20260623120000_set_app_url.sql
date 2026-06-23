@@ -1,17 +1,18 @@
--- Reviews/Learning cron · set the public app URL DB setting.
--- The hourly pg_cron jobs (reviews-digest-hourly, learning-digest-hourly) POST to
---   current_setting('app.app_url') || '/api/cron/...'
--- with a 'Bearer ' || current_setting('app.cron_secret') header. Both settings were
--- empty in the DB, so the cron fired but could never reach the app.
+-- Reviews/Learning cron · attempt to set the public app URL DB setting.
 --
--- This migration sets the PUBLIC url (safe to commit). The SECRET is set out-of-band
--- (never committed): run once in Supabase, replacing <CRON_SECRET> with the app's value:
---   ALTER DATABASE postgres SET app.cron_secret = '<CRON_SECRET>';
--- Also set NEXT_PUBLIC_APP_URL=https://tjournalx.com and a verified Resend EMAIL_FROM
--- in the Vercel env for links + multi-recipient delivery.
-
--- Use current_database() so it's portable (prod = postgres; CI replay = whatever name).
+-- NOTE: On Supabase the `postgres` role is NOT a true superuser, so
+-- `ALTER DATABASE ... SET app.app_url` raises "permission denied to set parameter"
+-- (SQLSTATE 42501) — in CI replay AND in prod migrate-deploy. We therefore make this
+-- a SAFE no-op when the privilege is missing, so it never breaks the migration run.
+--
+-- The cron's app_url/cron_secret can't live in a custom GUC on Supabase. Follow-up:
+-- move them to a settings table (e.g. private.app_settings) read by the pg_cron jobs,
+-- or Supabase Vault. Until then the digest cron stays inactive (it also needs a
+-- verified Resend domain + EMAIL_FROM). Manual "Enviar por correo" is unaffected.
 DO $$
 BEGIN
   EXECUTE format('ALTER DATABASE %I SET app.app_url = %L', current_database(), 'https://tjournalx.com');
+EXCEPTION
+  WHEN insufficient_privilege THEN
+    RAISE NOTICE 'app.app_url not set (insufficient privilege on Supabase); configure cron settings out-of-band';
 END $$;
