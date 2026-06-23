@@ -43,8 +43,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
     })
   } catch (err) {
-    const detail = err instanceof Error ? (err.stack ?? err.message) : String(err)
-    logger.error(`[pdf] renderReviewPdf failed for ${user.id} ${type}/${periodStr}: ${detail}`)
-    return NextResponse.json({ error: "PDF_FAILED", detail: detail.slice(0, 800) }, { status: 500 })
+    logger.error(`[pdf] renderReviewPdf failed for ${user.id} ${type}/${periodStr}: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`)
+    return NextResponse.json({ error: "PDF_FAILED" }, { status: 500 })
   }
 }
