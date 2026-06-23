@@ -2,9 +2,10 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ArrowLeft, Printer } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { staggerContainer, fadeUpItem } from "@/lib/motion"
 import { makeMoney, Card, Eyebrow } from "./primitives"
+import { DownloadPdfButton } from "./download-pdf-button"
 import { PnlTrendChart } from "./charts"
 import {
   KpiGrid, DayExtremes, DisciplinePanel, SetupBreakdown, SessionBreakdown, AccountBreakdown, NarrativeCard,
@@ -32,12 +33,7 @@ export function ReviewReportShell({ vm, aiSlot, actions }: {
         </Link>
         <div className="flex items-center gap-2">
           {actions}
-          <a
-            href={`/api/reviews/pdf?type=${vm.kind}&period=${vm.printPeriod}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white hover:opacity-90"
-          >
-            <Printer size={14} /> Descargar PDF
-          </a>
+          <DownloadPdfButton kind={vm.kind} period={vm.printPeriod} />
         </div>
       </div>
 

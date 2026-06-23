@@ -6,6 +6,7 @@ import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
+import { emailFailureMessage } from "@/server/services/email/resend-client"
 
 type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt"> & {
   createdAt: string
@@ -143,7 +144,7 @@ export const monthlyReviewsRouter = router({
       const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "monthly", year: input.year, month: input.month }, { manual: true })
       if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
       if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en este mes para enviar." })
-      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error ?? "No se pudo enviar el correo." })
+      if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: emailFailureMessage(error) })
       return { status }
     }),
 

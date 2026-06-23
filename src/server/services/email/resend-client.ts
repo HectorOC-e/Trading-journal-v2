@@ -29,6 +29,21 @@ export interface SendEmailResult {
 
 export type EmailSender = (args: SendEmailArgs) => Promise<SendEmailResult>
 
+/**
+ * Turn a raw Resend `send` error into a concise, user-facing Spanish message.
+ * Kept under ~200 chars so `formatErrorForUser` surfaces it verbatim instead of
+ * collapsing it to the generic "Error interno" text (the real Resend domain
+ * error is 229 chars and would otherwise be hidden).
+ */
+export function emailFailureMessage(error?: string): string {
+  const detail = (error ?? "").trim()
+  if (/verify a domain|testing emails|not verified|\bdomain\b/i.test(detail)) {
+    return "Resend solo permite enviar a tu propio correo hasta verificar un dominio. Verifica uno en resend.com/domains y define EMAIL_FROM con ese dominio."
+  }
+  const short = detail.length > 140 ? detail.slice(0, 137) + "…" : detail
+  return short ? `No se pudo enviar el correo: ${short}` : "No se pudo enviar el correo."
+}
+
 export const sendEmail: EmailSender = async ({ to, subject, html, attachments }) => {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.EMAIL_FROM ?? DEFAULT_FROM

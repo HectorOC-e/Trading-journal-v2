@@ -321,6 +321,12 @@ export default function PerfilPage() {
     onSuccess: () => utils.notifications.preferences.list.invalidate(),
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
+  const testEmailMut = trpc.notifications.sendTestEmail.useMutation({
+    onSuccess: (d) => d.dryRun
+      ? toast.success("Modo dry-run: sin RESEND_API_KEY no se envió nada (el flujo funciona).")
+      : toast.success(`Correo de prueba enviado a ${d.to}. Revisa tu bandeja (y spam).`),
+    onError:   (err) => toast.error(formatErrorForUser(err)),
+  })
   const aprendizajePref   = notifPrefs?.find(p => p.category === "Aprendizaje")
   const aprendizajeChans  = aprendizajePref?.channels ?? ["in_app"]
   const aprendizajeEmailOn = aprendizajeChans.includes("email")
@@ -765,6 +771,27 @@ export default function PerfilPage() {
             disabled={!emailNotifications}
             onChange={setReviewsEmail}
           />
+
+          {/* Delivery test — verifies email actually arrives, independent of the digests. */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--line)" }}>
+            <button
+              onClick={() => testEmailMut.mutate()}
+              disabled={testEmailMut.isPending}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                padding: "8px 14px", borderRadius: "var(--radius-sm)",
+                border: "1px solid var(--line)", background: "var(--panel-2)",
+                color: "var(--ink-2)", fontSize: 13, fontWeight: 600,
+                cursor: testEmailMut.isPending ? "default" : "pointer",
+                opacity: testEmailMut.isPending ? 0.6 : 1,
+              }}
+            >
+              {testEmailMut.isPending ? "Enviando…" : "Enviar correo de prueba"}
+            </button>
+            <p style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 8 }}>
+              Te enviamos un correo de prueba a <b>{profile.email}</b> para confirmar que la entrega funciona.
+            </p>
+          </div>
         </Card>
 
         {/* ── Configuración de IA ── */}
