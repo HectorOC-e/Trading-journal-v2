@@ -25,7 +25,7 @@ export interface WeeklyRecapProps {
   appUrl?: string
 }
 
-export function WeeklyRecap({ model, theme = lightTheme, appUrl = "https://app.tradingjournal.app" }: WeeklyRecapProps) {
+export function WeeklyRecap({ model, theme = lightTheme, appUrl = "https://tjournalx.com" }: WeeklyRecapProps) {
   const greeting = model.greetingName ? `Hola ${model.greetingName}` : "Hola"
   return (
     <EmailLayout theme={theme} preview={`${greeting}: tu semana de aprendizaje`}>

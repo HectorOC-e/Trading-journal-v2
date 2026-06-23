@@ -16,7 +16,7 @@ export interface LearningDigestProps {
   appUrl?: string
 }
 
-export function LearningDigest({ model, theme = lightTheme, appUrl = "https://app.tradingjournal.app" }: LearningDigestProps) {
+export function LearningDigest({ model, theme = lightTheme, appUrl = "https://tjournalx.com" }: LearningDigestProps) {
   const greeting = model.greetingName ? `Hola ${model.greetingName}` : "Hola"
   const preview = model.streak.atRisk
     ? `${greeting}: tu racha de ${model.streak.current} días está en riesgo`

@@ -110,7 +110,7 @@ export async function sendLearningDigestForUser(deps: DigestDeps, user: DigestUs
   const prisma = deps.prisma
   const now = deps.now ?? new Date()
   const send = deps.sendEmail ?? defaultSendEmail
-  const appUrl = deps.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://app.tradingjournal.app"
+  const appUrl = deps.appUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "https://tjournalx.com"
 
   const pref = (await prisma.notificationPreference.findUnique({
     where: { userId_category: { userId: user.id, category: LEARNING_CATEGORY } },

@@ -74,7 +74,7 @@ function AnalysisBlock({ theme, text }: { theme: EmailTheme; text: string }) {
   )
 }
 
-export function ReviewSummary({ model, theme = lightTheme, appUrl = "https://app.tradingjournal.app" }: ReviewSummaryProps) {
+export function ReviewSummary({ model, theme = lightTheme, appUrl = "https://tjournalx.com" }: ReviewSummaryProps) {
   const cur = currencySymbol(model.baseCurrency || "USD")
   const m = (n: number) => `${n < 0 ? "-" : ""}${cur}${Math.abs(n).toFixed(2)}`
   const kindLabel = model.kind === "weekly" ? "Review semanal" : "Review mensual"
