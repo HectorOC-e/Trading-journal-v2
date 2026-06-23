@@ -263,24 +263,6 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
     onError: () => { setAutoSaveStatus("idle") },
   })
 
-  const generateAiSummary = trpc.weeklyReviews.generateSummary.useMutation({
-    onSuccess: (data) => {
-      if (data.executiveSummary) setExecutiveSummary(data.executiveSummary)
-      if (data.whatWorked)       setWhatWorked(data.whatWorked)
-      if (data.toImprove)        setToImprove(data.toImprove)
-      setAutoFields(prev => new Set([...prev, "executiveSummary", "whatWorked", "toImprove"]))
-    },
-    onError: (err) => toast.error(formatErrorForUser(err)),
-  })
-
-  function handleAiGenerate() {
-    generateAiSummary.mutate({
-      weekStart:  week.start,
-      weekEnd:    week.end,
-      accountId:  effectiveAccountId || null,
-    })
-  }
-
   function resetState() {
     setStep("config"); setSelectedWeek(0); setGenerated(null); setAutoFields(new Set())
     setExecutiveSummary(""); setWhatWorked(""); setToImprove(""); setDisciplineScore(75)
@@ -619,16 +601,6 @@ export function NuevaReviewModal({ open, onOpenChange, reviewResources, editRevi
           ) : (
             <>
               <Button variant="ghost" onClick={() => setStep("config")}>← Atrás</Button>
-              <Button
-                variant="ghost"
-                onClick={handleAiGenerate}
-                disabled={generateAiSummary.isPending}
-                className="flex items-center gap-1.5"
-              >
-                {generateAiSummary.isPending
-                  ? <><Loader2 size={13} className="animate-spin" /> Generando…</>
-                  : <><Sparkles size={13} /> Resumen con IA</>}
-              </Button>
               <Button variant="ghost" onClick={() => handleSave("draft")} disabled={isSaving}>
                 {isSaving ? "Guardando…" : "Guardar borrador"}
               </Button>

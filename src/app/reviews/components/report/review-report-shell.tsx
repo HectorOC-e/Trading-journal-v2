@@ -17,10 +17,11 @@ import type { ReviewReportVM } from "./view-model"
  * normalized `ReviewReportVM`. `aiSlot` is where the AI analysis card mounts
  * (Phase 2); `actions` lets a page inject extra header buttons (e.g. send-email).
  */
-export function ReviewReportShell({ vm, aiSlot, actions }: {
+export function ReviewReportShell({ vm, aiSlot, actions, notesSlot }: {
   vm: ReviewReportVM
   aiSlot?: React.ReactNode
   actions?: React.ReactNode
+  notesSlot?: React.ReactNode
 }) {
   const money = makeMoney(vm.baseCurrency)
 
@@ -67,6 +68,8 @@ export function ReviewReportShell({ vm, aiSlot, actions }: {
         <AccountBreakdown byAccount={vm.byAccount} money={money} />
 
         {vm.narrative && <NarrativeCard narrative={vm.narrative} />}
+
+        {notesSlot && <motion.div variants={fadeUpItem}>{notesSlot}</motion.div>}
       </motion.div>
     </div>
   )

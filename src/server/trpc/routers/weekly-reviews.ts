@@ -3,7 +3,6 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import type { WeeklyReview } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
-import { streamChat }        from "@/lib/ai/chat"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
@@ -81,7 +80,7 @@ export const weeklyReviewsRouter = router({
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
-      return { ...report, ai: aiMetaOf(saved) }
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft" }
     }),
 
   // Deterministic insight cards for the week (same engine as /analytics).
@@ -261,110 +260,40 @@ export const weeklyReviewsRouter = router({
       }
     }),
 
-  // T-IX: Auto-generate weekly review narrative from trade data
-  generateSummary: protectedProcedure
+  // Save notes (maps to executiveSummary) and/or finalize. Upserts the weekly review
+  // row (auto-first: the row may not exist yet when the report is just an auto-draft).
+  saveReview: protectedProcedure
     .input(z.object({
-      weekStart:  z.string(),
-      weekEnd:    z.string(),
-      accountId:  z.string().uuid().optional().nullable(),
+      weekStart: z.string(),
+      notes:     z.string().max(5000).optional(),
+      status:    z.enum(["draft", "submitted"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      // Resolve the user's configured provider + key (persisted first, then env).
-      const aiCall = await resolveAiCall(ctx.prisma, ctx.userId, "weekly_reviews")
-      const candidates = usableCandidates(aiCall)
-      if (candidates.length === 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Configura un proveedor de IA y su API key en Ajustes → Configuración de IA para generar el resumen.",
-        })
-      }
+      const data: { executiveSummary?: string; status?: string } = {}
+      if (input.notes !== undefined) data.executiveSummary = input.notes
+      if (input.status) data.status = input.status
 
-      const start = new Date(input.weekStart)
-      const end   = new Date(input.weekEnd)
-
-      const trades = await ctx.prisma.trade.findMany({
-        where: {
-          userId:    ctx.userId,
-          status:    "CLOSED",
-          date:      { gte: start, lte: end },
-          ...(input.accountId ? { accountId: input.accountId } : {}),
-        },
-        select: {
-          symbol: true, direction: true, pnl: true, rMultiple: true,
-          tags: true, notes: true, session: true,
-          setup: { select: { name: true } },
-        },
-        orderBy: { date: "asc" },
+      const ws = new Date(input.weekStart + "T00:00:00")
+      const existing = await ctx.prisma.weeklyReview.findFirst({
+        where: { userId: ctx.userId, weekStart: ws },
+        select: { id: true },
       })
-
-      if (!trades.length) {
-        return {
-          executiveSummary: "Sin trades registrados esta semana.",
-          whatWorked:       "",
-          toImprove:        "",
-        }
+      if (existing) {
+        const row = await ctx.prisma.weeklyReview.update({
+          where: { id: existing.id }, data,
+          select: { status: true, executiveSummary: true },
+        })
+        return { status: row.status, notes: row.executiveSummary }
       }
-
-      const netPnl  = trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const wins    = trades.filter(t => isWin({ pnl: Number(t.pnl ?? 0) })).length
-      const winRate = Math.round(calcWinRate(wins, trades.length))
-      const tradeLines = trades.slice(0, 15).map(t =>
-        `  • ${t.symbol} ${t.direction} ${Number(t.pnl ?? 0) >= 0 ? "+" : ""}$${Number(t.pnl ?? 0).toFixed(2)}` +
-        `${t.rMultiple != null ? ` (${Number(t.rMultiple).toFixed(2)}R)` : ""}` +
-        `${t.tags.length ? ` [${(t.tags as string[]).join(", ")}]` : ""}` +
-        `${t.notes ? ` | "${t.notes.slice(0, 60)}"` : ""}`
-      ).join("\n")
-
-      const prompt = `Eres un coach de trading. Basándote en los siguientes trades de la semana, genera un resumen ejecutivo breve (2-3 oraciones), qué funcionó bien, y qué mejorar. Responde SOLO con JSON con las claves: executiveSummary, whatWorked, toImprove.
-
-Trades (${trades.length} total, WR ${winRate}%, P&L neto $${netPnl.toFixed(2)}):
-${tradeLines}
-
-JSON:`
-
-      try {
-        // Try each usable candidate (primary then fallback); each carries its own
-        // provider + model + key resolved from the user's persisted config.
-        let stream: ReadableStream<Uint8Array> | null = null
-        let streamErr: unknown
-        for (const c of candidates) {
-          try {
-            stream = await streamChat({
-              provider: c.provider,
-              apiKey:   c.apiKey,
-              model:    c.model,
-              messages: [{ role: "user", content: prompt }],
-            })
-            break
-          } catch (e) {
-            streamErr = e
-          }
-        }
-        if (!stream) throw streamErr ?? new Error("AI stream failed")
-        const reader  = stream.getReader()
-        const decoder = new TextDecoder()
-        let   raw     = ""
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          raw += decoder.decode(value, { stream: true })
-        }
-
-        // Extract JSON from response
-        const match = raw.match(/\{[\s\S]*\}/)
-        if (!match) throw new Error("no JSON in response")
-        const parsed = JSON.parse(match[0]) as {
-          executiveSummary?: string
-          whatWorked?: string
-          toImprove?: string
-        }
-        return {
-          executiveSummary: parsed.executiveSummary ?? "",
-          whatWorked:       parsed.whatWorked       ?? "",
-          toImprove:        parsed.toImprove        ?? "",
-        }
-      } catch {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el resumen. Inténtalo de nuevo." })
-      }
+      const we = new Date(ws); we.setDate(ws.getDate() + 6)
+      const label = `Semana del ${ws.toLocaleDateString("es", { day: "numeric", month: "short" })}`
+      const row = await ctx.prisma.weeklyReview.create({
+        data: {
+          userId: ctx.userId, weekStart: ws, weekEnd: we, weekLabel: label, weekRange: label,
+          executiveSummary: input.notes ?? "", status: input.status ?? "draft",
+        },
+        select: { status: true, executiveSummary: true },
+      })
+      return { status: row.status, notes: row.executiveSummary }
     }),
 })
