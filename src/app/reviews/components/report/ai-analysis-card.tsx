@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { Markdown } from "@/components/ui/markdown"
+import { InsightCards } from "@/components/ui/insight-cards"
 import { Card, Eyebrow } from "./primitives"
 import type { AiMeta } from "./view-model"
 
@@ -32,6 +33,17 @@ export function AiAnalysisCard({ period, initial }: { period: Period; initial: A
   const monthlyMut = trpc.monthlyReviews.generateAnalysis.useMutation({ onSuccess, onError })
   const pending = weeklyMut.isPending || monthlyMut.isPending
 
+  // Deterministic insight cards (same engine as /analytics), scoped to this period.
+  const weeklyInsights  = trpc.weeklyReviews.insights.useQuery(
+    period.kind === "weekly" ? { weekStart: period.weekStart } : { weekStart: "" },
+    { enabled: period.kind === "weekly", staleTime: 60_000 },
+  )
+  const monthlyInsights = trpc.monthlyReviews.insights.useQuery(
+    period.kind === "monthly" ? { year: period.year, month: period.month } : { year: 0, month: 1 },
+    { enabled: period.kind === "monthly", staleTime: 60_000 },
+  )
+  const insights = (period.kind === "weekly" ? weeklyInsights.data : monthlyInsights.data) ?? []
+
   const generate = () => {
     if (period.kind === "weekly") weeklyMut.mutate({ weekStart: period.weekStart })
     else monthlyMut.mutate({ year: period.year, month: period.month })
@@ -50,6 +62,12 @@ export function AiAnalysisCard({ period, initial }: { period: Period; initial: A
           {pending ? "Generando…" : analysis ? "Regenerar" : "Generar análisis"}
         </button>
       </div>
+
+      {insights.length > 0 && (
+        <div className="mb-3">
+          <InsightCards insights={insights} />
+        </div>
+      )}
 
       {analysis ? (
         <>

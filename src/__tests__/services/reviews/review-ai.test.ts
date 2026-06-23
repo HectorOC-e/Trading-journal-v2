@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { buildAnalysisPrompt } from "@/server/services/reviews/review-ai"
 import { buildWeeklyReport } from "@/domains/analytics/services/weekly-report"
+import type { Insight } from "@/domains/analytics/services/insights-engine"
 
 const report = buildWeeklyReport({
   weekStart: "2026-06-15", weekLabel: "Semana del 15 jun", baseCurrency: "USD",
@@ -14,11 +15,15 @@ const report = buildWeeklyReport({
 })
 
 describe("buildAnalysisPrompt", () => {
-  it("includes the three required sections", () => {
+  it("requests the three structured sections and callout formatting", () => {
     const p = buildAnalysisPrompt(report.weekLabel, "weekly", report)
-    expect(p).toContain("### Hallazgos clave")
-    expect(p).toContain("### Banderas de riesgo")
-    expect(p).toContain("### Foco para el próximo periodo")
+    expect(p).toContain("### Qué está pasando")
+    expect(p).toContain("### Por qué ocurre")
+    expect(p).toContain("### Qué hacer")
+    expect(p).toContain("[!INSIGHT]")
+    expect(p).toContain("[!WARNING]")
+    expect(p).toContain("[!RECOMMENDATION]")
+    expect(p).toMatch(/NO uses tablas/) // instructs the model away from tables (email/PDF fidelity)
   })
   it("embeds computed setups and sessions from the report", () => {
     const p = buildAnalysisPrompt(report.weekLabel, "weekly", report)
@@ -26,5 +31,19 @@ describe("buildAnalysisPrompt", () => {
     expect(p).toContain("NY")
     expect(p).toContain("London")
     expect(p).toContain("Disciplina: 72")
+  })
+  it("injects detected deterministic signals when provided", () => {
+    const insights: Insight[] = [{
+      id: "x1", category: "anomaly", severity: "warning",
+      title: "Racha de 8 pérdidas", detail: "tu peor racha reciente", recommendation: "regla de parada", evidence: "sobre 106 trades",
+    }]
+    const p = buildAnalysisPrompt(report.weekLabel, "weekly", report, insights)
+    expect(p).toContain("SEÑALES DETECTADAS")
+    expect(p).toContain("Racha de 8 pérdidas")
+    expect(p).toContain("regla de parada")
+  })
+  it("notes the absence of signals when none are detected", () => {
+    const p = buildAnalysisPrompt(report.weekLabel, "weekly", report, [])
+    expect(p).toContain("no detectó señales fuertes")
   })
 })

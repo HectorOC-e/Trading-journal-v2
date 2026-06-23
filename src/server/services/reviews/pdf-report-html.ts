@@ -63,13 +63,43 @@ function card(title: string, inner: string): string {
   </div>`
 }
 
+// Callout palette for GitHub-style `> [!TYPE]` blocks (mirrors the web renderer).
+const CALLOUT: Record<string, { bd: string; bg: string; fg: string }> = {
+  INSIGHT:        { bd: C.accent, bg: "#eef1fe", fg: C.accent },
+  RECOMMENDATION: { bd: C.win,    bg: "#e9f7ef", fg: C.win },
+  TIP:            { bd: C.win,    bg: "#e9f7ef", fg: C.win },
+  WARNING:        { bd: "#d9a441", bg: "#fdf6e7", fg: "#9a6b16" },
+  DANGER:         { bd: C.loss,   bg: "#fdecec", fg: C.loss },
+  NOTE:           { bd: C.ink3,   bg: C.panel2,  fg: C.ink2 },
+  METRIC:         { bd: C.ink3,   bg: C.panel2,  fg: C.ink2 },
+}
+
+function calloutHtml(kind: string, body: string): string {
+  const c = CALLOUT[kind] ?? CALLOUT.NOTE
+  return `<div style="border-left:3px solid ${c.bd};background:${c.bg};border-radius:6px;padding:6px 10px;margin:6px 0">
+    <span style="font-size:9px;font-weight:700;letter-spacing:.05em;color:${c.fg}">${esc(kind)}</span>
+    <p style="font-size:12px;line-height:1.45;color:${C.ink2};margin:2px 0 0">${esc(body)}</p>
+  </div>`
+}
+
 function analysisHtml(text: string): string {
-  return text.split("\n").map(l => l.trim()).filter(Boolean).map(line => {
-    if (line.startsWith("### ")) return `<p style="font-weight:700;font-size:12px;color:${C.ink};margin:10px 0 4px">${esc(line.replace(/^###\s*/, ""))}</p>`
+  const lines = text.split("\n").map(l => l.trimEnd())
+  const out: string[] = []
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line) continue
+    // GitHub-style callout: > [!TYPE] body
+    const co = /^>\s*\[!(\w+)\]\s*(.*)$/.exec(line)
+    if (co) { out.push(calloutHtml(co[1].toUpperCase(), co[2])); continue }
+    // continuation of a callout / plain blockquote line
+    const q = /^>\s?(.*)$/.exec(line)
+    if (q) { out.push(`<p style="font-size:12px;line-height:1.5;color:${C.ink2};margin:0 0 4px">${esc(q[1])}</p>`); continue }
+    if (line.startsWith("### ")) { out.push(`<p style="font-weight:700;font-size:12px;color:${C.ink};margin:10px 0 4px">${esc(line.replace(/^###\s*/, ""))}</p>`); continue }
     const isBullet = /^[-•*]\s/.test(line)
     const txt = esc(line.replace(/^[-•*]\s*/, ""))
-    return `<p style="font-size:12px;line-height:1.5;color:${C.ink2};margin:0 0 4px;${isBullet ? "padding-left:12px" : ""}">${isBullet ? "• " + txt : txt}</p>`
-  }).join("")
+    out.push(`<p style="font-size:12px;line-height:1.5;color:${C.ink2};margin:0 0 4px;${isBullet ? "padding-left:12px" : ""}">${isBullet ? "• " + txt : txt}</p>`)
+  }
+  return out.join("")
 }
 
 export function renderReviewReportHtml(opts: {

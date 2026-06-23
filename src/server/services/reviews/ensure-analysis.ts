@@ -6,6 +6,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadWeeklyReport, loadMonthlyReport } from "./report-data"
 import { buildAnalysisPrompt, runReviewAnalysis } from "./review-ai"
+import { loadReviewInsights } from "./review-insights"
 import type { ReviewPeriod } from "@/server/services/email/send-review"
 
 async function persistWeeklyAnalysis(
@@ -37,13 +38,15 @@ export async function ensureReviewAnalysis(prisma: PrismaClient, userId: string,
   if (period.kind === "weekly") {
     const { report, saved } = await loadWeeklyReport(prisma, userId, period.weekStart)
     if (report.kpis.trades === 0 || saved?.aiAnalysis) return
-    const analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report))
+    const insights = await loadReviewInsights(prisma, userId, period)
+    const analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report, insights))
     if (analysis) await persistWeeklyAnalysis(prisma, userId, period.weekStart, report.weekLabel, analysis, at, saved?.id ?? null)
   } else {
     const { report, saved } = await loadMonthlyReport(prisma, userId, period.year, period.month)
     if (report.kpis.trades === 0 || saved?.aiAnalysis) return
+    const insights = await loadReviewInsights(prisma, userId, period)
     const label = `${String(period.month).padStart(2, "0")}/${period.year}`
-    const analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(label, "monthly", report))
+    const analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(label, "monthly", report, insights))
     if (analysis) await persistMonthlyAnalysis(prisma, userId, period.year, period.month, analysis, at)
   }
 }

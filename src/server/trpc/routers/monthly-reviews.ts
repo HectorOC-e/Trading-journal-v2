@@ -4,6 +4,7 @@ import { router, protectedProcedure } from "../init"
 import type { MonthlyReview } from "@/lib/generated/prisma/client"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { loadReviewInsights } from "@/server/services/reviews/review-insights"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
@@ -95,6 +96,11 @@ export const monthlyReviewsRouter = router({
       return { ...report, ai: aiMetaOf(saved) }
     }),
 
+  // Deterministic insight cards for the month (same engine as /analytics).
+  insights: protectedProcedure
+    .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
+    .query(({ ctx, input }) => loadReviewInsights(ctx.prisma, ctx.userId, { kind: "monthly", year: input.year, month: input.month })),
+
   // T-XI: AI analysis of the computed monthly report. Upserts onto the month's review.
   generateAnalysis: protectedProcedure
     .input(z.object({ year: z.number().int(), month: z.number().int().min(1).max(12) }))
@@ -112,11 +118,12 @@ export const monthlyReviewsRouter = router({
       if (report.kpis.trades === 0) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en este mes para analizar." })
       }
+      const insights = await loadReviewInsights(ctx.prisma, ctx.userId, { kind: "monthly", year: input.year, month: input.month })
 
       const periodLabel = `${String(input.month).padStart(2, "0")}/${input.year}`
       let analysis: string
       try {
-        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(periodLabel, "monthly", report))
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(periodLabel, "monthly", report, insights))
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
       }
