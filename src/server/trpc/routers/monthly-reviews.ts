@@ -6,17 +6,29 @@ import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { loadMonthlyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
+import { loadMonthlyCardStats } from "@/server/services/reviews/monthly-card-stats"
+import { computePillars } from "@/server/services/reviews/pillars"
+import { deriveLetterTitle, deriveStructuredThemes, type MonthlyTheme } from "@/server/services/reviews/monthly-letter"
+import { evaluateGoal } from "@/server/services/reviews/goal-eval"
+import { deriveGrade, deriveVerdict } from "@/server/services/reviews/verdict"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
 
-type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt"> & {
+const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+const monthLabelOf = (year: number, month: number) => `${MONTHS_ES[month - 1]} ${year}`
+
+// Override the recursive Prisma `Json` type for keyThemesRich with a concrete shape —
+// otherwise tRPC's output inference hits TS2589 ("type instantiation excessively deep").
+type SerializedMonthlyReview = Omit<MonthlyReview, "createdAt" | "updatedAt" | "keyThemesRich"> & {
   createdAt: string
   updatedAt: string
+  keyThemesRich: MonthlyTheme[] | null
 }
 
 function serializeMonthlyReview(r: MonthlyReview): SerializedMonthlyReview {
   return {
     ...r,
+    keyThemesRich: (r.keyThemesRich as MonthlyTheme[] | null) ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   }
@@ -40,7 +52,34 @@ export const monthlyReviewsRouter = router({
         where:   { userId: ctx.userId },
         orderBy: [{ year: "desc" }, { month: "desc" }],
       })
-      return reviews.map(serializeMonthlyReview)
+      const serialized = reviews.map(serializeMonthlyReview)
+      // Batched per-month metrics for the "Ediciones" covers.
+      const stats = await loadMonthlyCardStats(ctx.prisma, ctx.userId, serialized.map(r => ({ year: r.year, month: r.month })))
+      const byKey = new Map(serialized.map(r => [`${r.year}-${r.month}`, r]))
+      return serialized.map(r => {
+        const s = stats.get(`${r.year}-${r.month}`)
+        const netPnl = s?.netPnl ?? 0
+        const grade = deriveGrade({ disciplineScore: r.overallScore, winRate: s?.winRate ?? 0, netPnl, profitFactor: s?.profitFactor ?? 0, trades: s?.trades ?? 0 })
+        // delta vs the previous calendar month, if that review exists in the list.
+        const prevMonth = r.month === 1 ? 12 : r.month - 1
+        const prevYear  = r.month === 1 ? r.year - 1 : r.year
+        const prev = byKey.get(`${prevYear}-${prevMonth}`)
+        const prevNet = prev ? (stats.get(`${prevYear}-${prevMonth}`)?.netPnl ?? 0) : null
+        const goalsPct = s && s.goalsTotal > 0 ? Math.round(((s.goalsDone + 0.5 * s.goalsPartial) / s.goalsTotal) * 100) : 0
+        return {
+          ...r,
+          monthLabel: monthLabelOf(r.year, r.month),
+          gradeLetter: grade.letter,
+          gradeTone: grade.tone,
+          netPnl,
+          totalR: s?.totalR ?? 0,
+          trades: s?.trades ?? 0,
+          weeks: s?.weeks ?? [],
+          goalsTotal: s?.goalsTotal ?? 0,
+          goalsPct,
+          deltaPnl: prevNet != null ? parseFloat((netPnl - prevNet).toFixed(2)) : null,
+        }
+      })
     }),
 
   get: protectedProcedure
@@ -94,7 +133,30 @@ export const monthlyReviewsRouter = router({
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadMonthlyReport(ctx.prisma, ctx.userId, input.year, input.month)
       const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "monthly", year: input.year, month: input.month })
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics }
+
+      // "Carta del Gestor" computed slice.
+      const pillars = computePillars({
+        trades: report.kpis.trades, winRate: report.kpis.winRate, profitFactor: report.kpis.profitFactor,
+        expectancy: analytics.expectancy, disciplineScore: report.kpis.disciplineScore, byEmotion: analytics.byEmotion,
+      })
+      const letterTitle = saved?.letterTitle
+        ?? deriveLetterTitle(monthLabelOf(input.year, input.month), { netPnl: report.kpis.netPnl, winRate: report.kpis.winRate, disciplineScore: report.kpis.disciplineScore, trades: report.kpis.trades })
+      const themes: MonthlyTheme[] = (saved?.keyThemesRich as MonthlyTheme[] | null) ?? deriveStructuredThemes(report)
+      const verdict = deriveVerdict({ aiAnalysis: saved?.aiAnalysis ?? null, netPnl: report.kpis.netPnl, winRate: report.kpis.winRate, disciplineScore: report.kpis.disciplineScore, trades: report.kpis.trades })
+
+      // Goals — stored rows, with a live AI proposal applied to unconfirmed ones (not persisted).
+      const goalRows = await ctx.prisma.monthlyGoal.findMany({
+        where: { userId: ctx.userId, year: input.year, month: input.month },
+        orderBy: { sortOrder: "asc" },
+      })
+      const goalCtx = { violations: report.discipline.violations, trades: report.kpis.trades, netPnl: report.kpis.netPnl, winRate: report.kpis.winRate }
+      const goals = goalRows.map(g => {
+        if (g.userConfirmed) return { id: g.id, text: g.text, status: g.status, note: g.note, userConfirmed: true }
+        const proposal = evaluateGoal(g.text, goalCtx)
+        return { id: g.id, text: g.text, status: proposal?.status ?? g.status, note: proposal?.note ?? g.note, userConfirmed: false }
+      })
+
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pillars, letterTitle, themes, verdict, goals }
     }),
 
   // Deterministic insight cards for the month (same engine as /analytics).

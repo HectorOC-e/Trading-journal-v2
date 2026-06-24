@@ -18,12 +18,14 @@ import type { ReviewReportVM } from "./view-model"
  * normalized `ReviewReportVM`. `aiSlot` is where the AI analysis card mounts
  * (Phase 2); `actions` lets a page inject extra header buttons (e.g. send-email).
  */
-export function ReviewReportShell({ vm, aiSlot, actions, notesSlot, learningSlot }: {
+export function ReviewReportShell({ vm, aiSlot, actions, notesSlot, learningSlot, letterSlot }: {
   vm: ReviewReportVM
   aiSlot?: React.ReactNode
   actions?: React.ReactNode
   notesSlot?: React.ReactNode
   learningSlot?: React.ReactNode
+  /** Monthly "Carta del Gestor" — renders above the analytical sections (the anexo). */
+  letterSlot?: React.ReactNode
 }) {
   const money = makeMoney(vm.baseCurrency)
 
@@ -44,6 +46,8 @@ export function ReviewReportShell({ vm, aiSlot, actions, notesSlot, learningSlot
       <p className="text-sm text-[var(--ink-3)] mb-5">{vm.subtitle}</p>
 
       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-5">
+        {letterSlot && <motion.div variants={fadeUpItem}>{letterSlot}</motion.div>}
+
         <motion.div variants={fadeUpItem}>
           <KpiGrid kpis={vm.kpis} deltas={vm.deltas} money={money} />
         </motion.div>
