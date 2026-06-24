@@ -71,21 +71,29 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show">
       {rows.map((row, i) => {
+        const first = i === 0
         const last = i === rows.length - 1
         const nextColor = last ? row.color : rows[i + 1].color
         const nodeTop = row.kind === "month" ? 8 : row.kind === "hero" ? 26 : 22
+        const center = nodeTop + 6 // node is 12px → its center
+        const showLine = rows.length > 1
         return (
           <motion.div key={row.kind === "week" ? row.review.id : row.kind === "month" ? `m-${row.group.key}` : "hero"} variants={fadeUpItem}>
             <div className="flex gap-4 sm:gap-6">
-              {/* Rail */}
-              <div className="flex flex-col items-center" style={{ paddingTop: nodeTop }}>
-                {row.node}
-                {!last && (
+              {/* Rail — one continuous line per row spanning full height (lines touch
+                  across rows → no gaps); the node sits on top at its center. */}
+              <div className="relative w-3 shrink-0 self-stretch">
+                {showLine && (
                   <span
-                    className="review-rail-seg w-[3px] rounded-full flex-1 min-h-4 my-1"
-                    style={{ background: `linear-gradient(180deg, ${soft(row.color)}, ${soft(nextColor)})` }}
+                    className="review-rail-seg absolute left-1/2 -translate-x-1/2 w-[4px] rounded-full"
+                    style={{
+                      top: first ? center : 0,
+                      bottom: last ? `calc(100% - ${center}px)` : 0,
+                      background: `linear-gradient(180deg, ${soft(row.color)}, ${soft(nextColor)})`,
+                    }}
                   />
                 )}
+                <span className="relative z-10 block mx-auto" style={{ marginTop: nodeTop }}>{row.node}</span>
               </div>
 
               {/* Content — hero is full width; history cards are a touch narrower */}
