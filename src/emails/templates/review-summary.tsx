@@ -19,17 +19,10 @@ const eyebrow = (theme: EmailTheme): React.CSSProperties => ({
   textTransform: "uppercase", color: theme.ink3,
 })
 
-function Row({ theme, label, value, color }: { theme: EmailTheme; label: string; value: string; color?: string }) {
-  return (
-    <table width="100%" cellPadding={0} cellSpacing={0} style={{ margin: "0 0 8px" }}>
-      <tbody>
-        <tr>
-          <td style={{ fontSize: 13, color: theme.ink2 }}>{label}</td>
-          <td style={{ textAlign: "right", fontFamily: fontMono, fontWeight: 600, fontSize: 13, color: color ?? theme.ink }}>{value}</td>
-        </tr>
-      </tbody>
-    </table>
-  )
+function gradeColors(letter: string, theme: EmailTheme): { fg: string; bg: string } {
+  if (/^[AB]/.test(letter)) return { fg: theme.win, bg: theme.mode === "dark" ? "#16271d" : "#e9f7ef" }
+  if (/^C/.test(letter))    return { fg: theme.amberText, bg: theme.amberBg }
+  return { fg: theme.lossText, bg: theme.lossBg }
 }
 
 // Callout palette for `> [!TYPE]` blocks (light variant; mirrors web + PDF).
@@ -74,17 +67,83 @@ function AnalysisBlock({ theme, text }: { theme: EmailTheme; text: string }) {
   )
 }
 
+/** Win/loss split bar — table-based for email-client safety. */
+function WinLossBar({ theme, wins, losses }: { theme: EmailTheme; wins: number; losses: number }) {
+  const total = Math.max(1, wins + losses)
+  const winPct = Math.round((wins / total) * 100)
+  const lossPct = 100 - winPct
+  return (
+    <div style={{ padding: "0 30px 22px" }}>
+      <p style={eyebrow(theme)}>Resultado de la semana</p>
+      <table width="100%" cellPadding={0} cellSpacing={0} style={{ borderRadius: 6, overflow: "hidden", tableLayout: "fixed" }}>
+        <tbody><tr>
+          {wins > 0 && <td style={{ width: `${winPct}%`, height: 8, backgroundColor: theme.win }} />}
+          {losses > 0 && <td style={{ width: `${lossPct}%`, height: 8, backgroundColor: theme.lossText }} />}
+        </tr></tbody>
+      </table>
+      <p style={{ margin: "6px 0 0", fontSize: 11, color: theme.ink3 }}>
+        <span style={{ color: theme.win, fontWeight: 600 }}>{wins} ganador{wins === 1 ? "" : "es"}</span>
+        {"  ·  "}
+        <span style={{ color: theme.lossText, fontWeight: 600 }}>{losses} perdedor{losses === 1 ? "" : "es"}</span>
+      </p>
+    </div>
+  )
+}
+
+/** ✓worked / ✗toImprove chip columns. */
+function ChipColumns({ theme, worked, toImprove }: { theme: EmailTheme; worked: string[]; toImprove: string[] }) {
+  if (worked.length === 0 && toImprove.length === 0) return null
+  const col = (title: string, items: string[], fg: string, bg: string) => (
+    <td style={{ width: "50%", verticalAlign: "top", padding: 8 }}>
+      <div style={{ background: bg, borderRadius: 8, padding: "8px 10px" }}>
+        <p style={{ margin: "0 0 5px", fontSize: 9, fontWeight: 700, letterSpacing: "0.04em", color: fg }}>{title}</p>
+        {items.length === 0
+          ? <p style={{ margin: 0, fontSize: 12, color: theme.ink3 }}>—</p>
+          : items.map((it, i) => <p key={i} style={{ margin: i === 0 ? 0 : "4px 0 0", fontSize: 12, lineHeight: 1.35, color: theme.ink2 }}>{it}</p>)}
+      </div>
+    </td>
+  )
+  return (
+    <table width="100%" cellPadding={0} cellSpacing={0} style={{ padding: "0 22px 16px" }}>
+      <tbody><tr>
+        {col("✓ FUNCIONÓ", worked, theme.win, theme.mode === "dark" ? "#16271d" : "#e9f7ef")}
+        {col("✗ A MEJORAR", toImprove, theme.lossText, theme.lossBg)}
+      </tr></tbody>
+    </table>
+  )
+}
+
 export function ReviewSummary({ model, theme = lightTheme, appUrl = "https://tjournalx.com" }: ReviewSummaryProps) {
   const cur = currencySymbol(model.baseCurrency || "USD")
   const m = (n: number) => `${n < 0 ? "-" : ""}${cur}${Math.abs(n).toFixed(2)}`
   const kindLabel = model.kind === "weekly" ? "Review semanal" : "Review mensual"
   const preview = `${model.title}: ${m(model.kpis.netPnl)} · WR ${model.kpis.winRate}%`
+  const g = gradeColors(model.grade, theme)
+  const dPnl = model.deltas.netPnl
 
   return (
     <EmailLayout theme={theme} preview={preview}>
-      <div style={{ padding: "26px 30px 4px" }}>
+      {/* Header: grade + title + verdict + delta */}
+      <div style={{ padding: "26px 30px 6px" }}>
         <p style={{ margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", color: theme.ink3 }}>{kindLabel}</p>
-        <p style={{ margin: "4px 0 0", fontSize: 20, fontWeight: 700, color: theme.ink }}>{model.title}</p>
+        <table width="100%" cellPadding={0} cellSpacing={0} style={{ marginTop: 8 }}>
+          <tbody><tr>
+            <td style={{ width: 52, verticalAlign: "top" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 11, backgroundColor: g.bg, textAlign: "center", lineHeight: "44px", fontFamily: fontMono, fontWeight: 800, fontSize: 20, color: g.fg }}>
+                {model.grade}
+              </div>
+            </td>
+            <td style={{ verticalAlign: "top", paddingLeft: 4 }}>
+              <p style={{ margin: 0, fontSize: 19, fontWeight: 700, color: theme.ink, lineHeight: 1.25 }}>{model.title}</p>
+              <p style={{ margin: "3px 0 0", fontSize: 13, lineHeight: 1.4, color: theme.ink2 }}>{model.verdict}</p>
+              {dPnl !== 0 && (
+                <p style={{ margin: "5px 0 0", fontSize: 12, fontWeight: 600, color: dPnl > 0 ? theme.win : theme.lossText }}>
+                  {dPnl > 0 ? "▲" : "▼"} {m(Math.abs(dPnl))} vs. periodo anterior
+                </p>
+              )}
+            </td>
+          </tr></tbody>
+        </table>
       </div>
 
       <StatRow
@@ -97,14 +156,9 @@ export function ReviewSummary({ model, theme = lightTheme, appUrl = "https://tjo
         ]}
       />
 
-      <Divider theme={theme} />
-      <div style={{ padding: "22px 30px" }}>
-        <p style={eyebrow(theme)}>Setups y disciplina</p>
-        {model.topSetup && <Row theme={theme} label={`▲ ${model.topSetup.name}`} value={m(model.topSetup.pnl)} color={theme.win} />}
-        {model.worstSetup && <Row theme={theme} label={`▼ ${model.worstSetup.name}`} value={m(model.worstSetup.pnl)} color={theme.lossText} />}
-        <Row theme={theme} label="Violaciones" value={String(model.discipline.violations)} color={model.discipline.violations > 0 ? theme.lossText : theme.ink} />
-        <Row theme={theme} label="Costo de violaciones" value={m(model.discipline.costo)} color={model.discipline.costo < 0 ? theme.lossText : theme.ink} />
-      </div>
+      <WinLossBar theme={theme} wins={model.winLoss.wins} losses={model.winLoss.losses} />
+
+      <ChipColumns theme={theme} worked={model.worked} toImprove={model.toImprove} />
 
       {model.aiAnalysis && (
         <>
@@ -130,6 +184,11 @@ const previewModel: ReviewEmailModel = {
   baseCurrency: "USD",
   kpis: { netPnl: 1240, winRate: 58, profitFactor: 2.1, trades: 14, disciplineScore: 82 },
   deltas: { netPnl: 320, winRate: 6 },
+  winLoss: { wins: 8, losses: 6 },
+  verdict: "Semana rentable, pero sobre-operaste el martes.",
+  grade: "B+",
+  worked: ["Breakout +$980", "Win rate 58%"],
+  toImprove: ["1 violación · −$120", "Reversal −$240"],
   topSetup: { name: "Breakout", pnl: 980 },
   worstSetup: { name: "Reversal", pnl: -240 },
   discipline: { violations: 1, costo: -120 },

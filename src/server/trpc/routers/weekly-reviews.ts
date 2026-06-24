@@ -6,7 +6,9 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { loadWeeklyCardStats } from "@/server/services/reviews/card-stats"
 import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
+import { loadLearningSummary } from "@/server/services/reviews/learning-summary"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
@@ -62,7 +64,23 @@ export const weeklyReviewsRouter = router({
         },
         orderBy: { weekStart: "desc" },
       })
-      return reviews.map(serializeReview)
+      const serialized = reviews.map(serializeReview)
+      // Batched live metrics per week (one trade query) for the rich cards. Auto-draft
+      // rows can carry stale 0s (created before finalize), so the computed P&L/WR/trades
+      // override the stored values; discipline stays from the row (set at finalize).
+      const stats = await loadWeeklyCardStats(ctx.prisma, ctx.userId, serialized.map(r => r.weekStart))
+      return serialized.map(r => {
+        const s = stats.get(r.weekStart)
+        return {
+          ...r,
+          netPnl:       s ? s.netPnl : r.netPnl,
+          winRate:      s ? s.winRate : r.winRate,
+          tradeCount:   s ? s.trades : r.tradeCount,
+          profitFactor: s?.profitFactor ?? 0,
+          avgR:         s?.avgR ?? 0,
+          spark:        s?.spark ?? [],
+        }
+      })
     }),
 
   getByWeek: protectedProcedure
@@ -81,7 +99,24 @@ export const weeklyReviewsRouter = router({
     .query(async ({ ctx, input }) => {
       const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
       const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
+      // Live discipline so the hero/report show a real score even before finalize
+      // (auto-draft rows store 0). Only when the week has trades.
+      if (report.kpis.trades > 0 && (report.kpis.disciplineScore == null || report.kpis.disciplineScore === 0)) {
+        const from = new Date(input.weekStart + "T00:00:00")
+        const to   = new Date(from); to.setDate(from.getDate() + 7)
+        const disc = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to })
+        report.kpis.disciplineScore = disc.score ?? report.kpis.disciplineScore
+      }
       return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics }
+    }),
+
+  // Light learning summary for the week (study minutes, streak, repasos).
+  learningSummary: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .query(({ ctx, input }) => {
+      const from = new Date(input.weekStart + "T00:00:00")
+      const to   = new Date(from); to.setDate(from.getDate() + 7)
+      return loadLearningSummary(ctx.prisma, ctx.userId, { from, to })
     }),
 
   // Deterministic insight cards for the week (same engine as /analytics).
