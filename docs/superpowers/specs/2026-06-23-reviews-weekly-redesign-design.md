@@ -14,6 +14,7 @@ Make the weekly Reviews experience feel **modern, visual, automatic, and narrati
 - Monthly reviews redesign beyond reusing the new email treatment (the monthly tab keeps its current page/report for now).
 - Rebuilding the rich report page (`/reviews/semanal/[weekStart]`) — it stays as the destination; we only change how the list surfaces it.
 - The full create-modal teardown (tracked separately as a follow-up).
+- Rebuilding the Aprendizaje (learning) module or its daily digest email — we only surface a light read-only learning summary inside the weekly review.
 
 ## Decisions (locked in brainstorming)
 
@@ -25,6 +26,7 @@ Make the weekly Reviews experience feel **modern, visual, automatic, and narrati
 | Week close | **Auto-finalize** the previous week on Monday 08:00 local; AI generated automatically; user may reopen/edit notes |
 | AI content | **100% AI from trades** (reuse `review-ai`); no manual writing required |
 | Cron fix | Move `app_url` + `cron_secret` to a **DB settings table** that `pg_cron` can read |
+| Learning in review | **Light touch**: a small learning summary (study minutes, streak, resources marked for review that week) inside the weekly review report. The separate daily learning digest email stays as-is. |
 
 ## Architecture / Phases
 
@@ -50,6 +52,14 @@ The work decomposes into 5 phases. Phases 1–4 are safe, incremental UI/email c
 - Metrics beyond the current card (Profit Factor, Avg R, grade) come from the report analytics already available via `loadReviewAnalytics` / the report VM. If the list query doesn't carry them, extend `weeklyReviews.list` to include the few extra fields (cheap, derived) rather than fetching per-card.
 - **Emil polish:** `:active { transform: scale(0.97) }` press feedback; entrance stagger (30–80ms) on timeline mount; hover gated behind `@media (hover:hover)`; transitions name exact properties (no `transition: all`); custom ease-out curve.
 - Letter grade is a pure function of discipline + expectancy (defined in Phase 3's helper so web/email/card share it).
+
+### Phase 2.5 — Light learning summary in the weekly review
+
+**Files:** new `src/app/reviews/components/report/learning-summary.tsx`, mounted in `ReviewReportShell`; reuse `src/domains/learning/services/digest-builder.ts` scoped to the review's week.
+
+- A small panel inside the weekly review report (and optionally a one-liner stat in the card/email) showing: **study minutes that week, current streak, and resources marked for review** in that period. Read-only — links into `/aprendizaje` for the full module.
+- Reuses the existing learning `digest-builder` / progress data; **does not** rebuild the learning dashboard or alter the separate daily learning digest email.
+- Psychology and analytics are **already** in the report (Phase 3 of the prior redesign) — no new work there; this phase only adds the learning slice.
 
 ### Phase 3 — Auto-finalization + AI verdict source
 
