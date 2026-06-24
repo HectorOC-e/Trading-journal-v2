@@ -18,6 +18,7 @@ import {
   type ReviewPeriod,
 } from "@/server/services/email/send-review"
 import { ensureReviewAnalysis } from "@/server/services/reviews/ensure-analysis"
+import { finalizeWeeklyReview } from "@/server/services/reviews/finalize"
 import { renderReviewPdf } from "@/server/services/reviews/render-pdf"
 import { REVIEWS_HOUR, duePeriods, previousWeekStart, previousMonth } from "@/server/services/reviews/review-schedule"
 
@@ -67,6 +68,15 @@ export async function POST(req: NextRequest) {
           await ensureReviewAnalysis(prisma, user.id, period)
         } catch (e) {
           logger.warn(`[cron:reviews-digest] AI gen failed ${user.id}: ${e instanceof Error ? e.message : String(e)}`)
+        }
+        // Auto-finalize the just-finished week (status + discipline + chips). Runs even
+        // if the email is later skipped (ineligible); a failure must not block the email.
+        if (period.kind === "weekly") {
+          try {
+            await finalizeWeeklyReview(prisma, user.id, period.weekStart)
+          } catch (e) {
+            logger.warn(`[cron:reviews-digest] finalize failed ${user.id}: ${e instanceof Error ? e.message : String(e)}`)
+          }
         }
         const { status } = await sendReviewEmail(
           { prisma, now, renderPdf: (a) => renderReviewPdf(prisma, a) },

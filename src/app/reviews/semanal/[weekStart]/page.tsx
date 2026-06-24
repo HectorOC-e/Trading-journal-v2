@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc/client"
 import { ReviewReportShell } from "../../components/report/review-report-shell"
 import { AiAnalysisCard } from "../../components/report/ai-analysis-card"
 import { ReviewActions, ReviewNotes } from "../../components/report/review-lifecycle"
+import { LearningSummary } from "../../components/report/learning-summary"
 import { weeklyToVM } from "../../components/report/view-model"
 
 const VALID_DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -29,6 +30,7 @@ export default function WeeklyReportPage() {
       aiSlot={<AiAnalysisCard period={{ kind: "weekly", weekStart }} initial={vm.ai} />}
       actions={<ReviewActions period={{ kind: "weekly", weekStart }} initialStatus={vm.status} />}
       notesSlot={<ReviewNotes period={{ kind: "weekly", weekStart }} initialNotes={vm.notes} />}
+      learningSlot={<LearningSummary weekStart={weekStart} />}
     />
   )
 }
