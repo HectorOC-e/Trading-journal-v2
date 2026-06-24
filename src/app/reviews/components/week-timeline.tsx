@@ -23,16 +23,12 @@ function nodeColor(r: ReviewFromDB): string {
 
 const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
-/** A visible straight line piece (gradient between two node colors). */
-function LinePiece({ from, to, className, style }: {
-  from: string; to: string; className?: string; style?: React.CSSProperties
-}) {
-  return (
-    <span
-      className={className}
-      style={{ width: 3, borderRadius: 3, opacity: 0.7, background: `linear-gradient(180deg, ${from}, ${to})`, ...style }}
-    />
-  )
+// Single neutral rail color (theme-aware) — the nodes carry the result colors.
+const RAIL_COLOR = "color-mix(in srgb, var(--ink-3) 40%, var(--line))"
+
+/** A visible straight, neutral-gray line piece. */
+function LinePiece({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <span className={className} style={{ width: 3, borderRadius: 3, background: RAIL_COLOR, ...style }} />
 }
 
 type Row =
@@ -79,15 +75,14 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="relative">
-      {/* One comet sweeping the whole rail (sits over the line, passes the nodes). */}
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="relative isolate">
+      {/* One comet sweeping the whole rail — z-index:-1 keeps it behind the line and
+          nodes (it glows through/around them); `isolate` bounds that to this container. */}
       {rows.length > 1 && <span className="rail-comet-single" aria-hidden />}
 
       {rows.map((row, i) => {
         const first = i === 0
         const last = i === rows.length - 1
-        const prevColor = first ? row.color : rows[i - 1].color
-        const nextColor = last ? row.color : rows[i + 1].color
         const nodeTop = row.kind === "month" ? 10 : row.kind === "hero" ? 26 : 22
         return (
           <motion.div key={row.kind === "week" ? row.review.id : row.kind === "month" ? `m-${row.group.key}` : "hero"} variants={fadeUpItem}>
@@ -96,9 +91,9 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
               <div className="flex flex-col items-center w-3 shrink-0 self-stretch">
                 {first
                   ? <span style={{ height: nodeTop }} />
-                  : <LinePiece from={prevColor} to={row.color} style={{ height: nodeTop }} />}
+                  : <LinePiece style={{ height: nodeTop }} />}
                 <span className="relative z-10">{row.node}</span>
-                {!last && <LinePiece from={row.color} to={nextColor} className="flex-1" />}
+                {!last && <LinePiece className="flex-1" />}
               </div>
 
               {/* Content — hero is full width; history cards are a touch narrower */}
