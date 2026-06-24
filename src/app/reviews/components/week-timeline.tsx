@@ -1,9 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useId } from "react"
 import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
 import { staggerContainer, fadeUpItem } from "@/lib/motion"
 import { ReviewCard } from "./review-card"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -25,30 +23,15 @@ function nodeColor(r: ReviewFromDB): string {
 
 const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
-// Straight vertical rail; pathLength=100 normalizes the comet's dash animation
-// across segments of any pixel height.
-const RAIL_PATH = "M6 0 L6 100"
-
-/** A visible curved rail segment (color gradient between two node colors) with an
- *  optional glowing accent comet flowing along it. */
-function RailSegment({ from, to, className, style, animated }: {
-  from: string; to: string; className?: string; style?: React.CSSProperties; animated?: boolean
+/** A visible straight line piece (gradient between two node colors). */
+function LinePiece({ from, to, className, style }: {
+  from: string; to: string; className?: string; style?: React.CSSProperties
 }) {
-  const id = useId().replace(/:/g, "")
   return (
-    <div className={cn("w-3 relative", className)} style={style}>
-      <svg viewBox="0 0 12 100" preserveAspectRatio="none" className="rail-svg" aria-hidden>
-        <defs>
-          <linearGradient id={`rail-${id}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={from} /><stop offset="1" stopColor={to} />
-          </linearGradient>
-        </defs>
-        <path d={RAIL_PATH} pathLength={100} fill="none" stroke={`url(#rail-${id})`} strokeWidth={4} strokeLinecap="round" opacity={0.65} vectorEffect="non-scaling-stroke" />
-        {animated && (
-          <path className="rail-comet" d={RAIL_PATH} pathLength={100} fill="none" stroke="var(--accent)" strokeWidth={4} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        )}
-      </svg>
-    </div>
+    <span
+      className={className}
+      style={{ width: 3, borderRadius: 3, opacity: 0.7, background: `linear-gradient(180deg, ${from}, ${to})`, ...style }}
+    />
   )
 }
 
@@ -75,8 +58,10 @@ const Diamond = ({ color }: { color: string }) => (
 
 /**
  * Vertical progress timeline. The live current-week hero is the top node of one
- * continuous, curved rail; history is grouped by month. Each segment fades between
- * adjacent node colors, with a glowing accent comet flowing down the long spans.
+ * continuous straight rail; history is grouped by month. The rail is a stack of
+ * visible div line-pieces (color fades between adjacent nodes), and a SINGLE accent
+ * comet sweeps the whole rail top→bottom on a loop (one animation, no per-segment
+ * artifacts).
  */
 export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, accountName }: {
   groups: MonthGroup[]
@@ -94,7 +79,10 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
   }
 
   return (
-    <motion.div variants={staggerContainer} initial="hidden" animate="show">
+    <motion.div variants={staggerContainer} initial="hidden" animate="show" className="relative">
+      {/* One comet sweeping the whole rail (sits over the line, passes the nodes). */}
+      {rows.length > 1 && <span className="rail-comet-single" aria-hidden />}
+
       {rows.map((row, i) => {
         const first = i === 0
         const last = i === rows.length - 1
@@ -104,14 +92,13 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
         return (
           <motion.div key={row.kind === "week" ? row.review.id : row.kind === "month" ? `m-${row.group.key}` : "hero"} variants={fadeUpItem}>
             <div className="flex gap-4 sm:gap-6 items-stretch">
-              {/* Rail — top piece bridges from the row top down to the node (segments
-                  meet seamlessly across rows); bottom piece flows to the next node. */}
+              {/* Rail — line pieces stack into one continuous line; node sits on top. */}
               <div className="flex flex-col items-center w-3 shrink-0 self-stretch">
                 {first
                   ? <span style={{ height: nodeTop }} />
-                  : <RailSegment from={prevColor} to={row.color} style={{ height: nodeTop }} />}
+                  : <LinePiece from={prevColor} to={row.color} style={{ height: nodeTop }} />}
                 <span className="relative z-10">{row.node}</span>
-                {!last && <RailSegment from={row.color} to={nextColor} className="flex-1" animated />}
+                {!last && <LinePiece from={row.color} to={nextColor} className="flex-1" />}
               </div>
 
               {/* Content — hero is full width; history cards are a touch narrower */}
