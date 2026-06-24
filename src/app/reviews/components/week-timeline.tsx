@@ -26,9 +26,9 @@ const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)
 // Single neutral rail color (theme-aware) — the nodes carry the result colors.
 const RAIL_COLOR = "color-mix(in srgb, var(--ink-3) 40%, var(--line))"
 
-/** A visible straight, neutral-gray line piece. */
+/** A straight, neutral-gray line piece (slightly translucent). */
 function LinePiece({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <span className={className} style={{ width: 3, borderRadius: 3, background: RAIL_COLOR, ...style }} />
+  return <span className={className} style={{ width: 3, borderRadius: 3, background: RAIL_COLOR, opacity: 0.55, ...style }} />
 }
 
 type Row =
@@ -76,8 +76,8 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
 
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show" className="relative isolate">
-      {/* One comet sweeping the whole rail — z-index:-1 keeps it behind the line and
-          nodes (it glows through/around them); `isolate` bounds that to this container. */}
+      {/* One comet sweeping the whole rail, on top of the line + nodes; `isolate`
+          bounds its stacking to this container. */}
       {rows.length > 1 && <span className="rail-comet-single" aria-hidden />}
 
       {rows.map((row, i) => {
