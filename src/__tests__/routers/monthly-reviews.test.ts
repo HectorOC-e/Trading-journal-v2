@@ -19,6 +19,11 @@ function makeMockPrisma() {
     weeklyReview: {
       findMany:   vi.fn(),
     },
+    // Used by loadMonthlyCardStats (cover metrics) and the report goals query.
+    user:        { findUnique: vi.fn().mockResolvedValue({ baseCurrency: "USD", fxRates: null }) },
+    account:     { findMany:   vi.fn().mockResolvedValue([]) },
+    trade:       { findMany:   vi.fn().mockResolvedValue([]) },
+    monthlyGoal: { findMany:   vi.fn().mockResolvedValue([]) },
   }
 }
 

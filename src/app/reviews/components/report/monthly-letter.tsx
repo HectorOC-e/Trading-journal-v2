@@ -52,8 +52,11 @@ function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month
   const remove = trpc.monthlyGoals.remove.useMutation({ onSuccess: invalidate })
   const [text, setText] = useState("")
 
-  // Seed this month's commitments from the previous month on first visit.
-  useEffect(() => { if (goals.length === 0) carry.mutate({ year, month }) /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
+  // Seed this month's commitments from the previous month on first visit (once).
+  useEffect(() => {
+    if (goals.length === 0) carry.mutate({ year, month })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const done = goals.filter(g => g.status === "done").length
   const partial = goals.filter(g => g.status === "partial").length
