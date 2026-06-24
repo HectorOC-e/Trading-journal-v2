@@ -25,9 +25,9 @@ function nodeColor(r: ReviewFromDB): string {
 
 const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
-// Gentle S-curve threaded down the rail; pathLength=100 normalizes the comet's dash
-// animation across segments of any pixel height.
-const RAIL_PATH = "M6 0 C 3.4 22 8.6 40 6 58 C 3.4 76 8.4 92 6 100"
+// Straight vertical rail; pathLength=100 normalizes the comet's dash animation
+// across segments of any pixel height.
+const RAIL_PATH = "M6 0 L6 100"
 
 /** A visible curved rail segment (color gradient between two node colors) with an
  *  optional glowing accent comet flowing along it. */
@@ -43,9 +43,9 @@ function RailSegment({ from, to, className, style, animated }: {
             <stop offset="0" stopColor={from} /><stop offset="1" stopColor={to} />
           </linearGradient>
         </defs>
-        <path d={RAIL_PATH} pathLength={100} fill="none" stroke={`url(#rail-${id})`} strokeWidth={2.5} strokeLinecap="round" opacity={0.6} vectorEffect="non-scaling-stroke" />
+        <path d={RAIL_PATH} pathLength={100} fill="none" stroke={`url(#rail-${id})`} strokeWidth={4} strokeLinecap="round" opacity={0.65} vectorEffect="non-scaling-stroke" />
         {animated && (
-          <path className="rail-comet" d={RAIL_PATH} pathLength={100} fill="none" stroke="var(--accent)" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <path className="rail-comet" d={RAIL_PATH} pathLength={100} fill="none" stroke="var(--accent)" strokeWidth={4} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         )}
       </svg>
     </div>
