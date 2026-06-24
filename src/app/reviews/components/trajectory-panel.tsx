@@ -19,6 +19,13 @@ const TONE: Record<VerdictTone, { fg: string; bg: string }> = {
   bad: { fg: "var(--loss)", bg: "var(--loss-soft)" },
 }
 
+// Staggered reveal for the grade beads (after the sparkline starts drawing).
+const BEADS = { hidden: {}, show: { transition: { staggerChildren: 0.022, delayChildren: 0.18 } } }
+const BEAD = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }
+const STATS = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.35 } } }
+const STAT = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }
+const HOVER = { duration: 0.16, ease: EASE_OUT }
+
 /** Min–max normalized sparkline path over the score series (mirrors the design's spark2). */
 function spark(arr: number[]) {
   const n = arr.length
@@ -43,8 +50,7 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE_OUT }}
-      className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden mb-7"
-      style={{ boxShadow: "0 1px 3px rgba(20,20,45,.05), 0 10px 30px rgba(20,20,45,.04)" }}
+      className="group rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden mb-7 transition-[box-shadow,border-color] duration-300 shadow-[0_1px_3px_rgba(20,20,45,.05),0_10px_30px_rgba(20,20,45,.04)] hover:shadow-[0_6px_18px_rgba(20,20,45,.08),0_20px_46px_rgba(20,20,45,.06)] hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--line))]"
     >
       <div className="grid lg:grid-cols-[1.55fr_1fr]">
         {/* ── Left: trajectory ── */}
@@ -95,33 +101,40 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
 
           {/* Grade beads */}
           {data.beads.length > 0 && (
-            <div className="flex items-end gap-1 mt-4">
+            <motion.div className="flex items-end gap-1 mt-4" variants={BEADS} initial="hidden" animate="show">
               {data.beads.map(b => {
                 const t = TONE[b.tone]
                 return (
-                  <div key={b.weekStart} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <motion.div
+                    key={b.weekStart}
+                    variants={BEAD}
+                    whileHover={{ y: -3, scale: 1.08 }}
+                    transition={HOVER}
+                    title={`${b.label} · ${b.grade}`}
+                    className="flex-1 flex flex-col items-center gap-1 min-w-0 cursor-default"
+                  >
                     <span className="font-mono font-bold text-[10px] w-full h-[21px] rounded-[5px] grid place-items-center" style={{ color: t.fg, background: t.bg }}>{b.grade}</span>
                     <span className="text-[7.5px] text-[var(--ink-3)] truncate max-w-full">{b.label}</span>
-                  </div>
+                  </motion.div>
                 )
               })}
-            </div>
+            </motion.div>
           )}
 
           {/* From→to stats */}
           {data.stats.length > 0 && (
-            <div className="flex gap-4 mt-[18px] pt-4 border-t border-[var(--line)]">
+            <motion.div className="flex gap-4 mt-[18px] pt-4 border-t border-[var(--line)]" variants={STATS} initial="hidden" animate="show">
               {data.stats.map(s => (
-                <div key={s.label} className="flex-1 min-w-0">
+                <motion.div key={s.label} variants={STAT} whileHover={{ y: -2 }} transition={HOVER} className="flex-1 min-w-0">
                   <div className="text-[9.5px] uppercase tracking-[0.07em] text-[var(--ink-3)] font-semibold">{s.label}</div>
                   <div className="flex items-baseline gap-1.5 mt-1.5">
                     <span className="font-mono font-bold text-[16px] text-[var(--ink)]">{s.to}</span>
                     <span className="text-[11px] font-bold" style={{ color: s.positive ? "var(--win)" : "var(--loss)" }}>{s.deltaText}</span>
                   </div>
                   <div className="text-[10px] text-[var(--ink-3)] mt-0.5">desde {s.from}</div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </div>
 
@@ -134,10 +147,17 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
             data.patterns.map((p, i) => {
               const t = TONE[p.tone]
               return (
-                <div key={i} className="rounded-[11px] bg-[var(--panel)] border border-[var(--line)] p-3.5">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.1 + i * 0.08 }}
+                  whileHover={{ y: -2 }}
+                  className="rounded-[11px] bg-[var(--panel)] border border-[var(--line)] p-3.5 transition-[border-color,box-shadow] duration-200 hover:border-[color-mix(in_srgb,var(--accent)_40%,var(--line))] hover:shadow-[0_6px_18px_rgba(20,20,45,.08)]"
+                >
                   <span className="inline-block text-[10px] font-bold rounded-full px-2.5 py-[3px] tracking-[0.02em]" style={{ color: t.fg, background: t.bg }}>{p.tag}</span>
                   <p className="mt-2.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">{p.body}</p>
-                </div>
+                </motion.div>
               )
             })
           )}
