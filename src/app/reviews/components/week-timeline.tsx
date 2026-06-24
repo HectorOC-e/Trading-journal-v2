@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useId } from "react"
 import { motion } from "framer-motion"
+import { cn } from "@/lib/utils"
 import { staggerContainer, fadeUpItem } from "@/lib/motion"
 import { ReviewCard } from "./review-card"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -21,10 +23,34 @@ function nodeColor(r: ReviewFromDB): string {
   return r.netPnl < 0 ? "var(--loss)" : "var(--win)"
 }
 
-/** Subtle tint of a node color for the rail segment (keeps it quiet). */
-const soft = (c: string) => `color-mix(in srgb, ${c} 38%, var(--line))`
-
 const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
+
+// Gentle S-curve threaded down the rail; pathLength=100 normalizes the comet's dash
+// animation across segments of any pixel height.
+const RAIL_PATH = "M6 0 C 3.4 22 8.6 40 6 58 C 3.4 76 8.4 92 6 100"
+
+/** A visible curved rail segment (color gradient between two node colors) with an
+ *  optional glowing accent comet flowing along it. */
+function RailSegment({ from, to, className, style, animated }: {
+  from: string; to: string; className?: string; style?: React.CSSProperties; animated?: boolean
+}) {
+  const id = useId().replace(/:/g, "")
+  return (
+    <div className={cn("w-3 relative", className)} style={style}>
+      <svg viewBox="0 0 12 100" preserveAspectRatio="none" className="rail-svg" aria-hidden>
+        <defs>
+          <linearGradient id={`rail-${id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={from} /><stop offset="1" stopColor={to} />
+          </linearGradient>
+        </defs>
+        <path d={RAIL_PATH} pathLength={100} fill="none" stroke={`url(#rail-${id})`} strokeWidth={2.5} strokeLinecap="round" opacity={0.6} vectorEffect="non-scaling-stroke" />
+        {animated && (
+          <path className="rail-comet" d={RAIL_PATH} pathLength={100} fill="none" stroke="var(--accent)" strokeWidth={3} strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        )}
+      </svg>
+    </div>
+  )
+}
 
 type Row =
   | { kind: "hero"; color: string; node: React.ReactNode }
@@ -49,8 +75,8 @@ const Diamond = ({ color }: { color: string }) => (
 
 /**
  * Vertical progress timeline. The live current-week hero is the top node of one
- * continuous rail; history is grouped by month. Each rail segment fades from the
- * color of the node above it to the node below, with a faint flowing shimmer.
+ * continuous, curved rail; history is grouped by month. Each segment fades between
+ * adjacent node colors, with a glowing accent comet flowing down the long spans.
  */
 export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, accountName }: {
   groups: MonthGroup[]
@@ -60,7 +86,6 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
   onDelete: (r: ReviewFromDB) => void
   accountName: (id: string | null) => string
 }) {
-  // Flatten into an ordered list so each rail segment can blend adjacent colors.
   const rows: Row[] = []
   if (showHero && heroSlot) rows.push({ kind: "hero", color: "var(--accent)", node: <Dot color="var(--accent)" pulse /> })
   for (const g of groups) {
@@ -73,27 +98,20 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
       {rows.map((row, i) => {
         const first = i === 0
         const last = i === rows.length - 1
+        const prevColor = first ? row.color : rows[i - 1].color
         const nextColor = last ? row.color : rows[i + 1].color
-        const nodeTop = row.kind === "month" ? 8 : row.kind === "hero" ? 26 : 22
-        const center = nodeTop + 6 // node is 12px → its center
-        const showLine = rows.length > 1
+        const nodeTop = row.kind === "month" ? 10 : row.kind === "hero" ? 26 : 22
         return (
           <motion.div key={row.kind === "week" ? row.review.id : row.kind === "month" ? `m-${row.group.key}` : "hero"} variants={fadeUpItem}>
-            <div className="flex gap-4 sm:gap-6">
-              {/* Rail — one continuous line per row spanning full height (lines touch
-                  across rows → no gaps); the node sits on top at its center. */}
-              <div className="relative w-3 shrink-0 self-stretch">
-                {showLine && (
-                  <span
-                    className="review-rail-seg absolute left-1/2 -translate-x-1/2 w-[4px] rounded-full"
-                    style={{
-                      top: first ? center : 0,
-                      bottom: last ? `calc(100% - ${center}px)` : 0,
-                      background: `linear-gradient(180deg, ${soft(row.color)}, ${soft(nextColor)})`,
-                    }}
-                  />
-                )}
-                <span className="relative z-10 block mx-auto" style={{ marginTop: nodeTop }}>{row.node}</span>
+            <div className="flex gap-4 sm:gap-6 items-stretch">
+              {/* Rail — top piece bridges from the row top down to the node (segments
+                  meet seamlessly across rows); bottom piece flows to the next node. */}
+              <div className="flex flex-col items-center w-3 shrink-0 self-stretch">
+                {first
+                  ? <span style={{ height: nodeTop }} />
+                  : <RailSegment from={prevColor} to={row.color} style={{ height: nodeTop }} />}
+                <span className="relative z-10">{row.node}</span>
+                {!last && <RailSegment from={row.color} to={nextColor} className="flex-1" animated />}
               </div>
 
               {/* Content — hero is full width; history cards are a touch narrower */}
