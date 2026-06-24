@@ -79,8 +79,8 @@ export function ReviewsCalendarFilter({ value, onChange, monthsWithReviews }: {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -4 }}
             transition={{ duration: 0.16, ease: EASE_OUT }}
-            style={{ transformOrigin: "top left" }}
-            className="absolute left-0 top-9 z-30 w-[248px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] shadow-[var(--shadow-lg)] p-3"
+            style={{ transformOrigin: "top right" }}
+            className="absolute right-0 top-9 z-30 w-[248px] max-w-[calc(100vw-2rem)] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] shadow-[var(--shadow-lg)] p-3"
           >
             {/* Year nav */}
             <div className="flex items-center justify-between mb-2.5">
