@@ -17,6 +17,7 @@ import { goalsRouter }              from "./routers/goals"
 import { aiConfigRouter }           from "./routers/ai-config"
 import { aiSettingsRouter }         from "./routers/ai-settings"
 import { monthlyReviewsRouter }     from "./routers/monthly-reviews"
+import { monthlyGoalsRouter }       from "./routers/monthly-goals"
 import { analyticsRouter }          from "./routers/analytics"
 import { notificationsRouter }      from "./routers/notifications"
 import { tagsRouter }               from "./routers/tags"
@@ -34,6 +35,7 @@ export const appRouter = router({
   rules:            rulesRouter,
   weeklyReviews:    weeklyReviewsRouter,
   monthlyReviews:   monthlyReviewsRouter,
+  monthlyGoals:     monthlyGoalsRouter,
   learningResources: learningResourcesRouter,
   studySessions:     studySessionsRouter,
   tradingSessions:   tradingSessionsRouter,

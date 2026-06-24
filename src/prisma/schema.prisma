@@ -49,6 +49,7 @@ model User {
   aiConfigs            UserAiConfig[]
   aiSettings           UserAiSettings?
   monthlyReviews       MonthlyReview[]
+  monthlyGoals         MonthlyGoal[]
   notifications            Notification[]
   notificationPreferences  NotificationPreference[]
   tags                     Tag[]
@@ -735,6 +736,12 @@ model MonthlyReview {
   status       String   @default("draft")     // draft | submitted
   aiAnalysis   String?   @map("ai_analysis") @db.Text
   aiAnalysisAt DateTime? @map("ai_analysis_at")
+  // "Carta del Gestor" redesign (2026-06): editorial letter + structured themes + pillar scores.
+  letterTitle       String? @map("letter_title")
+  keyThemesRich     Json?   @map("key_themes_rich") // [{ title, sentiment: 'up'|'down'|'warn', impact }]
+  pillarPerformance Int?    @map("pillar_performance") // 0–100
+  pillarDiscipline  Int?    @map("pillar_discipline")
+  pillarPsychology  Int?    @map("pillar_psychology")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
@@ -743,6 +750,31 @@ model MonthlyReview {
   @@unique([userId, year, month])
   @@index([userId, year])
   @@map("monthly_reviews")
+}
+
+/**
+ * A monthly "commitment" (goal). Rich replacement for MonthlyReview.goalsSet/goalsMet:
+ * status (pending/partial/done) + note + recurrence. Goals carry forward month to month
+ * and are evaluated by the AI (status proposed) unless the user confirmed them.
+ */
+model MonthlyGoal {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  year          Int
+  month         Int      // 1–12
+  text          String
+  status        String   @default("pending") // pending | partial | done
+  note          String   @default("")
+  source        String   @default("user")    // user | ai
+  userConfirmed Boolean  @default(false) @map("user_confirmed")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, year, month])
+  @@map("monthly_goals")
 }
 
 // ─────────────────────────────────────────────

@@ -17,11 +17,12 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
-import { NuevaMensualModal } from "./modals/create-monthly-review-modal"
+import { motion } from "framer-motion"
+import { staggerContainer, fadeUpItem } from "@/lib/motion"
 import { WeekHero } from "./components/week-hero"
 import { WeekTimeline, type MonthGroup } from "./components/week-timeline"
 import { ReviewsCalendarFilter, type MonthFilter } from "./components/reviews-calendar-filter"
-import { MonthlyReviewCard } from "./components/monthly-review-card"
+import { EditionCover } from "./components/edition-cover"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 const MONTHS_LONG = [
@@ -127,14 +128,8 @@ function ReviewsPageContent() {
   const router = useRouter()
   const [activeTab,         setActiveTab]        = useState<ReviewTab>("weekly")
   const [monthFilter,       setMonthFilter]      = useState<MonthFilter>(null)
-  const [monthlyModalOpen,  setMonthlyModalOpen] = useState(false)
-  const [editingMonthly,    setEditingMonthly]   = useState<MonthlyReviewFromDB | null>(null)
   const [pendingDelete,        setPendingDelete]        = useState<ReviewFromDB | null>(null)
   const [pendingMonthlyDelete, setPendingMonthlyDelete] = useState<MonthlyReviewFromDB | null>(null)
-
-  const now   = new Date()
-  const [monthlyYear,  setMonthlyYear]  = useState(now.getFullYear())
-  const [monthlyMonth, setMonthlyMonth] = useState(now.getMonth() + 1)
 
   const {
     searchQuery, setSearchQuery,
@@ -271,23 +266,20 @@ function ReviewsPageContent() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <motion.div
+                  variants={staggerContainer} initial="hidden" animate="show"
+                  className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                >
                   {monthlyReviews.map((review: MonthlyReviewFromDB) => (
-                    <MonthlyReviewCard
-                      key={review.id}
-                      review={review}
-                      isSelected={false}
-                      onClick={() => router.push(`/reviews/mensual/${review.year}-${String(review.month).padStart(2, "0")}`)}
-                      onEdit={() => {
-                        setEditingMonthly(review)
-                        setMonthlyYear(review.year)
-                        setMonthlyMonth(review.month)
-                        setMonthlyModalOpen(true)
-                      }}
-                      onDelete={() => setPendingMonthlyDelete(review)}
-                    />
+                    <motion.div key={review.id} variants={fadeUpItem}>
+                      <EditionCover
+                        edition={review}
+                        onClick={() => router.push(`/reviews/mensual/${review.year}-${String(review.month).padStart(2, "0")}`)}
+                        onDelete={() => setPendingMonthlyDelete(review)}
+                      />
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </>
           )}
@@ -361,14 +353,6 @@ function ReviewsPageContent() {
           )}
         </div>
       </div>
-
-      <NuevaMensualModal
-        open={monthlyModalOpen}
-        onOpenChange={(v) => { setMonthlyModalOpen(v); if (!v) setEditingMonthly(null) }}
-        year={monthlyYear}
-        month={monthlyMonth}
-        editReview={editingMonthly}
-      />
 
       <ConfirmDialog
         open={!!pendingDelete}
