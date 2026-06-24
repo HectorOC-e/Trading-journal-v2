@@ -36,6 +36,30 @@ const EMAIL_CALLOUT: Record<string, { bd: string; bg: string; fg: string }> = {
   METRIC:         { bd: "#8b909c", bg: "#f4f5f8", fg: "#4b5160" },
 }
 
+/** Strip LaTeX/KaTeX so math never reaches the inbox as raw markup. */
+function deLatex(s: string): string {
+  return s
+    // Unwrap only real $…$ math (contains a backslash) — keep currency like $532.40.
+    .replace(/\$([^$]+)\$/g, (m, inner) => (/\\/.test(inner) ? inner : m))
+    .replace(/\\[()[\]]/g, "")     // \( \) \[ \]
+    .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2")
+    .replace(/\\times\b/g, "×")
+    .replace(/\\cdot\b/g, "·")
+    .replace(/\\[a-zA-Z]+/g, "")   // any remaining command
+    .replace(/\{([^{}]*)\}/g, "$1") // unwrap leftover braces, keep content
+    .replace(/[ \t]{2,}/g, " ")
+}
+
+/** Render inline `**bold**` (after de-LaTeX) as real <strong>. */
+function renderInline(text: string, theme: EmailTheme): React.ReactNode[] {
+  return deLatex(text).split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, i) => {
+    const m = /^\*\*([^*]+)\*\*$/.exec(part)
+    return m
+      ? <strong key={i} style={{ color: theme.ink, fontWeight: 700 }}>{m[1]}</strong>
+      : <React.Fragment key={i}>{part}</React.Fragment>
+  })
+}
+
 /** Lightweight markdown→email render: ### headers, bullets, and `> [!TYPE]` callouts. */
 function AnalysisBlock({ theme, text }: { theme: EmailTheme; text: string }) {
   const lines = text.split("\n").map(l => l.trim()).filter(Boolean).slice(0, 24)
@@ -48,18 +72,18 @@ function AnalysisBlock({ theme, text }: { theme: EmailTheme; text: string }) {
           return (
             <div key={i} style={{ borderLeft: `3px solid ${c.bd}`, background: c.bg, borderRadius: 6, padding: "6px 10px", margin: "6px 0" }}>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.05em", color: c.fg }}>{co[1].toUpperCase()}</span>
-              <p style={{ margin: "2px 0 0", fontSize: 13, lineHeight: 1.45, color: theme.ink2 }}>{co[2]}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 13, lineHeight: 1.45, color: theme.ink2 }}>{renderInline(co[2], theme)}</p>
             </div>
           )
         }
         if (line.startsWith("### ")) {
-          return <p key={i} style={{ margin: "12px 0 6px", fontWeight: 700, fontSize: 12, color: theme.ink }}>{line.replace(/^###\s*/, "")}</p>
+          return <p key={i} style={{ margin: "12px 0 6px", fontWeight: 700, fontSize: 12, color: theme.ink }}>{renderInline(line.replace(/^###\s*/, ""), theme)}</p>
         }
-        const bullet = line.replace(/^[-•*]\s*/, "")
         const isBullet = /^[-•*]\s/.test(line)
+        const bullet = line.replace(/^[-•*]\s*/, "")
         return (
           <p key={i} style={{ margin: "0 0 5px", fontSize: 13, lineHeight: 1.5, color: theme.ink2, paddingLeft: isBullet ? 12 : 0 }}>
-            {isBullet ? `• ${bullet}` : line}
+            {isBullet && "• "}{renderInline(isBullet ? bullet : line, theme)}
           </p>
         )
       })}

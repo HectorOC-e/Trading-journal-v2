@@ -551,3 +551,16 @@ body {
   /* SVG charts (recharts/sparklines) must not be clipped across page breaks. */
   svg { break-inside: avoid; page-break-inside: avoid; }
 }
+
+/* ── Reviews timeline rail: faint shimmer flowing down each segment ── */
+.review-rail-seg { position: relative; overflow: hidden; }
+.review-rail-seg::after {
+  content: ""; position: absolute; left: 0; right: 0; top: -50%;
+  height: 36%;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 38%, transparent), transparent);
+  animation: rail-flow 3.4s linear infinite;
+}
+@keyframes rail-flow { to { top: 130%; } }
+@media (prefers-reduced-motion: reduce) {
+  .review-rail-seg::after { animation: none; opacity: 0; }
+}
