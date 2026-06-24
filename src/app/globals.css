@@ -555,7 +555,7 @@ body {
 /* ── Reviews timeline rail: ONE accent comet sweeping the whole rail top→bottom ── */
 .rail-comet-single {
   position: absolute; left: 6px; transform: translateX(-50%);
-  width: 5px; height: 130px; border-radius: 6px; z-index: -1; pointer-events: none;
+  width: 5px; height: 130px; border-radius: 6px; z-index: 5; pointer-events: none;
   background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 40%, transparent) 65%, var(--accent));
   filter: blur(1.5px) drop-shadow(0 0 7px color-mix(in srgb, var(--accent) 55%, transparent));
   animation: rail-comet-travel 4s linear infinite;
