@@ -3,6 +3,8 @@
 // TASK-048: Review filtering and search
 // Sprint 7: Filter state synced to URL params for persistence across navigation
 // Sprint 8 (TASK-071): Monthly reviews tab added
+// 2026-06: weekly redesign v2 — hero is the top node of a month-grouped timeline;
+// calendar (month/year) filter; no drawer panel; cards own delete via ⋯ menu.
 
 import { useMemo, useState, Suspense } from "react"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
@@ -14,14 +16,17 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import type { RouterOutputs } from "@/server/trpc/root"
-import { ReviewDetailPanel } from "./components/review-detail-panel"
-import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
-import { NuevaReviewModal } from "./modals/create-review-modal"
 import { NuevaMensualModal } from "./modals/create-monthly-review-modal"
 import { WeekHero } from "./components/week-hero"
-import { WeekTimeline } from "./components/week-timeline"
+import { WeekTimeline, type MonthGroup } from "./components/week-timeline"
+import { ReviewsCalendarFilter, type MonthFilter } from "./components/reviews-calendar-filter"
 import { MonthlyReviewCard } from "./components/monthly-review-card"
+
+const MONTHS_LONG = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+]
 
 /** Monday (local) of the current week, as YYYY-MM-DD. */
 function currentMondayISO(): string {
@@ -33,7 +38,6 @@ function currentMondayISO(): string {
 type ReviewFromDB        = RouterOutputs["weeklyReviews"]["list"][number]
 type MonthlyReviewFromDB = RouterOutputs["monthlyReviews"]["list"][number]
 type AccountFromDB       = RouterOutputs["accounts"]["list"][number]
-type TradeFromDB         = RouterOutputs["trades"]["list"]["items"][number]
 
 type ReviewTab = "weekly" | "monthly"
 
@@ -48,7 +52,7 @@ const OUTCOME_OPTIONS: { value: OutcomeFilter; label: string }[] = [
 ]
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "ALL",       label: "Todos"       },
+  { value: "ALL",       label: "Todas"       },
   { value: "submitted", label: "Completadas" },
   { value: "draft",     label: "Borrador"    },
 ]
@@ -70,7 +74,7 @@ function FilterChip<T extends string>({
           key={o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            "px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium transition-colors",
+            "px-2.5 py-1 rounded-[var(--radius-sm)] text-[11px] font-medium transition-[background-color,color,transform] duration-150 active:scale-[0.96]",
             value === o.value
               ? "bg-[var(--accent)] text-white"
               : "bg-[var(--chip)] text-[var(--ink-3)] hover:text-[var(--ink)]",
@@ -93,15 +97,13 @@ function useReviewFilters() {
   const q       = searchParams.get("q") ?? ""
   const outcome = (VALID_OUTCOMES.has(searchParams.get("outcome") ?? "") ? searchParams.get("outcome") : "ALL") as OutcomeFilter
   const status  = (VALID_STATUSES.has(searchParams.get("status")  ?? "") ? searchParams.get("status")  : "ALL") as StatusFilter
-  const disc    = searchParams.get("disc") ?? ""
 
   function buildParams(overrides: Record<string, string | null>) {
     const p = new URLSearchParams()
-    const merged = { q, outcome, status, disc, ...overrides }
-    if (merged.q)                           p.set("q",       merged.q)
+    const merged = { q, outcome, status, ...overrides }
+    if (merged.q)                                   p.set("q",       merged.q)
     if (merged.outcome && merged.outcome !== "ALL") p.set("outcome", merged.outcome)
     if (merged.status  && merged.status  !== "ALL") p.set("status",  merged.status)
-    if (merged.disc)                        p.set("disc",    merged.disc)
     const qs = p.toString()
     return qs ? `${pathname}?${qs}` : pathname
   }
@@ -109,27 +111,23 @@ function useReviewFilters() {
   const setSearchQuery   = (v: string)         => router.replace(buildParams({ q: v || null }))
   const setOutcomeFilter = (v: OutcomeFilter)  => router.replace(buildParams({ outcome: v === "ALL" ? null : v }))
   const setStatusFilter  = (v: StatusFilter)   => router.replace(buildParams({ status:  v === "ALL" ? null : v }))
-  const setMinDisc       = (v: string)         => router.replace(buildParams({ disc: v || null }))
   const clearFilters     = () => router.replace(pathname)
 
   return {
     searchQuery: q, setSearchQuery,
     outcomeFilter: outcome, setOutcomeFilter,
     statusFilter: status, setStatusFilter,
-    minDisc: disc, setMinDisc,
     clearFilters,
-    hasFilters: !!(q || outcome !== "ALL" || status !== "ALL" || disc),
+    hasFilters: !!(q || outcome !== "ALL" || status !== "ALL"),
   }
 }
 
 function ReviewsPageContent() {
   const router = useRouter()
-  const [activeTab,         setActiveTab]         = useState<ReviewTab>("weekly")
-  const [modalOpen,         setModalOpen]          = useState(false)
-  const [selectedReview,    setSelectedReview]     = useState<ReviewFromDB | null>(null)
-  const [editingReview,     setEditingReview]      = useState<ReviewFromDB | null>(null)
-  const [monthlyModalOpen,  setMonthlyModalOpen]   = useState(false)
-  const [editingMonthly,    setEditingMonthly]     = useState<MonthlyReviewFromDB | null>(null)
+  const [activeTab,         setActiveTab]        = useState<ReviewTab>("weekly")
+  const [monthFilter,       setMonthFilter]      = useState<MonthFilter>(null)
+  const [monthlyModalOpen,  setMonthlyModalOpen] = useState(false)
+  const [editingMonthly,    setEditingMonthly]   = useState<MonthlyReviewFromDB | null>(null)
 
   const now   = new Date()
   const [monthlyYear,  setMonthlyYear]  = useState(now.getFullYear())
@@ -139,7 +137,6 @@ function ReviewsPageContent() {
     searchQuery, setSearchQuery,
     outcomeFilter, setOutcomeFilter,
     statusFilter, setStatusFilter,
-    minDisc,
     clearFilters, hasFilters,
   } = useReviewFilters()
 
@@ -148,15 +145,16 @@ function ReviewsPageContent() {
   const { data: reviews = [], isLoading }        = trpc.weeklyReviews.list.useQuery()
   const { data: monthlyReviews = [], isLoading: monthlyLoading } = trpc.monthlyReviews.list.useQuery()
   const { data: accounts = [] }                 = trpc.accounts.list.useQuery()
-  const { data: reviewResources = [] }          = trpc.learningResources.list.useQuery({ markedForReview: true })
-  const { data: rawPageTrades }                 = trpc.trades.list.useQuery({ limit: 200 })
-  const allTrades: TradeFromDB[]                = rawPageTrades?.items ?? []
 
   // Live "current week" hero (the in-progress, auto-draft week).
   const { data: currentWeek, isLoading: currentWeekLoading } =
     trpc.weeklyReviews.report.useQuery({ weekStart: thisMonday }, { enabled: activeTab === "weekly" })
 
   const utils = trpc.useUtils()
+  const deleteWeekly = trpc.weeklyReviews.delete.useMutation({
+    onSuccess: () => utils.weeklyReviews.list.invalidate(),
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
   const deleteMonthly = trpc.monthlyReviews.delete.useMutation({
     onSuccess: () => utils.monthlyReviews.list.invalidate(),
     onError: (err) => toast.error(formatErrorForUser(err)),
@@ -167,19 +165,24 @@ function ReviewsPageContent() {
     return accounts.find((a: AccountFromDB) => a.id === id)?.name ?? id
   }
 
-  const filteredReviews = useMemo(() => {
-    const q       = searchQuery.trim().toLowerCase()
-    const minDiscN = minDisc !== "" ? parseFloat(minDisc) : null
+  // Months that have at least one past review (for the calendar filter dots).
+  const monthsWithReviews = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of reviews) if (r.weekStart !== thisMonday) s.add(r.weekStart.slice(0, 7))
+    return s
+  }, [reviews, thisMonday])
 
+  const filteredReviews = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
     return reviews.filter((r: ReviewFromDB) => {
       if (r.weekStart === thisMonday) return false // the current week lives in the hero
+      if (monthFilter) {
+        const y = +r.weekStart.slice(0, 4), m = +r.weekStart.slice(5, 7)
+        if (y !== monthFilter.year) return false
+        if (monthFilter.month != null && m !== monthFilter.month) return false
+      }
       if (q) {
-        const haystack = [
-          r.executiveSummary ?? "",
-          r.whatWorked ?? "",
-          r.toImprove ?? "",
-          r.weekLabel ?? "",
-        ].join(" ").toLowerCase()
+        const haystack = [r.executiveSummary ?? "", r.whatWorked ?? "", r.toImprove ?? "", r.weekLabel ?? ""].join(" ").toLowerCase()
         if (!haystack.includes(q)) return false
       }
       if (outcomeFilter !== "ALL") {
@@ -188,29 +191,37 @@ function ReviewsPageContent() {
         if (outcomeFilter === "NEUTRAL" && r.netPnl !== 0) return false
       }
       if (statusFilter !== "ALL" && r.status !== statusFilter) return false
-      if (minDiscN !== null && r.disciplineScore < minDiscN) return false
       return true
     })
-  }, [reviews, searchQuery, outcomeFilter, statusFilter, minDisc, thisMonday])
+  }, [reviews, searchQuery, outcomeFilter, statusFilter, monthFilter, thisMonday])
 
-  const weekTrades = useMemo(() => {
-    if (!selectedReview) return []
-    return allTrades.filter((t: TradeFromDB) => {
-      const acctMatch = !selectedReview.accountId || t.accountId === selectedReview.accountId
-      return acctMatch && t.date >= selectedReview.weekStart && t.date <= selectedReview.weekEnd
-    })
-  }, [selectedReview, allTrades])
+  // Group the filtered weeks by calendar month (most recent first).
+  const groups = useMemo<MonthGroup[]>(() => {
+    const map = new Map<string, ReviewFromDB[]>()
+    for (const r of filteredReviews) {
+      const key = r.weekStart.slice(0, 7)
+      const arr = map.get(key) ?? []
+      arr.push(r); map.set(key, arr)
+    }
+    return [...map.entries()]
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([key, rs]) => ({
+        key,
+        label: `${MONTHS_LONG[+key.slice(5, 7) - 1]} ${key.slice(0, 4)}`,
+        netPnl: rs.reduce((s, r) => s + r.netPnl, 0),
+        reviews: rs,
+      }))
+  }, [filteredReviews])
 
-  function handleCardClick(review: ReviewFromDB) {
-    setSelectedReview((prev: ReviewFromDB | null) => (prev?.id === review.id ? null : review))
+  const anyFilter = hasFilters || monthFilter != null
+  const clearAll  = () => { clearFilters(); setMonthFilter(null) }
+  const showHero  = monthFilter == null
+
+  function openReview(r: ReviewFromDB) {
+    router.push(`/reviews/semanal/${r.weekStart}`)
   }
-
-  // Auto-first creation: a new review = opening the period's report (auto-draft),
-  // where the rich report, AI analysis, notes and Finalizar live. No create modal.
-  function goNewWeekly() {
-    const d = new Date()
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)) // back to Monday
-    router.push(`/reviews/semanal/${d.toISOString().slice(0, 10)}`)
+  function removeReview(r: ReviewFromDB) {
+    if (confirm("¿Eliminar esta review semanal?")) deleteWeekly.mutate(r.id)
   }
   function goNewMonthly() {
     const d = new Date()
@@ -223,13 +234,13 @@ function ReviewsPageContent() {
         <div className="min-w-0">
           <TopBar
             title="Reviews"
-            subtitle="Semanas y meses analizados"
-            actions={[{
-              label: activeTab === "weekly" ? "Nueva review" : "Nueva review mensual",
-              icon: activeTab === "weekly" ? <Plus size={14} /> : <Calendar size={14} />,
+            subtitle="Tu evolución, semana a semana"
+            actions={activeTab === "monthly" ? [{
+              label: "Nueva review mensual",
+              icon: <Calendar size={14} />,
               variant: "primary",
-              onClick: () => activeTab === "weekly" ? goNewWeekly() : goNewMonthly(),
-            }]}
+              onClick: goNewMonthly,
+            }] : []}
           />
 
           {/* Semanales / Mensuales tab toggle */}
@@ -271,9 +282,7 @@ function ReviewsPageContent() {
                         setMonthlyModalOpen(true)
                       }}
                       onDelete={() => {
-                        if (confirm("¿Eliminar esta review mensual?")) {
-                          deleteMonthly.mutate(review.id)
-                        }
+                        if (confirm("¿Eliminar esta review mensual?")) deleteMonthly.mutate(review.id)
                       }}
                     />
                   ))}
@@ -285,98 +294,72 @@ function ReviewsPageContent() {
           {/* ── Weekly reviews tab ── */}
           {activeTab === "weekly" && (
             <>
-          {/* Live current-week hero */}
-          <WeekHero data={currentWeek} weekStart={thisMonday} isLoading={currentWeekLoading} />
+              {/* Compact filter bar (above the hero so the timeline reads continuous) */}
+              <div className="flex items-center gap-2.5 mb-5 flex-wrap">
+                <div className="relative flex-1 min-w-[160px] max-w-[240px]">
+                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-3)]" />
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Buscar en reviews…"
+                    className="w-full pl-7 pr-3 h-8 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                      <X size={11} className="text-[var(--ink-3)]" />
+                    </button>
+                  )}
+                </div>
 
-          {/* Filter bar (search + outcome + status). URL-persisted. */}
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-3)]" />
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar en reviews…"
-                className="w-full pl-7 pr-3 h-8 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                  <X size={11} className="text-[var(--ink-3)]" />
-                </button>
+                <ReviewsCalendarFilter value={monthFilter} onChange={setMonthFilter} monthsWithReviews={monthsWithReviews} />
+                <FilterChip value={outcomeFilter} options={OUTCOME_OPTIONS} onChange={setOutcomeFilter} />
+                <FilterChip value={statusFilter} options={STATUS_OPTIONS} onChange={setStatusFilter} />
+
+                <span className="text-[11px] text-[var(--ink-3)] ml-auto whitespace-nowrap">
+                  {filteredReviews.length} semana{filteredReviews.length === 1 ? "" : "s"}
+                </span>
+                {anyFilter && (
+                  <button onClick={clearAll} className="text-[11px] text-[var(--accent)] hover:underline whitespace-nowrap">
+                    Limpiar
+                  </button>
+                )}
+              </div>
+
+              {isLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-[176px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <WeekTimeline
+                    groups={groups}
+                    heroSlot={<WeekHero data={currentWeek} weekStart={thisMonday} isLoading={currentWeekLoading} />}
+                    showHero={showHero}
+                    onOpen={openReview}
+                    onDelete={removeReview}
+                    accountName={accountName}
+                  />
+
+                  {groups.length === 0 && (
+                    anyFilter ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-2">
+                        <p className="text-[13px] text-[var(--ink-3)]">Sin reviews para este filtro.</p>
+                        <button onClick={clearAll} className="text-[11px] text-[var(--accent)] hover:underline">Limpiar filtros</button>
+                      </div>
+                    ) : (
+                      <p className="text-center text-[13px] text-[var(--ink-3)] py-8">
+                        Aún no hay semanas anteriores. Tu semana en curso está arriba.
+                      </p>
+                    )
+                  )}
+                </>
               )}
-            </div>
-
-            <FilterChip value={outcomeFilter} options={OUTCOME_OPTIONS} onChange={setOutcomeFilter} />
-            <FilterChip value={statusFilter} options={STATUS_OPTIONS} onChange={setStatusFilter} />
-
-            <span className="text-[11px] text-[var(--ink-3)] ml-auto whitespace-nowrap">
-              {filteredReviews.length} semana{filteredReviews.length === 1 ? "" : "s"}
-            </span>
-            {hasFilters && (
-              <button
-                onClick={clearFilters}
-                className="text-[11px] text-[var(--accent)] hover:underline whitespace-nowrap"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="flex flex-col gap-3">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="h-[168px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
-              ))}
-            </div>
-          ) : filteredReviews.length === 0 && !hasFilters ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <p className="text-sm text-[var(--ink-3)]">Aún no hay semanas anteriores. Tu semana en curso ya está arriba.</p>
-              <Button variant="primary" onClick={goNewWeekly}>
-                <Plus size={14} className="mr-1" /> Abrir la semana en curso
-              </Button>
-            </div>
-          ) : filteredReviews.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <p className="text-[13px] text-[var(--ink-3)]">Sin resultados para los filtros actuales.</p>
-              <button onClick={clearFilters} className="text-[11px] text-[var(--accent)] hover:underline">
-                Limpiar filtros
-              </button>
-            </div>
-          ) : (
-            <WeekTimeline
-              reviews={filteredReviews}
-              selectedId={selectedReview?.id ?? null}
-              onCardClick={handleCardClick}
-              accountName={accountName}
-            />
-          )}
             </>
           )}
         </div>
       </div>
-
-      <DrawerPanel
-        open={!!selectedReview}
-        onClose={() => setSelectedReview(null)}
-        width={480}
-        ariaLabel="Detalle de la review"
-      >
-        {selectedReview && (
-          <ReviewDetailPanel
-            review={selectedReview}
-            onClose={() => setSelectedReview(null)}
-            accountName={accountName}
-            weekTrades={weekTrades}
-            onEdit={(r) => { setEditingReview(r); setModalOpen(true) }}
-          />
-        )}
-      </DrawerPanel>
-
-      <NuevaReviewModal
-        open={modalOpen}
-        onOpenChange={(v) => { setModalOpen(v); if (!v) setEditingReview(null) }}
-        reviewResources={reviewResources}
-        editReview={editingReview}
-      />
 
       <NuevaMensualModal
         open={monthlyModalOpen}

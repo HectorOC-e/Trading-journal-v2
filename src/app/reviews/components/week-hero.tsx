@@ -31,7 +31,7 @@ export function WeekHero({ data, weekStart, isLoading }: {
   isLoading: boolean
 }) {
   if (isLoading || !data) {
-    return <div className="h-[148px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse mb-5" />
+    return <div className="h-[148px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
   }
 
   const cur = currencySymbol(data.baseCurrency || "USD")
@@ -50,7 +50,7 @@ export function WeekHero({ data, weekStart, isLoading }: {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE_OUT }}
-      className="relative mb-5 rounded-[var(--radius)] border border-[var(--accent)]/30 overflow-hidden"
+      className="relative rounded-[var(--radius)] border border-[var(--accent)]/30 overflow-hidden"
       style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--panel)), var(--panel))" }}
     >
       <Link href={`/reviews/semanal/${weekStart}`} className="block p-4 sm:p-5 group">
