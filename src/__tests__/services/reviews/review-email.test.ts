@@ -55,4 +55,17 @@ describe("ReviewSummary render", () => {
     expect(html).toContain(darkTheme.accent) // CTA button color in dark mode
     expect(html).toContain(darkTheme.pageBg)
   })
+
+  it("renders inline **bold** and strips LaTeX in the AI analysis", async () => {
+    const m = buildReviewEmailModel({
+      kind: "weekly", title: "x", reportPath: "/x", report,
+      aiAnalysis: "El **profit factor** = $\\frac{ganancias}{pérdidas}$ fue **0.21**.",
+    })
+    const html = await render(React.createElement(ReviewSummary, { model: m, appUrl: "https://x.test" }))
+    expect(html).toContain("<strong")            // bold rendered as <strong>
+    expect(html).toContain("profit factor")
+    expect(html).not.toContain("**")              // no raw markdown asterisks
+    expect(html).not.toContain("\\frac")          // LaTeX command stripped
+    expect(html).toContain("ganancias/")          // \frac{a}{b} -> a/b
+  })
 })

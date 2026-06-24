@@ -58,7 +58,8 @@ Reglas de formato:
   > [!WARNING] riesgo a vigilar
   > [!RECOMMENDATION] acción priorizada y concreta
 - En "Qué hacer", al menos una recomendación debe ir como una línea > [!RECOMMENDATION].
-- NO uses tablas ni la etiqueta <br>. Importes de dinero como texto normal ($100).`
+- NO uses tablas ni la etiqueta <br>. Importes de dinero como texto normal ($100).
+- NO uses LaTeX ni notación matemática (nada de $...$, \\frac, \\times, etc.). Escribe fórmulas y divisiones en texto plano (p. ej. "ganancias/pérdidas", "2.1x").`
 }
 
 /** Stream the analysis from the first usable provider candidate. Throws on failure. */

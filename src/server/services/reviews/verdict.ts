@@ -32,7 +32,7 @@ export function deriveGrade(i: GradeInput): { letter: string; tone: VerdictTone 
   return { letter, tone }
 }
 
-/** Strip light markdown (bullets, emphasis, callout markers) from a single line. */
+/** Strip light markdown (bullets, emphasis, callouts) + LaTeX from a single line. */
 function stripMd(line: string): string {
   return line
     .replace(/^>\s*\[![^\]]+\]\s*/i, "") // callout marker
@@ -40,6 +40,14 @@ function stripMd(line: string): string {
     .replace(/^#{1,6}\s+/, "")           // header
     .replace(/\*\*(.+?)\*\*/g, "$1")     // bold
     .replace(/`(.+?)`/g, "$1")           // code
+    // LaTeX: unwrap only real $…$ math (has a backslash) — never touch currency like $980
+    .replace(/\$([^$]+)\$/g, (m, inner) => (/\\/.test(inner) ? inner : m))
+    .replace(/\\[()[\]]/g, "")           // \( \) \[ \]
+    .replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2") // \frac{a}{b} → a/b
+    .replace(/\\times\b/g, "×").replace(/\\cdot\b/g, "·")
+    .replace(/\\[a-zA-Z]+/g, "")         // any remaining LaTeX command
+    .replace(/\{([^{}]*)\}/g, "$1")      // unwrap leftover braces, keep content
+    .replace(/\s{2,}/g, " ")
     .trim()
 }
 

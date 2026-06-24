@@ -21,37 +21,36 @@ function nodeColor(r: ReviewFromDB): string {
   return r.netPnl < 0 ? "var(--loss)" : "var(--win)"
 }
 
+/** Subtle tint of a node color for the rail segment (keeps it quiet). */
+const soft = (c: string) => `color-mix(in srgb, ${c} 38%, var(--line))`
+
 const fmtMoney = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
-/** One rail row: a node + a connector line that threads to the next row. */
-function RailRow({ node, connectorBelow, nodeTop = 20, children }: {
-  node: React.ReactNode
-  connectorBelow: boolean
-  nodeTop?: number
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex gap-3 sm:gap-4">
-      <div className="flex flex-col items-center" style={{ paddingTop: nodeTop }}>
-        {node}
-        {connectorBelow && <span className="w-px flex-1 min-h-4" style={{ background: "var(--line)" }} />}
-      </div>
-      <div className="flex-1 min-w-0 pb-3">{children}</div>
-    </div>
-  )
-}
+type Row =
+  | { kind: "hero"; color: string; node: React.ReactNode }
+  | { kind: "month"; color: string; node: React.ReactNode; group: MonthGroup }
+  | { kind: "week"; color: string; node: React.ReactNode; review: ReviewFromDB }
 
 const Dot = ({ color, pulse }: { color: string; pulse?: boolean }) => (
   <span className="relative grid place-items-center w-3 h-3 shrink-0">
-    {pulse && <span className="absolute inset-0 rounded-full animate-ping" style={{ background: color, opacity: 0.4 }} />}
-    <span className="w-3 h-3 rounded-full" style={{ background: color, boxShadow: `0 0 0 4px color-mix(in srgb, ${color} 16%, transparent)` }} />
+    {pulse && <span className="absolute inset-0 rounded-full animate-ping" style={{ background: color, opacity: 0.35 }} />}
+    <span
+      className="w-3 h-3 rounded-full"
+      style={{ background: color, boxShadow: pulse
+        ? `0 0 0 4px color-mix(in srgb, ${color} 16%, transparent), 0 0 10px 1px color-mix(in srgb, ${color} 45%, transparent)`
+        : `0 0 0 4px color-mix(in srgb, ${color} 14%, transparent)` }}
+    />
   </span>
 )
 
+const Diamond = ({ color }: { color: string }) => (
+  <span className="w-1.5 h-1.5 rotate-45 shrink-0" style={{ background: color }} />
+)
+
 /**
- * Vertical progress timeline. The live current-week hero is the top node of the
- * rail (when shown); history is grouped by month with separators carrying each
- * month's net P&L. One continuous thread top to bottom.
+ * Vertical progress timeline. The live current-week hero is the top node of one
+ * continuous rail; history is grouped by month. Each rail segment fades from the
+ * color of the node above it to the node below, with a faint flowing shimmer.
  */
 export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, accountName }: {
   groups: MonthGroup[]
@@ -61,43 +60,49 @@ export function WeekTimeline({ groups, heroSlot, showHero, onOpen, onDelete, acc
   onDelete: (r: ReviewFromDB) => void
   accountName: (id: string | null) => string
 }) {
-  const hasHistory = groups.length > 0
+  // Flatten into an ordered list so each rail segment can blend adjacent colors.
+  const rows: Row[] = []
+  if (showHero && heroSlot) rows.push({ kind: "hero", color: "var(--accent)", node: <Dot color="var(--accent)" pulse /> })
+  for (const g of groups) {
+    rows.push({ kind: "month", color: "var(--ink-3)", node: <Diamond color="var(--ink-3)" />, group: g })
+    for (const r of g.reviews) rows.push({ kind: "week", color: nodeColor(r), node: <Dot color={nodeColor(r)} />, review: r })
+  }
 
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show">
-      {showHero && heroSlot && (
-        <motion.div variants={fadeUpItem}>
-          <RailRow node={<Dot color="var(--accent)" pulse />} connectorBelow={hasHistory} nodeTop={26}>
-            {heroSlot}
-          </RailRow>
-        </motion.div>
-      )}
-
-      {groups.map((g, gi) => {
-        const lastGroup = gi === groups.length - 1
+      {rows.map((row, i) => {
+        const last = i === rows.length - 1
+        const nextColor = last ? row.color : rows[i + 1].color
+        const nodeTop = row.kind === "month" ? 8 : row.kind === "hero" ? 26 : 22
         return (
-          <React.Fragment key={g.key}>
-            {/* Month separator */}
-            <motion.div variants={fadeUpItem}>
-              <RailRow node={<span className="w-1.5 h-1.5 rotate-45 shrink-0" style={{ background: "var(--ink-3)" }} />} connectorBelow nodeTop={8}>
-                <div className="flex items-baseline justify-between pb-1 pt-0.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-2)" }}>{g.label}</span>
-                  <span className="font-mono text-[12px] font-semibold" style={{ color: g.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{fmtMoney(g.netPnl)}</span>
-                </div>
-              </RailRow>
-            </motion.div>
+          <motion.div key={row.kind === "week" ? row.review.id : row.kind === "month" ? `m-${row.group.key}` : "hero"} variants={fadeUpItem}>
+            <div className="flex gap-4 sm:gap-6">
+              {/* Rail */}
+              <div className="flex flex-col items-center" style={{ paddingTop: nodeTop }}>
+                {row.node}
+                {!last && (
+                  <span
+                    className="review-rail-seg w-[3px] rounded-full flex-1 min-h-4 my-1"
+                    style={{ background: `linear-gradient(180deg, ${soft(row.color)}, ${soft(nextColor)})` }}
+                  />
+                )}
+              </div>
 
-            {g.reviews.map((r, ri) => {
-              const lastRow = lastGroup && ri === g.reviews.length - 1
-              return (
-                <motion.div key={r.id} variants={fadeUpItem}>
-                  <RailRow node={<Dot color={nodeColor(r)} />} connectorBelow={!lastRow}>
-                    <ReviewCard review={r} onOpen={() => onOpen(r)} onDelete={() => onDelete(r)} accountName={accountName} />
-                  </RailRow>
-                </motion.div>
-              )
-            })}
-          </React.Fragment>
+              {/* Content — hero is full width; history cards are a touch narrower */}
+              <div className={row.kind === "hero" ? "flex-1 min-w-0 pb-4" : "flex-1 min-w-0 pb-3 pr-4 sm:pr-12"}>
+                {row.kind === "hero" && heroSlot}
+                {row.kind === "month" && (
+                  <div className="flex items-baseline justify-between pb-1 pt-0.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "var(--ink-2)" }}>{row.group.label}</span>
+                    <span className="font-mono text-[12px] font-semibold" style={{ color: row.group.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{fmtMoney(row.group.netPnl)}</span>
+                  </div>
+                )}
+                {row.kind === "week" && (
+                  <ReviewCard review={row.review} onOpen={() => onOpen(row.review)} onDelete={() => onDelete(row.review)} accountName={accountName} />
+                )}
+              </div>
+            </div>
+          </motion.div>
         )
       })}
     </motion.div>

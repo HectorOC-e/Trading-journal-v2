@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { ArrowRight, Sparkles } from "lucide-react"
 import { EASE_OUT } from "@/lib/motion"
 import { currencySymbol } from "@/lib/fx"
-import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { CardEquityChart } from "./card-equity-chart"
 import { deriveVerdict } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -38,8 +38,8 @@ export function WeekHero({ data, weekStart, isLoading }: {
   const money = (n: number) => `${n < 0 ? "-" : "+"}${cur}${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
   const net = data.kpis.netPnl
   const isLoss = net < 0
-  const balances = data.analytics.equityCurve.map(p => p.balance)
-  const spark = balances.length >= 2 ? balances : [0, net]
+  const hasTrades = data.kpis.trades > 0
+  const dailyPnl = data.dayTrend.map(d => d.pnl)
 
   const aiPreview = data.ai.analysis
     ? deriveVerdict({ aiAnalysis: data.ai.analysis, netPnl: net, winRate: data.kpis.winRate, disciplineScore: data.kpis.disciplineScore, trades: data.kpis.trades })
@@ -73,8 +73,10 @@ export function WeekHero({ data, weekStart, isLoading }: {
           <HeroMetric label="Win Rate"   value={data.kpis.trades ? `${data.kpis.winRate.toFixed(0)}%` : "—"} />
           <HeroMetric label="Avg R"      value={data.analytics.avgR ? `${data.analytics.avgR.toFixed(2)}R` : "—"} />
           <HeroMetric label="Disciplina" value={data.kpis.disciplineScore != null ? String(data.kpis.disciplineScore) : "—"} />
-          <div className="hidden sm:block flex-1 min-w-[120px] max-w-[260px]">
-            <MiniSparkline data={spark} positive={!isLoss} height={40} interactive={false} />
+          <div className="hidden sm:flex flex-1 min-w-[140px] justify-end items-center">
+            {hasTrades
+              ? <CardEquityChart dailyPnl={dailyPnl} positive={!isLoss} money={money} width={224} height={46} />
+              : <span className="text-[11px]" style={{ color: "var(--ink-3)" }}>Sin operaciones aún</span>}
           </div>
         </div>
 
