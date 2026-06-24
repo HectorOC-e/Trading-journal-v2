@@ -552,15 +552,24 @@ body {
   svg { break-inside: avoid; page-break-inside: avoid; }
 }
 
-/* ── Reviews timeline rail: faint shimmer flowing down each segment ── */
-.review-rail-seg { position: relative; overflow: hidden; }
+/* ── Reviews timeline rail: breathing accent glow + a bright comet flowing down ── */
+.review-rail-seg {
+  position: relative; overflow: hidden;
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  animation: rail-breathe 2.6s ease-in-out infinite;
+}
 .review-rail-seg::after {
-  content: ""; position: absolute; left: 0; right: 0; top: -50%;
-  height: 36%;
-  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 38%, transparent), transparent);
-  animation: rail-flow 3.4s linear infinite;
+  content: ""; position: absolute; left: -1px; right: -1px; top: -34%;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 70%, white), transparent);
+  animation: rail-flow 2.2s linear infinite;
 }
 @keyframes rail-flow { to { top: 130%; } }
+@keyframes rail-breathe {
+  0%, 100% { box-shadow: 0 0 5px 1px color-mix(in srgb, var(--accent) 16%, transparent); }
+  50%      { box-shadow: 0 0 13px 3px color-mix(in srgb, var(--accent) 46%, transparent); }
+}
 @media (prefers-reduced-motion: reduce) {
+  .review-rail-seg { animation: none; box-shadow: none; }
   .review-rail-seg::after { animation: none; opacity: 0; }
 }

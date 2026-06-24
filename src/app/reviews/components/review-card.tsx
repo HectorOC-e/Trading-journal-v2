@@ -24,9 +24,9 @@ function fmtMoney(n: number): string {
   return `${sign}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 }
 
-/** Subtle outcome-tinted gradient background (mirrors the hero's treatment). */
+/** Whisper-subtle outcome tint — barely there, just a hint of the result color. */
 function tintFor(color: string): string {
-  return `linear-gradient(180deg, color-mix(in srgb, ${color} 6%, var(--panel)), var(--panel))`
+  return `linear-gradient(180deg, color-mix(in srgb, ${color} 2.5%, var(--panel)), var(--panel))`
 }
 
 const GRADE_TONE: Record<VerdictTone, { fg: string; bg: string }> = {
