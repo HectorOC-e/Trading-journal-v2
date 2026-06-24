@@ -22,6 +22,7 @@ import { WeekHero } from "./components/week-hero"
 import { WeekTimeline, type MonthGroup } from "./components/week-timeline"
 import { ReviewsCalendarFilter, type MonthFilter } from "./components/reviews-calendar-filter"
 import { MonthlyReviewCard } from "./components/monthly-review-card"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 const MONTHS_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -128,6 +129,8 @@ function ReviewsPageContent() {
   const [monthFilter,       setMonthFilter]      = useState<MonthFilter>(null)
   const [monthlyModalOpen,  setMonthlyModalOpen] = useState(false)
   const [editingMonthly,    setEditingMonthly]   = useState<MonthlyReviewFromDB | null>(null)
+  const [pendingDelete,        setPendingDelete]        = useState<ReviewFromDB | null>(null)
+  const [pendingMonthlyDelete, setPendingMonthlyDelete] = useState<MonthlyReviewFromDB | null>(null)
 
   const now   = new Date()
   const [monthlyYear,  setMonthlyYear]  = useState(now.getFullYear())
@@ -152,11 +155,11 @@ function ReviewsPageContent() {
 
   const utils = trpc.useUtils()
   const deleteWeekly = trpc.weeklyReviews.delete.useMutation({
-    onSuccess: () => utils.weeklyReviews.list.invalidate(),
+    onSuccess: () => { utils.weeklyReviews.list.invalidate(); setPendingDelete(null); toast.success("Review eliminada") },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
   const deleteMonthly = trpc.monthlyReviews.delete.useMutation({
-    onSuccess: () => utils.monthlyReviews.list.invalidate(),
+    onSuccess: () => { utils.monthlyReviews.list.invalidate(); setPendingMonthlyDelete(null); toast.success("Review mensual eliminada") },
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
@@ -221,7 +224,7 @@ function ReviewsPageContent() {
     router.push(`/reviews/semanal/${r.weekStart}`)
   }
   function removeReview(r: ReviewFromDB) {
-    if (confirm("¿Eliminar esta review semanal?")) deleteWeekly.mutate(r.id)
+    setPendingDelete(r)
   }
   function goNewMonthly() {
     const d = new Date()
@@ -281,9 +284,7 @@ function ReviewsPageContent() {
                         setMonthlyMonth(review.month)
                         setMonthlyModalOpen(true)
                       }}
-                      onDelete={() => {
-                        if (confirm("¿Eliminar esta review mensual?")) deleteMonthly.mutate(review.id)
-                      }}
+                      onDelete={() => setPendingMonthlyDelete(review)}
                     />
                   ))}
                 </div>
@@ -367,6 +368,24 @@ function ReviewsPageContent() {
         year={monthlyYear}
         month={monthlyMonth}
         editReview={editingMonthly}
+      />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(v) => { if (!v) setPendingDelete(null) }}
+        title="Eliminar review semanal"
+        description={pendingDelete ? `Se eliminará la review de “${pendingDelete.weekLabel}”. Esta acción no se puede deshacer.` : ""}
+        loading={deleteWeekly.isPending}
+        onConfirm={() => { if (pendingDelete) deleteWeekly.mutate(pendingDelete.id) }}
+      />
+
+      <ConfirmDialog
+        open={!!pendingMonthlyDelete}
+        onOpenChange={(v) => { if (!v) setPendingMonthlyDelete(null) }}
+        title="Eliminar review mensual"
+        description="Se eliminará esta review mensual. Esta acción no se puede deshacer."
+        loading={deleteMonthly.isPending}
+        onConfirm={() => { if (pendingMonthlyDelete) deleteMonthly.mutate(pendingMonthlyDelete.id) }}
       />
     </>
   )
