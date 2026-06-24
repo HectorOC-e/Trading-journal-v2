@@ -555,13 +555,14 @@ body {
 /* ── Reviews timeline rail (SVG): visible curved line + a glowing accent comet ── */
 .rail-svg { display: block; width: 100%; height: 100%; }
 .rail-comet {
-  stroke-dasharray: 18 82;          /* pathLength = 100 → a short bright dash */
-  animation: rail-comet 2.1s linear infinite;
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 85%, transparent));
+  stroke-dasharray: 30 70;          /* pathLength = 100 → a longer streak/estela */
+  animation: rail-comet 1.05s linear infinite;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 90%, transparent))
+          drop-shadow(0 0 9px color-mix(in srgb, var(--accent) 55%, transparent));
 }
 @keyframes rail-comet {
   from { stroke-dashoffset: 100; }
-  to   { stroke-dashoffset: -18; }
+  to   { stroke-dashoffset: -30; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rail-comet { animation: none; opacity: 0; }
