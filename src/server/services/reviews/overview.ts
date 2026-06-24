@@ -19,6 +19,8 @@ export interface OverviewBead {
   grade: string        // "A−"
   tone: VerdictTone
   score: number        // 0–100, drives the sparkline
+  net: number          // week net P&L (base currency) — for the chart tooltip
+  winRate: number      // week win rate % — for the chart tooltip
 }
 
 export interface OverviewStat {
@@ -174,7 +176,7 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
   return {
     weeksCount: weeks.length,
     headline, trendDeltaText, trendPositive, sub,
-    beads: weeks.map(({ weekStart, label, grade, tone, score }) => ({ weekStart, label, grade, tone, score })),
+    beads: weeks.map(({ weekStart, label, grade, tone, score, net, winRate }) => ({ weekStart, label, grade, tone, score, net, winRate })),
     scores: weeks.map(w => w.score),
     months,
     stats: trendStats,

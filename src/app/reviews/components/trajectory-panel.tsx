@@ -6,12 +6,14 @@
 // insights engine). Data comes from weeklyReviews.overview — whole history by default,
 // or the active year/month filter. Faithful port of the Reviews.dc.html design.
 
+import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { motion } from "framer-motion"
 import { EASE_OUT } from "@/lib/motion"
 import type { VerdictTone } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type Overview = RouterOutputs["weeklyReviews"]["overview"]
+type Bead = Overview["beads"][number]
 
 const TONE: Record<VerdictTone, { fg: string; bg: string }> = {
   good: { fg: "var(--win)", bg: "var(--win-soft)" },
@@ -26,24 +28,130 @@ const STATS = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayCh
 const STAT = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }
 const HOVER = { duration: 0.16, ease: EASE_OUT }
 
-/** Min–max normalized sparkline path over the score series (mirrors the design's spark2). */
-function spark(arr: number[]) {
-  const n = arr.length
+const money = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
+const fmtWeek = (ws: string) => new Date(ws + "T00:00:00").toLocaleDateString("es", { day: "numeric", month: "short" })
+
+/** Min–max normalized sparkline geometry over the score series (mirrors the design's spark2). */
+function buildChart(scores: number[]) {
+  const n = scores.length
+  const mn = Math.min(...scores), mx = Math.max(...scores), rng = Math.max(1, mx - mn)
+  const pts = scores.map((v, i) => ({ x: n === 1 ? 50 : (i / (n - 1)) * 100, y: 85 - ((v - mn) / rng) * 68 }))
+  const line = pts.map((p, i) => (i ? "L" : "M") + p.x.toFixed(1) + "," + p.y.toFixed(1)).join(" ")
+  const area = line + ` L${pts[n - 1].x.toFixed(1)},100 L${pts[0].x.toFixed(1)},100 Z`
+  return { pts, line, area }
+}
+
+/**
+ * Interactive discipline sparkline. Hovering anywhere over it snaps to the nearest week,
+ * drawing a vertical guide + highlighted node and a tooltip with that week's grade,
+ * discipline score, P&L and win rate — the per-point detail charts usually expose.
+ */
+function TrajectoryChart({ beads, scores, months }: { beads: Bead[]; scores: number[]; months: string[] }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  const n = scores.length
   if (n === 0) return null
-  const mn = Math.min(...arr), mx = Math.max(...arr), rng = Math.max(1, mx - mn)
-  const pts = arr.map((v, i) => [n === 1 ? 0 : (i / (n - 1)) * 100, 85 - ((v - mn) / rng) * 68] as const)
-  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")
-  const area = line + " L100,100 L0,100 Z"
+  const { pts, line, area } = buildChart(scores)
+
+  const onMove = (e: ReactMouseEvent) => {
+    const el = ref.current
+    if (!el || n < 2) { setHover(n === 1 ? 0 : null); return }
+    const rect = el.getBoundingClientRect()
+    const ratio = (e.clientX - rect.left) / rect.width
+    setHover(Math.max(0, Math.min(n - 1, Math.round(ratio * (n - 1)))))
+  }
+
+  const hv = hover != null ? { p: pts[hover], b: beads[hover] } : null
   const last = pts[n - 1]
-  return { line, area, ex: last[0].toFixed(1), ey: last[1].toFixed(1) }
+
+  return (
+    <div className="mt-4">
+      {/* What the chart plots */}
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-[var(--ink-3)]">
+          <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />Disciplina semanal
+        </span>
+        <span className="text-[10px] text-[var(--ink-3)]">escala 0–100 · {n} semana{n === 1 ? "" : "s"}</span>
+      </div>
+
+      <div ref={ref} className="relative cursor-crosshair" style={{ height: 100 }} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full block overflow-visible">
+          <defs>
+            <linearGradient id="traj-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--accent)" stopOpacity="0.20" />
+              <stop offset="1" stopColor="var(--accent)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={area} fill="url(#traj-fill)" />
+          <path d={line} fill="none" stroke="var(--accent)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" className="traj-line" />
+        </svg>
+
+        {/* Vertical guide on hover */}
+        {hv && (
+          <span className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: `${hv.p.x}%`, background: "color-mix(in srgb, var(--accent) 35%, transparent)" }} />
+        )}
+
+        {/* Endpoint dot (hidden while hovering the last point to avoid doubling) */}
+        {!(hv && hover === n - 1) && (
+          <span
+            className="absolute w-[9px] h-[9px] rounded-full bg-[var(--accent)] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${last.x}%`, top: `${last.y}%`, boxShadow: "0 0 0 3px var(--panel), 0 0 9px 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
+          />
+        )}
+
+        {/* Hover node + tooltip */}
+        {hv && (
+          <>
+            <span
+              className="absolute w-[11px] h-[11px] rounded-full bg-[var(--accent)] -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ left: `${hv.p.x}%`, top: `${hv.p.y}%`, boxShadow: "0 0 0 3px var(--panel), 0 0 0 4px color-mix(in srgb, var(--accent) 28%, transparent)" }}
+            />
+            <div
+              className="absolute z-50 pointer-events-none rounded-[9px] border border-[var(--line)] bg-[var(--panel)] shadow-[0_8px_24px_rgba(20,20,45,.16)] px-3 py-2 w-[148px]"
+              style={{
+                left: `${hv.p.x}%`,
+                top: `${hv.p.y}%`,
+                transform: `translate(${hv.p.x < 18 ? "0" : hv.p.x > 82 ? "-100%" : "-50%"}, ${hv.p.y < 45 ? "14px" : "calc(-100% - 14px)"})`,
+              }}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="font-semibold text-[11px] text-[var(--ink)]">{hv.b.label}</span>
+                <span className="text-[10px] text-[var(--ink-3)]">{fmtWeek(hv.b.weekStart)}</span>
+              </div>
+              <TipRow label="Nota" value={hv.b.grade} color={TONE[hv.b.tone].fg} />
+              <TipRow label="Disciplina" value={String(hv.b.score)} />
+              <TipRow label="P&L" value={money(hv.b.net)} color={hv.b.net >= 0 ? "var(--win)" : "var(--loss)"} />
+              <TipRow label="Win rate" value={`${Math.round(hv.b.winRate)}%`} />
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Month axis */}
+      {months.length > 0 && (
+        <div className="flex justify-between mt-1">
+          {months.map((m, i) => (
+            <span key={i} className="text-[10px] font-semibold text-[var(--ink-3)]">{m}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TipRow({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-[1.5px]">
+      <span className="text-[10.5px] text-[var(--ink-3)]">{label}</span>
+      <span className="font-mono font-bold text-[11px]" style={{ color: color ?? "var(--ink)" }}>{value}</span>
+    </div>
+  )
 }
 
 export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoading: boolean }) {
   if (isLoading || !data) {
     return <div className="h-[300px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse mb-7" />
   }
-
-  const sg = data.scores.length ? spark(data.scores) : null
 
   return (
     <motion.section
@@ -66,38 +174,8 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
           </div>
           <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--ink-3)]">{data.sub}</p>
 
-          {/* Sparkline */}
-          {sg && (
-            <div className="relative mt-4">
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full block overflow-visible" style={{ height: 100 }}>
-                <defs>
-                  <linearGradient id="traj-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="var(--accent)" stopOpacity="0.20" />
-                    <stop offset="1" stopColor="var(--accent)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d={sg.area} fill="url(#traj-fill)" />
-                <path
-                  d={sg.line} fill="none" stroke="var(--accent)" strokeWidth={2.5}
-                  strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-                  className="traj-line"
-                />
-              </svg>
-              <span
-                className="absolute w-[9px] h-[9px] rounded-full bg-[var(--accent)] -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${sg.ex}%`, top: `${sg.ey}%`, boxShadow: "0 0 0 3px var(--panel), 0 0 9px 1px color-mix(in srgb, var(--accent) 55%, transparent)" }}
-              />
-            </div>
-          )}
-
-          {/* Month axis */}
-          {data.months.length > 0 && (
-            <div className="flex justify-between mt-1">
-              {data.months.map((m, i) => (
-                <span key={i} className="text-[10px] font-semibold text-[var(--ink-3)]">{m}</span>
-              ))}
-            </div>
-          )}
+          {/* Interactive discipline sparkline (hover for per-week detail) */}
+          {data.scores.length > 0 && <TrajectoryChart beads={data.beads} scores={data.scores} months={data.months} />}
 
           {/* Grade beads */}
           {data.beads.length > 0 && (
