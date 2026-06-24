@@ -19,8 +19,17 @@ function windowFor(period: ReviewPeriod): { from: Date; to: Date } {
 }
 
 export async function loadReviewInsights(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<Insight[]> {
+  return loadInsightsForWindow(prisma, userId, windowFor(period))
+}
+
+/**
+ * Same engine as loadReviewInsights but for an arbitrary date window (e.g. the whole
+ * history or a year/month range) — used by the Reviews "Trayectoria" recurring-pattern
+ * cards. `to` is an exclusive upper bound.
+ */
+export async function loadInsightsForWindow(prisma: PrismaClient, userId: string, window: { from: Date; to: Date }): Promise<Insight[]> {
   // includePractice=true to match the review report, which counts all closed trades.
-  const bundle = await buildAnalyticsBundle(userId, prisma, windowFor(period), true)
+  const bundle = await buildAnalyticsBundle(userId, prisma, window, true)
   return generateInsights({
     trades:      bundle.raw.trades,
     setups:      bundle.raw.setupsMeta,

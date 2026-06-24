@@ -8,6 +8,7 @@ import { computeDisciplineScore } from "@/domains/analytics/services/discipline-
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
 import { loadWeeklyCardStats } from "@/server/services/reviews/card-stats"
 import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
+import { loadReviewsOverview } from "@/server/services/reviews/overview"
 import { loadLearningSummary } from "@/server/services/reviews/learning-summary"
 import { buildAnalysisPrompt, runReviewAnalysis } from "@/server/services/reviews/review-ai"
 import { sendReviewEmail } from "@/server/services/email/send-review"
@@ -82,6 +83,12 @@ export const weeklyReviewsRouter = router({
         }
       })
     }),
+
+  // Trayectoria panel for the unified index: per-week grade series + from→to trend
+  // stats + recurring-pattern cards. Window = whole history, or the active year/month.
+  overview: protectedProcedure
+    .input(z.object({ year: z.number().int().optional(), month: z.number().int().min(1).max(12).optional() }).optional())
+    .query(({ ctx, input }) => loadReviewsOverview(ctx.prisma, ctx.userId, input ?? undefined)),
 
   getByWeek: protectedProcedure
     .input(z.object({ weekStart: z.string() }))

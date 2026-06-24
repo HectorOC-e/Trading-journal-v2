@@ -15,8 +15,8 @@ export interface GradeInput {
 }
 
 /** Composite 0–100 → letter grade. Anchored on discipline, nudged by performance. */
-export function deriveGrade(i: GradeInput): { letter: string; tone: VerdictTone } {
-  if (i.trades === 0) return { letter: "—", tone: "mid" }
+export function deriveGrade(i: GradeInput): { letter: string; tone: VerdictTone; score: number } {
+  if (i.trades === 0) return { letter: "—", tone: "mid", score: 0 }
   let s = i.disciplineScore ?? 60
   s += i.netPnl > 0 ? 8 : i.netPnl < 0 ? -8 : 0
   s += i.winRate >= 55 ? 4 : i.winRate < 40 ? -4 : 0
@@ -29,7 +29,7 @@ export function deriveGrade(i: GradeInput): { letter: string; tone: VerdictTone 
     s >= 60 ? "C+" : s >= 55 ? "C" : s >= 50 ? "C−" :
     s >= 40 ? "D" : "F"
   const tone: VerdictTone = s >= 70 ? "good" : s >= 55 ? "mid" : "bad"
-  return { letter, tone }
+  return { letter, tone, score: Math.round(s) }
 }
 
 /** Strip light markdown (bullets, emphasis, callouts) + LaTeX from a single line. */

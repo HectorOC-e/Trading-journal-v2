@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap");
 @import "tailwindcss";
 /* Predefined full palettes (generated from src/lib/theme — run scripts/gen-theme-css.mjs).
    Uses html[data-theme] selectors so it wins over :root regardless of @import order. */
@@ -250,6 +250,17 @@ body {
 .font-mono {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+}
+
+/* ── Reviews trajectory sparkline: draw-on stroke ── */
+.traj-line {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+  animation: traj-draw 1.7s var(--ease-out) 0.3s forwards;
+}
+@keyframes traj-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .traj-line { animation: none; stroke-dashoffset: 0; }
 }
 
 /* ── Shimmer animation (skeleton screens) ── */

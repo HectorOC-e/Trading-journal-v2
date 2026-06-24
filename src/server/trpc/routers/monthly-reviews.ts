@@ -72,6 +72,7 @@ export const monthlyReviewsRouter = router({
           gradeLetter: grade.letter,
           gradeTone: grade.tone,
           netPnl,
+          winRate: s?.winRate ?? 0,
           totalR: s?.totalR ?? 0,
           trades: s?.trades ?? 0,
           weeks: s?.weeks ?? [],
