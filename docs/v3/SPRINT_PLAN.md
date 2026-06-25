@@ -14,16 +14,16 @@
 
 ---
 
-## Sprint 0 — Fundaciones técnicas
+## Sprint 0 — Fundaciones técnicas ✅ EJECUTADO (v3.1.0)
 **Objetivo:** preparar el terreno sin romper v2.
-**Entregables:**
-- Bus de dominio general (extiende `coach-bus.ts`): eventos `trade.*`, `insight.*`, `commitment.*`, `rule.fired`.
-- Infra de jobs/scheduler (worker) para tareas periódicas.
-- Carpeta `domains/analytics/longitudinal/` con `rollingWindow` (primitiva) + tests.
-- Persistencia de `Insight` (tabla + migración) y `recomputeInsights` job (C8/#18).
+**Entregables (enmendados por ARCHITECTURE_FREEZE / ADR-001):**
+- [x] **Bus de dominio server** construido nuevo en `domains/cognitive/events/` (NO "extiende `coach-bus.ts`" — ese es un helper cliente de 9 líneas). Outbox `domain_events` + dispatcher + catálogo `FREEZE-EV`.
+- [x] Infra de jobs vía rutas cron (patrón existente `pg_cron→pg_net→/api/cron/*`): `recompute-insights`, `dispatch-events`.
+- [x] Carpeta `domains/analytics/longitudinal/` con `rollingWindow` (primitiva) + tests.
+- [x] Persistencia de `Insight` (tabla + migración) **con campos de confianza/n (ADR-002)** y `recomputeInsights` job (C8/#18).
 **Riesgos:** introducir workers en el stack actual (CI/email only). **Mitigación:** worker mínimo, idempotente.
-**Dependencias:** ninguna (raíz del DAG).
-**Validación:** tests de `rollingWindow`; migración replay; insights se persisten y resuelven.
+**Dependencias:** A0 (ADR-000..003) ✅.
+**Validación:** ✅ 817/817 tests (25 nuevos), tsc+eslint verdes; ⏳ migración replay vía CI (límite local). Ver `TEST_REPORT_SPRINT_0.md`.
 
 ## Sprint 1 — Unificación de Reglas (C6) + plantillas de protección
 **Objetivo:** un solo concepto "Regla" (enforce/warn) y protección de capital lista.

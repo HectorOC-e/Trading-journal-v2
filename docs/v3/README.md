@@ -29,5 +29,14 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 > Cada pantalla cumple una función. Ningún gráfico que no produzca una decisión.
 > Ningún insight que no termine en una acción: **regla, hábito, compromiso, aprendizaje o protección**.
 
+## Documentos de arquitectura (post-diseño)
+| Documento | Propósito |
+|---|---|
+| [REHYDRATION_REPORT.md](./REHYDRATION_REPORT.md) | Reconstrucción de contexto + estado real del código |
+| [ARCHITECTURE_CHALLENGE.md](./ARCHITECTURE_CHALLENGE.md) | Desafío crítico adversarial de la arquitectura |
+| [ARCHITECTURE_V3_1_DELTA.md](./ARCHITECTURE_V3_1_DELTA.md) | Fusión de hallazgos → cambios v3→v3.1 con gating |
+| [ARCHITECTURE_FREEZE.md](./ARCHITECTURE_FREEZE.md) | **Arquitectura oficial congelada (fuente de verdad).** |
+| [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
+
 ## Estado
-**FASE DE DISEÑO.** No se ha escrito código de producto. La implementación arranca solo tras aprobación del plan maestro.
+**SPRINT 0 EJECUTADO (v3.1.0).** Fundaciones técnicas implementadas estrictamente acotadas al freeze: `rollingWindow`, outbox de eventos (`domain_events`), `Insight` persistido (C8) y job `recomputeInsights`. No se ha avanzado a Sprint 1. Ver `CHANGELOG_SPRINT_0.md`, `DECISIONS_SPRINT_0.md`, `TEST_REPORT_SPRINT_0.md`, `OPEN_ITEMS_SPRINT_0.md`.
