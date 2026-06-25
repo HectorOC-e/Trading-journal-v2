@@ -17,7 +17,7 @@ import type {
 } from "@/domains/analytics/services/dashboard-analytics"
 import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
-import { runAutomations } from "@/domains/rules/engine"
+import { runRuleEngine } from "@/domains/rules/engine"
 import { buildContext } from "@/domains/rules/context"
 import { AppError } from "@/lib/errors/app-error"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
@@ -575,7 +575,7 @@ export const tradesRouter = router({
       }
 
       // 4) User automations — PRE-trade (may block the operation / mutate tags)
-      const preRules = await runAutomations(ctx.prisma, ctx.userId, "TRADE_PRE_CREATE", () =>
+      const preRules = await runRuleEngine(ctx.prisma, ctx.userId, "TRADE_PRE_CREATE", () =>
         buildContext(ctx.prisma, ctx.userId, { id: input.accountId, initialBalance: Number(account.initialBalance) }, {
           symbol: input.symbol, direction: input.direction, session: input.session ?? null,
           setupId: input.setupId ?? null, size: input.size, entry: input.entry, stop: input.stop,
@@ -598,7 +598,7 @@ export const tradesRouter = router({
       // User automations — POST-trade (best-effort; never break the write).
       try {
         const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_CREATED"
-        const postRules = await runAutomations(ctx.prisma, ctx.userId, postTrigger, () =>
+        const postRules = await runRuleEngine(ctx.prisma, ctx.userId, postTrigger, () =>
           buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(account.initialBalance) }, {
             symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
             setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
@@ -681,7 +681,7 @@ export const tradesRouter = router({
       try {
         const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
         const dateStr = (trade.date as Date).toISOString().slice(0, 10)
-        const postRules = await runAutomations(ctx.prisma, ctx.userId, postTrigger, () =>
+        const postRules = await runRuleEngine(ctx.prisma, ctx.userId, postTrigger, () =>
           buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(trade.account.initialBalance) }, {
             symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
             setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
