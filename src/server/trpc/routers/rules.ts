@@ -24,9 +24,18 @@ const SYSTEM_DEFAULTS = [
 export const rulesRouter = router({
   list: protectedProcedure
     .query(({ ctx }) =>
+      // Scalar `select` only: the unified Rule now has Json columns (conditions/
+      // actions, S1) whose recursive Prisma.JsonValue type tips tRPC + React Query
+      // inference over the TS2589 depth limit at the call sites. The descriptive
+      // list view never needs them — executable fields are edited via Automations.
       ctx.prisma.rule.findMany({
         where:   { userId: ctx.userId },
         orderBy: [{ isSystem: "desc" }, { severity: "asc" }, { name: "asc" }],
+        select: {
+          id: true, name: true, description: true, severity: true,
+          isSystem: true, enabled: true, mode: true,
+          createdAt: true, updatedAt: true,
+        },
       })
     ),
 
