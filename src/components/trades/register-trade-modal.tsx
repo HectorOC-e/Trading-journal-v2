@@ -17,6 +17,8 @@ import { SymbolCombobox } from "@/components/ui/market-select"
 import { cn } from "@/lib/utils"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { trpc } from "@/lib/trpc/client"
+import { EmotionInsight } from "@/components/trades/emotion-insight"
+import { NoteTagSuggestions } from "@/components/trades/note-tag-suggestions"
 import { localDateISO } from "@/lib/datetime/local"
 import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
 import { computeNotional, computeLeverageMetrics, leverageBand, LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
@@ -209,6 +211,11 @@ export function RegisterTradeModal({
   // backend's trading-day boundaries (which also use the profile tz).
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 })
   const userTimezone = profile?.timezone
+  // D10 incentive: the trader's history for the currently-selected pre-trade emotion.
+  const { data: emotionFeedback } = trpc.trades.emotionFeedback.useQuery(
+    { emotion: form.emotionBefore ?? "" },
+    { enabled: !!form.emotionBefore, staleTime: 60_000 },
+  )
   // Purely-UI toggles that aren't part of the validated form payload.
   const [uploading, setUploading] = useState(false)
   const [psychOpen, setPsychOpen] = useState(false)
@@ -888,6 +895,12 @@ export function RegisterTradeModal({
               placeholder="Entrada en zona de liquidez…"
               {...register("notes")}
             />
+            {/* #37 — suggestion-only auto-tagging from the note. */}
+            <NoteTagSuggestions
+              note={form.notes}
+              applied={form.tags}
+              onAdd={(tag) => toggleManualTag(tag as TradeTag)}
+            />
           </div>
 
           {/* ── Psicología (collapsible) ── */}
@@ -937,6 +950,8 @@ export function RegisterTradeModal({
                       </button>
                     ))}
                   </div>
+                  {/* DELTA D10 — the captured emotion returns value in the moment. */}
+                  <EmotionInsight feedback={emotionFeedback ?? null} />
                 </div>
 
                 {/* Confianza + Calidad de ejecución */}
