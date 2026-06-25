@@ -41,10 +41,12 @@ export function ReviewsTimeline({
 }) {
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-[18px]">
-      {showHero && heroSlot && <motion.div variants={fadeUpItem}>{heroSlot}</motion.div>}
+      {showHero && heroSlot && (
+        <motion.div id="review-hero" variants={fadeUpItem} className="scroll-mt-6">{heroSlot}</motion.div>
+      )}
 
       {chapters.map(ch => (
-        <motion.section key={ch.key} variants={fadeUpItem}>
+        <motion.section key={ch.key} id={`chapter-${ch.key}`} variants={fadeUpItem} className="scroll-mt-6">
           <EditionHeader data={ch.edition} onOpen={() => onOpenEdition(ch)} />
 
           <div className="pt-1.5">

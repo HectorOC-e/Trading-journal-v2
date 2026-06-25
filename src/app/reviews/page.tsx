@@ -18,7 +18,9 @@ import type { RouterOutputs } from "@/server/trpc/root"
 import { WeekHero } from "./components/week-hero"
 import { TrajectoryPanel } from "./components/trajectory-panel"
 import { ReviewsTimeline, type TimelineChapter } from "./components/reviews-timeline"
-import { ReviewsCalendarFilter, type MonthFilter } from "./components/reviews-calendar-filter"
+import { ReviewsRail } from "./components/reviews-rail"
+import type { JumpItem } from "./components/month-jump-index"
+import type { MonthFilter } from "./components/reviews-calendar-filter"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { deriveGrade, deriveVerdict, type VerdictTone } from "@/server/services/reviews/verdict"
 import type { EditionHeaderData } from "./components/edition-header"
@@ -151,6 +153,14 @@ function ReviewsPageContent() {
   const showHero = monthFilter == null
     || (monthFilter.year === +currentYm.slice(0, 4) && (monthFilter.month == null || monthFilter.month === +currentYm.slice(5, 7)))
 
+  // Anchors for the rail's "Saltar a mes" jump index (matches the timeline ids).
+  const jumpItems = useMemo<JumpItem[]>(() => {
+    const items: JumpItem[] = []
+    if (showHero) items.push({ id: "review-hero", label: "Semana en curso" })
+    for (const ch of chapters) items.push({ id: `chapter-${ch.key}`, label: `${MONTHS_LONG[ch.month - 1]} ${ch.year}` })
+    return items
+  }, [showHero, chapters])
+
   const goNewWeekly = () => router.push(`/reviews/semanal/${thisMonday}`)
   const openWeek    = (r: ReviewFromDB) => router.push(`/reviews/semanal/${r.weekStart}`)
   const openEdition = (ch: TimelineChapter) => router.push(`/reviews/mensual/${ch.year}-${String(ch.month).padStart(2, "0")}`)
@@ -166,48 +176,57 @@ function ReviewsPageContent() {
           actions={[{ label: "Nueva review", icon: <Plus size={14} />, variant: "primary", onClick: goNewWeekly }]}
         />
 
-        <div className="mx-auto max-w-[944px]">
-          {/* Discreet year/month filter */}
-          <div className="flex items-center justify-end gap-2.5 mb-4">
-            <ReviewsCalendarFilter value={monthFilter} onChange={setMonthFilter} monthsWithReviews={monthsWithReviews} />
-          </div>
-
-          {/* Trayectoria */}
+        <div className="mx-auto max-w-[1320px]">
+          {/* Trayectoria — full-width band */}
           <TrajectoryPanel data={overview} isLoading={overviewLoading} />
 
-          {/* Hero + chapters */}
-          {isLoading ? (
-            <div className="flex flex-col gap-3">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="h-[176px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <>
-              <ReviewsTimeline
-                chapters={chapters}
-                heroSlot={<WeekHero data={currentWeek} weekStart={thisMonday} isLoading={currentWeekLoading} />}
-                showHero={showHero}
-                onOpenWeek={openWeek}
-                onDeleteWeek={setPendingDelete}
-                onOpenEdition={openEdition}
-                accountName={accountName}
-              />
+          {/* Desktop workspace: sticky rail + timeline. Collapses to one column < lg. */}
+          <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6 lg:items-start">
+            <ReviewsRail
+              filter={monthFilter}
+              onFilterChange={setMonthFilter}
+              monthsWithReviews={monthsWithReviews}
+              onNewReview={goNewWeekly}
+              overview={overview}
+              jumpItems={jumpItems}
+            />
 
-              {chapters.length === 0 && showHero && reviews.filter(r => r.weekStart !== thisMonday).length === 0 && (
-                <p className="text-center text-[13px] text-[var(--ink-3)] py-8">
-                  Aún no hay semanas anteriores. Tu semana en curso está arriba.
-                </p>
-              )}
-
-              {noContent && (
-                <div className="flex flex-col items-center justify-center py-14 gap-3">
-                  <p className="text-[13px] text-[var(--ink-3)]">Sin reviews para este filtro.</p>
-                  <Button variant="subtle" onClick={() => setMonthFilter(null)}>Quitar filtro</Button>
+            <div className="min-w-0">
+              {/* Hero + chapters */}
+              {isLoading ? (
+                <div className="flex flex-col gap-3">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-[176px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
+                  ))}
                 </div>
+              ) : (
+                <>
+                  <ReviewsTimeline
+                    chapters={chapters}
+                    heroSlot={<WeekHero data={currentWeek} weekStart={thisMonday} isLoading={currentWeekLoading} />}
+                    showHero={showHero}
+                    onOpenWeek={openWeek}
+                    onDeleteWeek={setPendingDelete}
+                    onOpenEdition={openEdition}
+                    accountName={accountName}
+                  />
+
+                  {chapters.length === 0 && showHero && reviews.filter(r => r.weekStart !== thisMonday).length === 0 && (
+                    <p className="text-center text-[13px] text-[var(--ink-3)] py-8">
+                      Aún no hay semanas anteriores. Tu semana en curso está arriba.
+                    </p>
+                  )}
+
+                  {noContent && (
+                    <div className="flex flex-col items-center justify-center py-14 gap-3">
+                      <p className="text-[13px] text-[var(--ink-3)]">Sin reviews para este filtro.</p>
+                      <Button variant="subtle" onClick={() => setMonthFilter(null)}>Quitar filtro</Button>
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+          </div>
         </div>
       </div>
 

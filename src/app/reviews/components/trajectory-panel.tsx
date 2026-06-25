@@ -158,12 +158,11 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: EASE_OUT }}
-      className="group rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden mb-7 transition-[box-shadow,border-color] duration-300 shadow-[0_1px_3px_rgba(20,20,45,.05),0_10px_30px_rgba(20,20,45,.04)] hover:shadow-[0_6px_18px_rgba(20,20,45,.08),0_20px_46px_rgba(20,20,45,.06)] hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--line))]"
+      className="group rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] overflow-hidden mb-6 transition-[box-shadow,border-color] duration-300 shadow-[0_1px_3px_rgba(20,20,45,.05),0_10px_30px_rgba(20,20,45,.04)] hover:shadow-[0_6px_18px_rgba(20,20,45,.08),0_20px_46px_rgba(20,20,45,.06)] hover:border-[color-mix(in_srgb,var(--accent)_22%,var(--line))]"
     >
-      <div className="grid lg:grid-cols-[1.55fr_1fr]">
-        {/* ── Left: trajectory ── */}
-        <div className="p-5 sm:p-6">
-          <div className="text-[10px] font-bold tracking-[0.13em] text-[var(--ink-3)]">TRAYECTORIA · TU HISTORIAL</div>
+      {/* Full-width band — recurring patterns now live in the index rail. */}
+      <div className="p-5 sm:p-6">
+        <div className="text-[10px] font-bold tracking-[0.13em] text-[var(--ink-3)]">TRAYECTORIA · TU HISTORIAL</div>
           <div className="flex items-baseline gap-3 mt-2 flex-wrap">
             <span className="text-[26px] font-extrabold tracking-[-0.025em] text-[var(--ink)]">{data.headline}</span>
             {data.trendDeltaText && (
@@ -214,32 +213,6 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
               ))}
             </motion.div>
           )}
-        </div>
-
-        {/* ── Right: recurring patterns ── */}
-        <div className="p-5 sm:p-[22px] border-t lg:border-t-0 lg:border-l border-[var(--line)] bg-[var(--panel-2)] flex flex-col gap-[13px]">
-          <div className="text-[10px] font-bold tracking-[0.13em] text-[var(--ink-3)]">PATRÓN RECURRENTE</div>
-          {data.patterns.length === 0 ? (
-            <p className="text-[12px] text-[var(--ink-3)] leading-relaxed">Aún no hay suficientes operaciones para detectar patrones. Sigue registrando tus semanas.</p>
-          ) : (
-            data.patterns.map((p, i) => {
-              const t = TONE[p.tone]
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.1 + i * 0.08 }}
-                  whileHover={{ y: -2 }}
-                  className="rounded-[11px] bg-[var(--panel)] border border-[var(--line)] p-3.5 transition-[border-color,box-shadow] duration-200 hover:border-[color-mix(in_srgb,var(--accent)_40%,var(--line))] hover:shadow-[0_6px_18px_rgba(20,20,45,.08)]"
-                >
-                  <span className="inline-block text-[10px] font-bold rounded-full px-2.5 py-[3px] tracking-[0.02em]" style={{ color: t.fg, background: t.bg }}>{p.tag}</span>
-                  <p className="mt-2.5 text-[12.5px] leading-relaxed text-[var(--ink-2)]">{p.body}</p>
-                </motion.div>
-              )
-            })
-          )}
-        </div>
       </div>
     </motion.section>
   )
