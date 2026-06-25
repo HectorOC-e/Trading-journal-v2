@@ -286,6 +286,15 @@ model TradeEvent {
   @@map("trade_events")
 }
 
+// UNIFIED Rule (v3.1 Sprint 1 — C6, FREEZE-E2/D8/D9).
+// v2 split rules into descriptive `Rule` + executable `Automation`. v3 unifies them
+// into one model with `mode: enforce | warn`. The executable fields (trigger/
+// conditions/actions/priority/category/lastFiredAt) are ADDED here; `Automation`
+// rows are backfilled into this table (source_automation_id) by the S1 migration,
+// non-destructively. ENFORCEMENT still runs off `Automation` until the cutover is
+// verified at gate G2 (FREEZE-P9) — see DECISIONS_SPRINT_1. source_commitment_id /
+// source_insight_id are provenance for the Behavior Engine (S4/S5); plain uuids
+// (no FK) since Commitment does not exist yet.
 model Rule {
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
@@ -294,11 +303,23 @@ model Rule {
   severity    String   @default("CRÍTICA")
   isSystem    Boolean  @default(false) @map("is_system")
   enabled     Boolean  @default(true)
+  mode        String   @default("warn") // enforce | warn
+  trigger     String? // TRADE_PRE_CREATE | TRADE_CREATED | TRADE_CLOSED | TRADE_UPDATED | null (descriptive)
+  conditions  Json     @default("{}")
+  actions     Json     @default("[]")
+  priority    Int      @default(0)
+  category    String   @default("")
+  lastFiredAt DateTime? @map("last_fired_at")
+  sourceAutomationId String? @map("source_automation_id") @db.Uuid
+  sourceCommitmentId String? @map("source_commitment_id") @db.Uuid
+  sourceInsightId    String? @map("source_insight_id") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([sourceAutomationId])
   @@map("rules")
 }
 

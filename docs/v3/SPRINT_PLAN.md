@@ -25,14 +25,16 @@
 **Dependencias:** A0 (ADR-000..003) ✅.
 **Validación:** ✅ 817/817 tests (25 nuevos), tsc+eslint verdes; ⏳ migración replay vía CI (límite local). Ver `TEST_REPORT_SPRINT_0.md`.
 
-## Sprint 1 — Unificación de Reglas (C6) + plantillas de protección
+## Sprint 1 — Unificación de Reglas (C6) + plantillas de protección ✅ EJECUTADO (v3.1.0)
 **Objetivo:** un solo concepto "Regla" (enforce/warn) y protección de capital lista.
 **Entregables:**
-- Modelo `Rule` unificado (mode, conditions, actions, trigger); **migración** de `Rule`+`Automation` v2 sin pérdida.
-- Badge enforce/warn en UI; plantillas: stop diario $, pérdida semanal, cool-down 2 pérdidas intradía, no-aumentar-tras-pérdida, energía<3 (#8, #11).
-**Riesgos:** migración de datos duales. **Mitigación:** script idempotente + dry-run; conservar `Automation` hasta verificar.
+- [x] Modelo `Rule` unificado (mode, trigger, conditions, actions, source links); **migración aditiva no destructiva** + backfill idempotente desde `Automation` (mode=enforce si hay BLOCK).
+- [x] Badge enforce/warn en UI (`RuleModeBadge`, integrado en `app/reglas`); plantillas de protección (`PROTECTION_TEMPLATES`): stop diario, pérdida semanal, cool-down (#8, #11). `no-aumentar-tras-pérdida` y `energía<3` **catalogadas pero gated** (requieren campos de S2/S8 — sin enforcement falso).
+- [x] Informe de no-mapeo (dry-run, read-only) para la revisión humana de **gate G2** (`migration-report.ts` + cron route).
+**Riesgos:** migración de datos duales. **Mitigación:** backfill idempotente; `Automation` se conserva y **el motor sigue enforzando desde `Automation`** (cutover gated a G2).
 **Dependencias:** S0.
-**Validación:** migración replay; reglas v2 siguen disparando; bloqueo pre-trade intacto.
+**Validación:** ✅ 836/836 tests (+19, TDD), tsc+eslint verdes, **32/32 tests del motor de reglas sin regresión (bloqueo pre-trade intacto)**; ⏳ migración replay vía CI. Ver `TEST_REPORT_SPRINT_1.md`.
+**Pendiente (gate G2, no parte de S1):** revisar el informe de no-mapeo y ejecutar el **cutover de enforcement** `Automation`→`Rule`.
 
 ## Sprint 2 — Captura de trade v3 (C7)
 **Objetivo:** alimentar los motores (psico no opcional silenciosa).
