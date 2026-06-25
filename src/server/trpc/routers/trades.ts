@@ -505,6 +505,11 @@ export const tradesRouter = router({
       revengeFlag:     z.boolean().optional(),
       // Pre-trade planning field (TASK-074)
       planNotes:       z.string().max(500).optional().nullable(),
+      // Capture v3 (Sprint 2, C7 / FREEZE-E1) — all optional, additive.
+      riskPct:         z.number().optional().nullable(), // derived client-side via deriveRiskPct (#27)
+      maeR:            z.number().optional().nullable(), // max adverse excursion in R (#35)
+      mfeR:            z.number().optional().nullable(), // max favorable excursion in R (#35)
+      regime:          z.enum(["trend", "range", "volatile"]).optional().nullable(), // E5.C6
     }))
     .mutation(async ({ ctx, input }) => {
       // ── Account + risk-limit enforcement (HALLAZGO 1B) ─────────────────────

@@ -55,6 +55,8 @@ model User {
   tags                     Tag[]
   automations              Automation[]
   customPalettes           CustomPalette[]
+  domainEvents             DomainEvent[]
+  insights                 Insight[]
 
   @@map("users")
 }
@@ -250,6 +252,11 @@ model Trade {
   fomoFlag         Boolean  @default(false) @map("fomo_flag")
   revengeFlag      Boolean  @default(false) @map("revenge_flag")
   planNotes        String?  @map("plan_notes") @db.VarChar(500)
+  // ── Capture v3 (Sprint 2, C7 / FREEZE-E1) ───────────────
+  riskPct          Decimal? @map("risk_pct") @db.Decimal(6, 3) // derived from entry/stop/size/balance (#27)
+  maeR             Decimal? @map("mae_r") @db.Decimal(8, 3)    // max adverse excursion in R (#35)
+  mfeR             Decimal? @map("mfe_r") @db.Decimal(8, 3)    // max favorable excursion in R (#35)
+  regime           String?  // trend | range | volatile (E5.C6, manual v3.0)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -284,6 +291,15 @@ model TradeEvent {
   @@map("trade_events")
 }
 
+// UNIFIED Rule (v3.1 Sprint 1 — C6, FREEZE-E2/D8/D9).
+// v2 split rules into descriptive `Rule` + executable `Automation`. v3 unifies them
+// into one model with `mode: enforce | warn`. The executable fields (trigger/
+// conditions/actions/priority/category/lastFiredAt) are ADDED here; `Automation`
+// rows are backfilled into this table (source_automation_id) by the S1 migration,
+// non-destructively. ENFORCEMENT still runs off `Automation` until the cutover is
+// verified at gate G2 (FREEZE-P9) — see DECISIONS_SPRINT_1. source_commitment_id /
+// source_insight_id are provenance for the Behavior Engine (S4/S5); plain uuids
+// (no FK) since Commitment does not exist yet.
 model Rule {
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
@@ -292,11 +308,23 @@ model Rule {
   severity    String   @default("CRÍTICA")
   isSystem    Boolean  @default(false) @map("is_system")
   enabled     Boolean  @default(true)
+  mode        String   @default("warn") // enforce | warn
+  trigger     String? // TRADE_PRE_CREATE | TRADE_CREATED | TRADE_CLOSED | TRADE_UPDATED | null (descriptive)
+  conditions  Json     @default("{}")
+  actions     Json     @default("[]")
+  priority    Int      @default(0)
+  category    String   @default("")
+  lastFiredAt DateTime? @map("last_fired_at")
+  sourceAutomationId String? @map("source_automation_id") @db.Uuid
+  sourceCommitmentId String? @map("source_commitment_id") @db.Uuid
+  sourceInsightId    String? @map("source_insight_id") @db.Uuid
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([sourceAutomationId])
   @@map("rules")
 }
 
@@ -800,4 +828,72 @@ model UserAiConfig {
   @@unique([userId, provider])
   @@index([userId])
   @@map("user_ai_configs")
+}
+
+// ─────────────────────────────────────────────
+// DOMAIN EVENT (v3.1 Sprint 0 — Cognitive Engine outbox)
+// Transactional outbox backbone (ADR-001, FREEZE-D1/D6, entity E5).
+// Every domain mutation writes an event row in its own transaction; a dispatcher
+// claims pending rows and runs handlers (at-least-once + idempotent). Consumers
+// are wired in later sprints — S0 ships the transport only.
+// Partial indexes (pending hot-path, dedupe) + RLS live in the SQL migration.
+// ─────────────────────────────────────────────
+model DomainEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        String // one of DOMAIN_EVENT_TYPES (FREEZE-EV catalog)
+  payload     Json      @default("{}")
+  status      String    @default("pending") // pending | processing | processed | failed
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5) @map("max_attempts")
+  dedupeKey   String?   @map("dedupe_key")
+  occurredAt  DateTime  @default(now()) @map("occurred_at")
+  processedAt DateTime? @map("processed_at")
+  lastError   String?   @map("last_error")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("domain_events")
+}
+
+// ─────────────────────────────────────────────
+// INSIGHT (v3.1 Sprint 0 — persisted insights, C8 / FREEZE-E6)
+// v2 recomputed insights per-request and threw them away. v3 persists them so
+// "did this get better or worse?" is answerable, and so the feed/intervention can
+// reference them. Carries statistical-honesty fields (ADR-002): sample_size is
+// always real; confidence/credible interval/effect_size stay null until the
+// Bayesian estimator lands in S3. One ACTIVE row per (user, fingerprint); resolved
+// rows are kept as history (unique partial index in the SQL migration).
+// ─────────────────────────────────────────────
+model Insight {
+  id                   String    @id @default(uuid()) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  fingerprint          String // stable identity across runs, e.g. "type:scope"
+  type                 String
+  category             String
+  severity             String
+  title                String
+  detail               String
+  evidence             String
+  recommendation       String?
+  metric               Float?
+  sampleSize           Int       @default(0) @map("sample_size")
+  confidence           Float?
+  credibleIntervalLow  Float?    @map("credible_interval_low")
+  credibleIntervalHigh Float?    @map("credible_interval_high")
+  effectSize           Float?    @map("effect_size")
+  windowFrom           DateTime? @map("window_from") @db.Date
+  windowTo             DateTime? @map("window_to") @db.Date
+  status               String    @default("active") // active | resolved | committed
+  sourceDetector       String?   @map("source_detector")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  lastSeenAt           DateTime  @default(now()) @map("last_seen_at")
+  resolvedAt           DateTime? @map("resolved_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("insights")
 }

@@ -14,6 +14,8 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { RuleBuilder, type RuleDraft } from "@/components/rules/rule-builder"
+import { RuleModeBadge } from "@/components/rules/rule-mode-badge"
+import { classifyMode } from "@/domains/rules/unification"
 import type { RuleAction, Trigger, ConditionNode } from "@/domains/rules/types"
 
 type AutomationRow = {
@@ -88,7 +90,10 @@ function AutomationsTab() {
           {rows.map((r) => (
             <div key={r.id} className="flex items-center gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] px-4 py-3" style={{ opacity: r.enabled ? 1 : 0.55 }}>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</span>
+                  <RuleModeBadge mode={classifyMode(r.actions ?? [])} />
+                </div>
                 <div className="mt-0.5 text-[11px] text-[var(--ink-3)]">
                   <span className="text-[var(--accent)]">⚡ {TRIGGER_LABEL[r.trigger] ?? r.trigger}</span>
                   {" · "}<span className="text-[var(--win)]">{(r.actions ?? []).map((a) => ACTION_LABEL[a.type] ?? a.type).join(", ")}</span>
