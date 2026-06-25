@@ -37,6 +37,14 @@ export interface OverviewPattern {
   tone: VerdictTone
 }
 
+/** Compact KPIs for the index rail's "Resumen del periodo" card. */
+export interface OverviewSummary {
+  weeks: number                                  // traded weeks in the window
+  greenStreak: number                            // trailing run of green (net ≥ 0) weeks
+  best: { label: string; net: number } | null    // best/worst week by net P&L
+  worst: { label: string; net: number } | null
+}
+
 export interface ReviewsOverview {
   weeksCount: number
   headline: string
@@ -48,9 +56,28 @@ export interface ReviewsOverview {
   months: string[]
   stats: OverviewStat[]
   patterns: OverviewPattern[]
+  summary: OverviewSummary
 }
 
 export interface OverviewFilter { year?: number; month?: number }
+
+/**
+ * Period KPIs for the rail's "Resumen del periodo" card: traded-week count, the
+ * trailing run of green (net ≥ 0) weeks, and the best/worst week by net P&L.
+ * Pure (no I/O) so it can be unit-tested directly. `weeks` is chronological.
+ */
+export function buildPeriodSummary(weeks: { label: string; net: number }[]): OverviewSummary {
+  if (weeks.length === 0) return { weeks: 0, greenStreak: 0, best: null, worst: null }
+  let greenStreak = 0
+  for (let i = weeks.length - 1; i >= 0; i--) { if (weeks[i].net >= 0) greenStreak++; else break }
+  const best  = weeks.reduce((b, w) => (w.net > b.net ? w : b))
+  const worst = weeks.reduce((b, w) => (w.net < b.net ? w : b))
+  return {
+    weeks: weeks.length, greenStreak,
+    best:  { label: best.label,  net: best.net },
+    worst: { label: worst.label, net: worst.net },
+  }
+}
 
 const money = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 const moneyShort = (n: number) => {
@@ -131,6 +158,7 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
       weeksCount: 0, headline: "Aún sin datos", trendDeltaText: null, trendPositive: true,
       sub: "Cierra tu primera semana para empezar a ver tu trayectoria.",
       beads: [], scores: [], months: [], stats: [], patterns,
+      summary: { weeks: 0, greenStreak: 0, best: null, worst: null },
     }
   }
 
@@ -166,8 +194,8 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
   const headline = discDelta >= 4 ? "Vas mejorando" : discDelta <= -4 ? "Atención al control" : "Te mantienes firme"
   const trendPositive = discDelta >= 0
   const trendDeltaText = ymOrder.length > 1 ? delta(discDelta) + " pts" : null
-  let greenStreak = 0
-  for (let i = weeks.length - 1; i >= 0; i--) { if (weeks[i].net >= 0) greenStreak++; else break }
+  const summary = buildPeriodSummary(weeks)
+  const greenStreak = summary.greenStreak
   const monthsSpan = ymOrder.length
   const sub = monthsSpan > 1
     ? `Disciplina media ${discFrom} → ${discTo} en ${monthsSpan} meses` + (greenStreak >= 2 ? ` · ${greenStreak} semanas verdes seguidas.` : ".")
@@ -181,6 +209,7 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
     months,
     stats: trendStats,
     patterns,
+    summary,
   }
 }
 

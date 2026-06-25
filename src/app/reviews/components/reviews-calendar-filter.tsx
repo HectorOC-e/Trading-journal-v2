@@ -23,10 +23,11 @@ function labelFor(v: MonthFilter): string {
  * reviews are highlighted. Picking a month filters the timeline to it; "Todo el
  * año" filters to the whole year; "Todos" clears.
  */
-export function ReviewsCalendarFilter({ value, onChange, monthsWithReviews }: {
+export function ReviewsCalendarFilter({ value, onChange, monthsWithReviews, align = "right" }: {
   value: MonthFilter
   onChange: (v: MonthFilter) => void
   monthsWithReviews: Set<string> // "YYYY-MM"
+  align?: "left" | "right" // popover edge to anchor to (rail uses "left")
 }) {
   const [open, setOpen] = useState(false)
   const [viewYear, setViewYear] = useState(value?.year ?? new Date().getFullYear())
@@ -79,8 +80,11 @@ export function ReviewsCalendarFilter({ value, onChange, monthsWithReviews }: {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: -4 }}
             transition={{ duration: 0.16, ease: EASE_OUT }}
-            style={{ transformOrigin: "top right" }}
-            className="absolute right-0 top-9 z-30 w-[248px] max-w-[calc(100vw-2rem)] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] shadow-[var(--shadow-lg)] p-3"
+            style={{ transformOrigin: align === "left" ? "top left" : "top right" }}
+            className={cn(
+              "absolute top-9 z-30 w-[248px] max-w-[calc(100vw-2rem)] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] shadow-[var(--shadow-lg)] p-3",
+              align === "left" ? "left-0" : "right-0",
+            )}
           >
             {/* Year nav */}
             <div className="flex items-center justify-between mb-2.5">
