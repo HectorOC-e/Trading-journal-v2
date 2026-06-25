@@ -3,6 +3,16 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import { TRIGGERS, PRE_TRIGGERS, type ConditionNode } from "@/domains/rules/types"
 import { TEMPLATES, TEMPLATE_MAP } from "@/domains/rules/templates"
+import {
+  syncRuleFromAutomation, deleteRuleForAutomation, patchRuleForAutomation,
+  type AutomationLike,
+} from "@/domains/rules/rule-sync"
+
+// G2 dual-write: keep the unified `rules` mirror in sync. Best-effort — a mirror
+// failure must never break the primary automation write.
+async function mirror(fn: () => Promise<void>): Promise<void> {
+  try { await fn() } catch (e) { console.warn("[rules] dual-write mirror failed:", e instanceof Error ? e.message : e) }
+}
 
 const cmp = z.enum(["gt", "gte", "lt", "lte", "eq", "neq", "contains", "in"])
 const conditionValue = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())])
@@ -48,44 +58,54 @@ export const automationsRouter = router({
 
   templates: protectedProcedure.query(() => TEMPLATES),
 
-  create: protectedProcedure.input(ruleInput).mutation(({ ctx, input }) =>
-    ctx.prisma.automation.create({
+  create: protectedProcedure.input(ruleInput).mutation(async ({ ctx, input }) => {
+    const auto = await ctx.prisma.automation.create({
       data: { ...input, conditions: input.conditions as object, actions: input.actions as object, userId: ctx.userId },
-    }),
-  ),
+    })
+    await mirror(() => syncRuleFromAutomation(ctx.prisma, ctx.userId, auto as AutomationLike))
+    return auto
+  }),
 
   createFromTemplate: protectedProcedure
     .input(z.object({ templateId: z.string() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const t = TEMPLATE_MAP[input.templateId]
       if (!t) throw new TRPCError({ code: "NOT_FOUND", message: "Plantilla no encontrada" })
-      return ctx.prisma.automation.create({
+      const auto = await ctx.prisma.automation.create({
         data: {
           userId: ctx.userId, name: t.name, description: t.description, category: t.category,
           trigger: t.trigger, conditions: t.conditions as object, actions: t.actions as object, enabled: true,
         },
       })
+      await mirror(() => syncRuleFromAutomation(ctx.prisma, ctx.userId, auto as AutomationLike))
+      return auto
     }),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).and(ruleInput))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
-      return ctx.prisma.automation.update({
+      const auto = await ctx.prisma.automation.update({
         where: { id, userId: ctx.userId },
         data:  { ...data, conditions: data.conditions as object, actions: data.actions as object },
       })
+      await mirror(() => syncRuleFromAutomation(ctx.prisma, ctx.userId, auto as AutomationLike))
+      return auto
     }),
 
   toggle: protectedProcedure
     .input(z.object({ id: z.string().uuid(), enabled: z.boolean() }))
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.automation.updateMany({ where: { id: input.id, userId: ctx.userId }, data: { enabled: input.enabled } }),
-    ),
+    .mutation(async ({ ctx, input }) => {
+      const res = await ctx.prisma.automation.updateMany({ where: { id: input.id, userId: ctx.userId }, data: { enabled: input.enabled } })
+      await mirror(() => patchRuleForAutomation(ctx.prisma, ctx.userId, input.id, { enabled: input.enabled }))
+      return res
+    }),
 
-  delete: protectedProcedure.input(z.string().uuid()).mutation(({ ctx, input }) =>
-    ctx.prisma.automation.deleteMany({ where: { id: input, userId: ctx.userId } }),
-  ),
+  delete: protectedProcedure.input(z.string().uuid()).mutation(async ({ ctx, input }) => {
+    const res = await ctx.prisma.automation.deleteMany({ where: { id: input, userId: ctx.userId } })
+    await mirror(() => deleteRuleForAutomation(ctx.prisma, ctx.userId, input))
+    return res
+  }),
 
   reorder: protectedProcedure
     .input(z.object({ ids: z.array(z.string().uuid()) }))
@@ -96,6 +116,11 @@ export const automationsRouter = router({
           ctx.prisma.automation.updateMany({ where: { id, userId: ctx.userId }, data: { priority: Math.max(0, 3 - i) } }),
         ),
       )
+      await mirror(async () => {
+        for (let i = 0; i < input.ids.length; i++) {
+          await patchRuleForAutomation(ctx.prisma, ctx.userId, input.ids[i], { priority: Math.max(0, 3 - i) })
+        }
+      })
       return { ok: true }
     }),
 })

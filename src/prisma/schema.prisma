@@ -25,6 +25,9 @@ model User {
   weeklyPnlGoal       Decimal? @map("weekly_pnl_goal") @db.Decimal(14, 2)
   disciplineGoal      Int?     @map("discipline_goal")
   onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  // BIZ-1 (ADR-004, Decisión B): opt-in al aprendizaje agregado anónimo cross-user
+  // (el moat). Default false. Reserva la frontera; el modelo poblacional es futuro.
+  dataSharingConsent  Boolean  @default(false) @map("data_sharing_consent")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
