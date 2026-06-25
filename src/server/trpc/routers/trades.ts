@@ -19,6 +19,9 @@ import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runAutomations } from "@/domains/rules/engine"
 import { buildContext } from "@/domains/rules/context"
+import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
+import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
+import { feedbackForEmotion } from "@/domains/trading/services/emotion-feedback"
 import { AppError } from "@/lib/errors/app-error"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
@@ -587,8 +590,14 @@ export const tradesRouter = router({
         ? [...new Set([...input.tags, ...preRules.addTags])].filter((t) => !preRules.removeTags.includes(t))
         : input.tags
 
+      // riskPct fallback (#27, S2 DT-1): derive server-side when the client did not
+      // send it (e.g. imports / API), so the column is never silently null.
+      const riskPctValue =
+        input.riskPct ??
+        deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: Number(account.initialBalance) })
+
       const trade = await ctx.prisma.trade.create({
-        data: { ...input, tags: effectiveTags, userId: ctx.userId, date: new Date(input.date) },
+        data: { ...input, riskPct: riskPctValue, tags: effectiveTags, userId: ctx.userId, date: new Date(input.date) },
         include: { account: true, setup: true, events: true },
       })
 
@@ -911,9 +920,25 @@ export const tradesRouter = router({
       itemsTotal:   z.number().int().min(0),
     }))
     .mutation(async ({ ctx, input }) => {
-      await ctx.prisma.trade.findUniqueOrThrow({
-        where: { id: input.tradeId, userId: ctx.userId },
+      const trade = await ctx.prisma.trade.findUniqueOrThrow({
+        where:  { id: input.tradeId, userId: ctx.userId },
+        select: { tags: true },
       })
+
+      // Off-plan auto-tag (E5.C3, S2 DT-5): a setup checklist left incomplete tags
+      // the trade "Off-plan" automatically. Additive — never removes existing tags.
+      const { offPlan } = evaluateChecklist({
+        setupHasChecklist: input.itemsTotal > 0,
+        itemsChecked:      input.itemsChecked.length,
+        itemsTotal:        input.itemsTotal,
+      })
+      const currentTags = trade.tags as string[]
+      if (offPlan && !currentTags.includes("Off-plan")) {
+        const newTags = [...currentTags, "Off-plan"]
+        await ctx.prisma.trade.update({ where: { id: input.tradeId }, data: { tags: newTags } })
+        await ensureTagRows(ctx.prisma, ctx.userId, ["Off-plan"])
+      }
+
       return ctx.prisma.tradeChecklistResult.upsert({
         where:  { tradeId: input.tradeId },
         create: {
@@ -928,6 +953,24 @@ export const tradesRouter = router({
           itemsTotal:   input.itemsTotal,
         },
       })
+    }),
+
+  // Emotion incentive (DELTA D10): the trader's historical WR/avgR for a given
+  // pre-trade emotion, so capturing it returns value in the moment. Null below the
+  // minimum sample (handled in feedbackForEmotion) — no misleading small-n claim.
+  emotionFeedback: protectedProcedure
+    .input(z.object({ emotion: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.prisma.trade.findMany({
+        where:  { userId: ctx.userId, status: "CLOSED", emotionBefore: input.emotion },
+        select: { emotionBefore: true, pnl: true, rMultiple: true },
+      })
+      const mapped = rows.map((t) => ({
+        emotionBefore: t.emotionBefore,
+        pnl:           t.pnl != null ? Number(t.pnl) : 0,
+        rMultiple:     t.rMultiple != null ? Number(t.rMultiple) : null,
+      }))
+      return feedbackForEmotion(mapped, input.emotion)
     }),
 
   // T-VI-002: Behavioral pattern insights

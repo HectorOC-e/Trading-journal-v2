@@ -1,6 +1,7 @@
 // Built-in automation templates. createFromTemplate instantiates an editable copy.
 
 import type { Trigger, ConditionNode, RuleAction } from "./types"
+import { PROTECTION_TEMPLATES } from "./protection-templates"
 
 export interface AutomationTemplate {
   id: string
@@ -12,7 +13,7 @@ export interface AutomationTemplate {
   actions: RuleAction[]
 }
 
-export const TEMPLATES: AutomationTemplate[] = [
+const BASE_TEMPLATES: AutomationTemplate[] = [
   {
     id: "risk-management",
     name: "Riesgo alto → avisar",
@@ -62,5 +63,23 @@ export const TEMPLATES: AutomationTemplate[] = [
     actions: [{ type: "ADD_TAG", params: { tag: "Off-plan" } }],
   },
 ]
+
+// S1 DT-6 — expose the AVAILABLE capital-protection templates (#8) in the same
+// gallery, derived from the single source of truth. Gated templates (energy,
+// no-size-increase) are omitted: they can't enforce yet, so they never appear as
+// creatable. Enforcement still runs via Automations until the G2 cutover.
+const PROTECTION_AS_AUTOMATION: AutomationTemplate[] = PROTECTION_TEMPLATES
+  .filter((t) => t.available && t.rule)
+  .map((t) => ({
+    id:          t.id,
+    name:        t.name,
+    description: t.description,
+    category:    t.category,
+    trigger:     t.rule!.trigger,
+    conditions:  t.rule!.conditions,
+    actions:     t.rule!.actions,
+  }))
+
+export const TEMPLATES: AutomationTemplate[] = [...BASE_TEMPLATES, ...PROTECTION_AS_AUTOMATION]
 
 export const TEMPLATE_MAP: Record<string, AutomationTemplate> = Object.fromEntries(TEMPLATES.map((t) => [t.id, t]))
