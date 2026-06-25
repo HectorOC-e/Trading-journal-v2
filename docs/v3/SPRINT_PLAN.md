@@ -36,13 +36,16 @@
 **Validación:** ✅ 836/836 tests (+19, TDD), tsc+eslint verdes, **32/32 tests del motor de reglas sin regresión (bloqueo pre-trade intacto)**; ⏳ migración replay vía CI. Ver `TEST_REPORT_SPRINT_1.md`.
 **Pendiente (gate G2, no parte de S1):** revisar el informe de no-mapeo y ejecutar el **cutover de enforcement** `Automation`→`Rule`.
 
-## Sprint 2 — Captura de trade v3 (C7)
+## Sprint 2 — Captura de trade v3 (C7) ✅ EJECUTADO (v3.1.0)
 **Objetivo:** alimentar los motores (psico no opcional silenciosa).
 **Entregables:**
-- Psico inline + nudge al cerrar sin emoción (#10); campos derivados sesión/riskPct (#27); checklist obligatorio por setup (E5.C3); auto-tagging IA de notas (#37); captura MAE/MFE + campo `regime` (#35, E5.C6).
-**Riesgos:** fricción que reduzca registro. **Mitigación:** 1-tap, valores derivados pre-rellenados.
+- [x] Campos derivados sesión/riskPct (#27, `trade-derivation.ts`); captura MAE/MFE + `regime` (#35, E5.C6) — columnas en `Trade` + inputs en `trades.create`.
+- [x] Checklist obligatorio por setup (E5.C3, `evaluateChecklist`); auto-tagging determinista de notas (#37, `note-tag-suggester.ts`).
+- [x] **Bucle de incentivo (DELTA D10)**: al capturar emoción, devuelve tu WR histórico con esa emoción (`emotion-feedback.ts`) + nudge al cerrar sin emoción (#10).
+**Riesgos:** fricción que reduzca registro. **Mitigación:** valores derivados pre-rellenados; el dato devuelve valor en el mismo trade (D10).
 **Dependencias:** S0.
-**Validación:** trades nuevos con psico/MAE/MFE; tests de derivación.
+**Validación:** ✅ 863/863 tests (+27, TDD); tsc+eslint verdes; migración aditiva (replay → CI). Ver `TEST_REPORT_SPRINT_2.md`.
+**Pendiente (UI, verificación del usuario):** mostrar el incentivo/nudge y pre-rellenar derivados en el formulario; analítica de MAE/MFE es **S3**.
 
 ## Sprint 3 — Métricas institucionales (C4)
 **Objetivo:** el cuadrante de riesgo que espera un prop.

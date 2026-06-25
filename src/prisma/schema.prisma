@@ -252,6 +252,11 @@ model Trade {
   fomoFlag         Boolean  @default(false) @map("fomo_flag")
   revengeFlag      Boolean  @default(false) @map("revenge_flag")
   planNotes        String?  @map("plan_notes") @db.VarChar(500)
+  // ── Capture v3 (Sprint 2, C7 / FREEZE-E1) ───────────────
+  riskPct          Decimal? @map("risk_pct") @db.Decimal(6, 3) // derived from entry/stop/size/balance (#27)
+  maeR             Decimal? @map("mae_r") @db.Decimal(8, 3)    // max adverse excursion in R (#35)
+  mfeR             Decimal? @map("mfe_r") @db.Decimal(8, 3)    // max favorable excursion in R (#35)
+  regime           String?  // trend | range | volatile (E5.C6, manual v3.0)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

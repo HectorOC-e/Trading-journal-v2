@@ -39,8 +39,9 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 | [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
 
 ## Estado
-**SPRINT 1 EJECUTADO (v3.1.0).**
-- **S0 (fundaciones):** `rollingWindow`, outbox de eventos (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
-- **S1 (unificación de Reglas, C6):** modelo `Rule` unificado (enforce/warn) + migración aditiva no destructiva + backfill desde `Automation`, plantillas de protección, badge UI, e informe de no-mapeo para gate G2. El motor sigue enforzando desde `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
+**SPRINT 2 EJECUTADO (v3.1.0).**
+- **S0 (fundaciones):** `rollingWindow`, outbox (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
+- **S1 (unificación de Reglas, C6):** `Rule` unificado (enforce/warn) + migración aditiva + backfill, plantillas de protección, badge UI, informe de no-mapeo (gate G2). Enforcement sigue en `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
+- **S2 (captura de trade v3, C7):** campos derivados (sesión/riskPct), MAE/MFE + `regime`, checklist obligatorio, auto-tagging de notas y **bucle de incentivo (D10)**. Columnas aditivas en `Trade`. Reportes `*_SPRINT_2.md`.
 
-No se ha avanzado a Sprint 2.
+No se ha avanzado a Sprint 3.
