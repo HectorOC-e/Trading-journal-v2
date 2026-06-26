@@ -38,6 +38,37 @@ export function proposeMemory(kind: MemoryKind, content: string, sourceThreadId?
   return { kind, content: content.trim(), status: "candidate", source: "llm", sourceThreadId }
 }
 
+export interface MemoryExtraction {
+  summary: string | null
+  facts: { kind: MemoryKind; content: string }[]
+}
+
+/**
+ * Parse the LLM's thread-extraction response into a summary + candidate facts.
+ * Tolerant: finds the first JSON object, ignores garbage, caps at 5 facts. The
+ * facts are CANDIDATES (the caller persists them via proposeMemory — D9).
+ */
+export function parseMemoryExtraction(raw: string): MemoryExtraction {
+  try {
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (!m) return { summary: null, facts: [] }
+    const o = JSON.parse(m[0]) as { summary?: unknown; facts?: unknown }
+    const summary = typeof o.summary === "string" && o.summary.trim() ? o.summary.trim() : null
+    const facts = Array.isArray(o.facts)
+      ? o.facts
+          .filter((f): f is { kind?: unknown; content: string } => !!f && typeof (f as { content?: unknown }).content === "string" && !!(f as { content: string }).content.trim())
+          .slice(0, 5)
+          .map((f) => ({
+            kind: ((f.kind === "preference" || f.kind === "identity") ? f.kind : "fact") as MemoryKind,
+            content: String(f.content).trim().slice(0, 300),
+          }))
+      : []
+    return { summary, facts }
+  } catch {
+    return { summary: null, facts: [] }
+  }
+}
+
 export interface AssembleInput {
   identity?: string | null
   confirmedMemories: { kind: string; content: string }[]

@@ -3,6 +3,7 @@ import {
   isInjectable,
   proposeMemory,
   assembleContextBlock,
+  parseMemoryExtraction,
 } from "@/domains/cognitive/coach/memory"
 
 describe("memory frontier (FREEZE-D9 / ADR-003)", () => {
@@ -51,5 +52,23 @@ describe("assembleContextBlock (Context Assembler, FREEZE-D10)", () => {
     expect(block).toContain("Identidad del trader: id")
     expect(block).toContain('"C" (active)')
     expect(block).toMatch(/\(\+\d+ más\)/) // some facts were dropped
+  })
+})
+
+describe("parseMemoryExtraction (S6 producer)", () => {
+  it("parses summary + capped candidate facts from clean JSON", () => {
+    const r = parseMemoryExtraction('{"summary":"over-trading los lunes","facts":[{"kind":"fact","content":"pierde en rango"},{"kind":"preference","content":"prefiere London"}]}')
+    expect(r.summary).toBe("over-trading los lunes")
+    expect(r.facts).toHaveLength(2)
+    expect(r.facts[1].kind).toBe("preference")
+  })
+  it("extracts JSON embedded in prose and caps facts at 5", () => {
+    const facts = Array.from({ length: 8 }, (_, i) => `{"kind":"fact","content":"h${i}"}`).join(",")
+    const r = parseMemoryExtraction(`Claro:\n{"summary":"x","facts":[${facts}]}\nfin`)
+    expect(r.facts).toHaveLength(5)
+  })
+  it("defaults unknown kind to fact and returns empty on garbage", () => {
+    expect(parseMemoryExtraction('{"facts":[{"kind":"weird","content":"y"}]}').facts[0].kind).toBe("fact")
+    expect(parseMemoryExtraction("no json here")).toEqual({ summary: null, facts: [] })
   })
 })

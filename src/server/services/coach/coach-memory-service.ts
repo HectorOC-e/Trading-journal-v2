@@ -8,7 +8,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { assembleContextBlock, proposeMemory, type MemoryKind } from "@/domains/cognitive/coach/memory"
+import { assembleContextBlock, proposeMemory, parseMemoryExtraction, type MemoryKind } from "@/domains/cognitive/coach/memory"
+import { completeText } from "@/lib/ai/complete"
 
 /**
  * Build the dynamic MEMORY block injected into the coach prompt: confirmed
@@ -88,10 +89,47 @@ export async function proposeMemories(
   items: { kind: MemoryKind; content: string }[],
 ): Promise<number> {
   if (items.length === 0) return 0
-  const data = items.map((i) => {
+  // Dedupe against existing memory (candidate or confirmed) so repeated
+  // summarization doesn't pile up duplicates.
+  const existing = await prisma.coachMemory.findMany({ where: { userId }, select: { content: true } })
+  const seen = new Set(existing.map((m) => m.content.toLowerCase()))
+  const fresh = items.filter((i) => i.content.trim() && !seen.has(i.content.trim().toLowerCase()))
+  if (fresh.length === 0) return 0
+  const data = fresh.map((i) => {
     const p = proposeMemory(i.kind, i.content, threadId)
     return { userId, kind: p.kind, content: p.content, status: p.status, source: p.source, sourceThreadId: threadId }
   })
   const res = await prisma.coachMemory.createMany({ data })
   return res.count
+}
+
+const SUMMARIZE_SYSTEM = `Eres un extractor de memoria para un coach de trading. A partir de la conversación, devuelve SOLO un objeto JSON válido con esta forma:
+{"summary":"resumen en 1-2 frases en español","facts":[{"kind":"fact|preference","content":"hecho/preferencia estable del trader"}]}
+Reglas: máximo 5 hechos; solo hechos ESTABLES y verificables sobre el trader (no eventos puntuales); si no hay hechos claros, usa facts:[]. No inventes. Responde únicamente el JSON.`
+
+/**
+ * Thread summarization + candidate-fact extraction (S6 "job de resumen+extracción").
+ * Best-effort + cost-gated (runs every 4 messages). The LLM only PROPOSES candidates
+ * (proposeMemories → status='candidate'); the user confirms (D9). No-ops without a key.
+ */
+export async function summarizeThread(prisma: PrismaClient, userId: string, threadId: string): Promise<void> {
+  const msgs = await prisma.coachMessage.findMany({
+    where: { threadId, userId },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, content: true },
+  })
+  if (msgs.length < 4 || msgs.length % 4 !== 0) return // cost gate
+  const transcript = msgs.map((m) => `${m.role}: ${m.content}`).join("\n").slice(0, 6000)
+
+  let raw: string | null
+  try {
+    raw = await completeText(prisma, userId, "ai_chat", [{ role: "user", content: transcript }], [{ text: SUMMARIZE_SYSTEM }])
+  } catch {
+    return
+  }
+  if (!raw) return
+
+  const { summary, facts } = parseMemoryExtraction(raw)
+  if (summary) await prisma.coachThread.update({ where: { id: threadId }, data: { summary } }).catch(() => {})
+  if (facts.length) await proposeMemories(prisma, userId, threadId, facts).catch(() => {})
 }
