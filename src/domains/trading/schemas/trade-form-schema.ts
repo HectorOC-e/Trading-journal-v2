@@ -22,6 +22,7 @@ const requiredNumber = (opts?: { positive?: boolean }) => {
 
 export const EMOTION_VALUES = ["calm", "anxious", "excited", "fearful", "overconfident"] as const
 export const SESSION_VALUES = ["London", "New York", "Asia", "London Close"] as const
+export const REGIME_VALUES = ["trend", "range", "volatile"] as const
 
 export const tradeFormSchema = z
   .object({
@@ -47,6 +48,8 @@ export const tradeFormSchema = z
     executionQuality: z.number().int().min(1).max(5).nullable(),
     fomoFlag: z.boolean(),
     revengeFlag: z.boolean(),
+    // Market regime at entry (manual, v3.0 — FREEZE-D18). Optional; null = sin clasificar.
+    regime: z.enum(REGIME_VALUES).nullable(),
   })
   // Stop equal to entry yields a zero-distance risk → the size calculator can't
   // run and the trade is nonsensical. Flag it on the stop field.

@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { TagChip } from "@/components/tags/tag-chip"
 import { Button } from "@/components/ui/button"
-import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft } from "lucide-react"
+import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft, Brain } from "lucide-react"
 import type { Trade, TradeSession, Account, Setup } from "@/types"
 
 const SESSION_COLOR: Record<TradeSession, string> = {
@@ -47,6 +47,7 @@ interface TradeDetailPanelProps {
     closePrice?: number | null
     closeTime?: string | null
     commission?: number | null
+    emotionBefore?: string | null
   }
   account?: Account
   setup?: Setup
@@ -55,7 +56,10 @@ interface TradeDetailPanelProps {
   deleting?: boolean
   onEdit?: () => void
   onPositionLog?: () => void
-  onCloseTrade?: (data: { closePrice: number; closeTime: string; commission: number }) => void
+  onCloseTrade?: (data: {
+    closePrice: number; closeTime: string; commission: number
+    maeR?: number | null; mfeR?: number | null; regime?: "trend" | "range" | "volatile" | null
+  }) => void
   closingTrade?: boolean
   /** Dollar value of one full point for this trade's instrument (e.g. NQ = $20). */
   pointValue?: number
@@ -83,6 +87,10 @@ export function TradeDetailPanel({
   })
   const [commission, setCommission]   = useState("")
   const [commissionError, setCommissionError] = useState(false)
+  // Trade-capture v3 (S2): excursions in R + market regime, captured at close (#35, E5.C6).
+  const [maeR, setMaeR]       = useState("")
+  const [mfeR, setMfeR]       = useState("")
+  const [regime, setRegime]   = useState<"trend" | "range" | "volatile" | null>(null)
 
   const pnlPositive = (trade.pnl ?? 0) >= 0
   const rPositive   = (trade.rMultiple ?? 0) >= 0
@@ -119,10 +127,15 @@ export function TradeDetailPanel({
     }
     if (isNaN(cp)) return
     setCommissionError(false)
+    const mae = parseFloat(maeR)
+    const mfe = parseFloat(mfeR)
     onCloseTrade?.({
       closePrice: cp,
       closeTime,
       commission: isNaN(comm) ? 0 : comm,
+      maeR: isNaN(mae) ? null : mae,
+      mfeR: isNaN(mfe) ? null : mfe,
+      regime,
     })
   }
 
@@ -380,6 +393,64 @@ export function TradeDetailPanel({
                     )}
                   </div>
                 </div>
+
+                {/* MAE / MFE (R) — feeds exit-efficiency & stop-quality analytics (#35) */}
+                <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">MAE (R) · peor excursión</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      placeholder="-0.8"
+                      value={maeR}
+                      onChange={e => setMaeR(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">MFE (R) · mejor excursión</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                      placeholder="1.5"
+                      value={mfeR}
+                      onChange={e => setMfeR(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Market regime (manual, v3.0 — FREEZE-D18) */}
+                <div>
+                  <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Régimen de mercado · opcional</label>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([["—", null], ["Tendencia", "trend"], ["Rango", "range"], ["Volátil", "volatile"]] as const).map(([label, value]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setRegime(value)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors",
+                          regime === value ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* #10 nudge — closing without a recorded pre-trade emotion loses the psychology signal. */}
+                {!trade.emotionBefore && (
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border border-[var(--be)]">
+                    <Brain size={13} className="text-[var(--be)] shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-[var(--be)] leading-snug">
+                      No registraste tu estado emocional en este trade. Añádelo al editarlo — es lo que conecta tu psicología con tus resultados.
+                    </p>
+                  </div>
+                )}
 
                 <Button
                   size="md"

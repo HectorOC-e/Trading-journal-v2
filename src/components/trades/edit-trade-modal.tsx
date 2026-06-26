@@ -53,6 +53,10 @@ interface EditTradeModalProps {
     executionQuality?: number | null
     fomoFlag?: boolean
     revengeFlag?: boolean
+    // Trade-capture v3 (S2)
+    maeR?: number | null
+    mfeR?: number | null
+    regime?: string | null
   }
   setups?: Setup[]
   onSave?: (data: Partial<{
@@ -63,6 +67,9 @@ interface EditTradeModalProps {
     executionQuality: number | null
     fomoFlag: boolean
     revengeFlag: boolean
+    maeR: number | null
+    mfeR: number | null
+    regime: "trend" | "range" | "volatile" | null
   }>) => void
   saving?: boolean
 }
@@ -101,6 +108,12 @@ export function EditTradeModal({
   const [executionQuality, setExecutionQuality] = useState<number | null>(trade.executionQuality ?? null)
   const [fomoFlag,         setFomoFlag]         = useState(trade.fomoFlag ?? false)
   const [revengeFlag,      setRevengeFlag]      = useState(trade.revengeFlag ?? false)
+  // Trade-capture v3 (S2): excursions in R + market regime.
+  const [maeR,   setMaeR]   = useState(trade.maeR != null ? String(trade.maeR) : "")
+  const [mfeR,   setMfeR]   = useState(trade.mfeR != null ? String(trade.mfeR) : "")
+  const [regime, setRegime] = useState<"trend" | "range" | "volatile" | null>(
+    (trade.regime as "trend" | "range" | "volatile" | null | undefined) ?? null
+  )
 
   const activeSetup = setups.find(s => s.id === setupId)
   const stdItems  = activeSetup?.standardChecklist ?? []
@@ -155,6 +168,9 @@ export function EditTradeModal({
       executionQuality,
       fomoFlag,
       revengeFlag,
+      maeR:   maeR.trim() === "" || Number.isNaN(parseFloat(maeR)) ? null : parseFloat(maeR),
+      mfeR:   mfeR.trim() === "" || Number.isNaN(parseFloat(mfeR)) ? null : parseFloat(mfeR),
+      regime,
     })
   }
 
@@ -235,6 +251,54 @@ export function EditTradeModal({
                     {s}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Régimen de mercado (manual, v3.0 — FREEZE-D18) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] text-[var(--ink-3)] font-medium">Régimen de mercado</label>
+              <div className="flex gap-1 flex-wrap">
+                {([["—", null], ["Tendencia", "trend"], ["Rango", "range"], ["Volátil", "volatile"]] as const).map(([label, value]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setRegime(value)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                      regime === value ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* MAE / MFE (R) — exit-efficiency & stop-quality analytics (#35) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-[var(--ink-3)] font-medium">MAE (R) · peor excursión</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  placeholder="-0.8"
+                  value={maeR}
+                  onChange={e => setMaeR(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-[var(--ink-3)] font-medium">MFE (R) · mejor excursión</label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2.5 py-2 text-xs font-mono text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
+                  placeholder="1.5"
+                  value={mfeR}
+                  onChange={e => setMfeR(e.target.value)}
+                />
               </div>
             </div>
 

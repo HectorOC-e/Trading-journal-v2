@@ -257,6 +257,7 @@ export default function TradesPage() {
     executionQuality: number | null
     fomoFlag: boolean
     revengeFlag: boolean
+    regime: "trend" | "range" | "volatile" | null
   }) => {
     // Capture checklist before mutation fires
     const setup = setups.find(s => s.id === form.setupId)
@@ -294,6 +295,7 @@ export default function TradesPage() {
       executionQuality: form.executionQuality,
       fomoFlag:         form.fomoFlag,
       revengeFlag:      form.revengeFlag,
+      regime:           form.regime ?? undefined,
     })
   }
 
