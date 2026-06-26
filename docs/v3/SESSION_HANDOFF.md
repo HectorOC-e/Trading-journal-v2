@@ -63,13 +63,17 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 | Fix TS2589 en `rules.list` | ✅ merged | #90 |
 | **Cierre open items S0–S2** (D10 UI, tag chips, Off-plan, riskPct server, plantillas en galería) | ✅ merged a main | #91 |
 | **G1** outbox validado (BD real) · **G2** cutover tras flag `RULES_SOURCE` · **BIZ-1** Decisión B + ADR-004 | ✅ merged a main | #92 |
-| **S3** métricas institucionales (C4) + estimador Bayesiano (ADR-002) + wiring de confianza en insights | PR abierto (usuario mergea) | #93 |
+| **S3** métricas institucionales (C4) + estimador Bayesiano (ADR-002) + wiring de confianza en insights | ✅ merged a main | #93 |
+| **Fix E2E** smoke de Reviews (rediseño quitó tabs Semanales/Mensuales) | ✅ merged a main | #94 |
+| **S2 UI follow-up** (MAE/MFE + regime + derivación de sesión + nudge #10) — **verificado end-to-end** (Playwright vs preview + round-trip en BD) | ✅ merged a main | #95 |
 
 **Migraciones se despliegan vía CI al mergear a main.** Tests: **945 vitest verdes** (S3: +63).
 
+**Deuda saldada hoy:** S2 UI (era "follow-up", ahora cableado+verificado) y el smoke E2E de Reviews. **Pendiente: flip de G2** (ver §5) — bloqueado solo por setear `RULES_SOURCE=rules` en el env de Vercel (el MCP de Vercel no setea env vars; requiere `VERCEL_TOKEN` o que el usuario lo ponga). Paridad ya verificada 0 errores.
+
 ## 5. Gates
 - **G1:** ✅ hecho (outbox OK en BD real).
-- **G2:** ✅ implementado tras flag `RULES_SOURCE` (default OFF = sin cambio). Paridad 0 errores. Dual-write activo. **Para activar:** ver runbook en `GATES_G1_G2_BIZ1.md` (re-backfill → `RULES_SOURCE=rules` → smoke → cleanup). **No activado aún.**
+- **G2:** ✅ implementado tras flag `RULES_SOURCE` (default OFF = sin cambio). **Paridad re-verificada en prod (2026-06-26): 5/5 automatizaciones espejadas, 0 sin espejo, 0 desajustes de `mode`.** Dual-write activo. **Bloqueo para activar:** `RULES_SOURCE` se lee de `process.env` (engine.ts:112); el MCP de Vercel NO setea env vars y no hay `VERCEL_TOKEN` en `.env` → el flip requiere token de Vercel o que el usuario ponga `RULES_SOURCE=rules` en el env Production + redeploy. Runbook completo en `GATES_G1_G2_BIZ1.md`. Smoke previsto: usuario throwaway + regla enforce (límite trades/día) → 2º trade debe bloquearse. Rollback = quitar la var + redeploy. **No activado aún.**
 - **BIZ-1:** ✅ Decisión **B (reservar)**. Columna `users.data_sharing_consent`. S4 debe diseñar `Intervention`/`Commitment` anonimizables.
 
 ## 6. Convenciones del repo (importante para no romper nada)
