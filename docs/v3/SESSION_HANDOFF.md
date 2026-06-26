@@ -6,6 +6,19 @@
 
 ---
 
+## 0. Capacidades del entorno (CONFIRMAR al inicio de cada sesión)
+> El entorno de ejecución puede cambiar entre sesiones. **Pregunta al usuario al empezar qué de esto está disponible** antes de depender de ello. Cuando lo está, **no dejes deuda técnica que tú puedas cerrar** (mergear, verificar por UI, flip de env) — tómalo, no lo difieras como "tarea del usuario".
+
+| Capacidad | Cómo | Úsalo para |
+|---|---|---|
+| **`gh` CLI** | `GH_TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' \| git credential fill \| sed -n 's/^password=//p')` | **Mergear PRs propios cuando CI esté verde**, crear PRs, leer `gh pr checks` |
+| **MCP Vercel** (`mcp__claude_ai_Vercel__*`) | tools deferred | deployments, **env vars (p.ej. flip `RULES_SOURCE` de G2)**, logs, runtime errors |
+| **MCP Supabase** (`mcp__claude_ai_Supabase__*`) | tools deferred | `execute_sql`, advisors, logs, migraciones, verificar prod/BD |
+| **BD real** | `src/.env` (`DATABASE_URL`+`CRON_SECRET`) | vitest throwaway (dotenv + `await import("@/lib/prisma")`), **bórralo después** |
+| **App real / Playwright** | webapp-testing, Node 24 vía nvm | **verificar features por la UI** (no marcar "pendiente de verificación del usuario") |
+
+**Regla operativa:** mergea tus PRs cuando CI esté verde; **avisa antes** de acciones de prod sensibles/irreversibles (p.ej. flip de enforcement G2 → confirma, ejecuta con smoke + rollback listo). Verifica por UI real en vez de diferir. No acumules "follow-up de UI" como deuda.
+
 ## 1. Qué es esto
 Trading Journal v3 = convertir un journal de trading (v2) en una **"capa cognitiva sobre el broker"**: un sistema que **cambia el comportamiento del trader** (loop verificado), no solo registra trades. La unidad de valor es **"el cambio de comportamiento verificado"**.
 
