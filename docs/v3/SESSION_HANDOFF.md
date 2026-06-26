@@ -31,7 +31,8 @@ Trading Journal v3 = convertir un journal de trading (v2) en una **"capa cogniti
 ```
 src/domains/cognitive/events/     event-types.ts (catálogo EV), event-bus.ts (outbox: publishEvent/dispatchPending/planEventTransition)
 src/domains/analytics/longitudinal/ rolling-window.ts (primitiva C3)
-src/domains/analytics/insights/   insight-reconcile.ts, insight-store.ts, recompute-insights.ts (C8)
+src/domains/analytics/institutional/ stats/bayes.ts (estimador Bayesiano ADR-002), drawdown.ts, r-distribution.ts, risk-ratios.ts, mae-mfe.ts, benchmark.ts, pnl-heatmap.ts (C4, S3, puro)
+src/domains/analytics/insights/   insight-reconcile.ts, insight-store.ts (S3: rellena confidence vía proportionEstimate cuando hay Insight.stat), recompute-insights.ts (C8)
 src/domains/rules/                unification.ts, protection-templates.ts, migration-report.ts, rule-sync.ts (dual-write), engine.ts (runAutomations + runRules + runRuleEngine + flag)
 src/domains/trading/services/     trade-derivation.ts, capture-rules.ts, note-tag-suggester.ts, emotion-feedback.ts (S2 captura)
 src/components/trades/            emotion-insight.tsx, note-tag-suggestions.tsx (D10/#37 UI)
@@ -47,10 +48,11 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 | **S1** unificación de Reglas (C6) — `Rule` unificado, backfill no destructivo, plantillas, badge, informe | ✅ merged a main | #89 |
 | **S2** captura de trade (C7) — derivación, MAE/MFE/regime, checklist, auto-tag, incentivo D10 | ✅ merged a main | #89 |
 | Fix TS2589 en `rules.list` | ✅ merged | #90 |
-| **Cierre open items S0–S2** (D10 UI, tag chips, Off-plan, riskPct server, plantillas en galería) | PR abierto | #91 |
-| **G1** outbox validado (BD real) · **G2** cutover tras flag `RULES_SOURCE` · **BIZ-1** Decisión B + ADR-004 | rama `feat/v3-g1-g2-biz1` | (este) |
+| **Cierre open items S0–S2** (D10 UI, tag chips, Off-plan, riskPct server, plantillas en galería) | ✅ merged a main | #91 |
+| **G1** outbox validado (BD real) · **G2** cutover tras flag `RULES_SOURCE` · **BIZ-1** Decisión B + ADR-004 | ✅ merged a main | #92 |
+| **S3** métricas institucionales (C4) + estimador Bayesiano (ADR-002) + wiring de confianza en insights | PR abierto (usuario mergea) | #93 |
 
-**Migraciones se despliegan vía CI al mergear a main.** Tests: ~876 vitest verdes.
+**Migraciones se despliegan vía CI al mergear a main.** Tests: **945 vitest verdes** (S3: +63).
 
 ## 5. Gates
 - **G1:** ✅ hecho (outbox OK en BD real).
@@ -68,13 +70,14 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 - **Ramas:** trabajar siempre desde `origin/main` actualizado (la vieja `feat/v3-master-plan` está desincronizada de un refactor de Reviews; no usarla).
 
 ## 7. Próximo paso recomendado
-- **Mergear** #91 (closeout) y la rama de gates.
-- **Follow-up UI de S2** (no completado, requiere verificación visual): inputs MAE/MFE + selector `regime` + nudge de cierre + pre-fill de sesión — mejor en el flujo de **cierre/edición**. API y columnas ya listas.
+- **Mergear #93 (S3)** y correr CI.
+- **Sprint 4 — Behavior Engine I (loop básico, C5):** `Commitment`/`CommitmentCheck`/`Reinforcement` (modelos+migración dual), `createCommitmentFromInsight`, `evaluateCommitment` (vía **librería de verificadores** FREEZE-D7 — **consume las funciones puras de `analytics/institutional/` directamente**, no tRPC), `reinforce` (ratio variable D13), `carryOverCommitments`. Subconjunto inicial 5 tipos (revenge/intraday-decay/oversizing/edge-decay/off-plan). **Aquí se programa el dispatcher de eventos en prod** (primer consumidor). BIZ-1: diseñar `Intervention`/`Commitment` anonimizables (ADR-004).
+- **Follow-up UI de S2** (pendiente, verificación visual): inputs MAE/MFE + selector `regime` + nudge de cierre + pre-fill. API/columnas listas.
 - **(Opcional) flip de G2** siguiendo el runbook.
-- **Sprint 3 — Métricas institucionales (C4):** max drawdown, distribución de R, Sortino/Calmar/Kelly **con la decisión Bayesiana de ADR-002** (no frecuentista), análisis de MAE/MFE (consume los campos de S2). Es el siguiente sprint del `SPRINT_PLAN.md`. **Recordar: `Insight` ya tiene columnas de confianza pero el estimador Bayesiano se construye aquí.**
+- **S3 dejó diferido (OPEN_ITEMS_SPRINT_3):** superficies tRPC/UI del cuadrante (S12) + mapper DB→métricas (S4/S12) + wiring Bayesiano de insights continuos (S8).
 
 ## 8. Cosas que es fácil olvidar / trampas
 - El bloqueo pre-trade y la separación práctica/real son **invariantes** (test de no-regresión siempre).
 - El `Rule` unificado tiene columnas `Json` (`conditions/actions`): cualquier router que las devuelva a través de tRPC+React Query puede disparar **TS2589** → usar `select` escalar (ver `rules.list`).
-- `Insight` columnas Bayesianas (`confidence/credible_interval/effect_size`) están **NULL** hasta S3 — no mostrarlas como ciertas en UI (R6).
+- `Insight` columnas Bayesianas (`confidence/credible_interval/effect_size`): desde **S3** se rellenan **solo** para detectores con base estadística (`Insight.stat`: `intraday-decay`, `weekday-discipline`); el resto siguen **NULL** — en UI tratar NULL como "sin rigor aún", no como cero (R6). El estimador vive en `analytics/institutional/stats/bayes.ts`.
 - El dispatcher de eventos **no está programado** en prod (drenaría eventos sin consumidores); programarlo junto con el primer consumidor (S4).
