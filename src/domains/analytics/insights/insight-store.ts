@@ -14,6 +14,7 @@
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import type { Insight as EngineInsight } from "@/domains/analytics/services/insights-engine"
+import { proportionEstimate } from "@/domains/analytics/institutional/stats/bayes"
 import { publishEvent } from "@/domains/cognitive/events/event-bus"
 import {
   reconcileInsights,
@@ -22,9 +23,17 @@ import {
   type InsightStatus,
 } from "./insight-reconcile"
 
-/** Map an in-memory engine insight to the persisted, statistically-honest shape. Pure. */
+/**
+ * Map an in-memory engine insight to the persisted, statistically-honest shape. Pure.
+ *
+ * When the detector exposes a statistical basis (`stat`), the Bayesian estimator
+ * (ADR-002 / S3) fills `confidence` (directional, vs the detector's baseline),
+ * `credibleInterval` and `effectSize`, and `sampleSize` is refined to the
+ * detector's own n. Without a basis the Bayesian fields stay undefined — no
+ * fabricated rigor (R6); `sampleSize` falls back to the coarse trade count.
+ */
 export function toComputedInsight(insight: EngineInsight, sampleSize: number): ComputedInsight {
-  return {
+  const base: ComputedInsight = {
     fingerprint: insight.id, // engine ids are stable slugs (e.g. "intraday-decay")
     type: insight.id,
     category: insight.category,
@@ -35,8 +44,24 @@ export function toComputedInsight(insight: EngineInsight, sampleSize: number): C
     recommendation: insight.recommendation,
     metric: insight.metric,
     sampleSize,
-    // confidence / credibleInterval / effectSize intentionally absent → ADR-002 (S3).
   }
+
+  if (insight.stat?.kind === "proportion") {
+    const { successes, trials, baseline, direction } = insight.stat
+    const est = proportionEstimate(successes, trials, { baseline, direction })
+    if (est) {
+      return {
+        ...base,
+        sampleSize: est.sampleSize, // per-detector n is more honest than the trade count
+        confidence: est.confidence,
+        credibleIntervalLow: est.ciLow,
+        credibleIntervalHigh: est.ciHigh,
+        effectSize: est.effectSize,
+      }
+    }
+  }
+
+  return base
 }
 
 export interface PersistResult {
