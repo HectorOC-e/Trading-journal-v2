@@ -65,14 +65,13 @@ test.describe("Smoke: Reviews page accessibility", () => {
     await page.waitForURL(/\/dashboard/, { timeout: 15_000 })
   })
 
-  test("reviews page shows Semanales/Mensuales tab toggle", async ({ page }) => {
+  test("reviews page loads with header and Nueva review action", async ({ page }) => {
+    // The 2026-06 Reviews redesign replaced the Semanales/Mensuales tab toggle with
+    // a unified timeline + month calendar filter (see app/reviews/page.tsx). Assert
+    // the stable page chrome instead of the removed tabs.
     await page.goto("/reviews")
-    const tabList = page.getByRole("tablist", { name: /tipo de review/i })
-    await expect(tabList).toBeVisible({ timeout: 10_000 })
-
-    const mensualTab = tabList.getByRole("tab", { name: "Mensuales" })
-    await expect(mensualTab).toBeVisible()
-    await mensualTab.click()
-    await expect(mensualTab).toHaveAttribute("aria-selected", "true")
+    await expect(page.getByRole("heading", { name: "Reviews", level: 1 })).toBeVisible({ timeout: 10_000 })
+    // Two CTAs can render at desktop width (top bar + sidebar rail) — first() avoids strict mode.
+    await expect(page.getByRole("button", { name: /nueva review/i }).first()).toBeVisible()
   })
 })
