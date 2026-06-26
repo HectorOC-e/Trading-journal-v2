@@ -95,6 +95,12 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 - **Workflow git:** por sprint se hace **commit + push** sin preguntar; **el usuario mergea** los PRs y corre tests. No mergear a main. PRs vía `gh` usando el token del credential helper de git (`printf 'protocol=https\nhost=github.com\n\n' | git credential fill | sed -n 's/^password=//p'` → `GH_TOKEN`).
 - **Ramas:** trabajar siempre desde `origin/main` actualizado (la vieja `feat/v3-master-plan` está desincronizada de un refactor de Reviews; no usarla).
 
+## 6.5 Auditoría de deuda técnica S1–S7 (2026-06-26)
+- **D-A (S6) CERRADA (PR #103):** el productor de memoria LLM (`completeText` + `summarizeThread` + extracción de candidatos) estaba sin construir → `proposeMemories` y la UI de "candidatos" eran código muerto y `thread.summary` se leía pero no se escribía. Ya cableado (fire-and-forget desde `appendExchange`, best-effort, no-op sin API key). El LLM solo propone candidatos (D9 intacto).
+- **D-B (S7) PENDIENTE DE DECISIÓN:** write-tools del chat (`propose_commitment`/`propose_rule` como tools del agente con confirmación). Es **scope sin construir**, NO código muerto. La capacidad "acción con permiso" YA se entrega vía `BehaviorLoopPanel` (Comprometerme / Activar regla) y `InterventionOverlay` (aceptar→crea regla). Construirlo requiere tocar el loop agéntico + UI del chat y solo se verifica con API key. Tratable como S7b.
+- **Resto diferido = scope futuro planificado (NO deuda):** dashboards S3→S12, edge-decay→S10, superficies HOY/Reviews→S12/S13, ImprovementScore→S14, off-plan-as-warn→S8, cifrado de memoria→follow-up.
+- **Veredicto:** sin código muerto/roto tras D-A. D-B es el único deliverable listado sin construir.
+
 ## 7. Próximo paso recomendado
 - ✅ **S7 verificado end-to-end en prod** (cascada→overlay→aceptar crea regla). Gotcha del harness Playwright para registrar trades: usar selectores por `name` (`input[name=size/entry/...]`, NO `getByPlaceholder('2')` que matchea '21,4**5**0' por substring); cuenta/setup **por UI** (no fixtures SQL — no renderizan); símbolo: abrir combobox y click por texto BTCUSD con `{force:true}`.
 - **Sprint 8 — Psicología v3 (E7):** cascadas/tilt intradía (#16), calibración de confianza (#23), sesgos extra (#40), mood longitudinal, check-in pre-sesión que puede bloquear (#30). Dep: S0 (rolling), S2 (captura), S7 (intervención usa cascada). Reusa el estimador Bayesiano (S3) para calibración.
