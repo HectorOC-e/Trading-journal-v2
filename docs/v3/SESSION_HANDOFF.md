@@ -73,7 +73,7 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 
 ## 5. Gates
 - **G1:** ✅ hecho (outbox OK en BD real).
-- **G2:** ✅ implementado tras flag `RULES_SOURCE` (default OFF = sin cambio). **Paridad re-verificada en prod (2026-06-26): 5/5 automatizaciones espejadas, 0 sin espejo, 0 desajustes de `mode`.** Dual-write activo. **Bloqueo para activar:** `RULES_SOURCE` se lee de `process.env` (engine.ts:112); el MCP de Vercel NO setea env vars y no hay `VERCEL_TOKEN` en `.env` → el flip requiere token de Vercel o que el usuario ponga `RULES_SOURCE=rules` en el env Production + redeploy. Runbook completo en `GATES_G1_G2_BIZ1.md`. Smoke previsto: usuario throwaway + regla enforce (límite trades/día) → 2º trade debe bloquearse. Rollback = quitar la var + redeploy. **No activado aún.**
+- **G2:** ✅ **FLIPPEADO Y VERIFICADO EN PROD (2026-06-26).** `RULES_SOURCE=rules` en el entorno Production de Vercel + redeploy (`dpl_8xDger…`). Smoke de cutover confirmado: regla `enforce` solo en `rules` (sin automation) → trade bloqueado en prod (`trades_created=0`, `rules.last_fired_at` set, que solo actualiza `runRules`). El enforcement pre-trade ahora lee de `rules`. Dual-write sigue activo; **rollback** = quitar la env var `RULES_SOURCE` + redeploy. Cleanup (dejar de escribir `automations` + drop table) = más tarde (FREEZE-P9). Para futuros flips de env Vercel: el MCP no setea env vars → usar REST API con un `VERCEL_TOKEN` (team `team_H1wCGwK6JxmFhFUsBf8zd3M8`, proj `prj_qKKQQLDmGREOf0GYHqA4H95tdsFs`).
 - **BIZ-1:** ✅ Decisión **B (reservar)**. Columna `users.data_sharing_consent`. S4 debe diseñar `Intervention`/`Commitment` anonimizables.
 
 ## 6. Convenciones del repo (importante para no romper nada)
@@ -89,8 +89,8 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 ## 7. Próximo paso recomendado
 - **Mergear #93 (S3)** y correr CI.
 - **Sprint 4 — Behavior Engine I (loop básico, C5):** `Commitment`/`CommitmentCheck`/`Reinforcement` (modelos+migración dual), `createCommitmentFromInsight`, `evaluateCommitment` (vía **librería de verificadores** FREEZE-D7 — **consume las funciones puras de `analytics/institutional/` directamente**, no tRPC), `reinforce` (ratio variable D13), `carryOverCommitments`. Subconjunto inicial 5 tipos (revenge/intraday-decay/oversizing/edge-decay/off-plan). **Aquí se programa el dispatcher de eventos en prod** (primer consumidor). BIZ-1: diseñar `Intervention`/`Commitment` anonimizables (ADR-004).
-- **Follow-up UI de S2** (pendiente, verificación visual): inputs MAE/MFE + selector `regime` + nudge de cierre + pre-fill. API/columnas listas.
-- **(Opcional) flip de G2** siguiendo el runbook.
+- ✅ **Follow-up UI de S2** — HECHO y verificado (PR #95).
+- ✅ **Flip de G2** — HECHO y verificado en prod (ver §5).
 - **S3 dejó diferido (OPEN_ITEMS_SPRINT_3):** superficies tRPC/UI del cuadrante (S12) + mapper DB→métricas (S4/S12) + wiring Bayesiano de insights continuos (S8).
 
 ## 8. Cosas que es fácil olvidar / trampas

@@ -39,7 +39,12 @@ Spike ejecutado contra la BD del `.env`:
 5. **Rollback instantáneo:** `RULES_SOURCE=automations` (o borrar la var) + redeploy.
 6. **Cleanup (más tarde, no ahora):** una vez estable, dejar de escribir `automations` y, en una migración posterior, retirar la tabla (FREEZE-P9: conservar hasta verificar).
 
-**Estado:** listo para flip. **No lo activé** (default OFF) porque el flip en prod es decisión operativa tuya y conviene el smoke con un trade real.
+**Estado:** ✅ **FLIPPEADO Y VERIFICADO EN PRODUCCIÓN (2026-06-26).**
+- Paridad re-verificada antes del flip: 5/5 automatizaciones espejadas, **0 sin espejo, 0 desajustes de `mode`**.
+- `RULES_SOURCE=rules` creado en el entorno **Production** de Vercel (vía REST API) + redeploy de `main` (deployment `dpl_8xDger…`, sirve tjournalx.com).
+- **Smoke (cutover real):** usuario throwaway con una regla `enforce` que vive **solo en `rules`** (sin automation espejo) → al intentar registrar un trade en prod, **se bloqueó** (`trades_created=0`) y la regla registró `last_fired_at` (y `runRules` —no `runAutomations`— es quien actualiza `rules.last_fired_at`). Como el usuario no tenía automatizaciones, bajo el comportamiento viejo NO se habría bloqueado → prueba definitiva de que el enforcement lee de `rules`. Usuario throwaway eliminado tras la prueba.
+- **Rollback:** quitar la env var `RULES_SOURCE` (o ponerla a `automations`) + redeploy → vuelve a `automations` al instante. Dual-write sigue activo.
+- **Pendiente (cleanup, más tarde — FREEZE-P9):** dejar de escribir `automations` y, en migración posterior, retirar la tabla una vez estable.
 
 ---
 
@@ -55,7 +60,7 @@ Spike ejecutado contra la BD del `.env`:
 | Gate | Estado |
 |---|---|
 | **G1** | ✅ Validado en BD real (outbox OK, 160ms) |
-| **G2** | ✅ Implementado tras flag `RULES_SOURCE` (OFF); paridad 0 errores; dual-write activo; runbook listo |
+| **G2** | ✅ **FLIPPEADO en prod (2026-06-26)**: `RULES_SOURCE=rules`, smoke de cutover verificado (bloqueo desde `rules`, regla sin automation espejo). Dual-write activo; rollback = quitar la var |
 | **BIZ-1** | ✅ Decisión B + ADR-004 + columna de consentimiento |
 
 **Verificación:** 876/876 vitest (+10, TDD), tsc + eslint verdes. Migración nueva: `20260625150000` (aditiva).
