@@ -39,7 +39,7 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 | [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
 
 ## Estado
-**SPRINT 7 EJECUTADO (v3.1.0).**
+**SPRINT 8 EJECUTADO (v3.1.0).**
 - **S0 (fundaciones):** `rollingWindow`, outbox (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
 - **S1 (unificación de Reglas, C6):** `Rule` unificado (enforce/warn) + migración aditiva + backfill, plantillas de protección, badge UI, informe de no-mapeo (gate G2). Enforcement sigue en `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
 - **S2 (captura de trade v3, C7):** campos derivados (sesión/riskPct), MAE/MFE + `regime`, checklist obligatorio, auto-tagging de notas y **bucle de incentivo (D10)**. Columnas aditivas en `Trade`. Reportes `*_SPRINT_2.md`.

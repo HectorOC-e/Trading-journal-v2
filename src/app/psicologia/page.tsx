@@ -8,6 +8,7 @@ import { IntelligencePanel } from "@/components/ui/intelligence-panel"
 import { trpc } from "@/lib/trpc/client"
 import { useDashboardStats, type Period } from "../dashboard/hooks/use-dashboard-stats"
 import { TabDisciplina } from "../dashboard/tabs/tab-disciplina"
+import { PsychologyV3Panel } from "@/components/psychology/psychology-v3-panel"
 
 // Pillar route (Fase 3): Psicología was buried as the dashboard "Disciplina" tab.
 // Now a first-class destination in the nav.
@@ -41,6 +42,9 @@ export default function PsicologiaPage() {
         className="mb-5"
         ariaLabel="Periodo"
       />
+
+      {/* S8: pre-session check-in (go/no-go) + confidence calibration + mood trend */}
+      <PsychologyV3Panel />
 
       {/* Psychology Intelligence layer — patterns, biases, habits + AI narrative */}
       <div className="mb-6">
