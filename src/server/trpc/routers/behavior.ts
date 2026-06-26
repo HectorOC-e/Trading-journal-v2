@@ -13,6 +13,14 @@ import {
   carryOverCommitments,
   NoVerifierError,
 } from "@/server/services/behavior/commitment-service"
+import {
+  linkRule,
+  suggestRulesFromInsights,
+  acceptRuleSuggestion,
+  dismissRuleSuggestion,
+  NotEnforceableError,
+} from "@/server/services/behavior/rule-suggestion-service"
+import type { ProposedRule } from "@/domains/behavior/rule-linking"
 
 interface Evidence {
   tradeIds?: string[]
@@ -110,6 +118,54 @@ export const behaviorRouter = router({
         where: { id: input.commitmentId, userId: ctx.userId },
         data: { archivedAt: new Date() },
       })
+      return { ok: true }
+    }),
+
+  /** Back a commitment with an enforce rule (S5 — breaking it becomes prevented). */
+  linkRule: protectedProcedure
+    .input(z.object({ commitmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const rule = await linkRule(ctx.prisma, ctx.userId, input.commitmentId)
+        return { ruleId: rule.id, name: rule.name }
+      } catch (err) {
+        if (err instanceof NotEnforceableError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Este compromiso no se puede proteger con una regla automática." })
+        }
+        throw err
+      }
+    }),
+
+  /** Pending rule suggestions for the user's critical insights ("Activar regla anti-X"). */
+  ruleSuggestions: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await ctx.prisma.ruleSuggestion.findMany({
+      where: { userId: ctx.userId, status: "pending" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, insightId: true, reason: true, proposedRule: true },
+    })
+    return rows.map((r) => {
+      const pr = r.proposedRule as unknown as ProposedRule
+      return { id: r.id, insightId: r.insightId, reason: r.reason, ruleName: pr?.name ?? "Regla" }
+    })
+  }),
+
+  /** (Re)generate rule suggestions from current critical insights. */
+  generateSuggestions: protectedProcedure.mutation(async ({ ctx }) => {
+    const created = await suggestRulesFromInsights(ctx.prisma, ctx.userId)
+    return { created }
+  }),
+
+  acceptSuggestion: protectedProcedure
+    .input(z.object({ suggestionId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const rule = await acceptRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId)
+      return { ruleId: rule.id, name: rule.name }
+    }),
+
+  dismissSuggestion: protectedProcedure
+    .input(z.object({ suggestionId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await dismissRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId)
       return { ok: true }
     }),
 })

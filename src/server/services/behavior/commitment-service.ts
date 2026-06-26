@@ -105,7 +105,7 @@ async function loadWindowTrades(prisma: PrismaClient, userId: string, from: Date
 }
 
 export interface EvaluateResultOut {
-  status: "kept" | "partial" | "broken" | "expired"
+  status: "active" | "kept" | "partial" | "broken" | "expired"
   observedValue: number | null
 }
 
@@ -120,6 +120,7 @@ export async function evaluateCommitment(
   prisma: PrismaClient,
   userId: string,
   commitmentId: string,
+  opts: { early?: boolean } = {},
 ): Promise<EvaluateResultOut> {
   const c = await prisma.commitment.findFirstOrThrow({ where: { id: commitmentId, userId } })
   if (c.status !== "active" || c.archivedAt) return { status: c.status as EvaluateResultOut["status"], observedValue: null }
@@ -129,12 +130,17 @@ export async function evaluateCommitment(
 
   const trades = await loadWindowTrades(prisma, userId, c.startAt, c.endAt)
   if (trades.length === 0) {
+    // Mid-window with no trades yet → still active; only a CLOSED empty window expires.
+    if (opts.early) return { status: "active", observedValue: 0 }
     await prisma.commitment.update({ where: { id: c.id }, data: { status: "expired" } })
     return { status: "expired", observedValue: null }
   }
 
   const { observedValue, evidence } = verifier(trades)
   const result = evaluateResult(observedValue, c.target, c.comparator as "<=" | ">=" | "==")
+  // Continuous (per-trade) eval only terminates on an EARLY BREAK; it never rewards
+  // "kept"/"partial" before the window closes (that's the window-end job's call).
+  if (opts.early && result !== "broken") return { status: "active", observedValue }
   const plan = planReinforcement(result, c.keptCount)
 
   await prisma.$transaction(async (tx) => {
@@ -176,12 +182,31 @@ export async function evaluateWindowCommitments(prisma: PrismaClient, userId?: s
     try {
       const r = await evaluateCommitment(prisma, d.userId, d.id)
       sum.evaluated++
-      sum[r.status]++
+      if (r.status !== "active") sum[r.status]++
     } catch {
       // best-effort: one failure never blocks the rest of the sweep
     }
   }
   return sum
+}
+
+/**
+ * Continuous eval (BEHAVIOR_ENGINE_V3 §3): on each trade, re-check active commitments
+ * backed by an enforce rule for an EARLY BREAK (defense-in-depth — the rule should
+ * already prevent it). Never terminates as kept early. Best-effort; callers wrap.
+ */
+export async function evaluateRuledCommitmentsOnTrade(prisma: PrismaClient, userId: string): Promise<void> {
+  const ruled = await prisma.commitment.findMany({
+    where: { userId, status: "active", archivedAt: null, ruleId: { not: null } },
+    select: { id: true },
+  })
+  for (const c of ruled) {
+    try {
+      await evaluateCommitment(prisma, userId, c.id, { early: true })
+    } catch {
+      /* best-effort: never block the trade write */
+    }
+  }
 }
 
 /**

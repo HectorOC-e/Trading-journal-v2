@@ -70,13 +70,16 @@
 **Validación:** ✅ 961/961 vitest (+16, TDD); tsc+eslint verdes; loop verificado end-to-end en preview. Ver `TEST_REPORT_SPRINT_4.md`.
 **Diferido (OPEN_ITEMS_SPRINT_4):** `linkRule`/sugerencias (S5), superficies HOY/Reviews (S12/S13), ImprovementScore (S14), scheduling de crons (ops).
 
-## Sprint 5 — Behavior Engine II (regla↔compromiso) + sugerencias
+## Sprint 5 — Behavior Engine II (regla↔compromiso) + sugerencias ✅ EJECUTADO (v3.1.0)
 **Objetivo:** cerrar insight→protección.
 **Entregables:**
-- `linkRule(commitment, template)`; `RuleSuggestion` + `suggestRulesFromInsights` (#14); CTA "Activar regla anti-revenge" en el insight (#4/#7-quickwin); evaluación continua para compromisos con regla enforce.
-**Riesgos:** reglas auto-sugeridas erróneas. **Mitigación:** siempre requieren confirmación.
-**Dependencias:** S1 (reglas unificadas), S4.
-**Validación:** insight→regla en 1 clic; compromiso con regla se evalúa en cada trade.
+- [x] `linkRule(commitment)` → crea `Rule` enforce (en `rules`, enforced live tras G2) + enlaza `commitment.ruleId` (`rule-suggestion-service.ts`); dominio puro `rule-linking.ts` (mapa metricKey→regla; off-plan→null por honestidad).
+- [x] `RuleSuggestion` (E10, migración `20260626180000`) + `suggestRulesFromInsights` (#14) + accept/dismiss; CTA "Activar regla anti-X".
+- [x] **Evaluación continua** para compromisos con regla enforce (`evaluateRuledCommitmentsOnTrade`, flag `early` — solo ruptura temprana; en `trades.create/close` best-effort).
+- [x] UI: `BehaviorLoopPanel` += "Activar regla" + badge "protegido" + sección "Reglas sugeridas".
+**Dependencias:** S1 (reglas unificadas, G2 flippeado), S4.
+**Validación:** ✅ 967/967 vitest (+6, TDD); tsc+eslint verdes; cutover insight→regla verificado en prod. Ver `TEST_REPORT_SPRINT_5.md`.
+**Diferido (OPEN_ITEMS_SPRINT_5):** reglas del loop en `/reglas` UI (S12), off-plan como warn (S8), plantillas extra (S8+).
 
 ## Sprint 6 — Coach v3 I: memoria + threads (C2)
 **Objetivo:** el coach recuerda.
