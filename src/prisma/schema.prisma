@@ -68,6 +68,7 @@ model User {
   coachMessages            CoachMessage[]
   coachMemory              CoachMemory[]
   interventions            Intervention[]
+  preSessionCheckins       PreSessionCheckin[]
 
   @@map("users")
 }
@@ -1087,4 +1088,24 @@ model Intervention {
 
   @@index([userId, status])
   @@map("interventions")
+}
+
+// PreSessionCheckin (E12, S8) — pre-session go/no-go (C7/#30). Migration 20260626240000.
+model PreSessionCheckin {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  date      DateTime @db.Date
+  session   String?
+  mood      Int
+  energy    Int
+  sleep     Int
+  score     Float
+  verdict   String // go | caution | no_go
+  reasons   Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("pre_session_checkins")
 }

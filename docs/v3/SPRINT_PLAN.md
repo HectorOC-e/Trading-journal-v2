@@ -109,6 +109,8 @@
 **Dependencias:** S0 (rolling), S2 (captura), S7 (intervención usa cascada).
 **Validación:** detección de cascada con caso sintético; curva de calibración; check-in rojo recomienda no operar.
 
+> ✅ **EJECUTADO (v3.1.0)** — calibración de confianza (#23, Bayesiano S3), check-in pre-sesión go/no-go (#30, E12 migración `20260626240000`), mood longitudinal (rolling C3). Dominio puro TDD + `PreSessionCheckin` + router `psychology` + `PsychologyV3Panel` en /psicologia. 1000/1000 vitest. Diferido: sesgos extra #40, check-in→regla stop. Ver `*_SPRINT_8.md`.
+
 ## Sprint 9 — Riesgo & Prop (E6)
 **Objetivo:** quant de prop firm.
 **Entregables:**
