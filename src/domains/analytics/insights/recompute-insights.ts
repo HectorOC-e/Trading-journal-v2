@@ -17,6 +17,7 @@ import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bun
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
 import { generatePsychologyInsights } from "@/domains/analytics/services/psychology-insights"
 import { persistInsights, toComputedInsight, type PersistResult } from "./insight-store"
+import { suggestRulesFromInsights } from "@/server/services/behavior/rule-suggestion-service"
 
 export async function recomputeInsightsForUser(userId: string, prisma: PrismaClient): Promise<PersistResult> {
   const bundle = await buildAnalyticsBundle(userId, prisma)
@@ -33,7 +34,11 @@ export async function recomputeInsightsForUser(userId: string, prisma: PrismaCli
   ]
 
   const computed = engineInsights.map((i) => toComputedInsight(i, n))
-  return persistInsights(userId, computed, prisma)
+  const result = await persistInsights(userId, computed, prisma)
+  // S5: generate rule suggestions from the freshly-persisted critical insights
+  // (best-effort — never fail the insight job over a suggestion).
+  await suggestRulesFromInsights(prisma, userId).catch(() => {})
+  return result
 }
 
 export interface RecomputeAllResult {
