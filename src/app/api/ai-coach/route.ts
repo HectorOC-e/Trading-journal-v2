@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { streamCoachReply, type MessageParam } from "@/lib/ai/coach-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
+import { assembleCoachContext } from "@/server/services/coach/coach-memory-service"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -28,7 +29,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Stream via coach service ────────────────────────────────────────────────
   try {
-    const readable = await streamCoachReply({ userId: user.id, messages, prisma })
+    // S6: confirmed memory + active commitments injected so the coach "recuerda"
+    // (best-effort — a memory failure must never break the chat).
+    const memoryBlock = await assembleCoachContext(prisma, user.id).catch(() => "")
+    const readable = await streamCoachReply({ userId: user.id, messages, prisma, memoryBlock })
 
     return new NextResponse(readable, {
       headers: {

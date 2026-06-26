@@ -39,7 +39,7 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 | [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
 
 ## Estado
-**SPRINT 5 EJECUTADO (v3.1.0).**
+**SPRINT 6 EJECUTADO (v3.1.0).**
 - **S0 (fundaciones):** `rollingWindow`, outbox (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
 - **S1 (unificación de Reglas, C6):** `Rule` unificado (enforce/warn) + migración aditiva + backfill, plantillas de protección, badge UI, informe de no-mapeo (gate G2). Enforcement sigue en `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
 - **S2 (captura de trade v3, C7):** campos derivados (sesión/riskPct), MAE/MFE + `regime`, checklist obligatorio, auto-tagging de notas y **bucle de incentivo (D10)**. Columnas aditivas en `Trade`. Reportes `*_SPRINT_2.md`.
@@ -48,4 +48,6 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 
 - **S5 (Behavior Engine II, C5 — regla↔compromiso):** `linkRule` (compromiso→regla enforce, enforced live), `RuleSuggestion`+`suggestRulesFromInsights`+accept/dismiss (#14), continuous-eval en cada trade; UI "Activar regla". Migración `20260626180000`. Reportes `*_SPRINT_5.md`.
 
-**G2 FLIPPEADO en prod** (`RULES_SOURCE=rules`); **crons v3 activos** (dispatch/recompute/evaluate). No se ha avanzado a Sprint 6.
+- **S6 (Coach v3 I, C2 — memoria + threads):** `CoachThread`/`CoachMessage`/`CoachMemory` con frontera anti-poisoning (ADR-003: LLM propone, usuario confirma); inyección de memoria confirmada + compromisos activos en el prompt; UI de memoria editable/borrable en el drawer. Migración `20260626200000`. Reportes `*_SPRINT_6.md`.
+
+**G2 FLIPPEADO en prod**; **crons v3 activos**. No se ha avanzado a Sprint 7.
