@@ -91,13 +91,16 @@
 **Validación:** ✅ 972/972 vitest (+5, TDD); tsc+eslint verdes; verificado en prod.
 **Diferido (OPEN_ITEMS_SPRINT_6):** auto-extracción LLM de candidatos + proactividad/write-tools/check-in → **S7**; cifrado/opt-out de memoria → follow-up.
 
-## Sprint 7 — Coach v3 II: proactividad + intervención (C1)
+## Sprint 7 — Coach v3 II: proactividad + intervención (C1) ✅ EJECUTADO (v3.1.0)
 **Objetivo:** intervenir en el momento del error.
 **Entregables:**
-- Worker proactivo sobre `trade.*` (deltas); detección en vivo (revenge/oversizing/cascada/DD); `Intervention` + `InterventionOverlay` (DS §10.4); refuerzos a HOY; write-tools con permiso (`propose_commitment/rule`) (#13).
-**Riesgos:** intervención molesta/fatiga. **Mitigación:** 1 activa, cooldown, solo riesgo real; registrar respuesta.
-**Dependencias:** S5 (compromisos/reglas a proponer), S6 (memoria), S0 (bus).
-**Validación:** 3ª pérdida+oversizing dispara intervención ≤2s; aceptar crea regla; latencia y cooldown OK.
+- [x] Motor de intervención **determinista** (`domains/cognitive/intervention/engine.ts`): detectores (revenge/oversizing/cascada/DD) + scoring (§9) + cooldown/token-bucket/máx-1-activa + **override de capital** (D14).
+- [x] `Intervention` (E11, migración `20260626220000`) + fast-path en `trades.close` (≤2s, sin LLM en el camino crítico, sin cambiar el contrato) + `InterventionOverlay` (mensaje + acción protectora + salida con fricción).
+- [x] `respond`: aceptar → **crea regla enforce** protectora; descartar → outcome `overridden` (para aprender).
+**Riesgos:** fatiga. **Mitigación:** 1 activa, cooldown, silencio por defecto; respuesta registrada.
+**Dependencias:** S5 (reglas), S6 (memoria), S0 (bus).
+**Validación:** ✅ 986/986 vitest (+14, TDD); tsc+eslint verdes; verificado en prod (cascada→overlay→aceptar crea regla).
+**Diferido (OPEN_ITEMS_SPRINT_7):** write-tools del chat, auto-extracción LLM de memoria, aprendizaje de expectedImpact, refuerzos a HOY (S13).
 
 ## Sprint 8 — Psicología v3 (E7)
 **Objetivo:** psicólogo cuantitativo.

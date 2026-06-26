@@ -67,6 +67,7 @@ model User {
   coachThreads             CoachThread[]
   coachMessages            CoachMessage[]
   coachMemory              CoachMemory[]
+  interventions            Intervention[]
 
   @@map("users")
 }
@@ -1062,4 +1063,28 @@ model CoachMemory {
 
   @@index([userId, status])
   @@map("coach_memory")
+}
+
+// Intervention (E11, S7) — in-the-moment intervention (C1 / FREEZE §9). Structured/
+// anonymizable (ADR-004). Migration 20260626220000.
+model Intervention {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  accountId       String?   @map("account_id") @db.Uuid
+  trigger         String // revenge | oversizing | cascade | dd_approach | dd_breach
+  severity        String // warning | critical
+  scores          Json      @default("{}")
+  message         String
+  suggestedAction Json      @default("{}") @map("suggested_action")
+  status          String    @default("active") // active | responded
+  response        String? // accepted | dismissed
+  outcome         String? // protected | overridden
+  shownAt         DateTime  @default(now()) @map("shown_at")
+  respondedAt     DateTime? @map("responded_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("interventions")
 }

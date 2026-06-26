@@ -39,7 +39,7 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 | [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
 
 ## Estado
-**SPRINT 6 EJECUTADO (v3.1.0).**
+**SPRINT 7 EJECUTADO (v3.1.0).**
 - **S0 (fundaciones):** `rollingWindow`, outbox (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
 - **S1 (unificación de Reglas, C6):** `Rule` unificado (enforce/warn) + migración aditiva + backfill, plantillas de protección, badge UI, informe de no-mapeo (gate G2). Enforcement sigue en `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
 - **S2 (captura de trade v3, C7):** campos derivados (sesión/riskPct), MAE/MFE + `regime`, checklist obligatorio, auto-tagging de notas y **bucle de incentivo (D10)**. Columnas aditivas en `Trade`. Reportes `*_SPRINT_2.md`.
@@ -50,4 +50,6 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 
 - **S6 (Coach v3 I, C2 — memoria + threads):** `CoachThread`/`CoachMessage`/`CoachMemory` con frontera anti-poisoning (ADR-003: LLM propone, usuario confirma); inyección de memoria confirmada + compromisos activos en el prompt; UI de memoria editable/borrable en el drawer. Migración `20260626200000`. Reportes `*_SPRINT_6.md`.
 
-**G2 FLIPPEADO en prod**; **crons v3 activos**. No se ha avanzado a Sprint 7.
+- **S7 (Coach v3 II, C1 — proactividad + intervención):** motor determinista de intervención (cascada/revenge/oversizing/DD + scoring/fatiga + override de capital); `Intervention` + fast-path en `trades.close` (≤2s) + `InterventionOverlay`; aceptar crea regla protectora. Migración `20260626220000`. Reportes `*_SPRINT_7.md`.
+
+**G2 FLIPPEADO en prod**; **crons v3 activos**. No se ha avanzado a Sprint 8.
