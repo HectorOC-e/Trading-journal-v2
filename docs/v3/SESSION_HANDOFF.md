@@ -47,11 +47,15 @@ src/domains/analytics/longitudinal/ rolling-window.ts (primitiva C3)
 src/domains/analytics/institutional/ stats/bayes.ts (estimador Bayesiano ADR-002), drawdown.ts, r-distribution.ts, risk-ratios.ts, mae-mfe.ts, benchmark.ts, pnl-heatmap.ts (C4, S3, puro)
 src/domains/analytics/insights/   insight-reconcile.ts, insight-store.ts (S3: rellena confidence vía proportionEstimate cuando hay Insight.stat), recompute-insights.ts (C8)
 src/domains/rules/                unification.ts, protection-templates.ts, migration-report.ts, rule-sync.ts (dual-write), engine.ts (runAutomations + runRules + runRuleEngine + flag)
+src/domains/behavior/             verifiers.ts (FREEZE-D7), commitment-machine.ts (deriveSpec/evaluateResult), reinforcement.ts (ratio variable) — S4, puro
+src/server/services/behavior/     commitment-service.ts (createCommitmentFromInsight/evaluateCommitment/evaluateWindowCommitments/carryOverCommitments + outbox)
 src/domains/trading/services/     trade-derivation.ts, capture-rules.ts, note-tag-suggester.ts, emotion-feedback.ts (S2 captura)
 src/components/trades/            emotion-insight.tsx, note-tag-suggestions.tsx (D10/#37 UI)
+src/components/behavior/          behavior-loop-panel.tsx (S4 — CTA Comprometerme + tarjetas de compromiso, montado en /analytics)
 src/components/rules/             rule-mode-badge.tsx (enforce/warn)
-src/app/api/cron/                 recompute-insights/, dispatch-events/, rules-migration-report/  (Bearer CRON_SECRET)
-supabase/migrations/              20260625120000 (outbox+insights), 130000 (unify rules), 140000 (trade capture), 150000 (data_sharing_consent)
+src/server/trpc/routers/behavior.ts  (openInsights/commitments/createFromInsight/evaluate/archive)
+src/app/api/cron/                 recompute-insights/, dispatch-events/, rules-migration-report/, evaluate-commitments/ (S4)  (Bearer CRON_SECRET)
+supabase/migrations/              20260625120000 (outbox+insights), 130000 (unify rules), 140000 (trade capture), 150000 (consent), 20260626120000 (S4 behavior: commitments/commitment_checks/reinforcements)
 ```
 
 ## 4. Estado actual (qué se ha hecho)
@@ -66,6 +70,7 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 | **S3** métricas institucionales (C4) + estimador Bayesiano (ADR-002) + wiring de confianza en insights | ✅ merged a main | #93 |
 | **Fix E2E** smoke de Reviews (rediseño quitó tabs Semanales/Mensuales) | ✅ merged a main | #94 |
 | **S2 UI follow-up** (MAE/MFE + regime + derivación de sesión + nudge #10) — **verificado end-to-end** (Playwright vs preview + round-trip en BD) | ✅ merged a main | #95 |
+| **S4** Behavior Engine I (C5 — el loop): Commitment/Check/Reinforcement + verificadores + servicios + eventos + cron + router + panel; **verificado en prod** (commit→evento→committed→verificar→transición) | ✅ merged a main | #96 |
 
 **Migraciones se despliegan vía CI al mergear a main.** Tests: **945 vitest verdes** (S3: +63).
 
@@ -87,11 +92,10 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 - **Ramas:** trabajar siempre desde `origin/main` actualizado (la vieja `feat/v3-master-plan` está desincronizada de un refactor de Reviews; no usarla).
 
 ## 7. Próximo paso recomendado
-- **Mergear #93 (S3)** y correr CI.
-- **Sprint 4 — Behavior Engine I (loop básico, C5):** `Commitment`/`CommitmentCheck`/`Reinforcement` (modelos+migración dual), `createCommitmentFromInsight`, `evaluateCommitment` (vía **librería de verificadores** FREEZE-D7 — **consume las funciones puras de `analytics/institutional/` directamente**, no tRPC), `reinforce` (ratio variable D13), `carryOverCommitments`. Subconjunto inicial 5 tipos (revenge/intraday-decay/oversizing/edge-decay/off-plan). **Aquí se programa el dispatcher de eventos en prod** (primer consumidor). BIZ-1: diseñar `Intervention`/`Commitment` anonimizables (ADR-004).
-- ✅ **Follow-up UI de S2** — HECHO y verificado (PR #95).
-- ✅ **Flip de G2** — HECHO y verificado en prod (ver §5).
-- **S3 dejó diferido (OPEN_ITEMS_SPRINT_3):** superficies tRPC/UI del cuadrante (S12) + mapper DB→métricas (S4/S12) + wiring Bayesiano de insights continuos (S8).
+- **Sprint 5 — Behavior Engine II (regla↔compromiso) + sugerencias:** `linkRule(commitment, template)` (crea `Rule` enforce vinculada → la ruptura del compromiso queda **prevenida**); `RuleSuggestion` + `suggestRulesFromInsights` (#14); CTA "Activar regla anti-X" en el insight; **continuous-eval** para compromisos con regla enforce (evaluar en cada trade). Dep: S1 (reglas unificadas, G2 ya flippeado), S4.
+- ✅ HECHO esta sesión: **S3** (#93), **fix E2E** (#94), **S2 UI** (#95 verificado), **flip G2** (prod, §5), **S4** (#96 verificado en prod).
+- **Diferido (OPEN_ITEMS_SPRINT_4):** `edge-decay` verifier (S10), superficies HOY/Reviews del loop (S12/S13), ImprovementScore (S14), **scheduling de crons en prod** (evaluate-commitments + dispatch-events + recompute-insights = ops). ⚠️ Sin `recompute-insights` agendado en prod **no hay insights persistidos** → `behavior.openInsights` sale vacío en prod (en la verificación de S4 se sembró un insight fixture).
+- **S3 diferido:** superficies del cuadrante (S12) + mapper DB→métricas + wiring Bayesiano de insights continuos (S8).
 
 ## 8. Cosas que es fácil olvidar / trampas
 - El bloqueo pre-trade y la separación práctica/real son **invariantes** (test de no-regresión siempre).
