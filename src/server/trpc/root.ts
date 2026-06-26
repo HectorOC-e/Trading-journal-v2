@@ -25,6 +25,7 @@ import { automationsRouter }        from "./routers/automations"
 import { customPalettesRouter }     from "./routers/custom-palettes"
 import { behaviorRouter }           from "./routers/behavior"
 import { coachRouter }              from "./routers/coach"
+import { interventionRouter }       from "./routers/intervention"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -52,6 +53,7 @@ export const appRouter = router({
   customPalettes:    customPalettesRouter,
   behavior:          behaviorRouter,
   coach:             coachRouter,
+  intervention:      interventionRouter,
 })
 
 export type AppRouter     = typeof appRouter

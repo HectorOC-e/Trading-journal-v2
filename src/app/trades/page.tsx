@@ -8,6 +8,7 @@ import { SkeletonTableRows } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
+import { InterventionOverlay } from "@/components/intervention/intervention-overlay"
 import { parsePointValue } from "@/domains/trading/services/trade-service"
 import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
@@ -158,6 +159,7 @@ export default function TradesPage() {
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
       utils.trades.dashboardStats.invalidate()
+      utils.intervention.active.invalidate() // S7: surface any intervention the close triggered
       if (result.accountLocked) {
         const acct = accounts.find(a => a.id === result.trade.accountId)
         setLockedNotice({ name: acct?.name ?? "tu cuenta", reason: result.lockReason ?? "MAX_DRAWDOWN" })
@@ -495,6 +497,9 @@ export default function TradesPage() {
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
       />
+
+      {/* S7: in-the-moment intervention overlay (self-fetches the active one). */}
+      <InterventionOverlay />
     </>
   )
 }

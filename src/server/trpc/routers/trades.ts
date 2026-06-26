@@ -19,6 +19,7 @@ import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runRuleEngine } from "@/domains/rules/engine"
 import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
+import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { buildContext } from "@/domains/rules/context"
 import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
@@ -810,6 +811,9 @@ export const tradesRouter = router({
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       // Continuous eval of rule-backed commitments (S5, best-effort).
       await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
+      // S7 fast-path: realize losses → run the intervention engine (best-effort, ≤2s).
+      // The row is persisted here; the client reads it via intervention.active.
+      await runIntervention(ctx.prisma, ctx.userId, trade.accountId, (trade.date as Date).toISOString().slice(0, 10)).catch(() => {})
       return { trade: serializeTrade(updated), accountLocked: breach != null, lockReason: breach?.reason ?? null }
     }),
 
