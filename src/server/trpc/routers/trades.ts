@@ -145,6 +145,10 @@ function serializeTrade(t: RawTrade) {
     rMultiple:  t.rMultiple  != null ? Number(t.rMultiple)  : null,
     closePrice: t.closePrice != null ? Number(t.closePrice) : null,
     commission: t.commission != null ? Number(t.commission) : null,
+    // Trade-capture v3 (S2) decimals → numbers for the client (#27, #35).
+    riskPct:    t.riskPct    != null ? Number(t.riskPct)    : null,
+    maeR:       t.maeR       != null ? Number(t.maeR)       : null,
+    mfeR:       t.mfeR       != null ? Number(t.mfeR)       : null,
     date:       (t.date as Date).toISOString().slice(0, 10),
     createdAt:  t.createdAt.toISOString(),
     updatedAt:  t.updatedAt.toISOString(),
@@ -676,6 +680,10 @@ export const tradesRouter = router({
       revengeFlag:      z.boolean().optional(),
       // Pre-trade planning field (TASK-074)
       planNotes:        z.string().max(500).optional().nullable(),
+      // Trade-capture v3 (S2) — post-hoc correction of excursions / market regime (#35, E5.C6)
+      maeR:             z.number().optional().nullable(),
+      mfeR:             z.number().optional().nullable(),
+      regime:           z.enum(["trend", "range", "volatile"]).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
@@ -735,6 +743,10 @@ export const tradesRouter = router({
       closePrice: z.number(),
       closeTime:  z.string().optional(),
       commission: z.number(),
+      // Trade-capture v3 (S2) — excursions known at close + market regime (#35, E5.C6)
+      maeR:       z.number().optional().nullable(),
+      mfeR:       z.number().optional().nullable(),
+      regime:     z.enum(["trend", "range", "volatile"]).optional().nullable(),
     }))
     .mutation(async ({ ctx, input }) => {
       const trade = await ctx.prisma.trade.findUniqueOrThrow({
@@ -755,7 +767,13 @@ export const tradesRouter = router({
 
       const updated = await ctx.prisma.trade.update({
         where:   { id: input.id, userId: ctx.userId },
-        data:    { status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission: input.commission, pnl: netPnl, rMultiple },
+        data:    {
+          status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission: input.commission, pnl: netPnl, rMultiple,
+          // Capture v3 (S2): persist excursions/regime only when provided (don't clobber with null).
+          ...(input.maeR != null ? { maeR: input.maeR } : {}),
+          ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
+          ...(input.regime != null ? { regime: input.regime } : {}),
+        },
         include: { account: true, setup: true, events: true },
       })
 

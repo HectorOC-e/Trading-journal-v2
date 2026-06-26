@@ -20,6 +20,7 @@ import { trpc } from "@/lib/trpc/client"
 import { EmotionInsight } from "@/components/trades/emotion-insight"
 import { NoteTagSuggestions } from "@/components/trades/note-tag-suggestions"
 import { localDateISO } from "@/lib/datetime/local"
+import { deriveSession } from "@/domains/trading/services/trade-derivation"
 import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
 import { computeNotional, computeLeverageMetrics, leverageBand, LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
@@ -91,6 +92,13 @@ const SESSION_OPTIONS: { value: TradeSession; label: string }[] = [
   { value: "London Close", label: "London Close" },
 ]
 
+// Market regime at entry (manual, v3.0 — FREEZE-D18). Feeds regime performance analytics.
+const REGIME_OPTIONS: { value: "trend" | "range" | "volatile"; label: string }[] = [
+  { value: "trend",    label: "Tendencia" },
+  { value: "range",    label: "Rango" },
+  { value: "volatile", label: "Volátil" },
+]
+
 const MANUAL_TAG_OPTIONS: { value: TradeTag; label: string }[] = [
   { value: "Off-plan",  label: "Off-plan" },
   { value: "Impulsivo", label: "Impulsivo" },
@@ -149,6 +157,7 @@ const INITIAL: TradeFormValues = {
   executionQuality: null,
   fomoFlag: false,
   revengeFlag: false,
+  regime: null,
 }
 
 /** Order in which to surface/scroll to the first validation error. */
@@ -220,6 +229,9 @@ export function RegisterTradeModal({
   const [uploading, setUploading] = useState(false)
   const [psychOpen, setPsychOpen] = useState(false)
   const [sizeManual, setSizeManual] = useState(false)
+  // Session is auto-derived from the open time (deriveSession, #27) until the user
+  // picks one manually; then we stop clobbering their choice.
+  const [sessionManual, setSessionManual] = useState(false)
 
   const update = <K extends keyof TradeFormValues>(key: K, value: TradeFormValues[K]) =>
     // RHF's setValue value type is a per-key conditional; the cast is safe since
@@ -255,6 +267,7 @@ export function RegisterTradeModal({
       const t = setTimeout(() => {
         reset(INITIAL)
         setSizeManual(false)
+        setSessionManual(false)
       }, 200)
       return () => clearTimeout(t)
     }
@@ -269,6 +282,13 @@ export function RegisterTradeModal({
       if (getValues("date") !== todayLocal) update("date", todayLocal)
     }
   }, [open, userTimezone]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Derive the trading session from the open time until the user overrides it (#27).
+  useEffect(() => {
+    if (sessionManual || !form.openTime) return
+    const derived = deriveSession(form.openTime)
+    if (derived && derived !== getValues("session")) update("session", derived as TradeSession)
+  }, [form.openTime, sessionManual]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const selectedAccount = accounts.find(a => a.id === form.accountId)
   const selectedSetup   = setups.find(s => s.id === form.setupId)
@@ -856,12 +876,47 @@ export function RegisterTradeModal({
 
           {/* ── Sesión ── */}
           <div>
-            <p className="text-eyebrow mb-2">Sesión</p>
+            <p className="text-eyebrow mb-2">
+              Sesión
+              {!sessionManual && form.openTime && (
+                <span className="ml-1.5 text-[10px] text-[var(--win)] font-normal">auto</span>
+              )}
+            </p>
             <FilterBar
               options={SESSION_OPTIONS}
               value={form.session}
-              onChange={v => update("session", v as TradeSession)}
+              onChange={v => { setSessionManual(true); update("session", v as TradeSession) }}
             />
+          </div>
+
+          {/* ── Régimen de mercado (opcional) ── */}
+          <div>
+            <p className="text-eyebrow mb-2">Régimen de mercado <span className="text-[var(--ink-3)] font-normal">· opcional</span></p>
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => update("regime", null)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors",
+                  !form.regime ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                )}
+              >
+                —
+              </button>
+              {REGIME_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => update("regime", value)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors",
+                    form.regime === value ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── Advertencias ── */}
