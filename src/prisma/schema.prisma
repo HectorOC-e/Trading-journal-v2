@@ -60,6 +60,9 @@ model User {
   customPalettes           CustomPalette[]
   domainEvents             DomainEvent[]
   insights                 Insight[]
+  commitments              Commitment[]
+  commitmentChecks         CommitmentCheck[]
+  reinforcements           Reinforcement[]
 
   @@map("users")
 }
@@ -325,6 +328,7 @@ model Rule {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commitments Commitment[]
 
   @@index([userId])
   @@index([sourceAutomationId])
@@ -896,7 +900,80 @@ model Insight {
   resolvedAt           DateTime? @map("resolved_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commitments Commitment[]
 
   @@index([userId, status])
   @@map("insights")
+}
+
+// ─────────────────────────────────────────────
+// BEHAVIOR ENGINE (Sprint 4 — the loop, C5)
+// INSIGHT → COMMITMENT → (RULE) → CHECK → REINFORCEMENT. Structured/anonymizable
+// fields (ADR-004): metricKey/target/comparator/result/observedValue carry the
+// signal without PII. Migration 20260626120000.
+// ─────────────────────────────────────────────
+model Commitment {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  sourceInsightId String?   @map("source_insight_id") @db.Uuid
+  text            String
+  metricKey       String    @map("metric_key")
+  target          Float     @default(0)
+  comparator      String    @default("<=") // '<=' | '>=' | '=='
+  window          String    @default("week") // day | week | month
+  startAt         DateTime  @default(now()) @map("start_at")
+  endAt           DateTime  @map("end_at")
+  ruleId          String?   @map("rule_id") @db.Uuid
+  status          String    @default("active") // active | kept | partial | broken | expired
+  createdVia      String    @default("self") @map("created_via") // coach | self | review
+  keptCount       Int       @default(0) @map("kept_count")
+  archivedAt      DateTime? @map("archived_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceInsight Insight?          @relation(fields: [sourceInsightId], references: [id], onDelete: SetNull)
+  rule          Rule?             @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  checks        CommitmentCheck[]
+  reinforcements Reinforcement[]
+
+  @@index([userId, status])
+  @@index([sourceInsightId])
+  @@map("commitments")
+}
+
+model CommitmentCheck {
+  id            String   @id @default(uuid()) @db.Uuid
+  commitmentId  String   @map("commitment_id") @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  evaluatedAt   DateTime @default(now()) @map("evaluated_at")
+  observedValue Float    @map("observed_value")
+  result        String // kept | partial | broken
+  evidence      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  commitment Commitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([commitmentId])
+  @@index([userId])
+  @@map("commitment_checks")
+}
+
+model Reinforcement {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  commitmentId String    @map("commitment_id") @db.Uuid
+  kind         String // positive | corrective
+  visible      Boolean   @default(true)
+  channel      String    @default("today") // today | coach | review
+  shownAt      DateTime? @map("shown_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commitment Commitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([commitmentId])
+  @@map("reinforcements")
 }

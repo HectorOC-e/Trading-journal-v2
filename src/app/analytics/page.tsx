@@ -15,6 +15,7 @@ import { SimpleTable } from "@/components/ui/data-table"
 import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
+import { BehaviorLoopPanel } from "@/components/behavior/behavior-loop-panel"
 
 type Overview = RouterOutputs["analytics"]["overview"]
 type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
@@ -295,8 +296,9 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-5 flex flex-col gap-4">
         <AiInsightsPanel period={period} includePractice={includePractice} />
+        <BehaviorLoopPanel />
       </div>
 
       {isLoading ? (
