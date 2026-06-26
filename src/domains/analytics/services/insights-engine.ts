@@ -16,6 +16,15 @@ import type { MinimalTrade } from "./dashboard-analytics"
 export type InsightCategory = "pattern" | "correlation" | "anomaly" | "risk" | "opportunity"
 export type InsightSeverity = "critical" | "warning" | "info" | "positive"
 
+/**
+ * Statistical basis of an insight (ADR-002 / S3). When a detector exposes the
+ * raw counts/values behind its claim, the persistence layer runs the Bayesian
+ * estimator to attach a credible interval + directional confidence. Detectors
+ * that cannot ground their claim leave this absent → no fabricated rigor (R6).
+ */
+export type InsightStat =
+  | { kind: "proportion"; successes: number; trials: number; baseline: number; direction: "below" | "above" }
+
 export interface Insight {
   id:              string
   category:        InsightCategory
@@ -26,6 +35,8 @@ export interface Insight {
   evidence:        string
   /** Optional headline metric (e.g. a percentage) for compact rendering. */
   metric?:         number
+  /** Optional statistical basis for Bayesian historization (ADR-002). */
+  stat?:           InsightStat
 }
 
 /** A trade enriched with the psychology fields the engine correlates on. */
@@ -86,6 +97,8 @@ export function detectIntradayDecay(trades: AnalyticsTrade[]): Insight | null {
     recommendation: "Define un máximo de trades por día o una pausa obligatoria tras el 2º; el sobre-trading erosiona tu edge.",
     evidence: `${earlyN} trades tempranos vs ${lateN} tardíos.`,
     metric: pct(drop),
+    // Late-day win-rate vs the early-day baseline: how sure are we it really drops?
+    stat: { kind: "proportion", successes: lateWins, trials: lateN, baseline: earlyWR / 100, direction: "below" },
   }
 }
 
@@ -99,11 +112,11 @@ export function detectWeekdayDiscipline(trades: AnalyticsTrade[]): Insight | nul
     e.n++; if (hasViolation(t)) e.viol++
     byDow.set(dow, e)
   }
-  let worst = { dow: -1, rate: 0, n: 0 }
+  let worst = { dow: -1, rate: 0, n: 0, viol: 0 }
   for (const [dow, e] of byDow) {
     if (e.n < 5) continue
     const rate = (e.viol / e.n) * 100
-    if (rate > worst.rate) worst = { dow, rate, n: e.n }
+    if (rate > worst.rate) worst = { dow, rate, n: e.n, viol: e.viol }
   }
   const overallViol = trades.filter(hasViolation).length / trades.length * 100
   if (worst.dow < 0 || worst.rate < 25 || worst.rate < overallViol + 12) return null
@@ -116,6 +129,8 @@ export function detectWeekdayDiscipline(trades: AnalyticsTrade[]): Insight | nul
     recommendation: `Trata los ${WEEKDAYS[worst.dow].toLowerCase()} con reglas más estrictas o reduce tamaño; es tu día de mayor fuga de disciplina.`,
     evidence: `${worst.n} trades ese día.`,
     metric: pct(worst.rate),
+    // Violation rate that day vs the overall baseline: confidence it's genuinely worse.
+    stat: { kind: "proportion", successes: worst.viol, trials: worst.n, baseline: overallViol / 100, direction: "above" },
   }
 }
 

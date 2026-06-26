@@ -47,13 +47,16 @@
 **Validación:** ✅ 863/863 tests (+27, TDD); tsc+eslint verdes; migración aditiva (replay → CI). Ver `TEST_REPORT_SPRINT_2.md`.
 **Pendiente (UI, verificación del usuario):** mostrar el incentivo/nudge y pre-rellenar derivados en el formulario; analítica de MAE/MFE es **S3**.
 
-## Sprint 3 — Métricas institucionales (C4)
+## Sprint 3 — Métricas institucionales (C4) ✅ EJECUTADO (v3.1.0)
 **Objetivo:** el cuadrante de riesgo que espera un prop.
 **Entregables:**
-- Max DD + DD actual + duración (#3); distribución de R (#19); Sortino/Calmar/Kelly rolling (#22); MAE/MFE analytics (#35); benchmark vs plan (#43); heatmap P&L (#26).
-**Riesgos:** correctitud de fórmulas. **Mitigación:** tests con casos conocidos.
-**Dependencias:** S0 (rolling), S2 (MAE/MFE).
-**Validación:** unit tests de cada métrica; valores cuadran con cálculos manuales.
+- [x] Max DD + DD actual + duración (#3/#34, `drawdown.ts`); distribución de R (#19, `r-distribution.ts`); Sortino/Calmar/Kelly rolling (#22, `risk-ratios.ts`); MAE/MFE analytics (#35, `mae-mfe.ts`); benchmark vs plan (#43, `benchmark.ts`); heatmap P&L (#26, `pnl-heatmap.ts`). Todo en `domains/analytics/institutional/`, puro y testeado.
+- [x] **Estimador Bayesiano con shrinkage** (ADR-002 / FREEZE-D15, `institutional/stats/bayes.ts`): Beta-Binomial + Normal jerárquico + priors empíricos + intervalo creíble (cuantiles Beta reales).
+- [x] **Wiring:** `Insight.confidence/credibleInterval/effectSize` (NULL desde S0) se rellenan para los detectores con base estadística (`stat`) → cierra R6 vía el cron `recompute-insights`.
+**Riesgos:** correctitud de fórmulas. **Mitigación:** tests con casos conocidos (valores fijados a mano).
+**Dependencias:** S0 (rolling, Insight), S2 (MAE/MFE).
+**Validación:** ✅ 945/945 vitest (+63, TDD); tsc+eslint verdes (0 errores). Sin migración (analítica pura). Ver `TEST_REPORT_SPRINT_3.md`.
+**Diferido a S12/S4:** superficies tRPC/UI del cuadrante + mapper DB→métricas (ver `OPEN_ITEMS_SPRINT_3.md`).
 
 ## Sprint 4 — Behavior Engine I (loop básico) — C5
 **Objetivo:** insight→compromiso→verificación→refuerzo.
