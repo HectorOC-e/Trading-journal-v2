@@ -5,7 +5,7 @@
 // and active/closed commitments show their verified result. The rich HOY/Reviews
 // surfaces own this later (S12/S13); this is the first usable home.
 
-import { Target, CheckCircle2, AlertTriangle, Circle, BookOpen, Loader2 } from "lucide-react"
+import { Target, CheckCircle2, AlertTriangle, Circle, BookOpen, Loader2, ShieldCheck, Shield } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -23,10 +23,12 @@ export function BehaviorLoopPanel() {
   const utils = trpc.useUtils()
   const { data: insights = [], isLoading: insLoading } = trpc.behavior.openInsights.useQuery(undefined, { staleTime: 30_000 })
   const { data: commitments = [], isLoading: comLoading } = trpc.behavior.commitments.useQuery(undefined, { staleTime: 30_000 })
+  const { data: suggestions = [] } = trpc.behavior.ruleSuggestions.useQuery(undefined, { staleTime: 30_000 })
 
   const invalidate = () => {
     utils.behavior.openInsights.invalidate()
     utils.behavior.commitments.invalidate()
+    utils.behavior.ruleSuggestions.invalidate()
   }
 
   const create = trpc.behavior.createFromInsight.useMutation({
@@ -41,6 +43,18 @@ export function BehaviorLoopPanel() {
     onSuccess: () => invalidate(),
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
+  const link = trpc.behavior.linkRule.useMutation({
+    onSuccess: (r) => { toast.success(`Regla activada: ${r.name} — romper el compromiso queda prevenido.`); invalidate() },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+  const accept = trpc.behavior.acceptSuggestion.useMutation({
+    onSuccess: (r) => { toast.success(`Regla activada: ${r.name}`); invalidate() },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+  const dismiss = trpc.behavior.dismissSuggestion.useMutation({
+    onSuccess: () => invalidate(),
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
 
   const committable = insights.filter((i) => i.canCommit)
   const studyOnly = insights.filter((i) => !i.canCommit)
@@ -48,7 +62,7 @@ export function BehaviorLoopPanel() {
   if (insLoading || comLoading) {
     return <div className="h-24 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
   }
-  if (insights.length === 0 && commitments.length === 0) return null
+  if (insights.length === 0 && commitments.length === 0 && suggestions.length === 0) return null
 
   return (
     <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-4">
@@ -81,7 +95,20 @@ export function BehaviorLoopPanel() {
                     <span>medido: {c.latestCheck.observedValue} (objetivo {c.comparator} {c.target})</span>
                   )}
                   {c.keptCount > 0 && <span className="text-[var(--win)]">{c.keptCount}× cumplido</span>}
+                  {c.ruleId && (
+                    <span className="inline-flex items-center gap-1 text-[var(--win)]"><ShieldCheck size={11} /> protegido por regla</span>
+                  )}
                   <span className="flex-1" />
+                  {c.status === "active" && !c.ruleId && (
+                    <button
+                      type="button"
+                      onClick={() => link.mutate({ commitmentId: c.id })}
+                      disabled={link.isPending}
+                      className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline disabled:opacity-50"
+                    >
+                      <Shield size={11} /> Activar regla
+                    </button>
+                  )}
                   {c.status === "active" && (
                     <button
                       type="button"
@@ -99,6 +126,37 @@ export function BehaviorLoopPanel() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Rule suggestions → activate enforce rule (S5) */}
+      {suggestions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-eyebrow">Reglas sugeridas</p>
+          {suggestions.map((s) => (
+            <div key={s.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3">
+              <span className="min-w-0 flex items-start gap-2">
+                <Shield size={13} className="text-[var(--accent)] shrink-0 mt-0.5" />
+                <span className="min-w-0">
+                  <span className="text-[13px] font-semibold text-[var(--ink)] block truncate">{s.ruleName}</span>
+                  <span className="text-[10px] text-[var(--ink-3)] line-clamp-1">{s.reason}</span>
+                </span>
+              </span>
+              <span className="shrink-0 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => accept.mutate({ suggestionId: s.id })}
+                  disabled={accept.isPending}
+                  className="rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
+                >
+                  Activar
+                </button>
+                <button type="button" onClick={() => dismiss.mutate({ suggestionId: s.id })} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--loss)]">
+                  Descartar
+                </button>
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

@@ -63,6 +63,7 @@ model User {
   commitments              Commitment[]
   commitmentChecks         CommitmentCheck[]
   reinforcements           Reinforcement[]
+  ruleSuggestions          RuleSuggestion[]
 
   @@map("users")
 }
@@ -329,6 +330,7 @@ model Rule {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   commitments Commitment[]
+  ruleSuggestions RuleSuggestion[]
 
   @@index([userId])
   @@index([sourceAutomationId])
@@ -901,6 +903,7 @@ model Insight {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   commitments Commitment[]
+  ruleSuggestions RuleSuggestion[]
 
   @@index([userId, status])
   @@map("insights")
@@ -976,4 +979,26 @@ model Reinforcement {
   @@index([userId])
   @@index([commitmentId])
   @@map("reinforcements")
+}
+
+// RuleSuggestion (E10, S5) — proposed enforce rule for a critical insight.
+// proposedRule json/reason carry no PII (anonymizable, ADR-004). Migration 20260626180000.
+model RuleSuggestion {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  insightId    String?  @map("insight_id") @db.Uuid
+  proposedRule Json     @map("proposed_rule")
+  reason       String   @default("")
+  status       String   @default("pending") // pending | accepted | dismissed
+  ruleId       String?  @map("rule_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insight Insight? @relation(fields: [insightId], references: [id], onDelete: SetNull)
+  rule    Rule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([insightId])
+  @@map("rule_suggestions")
 }

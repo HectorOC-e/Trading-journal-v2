@@ -18,6 +18,7 @@ import type {
 import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runRuleEngine } from "@/domains/rules/engine"
+import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { buildContext } from "@/domains/rules/context"
 import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
@@ -655,6 +656,8 @@ export const tradesRouter = router({
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
+      // Continuous eval of rule-backed commitments (S5, best-effort).
+      await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
       return serializeTrade(full)
     }),
 
@@ -805,6 +808,8 @@ export const tradesRouter = router({
       }
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
+      // Continuous eval of rule-backed commitments (S5, best-effort).
+      await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
       return { trade: serializeTrade(updated), accountLocked: breach != null, lockReason: breach?.reason ?? null }
     }),
 

@@ -39,11 +39,13 @@ queda sin representación en estos documentos. La trazabilidad está en `MASTER_
 | [adr/](./adr/) | ADR-000..003 (decisiones de raíz, eventos, estadística, memoria) |
 
 ## Estado
-**SPRINT 4 EJECUTADO (v3.1.0).**
+**SPRINT 5 EJECUTADO (v3.1.0).**
 - **S0 (fundaciones):** `rollingWindow`, outbox (`domain_events`), `Insight` persistido (C8), job `recomputeInsights`. Reportes `*_SPRINT_0.md`.
 - **S1 (unificación de Reglas, C6):** `Rule` unificado (enforce/warn) + migración aditiva + backfill, plantillas de protección, badge UI, informe de no-mapeo (gate G2). Enforcement sigue en `Automation` (cutover gated). Reportes `*_SPRINT_1.md`.
 - **S2 (captura de trade v3, C7):** campos derivados (sesión/riskPct), MAE/MFE + `regime`, checklist obligatorio, auto-tagging de notas y **bucle de incentivo (D10)**. Columnas aditivas en `Trade`. Reportes `*_SPRINT_2.md`.
 - **S3 (métricas institucionales, C4):** cuadrante institucional puro (`domains/analytics/institutional/`: drawdown, distribución de R, Sortino/Calmar/Kelly, MAE/MFE, benchmark, heatmap) + **estimador Bayesiano con shrinkage** (ADR-002) + wiring que rellena `confidence/credibleInterval/effectSize` de `Insight` (cierra R6). Sin migración. Superficies tRPC/UI diferidas a S12. Reportes `*_SPRINT_3.md`.
 - **S4 (Behavior Engine I, C5 — el loop):** `Commitment`/`CommitmentCheck`/`Reinforcement` (migración `20260626120000`, anonimizables ADR-004); dominio `domains/behavior/` (verificadores FREEZE-D7, máquina de estados, refuerzo ratio-variable); servicios `createCommitmentFromInsight`/`evaluateCommitment`/`carryOverCommitments` + eventos `commitment.*` en outbox + cron `evaluate-commitments`; router `behavior` + `BehaviorLoopPanel` en `/analytics`. Reportes `*_SPRINT_4.md`.
 
-**G2 (cutover de Reglas) FLIPPEADO y verificado en prod** (`RULES_SOURCE=rules`). No se ha avanzado a Sprint 5.
+- **S5 (Behavior Engine II, C5 — regla↔compromiso):** `linkRule` (compromiso→regla enforce, enforced live), `RuleSuggestion`+`suggestRulesFromInsights`+accept/dismiss (#14), continuous-eval en cada trade; UI "Activar regla". Migración `20260626180000`. Reportes `*_SPRINT_5.md`.
+
+**G2 FLIPPEADO en prod** (`RULES_SOURCE=rules`); **crons v3 activos** (dispatch/recompute/evaluate). No se ha avanzado a Sprint 6.
