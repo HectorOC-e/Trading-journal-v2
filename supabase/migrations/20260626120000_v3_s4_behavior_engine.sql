@@ -18,7 +18,7 @@ create table if not exists public.commitments (
   metric_key         text not null,
   target             double precision not null default 0,
   comparator         text not null default '<=',   -- '<=' | '>=' | '=='
-  window             text not null default 'week',  -- day | week | month
+  "window"           text not null default 'week',  -- day | week | month ("window" is a reserved word)
   start_at           timestamptz not null default now(),
   end_at             timestamptz not null,
   rule_id            uuid references public.rules(id) on delete set null,
