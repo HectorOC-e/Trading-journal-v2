@@ -23,6 +23,7 @@ import { notificationsRouter }      from "./routers/notifications"
 import { tagsRouter }               from "./routers/tags"
 import { automationsRouter }        from "./routers/automations"
 import { customPalettesRouter }     from "./routers/custom-palettes"
+import { behaviorRouter }           from "./routers/behavior"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -48,6 +49,7 @@ export const appRouter = router({
   tags:              tagsRouter,
   automations:       automationsRouter,
   customPalettes:    customPalettesRouter,
+  behavior:          behaviorRouter,
 })
 
 export type AppRouter     = typeof appRouter

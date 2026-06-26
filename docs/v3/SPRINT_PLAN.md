@@ -58,13 +58,17 @@
 **Validación:** ✅ 945/945 vitest (+63, TDD); tsc+eslint verdes (0 errores). Sin migración (analítica pura). Ver `TEST_REPORT_SPRINT_3.md`.
 **Diferido a S12/S4:** superficies tRPC/UI del cuadrante + mapper DB→métricas (ver `OPEN_ITEMS_SPRINT_3.md`).
 
-## Sprint 4 — Behavior Engine I (loop básico) — C5
+## Sprint 4 — Behavior Engine I (loop básico) — C5 ✅ EJECUTADO (v3.1.0)
 **Objetivo:** insight→compromiso→verificación→refuerzo.
 **Entregables:**
-- `Commitment`, `CommitmentCheck`, `Reinforcement` (modelos+migración); `createCommitmentFromInsight`, `evaluateCommitment`, `reinforce`; `carryOverCommitments` para reviews (#5); UI `InsightCard`/`CommitmentCard`.
-**Riesgos:** mapeo insight→métrica incompleto. **Mitigación:** empezar con 5 tipos de insight de alto valor.
-**Dependencias:** S0 (insights persistidos), S3 (métricas para verificar).
-**Validación:** crear compromiso desde insight; verificación marca kept/broken con evidencia; review muestra "¿cumpliste?".
+- [x] `Commitment`/`CommitmentCheck`/`Reinforcement` (modelos + migración `20260626120000`, anonimizables ADR-004).
+- [x] Dominio puro (`domains/behavior/`): verificadores (FREEZE-D7), máquina de estados, `planReinforcement` (ratio variable).
+- [x] Servicios: `createCommitmentFromInsight`, `evaluateCommitment`, `evaluateWindowCommitments` (cron), `carryOverCommitments` (#5). Eventos `commitment.*` en el outbox.
+- [x] Router `behavior` + UI `BehaviorLoopPanel` (CTA "Comprometerme" / "estudiar"; tarjetas de compromiso) en `/analytics`.
+**Riesgos:** mapeo insight→métrica incompleto. **Mitigación:** 4 verificadores de alto valor (revenge/intraday-decay/oversizing/off-plan); edge-decay → S10.
+**Dependencias:** S0 (insights), S3 (verificadores consumen lógica determinista).
+**Validación:** ✅ 961/961 vitest (+16, TDD); tsc+eslint verdes; loop verificado end-to-end en preview. Ver `TEST_REPORT_SPRINT_4.md`.
+**Diferido (OPEN_ITEMS_SPRINT_4):** `linkRule`/sugerencias (S5), superficies HOY/Reviews (S12/S13), ImprovementScore (S14), scheduling de crons (ops).
 
 ## Sprint 5 — Behavior Engine II (regla↔compromiso) + sugerencias
 **Objetivo:** cerrar insight→protección.
