@@ -70,7 +70,9 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 | **S3** métricas institucionales (C4) + estimador Bayesiano (ADR-002) + wiring de confianza en insights | ✅ merged a main | #93 |
 | **Fix E2E** smoke de Reviews (rediseño quitó tabs Semanales/Mensuales) | ✅ merged a main | #94 |
 | **S2 UI follow-up** (MAE/MFE + regime + derivación de sesión + nudge #10) — **verificado end-to-end** (Playwright vs preview + round-trip en BD) | ✅ merged a main | #95 |
-| **S4** Behavior Engine I (C5 — el loop): Commitment/Check/Reinforcement + verificadores + servicios + eventos + cron + router + panel; **verificado en prod** (commit→evento→committed→verificar→transición) | ✅ merged a main | #96 |
+| **S4** Behavior Engine I (C5 — el loop): Commitment/Check/Reinforcement + verificadores + servicios + eventos + cron + router + panel; **verificado en prod** | ✅ merged a main | #96 |
+| **Crons v3 activados** (dispatch/recompute/evaluate) + fix `app_url`→www (401 latente en TODOS los crons) | ✅ merged a main | #97/#98 |
+| **S5** Behavior Engine II (regla↔compromiso): `linkRule`, `RuleSuggestion`+sugerencias+accept/dismiss, continuous-eval, autogen en recompute; **verificado en prod** (commit→Activar regla→enforce live enlazada) | ✅ merged a main | #99/#100 |
 
 **Migraciones se despliegan vía CI al mergear a main.** Tests: **945 vitest verdes** (S3: +63).
 
@@ -92,8 +94,8 @@ supabase/migrations/              20260625120000 (outbox+insights), 130000 (unif
 - **Ramas:** trabajar siempre desde `origin/main` actualizado (la vieja `feat/v3-master-plan` está desincronizada de un refactor de Reviews; no usarla).
 
 ## 7. Próximo paso recomendado
-- **Sprint 5 — Behavior Engine II (regla↔compromiso) + sugerencias:** `linkRule(commitment, template)` (crea `Rule` enforce vinculada → la ruptura del compromiso queda **prevenida**); `RuleSuggestion` + `suggestRulesFromInsights` (#14); CTA "Activar regla anti-X" en el insight; **continuous-eval** para compromisos con regla enforce (evaluar en cada trade). Dep: S1 (reglas unificadas, G2 ya flippeado), S4.
-- ✅ HECHO esta sesión: **S3** (#93), **fix E2E** (#94), **S2 UI** (#95 verificado), **flip G2** (prod, §5), **S4** (#96 verificado en prod).
+- **Sprint 6 — Coach v3 I: memoria + threads (C2):** `CoachThread`/`CoachMessage` + capas de memoria (§6 freeze: episódica/semántica/identidad/mejora) con **frontera anti-poisoning (FREEZE-D9/P6: el LLM propone, los datos confirman)**; job de resumen/extracción; inyección de memoria + compromisos activos en el prompt; UI de memoria editable/borrable. Dep: S4 (compromisos para referenciar). **Reusa `lib/ai/resolve-provider.ts`** (config persistida del usuario). Modelos Claude: ver claude-api skill.
+- ✅ HECHO esta sesión: **S3** (#93), **fix E2E** (#94), **S2 UI** (#95 verif.), **flip G2** (prod), **S4** (#96 verif. prod), **crons v3 + fix app_url 401** (#97/#98), **S5** (#99/#100 verif. prod).
 - ✅ **Crons activados en prod 2026-06-26** (PR #97): `v3-dispatch-events` (*/5m), `v3-recompute-insights` (diario 05:15 UTC), `v3-evaluate-commitments` (diario 05:45 UTC). **Bug latente encontrado + corregido (PR #98):** TODOS los crons devolvían 401 — el apex 308→www y pg_net descarta el header `Authorization` cross-host; fix = `app_url`→`https://www.tjournalx.com`. Verificado: recompute→200 (6 insights), dispatch→drenó 6 eventos. (Debug crons: mirar `net._http_response.status_code`, NO solo `cron.job_run_details`.) Esto también arregló los 6 digests que fallaban.
 - **Diferido (OPEN_ITEMS_SPRINT_4):** `edge-decay` verifier (S10), superficies HOY/Reviews del loop (S12/S13), ImprovementScore (S14).
 - **S3 diferido:** superficies del cuadrante (S12) + mapper DB→métricas + wiring Bayesiano de insights continuos (S8).
