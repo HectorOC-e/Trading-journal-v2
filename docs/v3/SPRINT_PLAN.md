@@ -81,13 +81,15 @@
 **Validación:** ✅ 967/967 vitest (+6, TDD); tsc+eslint verdes; cutover insight→regla verificado en prod. Ver `TEST_REPORT_SPRINT_5.md`.
 **Diferido (OPEN_ITEMS_SPRINT_5):** reglas del loop en `/reglas` UI (S12), off-plan como warn (S8), plantillas extra (S8+).
 
-## Sprint 6 — Coach v3 I: memoria + threads (C2)
+## Sprint 6 — Coach v3 I: memoria + threads (C2) ✅ EJECUTADO (v3.1.0)
 **Objetivo:** el coach recuerda.
 **Entregables:**
-- `CoachThread`/`CoachMessage`/`CoachMemory` (persistencia); job de resumen+extracción de hechos; inyección de memoria + compromisos activos en el prompt; UI de memoria visible/editable.
-**Riesgos:** coste de resúmenes. **Mitigación:** resumir solo al idle/cierre; presupuesto de tokens.
-**Dependencias:** S4 (compromisos para referenciar).
-**Validación:** nueva conversación referencia hechos/compromisos previos; memoria borrable.
+- [x] `CoachThread`/`CoachMessage`/`CoachMemory` (migración `20260626200000`) con **frontera anti-poisoning** (ADR-003/D9: LLM propone candidatos, usuario confirma; solo confirmado se inyecta).
+- [x] Inyección de **memoria confirmada + compromisos activos** en el prompt (`assembleCoachContext` → `streamCoachReply` memoryBlock); persistencia de threads (`appendExchange`).
+- [x] UI de memoria **visible/editable/borrable** (`CoachMemoryPanel` en el drawer del coach, toggle 🧠).
+**Dependencias:** S4 (compromisos).
+**Validación:** ✅ 972/972 vitest (+5, TDD); tsc+eslint verdes; verificado en prod.
+**Diferido (OPEN_ITEMS_SPRINT_6):** auto-extracción LLM de candidatos + proactividad/write-tools/check-in → **S7**; cifrado/opt-out de memoria → follow-up.
 
 ## Sprint 7 — Coach v3 II: proactividad + intervención (C1)
 **Objetivo:** intervenir en el momento del error.

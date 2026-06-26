@@ -11,6 +11,8 @@ export interface CoachStreamOptions {
   userId:   string
   messages: MessageParam[]
   prisma:   PrismaClient
+  /** Dynamic MEMORY block (confirmed memory + active commitments) — S6, not cached. */
+  memoryBlock?: string
 }
 
 function buildSystemPrompt(ctx: Awaited<ReturnType<typeof buildTraderContext>>): { static: string; dynamic: string } {
@@ -159,6 +161,8 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
   ])
   const { static: staticSystem, dynamic } = buildSystemPrompt(traderCtx)
   const systemBlocks = [{ text: staticSystem, cache: true }, { text: dynamic }]
+  // S6: inject confirmed memory + active commitments (dynamic, never cached).
+  if (opts.memoryBlock && opts.memoryBlock.trim()) systemBlocks.push({ text: opts.memoryBlock })
 
   // Use the user's resolved provider + key (primary, then fallback). Each candidate
   // already carries its own provider/model/apiKey — no env guessing.

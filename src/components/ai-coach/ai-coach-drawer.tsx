@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizontal, Wrench, Copy, Check, RotateCcw, Trash2 } from "lucide-react"
+import { MessageCircle, X, Send, Square, Minus, Maximize2, Minimize2, GripHorizontal, Wrench, Copy, Check, RotateCcw, Trash2, BrainCircuit } from "lucide-react"
+import { trpc } from "@/lib/trpc/client"
+import { CoachMemoryPanel } from "./coach-memory-panel"
 import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
 import { STORAGE_KEYS } from "@/lib/storage-keys"
@@ -86,6 +88,9 @@ export function AiCoachDrawer() {
   const [apiError,    setApiError]    = useState<ApiError>(null)
   const [pos,         setPos]         = useState<XY | null>(null)
   const [copiedId,    setCopiedId]    = useState<string | null>(null)
+  const [memoryOpen,  setMemoryOpen]  = useState(false)
+  const threadIdRef = useRef<string | null>(null)
+  const appendExchange = trpc.coach.appendExchange.useMutation()
 
   const bottomRef    = useRef<HTMLDivElement>(null)
   const inputRef     = useRef<HTMLTextAreaElement>(null)
@@ -196,6 +201,7 @@ export function AiCoachDrawer() {
       // (\0{"tool":"…"}\0). Buffer across reads so a marker split between chunks
       // is never rendered as raw text.
       let buf = ""
+      let assistantText = ""
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -217,10 +223,20 @@ export function AiCoachDrawer() {
         }
 
         if (text || newTools.length) {
+          assistantText += text
           setMessages(prev => prev.map(m => m.id === assistantId
             ? { ...m, content: m.content + text, tools: [...(m.tools ?? []), ...newTools] }
             : m))
         }
+      }
+
+      // S6: persist the exchange so the coach remembers (best-effort, never blocks UI).
+      const lastUser = [...history].reverse().find(m => m.role === "user")
+      if (lastUser && assistantText.trim()) {
+        appendExchange.mutate(
+          { threadId: threadIdRef.current, userText: lastUser.content, assistantText },
+          { onSuccess: (r) => { threadIdRef.current = r.threadId } },
+        )
       }
     } catch (err) {
       // AbortError = user pressed Stop; keep whatever streamed so far.
@@ -339,7 +355,20 @@ export function AiCoachDrawer() {
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0" onPointerDown={e => e.stopPropagation()}>
-          {!minimized && messages.length > 1 && (
+          {!minimized && (
+            <button
+              onClick={() => setMemoryOpen(o => !o)}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] transition-colors active:scale-95",
+                memoryOpen ? "bg-[var(--accent-soft)] text-[var(--accent)]" : "hover:bg-[var(--chip)] text-[var(--ink-3)] hover:text-[var(--ink)]",
+              )}
+              aria-label="Memoria del coach"
+              title="Memoria del coach"
+            >
+              <BrainCircuit size={15} />
+            </button>
+          )}
+          {!minimized && !memoryOpen && messages.length > 1 && (
             <button
               onClick={newChat}
               className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-xs)] hover:bg-[var(--loss-soft)] text-[var(--ink-3)] hover:text-[var(--loss)] transition-colors active:scale-95"
@@ -377,7 +406,13 @@ export function AiCoachDrawer() {
         </div>
       </div>
 
-      {!minimized && (
+      {!minimized && memoryOpen && (
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <CoachMemoryPanel />
+        </div>
+      )}
+
+      {!minimized && !memoryOpen && (
         <>
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-3">
