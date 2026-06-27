@@ -182,7 +182,7 @@ function SystemRulesTab() {
 function RemindersTab() {
   const utils = trpc.useUtils()
   const { data } = trpc.rules.list.useQuery(undefined, { staleTime: 60_000 })
-  type R = { id: string; name: string; description: string; severity: string; enabled: boolean }
+  type R = { id: string; name: string; description: string; severity: string; enabled: boolean; sourceCommitmentId: string | null; sourceInsightId: string | null }
   const rules = (data ?? []) as R[]
   const inv = () => utils.rules.list.invalidate()
   const toggle = trpc.rules.toggle.useMutation({ onSuccess: inv })
@@ -196,7 +196,14 @@ function RemindersTab() {
         {rules.map((r) => (
           <div key={r.id} className="flex items-center gap-3 border-b border-[var(--line)] px-4 py-3 last:border-0" style={{ opacity: r.enabled ? 1 : 0.55 }}>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</div>
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</span>
+                {(r.sourceCommitmentId || r.sourceInsightId) && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--commit-soft)", color: "var(--commit)" }}>
+                    {r.sourceCommitmentId ? "desde compromiso" : "desde insight"}
+                  </span>
+                )}
+              </div>
               {r.description && <div className="mt-0.5 text-[11px] text-[var(--ink-3)]">{r.description}</div>}
             </div>
             <Toggle on={r.enabled} onChange={(v) => toggle.mutate({ id: r.id, enabled: v })} />
