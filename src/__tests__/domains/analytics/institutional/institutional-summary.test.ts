@@ -28,6 +28,16 @@ describe("summarizeInstitutional", () => {
     expect(s.drawdown.series.length).toBe(3)
   })
 
+  it("uses the supplied equity curve for drawdown (real capital basis)", () => {
+    // R from trades, but drawdown from a real-capital equity curve (10k → 9.5k = 5%)
+    const s = summarizeInstitutional(
+      [{ rMultiple: 1, pnl: 100, date: "2026-01-01" }, { rMultiple: -1, pnl: -500, date: "2026-01-02" }],
+      { equityCurve: [{ date: "2026-01-01", equity: 10000 }, { date: "2026-01-02", equity: 9500 }] },
+    )
+    expect(s.drawdown.maxDrawdownPct).toBeCloseTo(5, 6)
+    expect(s.rDistribution.count).toBe(2)
+  })
+
   it("is empty-safe with no trades", () => {
     const s = summarizeInstitutional([])
     expect(s.sampleSize).toBe(0)

@@ -22,15 +22,28 @@ export interface InstitutionalSummary {
   drawdown: DrawdownResult
 }
 
-export function summarizeInstitutional(trades: InstitutionalTrade[]): InstitutionalSummary {
+/**
+ * Bundle the institutional analytics. Drawdown is computed from `equityCurve` when
+ * supplied (the real portfolio equity anchored at deposited capital — the honest
+ * basis for a % drawdown); otherwise it falls back to the running cumulative P&L
+ * from zero (fine for synthetic/relative cases, but a near-zero early peak can
+ * inflate the %, so callers with real accounts should pass `equityCurve`).
+ */
+export function summarizeInstitutional(
+  trades: InstitutionalTrade[],
+  opts: { equityCurve?: EquityPoint[] } = {},
+): InstitutionalSummary {
   const chronological = [...trades].sort((a, b) => a.date.localeCompare(b.date))
   const rMultiples = chronological.map((t) => t.rMultiple).filter((r): r is number => r != null)
 
-  let running = 0
-  const equityPoints: EquityPoint[] = chronological.map((t) => {
-    running += t.pnl
-    return { date: t.date, equity: running }
-  })
+  let equityPoints = opts.equityCurve
+  if (!equityPoints) {
+    let running = 0
+    equityPoints = chronological.map((t) => {
+      running += t.pnl
+      return { date: t.date, equity: running }
+    })
+  }
 
   return {
     sampleSize: chronological.length,

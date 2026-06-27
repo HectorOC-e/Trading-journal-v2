@@ -49,6 +49,8 @@ export const analyticsRouter = router({
       const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
       return summarizeInstitutional(
         bundle.raw.trades.map((t) => ({ rMultiple: t.rMultiple, pnl: t.pnl, date: t.date })),
+        // Anchor drawdown % to the real portfolio equity (deposited capital + P&L).
+        { equityCurve: bundle.risk.equityCurve.map((e) => ({ date: e.date, equity: e.balance })) },
       )
     }),
 
