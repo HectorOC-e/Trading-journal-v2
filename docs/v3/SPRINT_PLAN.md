@@ -155,6 +155,8 @@
 **Dependencias:** S7, S9, S4.
 **Validación:** orden de HOY correcto; alertas ignoradas bajan prioridad; críticas no.
 
+> ✅ **EJECUTADO (v3.1.0)** — puro `domains/cognitive/today/feed.ts`: `assembleTodayFeed` (#36, prioridad adaptativa con **suelo para críticas** — ignoradas bajan, críticas no) + `detectDailyAnomaly` (#44, overtrading/pérdida outsized). Servicio `today-service` (agrega insights/compromisos/sugerencias/refuerzos/anomalía/budget) + router `today.feed`. Superficie `TodayFeed` en el dashboard (HOY) + `RiskBudgetMeter` (reutilizado de S12b2). **Sin migración.** 1118/1118 vitest (+10 TDD). **Verificado visualmente** (6 insights, crítico arriba/info abajo, CTA Comprometerme). Diferido: telemetría de ignorado por ítem (hoy edad=proxy), digest #28, absorber Notificaciones. Ver `*_SPRINT_13.md`.
+
 ## Sprint 14 — Modelo de mejora, regímenes & onboarding (E14, E13)
 **Objetivo:** el relato de "eres mejor trader que hace 3 meses".
 **Entregables:**
