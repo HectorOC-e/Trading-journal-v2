@@ -18,6 +18,7 @@ import { AiInsightsPanel } from "./components/ai-insights-panel"
 import { BehaviorLoopPanel } from "@/components/behavior/behavior-loop-panel"
 import { RDistributionChart } from "@/components/analytics/r-distribution-chart"
 import { EquityDrawdownChart } from "@/components/analytics/equity-drawdown-chart"
+import { ImprovementPanel } from "@/components/improvement/improvement-panel"
 
 type Institutional = RouterOutputs["analytics"]["institutional"]
 type Instruments = RouterOutputs["edges"]["instruments"]
@@ -31,6 +32,7 @@ const PERIODS = [
   { value: "6M", label: "6M" }, { value: "1Y", label: "1A" }, { value: "ALL", label: "Todo" },
 ]
 const SECTIONS = [
+  { value: "mejora",        label: "Mejora" },
   { value: "performance",   label: "Performance" },
   { value: "risk",          label: "Riesgo" },
   { value: "institucional", label: "Institucional" },
@@ -365,6 +367,7 @@ export default function AnalyticsPage() {
   const includePractice = usePracticeScope((s) => s.includePractice)
   const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period, includePractice }, { staleTime: 30_000 })
   const institutional = trpc.analytics.institutional.useQuery({ period, includePractice }, { staleTime: 30_000, enabled: section === "institucional" })
+  const improvement = trpc.improvement.overview.useQuery(undefined, { staleTime: 60_000, enabled: section === "mejora" })
   const instruments = trpc.edges.instruments.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
   const tagEdges = trpc.edges.tags.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
   const sym = currencySymbol(data?.baseCurrency ?? "USD")
@@ -392,6 +395,11 @@ export default function AnalyticsPage() {
         <p className="text-sm text-[var(--loss)] py-8">No se pudieron cargar los datos de analytics.</p>
       ) : (
         <>
+          {section === "mejora" && (
+            improvement.isLoading || !improvement.data
+              ? <SkeletonKpiStrip />
+              : <ImprovementPanel d={improvement.data} money={(n) => amt(n, sym)} />
+          )}
           {section === "performance" && <Performance d={data} />}
           {section === "risk"        && <Risk d={data} />}
           {section === "institucional" && (

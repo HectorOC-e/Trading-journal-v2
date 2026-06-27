@@ -164,6 +164,8 @@
 **Dependencias:** S4, S8, S10, S12.
 **Validación:** score con descomposición; onboarding deja HOY con contenido real.
 
+> ✅ **EJECUTADO (v3.1.0) — ÚLTIMO SPRINT.** Puro `improvement/improvement-score.ts` (#41, score 0–100 + drivers que suman al score + `costOfIndiscipline` #49 con suelo) + `regime/regime-performance.ts` (#33, por régimen + mejor/peor, **experimental** FREEZE-D18). Servicio `improvement-service` (solo cuentas reales) + router `improvement.overview` + tab "Mejora" en /analytics (`ImprovementPanel`: score hero + barras de drivers + coste + régimen). Onboarding día-1 (#48) ya entregado en **S12d**. **Sin migración.** 1130/1130 vitest (+12 TDD). Verificado visual (índice 65/100, 104 trades). Diferido: persistir E19 snapshot diario (curva temporal) + régimen exógeno (POST-4). Ver `*_SPRINT_14.md`. **🎯 v3 cubre el 100% de la auditoría.**
+
 ---
 
 ## Cobertura por sprint (verificación rápida)

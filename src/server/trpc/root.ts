@@ -27,6 +27,7 @@ import { behaviorRouter }           from "./routers/behavior"
 import { coachRouter }              from "./routers/coach"
 import { interventionRouter }       from "./routers/intervention"
 import { edgesRouter }              from "./routers/edges"
+import { improvementRouter }        from "./routers/improvement"
 import { learningInsightsRouter }   from "./routers/learning-insights"
 import { playbookRouter }           from "./routers/playbook"
 import { psychologyRouter }         from "./routers/psychology"
@@ -61,6 +62,7 @@ export const appRouter = router({
   coach:             coachRouter,
   intervention:      interventionRouter,
   edges:             edgesRouter,
+  improvement:       improvementRouter,
   learningInsights:  learningInsightsRouter,
   playbook:          playbookRouter,
   psychology:        psychologyRouter,
