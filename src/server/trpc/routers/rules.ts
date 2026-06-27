@@ -34,6 +34,7 @@ export const rulesRouter = router({
         select: {
           id: true, name: true, description: true, severity: true,
           isSystem: true, enabled: true, mode: true,
+          sourceCommitmentId: true, sourceInsightId: true,
           createdAt: true, updatedAt: true,
         },
       })
