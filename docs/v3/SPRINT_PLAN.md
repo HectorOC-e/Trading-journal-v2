@@ -146,6 +146,8 @@
 **Dependencias:** S7 (intervención), todo el contenido previo.
 **Validación:** revisión visual/E2E; cada gráfico con CTA/insight (gate DS §12).
 
+> ✅ **EJECUTADO (v3.1.0) — por partes, todas verificadas visualmente (Playwright vs preview prod).** **S12a** tokens DS v3 (#108). **S12b** superficies del quant: b1 ANALIZAR institucional+edges (#109), b2 PROTEGER riesgo por cuenta (#110), b3 MEJORAR playbook intel + errores (#111). **S12c** shell de 5 superficies + ⌘K **tras flag** (#112, off=v2 intacto). **S12d** intervención global (InterventionOverlay en AppShell, DS §10.4) + onboarding día-1 (#113). Todo el quant read-only de S3/S9/S10/S11 ya es visible. Ver `CHANGELOG_SPRINT_12.md`. Diferido: migración real de rutas + transfer/SRS en /aprendizaje → progresivo/S13.
+
 ## Sprint 13 — HOY & notificaciones inteligentes (E11)
 **Objetivo:** abrir la app y saber qué hacer hoy.
 **Entregables:**
