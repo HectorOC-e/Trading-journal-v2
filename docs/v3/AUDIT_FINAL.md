@@ -63,3 +63,29 @@ Reservadas a propósito en el FREEZE (cada una con su frontera limpia y su dispa
 
 ---
 **Conclusión:** v3 cumple su tesis — "una capa cognitiva que cambia el comportamiento del trader, verificado". Lo construido está limpio, testeado y vivo; lo pendiente está **inventariado, clasificado y es no-bloqueante**.
+
+---
+
+## 9. CIERRE DEL TRACK DE DEUDA (2026-06-27) — v3 CERRADO ✅
+Tras la **re-verificación contra código** (`CLOSURE_REVERIFY.md`) y el track de saldo (`CLOSURE_DESIGN.md` / `CLOSURE_SPRINT_PLAN.md`), la deuda genuina quedó **resuelta**:
+
+| Ítem | Resolución |
+|---|---|
+| **A1** guard de presupuesto | ✅ forward-looking (PR #116); el lock backward-looking ya existía |
+| **B1** historización ImprovementScore (curva North Star) | ✅ E19 + cron + curva (PR #117), verificado en prod |
+| **A2** transferencia #31 + SRS #45 | ✅ panel + `computeNextReview` cableado (PR #118), verificado |
+| **A4** origen de regla del loop | ✅ badge "desde compromiso/insight" (PR #119) |
+| **C1** detectores revenge/oversizing | ✅ ya existían (detectLosingStreak/Oversizing/Emotion) |
+| **C2** disposition effect #40 | ✅ ya existía (`detectHoldingAsymmetry`) |
+| **B2** SetupEdgeSnapshot | ⏭️ omitido — la curva de edge ya funciona al vuelo |
+
+**Hallazgo del track:** la auditoría a nivel-doc **sobre-estimó la deuda**; la re-verificación contra código mostró que A4/C1/C2/A2-SRS estaban parcial/mayormente construidos. La deuda real era A1(matiz) + B1 + A2(superficie). Todo verificado (tests + UI vs prod).
+
+### Reclasificado a v3.2 (roadmap, NO deuda — no bloquea el cierre)
+- **E1** memoria jerárquica de 4 capas (E13–E16) — su invariante irreversible (frontera anti-poisoning, FREEZE-D9) **YA está cumplido**; la jerarquía es *enhancement*, no corrección.
+- **A3** migración real de rutas a 5 superficies (hoy reagrupación de nav tras flag).
+- **C3** telemetría de ignorado del feed · **C4** digest #28 · **D1** write-tools del chat · **D3** expectedImpact.
+- **POST-1..7** (realtime, multi-agente, cross-user moat, ATR, extracción a servicio, base prop-firm, A/B) — frontera reservada con disparador.
+- Micro-residuo: sesgo de **anclaje** (#40) — no se construyó un detector de determinismo dudoso a propósito (P3).
+
+> **VEREDICTO: v3.1 CERRADO.** 14 sprints + 3 gates + deuda genuina saldada, todo en `main`, CI verde, verificado por tests y UI contra producción. Lo restante es evolución reservada (v3.2), no deuda de lo prometido.
