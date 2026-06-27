@@ -23,6 +23,8 @@ export interface ImprovementOverview {
   /** Absolute P&L the off-plan trades cost vs on-plan (#49). */
   indisciplineCost: number
   keptRate: number | null
+  /** Raw driver inputs (for the daily snapshot / history). */
+  inputs: { disciplineRolling: number; expectancyR: number; commitmentKeptRate: number; costOfIndisciplineRatio: number }
 }
 
 export async function getImprovement(prisma: PrismaClient, userId: string): Promise<ImprovementOverview> {
@@ -72,5 +74,6 @@ export async function getImprovement(prisma: PrismaClient, userId: string): Prom
     regime,
     indisciplineCost: cost.costAbs,
     keptRate,
+    inputs: { disciplineRolling, expectancyR, commitmentKeptRate: keptRate ?? 0.5, costOfIndisciplineRatio: cost.costRatio },
   }
 }
