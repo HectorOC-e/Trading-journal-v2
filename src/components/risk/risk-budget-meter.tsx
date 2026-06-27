@@ -1,9 +1,7 @@
 "use client"
 
 import { Gauge } from "lucide-react"
-import type { RouterOutputs } from "@/server/trpc/root"
-
-type Budget = NonNullable<RouterOutputs["risk"]["overview"]>["budget"]
+import type { RiskBudget as Budget } from "@/domains/analytics/risk/risk-budget"
 
 const pct = (f: number) => `${(f * 100).toFixed(1)}%`
 

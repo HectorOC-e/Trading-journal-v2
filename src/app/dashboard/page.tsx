@@ -7,6 +7,7 @@ import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome"
+import { TodayFeed } from "@/components/today/today-feed"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
@@ -130,6 +131,9 @@ export default function DashboardPage() {
     <main aria-label="Panel principal">
       {/* Day-1 onboarding (S12d) — only for a brand-new trader, dismissible */}
       <OnboardingWelcome tradeCount={stats.kpis.total} />
+
+      {/* HOY feed (S13) — the prioritized cognitive signals: qué hago hoy */}
+      <TodayFeed />
 
       {/* Hero header (E3/E4) — greeting + Net P&L héroe */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
