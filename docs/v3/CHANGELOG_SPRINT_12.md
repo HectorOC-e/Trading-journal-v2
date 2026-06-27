@@ -33,3 +33,14 @@ Verificación: tsc verde; build real validado por CI (`next build`). Sin cambio 
 - Componentes `components/analytics/{r-distribution-chart,equity-drawdown-chart}.tsx` (recharts + tokens DS v3; cada viz lleva un insight, DS §12).
 
 Verificación: tsc + eslint + **1108 vitest** (+4). **Visual (Playwright contra el preview prod + datos reales de la cuenta demo):** Institucional → Max DD 8.15%, Sortino 0.41, Calmar 3.14, ½Kelly 12%, gráficos OK; Edges → tablas con badges OK. Bug de drawdown (343%→8.15%) detectado y corregido en la verificación visual.
+
+---
+
+## S12b2 — Superficie PROTEGER: riesgo cuantitativo por cuenta (S9) ✅ (PR #110)
+Superficia el risk engine de S9 dentro del `AccountDetailPanel` (`/cuentas`):
+- **`RiskBudgetMeter`** (reutilizable, DS §11): presupuesto de pérdida diaria → nº máx de trades hoy; safe/warning/exceeded por token + icono (color nunca único portador). Se reusará en S13 (HOY).
+- **`AccountRiskPanel`**: **riesgo de ruina** (Monte Carlo + banda creíble + analítica), **proyección de fase** (P(pasar) con banda, sesiones esperadas, P(violar DD primero), cuello de botella). Todo en bandas (FREEZE-D16). Consume `risk.overview` (S9); sin cambio de backend.
+
+Read-only ("señal · no bloquea"); el bloqueo duro por budget es S13.
+
+Verificación: tsc + eslint verdes. **Visual (Playwright, cuenta FTMO Funded real):** Margen diario disponible 5 trades / 5% al floor; Riesgo de ruina 0.0% banda 0.0–0.1% n=12; proyección omitida (cuenta funded, target 0 → D9.7). Render correcto con tokens DS v3.
