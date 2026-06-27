@@ -134,6 +134,8 @@
 **Entregables:**
 - Transferencia edge antes/después (#31); SRS adaptado a rendimiento (#45); errores→tarjeta (#42); edge por instrumento + poda (#24, absorbe Mercados); tag analytics (#20, absorbe Etiquetas).
 **Dependencias:** S3, S10.
+
+> ✅ **EJECUTADO (v3.1.0)** — puro: `analytics/instrument/instrument-edge.ts` (#24, poda por significancia Welch), `analytics/tags/tag-edge.ts` (#20, poison/gold), `learning/transfer.ts` (#31, asociación honesta D17 + caveat), `learning/srs.ts` (#45, SM-2 modulado por edge del setup), `learning/error-cards.ts` (#42, coste real). Servicios `edge-service`+`learning-insights-service` + routers `edges`/`learningInsights` (read-only). **Sin migración**. 1104/1104 vitest (+27 TDD). Smoke real: tags gold['A+']/poison['fomo','revenge'], error cards FOMO 15×−19.5R. Ver `*_SPRINT_11.md`.
 **Validación:** transferencia reportada con n y etiqueta correlación; tabla de instrumento sugiere poda.
 
 ## Sprint 12 — Design System v3 + shell de 5 superficies (E12)
