@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { X, Star, ChevronDown, ChevronUp, Trophy } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
+import { ResourceTransferPanel } from "@/components/aprendizaje/resource-transfer-panel"
 import { cn } from "@/lib/utils"
 import { MASTERY_STAGES, masteryStageIndexFromLevel, effectiveMasteryLevel } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceType, ResourceStatus } from "@/types"
@@ -348,6 +349,10 @@ export function ResourceDrawer({
                   ))}
                 </div>
               )}
+              {/* Transfer (#31) + SRS cadence (#45) — closure A2 */}
+              <div className="mt-3">
+                <ResourceTransferPanel resourceId={resource.id} />
+              </div>
             </section>
           )}
 
