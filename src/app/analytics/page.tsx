@@ -16,6 +16,12 @@ import { Sparkles } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { AiInsightsPanel } from "./components/ai-insights-panel"
 import { BehaviorLoopPanel } from "@/components/behavior/behavior-loop-panel"
+import { RDistributionChart } from "@/components/analytics/r-distribution-chart"
+import { EquityDrawdownChart } from "@/components/analytics/equity-drawdown-chart"
+
+type Institutional = RouterOutputs["analytics"]["institutional"]
+type Instruments = RouterOutputs["edges"]["instruments"]
+type TagEdges = RouterOutputs["edges"]["tags"]
 
 type Overview = RouterOutputs["analytics"]["overview"]
 type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
@@ -25,14 +31,16 @@ const PERIODS = [
   { value: "6M", label: "6M" }, { value: "1Y", label: "1A" }, { value: "ALL", label: "Todo" },
 ]
 const SECTIONS = [
-  { value: "performance", label: "Performance" },
-  { value: "risk",        label: "Riesgo" },
-  { value: "accounts",    label: "Cuentas" },
-  { value: "setups",      label: "Setups" },
-  { value: "markets",     label: "Mercados" },
-  { value: "psychology",  label: "Psicología" },
-  { value: "goals",       label: "Objetivos" },
-  { value: "withdrawals", label: "Retiros" },
+  { value: "performance",   label: "Performance" },
+  { value: "risk",          label: "Riesgo" },
+  { value: "institucional", label: "Institucional" },
+  { value: "accounts",      label: "Cuentas" },
+  { value: "setups",        label: "Setups" },
+  { value: "markets",       label: "Mercados" },
+  { value: "edges",         label: "Edges" },
+  { value: "psychology",    label: "Psicología" },
+  { value: "goals",         label: "Objetivos" },
+  { value: "withdrawals",   label: "Retiros" },
 ]
 
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })
@@ -273,6 +281,79 @@ function Withdrawals({ d }: { d: Overview }) {
   )
 }
 
+/* ── Institutional (S3) ─────────────────────────────────────────────────── */
+const ratio = (n: number | null) => (n != null ? fmt(n) : "—")
+
+function Institutional({ d, sym }: { d: Institutional; sym: string }) {
+  const r = d.ratios
+  if (d.sampleSize === 0) return <Empty msg="Registra trades cerrados para desbloquear las métricas institucionales." />
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Stat label="Max Drawdown" value={`${fmt(d.drawdown.maxDrawdownPct)}%`} tone="loss" sub="pico a valle"
+          explain={`Mi peor drawdown del periodo es ${fmt(d.drawdown.maxDrawdownPct)}%. ¿Es manejable y cómo lo controlo?`} />
+        <Stat label="Sortino" value={ratio(r.sortino)} sub="retorno / downside"
+          explain={`Mi ratio de Sortino es ${ratio(r.sortino)}. ¿Qué me dice de mi riesgo a la baja?`} />
+        <Stat label="Calmar" value={ratio(r.calmar)} sub="retorno / max DD"
+          explain={`Mi ratio de Calmar es ${ratio(r.calmar)}. ¿Es bueno y cómo lo mejoro?`} />
+        <Stat label="½ Kelly" value={r.kellyHalf != null ? `${(r.kellyHalf * 100).toFixed(0)}%` : "—"} sub="tamaño prudente"
+          explain={`El medio-Kelly sugiere arriesgar ${r.kellyHalf != null ? `${(r.kellyHalf * 100).toFixed(0)}%` : "n/d"} por trade. ¿Cómo lo aplico a mi sizing?`} />
+      </div>
+      <EquityDrawdownChart d={d.drawdown} money={(n) => amt(n, sym)} />
+      <RDistributionChart d={d.rDistribution} />
+    </div>
+  )
+}
+
+/* ── Edges (S11 instrument + tags) ──────────────────────────────────────── */
+function EdgeBadge({ label, tone }: { label: string; tone: "win" | "loss" | "ink" }) {
+  const color = tone === "win" ? "var(--win)" : tone === "loss" ? "var(--loss)" : "var(--ink-3)"
+  const bg = tone === "win" ? "var(--win-soft)" : tone === "loss" ? "var(--loss-soft)" : "var(--chip)"
+  return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ color, background: bg }}>{label}</span>
+}
+
+function Edges({ instruments, tags, sym }: { instruments: Instruments; tags: TagEdges; sym: string }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <section className="flex flex-col gap-2">
+        <h3 className="text-[13px] font-semibold text-[var(--ink)]">Edge por instrumento</h3>
+        {instruments.bySymbol.length === 0 ? <Empty msg="Sin trades cerrados para el edge por instrumento." /> : (
+          <SimpleTable
+            data={instruments.bySymbol}
+            getRowKey={(s) => s.symbol}
+            density="compact"
+            columns={[
+              { key: "symbol", header: "Símbolo", width: "minmax(100px, 1.4fr)", render: (s) => <span className="font-mono font-bold text-[var(--ink)]">{s.symbol}</span> },
+              { key: "trades", header: "Trades", align: "right", hideBelow: "md", render: (s) => <span className="num">{s.trades}</span> },
+              { key: "avgR", header: "Avg R", align: "right", render: (s) => <span className="num" style={{ color: (s.avgR ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>{s.avgR != null ? `${fmt(s.avgR)}R` : "—"}</span> },
+              { key: "netPnl", header: "Net P&L", align: "right", render: (s) => <span className="num" style={{ color: s.netPnl >= 0 ? "var(--win)" : "var(--loss)" }}>{money(s.netPnl, sym)}</span> },
+              { key: "edge", header: "Edge", render: (s) => s.prune ? <EdgeBadge label="Poda sugerida" tone="loss" /> : s.edge === "positive" ? <EdgeBadge label="Positivo" tone="win" /> : <EdgeBadge label="Neutral" tone="ink" /> },
+            ]}
+          />
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h3 className="text-[13px] font-semibold text-[var(--ink)]">Tags · veneno y oro</h3>
+        {tags.byTag.length === 0 ? <Empty msg="Etiqueta tus trades para ver el edge por tag." /> : (
+          <SimpleTable
+            data={tags.byTag}
+            getRowKey={(t) => t.tag}
+            density="compact"
+            columns={[
+              { key: "tag", header: "Tag", width: "minmax(100px, 1.4fr)", render: (t) => <span className="text-[var(--ink)]">{t.tag}</span> },
+              { key: "trades", header: "Trades", align: "right", hideBelow: "md", render: (t) => <span className="num">{t.trades}</span> },
+              { key: "avgR", header: "Avg R", align: "right", render: (t) => <span className="num" style={{ color: (t.avgR ?? 0) >= 0 ? "var(--win)" : "var(--loss)" }}>{t.avgR != null ? `${fmt(t.avgR)}R` : "—"}</span> },
+              { key: "winRate", header: "Win Rate", align: "right", hideBelow: "sm", render: (t) => <span className="num">{fmt(t.winRate)}%</span> },
+              { key: "class", header: "Clase", render: (t) => t.classification === "gold" ? <EdgeBadge label="Oro" tone="win" /> : t.classification === "poison" ? <EdgeBadge label="Veneno" tone="loss" /> : <EdgeBadge label="Neutral" tone="ink" /> },
+            ]}
+          />
+        )}
+      </section>
+    </div>
+  )
+}
+
 function Empty({ msg }: { msg: string }) {
   return <div className="rounded-[var(--radius)] border border-dashed border-[var(--line)] py-12 text-center text-[12px] text-[var(--ink-3)]">{msg}</div>
 }
@@ -283,6 +364,10 @@ export default function AnalyticsPage() {
   const [section, setSection] = useState("performance")
   const includePractice = usePracticeScope((s) => s.includePractice)
   const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period, includePractice }, { staleTime: 30_000 })
+  const institutional = trpc.analytics.institutional.useQuery({ period, includePractice }, { staleTime: 30_000, enabled: section === "institucional" })
+  const instruments = trpc.edges.instruments.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
+  const tagEdges = trpc.edges.tags.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
+  const sym = currencySymbol(data?.baseCurrency ?? "USD")
 
   return (
     <main aria-label="Analytics">
@@ -309,6 +394,16 @@ export default function AnalyticsPage() {
         <>
           {section === "performance" && <Performance d={data} />}
           {section === "risk"        && <Risk d={data} />}
+          {section === "institucional" && (
+            institutional.isLoading || !institutional.data
+              ? <SkeletonKpiStrip />
+              : <Institutional d={institutional.data} sym={sym} />
+          )}
+          {section === "edges" && (
+            instruments.isLoading || tagEdges.isLoading || !instruments.data || !tagEdges.data
+              ? <SkeletonKpiStrip />
+              : <Edges instruments={instruments.data} tags={tagEdges.data} sym={sym} />
+          )}
           {section === "accounts"    && <AccountsIntel d={data} />}
           {section === "setups"      && <Setups d={data} />}
           {section === "markets"     && <Markets d={data} />}

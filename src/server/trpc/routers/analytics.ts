@@ -3,6 +3,7 @@ import { router, protectedProcedure } from "../init"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
 import { generatePsychologyInsights } from "@/domains/analytics/services/psychology-insights"
+import { summarizeInstitutional } from "@/domains/analytics/institutional/institutional-summary"
 
 const PERIODS = ["7d", "1M", "3M", "6M", "1Y", "ALL"] as const
 type Period = typeof PERIODS[number]
@@ -38,6 +39,17 @@ export const analyticsRouter = router({
       const { raw: _raw, ...sections } = bundle
       void _raw
       return sections
+    }),
+
+  // Institutional metrics (S3) surfaced for ANALIZAR: R distribution, risk ratios
+  // (Sortino/Calmar/Kelly) and the equity drawdown curve. Deterministic (P2).
+  institutional: protectedProcedure
+    .input(PeriodInput)
+    .query(async ({ ctx, input }) => {
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
+      return summarizeInstitutional(
+        bundle.raw.trades.map((t) => ({ rMultiple: t.rMultiple, pnl: t.pnl, date: t.date })),
+      )
     }),
 
   // "WHY is it happening" — deterministic cross-domain insights (no LLM).
