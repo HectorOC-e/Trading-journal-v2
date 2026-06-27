@@ -6,6 +6,7 @@ import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
+import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
 import { TabPortfolio }  from "./tabs/tab-portfolio"
@@ -127,6 +128,9 @@ export default function DashboardPage() {
 
   return (
     <main aria-label="Panel principal">
+      {/* Day-1 onboarding (S12d) — only for a brand-new trader, dismissible */}
+      <OnboardingWelcome tradeCount={stats.kpis.total} />
+
       {/* Hero header (E3/E4) — greeting + Net P&L héroe */}
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div className="min-w-0">
