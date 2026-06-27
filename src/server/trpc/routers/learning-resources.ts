@@ -1,7 +1,9 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
-import { calcNextReviewAt, computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
+import { computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
+import { computeNextReview, type Grade } from "@/domains/learning/srs"
+import { getResourceTransfer } from "@/server/services/learning/learning-insights-service"
 import { computeNewStreak } from "@/domains/learning/services/streak-service"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { computeSetupStats } from "@/domains/analytics/services/setup-analytics"
@@ -228,14 +230,28 @@ export const learningResourcesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { resourceId, masteryLevel, rating, learned, howToApply, insights } = input
 
+      // #45 (closure A2): the linked setup's edge bends the SRS cadence — review
+      // sooner if the edge is decaying, later if it's improving. Read-only, pre-tx.
+      const signal = await getResourceTransfer(ctx.prisma, ctx.userId, resourceId)
+      const performance = signal?.performanceSignal ?? null
+
       const review = await ctx.prisma.$transaction(async (tx) => {
         const resource = await tx.learningResource.findUniqueOrThrow({
           where: { id: resourceId, userId: ctx.userId },
           select: { reviewInterval: true, status: true },
         })
+        const reps = await tx.resourceReview.count({ where: { resourceId, userId: ctx.userId } })
 
-        const interval = resource.reviewInterval ?? 7
-        const nextReviewAt = calcNextReviewAt(interval, masteryLevel as 1 | 2 | 3 | 4 | 5)
+        const srs = computeNextReview({
+          currentInterval: resource.reviewInterval ?? null,
+          reps,
+          ease: 2.5,
+          grade: masteryLevel as Grade,
+          performance,
+        })
+        const interval = srs.interval
+        const nextReviewAt = new Date()
+        nextReviewAt.setDate(nextReviewAt.getDate() + interval)
 
         const newReview = await tx.resourceReview.create({
           data: {
@@ -255,6 +271,7 @@ export const learningResourcesRouter = router({
           data: {
             rating,
             nextReviewAt,
+            reviewInterval: interval,
             markedForReview: false,
             ...(resource.status === "COMPLETED" ? { status: "IN_REVIEW" } : {}),
           },
