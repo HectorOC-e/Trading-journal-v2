@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
+import { AccountRiskPanel } from "@/components/risk/account-risk-panel"
 import { formatMoney } from "@/lib/format/money"
 import { trpc } from "@/lib/trpc/client"
 import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
@@ -297,6 +298,9 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             </div>
           </div>
         )}
+
+        {/* PROTEGER — quant risk (S9): daily budget, ruin, phase projection */}
+        <AccountRiskPanel accountId={account.id} />
 
         {/* Config */}
         <div className="flex flex-col gap-2 text-[11px]">
