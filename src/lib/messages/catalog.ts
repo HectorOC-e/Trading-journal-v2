@@ -55,6 +55,10 @@ export const MESSAGES = {
     type: "WARNING", priority: "P2", category: "Reglas", persist: false,
     es: { title: "Operación bloqueada", body: "{detail}" },
   },
+  BUDGET_EXCEEDED: {
+    type: "WARNING", priority: "P1", category: "Reglas", persist: false,
+    es: { title: "Presupuesto de riesgo del día", body: "{detail}" },
+  },
 
   // ── Reviews / learning (persisted) ────────────────────────────────────────
   WEEKLY_REPORT_READY: {

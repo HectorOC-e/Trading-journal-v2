@@ -18,6 +18,7 @@ import type {
 import { isPracticeType } from "@/domains/trading/account-reality"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runRuleEngine } from "@/domains/rules/engine"
+import { evaluateBudgetGuard } from "@/domains/analytics/risk/budget-guard"
 import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { buildContext } from "@/domains/rules/context"
@@ -580,6 +581,27 @@ export const tradesRouter = router({
         }
         if (checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
+        }
+      }
+
+      // 3.5) Forward-looking daily-budget guard (A1, closure). The breach-lock
+      //      (HALLAZGO 1B) is post-hoc; this blocks BEFORE a trade whose own risk
+      //      would cross the room left to today's daily-loss floor.
+      if (account.ddDailyPct != null) {
+        const tradeDate = new Date(input.date)
+        const [allAgg, todayAgg] = await Promise.all([
+          ctx.prisma.trade.aggregate({ where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" }, _sum: { pnl: true } }),
+          ctx.prisma.trade.aggregate({ where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: tradeDate }, _sum: { pnl: true } }),
+        ])
+        const initialBalance = Number(account.initialBalance)
+        const totalPnl = Number(allAgg._sum.pnl ?? 0)
+        const dayPnl = Number(todayAgg._sum.pnl ?? 0)
+        const dayBase = initialBalance + (totalPnl - dayPnl)
+        if (dayBase > 0) {
+          const remainingPct = Number(account.ddDailyPct) / 100 + dayPnl / dayBase
+          const tradeRiskPct = (deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: initialBalance + totalPnl }) ?? 0) / 100
+          const guard = evaluateBudgetGuard({ remainingPct, tradeRiskPct, exhausted: remainingPct <= 0 })
+          if (guard.block) throw new AppError("BUDGET_EXCEEDED", { detail: guard.message ?? "" })
         }
       }
 
