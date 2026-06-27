@@ -23,3 +23,13 @@
 - **Daltonismo:** estos colores siempre se pararán con icono/texto en los componentes (S12b+), nunca color solo (WCAG 1.4.1).
 
 Verificación: tsc verde; build real validado por CI (`next build`). Sin cambio funcional ni de layout (fundación para S12b+).
+
+---
+
+## S12b1 — Superficie ANALIZAR: institucional (S3) + edges (S11) ✅ (PR #109)
+`/analytics` gana dos tabs nuevas (v2 intacto):
+- **"Institucional"** (S3): histograma de **distribución de R** (con aviso de cola izquierda), **equity + drawdown** (max DD marcado), KPIs **Sortino/Calmar/½Kelly + Max DD**. Pieza pura nueva `summarizeInstitutional` + procedure `analytics.institutional` (período/práctica). El drawdown se ancla a la **equity real** (capital + P&L), no al P&L acumulado desde 0.
+- **"Edges"** (S11): tabla de **edge por instrumento con badge de poda** + tabla de **tags veneno/oro**, vía el router `edges`.
+- Componentes `components/analytics/{r-distribution-chart,equity-drawdown-chart}.tsx` (recharts + tokens DS v3; cada viz lleva un insight, DS §12).
+
+Verificación: tsc + eslint + **1108 vitest** (+4). **Visual (Playwright contra el preview prod + datos reales de la cuenta demo):** Institucional → Max DD 8.15%, Sortino 0.41, Calmar 3.14, ½Kelly 12%, gráficos OK; Edges → tablas con badges OK. Bug de drawdown (343%→8.15%) detectado y corregido en la verificación visual.
