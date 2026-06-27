@@ -118,6 +118,8 @@
 **Dependencias:** S3 (métricas), S1 (reglas para budget/freeze).
 **Validación:** simulación de proyección con caso conocido; budget bloquea al superar.
 
+> ✅ **EJECUTADO (v3.1.0)** — risk engine puro `domains/analytics/risk/` (ruina analítica+Monte Carlo #17, proyección de fase #15, presupuesto diario+reset configurable #17/#38, correlación multi-cuenta #39, política de retiros #46, freeze agregado) — todo en bandas (FREEZE-D16). Mapper `inputs.ts` + servicio `risk-service` + router `risk` (read-only). **Sin migración** (campos prop ya existen). 1050/1050 vitest (+50 TDD). Decisión del usuario: **engine+warn, bloqueo duro → S13** (D9.3); ruina **analítica+Monte Carlo** (D9.1). Smoke real OK (FTMO Funded). Ver `*_SPRINT_9.md`.
+
 ## Sprint 10 — Playbook intelligence (E8)
 **Objetivo:** edge real, no ruido.
 **Entregables:**
