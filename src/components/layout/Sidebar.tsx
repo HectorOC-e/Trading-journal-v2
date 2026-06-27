@@ -9,7 +9,7 @@ import {
   ShieldCheck, ClipboardList, GraduationCap, User,
   ChevronLeft, ChevronRight, BarChart2,
   LogOut, ArrowDownToLine, Tag, Sun, Moon, Monitor,
-  Brain, LineChart, Plus, Bell, MessageCircle,
+  Brain, LineChart, Plus, Bell, MessageCircle, Sunrise,
 } from "lucide-react"
 import { MobileBottomBar } from "@/components/layout/mobile-bottom-bar"
 import { useLogout } from "@/hooks/useLogout"
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { useNotifications } from "@/lib/notifications"
+import { useV3Shell } from "@/lib/v3-shell-store"
 
 const NAV = [
   {
@@ -57,6 +58,55 @@ const NAV = [
       { href: "/retiros",    label: "Retiros",   icon: ArrowDownToLine },
       { href: "/etiquetas",  label: "Etiquetas", icon: Tag },
       { href: "/perfil",     label: "Perfil",    icon: User },
+    ],
+  },
+]
+
+// v3 — the 5 cognitive surfaces (FREEZE §2). Same routes, regrouped by what the
+// trader is trying to DO. Activated behind the v3-shell flag (off by default).
+const SURFACE_NAV = [
+  {
+    section: "HOY",
+    items: [
+      { href: "/dashboard",      label: "Hoy",           icon: Sunrise },
+      { href: "/notificaciones", label: "Notificaciones", icon: Bell },
+    ],
+  },
+  {
+    section: "OPERAR",
+    items: [
+      { href: "/trades",     label: "Trades",     icon: CandlestickChart },
+      { href: "/psicologia", label: "Psicología", icon: Brain },
+      { href: "/reglas",     label: "Reglas",     icon: ShieldCheck },
+    ],
+  },
+  {
+    section: "MEJORAR",
+    items: [
+      { href: "/reviews",     label: "Reviews",     icon: ClipboardList },
+      { href: "/playbook",    label: "Playbook",    icon: BookOpen },
+      { href: "/aprendizaje", label: "Aprendizaje", icon: GraduationCap },
+    ],
+  },
+  {
+    section: "PROTEGER",
+    items: [
+      { href: "/cuentas", label: "Cuentas", icon: Wallet },
+      { href: "/retiros", label: "Retiros", icon: ArrowDownToLine },
+    ],
+  },
+  {
+    section: "ANALIZAR",
+    items: [
+      { href: "/analytics", label: "Analytics", icon: LineChart },
+      { href: "/mercados",  label: "Mercados",  icon: BarChart2 },
+      { href: "/etiquetas", label: "Etiquetas", icon: Tag },
+    ],
+  },
+  {
+    section: "AJUSTES",
+    items: [
+      { href: "/perfil", label: "Perfil", icon: User },
     ],
   },
 ]
@@ -161,6 +211,8 @@ function openCoach() {
 
 export function Sidebar() {
   const pathname  = usePathname()
+  const v3Shell   = useV3Shell(s => s.enabled)
+  const nav       = v3Shell ? SURFACE_NAV : NAV
   const { resolvedTheme, toggle } = useTheme()
   const openRegister = useQuickActions(s => s.openRegister)
   const { count: unreadCount, unreadByCategory } = useNotifications()
@@ -190,7 +242,7 @@ export function Sidebar() {
   const isTablet = width >= 768 && width < 1024
 
   // ── Mobile ───────────────────────────────────────────────────────────────────
-  const allNav = NAV.flatMap(g => g.items)
+  const allNav = nav.flatMap(g => g.items)
   const byHref = (href: string) => allNav.find(i => i.href === href)!
 
   if (isMobile) {
@@ -323,7 +375,7 @@ export function Sidebar() {
 
   // ── Tablet — floating rail card (collapsed language) ──────────────────────────
   if (isTablet) {
-    const allItems = NAV.flatMap(g => g.items)
+    const allItems = nav.flatMap(g => g.items)
     return (
       <div
         className="flex flex-col gap-2.5"
@@ -513,7 +565,7 @@ export function Sidebar() {
           aria-label="Navegación principal"
         >
           {collapsed ? (
-            NAV.map((group, gi) => (
+            nav.map((group, gi) => (
               <div key={group.section}>
                 {gi > 0 && <div style={{ height: 1, margin: "8px 16px", background: "var(--line)" }} />}
                 {group.items.map(item => {
@@ -546,7 +598,7 @@ export function Sidebar() {
               </div>
             ))
           ) : (
-            NAV.map((group, gi) => (
+            nav.map((group, gi) => (
               <div key={group.section} style={{ marginTop: gi === 0 ? 0 : 14 }}>
                 <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] px-[18px] mb-1.5" style={{ color: "var(--ink-3)" }}>
                   {group.section}

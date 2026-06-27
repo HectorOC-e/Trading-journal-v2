@@ -56,3 +56,15 @@ Verificación: tsc + eslint verdes. **Visual (Playwright, cuenta FTMO Funded rea
 Read-only, determinista (P2); sin cambio de backend. Verificación: tsc + eslint verdes. **Visual (Playwright):** setup "Breakout London" → Edge estable 0.41R vs 0.15R base, **Drift en avg R: definido 1.2R vs operado 0.24R**, curva de evolución OK; panel de errores → **FOMO −19.5R / Revancha −18.5R / Off-plan −4.7R** (coincide con el smoke S11).
 
 > **Transfer (#31) + SRS (#45)** son resource-centric (van en /aprendizaje, no /playbook) → diferidos a un sub-PR de /aprendizaje o a S13. El backend (S11) ya existe.
+
+---
+
+## S12c — Shell de 5 superficies + ⌘K (tras feature flag, OFF) ✅ (PR #112)
+Navegación cognitiva v3 (HOY/OPERAR/MEJORAR/PROTEGER/ANALIZAR + Ajustes, FREEZE §2) reagrupando las **mismas rutas** por intención. **Totalmente tras flag, OFF por defecto** (decisión del usuario) — con el flag apagado la nav v2 es **idéntica** (verificado lado a lado).
+- `lib/v3-shell-store.ts`: flag zustand+persist (`localStorage tj.v3Shell`), off default. Sin cambios de ruta → 100% reversible.
+- `Sidebar`: `SURFACE_NAV` + `const nav = flag ? SURFACE_NAV : NAV` — swap de la agrupación en las 3 variantes (desktop/tablet/mobile), reutilizando todo el render.
+- `CommandPalette` (⌘K ya navegaba): + comando "Vista: 5 superficies (beta)" para opt-in/out.
+
+Verificación: tsc + eslint verdes. **Visual (Playwright, ambos estados):** OFF → nav v2 (PRINCIPAL/ANÁLISIS/GESTIÓN…); ON → 5 superficies (HOY activo/Sunrise, OPERAR, MEJORAR, PROTEGER, ANALIZAR, AJUSTES). Footer (Nuevo trade/Coach IA) intacto en ambos.
+
+> **Diferido (no en este flag):** migración real de rutas (crear /hoy, /operar… absorbiendo Dashboard/Notif/Mercados/Etiquetas) y per-surface headers → progresivo, cuando el shell se valide en uso. Hoy las 5 superficies reagrupan las rutas existentes.

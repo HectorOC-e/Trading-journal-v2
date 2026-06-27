@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation"
 import {
   LayoutDashboard, CandlestickChart, ClipboardList, Brain, LineChart,
   Wallet, BookOpen, ShieldCheck, BarChart2, GraduationCap,
-  ArrowDownToLine, Tag, User, Plus, Search, CornerDownLeft,
+  ArrowDownToLine, Tag, User, Plus, Search, CornerDownLeft, LayoutGrid,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useQuickActions } from "@/lib/quick-actions-store"
+import { useV3Shell } from "@/lib/v3-shell-store"
 
 type Cmd = {
   id:    string
@@ -26,6 +27,8 @@ type Cmd = {
 export function CommandPalette() {
   const router = useRouter()
   const openRegister = useQuickActions(s => s.openRegister)
+  const v3ShellEnabled = useV3Shell(s => s.enabled)
+  const toggleV3Shell  = useV3Shell(s => s.toggle)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [active, setActive] = useState(0)
@@ -77,8 +80,9 @@ export function CommandPalette() {
       { id: "retiros",    label: "Retiros",     icon: ArrowDownToLine,  run: go("/retiros") },
       { id: "etiquetas",  label: "Etiquetas",   icon: Tag,              run: go("/etiquetas") },
       { id: "perfil",     label: "Perfil y temas", icon: User,          run: go("/perfil"), keywords: "ajustes settings apariencia tema color" },
+      { id: "v3-shell",   label: v3ShellEnabled ? "Vista: volver a la clásica" : "Vista: 5 superficies (beta)", hint: "Navegación", icon: LayoutGrid, run: () => { setOpen(false); toggleV3Shell() }, keywords: "superficies hoy operar mejorar proteger analizar shell beta navegacion" },
     ]
-  }, [router, openRegister])
+  }, [router, openRegister, v3ShellEnabled, toggleV3Shell])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
