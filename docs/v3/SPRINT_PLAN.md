@@ -127,6 +127,8 @@
 **Dependencias:** S0 (rolling/snapshots), S3.
 **Validación:** decay no se dispara por varianza; drift marca dimensión correcta.
 
+> ✅ **EJECUTADO (v3.1.0)** — `domains/analytics/setups/` (puro): edge-decay con **significancia Welch** (#12, no la ventana fija de 20), drift definido-vs-operado (#32), evolución vía `rollingWindow` (#21), variant-compare base de A/B (#50, framework completo=POST-7). Welch t-test en `institutional/stats/welch.ts` (reusa `regularizedIncompleteBeta`). Servicio `playbook-service` + router `playbook` (read-only). **Sin migración** (definición ya en `Setup`; `SetupEdgeSnapshot` diferido). 1077/1077 vitest (+27 TDD). Smoke real: setup "Breakout London" → drift avgR 1.2def/0.24op, decay stable (p=0.53). Ver `*_SPRINT_10.md`.
+
 ## Sprint 11 — Aprendizaje & transferencia (E9) + Edge instrumento/tags (E10)
 **Objetivo:** medir que aprender sirve; absorber Mercados/Etiquetas.
 **Entregables:**
