@@ -14,13 +14,11 @@
 
 ---
 
-## 1. A1 — Bloqueo duro pre-trade por presupuesto diario (#17) · 🟠
-**Falta:** S9 calcula el presupuesto de riesgo del día y S13 lo muestra como **señal**, pero **no impide** abrir trades cuando se agota (D9.3 lo aplazó a S13; S13 solo lo superfició).
-**Enfoque (reusa infra, FREEZE-D8 / invariante de bloqueo):**
-- El motor de reglas (`domains/rules/engine.ts`) ya bloquea pre-trade. Añadir un **verificador de presupuesto** que, en `trades.create`, consulte el `RiskBudget` (S9, `computeRiskBudget`) de la cuenta y, si `exhausted`, **bloquee** (mismo camino que una regla `enforce`), o **avise** si `usedPct ≥ θ`.
-- Tras `account.dd_breach`/límite diario, reusar `Account.locked`/`lockReason` (ya existe `DAILY_LOSS_LIMIT`).
-- Flag/umbral configurable por cuenta (no romper a quien no lo quiere).
-**Aceptación:** un trade que supera el presupuesto diario se **bloquea pre-trade** (test de no-regresión que confirma que el bloqueo viejo sigue + el nuevo); verificado por UI en una cuenta de prueba; warn a `usedPct ≥ 0.8`. Determinista, ≤2s.
+## 1. A1 — Guard de presupuesto diario *forward-looking* (#17) · 🟠
+**Corrección tras revisión de código:** el **bloqueo duro al *agotar* el límite diario YA existe** — `assertTradeable` (HALLAZGO 1B) auto-bloquea la cuenta por `DAILY_LOSS_LIMIT` cuando el `dayPnl` realizado supera `ddDailyPct`, y rechaza el siguiente trade (`ACCOUNT_LOCKED`). El audit lo marcó como faltante; en realidad es **backward-looking** (te bloquea *después* de haber perdido el límite).
+**Gap real (lo NUEVO):** un guard **forward-looking** que bloquee *antes* de colocar un trade **cuyo propio riesgo excedería el presupuesto restante del día** (`tradeRiskPct > remainingPct`) — evita la pérdida que dispararía el lock, en vez de reaccionar a ella.
+**Enfoque:** pure `evaluateBudgetGuard({ remainingPct, tradeRiskPct, exhausted })` → block/warn. En `trades.create`, gated a que la cuenta tenga `ddDailyPct` (opt-in natural): si el riesgo del trade supera el room restante → **bloqueo pre-trade** (`AppError("BUDGET_EXCEEDED")`, mismo camino que `RULE_BLOCKED`); warn si queda poco margen.
+**Aceptación:** un trade cuyo riesgo excede el presupuesto restante se **bloquea pre-trade** (test de no-regresión: el lock viejo por breach sigue + el nuevo forward-looking); verificado por UI; el `RiskBudgetMeter`/feed ya muestran el estado. Determinista.
 
 ## 2. A2 — Superficie de transferencia (#31) + SRS (#45) · 🟠
 **Falta:** backend S11 (`learningInsights.transfer`, `learning/srs.ts`) sin UI; `computeNextReview` no cableado a la mutación de review/grade.
