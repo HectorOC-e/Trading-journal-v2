@@ -26,6 +26,7 @@ import { customPalettesRouter }     from "./routers/custom-palettes"
 import { behaviorRouter }           from "./routers/behavior"
 import { coachRouter }              from "./routers/coach"
 import { interventionRouter }       from "./routers/intervention"
+import { playbookRouter }           from "./routers/playbook"
 import { psychologyRouter }         from "./routers/psychology"
 import { riskRouter }               from "./routers/risk"
 
@@ -56,6 +57,7 @@ export const appRouter = router({
   behavior:          behaviorRouter,
   coach:             coachRouter,
   intervention:      interventionRouter,
+  playbook:          playbookRouter,
   psychology:        psychologyRouter,
   risk:              riskRouter,
 })
