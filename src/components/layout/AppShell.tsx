@@ -6,6 +6,7 @@ import { AiCoachDrawer } from "@/components/ai-coach/ai-coach-drawer"
 import { QuickActions } from "@/components/layout/quick-actions"
 import { CommandPalette } from "@/components/ui/command-palette"
 import { FocusSession } from "@/app/aprendizaje/components/focus-session"
+import { InterventionOverlay } from "@/components/intervention/intervention-overlay"
 import { FadeIn } from "@/components/ui/motion"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPalette />
       <AiCoachDrawer />
       <FocusSession />
+      {/* Global intervention layer (S12d) — the only permitted interruption (P4),
+          surfaces on any surface, not just where the trade was closed. */}
+      <InterventionOverlay />
     </div>
   )
 }

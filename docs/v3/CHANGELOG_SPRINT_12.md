@@ -68,3 +68,12 @@ Navegación cognitiva v3 (HOY/OPERAR/MEJORAR/PROTEGER/ANALIZAR + Ajustes, FREEZE
 Verificación: tsc + eslint verdes. **Visual (Playwright, ambos estados):** OFF → nav v2 (PRINCIPAL/ANÁLISIS/GESTIÓN…); ON → 5 superficies (HOY activo/Sunrise, OPERAR, MEJORAR, PROTEGER, ANALIZAR, AJUSTES). Footer (Nuevo trade/Coach IA) intacto en ambos.
 
 > **Diferido (no en este flag):** migración real de rutas (crear /hoy, /operar… absorbiendo Dashboard/Notif/Mercados/Etiquetas) y per-surface headers → progresivo, cuando el shell se valide en uso. Hoy las 5 superficies reagrupan las rutas existentes.
+
+---
+
+## S12d — Capa global de intervención + onboarding día-1 ✅ (PR #113)
+Cierra S12.
+- **Intervención global** (DS §10.4, P4 — la única interrupción): `InterventionOverlay` (S7) **montado en `AppShell`** (no solo en /trades) → una intervención activa aflora en **cualquier superficie**. Mejoras: token `--intervene` (la única "alarma", ámbar, no rojo de pérdida) + sombra e4 `--shadow-overlay` + `backdrop-blur` + **foco atrapado / scroll lock / Esc = "seguir" con fricción** (no cierra en una tecla, lleva el foco al botón de salida) + `refetchInterval` para liveness global. Quitado el mount duplicado de /trades.
+- **Onboarding día-1**: `OnboardingWelcome` en HOY (dashboard) — solo para un trader **nuevo (0 trades)**, dismissible (`localStorage tj.onboardingDone`). Tres pasos que **encienden los motores**: conectar cuenta, registrar primer trade, check-in. Superficie `--coach`.
+
+Read-only salvo el `respond` de intervención (ya existente, S7). tsc verde; eslint sin errores (warnings `set-state-in-effect` consistentes con el repo). Verificación visual en el preview.
