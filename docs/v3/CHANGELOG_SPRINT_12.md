@@ -44,3 +44,15 @@ Superficia el risk engine de S9 dentro del `AccountDetailPanel` (`/cuentas`):
 Read-only ("señal · no bloquea"); el bloqueo duro por budget es S13.
 
 Verificación: tsc + eslint verdes. **Visual (Playwright, cuenta FTMO Funded real):** Margen diario disponible 5 trades / 5% al floor; Riesgo de ruina 0.0% banda 0.0–0.1% n=12; proyección omitida (cuenta funded, target 0 → D9.7). Render correcto con tokens DS v3.
+
+---
+
+## S12b3 — Superficie MEJORAR: playbook intelligence (S10) + errores→lecciones (S11) ✅ (PR #111)
+`/playbook` gana:
+- **`SetupIntelligencePanel`** (S10) en el detalle de setup: veredicto de **edge decay** (con significancia), **drift** definición-vs-ejecución, **`EdgeEvolutionChart`** (curva de avg R con línea 0R), y el antes/después de la última redefinición. Consume `playbook.setup`.
+- **`ErrorCardsPanel`** (S11 #42) sobre la grilla: errores recurrentes → lecciones ordenadas por **coste real** (R), cada una con acción "convertir en regla" (coach). Consume `learningInsights.errorCards`.
+- Componentes `components/playbook/{edge-evolution-chart,setup-intelligence-panel,error-cards-panel}`.
+
+Read-only, determinista (P2); sin cambio de backend. Verificación: tsc + eslint verdes. **Visual (Playwright):** setup "Breakout London" → Edge estable 0.41R vs 0.15R base, **Drift en avg R: definido 1.2R vs operado 0.24R**, curva de evolución OK; panel de errores → **FOMO −19.5R / Revancha −18.5R / Off-plan −4.7R** (coincide con el smoke S11).
+
+> **Transfer (#31) + SRS (#45)** son resource-centric (van en /aprendizaje, no /playbook) → diferidos a un sub-PR de /aprendizaje o a S13. El backend (S11) ya existe.

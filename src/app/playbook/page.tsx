@@ -19,6 +19,8 @@ import { toast }           from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { setupFormSchema, type SetupFormValues } from "@/domains/trading/schemas/setup-form-schema"
+import { SetupIntelligencePanel } from "@/components/playbook/setup-intelligence-panel"
+import { ErrorCardsPanel } from "@/components/playbook/error-cards-panel"
 
 /* ── Types ── */
 type Direction   = "LONG" | "SHORT" | "AMBAS"
@@ -385,6 +387,9 @@ function SetupDrawer({
               ))
             })()}
           </div>
+
+          {/* Playbook intelligence (S10): edge decay / drift / evolution */}
+          <SetupIntelligencePanel setupId={setup.id} />
 
           {/* Description */}
           {setup.description && (
@@ -1282,6 +1287,9 @@ export default function PlaybookPage() {
           {visible.length} setup{visible.length !== 1 ? "s" : ""}
         </span>
       </div>
+
+      {/* Errors → lessons (S11 #42) */}
+      <div className="mb-4"><ErrorCardsPanel /></div>
 
       {/* Cards */}
       {isLoading ? (
