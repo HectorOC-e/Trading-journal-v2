@@ -31,6 +31,7 @@ import { learningInsightsRouter }   from "./routers/learning-insights"
 import { playbookRouter }           from "./routers/playbook"
 import { psychologyRouter }         from "./routers/psychology"
 import { riskRouter }               from "./routers/risk"
+import { todayRouter }              from "./routers/today"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -64,6 +65,7 @@ export const appRouter = router({
   playbook:          playbookRouter,
   psychology:        psychologyRouter,
   risk:              riskRouter,
+  today:             todayRouter,
 })
 
 export type AppRouter     = typeof appRouter
