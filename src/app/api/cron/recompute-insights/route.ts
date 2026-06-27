@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { checkCronAuth } from "@/app/api/cron/learning-digest/route"
 import { recomputeInsightsForAll } from "@/domains/analytics/insights/recompute-insights"
+import { recordImprovementSnapshotForAll } from "@/server/services/improvement/improvement-snapshot-service"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 300
@@ -22,8 +23,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await recomputeInsightsForAll(prisma)
-    logger.info("recompute-insights complete", { ...result })
-    return NextResponse.json({ ok: true, ...result })
+    // Closure B1: daily ImprovementScore snapshot (E19) for the North Star curve.
+    const snapshot = await recordImprovementSnapshotForAll(prisma)
+    logger.info("recompute-insights complete", { ...result, snapshot })
+    return NextResponse.json({ ok: true, ...result, snapshot })
   } catch (err) {
     logger.error("recompute-insights failed", { err })
     return new NextResponse("recompute failed", { status: 500 })

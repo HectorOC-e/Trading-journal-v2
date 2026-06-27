@@ -1,5 +1,6 @@
 "use client"
 
+import { LineChart, Line, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, Activity, Info } from "lucide-react"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -30,6 +31,30 @@ export function ImprovementPanel({ d, money }: { d: Improvement; money: (n: numb
           <div className="flex items-center gap-1.5 mb-1"><TrendingUp size={13} style={{ color: "var(--coach)" }} /><span className="text-eyebrow">Índice de mejora</span></div>
           <p className="num font-bold leading-none" style={{ fontSize: 52, color }}>{Math.round(score)}</p>
           <p className="text-[11px] text-[var(--ink-3)] mt-1">de 100 · {d.sampleSize} trades</p>
+          {d.series.length >= 2 && (() => {
+            const first = d.series[0].score
+            const delta = score - first
+            return (
+              <div className="w-full mt-2">
+                <div className="h-10 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={d.series} margin={{ top: 4, right: 2, left: 2, bottom: 0 }}>
+                      <YAxis domain={[0, 100]} hide />
+                      <Tooltip content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        const p = payload[0].payload as { date: string; score: number }
+                        return <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2 py-1 shadow-[var(--shadow-lg)] text-[10px]"><span className="num font-bold">{Math.round(p.score)}</span> · {p.date.slice(5)}</div>
+                      }} />
+                      <Line type="monotone" dataKey="score" stroke={color} strokeWidth={2} dot={false} isAnimationActive={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] num mt-0.5" style={{ color: delta >= 0 ? "var(--win)" : "var(--loss)" }}>
+                  {delta >= 0 ? "▲" : "▼"} {Math.abs(Math.round(delta))} vs hace {d.series.length} días
+                </p>
+              </div>
+            )
+          })()}
         </div>
         <div className="flex flex-col gap-2.5">
           {d.improvement.drivers.map((dr) => {

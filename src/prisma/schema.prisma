@@ -69,6 +69,7 @@ model User {
   coachMemory              CoachMemory[]
   interventions            Intervention[]
   preSessionCheckins       PreSessionCheckin[]
+  improvementScores        ImprovementScore[]
 
   @@map("users")
 }
@@ -1108,4 +1109,27 @@ model PreSessionCheckin {
 
   @@index([userId, date])
   @@map("pre_session_checkins")
+}
+
+// ImprovementScore (E19, closure B1) — daily snapshot of the North Star so the
+// index has a TIME SERIES ("vs hace 3 meses"), not just the current value.
+// One row per user per day (upsert). Drivers persisted for decomposition history.
+model ImprovementScore {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  date        DateTime @db.Date
+  score       Float
+  discipline  Float
+  expectancy  Float
+  commitment  Float
+  cost        Float
+  drivers     Json     @default("[]")
+  sampleSize  Int      @default(0) @map("sample_size")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date(sort: Desc)])
+  @@map("improvement_scores")
 }
