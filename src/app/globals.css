@@ -40,6 +40,35 @@
   --be:          oklch(72% 0.13 88);
   --be-soft:     oklch(96% 0.04 88);
 
+  /* ─────────────────────────────────────────────────────────────────────────
+     v3 COGNITIVE ROLES (DESIGN_SYSTEM_V3 §5) — semantic colors for the cognitive
+     layer. Like win/loss/be these carry MEANING (coach/intervention/commitment/
+     regime/reinforcement), never decoration, and are paired with icon/text so
+     color is never the sole signal (WCAG 1.4.1). Constant across themes.
+     ───────────────────────────────────────────────────────────────────────── */
+  --coach:           oklch(56% 0.17 295);  /* coach surface/accents — violet, distinct from accent */
+  --coach-soft:      oklch(95% 0.04 295);
+  --intervene:       oklch(64% 0.19 50);   /* the ONLY alarm — high-urgency amber, not loss-red */
+  --intervene-soft:  oklch(95% 0.05 60);
+  --commit:          oklch(58% 0.13 195);  /* active commitments — teal (a chosen action) */
+  --commit-soft:     oklch(95% 0.04 195);
+  --reinforce:       var(--win);           /* positive reinforcement — calm, never interrupts */
+  --reinforce-soft:  var(--win-soft);
+  --regime-trend:    oklch(58% 0.10 220);  /* market-regime tags — neutral, paired with label */
+  --regime-range:    oklch(62% 0.03 280);
+  --regime-volatile: oklch(66% 0.15 35);
+
+  /* ── Semantic spacing scale (DESIGN_SYSTEM_V3 §2) — 4px base ── */
+  --space-0:  0;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+
   --radius:      10px;
   --radius-sm:   7px;
   --radius-xs:   5px;
@@ -51,6 +80,8 @@
   --shadow-sm: 0 1px 4px oklch(14% 0.018 264 / 0.07), 0 2px 8px oklch(14% 0.018 264 / 0.04);
   --shadow-md: 0 4px 12px oklch(14% 0.018 264 / 0.09), 0 2px 4px oklch(14% 0.018 264 / 0.05);
   --shadow-lg: 0 8px 24px oklch(14% 0.018 264 / 0.11), 0 4px 8px oklch(14% 0.018 264 / 0.05);
+  /* e4 — intervention overlay (max hierarchy, DESIGN_SYSTEM_V3 §6); pair with backdrop blur */
+  --shadow-overlay: 0 24px 64px oklch(14% 0.018 264 / 0.28), 0 8px 24px oklch(14% 0.018 264 / 0.16);
 
   /* Easing */
   --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
@@ -90,10 +121,16 @@
   --loss-soft:   oklch(18% 0.06 25);
   --be-soft:     oklch(18% 0.05 88);
 
+  /* v3 cognitive roles — soft variants retuned for the near-black canvas */
+  --coach-soft:     oklch(24% 0.06 295);
+  --intervene-soft: oklch(24% 0.07 55);
+  --commit-soft:    oklch(20% 0.05 195);
+
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.20);
   --shadow-sm: 0 1px 4px rgba(0,0,0,0.28), 0 2px 8px rgba(0,0,0,0.16);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.32), 0 2px 4px rgba(0,0,0,0.20);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.24);
+  --shadow-overlay: 0 24px 64px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.35);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -124,6 +161,17 @@
   --color-loss-soft:   var(--loss-soft);
   --color-be:          var(--be);
   --color-be-soft:     var(--be-soft);
+  --color-coach:           var(--coach);
+  --color-coach-soft:      var(--coach-soft);
+  --color-intervene:       var(--intervene);
+  --color-intervene-soft:  var(--intervene-soft);
+  --color-commit:          var(--commit);
+  --color-commit-soft:     var(--commit-soft);
+  --color-reinforce:       var(--reinforce);
+  --color-reinforce-soft:  var(--reinforce-soft);
+  --color-regime-trend:    var(--regime-trend);
+  --color-regime-range:    var(--regime-range);
+  --color-regime-volatile: var(--regime-volatile);
   --font-sans: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
 }
