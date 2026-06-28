@@ -71,6 +71,7 @@ model User {
   preSessionCheckins       PreSessionCheckin[]
   improvementScores        ImprovementScore[]
   memoryEpisodes           MemoryEpisode[]
+  memoryPatterns           MemoryPattern[]
 
   @@map("users")
 }
@@ -1152,4 +1153,24 @@ model MemoryEpisode {
 
   @@index([userId, occurredAt(sort: Desc)])
   @@map("memory_episodes")
+}
+
+// MemoryPattern (E14, v3.2 §6) — semantic memory generalized from episodes, with
+// support episode ids. Confirmed deterministically by the Memory Agent (P6/D9).
+model MemoryPattern {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  patternKey        String   @map("pattern_key")
+  text              String
+  status            String   @default("candidate") // candidate | confirmed | refuted
+  supportEpisodeIds String[] @map("support_episode_ids") @db.Uuid
+  confidence        Float    @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, patternKey])
+  @@index([userId, status])
+  @@map("memory_patterns")
 }

@@ -11,6 +11,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { assembleContextBlock, proposeMemory, parseMemoryExtraction, type MemoryKind } from "@/domains/cognitive/coach/memory"
 import { completeText } from "@/lib/ai/complete"
 import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
+import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-service"
 
 /**
  * Build the dynamic MEMORY block injected into the coach prompt: confirmed
@@ -18,7 +19,7 @@ import { getSalientEpisodes } from "@/server/services/memory/memory-episode-serv
  * thread's summary — budget-bounded by the pure assembler (FREEZE-D10).
  */
 export async function assembleCoachContext(prisma: PrismaClient, userId: string): Promise<string> {
-  const [confirmed, commitments, lastThread, episodes] = await Promise.all([
+  const [confirmed, commitments, lastThread, episodes, patterns] = await Promise.all([
     prisma.coachMemory.findMany({
       where: { userId, status: "confirmed" },
       orderBy: { updatedAt: "desc" },
@@ -37,10 +38,15 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
       select: { summary: true },
     }),
     getSalientEpisodes(prisma, userId, 4).catch(() => []),
+    getConfirmedPatterns(prisma, userId, 5).catch(() => []),
   ])
 
   const identity = confirmed.filter((m) => m.kind === "identity").map((m) => m.content).join("; ") || null
-  const facts = confirmed.filter((m) => m.kind !== "identity").map((m) => ({ kind: m.kind, content: m.content }))
+  // Confirmed facts (CoachMemory) + confirmed semantic patterns (E14, data-confirmed).
+  const facts = [
+    ...confirmed.filter((m) => m.kind !== "identity").map((m) => ({ kind: m.kind, content: m.content })),
+    ...patterns.map((p) => ({ kind: "pattern", content: p.text })),
+  ]
 
   return assembleContextBlock({
     identity,

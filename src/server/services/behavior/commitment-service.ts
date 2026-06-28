@@ -17,6 +17,7 @@ import {
   type CommitmentWindow,
 } from "@/domains/behavior/commitment-machine"
 import { planReinforcement } from "@/domains/behavior/reinforcement"
+import { recordEpisode } from "@/server/services/memory/memory-episode-service"
 
 export class NoVerifierError extends Error {
   constructor(insightType: string) {
@@ -156,6 +157,15 @@ export async function evaluateCommitment(
     })
     await publishEvent(tx, { userId, type: `commitment.${result}` as const, payload: { commitmentId: c.id } })
   })
+
+  // E13 (v3.2): kept/broken commitments are salient episodes the coach recalls.
+  if (result === "kept" || result === "broken") {
+    void recordEpisode(prisma, userId, {
+      eventType: result === "kept" ? "commitment_kept" : "commitment_broken",
+      content: `${result === "kept" ? "Cumpliste" : "Rompiste"} tu compromiso: "${c.text}".`,
+      sourceId: c.id,
+    })
+  }
 
   return { status: result, observedValue }
 }
