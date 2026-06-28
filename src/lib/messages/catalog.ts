@@ -11,6 +11,7 @@ export const LABELS: Record<string, { es: string; en?: string }> = {
   VIEW_REVIEW:   { es: "Ver review",   en: "View review" },
   VIEW_REPORT:   { es: "Ver reporte",  en: "View report" },
   STUDY_NOW:     { es: "Repasar ahora", en: "Review now" },
+  VIEW_PROGRESS: { es: "Ver progreso", en: "View progress" },
   DISMISS:       { es: "Descartar",    en: "Dismiss" },
   RETRY:         { es: "Reintentar",   en: "Retry" },
 }
@@ -70,6 +71,12 @@ export const MESSAGES = {
     type: "WARNING", priority: "P2", category: "Aprendizaje", persist: true,
     es: { title: "{count} review{plural} vencida{plural}", body: "Repásalas para no perder retención." },
     actions: [{ labelCode: "STUDY_NOW", href: "/aprendizaje", style: "ghost" }],
+  },
+  COGNITIVE_DIGEST: {
+    type: "INFO", priority: "P2", category: "Aprendizaje", persist: true,
+    es: { title: "Tu semana cognitiva", body: "{summary}" },
+    en: { title: "Your cognitive week", body: "{summary}" },
+    actions: [{ labelCode: "VIEW_PROGRESS", href: "/analytics", style: "ghost" }],
   },
 
   // ── System (persisted) ────────────────────────────────────────────────────
