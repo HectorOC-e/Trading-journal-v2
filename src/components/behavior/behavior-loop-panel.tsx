@@ -24,11 +24,13 @@ export function BehaviorLoopPanel() {
   const { data: insights = [], isLoading: insLoading } = trpc.behavior.openInsights.useQuery(undefined, { staleTime: 30_000 })
   const { data: commitments = [], isLoading: comLoading } = trpc.behavior.commitments.useQuery(undefined, { staleTime: 30_000 })
   const { data: suggestions = [] } = trpc.behavior.ruleSuggestions.useQuery(undefined, { staleTime: 30_000 })
+  const { data: proposals = [] } = trpc.behavior.proposedCommitments.useQuery(undefined, { staleTime: 30_000 })
 
   const invalidate = () => {
     utils.behavior.openInsights.invalidate()
     utils.behavior.commitments.invalidate()
     utils.behavior.ruleSuggestions.invalidate()
+    utils.behavior.proposedCommitments.invalidate()
   }
 
   const create = trpc.behavior.createFromInsight.useMutation({
@@ -55,6 +57,14 @@ export function BehaviorLoopPanel() {
     onSuccess: () => invalidate(),
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
+  const acceptCommit = trpc.behavior.acceptProposed.useMutation({
+    onSuccess: () => { toast.success("Compromiso activado — lo verificaré al cierre de la ventana."); invalidate() },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+  const dismissCommit = trpc.behavior.dismissProposed.useMutation({
+    onSuccess: () => invalidate(),
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
 
   const committable = insights.filter((i) => i.canCommit)
   const studyOnly = insights.filter((i) => !i.canCommit)
@@ -62,7 +72,7 @@ export function BehaviorLoopPanel() {
   if (insLoading || comLoading) {
     return <div className="h-24 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
   }
-  if (insights.length === 0 && commitments.length === 0 && suggestions.length === 0) return null
+  if (insights.length === 0 && commitments.length === 0 && suggestions.length === 0 && proposals.length === 0) return null
 
   return (
     <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 flex flex-col gap-4">
@@ -71,6 +81,26 @@ export function BehaviorLoopPanel() {
         <h3 className="text-sm font-bold text-[var(--ink)]">Loop de mejora</h3>
         <span className="text-[10px] text-[var(--ink-3)]">insight → compromiso → verificación</span>
       </div>
+
+      {/* Coach-proposed commitments (D1·b) — confirm to activate */}
+      {proposals.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--coach)]">El coach te propone</p>
+          {proposals.map((p) => (
+            <div key={p.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--coach)] bg-[var(--coach-soft,var(--panel-2))] px-3 py-2">
+              <span className="flex-1 text-[12px] text-[var(--ink)]">{p.text}</span>
+              <button onClick={() => acceptCommit.mutate({ commitmentId: p.id })} disabled={acceptCommit.isPending}
+                className="shrink-0 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-[11px] font-semibold px-2.5 py-1.5 hover:opacity-90 disabled:opacity-40">
+                Aceptar
+              </button>
+              <button onClick={() => dismissCommit.mutate({ commitmentId: p.id })} disabled={dismissCommit.isPending}
+                className="shrink-0 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] px-1.5 py-1.5">
+                Descartar
+              </button>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* Active / recent commitments */}
       {commitments.length > 0 && (

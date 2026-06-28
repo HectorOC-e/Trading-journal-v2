@@ -83,6 +83,55 @@ export async function createCommitmentFromInsight(
   })
 }
 
+// ── Coach-proposed commitments (D1·b, v3.2) ──────────────────────────────────
+// The coach can PROPOSE a verifiable commitment from chat; it lands as `proposed`
+// (inert — the machine only evaluates `active`) until the user accepts. Permission
+// frontier, mirrors propose_rule.
+const KIND_TO_INSIGHT: Record<string, string> = {
+  limit_trades: "intraday-decay",
+  no_revenge: "revenge-trading",
+  respect_risk: "oversizing",
+  stay_on_plan: "off-plan",
+}
+
+export async function proposeCommitment(prisma: PrismaClient, userId: string, kind: string): Promise<{ id: string; text: string } | null> {
+  const insightType = KIND_TO_INSIGHT[kind]
+  if (!insightType) return null
+  const spec = deriveCommitmentSpec(insightType)
+  if (!spec) return null
+  const startAt = new Date()
+  const c = await prisma.commitment.create({
+    data: {
+      userId, text: spec.text, metricKey: spec.metricKey, target: spec.target,
+      comparator: spec.comparator, window: spec.window, startAt, endAt: windowEnd(startAt, spec.window),
+      status: "proposed", createdVia: "coach",
+    },
+    select: { id: true, text: true },
+  })
+  return c
+}
+
+export function listProposedCommitments(prisma: PrismaClient, userId: string) {
+  return prisma.commitment.findMany({
+    where: { userId, status: "proposed", archivedAt: null },
+    select: { id: true, text: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  })
+}
+
+export async function acceptProposedCommitment(prisma: PrismaClient, userId: string, id: string): Promise<void> {
+  const c = await prisma.commitment.findFirstOrThrow({ where: { id, userId, status: "proposed" }, select: { window: true } })
+  const startAt = new Date()
+  await prisma.$transaction(async (tx) => {
+    await tx.commitment.update({ where: { id }, data: { status: "active", startAt, endAt: windowEnd(startAt, c.window as CommitmentWindow) } })
+    await publishEvent(tx, { userId, type: "commitment.created", payload: { commitmentId: id } })
+  })
+}
+
+export async function dismissProposedCommitment(prisma: PrismaClient, userId: string, id: string): Promise<void> {
+  await prisma.commitment.updateMany({ where: { id, userId, status: "proposed" }, data: { status: "dismissed", archivedAt: new Date() } })
+}
+
 /** Map closed trades in a window to the pure WindowTrade shape the verifiers read. */
 async function loadWindowTrades(prisma: PrismaClient, userId: string, from: Date, to: Date): Promise<WindowTrade[]> {
   const rows = await prisma.trade.findMany({
