@@ -30,3 +30,16 @@
 
 ## Definición de "E1 hecho"
 Las 4 capas existen con RLS; el coach ensambla contexto de las 4 con presupuesto; D9 intacto; episódica con recall semántico + saliencia; migración reversible; sin regresión del coach. Verificado por tests + UI (panel de memoria) + smoke real del recall.
+
+---
+## ✅ E1 COMPLETA (2026-06-27) — memoria jerárquica de 4 capas viva y verificada
+| Capa | Entidad | PR | Verificación (BD real) |
+|---|---|---|---|
+| Episódica | E13 `memory_episodes` (pgvector) | #120 | record→saliencia 0.90/0.70→recall→"Momentos recordados" ✓ |
+| Semántica | E14 `memory_patterns` (Memory Agent, P6 N≥3) | #121 | 3 episodios→patrón **confirmado** (support n=3)→en contexto ✓ |
+| Identidad | E15 `memory_identity` (estructurada, editable) | #122 | tono "directo"→"Identidad del trader" ✓ |
+| Mejora | E16 (lee E19) | #122 | serie 2pts→"Progreso: índice X (+N vs hace M días)" ✓ |
+
+**`assembleCoachContext` ensambla las 4 con presupuesto (D10).** Anti-poisoning (D9) intacto: episódica append-only, semántica confirmada por dato, identidad del usuario. Decay episódico a read-time. Smoke 4-capas: las 4 presentes en el contexto. `CoachIdentityEditor` en el panel de memoria (🧠).
+
+**Pendiente menor (no bloquea):** recall episódico por query del último mensaje del chat (hoy se inyectan los más salientes); backfill `CoachMemory kind:fact` confirmada → `MemoryPattern` (ambas conviven sin conflicto). **Siguiente en v3.2: A3 rutas reales / C3 / C4 / D1 / POST-x.**
