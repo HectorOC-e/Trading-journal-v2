@@ -11,6 +11,9 @@ import {
   createCommitmentFromInsight,
   evaluateCommitment,
   carryOverCommitments,
+  listProposedCommitments,
+  acceptProposedCommitment,
+  dismissProposedCommitment,
   NoVerifierError,
 } from "@/server/services/behavior/commitment-service"
 import {
@@ -109,6 +112,17 @@ export const behaviorRouter = router({
     .mutation(async ({ ctx, input }) => {
       return evaluateCommitment(ctx.prisma, ctx.userId, input.commitmentId)
     }),
+
+  // ── Coach-proposed commitments (D1·b) ──────────────────────────────────────
+  proposedCommitments: protectedProcedure.query(({ ctx }) => listProposedCommitments(ctx.prisma, ctx.userId)),
+
+  acceptProposed: protectedProcedure
+    .input(z.object({ commitmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => { await acceptProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId); return { ok: true } }),
+
+  dismissProposed: protectedProcedure
+    .input(z.object({ commitmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => { await dismissProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId); return { ok: true } }),
 
   /** Archive a commitment (privacy/declutter — §8.5). */
   archive: protectedProcedure

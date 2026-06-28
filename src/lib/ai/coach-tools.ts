@@ -4,6 +4,7 @@
 
 import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
 import { proposeRuleForCommitment } from "@/domains/behavior/rule-linking"
+import { proposeCommitment } from "@/server/services/behavior/commitment-service"
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
@@ -118,6 +119,18 @@ export const COACH_TOOLS = [
         limit:      { type: "number", description: "Máx. resultados (default 10, máx 25)" },
         unreadOnly: { type: "boolean", description: "Solo no leídas (opcional)" },
       },
+    },
+  },
+  {
+    name: "propose_commitment",
+    description: "PROPONE (no crea activo) un compromiso conductual verificable que el trader debe ACEPTAR. NO lo activas: queda como propuesta que el trader confirma o descarta. Úsalo cuando un compromiso concreto le ayudaría (más blando que una regla: una promesa que el sistema verifica al cierre de la ventana, no un bloqueo). Explica que la propuesta espera su confirmación.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        commitment: { type: "string", enum: ["limit_trades", "no_revenge", "respect_risk", "stay_on_plan"], description: "Tipo: máx. 2 trades/día | cero revancha tras pérdida | respetar límite de riesgo | operar solo dentro del plan (todos, esta semana)." },
+        reason:     { type: "string", description: "Por qué se lo propones, en una frase (se muestra al trader)." },
+      },
+      required: ["commitment", "reason"],
     },
   },
   {
@@ -456,6 +469,17 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
           title: r.title, body: r.body, type: r.type, priority: r.priority, category: r.category,
           read: r.readAt != null, date: (r.createdAt as Date).toISOString().slice(0, 10),
         })),
+      })
+    }
+
+    if (name === "propose_commitment") {
+      // WRITE tool (D1·b) — proposes a verifiable commitment the user must CONFIRM.
+      // Lands as `proposed` (inert until accepted), never auto-active.
+      const proposal = await proposeCommitment(prisma, userId, String(input.commitment ?? ""))
+      if (!proposal) return JSON.stringify({ error: `Compromiso no soportado: ${input.commitment}` })
+      return JSON.stringify({
+        proposed: true, commitmentId: proposal.id, text: proposal.text,
+        message: `Compromiso propuesto y pendiente de confirmación del trader: "${proposal.text}". Informa al trader de que lo verá para aceptarlo o descartarlo; tú no lo has activado.`,
       })
     }
 
