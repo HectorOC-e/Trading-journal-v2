@@ -10,6 +10,7 @@ import { assembleTodayFeed, detectDailyAnomaly, type SignalInput, type TodayItem
 import { getRiskOverview } from "@/server/services/risk/risk-service"
 import type { RiskBudget } from "@/domains/analytics/risk/risk-budget"
 import { isPracticeType } from "@/domains/trading/account-reality"
+import { getIgnoreCounts } from "@/server/services/today/feed-ignore-service"
 
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
 const iso = (d: Date) => d.toISOString()
@@ -134,6 +135,12 @@ export async function getTodayFeed(prisma: PrismaClient, userId: string): Promis
         createdAt: iso(new Date()),
       })
     }
+  }
+
+  // C3: fold in ignore telemetry so the feed demotes signals the trader keeps dismissing.
+  const ignores = await getIgnoreCounts(prisma, userId)
+  if (ignores.size > 0) {
+    for (const s of signals) s.ignored = ignores.get(s.id) ?? 0
   }
 
   return { feed: assembleTodayFeed(signals), budget, primaryAccountId: primary?.id ?? null }
