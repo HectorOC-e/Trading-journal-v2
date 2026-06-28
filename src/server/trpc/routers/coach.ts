@@ -19,6 +19,8 @@ import {
   getThreadMessages,
 } from "@/server/services/coach/coach-thread-service"
 import { getIdentity, upsertIdentity } from "@/server/services/memory/memory-identity-service"
+import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
+import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-service"
 
 const MEMORY_KIND = z.enum(["fact", "preference", "identity"])
 
@@ -41,6 +43,11 @@ export const coachRouter = router({
   deleteMemory: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => { await deleteMemory(ctx.prisma, ctx.userId, input.id); return { ok: true } }),
+
+  // ── Hierarchical memory layers — visible/transparent (ADR-003 §3, v3.2) ──────
+  // Read-only: episodes are append-only evidence; patterns are data-confirmed (D9).
+  episodes: protectedProcedure.query(({ ctx }) => getSalientEpisodes(ctx.prisma, ctx.userId, 8)),
+  patterns: protectedProcedure.query(({ ctx }) => getConfirmedPatterns(ctx.prisma, ctx.userId, 8)),
 
   // ── Identity layer (E15, v3.2) ────────────────────────────────────────────────
   identity: protectedProcedure.query(({ ctx }) => getIdentity(ctx.prisma, ctx.userId)),

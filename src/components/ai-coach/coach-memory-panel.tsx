@@ -11,6 +11,7 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import { CoachIdentityEditor } from "@/components/ai-coach/coach-identity-editor"
+import { CoachMemoryLayers } from "@/components/ai-coach/coach-memory-layers"
 
 const KIND_LABEL: Record<string, string> = { fact: "Hecho", preference: "Preferencia", identity: "Identidad" }
 
@@ -90,6 +91,9 @@ export function CoachMemoryPanel() {
           ))}
         </div>
       )}
+
+      {/* Hierarchical memory layers (E13/E14) — read-only, visible */}
+      <CoachMemoryLayers />
     </div>
   )
 }
