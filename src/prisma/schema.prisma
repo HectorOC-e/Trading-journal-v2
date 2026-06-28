@@ -73,6 +73,7 @@ model User {
   memoryEpisodes           MemoryEpisode[]
   memoryPatterns           MemoryPattern[]
   memoryIdentity           MemoryIdentity?
+  feedIgnores              FeedIgnore[]
 
   @@map("users")
 }
@@ -1188,4 +1189,20 @@ model MemoryIdentity {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("memory_identity")
+}
+
+// FeedIgnore (C3, v3.2) — ignore telemetry for the HOY feed: how many times the
+// trader dismissed a given signal, so the feed demotes what they keep ignoring.
+model FeedIgnore {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  signalKey String   @map("signal_key")
+  count     Int      @default(1)
+  lastAt    DateTime @default(now()) @map("last_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, signalKey])
+  @@index([userId])
+  @@map("feed_ignores")
 }

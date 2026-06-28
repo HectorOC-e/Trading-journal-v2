@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import {
-  ShieldAlert, AlertTriangle, ShieldCheck, Lightbulb, Target, TrendingUp, Bell, Gauge, ArrowRight, Sun,
+  ShieldAlert, AlertTriangle, ShieldCheck, Lightbulb, Target, TrendingUp, Bell, Gauge, ArrowRight, Sun, X,
 } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { RiskBudgetMeter } from "@/components/risk/risk-budget-meter"
@@ -32,7 +32,9 @@ function severityColor(s: SignalSeverity): { color: string; bg: string } {
  *  Critical signals on top (never sink), calm reinforcement at the bottom. */
 export function TodayFeed() {
   const router = useRouter()
+  const utils = trpc.useUtils()
   const { data, isLoading } = trpc.today.feed.useQuery(undefined, { staleTime: 30_000 })
+  const dismiss = trpc.today.dismiss.useMutation({ onSuccess: () => utils.today.feed.invalidate() })
 
   if (isLoading) {
     return <div className="h-32 rounded-[var(--radius)] animate-pulse mb-6" style={{ background: "var(--panel-2)" }} />
@@ -75,6 +77,12 @@ export function TodayFeed() {
                   <button onClick={() => router.push(item.cta!.href!)}
                     className="shrink-0 inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--accent)] hover:underline self-center">
                     {item.cta.label} <ArrowRight size={12} />
+                  </button>
+                )}
+                {item.severity !== "critical" && (
+                  <button onClick={() => dismiss.mutate({ signalId: item.id })} title="Descartar — el feed aprenderá a no insistir"
+                    className="shrink-0 self-start text-[var(--ink-3)] hover:text-[var(--ink)] p-0.5 -mr-1 -mt-0.5">
+                    <X size={13} />
                   </button>
                 )}
               </li>
