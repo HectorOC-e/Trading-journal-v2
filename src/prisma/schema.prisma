@@ -72,6 +72,7 @@ model User {
   improvementScores        ImprovementScore[]
   memoryEpisodes           MemoryEpisode[]
   memoryPatterns           MemoryPattern[]
+  memoryIdentity           MemoryIdentity?
 
   @@map("users")
 }
@@ -1173,4 +1174,18 @@ model MemoryPattern {
   @@unique([userId, patternKey])
   @@index([userId, status])
   @@map("memory_patterns")
+}
+
+// MemoryIdentity (E15, v3.2 §6) — one structured, user-editable record that
+// calibrates the coach's tone/focus/style. Who the trader says they are.
+model MemoryIdentity {
+  userId    String   @id @map("user_id") @db.Uuid
+  tone      String?
+  focus     String?
+  summary   String?
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memory_identity")
 }

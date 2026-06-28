@@ -71,6 +71,8 @@ export function parseMemoryExtraction(raw: string): MemoryExtraction {
 
 export interface AssembleInput {
   identity?: string | null
+  /** Improvement memory (E16) — the North Star narrative ("better than N days ago"). */
+  improvement?: string | null
   confirmedMemories: { kind: string; content: string }[]
   commitments: { text: string; status: string }[]
   /** Episodic memory (E13) — salient recalled moments, evidence the coach can cite. */
@@ -92,6 +94,10 @@ export function assembleContextBlock(input: AssembleInput, opts: { maxChars?: nu
 
   if (input.identity && input.identity.trim()) {
     parts.push(`Identidad del trader: ${input.identity.trim()}`)
+  }
+
+  if (input.improvement && input.improvement.trim()) {
+    parts.push(`Progreso: ${input.improvement.trim()}`)
   }
 
   if (input.commitments.length > 0) {
