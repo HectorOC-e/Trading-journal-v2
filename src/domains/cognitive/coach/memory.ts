@@ -73,6 +73,8 @@ export interface AssembleInput {
   identity?: string | null
   confirmedMemories: { kind: string; content: string }[]
   commitments: { text: string; status: string }[]
+  /** Episodic memory (E13) — salient recalled moments, evidence the coach can cite. */
+  episodes?: { content: string }[]
   lastSummary?: string | null
 }
 
@@ -116,6 +118,19 @@ export function assembleContextBlock(input: AssembleInput, opts: { maxChars?: nu
     let block = `Hechos confirmados:\n${kept.join("\n")}`
     if (dropped > 0) block += `\n  (+${dropped} más)`
     parts.push(block)
+  }
+
+  // Episodic memory (E13) — salient recalled moments, within the remaining budget.
+  if (input.episodes && input.episodes.length > 0) {
+    const used = parts.join("\n\n").length
+    const remaining = Math.max(0, budget - used)
+    const kept: string[] = []
+    let acc = 0
+    for (const e of input.episodes) {
+      const line = `  - ${e.content}`
+      if (acc + line.length <= remaining) { kept.push(line); acc += line.length + 1 }
+    }
+    if (kept.length > 0) parts.push(`Momentos recordados:\n${kept.join("\n")}`)
   }
 
   if (input.lastSummary && input.lastSummary.trim()) {

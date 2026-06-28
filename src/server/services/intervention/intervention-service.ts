@@ -10,6 +10,7 @@
 import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
 import { isWin } from "@/lib/formulas"
 import { detectInterventions, decideIntervention, type DayState } from "@/domains/cognitive/intervention/engine"
+import { recordEpisode } from "@/server/services/memory/memory-episode-service"
 
 const VIOLATION_TAGS = new Set(["Off-plan", "Impulsivo", "Revanche"])
 
@@ -161,5 +162,13 @@ export async function respondIntervention(
       }
     }
   })
+
+  // E13 (v3.2): record the moment as an episode the coach can recall later.
+  void recordEpisode(prisma, userId, {
+    eventType: "intervention",
+    content: `Intervención (${iv.trigger}): ${response === "accepted" ? "aceptaste la protección" : "seguiste asumiendo el riesgo"}. ${iv.message}`,
+    sourceId: iv.id,
+  })
+
   return { ruleCreated }
 }
