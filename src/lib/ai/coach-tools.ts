@@ -2,7 +2,8 @@
 // Never writes; always scoped to the requesting user. Used by the Anthropic
 // agentic path (coach-agent.ts).
 
-import type { PrismaClient } from "@/lib/generated/prisma/client"
+import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
+import { proposeRuleForCommitment } from "@/domains/behavior/rule-linking"
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
@@ -119,9 +120,29 @@ export const COACH_TOOLS = [
       },
     },
   },
+  {
+    name: "propose_rule",
+    description: "PROPONE (no aplica) una regla protectora de pre-trade para el trader. NO la activa: crea una sugerencia que el trader ve y debe ACEPTAR o descartar — tú nunca activas reglas por tu cuenta. Úsalo cuando, tras analizar su comportamiento, una protección concreta le ayudaría (p. ej. tras detectar revenge-trading o sobredimensionamiento). Explica al trader que la propuesta está esperando su confirmación.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        protection: { type: "string", enum: ["max_trades_per_day", "cooldown_after_loss", "max_risk_per_trade"], description: "Tipo de protección: máx. 2 trades/día | enfriamiento anti-revenge tras pérdida | límite de riesgo por trade." },
+        risk_pct:   { type: "number", description: "Solo para max_risk_per_trade: % de riesgo máximo por trade (p. ej. 1)." },
+        reason:     { type: "string", description: "Por qué se la propones, en una frase (se muestra al trader)." },
+      },
+      required: ["protection", "reason"],
+    },
+  },
 ] as const
 
 export type CoachToolName = (typeof COACH_TOOLS)[number]["name"]
+
+// propose_rule (D1): map the coach's protection choice → a known safe rule template.
+const PROTECTION_TO_METRIC: Record<string, string> = {
+  max_trades_per_day: "tradesPerDayBeyond2",
+  cooldown_after_loss: "revengeTradesAfterLoss",
+  max_risk_per_trade: "oversizedTrades",
+}
 
 export interface ToolCtx { userId: string; prisma: PrismaClient }
 
@@ -435,6 +456,26 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
           title: r.title, body: r.body, type: r.type, priority: r.priority, category: r.category,
           read: r.readAt != null, date: (r.createdAt as Date).toISOString().slice(0, 10),
         })),
+      })
+    }
+
+    if (name === "propose_rule") {
+      // WRITE tool (D1) — proposes a protective rule the user must CONFIRM. Never
+      // auto-applies (permission frontier): creates a pending RuleSuggestion.
+      const protection = String(input.protection ?? "")
+      const metricKey = PROTECTION_TO_METRIC[protection]
+      if (!metricKey) return JSON.stringify({ error: `Protección no soportada: ${protection}` })
+      const riskPct = Number(input.risk_pct)
+      const proposed = proposeRuleForCommitment(metricKey, Number.isFinite(riskPct) && riskPct > 0 ? { oversizeThresholdPct: riskPct } : {})
+      if (!proposed) return JSON.stringify({ error: "No se pudo construir la regla." })
+      const reason = String(input.reason ?? "").slice(0, 300) || "Propuesta del coach."
+      const sug = await prisma.ruleSuggestion.create({
+        data: { userId, insightId: null, proposedRule: proposed as unknown as Prisma.InputJsonValue, reason, status: "pending" },
+        select: { id: true },
+      })
+      return JSON.stringify({
+        proposed: true, suggestionId: sug.id, ruleName: proposed.name,
+        message: `Propuesta creada y pendiente de confirmación del trader: "${proposed.name}". Informa al trader de que la verá para aceptarla o descartarla; tú no la has activado.`,
       })
     }
 

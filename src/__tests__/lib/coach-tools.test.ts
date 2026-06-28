@@ -4,13 +4,21 @@ import { executeCoachTool, COACH_TOOLS } from "@/lib/ai/coach-tools"
 const ctx = (prisma: unknown) => ({ userId: "u1", prisma: prisma as never })
 
 describe("coach tools", () => {
-  it("exposes the read-only tool definitions", () => {
+  it("exposes the tool definitions (read-only + permissioned write)", () => {
     expect(COACH_TOOLS.map(t => t.name)).toEqual([
       "get_account_detail", "get_setup_detail", "search_trades",
       "get_trade_detail", "get_period_stats", "semantic_search",
       "get_learning_resources", "get_study_agenda", "suggest_study", "search_learning_resources",
-      "get_recent_notifications",
+      "get_recent_notifications", "propose_rule",
     ])
+  })
+
+  it("propose_rule creates a PENDING suggestion (never auto-applies)", async () => {
+    const create = vi.fn().mockResolvedValue({ id: "sug1" })
+    const out = JSON.parse(await executeCoachTool("propose_rule", { protection: "cooldown_after_loss", reason: "revenge-trading detectado" }, ctx({ ruleSuggestion: { create } })))
+    expect(out.proposed).toBe(true)
+    expect(out.suggestionId).toBe("sug1")
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "pending", insightId: null }) }))
   })
 
   it("get_trade_detail returns full trade incl. events + psychology", async () => {
