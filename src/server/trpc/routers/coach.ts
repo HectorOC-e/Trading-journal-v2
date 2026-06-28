@@ -18,6 +18,7 @@ import {
   getThreads,
   getThreadMessages,
 } from "@/server/services/coach/coach-thread-service"
+import { getIdentity, upsertIdentity } from "@/server/services/memory/memory-identity-service"
 
 const MEMORY_KIND = z.enum(["fact", "preference", "identity"])
 
@@ -40,6 +41,17 @@ export const coachRouter = router({
   deleteMemory: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => { await deleteMemory(ctx.prisma, ctx.userId, input.id); return { ok: true } }),
+
+  // ── Identity layer (E15, v3.2) ────────────────────────────────────────────────
+  identity: protectedProcedure.query(({ ctx }) => getIdentity(ctx.prisma, ctx.userId)),
+
+  setIdentity: protectedProcedure
+    .input(z.object({
+      tone: z.string().max(120).nullish(),
+      focus: z.string().max(200).nullish(),
+      summary: z.string().max(500).nullish(),
+    }))
+    .mutation(({ ctx, input }) => upsertIdentity(ctx.prisma, ctx.userId, input)),
 
   // ── Threads ─────────────────────────────────────────────────────────────────
   threads: protectedProcedure.query(({ ctx }) => getThreads(ctx.prisma, ctx.userId)),

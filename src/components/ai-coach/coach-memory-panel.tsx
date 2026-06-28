@@ -10,6 +10,7 @@ import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
+import { CoachIdentityEditor } from "@/components/ai-coach/coach-identity-editor"
 
 const KIND_LABEL: Record<string, string> = { fact: "Hecho", preference: "Preferencia", identity: "Identidad" }
 
@@ -33,6 +34,9 @@ export function CoachMemoryPanel() {
         Lo que el coach recuerda de ti. Solo lo <span className="text-[var(--win)]">confirmado</span> se usa en las
         respuestas. Tú decides: confirma, edita o borra.
       </p>
+
+      {/* Identity layer (E15) */}
+      <CoachIdentityEditor />
 
       {/* Add memory */}
       <div className="flex items-center gap-2">

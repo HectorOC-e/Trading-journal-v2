@@ -12,6 +12,8 @@ import { assembleContextBlock, proposeMemory, parseMemoryExtraction, type Memory
 import { completeText } from "@/lib/ai/complete"
 import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
 import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-service"
+import { getIdentity, composeIdentityLine } from "@/server/services/memory/memory-identity-service"
+import { getImprovementSeries } from "@/server/services/improvement/improvement-snapshot-service"
 
 /**
  * Build the dynamic MEMORY block injected into the coach prompt: confirmed
@@ -19,7 +21,7 @@ import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-se
  * thread's summary — budget-bounded by the pure assembler (FREEZE-D10).
  */
 export async function assembleCoachContext(prisma: PrismaClient, userId: string): Promise<string> {
-  const [confirmed, commitments, lastThread, episodes, patterns] = await Promise.all([
+  const [confirmed, commitments, lastThread, episodes, patterns, identityRow, series] = await Promise.all([
     prisma.coachMemory.findMany({
       where: { userId, status: "confirmed" },
       orderBy: { updatedAt: "desc" },
@@ -39,10 +41,27 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
     }),
     getSalientEpisodes(prisma, userId, 4).catch(() => []),
     getConfirmedPatterns(prisma, userId, 5).catch(() => []),
+    getIdentity(prisma, userId).catch(() => null),
+    getImprovementSeries(prisma, userId, 90).catch(() => []),
   ])
 
-  const identity = confirmed.filter((m) => m.kind === "identity").map((m) => m.content).join("; ") || null
-  // Confirmed facts (CoachMemory) + confirmed semantic patterns (E14, data-confirmed).
+  // Identity layer (E15) — structured record + any confirmed kind:identity facts.
+  const identityParts = [
+    composeIdentityLine(identityRow),
+    ...confirmed.filter((m) => m.kind === "identity").map((m) => m.content),
+  ].filter((s): s is string => !!s)
+  const identity = identityParts.length > 0 ? identityParts.join("; ") : null
+
+  // Improvement layer (E16) — North Star narrative from the E19 series.
+  let improvement: string | null = null
+  if (series.length >= 2) {
+    const first = series[0].score
+    const last = series[series.length - 1].score
+    const delta = Math.round(last - first)
+    improvement = `índice de mejora ${Math.round(last)} (${delta >= 0 ? "+" : ""}${delta} vs hace ${series.length} días)`
+  }
+
+  // Semantic layer (E14) — confirmed facts (CoachMemory) + data-confirmed patterns.
   const facts = [
     ...confirmed.filter((m) => m.kind !== "identity").map((m) => ({ kind: m.kind, content: m.content })),
     ...patterns.map((p) => ({ kind: "pattern", content: p.text })),
@@ -50,6 +69,7 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
 
   return assembleContextBlock({
     identity,
+    improvement,
     confirmedMemories: facts,
     commitments: commitments.map((c) => ({ text: c.text, status: c.status })),
     episodes: episodes.map((e) => ({ content: e.content })),
