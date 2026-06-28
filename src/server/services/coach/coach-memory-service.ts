@@ -10,6 +10,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { assembleContextBlock, proposeMemory, parseMemoryExtraction, type MemoryKind } from "@/domains/cognitive/coach/memory"
 import { completeText } from "@/lib/ai/complete"
+import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
 
 /**
  * Build the dynamic MEMORY block injected into the coach prompt: confirmed
@@ -17,7 +18,7 @@ import { completeText } from "@/lib/ai/complete"
  * thread's summary — budget-bounded by the pure assembler (FREEZE-D10).
  */
 export async function assembleCoachContext(prisma: PrismaClient, userId: string): Promise<string> {
-  const [confirmed, commitments, lastThread] = await Promise.all([
+  const [confirmed, commitments, lastThread, episodes] = await Promise.all([
     prisma.coachMemory.findMany({
       where: { userId, status: "confirmed" },
       orderBy: { updatedAt: "desc" },
@@ -35,6 +36,7 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
       orderBy: { lastMessageAt: "desc" },
       select: { summary: true },
     }),
+    getSalientEpisodes(prisma, userId, 4).catch(() => []),
   ])
 
   const identity = confirmed.filter((m) => m.kind === "identity").map((m) => m.content).join("; ") || null
@@ -44,6 +46,7 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
     identity,
     confirmedMemories: facts,
     commitments: commitments.map((c) => ({ text: c.text, status: c.status })),
+    episodes: episodes.map((e) => ({ content: e.content })),
     lastSummary: lastThread?.summary ?? null,
   })
 }

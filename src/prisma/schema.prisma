@@ -70,6 +70,7 @@ model User {
   interventions            Intervention[]
   preSessionCheckins       PreSessionCheckin[]
   improvementScores        ImprovementScore[]
+  memoryEpisodes           MemoryEpisode[]
 
   @@map("users")
 }
@@ -1132,4 +1133,23 @@ model ImprovementScore {
   @@unique([userId, date])
   @@index([userId, date(sort: Desc)])
   @@map("improvement_scores")
+}
+
+// MemoryEpisode (E13, v3.2 §6) — episodic memory: append-only salient moments the
+// coach can recall. The pgvector `embedding` column lives in the DB (migration),
+// not here, and is read/written via raw SQL (mirrors trades.notes_embedding).
+model MemoryEpisode {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  eventType  String   @map("event_type")
+  content    String
+  salience   Float    @default(0.5)
+  sourceId   String?  @map("source_id") @db.Uuid
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt(sort: Desc)])
+  @@map("memory_episodes")
 }

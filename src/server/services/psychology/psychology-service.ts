@@ -6,6 +6,7 @@ import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
 import { checkinVerdict, type CheckinResult } from "@/domains/analytics/psychology/checkin"
 import { calibration, type CalibrationResult } from "@/domains/analytics/psychology/calibration"
 import { moodTrend, type MoodTrendResult, type MoodSample } from "@/domains/analytics/psychology/mood"
+import { recordEpisode } from "@/server/services/memory/memory-episode-service"
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -29,6 +30,14 @@ export async function submitCheckin(
     },
     select: { id: true },
   })
+  // E13 (v3.2): a red pre-session check-in is a salient moment to recall.
+  if (result.verdict === "no_go") {
+    void recordEpisode(prisma, userId, {
+      eventType: "checkin_red",
+      content: `Check-in pre-sesión rojo (no operar): ánimo ${input.mood}, energía ${input.energy}, sueño ${input.sleep}. ${result.reasons.join(" ")}`,
+      sourceId: row.id,
+    })
+  }
   return { ...result, id: row.id }
 }
 
