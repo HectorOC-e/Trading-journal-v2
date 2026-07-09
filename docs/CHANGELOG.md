@@ -95,4 +95,6 @@
 
 ---
 
-*Historia detallada por sprint (tareas individuales, IDs de QA) preservada en `docs/archive/changelog-detailed.md`.*
+*Historia detallada por sprint (tareas individuales, IDs de QA) preservada en el historial de git,
+en el antiguo `changelog-detailed.md` del directorio de archivo (previo al commit de consolidación
+de 2026-07-09).*
