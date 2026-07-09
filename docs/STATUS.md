@@ -10,6 +10,10 @@
 > **sin cruzarlos contra el código**: `⬜ sin verificar` significa "nadie lo ha comprobado en esta
 > pasada", no "está roto". Cerrarlos es el trabajo de la ronda de QA.
 >
+> Excepción: las filas con un estado distinto de `⬜` sí llevan respaldo. `✅ resuelto` cita la
+> verificación del cierre de S0–S2; `⚠️ probablemente sigue abierto` cita la evidencia estática que
+> lo sugiere. Fíate del estado de cada fila, no de esta advertencia general.
+>
 > Los sprints 3–14 usan IDs globalmente únicos (`OI-7.3`) y se conservan tal cual. Los sprints 0–2
 > reiniciaban la numeración en cada sprint (tres ítems distintos llamados `OI-1`), así que van
 > prefijados: `S0/OI-1`, `S1/OI-1`, `S2/OI-1`. Con eso, cada fila es trazable al historial de git.
