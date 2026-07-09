@@ -102,10 +102,17 @@ y los 14 `TEST_REPORT_SPRINT_N.md`.
 
 ## 5. El checklist de QA
 
-Se construye volcando **los 69 open items `OI-*` únicos** hallados en los 14
-`OPEN_ITEMS_SPRINT_N.md`, más:
+Se construye volcando **109 ítems** hallados en los 17 `OPEN_ITEMS_SPRINT_N.md`:
 
-- los gaps de `AUDIT_FINAL.md` (medio / bajo / reclasificados a v3.2),
+- **69** con IDs `OI-<sprint>.<n>` (sprints 3–11, 13, 14), globalmente únicos, que se conservan tal cual.
+- **40** de los sprints 0, 1 y 2 (`OI-*`, `DT-*`, `R-*`, `BIZ-1`), que **reinician la numeración en
+  cada sprint** — hay tres ítems distintos llamados `OI-1`. Se prefijan con el sprint (`S0/OI-1`,
+  `S1/OI-1`). Es la única excepción a "conservar el ID original", y es forzosa.
+
+Más:
+
+- los gaps de `AUDIT_FINAL.md` (medio / bajo / reclasificados a v3.2), **leyendo su §9**, que marca
+  varios como resueltos y contradice a la §5 del mismo documento,
 - lo declarado no verificado en los 14 `TEST_REPORT_SPRINT_N.md`,
 - los pendientes de `PENDING_AND_RESUME.md`: cron del digest cognitivo sin agendar, protección de
   contraseñas filtradas en Supabase Auth, recall episódico por query sin cablear, backfill
@@ -116,7 +123,8 @@ contra el código en esta pasada. Cerrarlos es trabajo de la ronda de pruebas, n
 Excepción: los ya marcados resueltos en `OPENITEMS_CLOSEOUT_S0_S2.md` se vuelcan como `resuelto`
 con su verificación citada.
 
-Cada fila conserva su ID original (`OI-7.3`, `GAP-A1`) para que sea trazable al historial de git.
+Cada fila conserva su ID original (`OI-7.3`, `GAP-A1`), o el ID prefijado (`S0/OI-1`) cuando el
+original colisiona, para que sea trazable al historial de git.
 
 ## 6. Alcance del borrado
 
@@ -164,8 +172,9 @@ leyendo una ruta muerta.
 
 Antes del commit de borrado:
 
-- [ ] `docs/STATUS.md` contiene los 69 IDs `OI-*`. Comprobable:
-      `grep -oE "OI-[0-9]+\.[0-9]+" docs/STATUS.md | sort -u | wc -l` → `69`.
+- [ ] `docs/STATUS.md` contiene las 109 filas del checklist. Comprobable:
+      `grep -oE "OI-[0-9]+\.[0-9]+" docs/STATUS.md | sort -u | wc -l` → `69`, y
+      `grep -coE "^\| \`S[012]/" docs/STATUS.md` → `40`.
 - [ ] `docs/ARCHITECTURE.md` conserva los **57 IDs** del freeze: `P1–P9`, `D1–D18`, `E1–E20`,
       `EV1–EV10`.
 

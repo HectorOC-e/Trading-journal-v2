@@ -13,7 +13,7 @@
 - **Regla del proyecto (CLAUDE.md):** ejecutar `graphify query "<pregunta>"` **antes** de cualquier `grep`/`find`/lectura exploratoria. El usuario lo declaró imperativo (2026-07-09). Tras el borrado, `graphify update .` es obligatorio.
 - **No renumerar ni normalizar los IDs `FREEZE-*`.** El freeze declara 57 IDs: `P1–P9`, `D1–D18`, `E1–E20`, `EV1–EV10`. Las tablas los escriben **sin** prefijo (`| **P2** |`, `| E1 | Trade |`); la prosa y el mapa de código **con** prefijo (`[FREEZE-D1]`). `src/` cita 19 de ellos con prefijo. Ambas notaciones se conservan tal cual.
 - **Nunca verificar IDs `FREEZE-*` con `grep -oE "FREEZE-(P|D|E|EV)[0-9]+"`** — solo encuentra 19 de 57 y da por bueno un documento mutilado. Usar siempre el ID desnudo con `\b`.
-- **Los IDs `OI-*` y `GAP-*` conservan su identificador original.** Son la traza al historial de git.
+- **Los IDs `OI-*` y `GAP-*` conservan su identificador original.** Son la traza al historial de git. **Única excepción:** los 40 ítems de los sprints 0–2 (`OI-*`, `DT-*`, `R-*`, `BIZ-1`) reinician la numeración en cada sprint y colisionan entre sí; se prefijan con el sprint (`S0/OI-1`, `S1/OI-1`). Sin prefijo, el checklist tendría tres filas distintas llamadas `OI-1`.
 - Todo el contenido en español, como el resto de `docs/`.
 - Windows: usar la herramienta Bash (Git Bash) para los comandos POSIX de este plan; `PYTHONIOENCODING=utf-8` en toda invocación de Python que imprima texto de los docs (la consola por defecto es `cp1252` y revienta con `—`, `⌘`, `✅`).
 
@@ -51,7 +51,7 @@ Extracción mecánica y determinista. No se juzga, no se cruza contra el código
 - Read: `docs/v3/OPEN_ITEMS_SPRINT_{3,4,5,6,7,8,9,10,11,13,14}.md`, `docs/v3/OPENITEMS_CLOSEOUT_S0_S2.md`, `docs/v3/AUDIT_FINAL.md`, `docs/v3/PENDING_AND_RESUME.md`
 
 **Interfaces:**
-- Produces: `<scratchpad>/qa-items.md` con exactamente 69 filas `| OI-x.y | descripción | se resuelve en |`, más las secciones de gaps de `AUDIT_FINAL.md` y los pendientes de ops.
+- Produces: `<scratchpad>/qa-items.md` con **109 filas** — 69 `OI-x.y` (sprints 3–14) y 40 prefijadas `S0/…`, `S1/…`, `S2/…` — más las secciones de gaps de `AUDIT_FINAL.md` y los pendientes de ops.
 
 - [ ] **Step 1: Orientarse con graphify (obligatorio antes de leer los archivos)**
 
@@ -61,9 +61,16 @@ graphify query "open items pendientes sin verificar y gaps de auditoria final"
 
 Esperado: subgrafo con nodos de `OPEN_ITEMS_*`, `AUDIT_FINAL`, `OPENITEMS_CLOSEOUT_S0_S2`. Sirve para confirmar qué ficheros participan; el detalle de las filas se extrae abajo.
 
-- [ ] **Step 2: Extraer las 69 filas `OI-*`**
+- [ ] **Step 2: Extraer las 69 filas `OI-x.y` de los sprints 3–14**
 
-Este script está probado y captura 69/69. Los `OPEN_ITEMS_SPRINT_*.md` existen solo para los sprints 3–11, 13, 14 (no hay 0, 1, 2 ni 12: los de S0–S2 están en `OPENITEMS_CLOSEOUT_S0_S2.md`).
+Este script está probado y captura 69/69 en `OPEN_ITEMS_SPRINT_{3..11,13,14}.md`.
+
+**Ojo — dos esquemas de numeración conviven.** Los sprints 3–14 usan `OI-<sprint>.<n>` (`OI-7.3`),
+globalmente únicos. Los sprints **0, 1 y 2 usan otro esquema**: `OI-1..N`, `DT-1..N`, `R-1..N`,
+`BIZ-1`, **reiniciando la numeración en cada sprint**. El `OI-1` de S0 no es el `OI-1` de S1. La
+regex de este script no los captura (sus IDs van en negrita: `| **OI-1** |`), y eso es
+deliberado: se extraen aparte en el Step 2b. No "arreglar" el script para que los coja — los
+mezclaría con IDs colisionantes.
 
 ```bash
 PYTHONIOENCODING=utf-8 python - <<'PY' > "$SCRATCH/qa-items.md"
@@ -90,23 +97,79 @@ print(f'\n<!-- filas: {len(rows)} -->')
 PY
 ```
 
-- [ ] **Step 3: Verificar que se capturaron los 69**
+- [ ] **Step 2b: Extraer los 40 ítems de los sprints 0–2, con prefijo de sprint**
+
+`OPEN_ITEMS_SPRINT_{0,1,2}.md` **existen** y contienen 40 ítems en total:
+
+| Archivo | Ítems | IDs |
+|---|---|---|
+| `OPEN_ITEMS_SPRINT_0.md` | 15 | `OI-1..2`, `DT-1..6`, `R-1..6`, `BIZ-1` |
+| `OPEN_ITEMS_SPRINT_1.md` | 13 | `OI-1..4`, `DT-1..6`, `R-1..3` |
+| `OPEN_ITEMS_SPRINT_2.md` | 12 | `OI-1..5`, `DT-1..5`, `R-1..2` |
+
+Sus IDs **colisionan entre sprints**. Al volcarlos, prefijarlos con el sprint: `S0/OI-1`, `S1/OI-1`,
+`S0/R-5`, `S0/BIZ-1`. Es la única desviación de la restricción "conservar el ID original", y es
+obligatoria: sin prefijo el checklist tendría tres filas distintas llamadas `OI-1`.
 
 ```bash
-grep -oE "OI-[0-9]+\.[0-9]+" "$SCRATCH/qa-items.md" | sort -u | wc -l
+PYTHONIOENCODING=utf-8 python - <<'PY' >> "$SCRATCH/qa-items.md"
+import re
+print('\n## Ítems de los sprints 0–2 (IDs prefijados por sprint)\n')
+print('| ID | Sprint | Item | Se resuelve en | Estado |')
+print('|---|---|---|---|---|')
+n = 0
+for s in (0, 1, 2):
+    f = f'docs/v3/OPEN_ITEMS_SPRINT_{s}.md'
+    for line in open(f, encoding='utf-8'):
+        m = re.match(r'\s*\|\s*\*\*([A-Z]+-\d+)\*\*\s*\|(.*)', line)
+        if not m:
+            continue
+        cells = [c.strip() for c in m.group(2).split('|')]
+        desc = cells[0] if cells else ''
+        where = cells[-2] if len(cells) > 2 else (cells[1] if len(cells) > 1 else '')
+        print(f'| `S{s}/{m.group(1)}` | S{s} | {desc} | {where} | ⬜ sin verificar |')
+        n += 1
+print(f'\n<!-- filas S0-S2: {n} -->')
+PY
 ```
 
-Esperado: `69`. Si sale menos, **parar**: alguna tabla usa otro formato de fila y se estaría perdiendo un item. Inspeccionar el archivo que falta antes de continuar.
+- [ ] **Step 3: Verificar los conteos**
 
-- [ ] **Step 4: Añadir los ítems resueltos de S0–S2**
+```bash
+grep -oE "OI-[0-9]+\.[0-9]+" "$SCRATCH/qa-items.md" | sort -u | wc -l   # esperado: 69
+grep -coE "^\| \`S[012]/" "$SCRATCH/qa-items.md"                         # esperado: 40
+```
 
-De `docs/v3/OPENITEMS_CLOSEOUT_S0_S2.md`, la tabla "✅ Resueltos en esta pasada" (`OI-1`, `OI-4`, `DT-1`, `DT-5`, `DT-6`). Se vuelcan con estado `✅ resuelto` y su columna de verificación citada, no como `sin verificar`. Son la excepción documentada en el spec §5.
+Si el primero sale distinto de `69` o el segundo de `40`, **parar**: alguna tabla usa otro formato
+de fila y se estaría perdiendo un item. Inspeccionar antes de continuar. No ajustar la regex hasta
+que cuadre el número — averiguar primero qué fila no encaja y por qué.
+
+Total del checklist: **109 filas**.
+
+- [ ] **Step 4: Marcar como resueltos los ítems que el closeout cierra**
+
+`docs/v3/OPENITEMS_CLOSEOUT_S0_S2.md` cierra 9 IDs (`OI-1..5`, `DT-1`, `DT-5`, `DT-6`, `BIZ-1`),
+pero **los nombra sin prefijo de sprint**, así que la correspondencia es ambigua. Resolverla leyendo
+la columna "Sprint" de su tabla "✅ Resueltos en esta pasada", que sí dice a cuál pertenece cada uno
+(p. ej. `OI-1 incentivo D10 → S2`, `DT-6 plantillas de protección → S1`).
+
+Esos ítems se vuelcan con estado `✅ resuelto` y su verificación citada, no como `sin verificar`.
+Los de la sección "❌ No completables por código" van como `⬜ sin verificar` con la razón.
+Si un ID del closeout no se puede asignar a un sprint sin ambigüedad, marcarlo `⬜ sin verificar` y
+anotar la ambigüedad — no adivinar.
 
 - [ ] **Step 5: Añadir los gaps de `AUDIT_FINAL.md` y los pendientes de ops**
 
-De `AUDIT_FINAL.md`: las secciones "🟠 Medio", "🟡 Bajo" y "Reclasificado a v3.2". Asignarles IDs `GAP-A1`, `GAP-A2`, `GAP-B1` tal como ya aparecen en el documento.
+De `AUDIT_FINAL.md`: las secciones "🟠 Medio", "🟡 Bajo" y "Reclasificado a v3.2". Asignarles IDs
+`GAP-A1`, `GAP-A2`, `GAP-B1` tal como ya aparecen en el documento.
 
-De `PENDING_AND_RESUME.md` §1 y §3, los pendientes de ops y follow-ups:
+**Ojo:** `AUDIT_FINAL.md` tiene una **§9 posterior, del mismo día**, que marca varios de esos gaps
+(`GAP-A1`, `GAP-A2`, `GAP-A4`, `GAP-B1`, `GAP-C1`, `GAP-C2`) como ya resueltos, con su PR. El
+documento se contradice consigo mismo si se lee solo §5. Volcar el estado de §9, no el de §5, y
+citar el PR en la columna de verificación. Los gaps que §9 no menciona van `⬜ sin verificar`.
+
+De `PENDING_AND_RESUME.md` §1, §3 y §4, los pendientes de ops y follow-ups (el DataTable dev render
+loop está en §4, no en §3):
 - 🔴 Agendar el cron del digest cognitivo (`/api/cron/cognitive-digest` existe y funciona, pero **no está programado**; falta pg_cron → pg_net → ruta con `Bearer CRON_SECRET`).
 - 🟡 Protección de contraseñas filtradas en Supabase Auth (toggle de dashboard, no migrable).
 - Recall episódico por query (`recallEpisodes(query)` existe en `memory-episode-service`; falta cablearla en `assembleCoachContext`/`coach-agent`; requiere clave de embeddings).
@@ -155,12 +218,15 @@ En este orden exacto (el checklist primero: es la razón de ser del documento):
 
 Encabezar la sección con la advertencia de procedencia, literal:
 
-> Los 69 ítems `OI-*` provienen de los 14 `OPEN_ITEMS_SPRINT_N.md` (hoy borrados; ver git). Se
-> volcaron **sin cruzarlos contra el código**: `⬜ sin verificar` significa "nadie lo ha comprobado
-> en esta pasada", no "está roto". Cerrarlos es el trabajo de la ronda de QA. Cada ID es trazable
-> al historial de git por su identificador original.
+> Los 109 ítems provienen de los 17 `OPEN_ITEMS_SPRINT_N.md` (hoy borrados; ver git). Se volcaron
+> **sin cruzarlos contra el código**: `⬜ sin verificar` significa "nadie lo ha comprobado en esta
+> pasada", no "está roto". Cerrarlos es el trabajo de la ronda de QA.
+>
+> Los sprints 3–14 usan IDs globalmente únicos (`OI-7.3`) y se conservan tal cual. Los sprints 0–2
+> reiniciaban la numeración en cada sprint (tres ítems distintos llamados `OI-1`), así que van
+> prefijados: `S0/OI-1`, `S1/OI-1`, `S2/OI-1`. Con eso, cada fila es trazable al historial de git.
 
-Después, la tabla de 69 filas, y bajo ella los `GAP-*` y los resueltos de S0–S2.
+Después, la tabla de 109 filas, y bajo ella los `GAP-*`.
 
 - [ ] **Step 3: Rellenar §2–§5**
 
@@ -181,13 +247,17 @@ Copiar el bloque de `PENDING_AND_RESUME.md` §"PROMPT PARA RETOMAR LA SESIÓN`, 
 
 Conservar íntegro el resto del prompt: las reglas de trabajo, el GOTCHA de `migrate-deploy` (el run del SHA del merge, ~5 min, identificar por `headSha == HEAD`), el usuario demo y la nota de Node 24.
 
-- [ ] **Step 5: Verificar el conteo**
+- [ ] **Step 5: Verificar los conteos**
 
 ```bash
-grep -oE "OI-[0-9]+\.[0-9]+" docs/STATUS.md | sort -u | wc -l
+grep -oE "OI-[0-9]+\.[0-9]+" docs/STATUS.md | sort -u | wc -l   # esperado: 69
+grep -coE "^\| \`S[012]/" docs/STATUS.md                         # esperado: 40
 ```
 
-Esperado: `69`.
+Y que §3 (deuda técnica) no duplique los `S*/DT-*` del checklist: los `DT-*` de S0–S2 viven en el
+checklist con su prefijo; §3 recoge la deuda de `TECHNICAL_DEBT.md` (`TD-018`, `TD-019`, `TD-037`),
+que es otra numeración. Si un ítem aparece en ambos sitios, dejarlo solo en el checklist y
+referenciarlo desde §3.
 
 - [ ] **Step 6: No commitear todavía**
 
@@ -500,6 +570,7 @@ EOF
 
 - [ ] `find docs -type f | wc -l` → `5`
 - [ ] `grep -oE "OI-[0-9]+\.[0-9]+" docs/STATUS.md | sort -u | wc -l` → `69`
+- [ ] `grep -coE "^\| \`S[012]/" docs/STATUS.md` → `40` (checklist completo: 109 filas)
 - [ ] Los 57 IDs del freeze presentes en `docs/ARCHITECTURE.md` (Task 3, Steps 4–5: ambas salidas vacías)
 - [ ] Ninguna ruta `docs/…` rota en `README.md`, `CLAUDE.md`, `src/AGENTS.md`, `src/CLAUDE.md`, `docs/*.md`
 - [ ] `graphify-out/graph.json` sin `source_file` inexistentes; `built_at_commit == HEAD`
