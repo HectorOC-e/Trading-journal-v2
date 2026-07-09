@@ -279,7 +279,7 @@ Promoción del freeze. **La tarea de mayor riesgo del plan:** aquí se pierde tr
 - [ ] **Step 1: Snapshot del inventario de IDs del original**
 
 ```bash
-for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" docs/v3/ARCHITECTURE_FREEZE.md; done | sort -uV > /tmp/ids_before.txt
+for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" docs/v3/ARCHITECTURE_FREEZE.md; done | LC_ALL=C sort -u > /tmp/ids_before.txt
 wc -l < /tmp/ids_before.txt
 ```
 
@@ -316,7 +316,7 @@ Al final del archivo, `## Apéndice — ADRs`, con un `###` por ADR (`ADR-000` r
 - [ ] **Step 4: Verificar que no se perdió ni un ID**
 
 ```bash
-for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" docs/ARCHITECTURE.md; done | sort -uV > /tmp/ids_after.txt
+for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" docs/ARCHITECTURE.md; done | LC_ALL=C sort -u > /tmp/ids_after.txt
 comm -23 /tmp/ids_before.txt /tmp/ids_after.txt
 ```
 
@@ -326,7 +326,7 @@ Esperado: **salida vacía** (ningún ID del original ausente en el consolidado).
 
 ```bash
 grep -rhoE "FREEZE-(P|D|EV|E)[0-9]+" src --include=*.ts --include=*.tsx | sort -u \
-  | sed 's/FREEZE-//' | sort -uV > /tmp/ids_src.txt
+  | sed 's/FREEZE-//' | LC_ALL=C sort -u > /tmp/ids_src.txt
 comm -23 /tmp/ids_src.txt /tmp/ids_after.txt
 ```
 

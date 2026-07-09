@@ -182,7 +182,7 @@ Antes del commit de borrado:
       `| E1 | Trade |`) y **con** prefijo en la prosa y el mapa de código (`[FREEZE-D1]`). El código
       de `src/` los cita siempre con prefijo. Un `grep -oE "FREEZE-(P|D|E|EV)[0-9]+"` solo encuentra
       19 de 57 y daría por bueno un documento mutilado. La comprobación correcta usa el ID desnudo:
-      `for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" <archivo> | sort -uV; done`, comparando
+      `for p in P D E EV; do grep -oE "\b${p}[0-9]+\b" <archivo> | LC_ALL=C sort -u; done`, comparando
       conjuntos entre el original y el consolidado.
 
       Corolario: **no renumerar ni normalizar la notación.** `src/` cita 19 IDs con prefijo
