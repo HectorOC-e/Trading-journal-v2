@@ -1,7 +1,9 @@
 # Changelog — Trading Journal v2
 
 > Historial consolidado único, por hito. Formato inspirado en Keep a Changelog.
-> Última actualización: 2026-06-10. Detalle verboso por sprint en `docs/archive/changelog-detailed.md`.
+> Última actualización: 2026-06-10. El detalle verboso por sprint vivía en
+> `docs/archive/changelog-detailed.md`, eliminado en la consolidación de docs/ (2026-07-09);
+> sigue disponible en el historial de git.
 
 ---
 
