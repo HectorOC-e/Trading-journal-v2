@@ -3532,22 +3532,22 @@
   "README.md": {
     "mtime": 1783624641.699856,
     "ast_hash": "71aba9c67a578f2c9c125fdf5ee43224",
-    "semantic_hash": ""
+    "semantic_hash": "71aba9c67a578f2c9c125fdf5ee43224"
   },
   "docs/ARCHITECTURE.md": {
     "mtime": 1783623970.77076,
     "ast_hash": "ea4edefc9c05607df2772a1e5e4813e3",
-    "semantic_hash": ""
+    "semantic_hash": "ea4edefc9c05607df2772a1e5e4813e3"
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1783624659.0014806,
-    "ast_hash": "4c5792fbcfb4edb04b60bea5a2a114f5",
-    "semantic_hash": ""
+    "mtime": 1783638762.914797,
+    "ast_hash": "cff42853c12300179f2669b8d2a61cf8",
+    "semantic_hash": "cff42853c12300179f2669b8d2a61cf8"
   },
   "docs/PROJECT_GUIDE.md": {
     "mtime": 1783624242.065763,
     "ast_hash": "2588f9d0f71264a6105677a863357bd4",
-    "semantic_hash": ""
+    "semantic_hash": "2588f9d0f71264a6105677a863357bd4"
   },
   "docs/auditoria-producto-trading-journal-v2.md": {
     "mtime": 1782772988.3962798,
@@ -3617,21 +3617,21 @@
   ".claude/settings.json": {
     "mtime": 1783620405.2533624,
     "ast_hash": "253309d869dde729e0ece4be5d74bbb2",
-    "semantic_hash": ""
+    "semantic_hash": "253309d869dde729e0ece4be5d74bbb2"
   },
   "src/.claude/settings.json": {
     "mtime": 1783620430.3911183,
     "ast_hash": "c5fab02caa2f91ae5ee0c3cbfbce47f3",
-    "semantic_hash": ""
+    "semantic_hash": "c5fab02caa2f91ae5ee0c3cbfbce47f3"
   },
   "CLAUDE.md": {
     "mtime": 1783619200.8468688,
     "ast_hash": "8a6643a420fdad6bfb583523bc6cef16",
-    "semantic_hash": ""
+    "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
   },
   "docs/STATUS.md": {
     "mtime": 1783624558.1477513,
     "ast_hash": "66c38143f9dc64314f87f240f4e55725",
-    "semantic_hash": ""
+    "semantic_hash": "66c38143f9dc64314f87f240f4e55725"
   }
 }
