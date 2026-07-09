@@ -59,7 +59,7 @@ Reorganizadas por **lo que el trader hace**, no por tablas (tras flag `tj.v3Shel
 - 📨 **Bus de eventos con outbox** (productores → consumidores desacoplados) + **crons** (pg_cron → pg_net → `/api/cron/*` con Bearer secret).
 - 🔔 **Notificaciones** P0–P3 con preferencias por categoría · **Digest cognitivo semanal** · catálogo de **tags** con color/icono/categoría.
 
-> Catálogo de features en [`docs/FEATURES.md`](docs/FEATURES.md) · recorrido completo de v3/v3.2 en [`docs/v3/RECAP_V3_V32.md`](docs/v3/RECAP_V3_V32.md).
+> Catálogo de módulos y recorrido de v3/v3.2 en [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md).
 
 ---
 
@@ -174,25 +174,23 @@ pnpm e2e          # playwright (e2e)
 │   ├── lib/                   # utilidades, formula engine, risk engine
 │   └── prisma/                # schema.prisma
 ├── supabase/                  # migraciones + edge functions + config
-└── docs/                      # arquitectura, features, roadmap, QA, y docs/v3/
+└── docs/                      # PROJECT_GUIDE · ARCHITECTURE · STATUS (+ CHANGELOG, auditoría)
 ```
 
 ---
 
 ## 📚 Documentación
 
-**Producto actual (v3 / v3.2):**
-- [`docs/v3/README.md`](docs/v3/README.md) — índice de las specs maestras de v3
-- [`docs/v3/SESSION_HANDOFF.md`](docs/v3/SESSION_HANDOFF.md) — **léeme primero**: estado, mapa de código y próximos pasos
-- [`docs/v3/RECAP_V3_V32.md`](docs/v3/RECAP_V3_V32.md) — recorrido sprint-por-sprint (backend · UI · razón de ser)
-- [`docs/v3/ARCHITECTURE_FREEZE.md`](docs/v3/ARCHITECTURE_FREEZE.md) — **arquitectura oficial congelada** (fuente de verdad)
-- [`docs/v3/AUDIT_FINAL.md`](docs/v3/AUDIT_FINAL.md) — auditoría de cierre de v3.1
-- [`docs/v3/MASTER_PRD.md`](docs/v3/MASTER_PRD.md) · [`docs/v3/SPRINT_PLAN.md`](docs/v3/SPRINT_PLAN.md) — PRD + plan de sprints
+Tres documentos vivos y dos anexos. Todo lo demás (bitácoras por sprint, specs de v3, informes)
+se consolidó aquí el 2026-07-09 y vive en el historial de git.
 
-**Base (v2) y referencia:**
-- [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) · [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/FEATURES.md`](docs/FEATURES.md)
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/CHANGELOG.md`](docs/CHANGELOG.md)
-- [`docs/auditoria-producto-trading-journal-v2.md`](docs/auditoria-producto-trading-journal-v2.md) — la auditoría vinculante que originó v3
+- [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) — **léeme primero**: qué es, módulos, stack, mapa de código
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — **arquitectura canónica** (freeze v3.1 + ADRs). Todo cambio arquitectónico cita uno de sus IDs `FREEZE-*`
+- [`docs/STATUS.md`](docs/STATUS.md) — estado, checklist de QA pendiente, deuda, backlog, roadmap, prompt de retoma
+
+**Anexos:**
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — historial por hito
+- [`docs/auditoria-producto-trading-journal-v2.md`](docs/auditoria-producto-trading-journal-v2.md) — la auditoría vinculante que originó v3 (hallazgos C1–C8)
 
 ---
 
