@@ -17,9 +17,21 @@
 
 ---
 
-## ⛔ BLOQUEANTE para QA de UI: la capa frontend está incompleta
+## ✅ ACTUALIZACIÓN (2026-07-10): la UI de Tasks 9 y 10 ya está implementada
 
-El sprint terminó con **backend/engine completo** pero **la UII de Tasks 9 y 10 no se implementó/commiteó** (no lo causó la caída — el último commit `e98ca48` hizo backend + panel base y el sprint no llegó al picker). Concretamente:
+Commit `71154ac`. El bloqueante de abajo **queda resuelto** — el flujo end-to-end ya es ejercitable por UI. Lo entregado:
+
+- **Task 9** — `src/app/cuentas/components/prop-firm-preset-picker.tsx` (chips en cascada Firma→Programa→Fase sobre `propFirmPresets.list`), cableado en los modales `create`/`edit`. Al elegir fase copia el snapshot del preset a los campos de regla (y prefill de balance desde `accountSize` solo en creación). Añadidos: input `consistencyPct`, toggle `noWeekendHolding`, toggle `enforceMode` WARN/ENFORCE (solo tipos prop-firm). Opción "Personalizado" limpia `presetId`.
+- **Task 10** — `prop-firm-rules.tsx` ahora renderiza filas: trailing-DD (solo modelo TRAILING), consistencia, progreso de fase (objetivo% + días/minDays) e indicador de fin de semana. `noWeekendHolding` propagado por `AccountWithLimits` → `PropFirmStatus` → select de `trades.dashboardStats`.
+- **Validado:** tsc (solo el error ambiental de `puppeteer-core`), vitest 1176/1176, eslint 0 errores.
+
+Las dos confirmaciones del usuario (números `-- VERIFY` y anon key para el e2e) **siguen pendientes** — ver secciones abajo. El prompt de "completar la UI" ya no aplica; usar directamente el **prompt de corrida QA Playwright** al final.
+
+---
+
+## ⛔ (Histórico) BLOQUEANTE de UI — RESUELTO por `71154ac`
+
+El sprint terminó con **backend/engine completo** pero **la UI de Tasks 9 y 10 no se implementó/commiteó** (no lo causó la caída — el último commit `e98ca48` hizo backend + panel base y el sprint no llegó al picker). Concretamente:
 
 ### Task 9 — picker de preset + toggle enforceMode en modales de cuenta → **NO HECHO**
 - `propFirmPresets.list` está **registrado** en el router (`src/server/trpc/root.ts:72`) pero **ningún componente cliente lo consume**.
