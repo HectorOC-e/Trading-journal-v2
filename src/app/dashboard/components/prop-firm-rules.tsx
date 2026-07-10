@@ -28,6 +28,15 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
             </div>
             <RuleBar label="Max drawdown total" usedPct={a.ddPctUsed}    displayRight={`${a.ddActualPct.toFixed(1)}% / ${a.ddLimitPct.toFixed(1)}%`} />
             <RuleBar label="Pérdida diaria"      usedPct={a.dailyLossPct} displayRight={`${a.dailyActualPct.toFixed(1)}% / ${a.dailyLimitPct.toFixed(1)}%`} />
+            {a.trailing.model === "TRAILING" && (
+              <RuleBar label="Trailing drawdown" usedPct={a.trailing.usedPct}
+                displayRight={`${a.trailing.usedPct.toFixed(0)}% · límite ${a.trailing.limitPct.toFixed(1)}%`} />
+            )}
+            {a.consistency && (
+              <RuleBar label="Consistencia (mejor día)"
+                usedPct={a.consistency.limitPct > 0 ? (a.consistency.usedPct / a.consistency.limitPct) * 100 : 0}
+                displayRight={`${a.consistency.usedPct.toFixed(0)}% / ${a.consistency.limitPct.toFixed(0)}%`} />
+            )}
             <div className="flex flex-col gap-1">
               <div className="flex justify-between items-center">
                 <span className="text-[11px] text-[var(--ink-2)]">Trades / día</span>
@@ -46,6 +55,50 @@ export function PropFirmRules({ propFirmStatus }: { propFirmStatus: PropFirmStat
                 </div>
               )}
             </div>
+            {(a.phase.targetPct != null || a.phase.minDays != null) && (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-[var(--ink-3)]">Progreso de fase</span>
+                  <span className="text-[10px] font-bold tracking-wider"
+                    style={{ color: a.phase.passed ? "var(--win)" : "var(--ink-3)" }}>
+                    {a.phase.passed ? "PASA" : "EN CURSO"}
+                  </span>
+                </div>
+                {a.phase.targetPct != null && (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[11px] text-[var(--ink-2)]">Objetivo de ganancia</span>
+                      <span className="text-[11px] font-mono font-semibold text-[var(--ink)]">
+                        {a.phase.profitPct.toFixed(1)}% / {a.phase.targetPct.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-[var(--line)] overflow-hidden">
+                      <div className="h-full rounded-full transition-[width] duration-500"
+                        style={{
+                          width: `${Math.min(Math.max(a.phase.targetPct > 0 ? (a.phase.profitPct / a.phase.targetPct) * 100 : 0, 0), 100)}%`,
+                          background: a.phase.targetReached ? "var(--win)" : "var(--accent)",
+                        }} />
+                    </div>
+                  </div>
+                )}
+                {a.phase.minDays != null && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[var(--ink-2)]">Días de trading</span>
+                    <span className="text-[11px] font-mono font-semibold"
+                      style={{ color: a.phase.daysReached ? "var(--win)" : "var(--ink)" }}>
+                      {a.phase.daysDone} / {a.phase.minDays}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {a.noWeekendHolding && (
+              <p className="text-[10px] text-[var(--ink-2)] flex items-center gap-1.5">
+                <span style={{ color: "var(--win)" }}>●</span> Sin posiciones en fin de semana
+              </p>
+            )}
+
             <p className="text-[10px] text-[var(--ink-3)]">
               Símbolos permitidos: <span className="text-[var(--ink-2)] font-medium">
                 {a.allowedSymbols.join(", ") || "—"}

@@ -37,9 +37,10 @@ export type AccountWithLimits = {
   allowedSymbols:  string[]
   // Prop-firm phase / rule config (POST-6). Optional so non-dashboard callers/tests
   // that build a minimal AccountWithLimits don't need to supply them.
-  consistencyPct?: number | null
-  targetPct?:      number | null
-  minTradingDays?: number | null
+  consistencyPct?:   number | null
+  targetPct?:        number | null
+  minTradingDays?:   number | null
+  noWeekendHolding?: boolean
 }
 
 export type TodayTrade = { accountId: string; pnl: number | null; status: string }
@@ -146,10 +147,11 @@ export type PropFirmStatus    = {
   dailyLossPct:   number   // % of allowed daily loss consumed (bar fill)
   dailyActualPct: number   // actual today loss as % of balance
   dailyLimitPct:  number   // configured daily-loss limit %
-  tradesUsed:     number
-  tradesMax:      number
-  status:         "OK" | "ALERTA"
-  allowedSymbols: string[]
+  tradesUsed:       number
+  tradesMax:        number
+  status:           "OK" | "ALERTA"
+  allowedSymbols:   string[]
+  noWeekendHolding: boolean   // POST-6: rule enabled → show weekend indicator
 } & PropFirmExtras   // POST-6: trailing / consistency / phase progress (dashboard bars)
 
 export type Grain = "daily" | "weekly" | "monthly"
@@ -482,7 +484,8 @@ export function buildPropFirmStatus(
         tradesUsed,
         tradesMax,
         status,
-        allowedSymbols: a.allowedSymbols,
+        allowedSymbols:   a.allowedSymbols,
+        noWeekendHolding: a.noWeekendHolding ?? false,
         ...extras,
       }
     })

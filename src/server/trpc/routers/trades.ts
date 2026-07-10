@@ -286,6 +286,7 @@ export const tradesRouter = router({
           ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
           maxLeverage: true, targetLeverage: true,
           consistencyPct: true, targetPct: true, minTradingDays: true,
+          noWeekendHolding: true,
         },
       })
       const activeAccountIds = activeAccounts.map(a => a.id)
@@ -388,6 +389,7 @@ export const tradesRouter = router({
         consistencyPct:  a.consistencyPct != null ? Number(a.consistencyPct) : null,
         targetPct:       a.targetPct      != null ? Number(a.targetPct)      : null,
         minTradingDays:  a.minTradingDays,
+        noWeekendHolding: a.noWeekendHolding,
       }))
       const limitsById: Record<string, AccountLimits> = Object.fromEntries(accounts.map(a => [a.id, {
         id:           a.id,
