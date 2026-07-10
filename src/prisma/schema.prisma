@@ -137,6 +137,10 @@ model Account {
   maxTradesPerDay   Int?     @map("max_trades_per_day")
   allowedSymbols    String[] @map("allowed_symbols")
   minTradingDays    Int?     @map("min_trading_days")                        // some firms require min days
+  consistencyPct    Decimal? @map("consistency_pct")     @db.Decimal(5, 2)
+  noWeekendHolding  Boolean  @default(false) @map("no_weekend_holding")
+  enforceMode       String   @default("WARN") @map("enforce_mode")   // WARN | ENFORCE
+  presetId          String?  @map("preset_id") @db.Uuid
 
   // ── Risk-limit lock (HALLAZGO 1B) ─────────────
   // When a configured loss limit (daily/weekly/monthly) is reached the account
@@ -162,6 +166,36 @@ model Account {
 
   @@index([userId])
   @@map("accounts")
+}
+
+// ─────────────────────────────────────────────
+// PROP FIRM PRESET (POST-6 — curated moat catalog, GLOBAL reference data)
+// Read by all authenticated users; written only by service-role. Accounts SNAPSHOT
+// these values on selection, so catalog edits never mutate a live challenge.
+// ─────────────────────────────────────────────
+model PropFirmPreset {
+  id               String   @id @default(uuid()) @db.Uuid
+  firm             String
+  program          String
+  phase            String                                            // PHASE_1 | PHASE_2 | FUNDED
+  accountSize      Decimal? @map("account_size")      @db.Decimal(14, 2)
+  ddDailyPct       Decimal? @map("dd_daily_pct")      @db.Decimal(5, 2)
+  ddTotalPct       Decimal? @map("dd_total_pct")      @db.Decimal(5, 2)
+  ddModel          String   @default("FIXED") @map("dd_model")       // FIXED | TRAILING
+  targetPct        Decimal? @map("target_pct")        @db.Decimal(5, 2)
+  minTradingDays   Int?     @map("min_trading_days")
+  consistencyPct   Decimal? @map("consistency_pct")   @db.Decimal(5, 2)
+  noWeekendHolding Boolean  @default(false) @map("no_weekend_holding")
+  maxTradesPerDay  Int?     @map("max_trades_per_day")
+  sourceUrl        String   @default("") @map("source_url")
+  verifiedAt       DateTime? @map("verified_at") @db.Date
+  version          Int      @default(1)
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@unique([firm, program, phase])
+  @@map("prop_firm_presets")
 }
 
 // ─────────────────────────────────────────────

@@ -26,6 +26,7 @@ type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
 const ACCOUNT_TYPES = ["PERSONAL", "PROP_FIRM", "DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] as const
 const ACCOUNT_STATUSES = ["ACTIVE", "PAUSED", "INACTIVE", "LOST"] as const
 const PHASES = ["PHASE_1", "PHASE_2", "FUNDED", "NONE"] as const
+export const ENFORCE_MODES = ["WARN", "ENFORCE"] as const
 
 const AccountInput = z.object({
   name:             z.string().min(1),
@@ -46,6 +47,10 @@ const AccountInput = z.object({
   minTradingDays:   z.number().int().optional(),
   maxLeverage:      z.number().int().positive().optional(),
   targetLeverage:   z.number().int().positive().optional(),
+  consistencyPct:   z.number().optional(),
+  noWeekendHolding: z.boolean().optional(),
+  enforceMode:      z.enum(ENFORCE_MODES).optional(),
+  presetId:         z.string().uuid().optional(),
 })
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"
@@ -65,6 +70,7 @@ function serializeAccount(a: RawAccount, closedPnl = 0) {
     ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
     ddTotalPct:    a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:     a.targetPct   != null ? Number(a.targetPct)   : null,
+    consistencyPct: a.consistencyPct != null ? Number(a.consistencyPct) : null,
     lockedAt:      a.lockedAt != null ? a.lockedAt.toISOString() : null,
     lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
     lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,

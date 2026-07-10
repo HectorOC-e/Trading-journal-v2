@@ -31,6 +31,11 @@ export const accountFormSchema = z.object({
   minDays: z.string(),
   maxLeverage: z.string(),
   targetLeverage: z.string(),
+  // POST-6 prop-firm rulebase
+  consistencyPct: z.string(),
+  noWeekendHolding: z.boolean(),
+  enforceMode: z.enum(["WARN", "ENFORCE"]),
+  presetId: z.string(),
 })
 
 export type AccountFormValues = z.infer<typeof accountFormSchema>

@@ -16,6 +16,7 @@ import { accountEditSchema, type AccountFormValues } from "@/domains/trading/sch
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
+import { PropFirmPresetPicker, type PropFirmPreset } from "../components/prop-firm-preset-picker"
 
 type RawAccount = RouterOutputs["accounts"]["list"][number]
 
@@ -39,6 +40,10 @@ function accountToForm(account: RawAccount): AccountFormValues {
     minDays:      account.minTradingDays  != null ? String(account.minTradingDays)  : "",
     maxLeverage:    account.maxLeverage    != null ? String(account.maxLeverage)    : "",
     targetLeverage: account.targetLeverage != null ? String(account.targetLeverage) : "",
+    consistencyPct:   account.consistencyPct != null ? String(Number(account.consistencyPct)) : "",
+    noWeekendHolding: account.noWeekendHolding ?? false,
+    enforceMode:      (account.enforceMode as "WARN" | "ENFORCE") ?? "WARN",
+    presetId:         account.presetId ?? "",
   }
 }
 
@@ -98,9 +103,28 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
       allowedSymbols:  f.symbols,
       maxLeverage:     pi(f.maxLeverage),
       targetLeverage:  pi(f.targetLeverage),
+      consistencyPct:   isPropFirmLike(f.tipo) ? pf(f.consistencyPct) : undefined,
+      noWeekendHolding: isPropFirmLike(f.tipo) ? f.noWeekendHolding   : undefined,
+      enforceMode:      isPropFirmLike(f.tipo) ? f.enforceMode        : undefined,
+      presetId:         isPropFirmLike(f.tipo) && f.presetId ? f.presetId : undefined,
     })
   }
   const onInvalid = () => setTab("general")
+
+  // Copy a catalog preset's rule fields into the form (snapshot). No balance
+  // prefill here — the edit modal can't change an account's initial balance.
+  const applyPreset = (p: PropFirmPreset) => {
+    const s = (v: number | null) => v != null ? String(v) : ""
+    set("presetId",         p.id)
+    set("ddDailyPct",       s(p.ddDailyPct))
+    set("ddTotalPct",       s(p.ddTotalPct))
+    set("ddModel",          p.ddModel === "TRAILING" ? "TRAILING" : "FIXED")
+    set("targetPct",        s(p.targetPct))
+    set("minDays",          p.minTradingDays != null ? String(p.minTradingDays) : "")
+    set("consistencyPct",   s(p.consistencyPct))
+    set("noWeekendHolding", p.noWeekendHolding)
+    set("maxTrades",        p.maxTradesPerDay != null ? String(p.maxTradesPerDay) : "")
+  }
 
   const tm = TYPE_META[form.tipo]
 
@@ -209,6 +233,13 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
             {isPropFirmLike(form.tipo) && (
               <div className="border-t border-[var(--line)] pt-3">
                 <p className="text-eyebrow mb-3">Extras Prop Firm</p>
+                <div className="mb-3">
+                  <PropFirmPresetPicker
+                    presetId={form.presetId}
+                    onApply={applyPreset}
+                    onCustom={() => set("presetId", "")}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   {(["FIXED","TRAILING"] as const).map(m => (
                     <button key={m} onClick={() => set("ddModel", m)}
@@ -227,6 +258,47 @@ export function EditarCuentaModal({ open, onOpenChange, account, markets = [] }:
                   <div>
                     <label className="text-eyebrow block mb-1.5">Min. días trading</label>
                     <Input placeholder="10" mono {...register("minDays")} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Consistencia (máx % de un día)</label>
+                    <div className="flex items-center gap-2">
+                      <Input placeholder="40" mono {...register("consistencyPct")} />
+                      <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Fin de semana</label>
+                    <button type="button" onClick={() => set("noWeekendHolding", !form.noWeekendHolding)}
+                      className={cn("w-full py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
+                        form.noWeekendHolding
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
+                          : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
+                      )}>
+                      {form.noWeekendHolding ? "✓ Sin fin de semana" : "Permitido"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="text-eyebrow block mb-2">Modo de aplicación de reglas</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ["WARN",    "Avisar",   "Solo alerta; permite registrar"],
+                      ["ENFORCE", "Bloquear", "Bloquea el trade si viola un límite"],
+                    ] as const).map(([mode, label, hint]) => (
+                      <button key={mode} type="button" onClick={() => set("enforceMode", mode)}
+                        className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
+                          form.enforceMode === mode
+                            ? "bg-[var(--accent-soft)] border-[var(--accent)]"
+                            : "bg-[var(--chip)] border-transparent"
+                        )}>
+                        <span className={cn("block text-[11px] font-semibold", form.enforceMode === mode ? "text-[var(--accent)]" : "text-[var(--ink-2)]")}>{label}</span>
+                        <span className="block text-[10px] text-[var(--ink-3)] mt-0.5">{hint}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

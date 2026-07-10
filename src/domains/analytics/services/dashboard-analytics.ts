@@ -1,6 +1,7 @@
 import { isWin, calcWinRate, calcProfitFactor, calcExpectancyR, calcSharpeRatio, getISOWeekKey } from "@/lib/formulas"
 import { computeEquityCurve } from "@/domains/trading/services/account-service"
 import { computeAccountRisk, accountDrawdown, type AccountRisk } from "@/domains/trading/services/risk-engine"
+import { buildPropFirmExtras, type PropFirmExtras } from "@/domains/trading/services/prop-firm-status"
 import { computeNotional, computeLeverageMetrics, leverageBand, type LeverageBand } from "@/domains/trading/services/leverage"
 
 export type MinimalTrade = {
@@ -34,6 +35,12 @@ export type AccountWithLimits = {
   ddModel?:        string | null   // FIXED | TRAILING — drives prop-firm drawdown rule
   maxTradesPerDay: number | null
   allowedSymbols:  string[]
+  // Prop-firm phase / rule config (POST-6). Optional so non-dashboard callers/tests
+  // that build a minimal AccountWithLimits don't need to supply them.
+  consistencyPct?:   number | null
+  targetPct?:        number | null
+  minTradingDays?:   number | null
+  noWeekendHolding?: boolean
 }
 
 export type TodayTrade = { accountId: string; pnl: number | null; status: string }
@@ -140,11 +147,12 @@ export type PropFirmStatus    = {
   dailyLossPct:   number   // % of allowed daily loss consumed (bar fill)
   dailyActualPct: number   // actual today loss as % of balance
   dailyLimitPct:  number   // configured daily-loss limit %
-  tradesUsed:     number
-  tradesMax:      number
-  status:         "OK" | "ALERTA"
-  allowedSymbols: string[]
-}
+  tradesUsed:       number
+  tradesMax:        number
+  status:           "OK" | "ALERTA"
+  allowedSymbols:   string[]
+  noWeekendHolding: boolean   // POST-6: rule enabled → show weekend indicator
+} & PropFirmExtras   // POST-6: trailing / consistency / phase progress (dashboard bars)
 
 export type Grain = "daily" | "weekly" | "monthly"
 
@@ -438,6 +446,32 @@ export function buildPropFirmStatus(
       const tradesMax  = a.maxTradesPerDay ?? 0
       const status: "OK" | "ALERTA" = ddPctUsed >= 70 || dailyLossPct >= 80 ? "ALERTA" : "OK"
 
+      // ── Phase / trailing / consistency extras (POST-6) ──────────────────────
+      // Derive the equity curve from this account's closed trades (already loaded,
+      // chronological). currentEquity = initial + realized P&L; peakEquity = the
+      // running high-water mark. dailyProfits groups net P&L per calendar day.
+      const pnls = at.map(t => t.pnl)
+      const currentEquity = initBal + pnls.reduce((s, p) => s + p, 0)
+      let equity = initBal
+      let peakEquity = initBal
+      for (const p of pnls) { equity += p; if (equity > peakEquity) peakEquity = equity }
+      const byDay = new Map<string, number>()
+      for (const t of at) byDay.set(t.date, (byDay.get(t.date) ?? 0) + t.pnl)
+      const dailyProfits = [...byDay.values()]
+
+      const extras = buildPropFirmExtras({
+        initialBalance: initBal,
+        currentEquity,
+        peakEquity,
+        ddTotalPct:     a.ddTotalPct,
+        ddModel:        a.ddModel === "TRAILING" ? "TRAILING" : "FIXED",
+        dailyProfits,
+        consistencyPct: a.consistencyPct ?? null,
+        targetPct:      a.targetPct ?? null,
+        tradingDays:    byDay.size,
+        minTradingDays: a.minTradingDays ?? null,
+      })
+
       return {
         accountId:      a.id,
         name:           a.name,
@@ -450,7 +484,9 @@ export function buildPropFirmStatus(
         tradesUsed,
         tradesMax,
         status,
-        allowedSymbols: a.allowedSymbols,
+        allowedSymbols:   a.allowedSymbols,
+        noWeekendHolding: a.noWeekendHolding ?? false,
+        ...extras,
       }
     })
 }

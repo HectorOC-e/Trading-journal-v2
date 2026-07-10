@@ -15,6 +15,7 @@
 import { TRPCError } from "@trpc/server"
 import type { AccountLogPayload } from "@/types"
 import { computeAccountRisk, accountDrawdown, isPermanentLockReason, type AccountRisk } from "./risk-engine"
+import { checkTrailingDrawdown } from "./prop-firm-guard"
 import { emitNotification } from "@/server/services/notifications/emit"
 
 export { isPermanentLockReason }
@@ -25,6 +26,7 @@ const LOCK_REASON_TEXT: Record<string, string> = {
   WEEKLY_LOSS_LIMIT:  "Límite de pérdida semanal alcanzado",
   MONTHLY_LOSS_LIMIT: "Límite de pérdida mensual alcanzado",
   MAX_DRAWDOWN:       "Límite de drawdown total alcanzado",
+  TRAILING_DRAWDOWN:  "Límite de drawdown (trailing) alcanzado",
 }
 
 type PrismaClient = typeof import("@/lib/prisma").prisma
@@ -41,6 +43,12 @@ export type EnforceableAccount = {
   initialBalance: number
   locked:         boolean
   lockReason:     string
+  /**
+   * WARN | ENFORCE — ENFORCE hard-locks on a trailing-DD breach in the pre-trade
+   * guard (POST-6). Optional: post-trade (evaluateAndLock) paths don't evaluate it,
+   * so they may omit it; absent/WARN never triggers the trailing lock.
+   */
+  enforceMode?:   string | null
 }
 
 function sameDay(a: Date, b: Date): boolean {
@@ -89,6 +97,30 @@ async function lockAccount(
   } catch (err) {
     console.warn("[risk-enforcement] emitNotification failed:", err instanceof Error ? err.message : err)
   }
+}
+
+/**
+ * Current + high-water-mark (peak) equity from an account's closed-trade history.
+ * Realized/journaled equity only — mirrors the drawdown model (no live unrealized).
+ */
+async function loadEquityCurve(
+  prisma: PrismaClient,
+  userId: string,
+  accountId: string,
+  initialBalance: number,
+): Promise<{ currentEquity: number; peakEquity: number }> {
+  const closed = await prisma.trade.findMany({
+    where:   { accountId, userId, status: "CLOSED" },
+    select:  { pnl: true },
+    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+  })
+  let equity = initialBalance
+  let peak   = initialBalance
+  for (const t of closed) {
+    equity += Number(t.pnl ?? 0)
+    if (equity > peak) peak = equity
+  }
+  return { currentEquity: equity, peakEquity: peak }
 }
 
 /** Clear an auto temporal lock once its period has elapsed (with audit). */
@@ -164,6 +196,22 @@ export async function assertTradeable(
   }
 
   const risk = await loadAccountRisk(prisma, userId, account, referenceDate)
+
+  // Trailing-drawdown ENFORCE gate (POST-6). A TRAILING prop account in ENFORCE
+  // mode hard-locks when live equity breaches the trailing max-loss line. In WARN
+  // mode we never lock here (the dashboard bar already surfaces it). Additive: this
+  // never weakens the loss-limit / MAX_DRAWDOWN locks below; it just applies the
+  // more-specific TRAILING_DRAWDOWN reason first when enforcement is on.
+  if (account.enforceMode === "ENFORCE" && account.ddModel === "TRAILING" && account.ddTotalPct != null) {
+    const { currentEquity, peakEquity } = await loadEquityCurve(prisma, userId, account.id, account.initialBalance)
+    const ddViolation = checkTrailingDrawdown(currentEquity, peakEquity, account.initialBalance, account.ddTotalPct, "TRAILING")
+    if (ddViolation && "limitPct" in ddViolation) {
+      if (!account.locked || account.lockReason !== "TRAILING_DRAWDOWN") {
+        await lockAccount(prisma, userId, account.id, "TRAILING_DRAWDOWN", ddViolation.limitPct, ddViolation.currentPct)
+      }
+      throw new TRPCError({ code: "FORBIDDEN", message: `ACCOUNT_LOCKED:TRAILING_DRAWDOWN` })
+    }
+  }
 
   if (risk.breach) {
     // Still (or newly) in breach → ensure locked with the current reason, reject.

@@ -15,6 +15,7 @@ import { useZodForm } from "@/lib/forms/use-zod-form"
 import { accountFormSchema, type AccountFormValues } from "@/domains/trading/schemas/account-form-schema"
 import type { AccountType } from "@/types"
 import { TYPE_META, isPropFirmLike } from "../components/account-card"
+import { PropFirmPresetPicker, type PropFirmPreset } from "../components/prop-firm-preset-picker"
 
 const ACCOUNT_TYPES: AccountType[] = ["PROP_FIRM", "DEMO_PROP", "PERSONAL", "DEMO_PERSONAL", "BACKTEST", "QA"]
 const BROKERS = ["FXify", "FTMO", "MyForexFunds", "TopStep", "Apex", "Interactive Brokers", "TD Ameritrade", "Otro"]
@@ -31,6 +32,7 @@ const FORM_INIT: AccountFormValues = {
   ddDailyPct: "", ddWeeklyPct: "", ddMonthlyPct: "", ddTotalPct: "", targetPct: "",
   ddModel: "FIXED", phase: "PHASE_1", maxTrades: "3", symbols: [], minDays: "",
   maxLeverage: "", targetLeverage: "",
+  consistencyPct: "", noWeekendHolding: false, enforceMode: "WARN", presetId: "",
 }
 
 export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
@@ -81,7 +83,29 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
       allowedSymbols:  f.symbols,
       maxLeverage:     pi(f.maxLeverage),
       targetLeverage:  pi(f.targetLeverage),
+      consistencyPct:   isPropFirmLike(f.tipo) ? pf(f.consistencyPct)   : undefined,
+      noWeekendHolding: isPropFirmLike(f.tipo) ? f.noWeekendHolding     : undefined,
+      enforceMode:      isPropFirmLike(f.tipo) ? f.enforceMode          : undefined,
+      presetId:         isPropFirmLike(f.tipo) && f.presetId ? f.presetId : undefined,
     }
+  }
+
+  // Copy a catalog preset's rule fields into the form (a snapshot; presetId is kept
+  // for provenance). Balance is prefilled from the preset's account size only when
+  // the user hasn't entered one — the rule %s are relative to it.
+  function applyPreset(p: PropFirmPreset) {
+    const s = (v: number | null) => v != null ? String(v) : ""
+    set("presetId",         p.id)
+    set("ddDailyPct",       s(p.ddDailyPct))
+    set("ddTotalPct",       s(p.ddTotalPct))
+    set("ddModel",          p.ddModel === "TRAILING" ? "TRAILING" : "FIXED")
+    set("targetPct",        s(p.targetPct))
+    set("minDays",          p.minTradingDays != null ? String(p.minTradingDays) : "")
+    set("consistencyPct",   s(p.consistencyPct))
+    set("noWeekendHolding", p.noWeekendHolding)
+    set("maxTrades",        p.maxTradesPerDay != null ? String(p.maxTradesPerDay) : "")
+    const curBal = parseFloat((form.balance || "").replace(/,/g, ""))
+    if (p.accountSize != null && (!curBal || Number.isNaN(curBal))) set("balance", String(p.accountSize))
   }
 
   const onValid = (values: AccountFormValues) => createAccount.mutate(buildInput(values))
@@ -270,6 +294,13 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
               <div className="border-t border-[var(--line)] pt-4">
                 <p className="text-eyebrow mb-3">Extras Prop Firm</p>
                 <div className="mb-4">
+                  <PropFirmPresetPicker
+                    presetId={form.presetId}
+                    onApply={applyPreset}
+                    onCustom={() => set("presetId", "")}
+                  />
+                </div>
+                <div className="mb-4">
                   <label className="text-eyebrow block mb-2">Modelo de trailing drawdown</label>
                   <div className="grid grid-cols-2 gap-2">
                     {(["FIXED", "TRAILING"] as const).map(m => (
@@ -305,6 +336,48 @@ export function NuevaCuentaModal({ open, onOpenChange, markets = [] }: {
                     <Input placeholder="3" mono {...register("maxTrades")} />
                     <label className="text-eyebrow block mb-1.5 mt-3">Min. días trading</label>
                     <Input placeholder="10" mono {...register("minDays")} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Consistencia (máx % de un día)</label>
+                    <div className="flex items-center gap-2">
+                      <Input placeholder="40" mono {...register("consistencyPct")} />
+                      <span className="text-sm text-[var(--ink-3)] shrink-0">%</span>
+                    </div>
+                    <p className="text-[10px] text-[var(--ink-3)] mt-1">Ningún día puede superar este % de la ganancia total.</p>
+                  </div>
+                  <div>
+                    <label className="text-eyebrow block mb-1.5">Fin de semana</label>
+                    <button type="button" onClick={() => set("noWeekendHolding", !form.noWeekendHolding)}
+                      className={cn("w-full py-2 px-3 rounded-[var(--radius-sm)] text-[11px] font-semibold text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
+                        form.noWeekendHolding
+                          ? "bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent)]"
+                          : "bg-[var(--chip)] text-[var(--ink-3)] border-transparent"
+                      )}>
+                      {form.noWeekendHolding ? "✓ Sin posiciones en fin de semana" : "Permite mantener el fin de semana"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="text-eyebrow block mb-2">Modo de aplicación de reglas</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {([
+                      ["WARN",    "Avisar",   "Solo alerta; permite registrar el trade"],
+                      ["ENFORCE", "Bloquear", "Bloquea el trade si viola un límite"],
+                    ] as const).map(([mode, label, hint]) => (
+                      <button key={mode} type="button" onClick={() => set("enforceMode", mode)}
+                        className={cn("py-2 px-3 rounded-[var(--radius-sm)] text-left border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
+                          form.enforceMode === mode
+                            ? "bg-[var(--accent-soft)] border-[var(--accent)]"
+                            : "bg-[var(--chip)] border-transparent"
+                        )}>
+                        <span className={cn("block text-[11px] font-semibold", form.enforceMode === mode ? "text-[var(--accent)]" : "text-[var(--ink-2)]")}>{label}</span>
+                        <span className="block text-[10px] text-[var(--ink-3)] mt-0.5">{hint}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

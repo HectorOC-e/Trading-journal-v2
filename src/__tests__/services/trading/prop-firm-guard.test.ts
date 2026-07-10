@@ -1,9 +1,13 @@
 import { describe, it, expect } from "vitest"
 import {
+  checkConsistency,
   checkDailyLossLimit,
   checkLossLimit,
   checkTradeCountLimit,
   checkSymbolAllowlist,
+  checkTrailingDrawdown,
+  checkWeekendHolding,
+  phaseProgress,
 } from "@/domains/trading/services/prop-firm-guard"
 
 // ── checkLossLimit (HALLAZGO 1B — generic daily/weekly/monthly) ─────────────
@@ -132,5 +136,126 @@ describe("checkSymbolAllowlist", () => {
 
   it("case-insensitive: mixed case is normalized correctly", () => {
     expect(checkSymbolAllowlist("EurUsd", ["EURUSD", "XAUUSD"])).toBeNull()
+  })
+})
+
+// ── checkTrailingDrawdown ────────────────────────────────────────────────
+
+describe("checkTrailingDrawdown", () => {
+  it("null when no limit configured", () => {
+    expect(checkTrailingDrawdown(9000, 10_000, 10_000, null, "TRAILING")).toBeNull()
+    expect(checkTrailingDrawdown(9000, 10_000, 10_000, 0, "TRAILING")).toBeNull()
+  })
+
+  it("FIXED: violation when equity falls limitPct% below initial", () => {
+    // 10% of 10k = 1000 → floor 9000; equity 9000 → at floor
+    const r = checkTrailingDrawdown(9000, 12_000, 10_000, 10, "FIXED")
+    expect(r?.type).toBe("MAX_DRAWDOWN")
+  })
+
+  it("FIXED: no violation while above the fixed floor even if below peak", () => {
+    // floor 9000; equity 9500 → ok (FIXED ignores the 12k peak)
+    expect(checkTrailingDrawdown(9500, 12_000, 10_000, 10, "FIXED")).toBeNull()
+  })
+
+  it("TRAILING: floor follows the peak", () => {
+    // peak 12k, limit $1000 → floor 11_000; equity 10_900 → violation
+    const r = checkTrailingDrawdown(10_900, 12_000, 10_000, 10, "TRAILING")
+    expect(r?.type).toBe("TRAILING_DRAWDOWN")
+    if (r?.type === "TRAILING_DRAWDOWN") expect(r.limitPct).toBe(10)
+  })
+
+  it("TRAILING: no violation just above the trailing floor", () => {
+    // peak 12k, floor 11_000; equity 11_100 → ok
+    expect(checkTrailingDrawdown(11_100, 12_000, 10_000, 10, "TRAILING")).toBeNull()
+  })
+
+  it("null when initialBalance non-positive", () => {
+    expect(checkTrailingDrawdown(0, 0, 0, 10, "TRAILING")).toBeNull()
+  })
+})
+
+// ── checkConsistency ─────────────────────────────────────────────────────
+
+describe("checkConsistency", () => {
+  it("null when no limit configured", () => {
+    expect(checkConsistency([100, 200], null)).toBeNull()
+    expect(checkConsistency([100, 200], 0)).toBeNull()
+  })
+
+  it("null when total profit is non-positive", () => {
+    expect(checkConsistency([-100, -50], 40)).toBeNull()
+  })
+
+  it("violation when one day exceeds the consistency share", () => {
+    // total 1000; best day 500 = 50% > 40% limit
+    const r = checkConsistency([500, 300, 200], 40)
+    expect(r?.type).toBe("CONSISTENCY")
+    if (r?.type === "CONSISTENCY") expect(r.currentPct).toBeCloseTo(50, 5)
+  })
+
+  it("no violation when best day within share", () => {
+    // total 1000; best day 300 = 30% <= 40%
+    expect(checkConsistency([300, 300, 400], 40)).toBeNull()
+  })
+
+  it("ignores losing days when finding the best day", () => {
+    // total 400; best day 300 = 75% > 40%
+    expect(checkConsistency([300, 200, -100], 40)?.type).toBe("CONSISTENCY")
+  })
+})
+
+// ── checkWeekendHolding ──────────────────────────────────────────────────
+
+describe("checkWeekendHolding", () => {
+  it("null for an intraday weekday trade", () => {
+    // Wed 2026-07-08 open & close
+    expect(checkWeekendHolding(new Date("2026-07-08T10:00:00Z"), new Date("2026-07-08T14:00:00Z"))).toBeNull()
+  })
+
+  it("null when held Wed→Thu (no weekend crossed)", () => {
+    expect(checkWeekendHolding(new Date("2026-07-08T10:00:00Z"), new Date("2026-07-09T10:00:00Z"))).toBeNull()
+  })
+
+  it("violation when held Fri→Mon (crosses the weekend)", () => {
+    // Fri 2026-07-10 → Mon 2026-07-13
+    expect(checkWeekendHolding(new Date("2026-07-10T20:00:00Z"), new Date("2026-07-13T08:00:00Z"))?.type)
+      .toBe("WEEKEND_HOLDING")
+  })
+
+  it("violation when the open day itself is Saturday", () => {
+    expect(checkWeekendHolding(new Date("2026-07-11T10:00:00Z"), new Date("2026-07-11T12:00:00Z"))?.type)
+      .toBe("WEEKEND_HOLDING")
+  })
+})
+
+// ── phaseProgress ────────────────────────────────────────────────────────
+
+describe("phaseProgress", () => {
+  it("passed when target and min days both met", () => {
+    // +10% on 100k = 10k; target 10%; 5 days >= 4
+    const p = phaseProgress(10_000, 100_000, 10, 5, 4)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(true)
+    expect(p.passed).toBe(true)
+    expect(p.profitPct).toBeCloseTo(10, 5)
+  })
+
+  it("not passed when target met but not enough days", () => {
+    const p = phaseProgress(10_000, 100_000, 10, 2, 4)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(false)
+    expect(p.passed).toBe(false)
+  })
+
+  it("no target configured → targetReached true (nothing to hit)", () => {
+    const p = phaseProgress(0, 100_000, null, 10, null)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(true)
+    expect(p.passed).toBe(true)
+  })
+
+  it("target not reached when profit below it", () => {
+    expect(phaseProgress(5_000, 100_000, 10, 10, 4).targetReached).toBe(false)
   })
 })

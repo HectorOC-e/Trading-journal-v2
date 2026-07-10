@@ -130,6 +130,7 @@ function serializeAccount(a: RawAccount) {
     ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
     ddTotalPct:     a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
     targetPct:      a.targetPct   != null ? Number(a.targetPct)   : null,
+    consistencyPct: a.consistencyPct != null ? Number(a.consistencyPct) : null,
     lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
     lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
     createdAt:      a.createdAt.toISOString(),
@@ -284,6 +285,8 @@ export const tradesRouter = router({
           initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
           ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
           maxLeverage: true, targetLeverage: true,
+          consistencyPct: true, targetPct: true, minTradingDays: true,
+          noWeekendHolding: true,
         },
       })
       const activeAccountIds = activeAccounts.map(a => a.id)
@@ -382,6 +385,11 @@ export const tradesRouter = router({
         ddModel:         a.ddModel,
         maxTradesPerDay: a.maxTradesPerDay,
         allowedSymbols:  a.allowedSymbols as string[],
+        // Percentages / day-counts — no FX normalization (not currency amounts).
+        consistencyPct:  a.consistencyPct != null ? Number(a.consistencyPct) : null,
+        targetPct:       a.targetPct      != null ? Number(a.targetPct)      : null,
+        minTradingDays:  a.minTradingDays,
+        noWeekendHolding: a.noWeekendHolding,
       }))
       const limitsById: Record<string, AccountLimits> = Object.fromEntries(accounts.map(a => [a.id, {
         id:           a.id,
@@ -537,6 +545,7 @@ export const tradesRouter = router({
           maxTradesPerDay: true,
           allowedSymbols:  true,
           initialBalance:  true,
+          enforceMode:     true,
         },
       })
 
@@ -553,6 +562,7 @@ export const tradesRouter = router({
         initialBalance: Number(account.initialBalance),
         locked:         account.locked,
         lockReason:     account.lockReason,
+        enforceMode:    account.enforceMode,
       }
       await assertTradeable(ctx.prisma, ctx.userId, enforceAccount, input.date)
 
