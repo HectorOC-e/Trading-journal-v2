@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
+  checkConsistency,
   checkDailyLossLimit,
   checkLossLimit,
   checkTradeCountLimit,
@@ -169,5 +170,35 @@ describe("checkTrailingDrawdown", () => {
 
   it("null when initialBalance non-positive", () => {
     expect(checkTrailingDrawdown(0, 0, 0, 10, "TRAILING")).toBeNull()
+  })
+})
+
+// ── checkConsistency ─────────────────────────────────────────────────────
+
+describe("checkConsistency", () => {
+  it("null when no limit configured", () => {
+    expect(checkConsistency([100, 200], null)).toBeNull()
+    expect(checkConsistency([100, 200], 0)).toBeNull()
+  })
+
+  it("null when total profit is non-positive", () => {
+    expect(checkConsistency([-100, -50], 40)).toBeNull()
+  })
+
+  it("violation when one day exceeds the consistency share", () => {
+    // total 1000; best day 500 = 50% > 40% limit
+    const r = checkConsistency([500, 300, 200], 40)
+    expect(r?.type).toBe("CONSISTENCY")
+    if (r?.type === "CONSISTENCY") expect(r.currentPct).toBeCloseTo(50, 5)
+  })
+
+  it("no violation when best day within share", () => {
+    // total 1000; best day 300 = 30% <= 40%
+    expect(checkConsistency([300, 300, 400], 40)).toBeNull()
+  })
+
+  it("ignores losing days when finding the best day", () => {
+    // total 400; best day 300 = 75% > 40%
+    expect(checkConsistency([300, 200, -100], 40)?.type).toBe("CONSISTENCY")
   })
 })

@@ -8,6 +8,7 @@ export type PropFirmViolation =
   | { type: "SYMBOL_NOT_ALLOWED";  symbol:    string; allowed:    string[] }
   | { type: "TRAILING_DRAWDOWN"; limitPct: number; currentPct: number }
   | { type: "MAX_DRAWDOWN";      limitPct: number; currentPct: number }
+  | { type: "CONSISTENCY";       limitPct: number; currentPct: number }
 
 const LOSS_LIMIT_TYPE: Record<LossLimitPeriod, "DAILY_LOSS_LIMIT" | "WEEKLY_LOSS_LIMIT" | "MONTHLY_LOSS_LIMIT"> = {
   DAILY:   "DAILY_LOSS_LIMIT",
@@ -91,6 +92,26 @@ export function checkTrailingDrawdown(
       limitPct,
       currentPct,
     }
+  }
+  return null
+}
+
+/**
+ * Consistency rule: no single winning day may exceed `consistencyPct`% of the net
+ * total profit over the period. `dailyProfits` is net P&L per day. Only meaningful
+ * when the period is net-positive; returns null otherwise.
+ */
+export function checkConsistency(
+  dailyProfits:   number[],
+  consistencyPct: number | null,
+): PropFirmViolation | null {
+  if (consistencyPct == null || consistencyPct <= 0) return null
+  const total = dailyProfits.reduce((s, d) => s + d, 0)
+  if (total <= 0) return null
+  const bestDay    = Math.max(0, ...dailyProfits)
+  const currentPct = bestDay / total * 100
+  if (currentPct > consistencyPct) {
+    return { type: "CONSISTENCY", limitPct: consistencyPct, currentPct }
   }
   return null
 }
