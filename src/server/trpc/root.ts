@@ -33,6 +33,7 @@ import { playbookRouter }           from "./routers/playbook"
 import { psychologyRouter }         from "./routers/psychology"
 import { riskRouter }               from "./routers/risk"
 import { todayRouter }              from "./routers/today"
+import { propFirmPresetsRouter }    from "./routers/prop-firm-presets"
 
 export const appRouter = router({
   trades:           tradesRouter,
@@ -68,6 +69,7 @@ export const appRouter = router({
   psychology:        psychologyRouter,
   risk:              riskRouter,
   today:             todayRouter,
+  propFirmPresets:   propFirmPresetsRouter,
 })
 
 export type AppRouter     = typeof appRouter
