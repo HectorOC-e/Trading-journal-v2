@@ -1,0 +1,23 @@
+# Prisma client autogenerado. Ya está en src/.gitignore, pero graphify solo lee
+# los .gitignore de la cadena de ancestros del directorio escaneado, no los
+# anidados por debajo. Sin esta línea son 4.206 nodos (56% del grafo).
+src/lib/generated/
+
+# Tests: no forman parte de la arquitectura de producción que consultamos.
+src/__tests__/
+**/__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+e2e/
+
+# Assets estáticos: favicons y logos de la plantilla de Next. Son imágenes, así
+# que irían a extracción semántica con visión (coste en tokens, señal cero).
+src/public/
+
+# Configuración de herramientas.
+*.config.ts
+*.config.mjs
+*.config.js
+next-env.d.ts
