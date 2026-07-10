@@ -41,21 +41,24 @@ alter table public.accounts
   add column if not exists enforce_mode       text    not null default 'WARN', -- WARN | ENFORCE
   add column if not exists preset_id          uuid;
 
--- 3) Seed the 3 anchor firms. NUMBERS ARE PLACEHOLDERS — VERIFY before merge.
--- ON CONFLICT keeps re-runs idempotent (replay-from-scratch in CI).
+-- 3) Seed the 3 anchor firms. Numbers verified 2026-07-10 against each firm's
+-- official rules (see source_url). ON CONFLICT keeps re-runs idempotent
+-- (replay-from-scratch in CI); it also means an already-seeded DB keeps its
+-- existing rows — re-verify data there if the numbers below changed.
 insert into public.prop_firm_presets
   (firm, program, phase, account_size, dd_daily_pct, dd_total_pct, dd_model, target_pct,
    min_trading_days, consistency_pct, no_weekend_holding, max_trades_per_day, source_url, verified_at)
 values
-  -- FTMO — forex, 2-phase + funded, FIXED drawdown            -- VERIFY at ftmo.com
-  ('FTMO','Challenge','PHASE_1',100000, 5, 10,'FIXED',10, 4, null,false,null,'https://ftmo.com', null),
-  ('FTMO','Challenge','PHASE_2',100000, 5, 10,'FIXED', 5, 4, null,false,null,'https://ftmo.com', null),
-  ('FTMO','Challenge','FUNDED', 100000, 5, 10,'FIXED', null,null,null,false,null,'https://ftmo.com', null),
-  -- Topstep — futures, TRAILING drawdown, consistency         -- VERIFY at topstep.com
+  -- FTMO — forex, 2-phase + funded, FIXED drawdown   (ftmo.com/en/trading-objectives, 2026-07-10)
+  ('FTMO','Challenge','PHASE_1',100000, 5, 10,'FIXED',10, 4, null,false,null,'https://ftmo.com', '2026-07-10'),
+  ('FTMO','Challenge','PHASE_2',100000, 5, 10,'FIXED', 5, 4, null,false,null,'https://ftmo.com', '2026-07-10'),
+  ('FTMO','Challenge','FUNDED', 100000, 5, 10,'FIXED', null,null,null,false,null,'https://ftmo.com', '2026-07-10'),
+  -- Topstep — futures, TRAILING drawdown, consistency   (topstep.com, 2026-07-10)
   -- Topstep states limits in DOLLARS; stored as % of the 50k account_size ($2000 trailing = 4%, $3000 target = 6%).
-  ('Topstep','Trading Combine','PHASE_1',50000, null, 4,'TRAILING',6, 2, 50,false,null,'https://topstep.com', null),
-  ('Topstep','Trading Combine','FUNDED', 50000, null, 4,'TRAILING',null,null, 50,false,null,'https://topstep.com', null),
-  -- MyFundedFX — modern one/two-step, consistency             -- VERIFY at myfundedfx.com
-  ('MyFundedFX','Evaluation','PHASE_1',100000, 5, 10,'FIXED', 8, null, 40,false,null,'https://myfundedfx.com', null),
-  ('MyFundedFX','Evaluation','FUNDED', 100000, 5, 10,'FIXED', null,null, 40,false,null,'https://myfundedfx.com', null)
+  ('Topstep','Trading Combine','PHASE_1',50000, null, 4,'TRAILING',6, 2, 50,false,null,'https://topstep.com', '2026-07-10'),
+  ('Topstep','Trading Combine','FUNDED', 50000, null, 4,'TRAILING',null,null, 50,false,null,'https://topstep.com', '2026-07-10'),
+  -- MyFundedFutures — futures, EOD TRAILING drawdown, 50% consistency (Core eval only).
+  -- Replaces MyFundedFX (shut down Feb 2026). Dollars as % of 100k ($4000 trailing = 4%, $6000 target = 6%).  (myfundedfutures.com, 2026-07-10)
+  ('MyFundedFutures','Core','PHASE_1',100000, null, 4,'TRAILING',6, 2, 50,false,null,'https://myfundedfutures.com', '2026-07-10'),
+  ('MyFundedFutures','Core','FUNDED', 100000, null, 4,'TRAILING',null,null,null,false,null,'https://myfundedfutures.com', '2026-07-10')
 on conflict (firm, program, phase) do nothing;

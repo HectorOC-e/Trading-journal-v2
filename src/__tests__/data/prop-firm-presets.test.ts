@@ -3,7 +3,7 @@ import { PROP_FIRM_PRESETS, FIRMS } from "@/domains/trading/data/prop-firm-prese
 
 describe("PROP_FIRM_PRESETS", () => {
   it("covers the 3 anchor firms", () => {
-    expect(FIRMS).toEqual(["FTMO", "Topstep", "MyFundedFX"])
+    expect(FIRMS).toEqual(["FTMO", "Topstep", "MyFundedFutures"])
   })
 
   it("every preset has a firm/program/phase and a source url", () => {
