@@ -6,6 +6,7 @@ import {
   checkTradeCountLimit,
   checkSymbolAllowlist,
   checkTrailingDrawdown,
+  checkWeekendHolding,
 } from "@/domains/trading/services/prop-firm-guard"
 
 // ── checkLossLimit (HALLAZGO 1B — generic daily/weekly/monthly) ─────────────
@@ -200,5 +201,29 @@ describe("checkConsistency", () => {
   it("ignores losing days when finding the best day", () => {
     // total 400; best day 300 = 75% > 40%
     expect(checkConsistency([300, 200, -100], 40)?.type).toBe("CONSISTENCY")
+  })
+})
+
+// ── checkWeekendHolding ──────────────────────────────────────────────────
+
+describe("checkWeekendHolding", () => {
+  it("null for an intraday weekday trade", () => {
+    // Wed 2026-07-08 open & close
+    expect(checkWeekendHolding(new Date("2026-07-08T10:00:00Z"), new Date("2026-07-08T14:00:00Z"))).toBeNull()
+  })
+
+  it("null when held Wed→Thu (no weekend crossed)", () => {
+    expect(checkWeekendHolding(new Date("2026-07-08T10:00:00Z"), new Date("2026-07-09T10:00:00Z"))).toBeNull()
+  })
+
+  it("violation when held Fri→Mon (crosses the weekend)", () => {
+    // Fri 2026-07-10 → Mon 2026-07-13
+    expect(checkWeekendHolding(new Date("2026-07-10T20:00:00Z"), new Date("2026-07-13T08:00:00Z"))?.type)
+      .toBe("WEEKEND_HOLDING")
+  })
+
+  it("violation when the open day itself is Saturday", () => {
+    expect(checkWeekendHolding(new Date("2026-07-11T10:00:00Z"), new Date("2026-07-11T12:00:00Z"))?.type)
+      .toBe("WEEKEND_HOLDING")
   })
 })

@@ -9,6 +9,7 @@ export type PropFirmViolation =
   | { type: "TRAILING_DRAWDOWN"; limitPct: number; currentPct: number }
   | { type: "MAX_DRAWDOWN";      limitPct: number; currentPct: number }
   | { type: "CONSISTENCY";       limitPct: number; currentPct: number }
+  | { type: "WEEKEND_HOLDING" }
 
 const LOSS_LIMIT_TYPE: Record<LossLimitPeriod, "DAILY_LOSS_LIMIT" | "WEEKLY_LOSS_LIMIT" | "MONTHLY_LOSS_LIMIT"> = {
   DAILY:   "DAILY_LOSS_LIMIT",
@@ -112,6 +113,21 @@ export function checkConsistency(
   const currentPct = bestDay / total * 100
   if (currentPct > consistencyPct) {
     return { type: "CONSISTENCY", limitPct: consistencyPct, currentPct }
+  }
+  return null
+}
+
+/**
+ * Weekend-holding restriction: a position must not span (or open on) a Saturday or
+ * Sunday. Walks each UTC calendar day in [open, close] and flags if any is a weekend.
+ */
+export function checkWeekendHolding(openDate: Date, closeDate: Date): PropFirmViolation | null {
+  const dayMs = 24 * 60 * 60 * 1000
+  const start = Date.UTC(openDate.getUTCFullYear(), openDate.getUTCMonth(), openDate.getUTCDate())
+  const end   = Date.UTC(closeDate.getUTCFullYear(), closeDate.getUTCMonth(), closeDate.getUTCDate())
+  for (let t = start; t <= end; t += dayMs) {
+    const dow = new Date(t).getUTCDay() // 0 = Sun, 6 = Sat
+    if (dow === 0 || dow === 6) return { type: "WEEKEND_HOLDING" }
   }
   return null
 }
