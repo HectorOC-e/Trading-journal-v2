@@ -7,6 +7,7 @@ import {
   checkSymbolAllowlist,
   checkTrailingDrawdown,
   checkWeekendHolding,
+  phaseProgress,
 } from "@/domains/trading/services/prop-firm-guard"
 
 // ── checkLossLimit (HALLAZGO 1B — generic daily/weekly/monthly) ─────────────
@@ -225,5 +226,36 @@ describe("checkWeekendHolding", () => {
   it("violation when the open day itself is Saturday", () => {
     expect(checkWeekendHolding(new Date("2026-07-11T10:00:00Z"), new Date("2026-07-11T12:00:00Z"))?.type)
       .toBe("WEEKEND_HOLDING")
+  })
+})
+
+// ── phaseProgress ────────────────────────────────────────────────────────
+
+describe("phaseProgress", () => {
+  it("passed when target and min days both met", () => {
+    // +10% on 100k = 10k; target 10%; 5 days >= 4
+    const p = phaseProgress(10_000, 100_000, 10, 5, 4)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(true)
+    expect(p.passed).toBe(true)
+    expect(p.profitPct).toBeCloseTo(10, 5)
+  })
+
+  it("not passed when target met but not enough days", () => {
+    const p = phaseProgress(10_000, 100_000, 10, 2, 4)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(false)
+    expect(p.passed).toBe(false)
+  })
+
+  it("no target configured → targetReached true (nothing to hit)", () => {
+    const p = phaseProgress(0, 100_000, null, 10, null)
+    expect(p.targetReached).toBe(true)
+    expect(p.daysReached).toBe(true)
+    expect(p.passed).toBe(true)
+  })
+
+  it("target not reached when profit below it", () => {
+    expect(phaseProgress(5_000, 100_000, 10, 10, 4).targetReached).toBe(false)
   })
 })

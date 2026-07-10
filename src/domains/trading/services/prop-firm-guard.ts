@@ -131,3 +131,39 @@ export function checkWeekendHolding(openDate: Date, closeDate: Date): PropFirmVi
   }
   return null
 }
+
+export interface PhaseProgress {
+  targetReached: boolean
+  targetPct:     number | null
+  profitPct:     number
+  daysDone:      number
+  minDays:       number | null
+  daysReached:   boolean
+  passed:        boolean
+}
+
+/**
+ * Phase pass-status (informational — never blocks a trade). A phase is passed when the
+ * realized profit reaches `targetPct`% of initial AND at least `minTradingDays` were
+ * traded. Null target/minDays means "no requirement" (auto-satisfied).
+ */
+export function phaseProgress(
+  realizedProfit: number,
+  initialBalance: number,
+  targetPct:      number | null,
+  tradingDays:    number,
+  minTradingDays: number | null,
+): PhaseProgress {
+  const profitPct     = initialBalance > 0 ? realizedProfit / initialBalance * 100 : 0
+  const targetReached = targetPct == null || profitPct >= targetPct
+  const daysReached   = minTradingDays == null || tradingDays >= minTradingDays
+  return {
+    targetReached,
+    targetPct,
+    profitPct,
+    daysDone:    tradingDays,
+    minDays:     minTradingDays,
+    daysReached,
+    passed:      targetReached && daysReached,
+  }
+}
