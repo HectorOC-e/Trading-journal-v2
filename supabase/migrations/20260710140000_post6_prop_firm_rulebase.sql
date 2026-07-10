@@ -52,8 +52,9 @@ values
   ('FTMO','Challenge','PHASE_2',100000, 5, 10,'FIXED', 5, 4, null,false,null,'https://ftmo.com', null),
   ('FTMO','Challenge','FUNDED', 100000, 5, 10,'FIXED', null,null,null,false,null,'https://ftmo.com', null),
   -- Topstep — futures, TRAILING drawdown, consistency         -- VERIFY at topstep.com
-  ('Topstep','Trading Combine','PHASE_1',50000, null, 2000,'TRAILING',3000, 2, 50,false,null,'https://topstep.com', null),
-  ('Topstep','Trading Combine','FUNDED', 50000, null, 2000,'TRAILING',null,null, 50,false,null,'https://topstep.com', null),
+  -- Topstep states limits in DOLLARS; stored as % of the 50k account_size ($2000 trailing = 4%, $3000 target = 6%).
+  ('Topstep','Trading Combine','PHASE_1',50000, null, 4,'TRAILING',6, 2, 50,false,null,'https://topstep.com', null),
+  ('Topstep','Trading Combine','FUNDED', 50000, null, 4,'TRAILING',null,null, 50,false,null,'https://topstep.com', null),
   -- MyFundedFX — modern one/two-step, consistency             -- VERIFY at myfundedfx.com
   ('MyFundedFX','Evaluation','PHASE_1',100000, 5, 10,'FIXED', 8, null, 40,false,null,'https://myfundedfx.com', null),
   ('MyFundedFX','Evaluation','FUNDED', 100000, 5, 10,'FIXED', null,null, 40,false,null,'https://myfundedfx.com', null)
