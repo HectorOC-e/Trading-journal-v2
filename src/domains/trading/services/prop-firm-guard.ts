@@ -6,6 +6,8 @@ export type PropFirmViolation =
   | { type: "MONTHLY_LOSS_LIMIT"; limitPct:  number; currentPct: number }
   | { type: "MAX_TRADES";          limit:     number; current:    number }
   | { type: "SYMBOL_NOT_ALLOWED";  symbol:    string; allowed:    string[] }
+  | { type: "TRAILING_DRAWDOWN"; limitPct: number; currentPct: number }
+  | { type: "MAX_DRAWDOWN";      limitPct: number; currentPct: number }
 
 const LOSS_LIMIT_TYPE: Record<LossLimitPeriod, "DAILY_LOSS_LIMIT" | "WEEKLY_LOSS_LIMIT" | "MONTHLY_LOSS_LIMIT"> = {
   DAILY:   "DAILY_LOSS_LIMIT",
@@ -61,6 +63,34 @@ export function checkSymbolAllowlist(
   const allowed = allowedSymbols.map(s => s.toUpperCase())
   if (!allowed.includes(upper)) {
     return { type: "SYMBOL_NOT_ALLOWED", symbol, allowed: allowedSymbols }
+  }
+  return null
+}
+
+/**
+ * Total-drawdown check. FIXED: floor is limitPct% below the INITIAL balance.
+ * TRAILING: floor is the same dollar amount below the running PEAK equity (the
+ * max-loss line trails new highs). `currentPct` reports realized loss vs initial.
+ * Uses realized/journaled equity — no live unrealized P&L (documented limitation).
+ */
+export function checkTrailingDrawdown(
+  currentEquity:  number,
+  peakEquity:     number,
+  initialBalance: number,
+  limitPct:       number | null,
+  model:          "FIXED" | "TRAILING",
+): PropFirmViolation | null {
+  if (limitPct == null || limitPct <= 0 || initialBalance <= 0) return null
+  const dollarLimit = (limitPct / 100) * initialBalance
+  const anchor      = model === "TRAILING" ? Math.max(peakEquity, initialBalance) : initialBalance
+  const floor       = anchor - dollarLimit
+  if (currentEquity <= floor) {
+    const currentPct = (initialBalance - currentEquity) / initialBalance * 100
+    return {
+      type: model === "TRAILING" ? "TRAILING_DRAWDOWN" : "MAX_DRAWDOWN",
+      limitPct,
+      currentPct,
+    }
   }
   return null
 }

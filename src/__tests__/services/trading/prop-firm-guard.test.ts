@@ -4,6 +4,7 @@ import {
   checkLossLimit,
   checkTradeCountLimit,
   checkSymbolAllowlist,
+  checkTrailingDrawdown,
 } from "@/domains/trading/services/prop-firm-guard"
 
 // ── checkLossLimit (HALLAZGO 1B — generic daily/weekly/monthly) ─────────────
@@ -132,5 +133,41 @@ describe("checkSymbolAllowlist", () => {
 
   it("case-insensitive: mixed case is normalized correctly", () => {
     expect(checkSymbolAllowlist("EurUsd", ["EURUSD", "XAUUSD"])).toBeNull()
+  })
+})
+
+// ── checkTrailingDrawdown ────────────────────────────────────────────────
+
+describe("checkTrailingDrawdown", () => {
+  it("null when no limit configured", () => {
+    expect(checkTrailingDrawdown(9000, 10_000, 10_000, null, "TRAILING")).toBeNull()
+    expect(checkTrailingDrawdown(9000, 10_000, 10_000, 0, "TRAILING")).toBeNull()
+  })
+
+  it("FIXED: violation when equity falls limitPct% below initial", () => {
+    // 10% of 10k = 1000 → floor 9000; equity 9000 → at floor
+    const r = checkTrailingDrawdown(9000, 12_000, 10_000, 10, "FIXED")
+    expect(r?.type).toBe("MAX_DRAWDOWN")
+  })
+
+  it("FIXED: no violation while above the fixed floor even if below peak", () => {
+    // floor 9000; equity 9500 → ok (FIXED ignores the 12k peak)
+    expect(checkTrailingDrawdown(9500, 12_000, 10_000, 10, "FIXED")).toBeNull()
+  })
+
+  it("TRAILING: floor follows the peak", () => {
+    // peak 12k, limit $1000 → floor 11_000; equity 10_900 → violation
+    const r = checkTrailingDrawdown(10_900, 12_000, 10_000, 10, "TRAILING")
+    expect(r?.type).toBe("TRAILING_DRAWDOWN")
+    if (r?.type === "TRAILING_DRAWDOWN") expect(r.limitPct).toBe(10)
+  })
+
+  it("TRAILING: no violation just above the trailing floor", () => {
+    // peak 12k, floor 11_000; equity 11_100 → ok
+    expect(checkTrailingDrawdown(11_100, 12_000, 10_000, 10, "TRAILING")).toBeNull()
+  })
+
+  it("null when initialBalance non-positive", () => {
+    expect(checkTrailingDrawdown(0, 0, 0, 10, "TRAILING")).toBeNull()
   })
 })
