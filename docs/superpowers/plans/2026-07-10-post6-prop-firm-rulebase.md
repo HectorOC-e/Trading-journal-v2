@@ -90,8 +90,10 @@ values
   ('FTMO','Challenge','PHASE_2',100000, 5, 10,'FIXED', 5, 4, null,false,null,'https://ftmo.com', null),
   ('FTMO','Challenge','FUNDED', 100000, 5, 10,'FIXED', null,null,null,false,null,'https://ftmo.com', null),
   -- Topstep — futures, TRAILING drawdown, consistency         -- VERIFY at topstep.com
-  ('Topstep','Trading Combine','PHASE_1',50000, null, 2000,'TRAILING',3000, 2, 50,false,null,'https://topstep.com', null),
-  ('Topstep','Trading Combine','FUNDED', 50000, null, 2000,'TRAILING',null,null, 50,false,null,'https://topstep.com', null),
+  -- Topstep states limits in DOLLARS; stored as % of the 50k account_size to fit the
+  -- percentage model + numeric(5,2): $2000 trailing = 4%, $3000 target = 6%.
+  ('Topstep','Trading Combine','PHASE_1',50000, null, 4,'TRAILING',6, 2, 50,false,null,'https://topstep.com', null),
+  ('Topstep','Trading Combine','FUNDED', 50000, null, 4,'TRAILING',null,null, 50,false,null,'https://topstep.com', null),
   -- MyFundedFX — modern one/two-step, consistency             -- VERIFY at myfundedfx.com
   ('MyFundedFX','Evaluation','PHASE_1',100000, 5, 10,'FIXED', 8, null, 40,false,null,'https://myfundedfx.com', null),
   ('MyFundedFX','Evaluation','FUNDED', 100000, 5, 10,'FIXED', null,null, 40,false,null,'https://myfundedfx.com', null)
@@ -643,8 +645,9 @@ export const PROP_FIRM_PRESETS: PropFirmPresetSeed[] = [
   { firm: "FTMO", program: "Challenge", phase: "PHASE_1", accountSize: 100_000, ddDailyPct: 5, ddTotalPct: 10, ddModel: "FIXED", targetPct: 10, minTradingDays: 4, consistencyPct: null, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://ftmo.com" },
   { firm: "FTMO", program: "Challenge", phase: "PHASE_2", accountSize: 100_000, ddDailyPct: 5, ddTotalPct: 10, ddModel: "FIXED", targetPct: 5,  minTradingDays: 4, consistencyPct: null, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://ftmo.com" },
   { firm: "FTMO", program: "Challenge", phase: "FUNDED",  accountSize: 100_000, ddDailyPct: 5, ddTotalPct: 10, ddModel: "FIXED", targetPct: null, minTradingDays: null, consistencyPct: null, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://ftmo.com" },
-  { firm: "Topstep", program: "Trading Combine", phase: "PHASE_1", accountSize: 50_000, ddDailyPct: null, ddTotalPct: 2000, ddModel: "TRAILING", targetPct: 3000, minTradingDays: 2, consistencyPct: 50, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://topstep.com" },
-  { firm: "Topstep", program: "Trading Combine", phase: "FUNDED",  accountSize: 50_000, ddDailyPct: null, ddTotalPct: 2000, ddModel: "TRAILING", targetPct: null, minTradingDays: null, consistencyPct: 50, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://topstep.com" },
+  // Topstep states limits in DOLLARS; stored as % of the 50k account_size ($2000 trailing = 4%, $3000 target = 6%).
+  { firm: "Topstep", program: "Trading Combine", phase: "PHASE_1", accountSize: 50_000, ddDailyPct: null, ddTotalPct: 4, ddModel: "TRAILING", targetPct: 6, minTradingDays: 2, consistencyPct: 50, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://topstep.com" },
+  { firm: "Topstep", program: "Trading Combine", phase: "FUNDED",  accountSize: 50_000, ddDailyPct: null, ddTotalPct: 4, ddModel: "TRAILING", targetPct: null, minTradingDays: null, consistencyPct: 50, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://topstep.com" },
   { firm: "MyFundedFX", program: "Evaluation", phase: "PHASE_1", accountSize: 100_000, ddDailyPct: 5, ddTotalPct: 10, ddModel: "FIXED", targetPct: 8, minTradingDays: null, consistencyPct: 40, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://myfundedfx.com" },
   { firm: "MyFundedFX", program: "Evaluation", phase: "FUNDED",  accountSize: 100_000, ddDailyPct: 5, ddTotalPct: 10, ddModel: "FIXED", targetPct: null, minTradingDays: null, consistencyPct: 40, noWeekendHolding: false, maxTradesPerDay: null, sourceUrl: "https://myfundedfx.com" },
 ]
@@ -939,7 +942,7 @@ git commit -m "feat(post6): dashboard prop-firm extras + ENFORCE trailing-DD loc
 
 - [ ] **Step 1: Read the two modals** and note how prop-firm fields (ddDailyPct, phase, etc.) are currently rendered and submitted.
 
-- [ ] **Step 2: Add the preset picker.** Create `src/app/cuentas/components/prop-firm-preset-picker.tsx`: three cascading selects — Firm → Program → Phase — sourced from `trpc.propFirmPresets.list.useQuery()`. On phase selection, call an `onApply(preset)` callback that fills the parent form's rule fields (ddDailyPct, ddTotalPct, ddModel, targetPct, minTradingDays, consistencyPct, noWeekendHolding, maxTradesPerDay) and sets `presetId`. Include a "Personalizado" option that clears `presetId` and leaves fields manually editable.
+- [ ] **Step 2: Add the preset picker.** Create `src/app/cuentas/components/prop-firm-preset-picker.tsx`: three cascading selects — Firm → Program → Phase — sourced from `trpc.propFirmPresets.list.useQuery()`. On phase selection, call an `onApply(preset)` callback that fills the parent form's rule fields (ddDailyPct, ddTotalPct, ddModel, targetPct, minTradingDays, consistencyPct, noWeekendHolding, maxTradesPerDay) and sets `presetId`. Also prefill `initialBalance` from the preset's `accountSize` (when the field is empty/zero) — the rule percentages are relative to the account balance, so a dollar-based firm like Topstep (stored as 4%/6% of its 50k size) only resolves to the intended dollars when the balance matches; leave it editable. Include a "Personalizado" option that clears `presetId` and leaves fields manually editable.
 
 - [ ] **Step 3: Add the enforceMode toggle** (WARN default / ENFORCE) to both modals, only visible for prop-firm account types (`isPropFirmType`). Wire it into the create/update mutation input.
 
