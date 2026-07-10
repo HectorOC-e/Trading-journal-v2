@@ -25,7 +25,12 @@ Commit `71154ac`. El bloqueante de abajo **queda resuelto** — el flujo end-to-
 - **Task 10** — `prop-firm-rules.tsx` ahora renderiza filas: trailing-DD (solo modelo TRAILING), consistencia, progreso de fase (objetivo% + días/minDays) e indicador de fin de semana. `noWeekendHolding` propagado por `AccountWithLimits` → `PropFirmStatus` → select de `trades.dashboardStats`.
 - **Validado:** tsc (solo el error ambiental de `puppeteer-core`), vitest 1176/1176, eslint 0 errores.
 
-Las dos confirmaciones del usuario (números `-- VERIFY` y anon key para el e2e) **siguen pendientes** — ver secciones abajo. El prompt de "completar la UI" ya no aplica; usar directamente el **prompt de corrida QA Playwright** al final.
+## ✅ ACTUALIZACIÓN (2026-07-10, cont.): a/b resueltos, c bloqueado por entorno
+
+- **(a) Números de firma — VERIFICADOS y corregidos** (commit `ebcc291`). FTMO (target 10%/5%, daily 5%, total 10%, 4 días) y Topstep (50k: $2k trailing=4%, $3k target=6%, 50% consistencia, 2 días) confirmados contra fuente oficial → `verified_at = 2026-07-10`. **MyFundedFX cerró en feb-2026** → reemplazado por **MyFundedFutures** (Core eval: 100k, 4% EOD trailing, 6% target, 50% consistencia solo-eval, 2 días). Actualizados catálogo tipado, seed de la migración y el test de `FIRMS`.
+- **(b) Anon key CI — RESUELTO.** `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `NEXT_PUBLIC_SUPABASE_URL` actualizados al valor vivo del proyecto (`gh secret set`, 2026-07-10). La anon key legacy sigue activa (`disabled:false`). `E2E_USER_PASSWORD` ya estaba refrescado (hoy). CI e2e ya no falla por credenciales.
+- **(c) QA Playwright — BLOQUEADO por entorno, decisión pendiente.** Intento local confirmó el MITM SSL corporativo: `curl` → schannel revocation, `node fetch` → `SELF_SIGNED_CERT_IN_CHAIN`. El dev server local NO alcanza Supabase y el usuario **declinó** desactivar TLS (`NODE_TLS_REJECT_UNAUTHORIZED=0`). Playwright-vs-prod SÍ funciona ([[e2e-supabase-env-blocker]]) **pero prod (`www.tjournalx.com`) corre `main`, que aún no tiene las features del post6**. Además la tabla `prop_firm_presets` **no existe todavía** en el proyecto Supabase dev (la migración se aplica sola al mergear a `main`).
+  - **Conclusión:** el QA end-to-end de las features nuevas exige que la rama esté desplegada en un entorno que alcance Supabase **con la migración aplicada**. Vía diseñada por el proyecto: **merge a `main` → CI aplica migración + despliega → Playwright-vs-prod** (método verificado que funciona). Alternativa: aplicar la migración al DB dev + desplegar un preview de la rama.
 
 ---
 
