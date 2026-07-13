@@ -2,7 +2,7 @@
  * TASK-074: planNotes roundtrip — create and update with planNotes field.
  * Gate 3: Validates serialization of planNotes through tRPC stack.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { appRouter } from "@/server/trpc/root"
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
@@ -58,7 +58,7 @@ function buildCreateCaller(planNotes: string | null) {
     trade:      { create: vi.fn().mockResolvedValue(trade), findUniqueOrThrow: vi.fn().mockResolvedValue(trade), update: vi.fn().mockResolvedValue(trade) },
     tradeEvent: { create: vi.fn().mockResolvedValue({}) },
     tag:        { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    automation: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    rule: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }
   return appRouter.createCaller({ prisma: mockPrisma as never, supabase: {} as never, userId: USER_ID })
 }

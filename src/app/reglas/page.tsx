@@ -15,12 +15,13 @@ import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { RuleBuilder, type RuleDraft } from "@/components/rules/rule-builder"
 import { RuleModeBadge } from "@/components/rules/rule-mode-badge"
-import { classifyMode } from "@/domains/rules/unification"
 import type { RuleAction, Trigger, ConditionNode } from "@/domains/rules/types"
 
-type AutomationRow = {
+type ExecRuleRow = {
   id: string; name: string; description: string; enabled: boolean; priority: number
   trigger: Trigger; conditions: ConditionNode; actions: RuleAction[]; category: string
+  mode: "enforce" | "warn"
+  sourceCommitmentId: string | null; sourceInsightId: string | null
 }
 type Template = { id: string; name: string; description: string; category: string }
 
@@ -52,24 +53,26 @@ export default function ReglasPage() {
 /* ── Automatizaciones ─────────────────────────────────────────────────────── */
 function AutomationsTab() {
   const utils = trpc.useUtils()
-  const { data } = trpc.automations.list.useQuery(undefined, { staleTime: 30_000 })
-  const { data: templates = [] } = trpc.automations.templates.useQuery(undefined, { staleTime: 300_000 })
-  const rows = (data ?? []) as unknown as AutomationRow[]
-  const inv = () => utils.automations.list.invalidate()
+  const { data } = trpc.rules.list.useQuery(undefined, { staleTime: 30_000 })
+  const { data: templates = [] } = trpc.rules.templates.useQuery(undefined, { staleTime: 300_000 })
+  // Ejecutables = filas con trigger (las descriptivas viven en el tab Recordatorios)
+  const rows = ((data ?? []) as unknown as (ExecRuleRow & { trigger: Trigger | null })[])
+    .filter((r): r is ExecRuleRow => r.trigger != null)
+  const inv = () => utils.rules.list.invalidate()
   const onErr = (e: unknown) => toast.error(formatErrorForUser(e as never))
 
-  const create = trpc.automations.create.useMutation({ onSuccess: () => { toast.success("Automatización creada"); inv() }, onError: onErr })
-  const update = trpc.automations.update.useMutation({ onSuccess: () => { toast.success("Automatización actualizada"); inv() }, onError: onErr })
-  const fromTpl = trpc.automations.createFromTemplate.useMutation({ onSuccess: () => { toast.success("Creada desde plantilla"); inv() }, onError: onErr })
-  const toggle = trpc.automations.toggle.useMutation({ onSuccess: inv, onError: onErr })
-  const del = trpc.automations.delete.useMutation({ onSuccess: () => { toast.success("Eliminada"); inv() }, onError: onErr })
+  const create = trpc.rules.createExecutable.useMutation({ onSuccess: () => { toast.success("Regla creada"); inv() }, onError: onErr })
+  const update = trpc.rules.updateExecutable.useMutation({ onSuccess: () => { toast.success("Regla actualizada"); inv() }, onError: onErr })
+  const fromTpl = trpc.rules.createFromTemplate.useMutation({ onSuccess: () => { toast.success("Creada desde plantilla"); inv() }, onError: onErr })
+  const toggle = trpc.rules.toggle.useMutation({ onSuccess: inv, onError: onErr })
+  const del = trpc.rules.delete.useMutation({ onSuccess: () => { toast.success("Eliminada"); inv() }, onError: onErr })
 
   const [gallery, setGallery] = useState(false)
   const [builder, setBuilder] = useState<RuleDraft | null>(null)
   const [builderOpen, setBuilderOpen] = useState(false)
 
   const openBlank = () => { setGallery(false); setBuilder(null); setBuilderOpen(true) }
-  const openEdit = (r: AutomationRow) => { setBuilder({ id: r.id, name: r.name, trigger: r.trigger, conditions: r.conditions, actions: r.actions, priority: r.priority }); setBuilderOpen(true) }
+  const openEdit = (r: ExecRuleRow) => { setBuilder({ id: r.id, name: r.name, trigger: r.trigger, conditions: r.conditions, actions: r.actions, priority: r.priority }); setBuilderOpen(true) }
   const onSave = (d: RuleDraft) => {
     const payload = { name: d.name, trigger: d.trigger, conditions: d.conditions, actions: d.actions, priority: d.priority ?? 0, description: "", category: "", enabled: true }
     if (d.id) update.mutate({ id: d.id, ...payload }); else create.mutate(payload)
@@ -92,7 +95,12 @@ function AutomationsTab() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</span>
-                  <RuleModeBadge mode={classifyMode(r.actions ?? [])} />
+                  <RuleModeBadge mode={r.mode} />
+                  {(r.sourceCommitmentId || r.sourceInsightId) && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--commit-soft)", color: "var(--commit)" }}>
+                      {r.sourceCommitmentId ? "desde compromiso" : "desde insight"}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-0.5 text-[11px] text-[var(--ink-3)]">
                   <span className="text-[var(--accent)]">⚡ {TRIGGER_LABEL[r.trigger] ?? r.trigger}</span>
@@ -182,8 +190,9 @@ function SystemRulesTab() {
 function RemindersTab() {
   const utils = trpc.useUtils()
   const { data } = trpc.rules.list.useQuery(undefined, { staleTime: 60_000 })
-  type R = { id: string; name: string; description: string; severity: string; enabled: boolean; sourceCommitmentId: string | null; sourceInsightId: string | null }
-  const rules = (data ?? []) as R[]
+  type R = { id: string; name: string; description: string; severity: string; enabled: boolean; trigger: string | null; sourceCommitmentId: string | null; sourceInsightId: string | null }
+  // Solo descriptivas: las ejecutables (trigger != null) viven en el tab Automatizaciones.
+  const rules = ((data ?? []) as R[]).filter((r) => r.trigger == null)
   const inv = () => utils.rules.list.invalidate()
   const toggle = trpc.rules.toggle.useMutation({ onSuccess: inv })
   const del = trpc.rules.delete.useMutation({ onSuccess: () => { toast.success("Eliminado"); inv() } })

@@ -7,6 +7,22 @@
 
 ---
 
+## [2026-07-13] · G2 — cutover de reglas: `rules` es la única fuente
+
+> Cierre del gate G2 (C6/FREEZE-D8). Fase 1 (flip `RULES_SOURCE=rules`) verificada en prod
+> por observación directa (`rules.last_fired_at` bump, `automations` quieta); fase 2 en la
+> rama `feat/g2-rules-cutover`.
+
+- **Enforcement desde `rules`**: el engine queda solo-`runRules` (se retiran `runAutomations`,
+  el dispatcher y el flag `RULES_SOURCE`); las reglas creadas por el loop de comportamiento
+  (compromiso→regla) ahora bloquean de verdad.
+- **`/reglas` edita `rules`**: router `rules` a paridad ejecutable (builder, plantillas
+  fusionadas base+protección, reorder); reglas del loop visibles con badge de origen y
+  badge de modo leyendo `rule.mode` (cierra OI-5.1 y S1/DT-5).
+- **`automations` archivada**: tabla y modelo intactos (P9), sin lecturas ni escrituras;
+  se retiran el router `automations`, el dual-write (`rule-sync`) y el informe de migración
+  (`/api/cron/rules-migration-report`, propósito cumplido con el triaje OI-1 sobre datos reales).
+
 ## [2026-06-10] · Hardening: P&L, enforcement, CI/migraciones y rendimiento
 
 > Tanda de fixes a partir de pruebas E2E (Playwright) de onboarding, ciclo de vida del trade y enforcement prop-firm. PRs #6–#17.

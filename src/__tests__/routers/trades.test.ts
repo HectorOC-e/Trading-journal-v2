@@ -117,7 +117,7 @@ function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
     tag: {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
-    automation: {
+    rule: {
       findMany:   vi.fn().mockResolvedValue([]),
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
