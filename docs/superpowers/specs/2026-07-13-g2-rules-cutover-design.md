@@ -47,6 +47,14 @@ Triaje de las 13 (aprobado por el usuario):
 
 **Conclusión del gate: sin bloqueadores.**
 
+> **✅ FASE 1 EJECUTADA Y VERIFICADA (2026-07-13).** `RULES_SOURCE=rules` seteado en Vercel y
+> redeployado por el usuario. Smoke vs prod (Playwright + SQL): trade tras pérdida fresca del
+> usuario demo → toast `RULE_BLOCKED`, trade no creado. Prueba de fuente: `rules."Enfriamiento
+> tras una pérdida"` (regla del loop, existe SOLO en `rules`) disparó (`last_fired_at`
+> 2026-07-13 19:45) junto a `rules."Bloquear revenge trade"`; la automatización homónima quedó
+> quieta (19-jun). Fixture de pérdida borrado tras el smoke. Nota: la contraseña del usuario QA
+> fue restaurada a la documentada y el secret `E2E_USER_PASSWORD` re-sincronizado vía `gh`.
+
 ## 3. Fase 1 — Flip (ops, sin código)
 
 1. Usuario setea `RULES_SOURCE=rules` en Vercel (Production) y redeploya.
