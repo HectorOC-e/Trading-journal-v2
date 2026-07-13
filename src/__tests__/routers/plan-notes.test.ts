@@ -58,7 +58,7 @@ function buildCreateCaller(planNotes: string | null) {
     trade:      { create: vi.fn().mockResolvedValue(trade), findUniqueOrThrow: vi.fn().mockResolvedValue(trade), update: vi.fn().mockResolvedValue(trade) },
     tradeEvent: { create: vi.fn().mockResolvedValue({}) },
     tag:        { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    automation: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    rule: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }
   return appRouter.createCaller({ prisma: mockPrisma as never, supabase: {} as never, userId: USER_ID })
 }

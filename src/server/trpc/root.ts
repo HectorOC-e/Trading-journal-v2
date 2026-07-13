@@ -21,7 +21,6 @@ import { monthlyGoalsRouter }       from "./routers/monthly-goals"
 import { analyticsRouter }          from "./routers/analytics"
 import { notificationsRouter }      from "./routers/notifications"
 import { tagsRouter }               from "./routers/tags"
-import { automationsRouter }        from "./routers/automations"
 import { customPalettesRouter }     from "./routers/custom-palettes"
 import { behaviorRouter }           from "./routers/behavior"
 import { coachRouter }              from "./routers/coach"
@@ -57,7 +56,6 @@ export const appRouter = router({
   aiSettings:        aiSettingsRouter,
   notifications:     notificationsRouter,
   tags:              tagsRouter,
-  automations:       automationsRouter,
   customPalettes:    customPalettesRouter,
   behavior:          behaviorRouter,
   coach:             coachRouter,
