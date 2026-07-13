@@ -326,8 +326,21 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1 está cerrado y el núcleo de v3.2 (los 5 ejes
-del compañero cognitivo) está completo y mergeado en main. Lee primero, en este orden:
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados y mergeados. POST-6 (prop-firm
+rulebase) mergeado (PR #128). Cutover G2 COMPLETO en código (2026-07-13): fase 1
+(RULES_SOURCE=rules) verificada en prod; fase 2 (retiro de automations) en PR #129.
+
+ESTADO DEL PR #129 — verificar primero con `gh pr view 129`:
+- Si está mergeado: confirmar que la env var RULES_SOURCE fue borrada de Vercel
+  (queda inerte post-merge) y seguir con lo siguiente en el orden acordado:
+  (1) TD-018: extraer trade-service de src/server/trpc/routers/trades.ts (~1136 LOC),
+  (2) check de drift SQL↔Prisma en CI,
+  (3) pendientes de STATUS.md §2 Ops (cron cognitive-digest sigue sin agendar, a propósito).
+- Si NO está mergeado: yo (usuario) debo mergearlo con CI verde; no tiene migraciones.
+  Spec: docs/superpowers/specs/2026-07-13-g2-rules-cutover-design.md
+  Plan (ejecutado): docs/superpowers/plans/2026-07-13-g2-rules-cutover.md
+
+Lee primero, en este orden:
   1) docs/STATUS.md        (estado, pendientes, checklist de QA)
   2) docs/PROJECT_GUIDE.md (qué es el producto)
   3) docs/ARCHITECTURE.md  (principios/decisiones/entidades congelados)
@@ -350,14 +363,13 @@ production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run lis
 tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
 ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
 
-Lo PRIMERO a decidir conmigo: qué hacer de los pendientes (ver STATUS.md §2 Ops y §5
-Roadmap reservado).
-Mi recomendación de orden de valor:
-  (a) Ops: ayudar a agendar el cron del digest cognitivo (1 paso, desbloquea C4).
-  (b) Si se quiere capacidad nueva: POST-6 (base de reglas prop-firm, moat) como sprint
-      dedicado, o el recall episódico por query (mejora E1, pequeño).
-  (c) A3 (rutas reales de 5 superficies) solo si importa cerrar la UX, pese a ser cosmético.
+Orden de trabajo acordado (2026-07-13): G2 (hecho, PR #129) → TD-018 (trade-service)
+→ check de drift SQL↔Prisma en CI. El cron cognitive-digest queda pospuesto a propósito.
 No arranques nada grande sin confirmarlo conmigo primero.
+
+Gotcha de credenciales QA: la password del usuario demo fue restaurada el 2026-07-13 al
+valor documentado abajo y el GH secret E2E_USER_PASSWORD re-sincronizado. Si el login
+e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
 ```
 
 **Datos útiles para la próxima sesión:**
