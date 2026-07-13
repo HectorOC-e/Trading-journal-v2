@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from "vitest"
-import { runRules, runRuleEngine, rulesSourceIsUnified } from "@/domains/rules/engine"
+import { describe, it, expect, vi } from "vitest"
+import { runRules } from "@/domains/rules/engine"
 import type { EvalContext } from "@/domains/rules/types"
 
 function mockPrismaRules(rules: unknown[]) {
@@ -7,10 +7,6 @@ function mockPrismaRules(rules: unknown[]) {
     rule: {
       findMany:   vi.fn().mockResolvedValue(rules),
       updateMany: vi.fn().mockResolvedValue({ count: rules.length }),
-    },
-    automation: {
-      findMany:   vi.fn().mockResolvedValue([]),
-      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   }
 }
@@ -55,32 +51,5 @@ describe("runRules — unified-model runner (G2)", () => {
     expect(r.addTags).toContain("Revisar")
     expect(r.removeTags).toContain("OK")
     expect(r.firedIds).toEqual(["r1", "r2"])
-  })
-})
-
-describe("runRuleEngine — flag routing (default off)", () => {
-  const prev = process.env.RULES_SOURCE
-  afterEach(() => { if (prev === undefined) delete process.env.RULES_SOURCE; else process.env.RULES_SOURCE = prev })
-
-  it("defaults to automations when the flag is unset", () => {
-    delete process.env.RULES_SOURCE
-    expect(rulesSourceIsUnified()).toBe(false)
-  })
-
-  it("reads automations source when flag is off", async () => {
-    delete process.env.RULES_SOURCE
-    const p = mockPrismaRules([{ id: "r1", name: "x", priority: 0, conditions: {}, actions: [{ type: "ADD_TAG", params: { tag: "T" } }] }])
-    await runRuleEngine(p as never, "u1", "TRADE_CREATED", () => ctx)
-    expect(p.automation.findMany).toHaveBeenCalledOnce()
-    expect(p.rule.findMany).not.toHaveBeenCalled()
-  })
-
-  it("reads the unified rules source when flag = 'rules'", async () => {
-    process.env.RULES_SOURCE = "rules"
-    expect(rulesSourceIsUnified()).toBe(true)
-    const p = mockPrismaRules([{ id: "r1", name: "x", priority: 0, conditions: {}, actions: [{ type: "ADD_TAG", params: { tag: "T" } }] }])
-    await runRuleEngine(p as never, "u1", "TRADE_CREATED", () => ctx)
-    expect(p.rule.findMany).toHaveBeenCalledOnce()
-    expect(p.automation.findMany).not.toHaveBeenCalled()
   })
 })
