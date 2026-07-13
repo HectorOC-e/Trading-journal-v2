@@ -2,7 +2,7 @@
  * TASK-074: planNotes roundtrip — create and update with planNotes field.
  * Gate 3: Validates serialization of planNotes through tRPC stack.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { appRouter } from "@/server/trpc/root"
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))

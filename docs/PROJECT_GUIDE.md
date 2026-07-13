@@ -113,8 +113,8 @@ src/
                                  #   mae-mfe.ts, benchmark.ts, pnl-heatmap.ts (puro)
       insights/                # insight-reconcile.ts, insight-store.ts, recompute-insights.ts
       services/                # dashboard-analytics, setup-analytics, psychology-insights, etc.
-    rules/                     # unification.ts, protection-templates.ts, migration-report.ts,
-                                 #   rule-sync.ts (dual-write), engine.ts (runAutomations + runRules)
+    rules/                     # unification.ts (tipos + classifyMode), protection-templates.ts,
+                                 #   rule-write.ts (escritura), engine.ts (runRules — fuente única post-G2)
     trading/services/          # trade-derivation, capture-rules, note-tag-suggester, emotion-feedback,
                                  #   account-service, prop-firm-guard, risk-engine, csv-import, mt4-parser
     learning/services/         # review-scheduler, streak-service, decay-detector
