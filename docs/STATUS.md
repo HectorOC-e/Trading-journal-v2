@@ -265,7 +265,7 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 
 | ID | Título | Tipo | Prioridad | Estado |
 |---|---|---|---|---|
-| `TD-018` | Extraer lógica de negocio inline del router `trades.ts` (~924 LOC) a `trade-service` | Refactor | P3 | ⚠️ probablemente sigue abierto — verificado por lectura estática (sin ejecutar código) el 2026-07-09: `src/server/trpc/routers/trades.ts` tiene hoy 1136 LOC y no existe un directorio/archivo `trade-service` en `src/server/services/`. Confirmar en la ronda de QA. |
+| `TD-018` | Extraer lógica de negocio inline del router `trades.ts` (~924 LOC) a `trade-service` | Refactor | P3 | ✅ resuelto — 2026-07-14: orquestación extraída a `src/server/services/trades/` (serializers, embedding-service, dashboard-service, trade-read-service, trade-write-service); el router quedó en 180 LOC (zod + delegación). El **cálculo** ya vivía en `domains/` (deuda sobre-estimada en ese eje, como anticipaba §1). `dashboardStats` ganó su primer test directo (partición practice). Suite 1168/1168 + tsc + eslint. |
 | `TD-019` | Cliente Supabase creado por-request en el contexto tRPC | Refactor/infra | P3 | ⚠️ probablemente sigue abierto — verificado por lectura estática: `src/server/trpc/init.ts` sigue invocando `createClient()` (de `@/lib/supabase/server`) dentro de la construcción del contexto, sin pooling visible. Confirmar en la ronda de QA. |
 | `TD-037` | ~22 efectos "sync-on-open" (setState sincrónico en effect) | Refactor render | P3 | ⬜ sin verificar — requiere auditoría manual de los efectos, no verificable de forma fiable con un grep simple |
 | `DataTable dev render loop` | Re-render infinito solo en dev; columnas responsivas solo en build prod. No afecta prod. Pre-existente a v3. | Bug conocido (dev-only) | — | ⬜ sin verificar |
@@ -326,19 +326,18 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados y mergeados. POST-6 (prop-firm
-rulebase) mergeado (PR #128). Cutover G2 COMPLETO en código (2026-07-13): fase 1
-(RULES_SOURCE=rules) verificada en prod; fase 2 (retiro de automations) en PR #129.
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados y mergeados. POST-6 mergeado
+(PR #128). Cutover G2 CERRADO: PR #129 mergeado el 2026-07-13 (a28df30); RULES_SOURCE
+verificada inerte en código (el borrado de la env var en Vercel es cosmético y no es
+verificable desde la sesión — no bloquear nada por eso). TD-018 (trade-service) HECHO
+el 2026-07-14: PR #130.
 
-ESTADO DEL PR #129 — verificar primero con `gh pr view 129`:
-- Si está mergeado: confirmar que la env var RULES_SOURCE fue borrada de Vercel
-  (queda inerte post-merge) y seguir con lo siguiente en el orden acordado:
-  (1) TD-018: extraer trade-service de src/server/trpc/routers/trades.ts (~1136 LOC),
-  (2) check de drift SQL↔Prisma en CI,
-  (3) pendientes de STATUS.md §2 Ops (cron cognitive-digest sigue sin agendar, a propósito).
+ESTADO DEL PR #130 — verificar primero con `gh pr view 130`:
+- Si está mergeado: seguir con lo siguiente en el orden acordado:
+  (1) check de drift SQL↔Prisma en CI (cierra S0/DT-4),
+  (2) pendientes de STATUS.md §2 Ops (cron cognitive-digest sigue sin agendar, a propósito).
 - Si NO está mergeado: yo (usuario) debo mergearlo con CI verde; no tiene migraciones.
-  Spec: docs/superpowers/specs/2026-07-13-g2-rules-cutover-design.md
-  Plan (ejecutado): docs/superpowers/plans/2026-07-13-g2-rules-cutover.md
+  Plan (ejecutado): docs/superpowers/plans/2026-07-14-td018-trade-service.md
 
 Lee primero, en este orden:
   1) docs/STATUS.md        (estado, pendientes, checklist de QA)
@@ -363,7 +362,7 @@ production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run lis
 tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
 ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
 
-Orden de trabajo acordado (2026-07-13): G2 (hecho, PR #129) → TD-018 (trade-service)
+Orden de trabajo acordado (2026-07-13): G2 (hecho, PR #129) → TD-018 (hecho, PR #130)
 → check de drift SQL↔Prisma en CI. El cron cognitive-digest queda pospuesto a propósito.
 No arranques nada grande sin confirmarlo conmigo primero.
 

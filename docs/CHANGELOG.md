@@ -7,6 +7,20 @@
 
 ---
 
+## [2026-07-14] · TD-018 — trade services extraídos del router `trades`
+
+> Refactor behavior-preserving (PR #130). La deuda estaba parcialmente sobre-estimada: el
+> cálculo ya vivía en `domains/`; lo que quedaba inline era orquestación I/O sin tests.
+
+- **Service layer nuevo** en `src/server/services/trades/`: `serializers`, `embedding-service`
+  (schedule/search/backfill pgvector), `dashboard-service` (pipeline completo de
+  `dashboardStats`), `trade-read-service` (list/violaciones/emoción/patrones) y
+  `trade-write-service` (create/update/close/addEvent/delete/checklist con todos los guards).
+- **Router `trades.ts`: 1146 → 180 LOC** — schemas zod + delegación; contrato tRPC intacto
+  (`RouterOutputs` sin cambios).
+- **Primer test directo de `dashboardStats`**: la partición practice (financiero excluye
+  DEMO/BACKTEST; discipline las cuenta; cuenta explícita gana) queda documentada por test.
+
 ## [2026-07-13] · G2 — cutover de reglas: `rules` es la única fuente
 
 > Cierre del gate G2 (C6/FREEZE-D8). Fase 1 (flip `RULES_SOURCE=rules`) verificada en prod
