@@ -1,21 +1,9 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
-import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
-import { evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
-import { ensureTagRows } from "@/server/services/tags/seed"
-import { runRules } from "@/domains/rules/engine"
-import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
-import { runIntervention } from "@/server/services/intervention/intervention-service"
-import { buildContext } from "@/domains/rules/context"
-import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
-import { scheduleEmbedding, semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
-
-import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
-
-import { serializeTrade } from "@/server/services/trades/serializers"
+import { semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
 import { listTrades, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
-import { createTrade, updateTrade, closeTrade } from "@/server/services/trades/trade-write-service"
+import { createTrade, updateTrade, closeTrade, addTradeEvent, deleteTrade, saveTradeChecklistResult } from "@/server/services/trades/trade-write-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
 
@@ -132,48 +120,7 @@ export const tradesRouter = router({
       notes:     z.string().default(""),
       timestamp: z.string().optional(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const trade = await ctx.prisma.trade.findUniqueOrThrow({
-        where:   { id: input.tradeId, userId: ctx.userId },
-        include: { account: true },
-      })
-
-      const tradeUpdate: Record<string, unknown> = {}
-
-      if ((input.type === "STOP_MOVE" || input.type === "TRAIL_STOP") && input.price != null) {
-        tradeUpdate.stop = input.price
-      }
-      if (input.type === "TAKE_PROFIT_MOVE" && input.price != null) {
-        tradeUpdate.target = input.price
-      }
-      if (input.type === "SCALE_IN" && input.price != null && input.contracts != null) {
-        const oldSize = Number(trade.size)
-        tradeUpdate.entry = computeScaleInAvgEntry(Number(trade.entry), oldSize, input.price, input.contracts)
-        tradeUpdate.size  = oldSize + input.contracts
-      }
-      if (input.type === "PARTIAL_CLOSE" && input.contracts != null) {
-        tradeUpdate.size = Math.max(0, Number(trade.size) - input.contracts)
-      }
-
-      if (Object.keys(tradeUpdate).length > 0) {
-        await ctx.prisma.trade.update({
-          where: { id: input.tradeId, userId: ctx.userId },
-          data:  tradeUpdate,
-        })
-      }
-
-      return ctx.prisma.tradeEvent.create({
-        data: {
-          userId:    ctx.userId,
-          tradeId:   input.tradeId,
-          type:      input.type,
-          price:     input.price,
-          contracts: input.contracts,
-          notes:     input.notes,
-          timestamp: input.timestamp ? new Date(input.timestamp) : new Date(),
-        },
-      })
-    }),
+    .mutation(({ ctx, input }) => addTradeEvent(ctx.prisma, ctx.userId, input)),
 
   // @deprecated — replaced by dashboardStats (Sprint 1). No callers remain. Kept for type-compatibility only; returns empty result.
   stats: protectedProcedure
@@ -187,26 +134,7 @@ export const tradesRouter = router({
 
   delete: protectedProcedure
     .input(z.string().uuid())
-    .mutation(async ({ ctx, input }) => {
-      // Fetch first to get screenshot URLs for storage cleanup
-      const trade = await ctx.prisma.trade.findUniqueOrThrow({
-        where:  { id: input, userId: ctx.userId },
-        select: { screenshotUrls: true },
-      })
-      const result = await ctx.prisma.trade.delete({ where: { id: input, userId: ctx.userId } })
-      // Delete screenshots from Supabase Storage (best-effort, non-blocking)
-      if (trade.screenshotUrls.length > 0) {
-        const paths = trade.screenshotUrls.map(url => {
-          try { return new URL(url).pathname.replace(/^\/storage\/v1\/object\/public\/trade-screenshots\//, "") }
-          catch { return null }
-        }).filter((p): p is string => p !== null)
-        if (paths.length > 0) {
-          await ctx.supabase.storage.from("trade-screenshots").remove(paths).catch(() => undefined)
-        }
-      }
-      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      return result
-    }),
+    .mutation(({ ctx, input }) => deleteTrade(ctx.prisma, ctx.supabase, ctx.userId, input)),
 
   ruleViolationStats: protectedProcedure
     .input(z.object({
@@ -222,41 +150,7 @@ export const tradesRouter = router({
       itemsChecked: z.array(z.string()),
       itemsTotal:   z.number().int().min(0),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const trade = await ctx.prisma.trade.findUniqueOrThrow({
-        where:  { id: input.tradeId, userId: ctx.userId },
-        select: { tags: true },
-      })
-
-      // Off-plan auto-tag (E5.C3, S2 DT-5): a setup checklist left incomplete tags
-      // the trade "Off-plan" automatically. Additive — never removes existing tags.
-      const { offPlan } = evaluateChecklist({
-        setupHasChecklist: input.itemsTotal > 0,
-        itemsChecked:      input.itemsChecked.length,
-        itemsTotal:        input.itemsTotal,
-      })
-      const currentTags = trade.tags as string[]
-      if (offPlan && !currentTags.includes("Off-plan")) {
-        const newTags = [...currentTags, "Off-plan"]
-        await ctx.prisma.trade.update({ where: { id: input.tradeId }, data: { tags: newTags } })
-        await ensureTagRows(ctx.prisma, ctx.userId, ["Off-plan"])
-      }
-
-      return ctx.prisma.tradeChecklistResult.upsert({
-        where:  { tradeId: input.tradeId },
-        create: {
-          userId:       ctx.userId,
-          tradeId:      input.tradeId,
-          setupId:      input.setupId,
-          itemsChecked: input.itemsChecked,
-          itemsTotal:   input.itemsTotal,
-        },
-        update: {
-          itemsChecked: input.itemsChecked,
-          itemsTotal:   input.itemsTotal,
-        },
-      })
-    }),
+    .mutation(({ ctx, input }) => saveTradeChecklistResult(ctx.prisma, ctx.userId, input)),
 
   // Emotion incentive (DELTA D10): the trader's historical WR/avgR for a given
   // pre-trade emotion, so capturing it returns value in the moment. Null below the
