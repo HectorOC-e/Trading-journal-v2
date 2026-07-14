@@ -1,18 +1,13 @@
 import { z } from "zod"
-import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
-import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
-import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
+import { evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runRules } from "@/domains/rules/engine"
-import { evaluateBudgetGuard } from "@/domains/analytics/risk/budget-guard"
 import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { buildContext } from "@/domains/rules/context"
-import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
-import { AppError } from "@/lib/errors/app-error"
 import { scheduleEmbedding, semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
 
 import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
@@ -20,6 +15,7 @@ import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/an
 import { serializeTrade } from "@/server/services/trades/serializers"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
 import { listTrades, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
+import { createTrade } from "@/server/services/trades/trade-write-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
 
@@ -83,170 +79,7 @@ export const tradesRouter = router({
       mfeR:            z.number().optional().nullable(), // max favorable excursion in R (#35)
       regime:          z.enum(["trend", "range", "volatile"]).optional().nullable(), // E5.C6
     }))
-    .mutation(async ({ ctx, input }) => {
-      // ── Account + risk-limit enforcement (HALLAZGO 1B) ─────────────────────
-      const account = await ctx.prisma.account.findUniqueOrThrow({
-        where: { id: input.accountId, userId: ctx.userId },
-        select: {
-          type:            true,
-          locked:          true,
-          lockReason:      true,
-          ddDailyPct:      true,
-          ddWeeklyPct:     true,
-          ddMonthlyPct:    true,
-          ddTotalPct:      true,
-          ddModel:         true,
-          maxTradesPerDay: true,
-          allowedSymbols:  true,
-          initialBalance:  true,
-          enforceMode:     true,
-        },
-      })
-
-      // 1) Risk-limit pre-trade guard (all account types). Throws ACCOUNT_LOCKED
-      //    on an active lock; auto-reactivates an elapsed temporal lock.
-      const enforceAccount: EnforceableAccount = {
-        id:             input.accountId,
-        type:           account.type,
-        ddModel:        account.ddModel,
-        ddDailyPct:     account.ddDailyPct   != null ? Number(account.ddDailyPct)   : null,
-        ddWeeklyPct:    account.ddWeeklyPct  != null ? Number(account.ddWeeklyPct)  : null,
-        ddMonthlyPct:   account.ddMonthlyPct != null ? Number(account.ddMonthlyPct) : null,
-        ddTotalPct:     account.ddTotalPct   != null ? Number(account.ddTotalPct)   : null,
-        initialBalance: Number(account.initialBalance),
-        locked:         account.locked,
-        lockReason:     account.lockReason,
-        enforceMode:    account.enforceMode,
-      }
-      await assertTradeable(ctx.prisma, ctx.userId, enforceAccount, input.date)
-
-      // 2) Setup must be selectable (HALLAZGO 2 — backend guard)
-      if (input.setupId) {
-        const setup = await ctx.prisma.setup.findUnique({
-          where:  { id: input.setupId, userId: ctx.userId },
-          select: { status: true },
-        })
-        if (!setup) throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_FOUND" })
-        if (setup.status === "PAUSADO" || setup.status === "DESCARTADO") {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "SETUP_NOT_AVAILABLE" })
-        }
-      }
-
-      // 3) Prop-firm-only constraints: max trades/day + symbol allowlist
-      if (account.type === "PROP_FIRM" || account.type === "DEMO_PROP") {
-        const tradeDate = new Date(input.date)
-        if (account.maxTradesPerDay != null) {
-          const todayCount = await ctx.prisma.trade.count({
-            where: { accountId: input.accountId, userId: ctx.userId, date: tradeDate },
-          })
-          if (checkTradeCountLimit(todayCount, account.maxTradesPerDay)) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_MAX_TRADES" })
-          }
-        }
-        if (checkSymbolAllowlist(input.symbol, account.allowedSymbols as string[])) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "PROP_FIRM_SYMBOL_NOT_ALLOWED" })
-        }
-      }
-
-      // 3.5) Forward-looking daily-budget guard (A1, closure). The breach-lock
-      //      (HALLAZGO 1B) is post-hoc; this blocks BEFORE a trade whose own risk
-      //      would cross the room left to today's daily-loss floor.
-      if (account.ddDailyPct != null) {
-        const tradeDate = new Date(input.date)
-        const [allAgg, todayAgg] = await Promise.all([
-          ctx.prisma.trade.aggregate({ where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" }, _sum: { pnl: true } }),
-          ctx.prisma.trade.aggregate({ where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED", date: tradeDate }, _sum: { pnl: true } }),
-        ])
-        const initialBalance = Number(account.initialBalance)
-        const totalPnl = Number(allAgg._sum.pnl ?? 0)
-        const dayPnl = Number(todayAgg._sum.pnl ?? 0)
-        const dayBase = initialBalance + (totalPnl - dayPnl)
-        if (dayBase > 0) {
-          const remainingPct = Number(account.ddDailyPct) / 100 + dayPnl / dayBase
-          const tradeRiskPct = (deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: initialBalance + totalPnl }) ?? 0) / 100
-          const guard = evaluateBudgetGuard({ remainingPct, tradeRiskPct, exhausted: remainingPct <= 0 })
-          if (guard.block) throw new AppError("BUDGET_EXCEEDED", { detail: guard.message ?? "" })
-        }
-      }
-
-      // 4) User automations — PRE-trade (may block the operation / mutate tags)
-      const preRules = await runRules(ctx.prisma, ctx.userId, "TRADE_PRE_CREATE", () =>
-        buildContext(ctx.prisma, ctx.userId, { id: input.accountId, initialBalance: Number(account.initialBalance) }, {
-          symbol: input.symbol, direction: input.direction, session: input.session ?? null,
-          setupId: input.setupId ?? null, size: input.size, entry: input.entry, stop: input.stop,
-          tags: input.tags, date: input.date,
-        }),
-      )
-      if (preRules.blocked) throw new AppError("RULE_BLOCKED", { detail: preRules.blockMessage ?? "" })
-      const effectiveTags = (preRules.addTags.length || preRules.removeTags.length)
-        ? [...new Set([...input.tags, ...preRules.addTags])].filter((t) => !preRules.removeTags.includes(t))
-        : input.tags
-
-      // riskPct fallback (#27, S2 DT-1): derive server-side when the client did not
-      // send it (e.g. imports / API), so the column is never silently null.
-      const riskPctValue =
-        input.riskPct ??
-        deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: Number(account.initialBalance) })
-
-      const trade = await ctx.prisma.trade.create({
-        data: { ...input, riskPct: riskPctValue, tags: effectiveTags, userId: ctx.userId, date: new Date(input.date) },
-        include: { account: true, setup: true, events: true },
-      })
-
-      // Keep the tag catalog in sync with any new tag names used here.
-      if (effectiveTags.length) await ensureTagRows(ctx.prisma, ctx.userId, effectiveTags)
-
-      // User automations — POST-trade (best-effort; never break the write).
-      try {
-        const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_CREATED"
-        const postRules = await runRules(ctx.prisma, ctx.userId, postTrigger, () =>
-          buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(account.initialBalance) }, {
-            symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
-            setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
-            tags: trade.tags as string[], date: input.date,
-            pnl: trade.pnl != null ? Number(trade.pnl) : null,
-            rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
-          }),
-        )
-        if (postRules.addTags.length || postRules.removeTags.length) {
-          const newTags = [...new Set([...(trade.tags as string[]), ...postRules.addTags])].filter((t) => !postRules.removeTags.includes(t))
-          await ctx.prisma.trade.update({ where: { id: trade.id }, data: { tags: newTags } })
-          if (postRules.addTags.length) await ensureTagRows(ctx.prisma, ctx.userId, postRules.addTags)
-        }
-      } catch (err) {
-        console.warn("[rules] post-trade automations failed:", err instanceof Error ? err.message : err)
-      }
-
-      const openTimeSafe = input.openTime || "00:00"
-      await ctx.prisma.tradeEvent.create({
-        data: {
-          userId:    ctx.userId,
-          tradeId:   trade.id,
-          type:      "OPEN",
-          price:     input.entry,
-          contracts: input.size,
-          notes:     `${input.direction} · SL ${input.stop} · TP ${input.target}`,
-          timestamp: new Date(`${input.date}T${openTimeSafe}:00`),
-        },
-      })
-
-      // Post-trade: a trade registered already-closed can itself breach a limit
-      // → auto-lock immediately (locked was just cleared/false by assertTradeable).
-      if (input.status === "CLOSED" && input.pnl != null) {
-        await evaluateAndLock(ctx.prisma, ctx.userId, { ...enforceAccount, locked: false, lockReason: "" }, input.date)
-      }
-
-      const full = await ctx.prisma.trade.findUniqueOrThrow({
-        where:   { id: trade.id },
-        include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
-      })
-
-      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      scheduleEmbedding(ctx.prisma, ctx.userId, trade.id, input.notes ?? "")
-      // Continuous eval of rule-backed commitments (S5, best-effort).
-      await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
-      return serializeTrade(full)
-    }),
+    .mutation(({ ctx, input }) => createTrade(ctx.prisma, ctx.userId, input)),
 
   update: protectedProcedure
     .input(z.object({
