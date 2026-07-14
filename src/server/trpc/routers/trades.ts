@@ -1,7 +1,6 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
-import type { Prisma } from "@/lib/generated/prisma/client"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
 import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
@@ -112,68 +111,9 @@ import { VIOLATION_TAGS } from "@/types"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { localDateISO, monthStartISO, weekStartISO, addDaysISO } from "@/lib/datetime/local"
 
-type RawAccount = Prisma.AccountGetPayload<Record<string, never>>
-type RawTrade   = Prisma.TradeGetPayload<{
-  include: { account: true; setup: true; events: true }
-}>
+import { serializeTrade } from "@/server/services/trades/serializers"
 
-function serializeAccount(a: RawAccount) {
-  return {
-    ...a,
-    initialBalance: Number(a.initialBalance),
-    // Embedded (per-trade) account: realized P&L isn't aggregated here, so the
-    // current balance falls back to initial. The field exists to keep the shape
-    // aligned with accounts.list (the canonical source for sizing).
-    currentBalance: Number(a.initialBalance),
-    ddDailyPct:     a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
-    ddWeeklyPct:    a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
-    ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
-    ddTotalPct:     a.ddTotalPct  != null ? Number(a.ddTotalPct)  : null,
-    targetPct:      a.targetPct   != null ? Number(a.targetPct)   : null,
-    consistencyPct: a.consistencyPct != null ? Number(a.consistencyPct) : null,
-    lastSyncedBalance: a.lastSyncedBalance != null ? Number(a.lastSyncedBalance) : null,
-    lastSyncedAt:      a.lastSyncedAt != null ? a.lastSyncedAt.toISOString() : null,
-    createdAt:      a.createdAt.toISOString(),
-    updatedAt:      a.updatedAt.toISOString(),
-  }
-}
-
-function serializeTrade(t: RawTrade) {
-  return {
-    ...t,
-    entry:      Number(t.entry),
-    stop:       Number(t.stop),
-    target:     Number(t.target),
-    size:       Number(t.size),
-    pnl:        t.pnl        != null ? Number(t.pnl)        : null,
-    rMultiple:  t.rMultiple  != null ? Number(t.rMultiple)  : null,
-    closePrice: t.closePrice != null ? Number(t.closePrice) : null,
-    commission: t.commission != null ? Number(t.commission) : null,
-    // Trade-capture v3 (S2) decimals → numbers for the client (#27, #35).
-    riskPct:    t.riskPct    != null ? Number(t.riskPct)    : null,
-    maeR:       t.maeR       != null ? Number(t.maeR)       : null,
-    mfeR:       t.mfeR       != null ? Number(t.mfeR)       : null,
-    date:       (t.date as Date).toISOString().slice(0, 10),
-    createdAt:  t.createdAt.toISOString(),
-    updatedAt:  t.updatedAt.toISOString(),
-    account:    t.account ? serializeAccount(t.account) : null,
-    setup:      t.setup
-      ? {
-          ...t.setup,
-          createdAt: t.setup.createdAt.toISOString(),
-          updatedAt: t.setup.updatedAt.toISOString(),
-        }
-      : null,
-    events: t.events?.map(e => ({
-      ...e,
-      price:     e.price     != null ? Number(e.price)     : null,
-      contracts: e.contracts != null ? Number(e.contracts) : null,
-      timestamp: e.timestamp.toISOString(),
-    })) ?? [],
-  }
-}
-
-export type SerializedTrade = ReturnType<typeof serializeTrade>
+export type { SerializedTrade } from "@/server/services/trades/serializers"
 
 export const tradesRouter = router({
   list: protectedProcedure
