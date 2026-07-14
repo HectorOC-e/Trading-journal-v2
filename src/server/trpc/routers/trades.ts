@@ -28,29 +28,7 @@ import { AppError } from "@/lib/errors/app-error"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
-import { embedText } from "@/lib/ai/embeddings"
-import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
-
-/** UTC period boundaries derived from a "YYYY-MM-DD" trade date (HALLAZGO 1B). */
-/** Fire-and-forget: embed trade notes and store vector. Errors are silent. */
-function scheduleEmbedding(tradeId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
-  if (!notes.trim()) return
-  void (async () => {
-    try {
-      const emb = await resolveEmbeddingCall(prismaClient, userId)
-      if (emb.source === "none") return
-      const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
-      if (!vector) return
-      await prismaClient.$executeRaw`
-        UPDATE trades
-        SET notes_embedding = ${`[${vector.join(",")}]`}::vector
-        WHERE id = ${tradeId}::uuid
-      `
-    } catch {
-      // best-effort, never throw
-    }
-  })()
-}
+import { scheduleEmbedding, semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
 
 type DashboardOutput = {
   kpis:           KpiSummary
@@ -628,7 +606,7 @@ export const tradesRouter = router({
       })
 
       if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
+      scheduleEmbedding(ctx.prisma, ctx.userId, trade.id, input.notes ?? "")
       // Continuous eval of rule-backed commitments (S5, best-effort).
       await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
       return serializeTrade(full)
@@ -709,7 +687,7 @@ export const tradesRouter = router({
         }, (trade.date as Date).toISOString().slice(0, 10))
         if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
       }
-      if (input.notes !== undefined) scheduleEmbedding(trade.id, input.notes ?? "", ctx.userId, ctx.prisma)
+      if (input.notes !== undefined) scheduleEmbedding(ctx.prisma, ctx.userId, trade.id, input.notes ?? "")
       return serializeTrade(trade)
     }),
 
@@ -1013,74 +991,12 @@ export const tradesRouter = router({
       query: z.string().min(1).max(500),
       limit: z.number().int().min(1).max(20).default(10),
     }))
-    .query(async ({ ctx, input }) => {
-      const emb = await resolveEmbeddingCall(ctx.prisma, ctx.userId)
-      if (emb.source === "none") {
-        return { trades: [], similarity: [], error: "NO_EMBEDDING_KEY" as const }
-      }
-      const queryVector = await embedText(input.query, { model: emb.model, apiKey: emb.apiKey })
-      if (!queryVector) {
-        return { trades: [], similarity: [], error: "EMBED_FAILED" as const }
-      }
-
-      type SearchRow = { id: string; similarity: number }
-      const rows = await ctx.prisma.$queryRaw<SearchRow[]>`
-        SELECT id, (1 - (notes_embedding <=> ${`[${queryVector.join(",")}]`}::vector)) AS similarity
-        FROM trades
-        WHERE user_id = ${ctx.userId}::uuid
-          AND notes_embedding IS NOT NULL
-        ORDER BY notes_embedding <=> ${`[${queryVector.join(",")}]`}::vector
-        LIMIT ${input.limit}
-      `
-      if (!rows.length) return { trades: [], similarity: [] }
-
-      const tradeIds = rows.map(r => r.id)
-      const found = await ctx.prisma.trade.findMany({
-        where:   { id: { in: tradeIds }, userId: ctx.userId },
-        include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
-      })
-      const ordered = tradeIds
-        .map(id => found.find(t => t.id === id))
-        .filter((t): t is NonNullable<typeof t> => !!t)
-      return {
-        trades:     ordered.map(serializeTrade),
-        similarity: rows.map(r => r.similarity),
-      }
-    }),
+    .query(({ ctx, input }) => semanticSearch(ctx.prisma, ctx.userId, { query: input.query, limit: input.limit })),
 
   // Backfill: embed trade notes that were written before semantic search existed
   // (or before a key was configured). Idempotent — only touches rows whose notes
   // are non-empty and notes_embedding IS NULL. Call repeatedly until remaining=0.
   backfillEmbeddings: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(500).default(200) }).optional())
-    .mutation(async ({ ctx, input }) => {
-      const emb = await resolveEmbeddingCall(ctx.prisma, ctx.userId)
-      if (emb.source === "none") {
-        return { embedded: 0, failed: 0, remaining: 0, error: "NO_EMBEDDING_KEY" as const }
-      }
-      const limit = input?.limit ?? 200
-      const pending = await ctx.prisma.$queryRaw<{ id: string; notes: string }[]>`
-        SELECT id, notes FROM trades
-        WHERE user_id = ${ctx.userId}::uuid
-          AND notes <> ''
-          AND notes_embedding IS NULL
-        ORDER BY date DESC
-        LIMIT ${limit}
-      `
-      let embedded = 0, failed = 0
-      for (const t of pending) {
-        const vector = await embedText(t.notes, { model: emb.model, apiKey: emb.apiKey })
-        if (!vector) { failed++; continue }
-        await ctx.prisma.$executeRaw`
-          UPDATE trades SET notes_embedding = ${`[${vector.join(",")}]`}::vector
-          WHERE id = ${t.id}::uuid
-        `
-        embedded++
-      }
-      const remainingRows = await ctx.prisma.$queryRaw<{ remaining: number }[]>`
-        SELECT COUNT(*)::int AS remaining FROM trades
-        WHERE user_id = ${ctx.userId}::uuid AND notes <> '' AND notes_embedding IS NULL
-      `
-      return { embedded, failed, remaining: remainingRows[0]?.remaining ?? 0 }
-    }),
+    .mutation(({ ctx, input }) => backfillEmbeddings(ctx.prisma, ctx.userId, input?.limit ?? 200)),
 })
