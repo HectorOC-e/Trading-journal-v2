@@ -4,7 +4,6 @@ import { router, protectedProcedure } from "../init"
 import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
 import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
-import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 import { ensureTagRows } from "@/server/services/tags/seed"
 import { runRules } from "@/domains/rules/engine"
 import { evaluateBudgetGuard } from "@/domains/analytics/risk/budget-guard"
@@ -13,16 +12,14 @@ import { runIntervention } from "@/server/services/intervention/intervention-ser
 import { buildContext } from "@/domains/rules/context"
 import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
-import { feedbackForEmotion } from "@/domains/trading/services/emotion-feedback"
 import { AppError } from "@/lib/errors/app-error"
-import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
 import { scheduleEmbedding, semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
 
 import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
-import { VIOLATION_TAGS } from "@/types"
 
 import { serializeTrade } from "@/server/services/trades/serializers"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
+import { listTrades, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
 
@@ -36,51 +33,7 @@ export const tradesRouter = router({
       limit:     z.number().int().min(1).max(200).default(50),
       cursor:    z.string().uuid().optional(),
     }).optional())
-    .query(async ({ ctx, input }) => {
-      const limit = input?.limit ?? 50
-
-      let cursorDate: Date | null = null
-      if (input?.cursor) {
-        const cursorTrade = await ctx.prisma.trade.findUnique({
-          where: { id: input.cursor },
-          select: { date: true },
-        })
-        cursorDate = cursorTrade?.date ?? null
-      }
-
-      const trades = await ctx.prisma.trade.findMany({
-        where: {
-          userId: ctx.userId,
-          ...(input?.accountId && { accountId: input.accountId }),
-          ...(input?.setupId   && { setupId:   input.setupId }),
-          ...((input?.from || input?.to) ? {
-            date: {
-              ...(input?.from && { gte: new Date(input.from) }),
-              ...(input?.to   && { lte: new Date(input.to)   }),
-            },
-          } : {}),
-          ...(input?.cursor && cursorDate ? {
-            OR: [
-              { date: { lt: cursorDate } },
-              { date: cursorDate, id: { lt: input.cursor } },
-            ],
-          } : {}),
-        },
-        include: {
-          account: true,
-          setup:   true,
-          events:  { orderBy: { timestamp: "asc" } },
-        },
-        orderBy: [{ date: "desc" }, { id: "desc" }],
-        take: limit + 1,
-      })
-
-      const hasMore   = trades.length > limit
-      const items     = hasMore ? trades.slice(0, limit) : trades
-      const nextCursor = hasMore ? items[items.length - 1].id : null
-
-      return { items: items.map(serializeTrade), nextCursor }
-    }),
+    .query(({ ctx, input }) => listTrades(ctx.prisma, ctx.userId, input)),
 
   dashboardStats: protectedProcedure
     .input(z.object({
@@ -540,37 +493,7 @@ export const tradesRouter = router({
       from: z.string().optional(),
       to:   z.string().optional(),
     }).optional())
-    .query(async ({ ctx, input }) => {
-      const trades = await ctx.prisma.trade.findMany({
-        where: {
-          userId: ctx.userId,
-          tags:   { hasSome: [...VIOLATION_TAGS] },
-          ...((input?.from || input?.to) ? {
-            date: {
-              ...(input?.from && { gte: new Date(input.from) }),
-              ...(input?.to   && { lte: new Date(input.to)   }),
-            },
-          } : {}),
-        },
-        select: { tags: true, date: true },
-      })
-
-      const byTag = VIOLATION_TAGS.reduce((acc, tag) => ({
-        ...acc,
-        [tag]: trades.filter(t => (t.tags as string[]).includes(tag)).length,
-      }), {} as Record<string, number>)
-
-      const byMonthMap: Record<string, number> = {}
-      for (const t of trades) {
-        const monthKey = (t.date as Date).toISOString().slice(0, 7)
-        byMonthMap[monthKey] = (byMonthMap[monthKey] ?? 0) + 1
-      }
-      const byMonth = Object.entries(byMonthMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([month, count]) => ({ month, count }))
-
-      return { total: trades.length, byTag, byMonth }
-    }),
+    .query(({ ctx, input }) => getRuleViolationStats(ctx.prisma, ctx.userId, input)),
 
   saveChecklistResult: protectedProcedure
     .input(z.object({
@@ -620,53 +543,11 @@ export const tradesRouter = router({
   // minimum sample (handled in feedbackForEmotion) — no misleading small-n claim.
   emotionFeedback: protectedProcedure
     .input(z.object({ emotion: z.string().min(1) }))
-    .query(async ({ ctx, input }) => {
-      const rows = await ctx.prisma.trade.findMany({
-        where:  { userId: ctx.userId, status: "CLOSED", emotionBefore: input.emotion },
-        select: { emotionBefore: true, pnl: true, rMultiple: true },
-      })
-      const mapped = rows.map((t) => ({
-        emotionBefore: t.emotionBefore,
-        pnl:           t.pnl != null ? Number(t.pnl) : 0,
-        rMultiple:     t.rMultiple != null ? Number(t.rMultiple) : null,
-      }))
-      return feedbackForEmotion(mapped, input.emotion)
-    }),
+    .query(({ ctx, input }) => getEmotionFeedback(ctx.prisma, ctx.userId, input.emotion)),
 
   // T-VI-002: Behavioral pattern insights
   patternInsights: protectedProcedure
-    .query(async ({ ctx }) => {
-      const tradeRows = await ctx.prisma.trade.findMany({
-        where: { userId: ctx.userId, status: "CLOSED" },
-        select: {
-          id: true, accountId: true, symbol: true, direction: true,
-          session: true, openTime: true, closeTime: true,
-          pnl: true, rMultiple: true, tags: true, date: true,
-          setupId: true, entry: true, stop: true, target: true, size: true,
-        },
-        orderBy: [{ date: "asc" }],
-        take: 500,
-      })
-      const trades: MinimalTrade[] = tradeRows.map(t => ({
-        id:        t.id,
-        accountId: t.accountId,
-        symbol:    t.symbol,
-        direction: t.direction,
-        session:   t.session as string | null,
-        openTime:  t.openTime as string | null,
-        closeTime: t.closeTime as string | null,
-        pnl:       t.pnl        != null ? Number(t.pnl)        : 0,
-        rMultiple: t.rMultiple  != null ? Number(t.rMultiple)  : null,
-        tags:      t.tags        as string[],
-        date:      (t.date as Date).toISOString().slice(0, 10),
-        setupId:   t.setupId,
-        entry:     Number(t.entry),
-        stop:      Number(t.stop),
-        target:    Number(t.target),
-        size:      Number(t.size),
-      }))
-      return detectPatterns(trades)
-    }),
+    .query(({ ctx }) => getPatternInsights(ctx.prisma, ctx.userId)),
 
   // T-VI-004: Semantic search (pgvector)
   semanticSearch: protectedProcedure
