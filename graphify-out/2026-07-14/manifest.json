@@ -995,7 +995,7 @@
     "semantic_hash": "f68e3fa541434db215a57ad6de4749b2"
   },
   "src/app/reglas/page.tsx": {
-    "mtime": 1784038346.582674,
+    "mtime": 1783981185.482978,
     "ast_hash": "615fedd24242f6a41214c6e68e9564aa",
     "semantic_hash": ""
   },
@@ -1930,8 +1930,8 @@
     "semantic_hash": "c670f389d83297987dd2d704bbf99660"
   },
   "src/domains/rules/engine.ts": {
-    "mtime": 1784038346.5917594,
-    "ast_hash": "4abcc2e7dc8f4298d40c929290673d8d",
+    "mtime": 1783980857.108845,
+    "ast_hash": "7c9e8745f133cc39b7dd3c8b5ab3d05b",
     "semantic_hash": ""
   },
   "src/domains/rules/fields.ts": {
@@ -1955,8 +1955,8 @@
     "semantic_hash": "9b6025fc6db724c7852ca5a9a28f455e"
   },
   "src/domains/rules/unification.ts": {
-    "mtime": 1784038346.5964942,
-    "ast_hash": "f702cc034261a0605f4485be0a39954d",
+    "mtime": 1783981286.668491,
+    "ast_hash": "344db46cd4a3b6c0118c73d97f9664b0",
     "semantic_hash": ""
   },
   "src/domains/trading/account-reality.ts": {
@@ -2720,7 +2720,7 @@
     "semantic_hash": "3546ad236c67de9ab435a3313a540f0d"
   },
   "src/server/trpc/root.ts": {
-    "mtime": 1784038346.5964942,
+    "mtime": 1783981274.6432197,
     "ast_hash": "9e2cdde5ba3e092d036ee8198da79012",
     "semantic_hash": ""
   },
@@ -2840,8 +2840,8 @@
     "semantic_hash": "90962f03b0b4d143e27366154cf35bb2"
   },
   "src/server/trpc/routers/rules.ts": {
-    "mtime": 1784038346.600748,
-    "ast_hash": "f4fb3acd14e393336c9ff65d9f3e76d0",
+    "mtime": 1783981073.9185662,
+    "ast_hash": "ebc0f8587380f7a50fa8e2cb3cde4860",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/setups.ts": {
@@ -2865,8 +2865,8 @@
     "semantic_hash": "a563b95bab42bd0cec13b2f5f0244969"
   },
   "src/server/trpc/routers/trades.ts": {
-    "mtime": 1784039821.705954,
-    "ast_hash": "17e42e54ffb2a2a0c984866cfcc9d973",
+    "mtime": 1783980884.9746585,
+    "ast_hash": "a71f5e23ac7c698d0dce4ef0174a4505",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trading-sessions.ts": {
@@ -3505,12 +3505,12 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1784038346.4483516,
+    "mtime": 1783981726.7802787,
     "ast_hash": "2bdcd182a92a158a9d27bfc615d778ac",
     "semantic_hash": ""
   },
   "docs/PROJECT_GUIDE.md": {
-    "mtime": 1784038346.4543805,
+    "mtime": 1783981719.2053423,
     "ast_hash": "964cca7c2f3f0537c493371f2d36fcec",
     "semantic_hash": ""
   },
@@ -3590,8 +3590,8 @@
     "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
   },
   "docs/STATUS.md": {
-    "mtime": 1784038346.4543805,
-    "ast_hash": "607790a908777896102ab668f486761d",
+    "mtime": 1783981700.7757325,
+    "ast_hash": "307c47a01a97460fc41551f4c01618f6",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -3640,48 +3640,18 @@
     "semantic_hash": ""
   },
   "src/domains/rules/rule-write.ts": {
-    "mtime": 1784038346.5917594,
-    "ast_hash": "d9c96f08a3f0d4f8b3d4490f3b30d9e1",
+    "mtime": 1783980961.3421407,
+    "ast_hash": "eab2a0c23b6c838a1ad6e8a3b34e0706",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-13-g2-rules-cutover.md": {
-    "mtime": 1784038346.4543805,
-    "ast_hash": "3d537491776ddb26d8e989bedbdba1cd",
+    "mtime": 1783980112.182038,
+    "ast_hash": "c82bf6cd44fb294e0231dfa6b30cc8da",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-07-13-g2-rules-cutover-design.md": {
-    "mtime": 1784038346.4543805,
-    "ast_hash": "aaebcc348b8188772877b602ec2e9ac7",
-    "semantic_hash": ""
-  },
-  "src/server/services/trades/dashboard-service.ts": {
-    "mtime": 1784039300.5282507,
-    "ast_hash": "ad1b567c8d9253b7456f7a5118debddb",
-    "semantic_hash": ""
-  },
-  "src/server/services/trades/embedding-service.ts": {
-    "mtime": 1784039119.6521335,
-    "ast_hash": "15dbfeee9787f65aa24a66c6bce90986",
-    "semantic_hash": ""
-  },
-  "src/server/services/trades/serializers.ts": {
-    "mtime": 1784039008.3526895,
-    "ast_hash": "6eef63b9d96e808a818804a5d8f68d79",
-    "semantic_hash": ""
-  },
-  "src/server/services/trades/trade-read-service.ts": {
-    "mtime": 1784039427.027093,
-    "ast_hash": "8c55ac3c166dd36362719018fa0b7952",
-    "semantic_hash": ""
-  },
-  "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1784039791.8865857,
-    "ast_hash": "5f37d3f50b34562f699a962732254521",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
-    "mtime": 1784038938.8345597,
-    "ast_hash": "557a4a34d713d6620a75a7291dcb0ab3",
+    "mtime": 1783980141.3840096,
+    "ast_hash": "3d5cf89a2dfbf67dbc83cc172945fc33",
     "semantic_hash": ""
   }
 }
