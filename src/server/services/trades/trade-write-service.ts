@@ -18,6 +18,8 @@ import { ensureTagRows } from "@/server/services/tags/seed"
 import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { AppError } from "@/lib/errors/app-error"
+import { computeClosedTradePnl, computeRMultiple, parsePointValue } from "@/domains/trading/services/trade-service"
+import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { serializeTrade, type SerializedTrade } from "./serializers"
 import { scheduleEmbedding } from "./embedding-service"
 
@@ -216,4 +218,155 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   // Continuous eval of rule-backed commitments (S5, best-effort).
   await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
   return serializeTrade(full)
+}
+
+export type UpdateTradeInput = {
+  id:                string
+  notes?:            string
+  tags?:             string[]
+  pnl?:              number
+  rMultiple?:        number
+  screenshotUrls?:   string[]
+  entry?:            number
+  stop?:             number
+  target?:           number
+  size?:             number
+  session?:          string
+  setupId?:          string | null
+  emotionBefore?:    "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
+  confidenceRating?: number | null
+  executionQuality?: number | null
+  fomoFlag?:         boolean
+  revengeFlag?:      boolean
+  planNotes?:        string | null
+  maeR?:             number | null
+  mfeR?:             number | null
+  regime?:           "trend" | "range" | "volatile" | null
+}
+
+export async function updateTrade(prisma: PrismaClient, userId: string, input: UpdateTradeInput): Promise<SerializedTrade> {
+  const { id, ...data } = input
+  const trade = await prisma.trade.update({
+    where: { id, userId },
+    data,
+    include: { account: true, setup: true, events: true },
+  })
+  if (input.tags?.length) await ensureTagRows(prisma, userId, input.tags)
+
+  // User automations — post-update (best-effort; never break the write).
+  try {
+    const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
+    const dateStr = (trade.date as Date).toISOString().slice(0, 10)
+    const postRules = await runRules(prisma, userId, postTrigger, () =>
+      buildContext(prisma, userId, { id: trade.accountId, initialBalance: Number(trade.account.initialBalance) }, {
+        symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
+        setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
+        tags: trade.tags as string[], date: dateStr,
+        pnl: trade.pnl != null ? Number(trade.pnl) : null,
+        rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
+      }),
+    )
+    if (postRules.addTags.length || postRules.removeTags.length) {
+      const newTags = [...new Set([...(trade.tags as string[]), ...postRules.addTags])].filter((t) => !postRules.removeTags.includes(t))
+      await prisma.trade.update({ where: { id: trade.id }, data: { tags: newTags } })
+      if (postRules.addTags.length) await ensureTagRows(prisma, userId, postRules.addTags)
+    }
+  } catch (err) {
+    console.warn("[rules] post-update automations failed:", err instanceof Error ? err.message : err)
+  }
+
+  // Editing realized P&L can push the account over a limit → re-evaluate lock.
+  if (input.pnl !== undefined) {
+    const a = trade.account
+    await evaluateAndLock(prisma, userId, {
+      id:             a.id,
+      type:           a.type,
+      ddModel:        a.ddModel,
+      ddDailyPct:     a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
+      ddWeeklyPct:    a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
+      ddMonthlyPct:   a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
+      ddTotalPct:     a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
+      initialBalance: Number(a.initialBalance),
+      locked:         a.locked,
+      lockReason:     a.lockReason,
+    }, (trade.date as Date).toISOString().slice(0, 10))
+    if (isCacheEnabled()) await invalidateCache(prisma, userId)
+  }
+  if (input.notes !== undefined) scheduleEmbedding(prisma, userId, trade.id, input.notes ?? "")
+  return serializeTrade(trade)
+}
+
+export type CloseTradeInput = {
+  id:         string
+  closePrice: number
+  closeTime?: string
+  commission: number
+  maeR?:      number | null
+  mfeR?:      number | null
+  regime?:    "trend" | "range" | "volatile" | null
+}
+
+export async function closeTrade(prisma: PrismaClient, userId: string, input: CloseTradeInput) {
+  const trade = await prisma.trade.findUniqueOrThrow({
+    where: { id: input.id, userId },
+  })
+  const entry               = Number(trade.entry)
+  const size                = Number(trade.size)
+  // Dollar P&L needs the instrument's point value (e.g. NQ = $20/pt); without
+  // it, futures/FX P&L is wrong by that factor. Look it up from the user's
+  // market catalog by symbol; default to 1 when no market is registered.
+  const market              = await prisma.market.findFirst({
+    where:  { userId, symbol: trade.symbol },
+    select: { pointValue: true },
+  })
+  const pointValue          = parsePointValue(market?.pointValue)
+  const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission, pointValue)
+  const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size, pointValue)
+
+  const updated = await prisma.trade.update({
+    where:   { id: input.id, userId },
+    data:    {
+      status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission: input.commission, pnl: netPnl, rMultiple,
+      // Capture v3 (S2): persist excursions/regime only when provided (don't clobber with null).
+      ...(input.maeR != null ? { maeR: input.maeR } : {}),
+      ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
+      ...(input.regime != null ? { regime: input.regime } : {}),
+    },
+    include: { account: true, setup: true, events: true },
+  })
+
+  // ── Post-trade risk evaluation (all account types) ────────────────────
+  // Closing a trade realizes P&L that may breach any limit. Temporal limits
+  // lock until their period rolls over; total drawdown locks permanently.
+  const acct = await prisma.account.findUnique({
+    where:  { id: trade.accountId },
+    select: {
+      type: true, ddModel: true,
+      ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
+      initialBalance: true, locked: true, lockReason: true,
+    },
+  })
+  let breach: Awaited<ReturnType<typeof evaluateAndLock>> = null
+  if (acct) {
+    breach = await evaluateAndLock(prisma, userId, {
+      id:             trade.accountId,
+      type:           acct.type,
+      ddModel:        acct.ddModel,
+      ddDailyPct:     acct.ddDailyPct   != null ? Number(acct.ddDailyPct)   : null,
+      ddWeeklyPct:    acct.ddWeeklyPct  != null ? Number(acct.ddWeeklyPct)  : null,
+      ddMonthlyPct:   acct.ddMonthlyPct != null ? Number(acct.ddMonthlyPct) : null,
+      ddTotalPct:     acct.ddTotalPct   != null ? Number(acct.ddTotalPct)   : null,
+      initialBalance: Number(acct.initialBalance),
+      locked:         acct.locked,
+      lockReason:     acct.lockReason,
+    }, (trade.date as Date).toISOString().slice(0, 10))
+  }
+
+  if (isCacheEnabled()) await invalidateCache(prisma, userId)
+  // Continuous eval of rule-backed commitments (S5, best-effort).
+  await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
+  // S7 fast-path: realize losses → run the intervention engine (best-effort, ≤2s).
+  // The row is persisted here; the client reads it via intervention.active.
+  await runIntervention(prisma, userId, trade.accountId, (trade.date as Date).toISOString().slice(0, 10)).catch(() => {})
+  return { trade: serializeTrade(updated), accountLocked: breach != null, lockReason: breach?.reason ?? null }
 }

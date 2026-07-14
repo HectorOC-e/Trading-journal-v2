@@ -15,7 +15,7 @@ import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/an
 import { serializeTrade } from "@/server/services/trades/serializers"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
 import { listTrades, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
-import { createTrade } from "@/server/services/trades/trade-write-service"
+import { createTrade, updateTrade, closeTrade } from "@/server/services/trades/trade-write-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
 
@@ -108,57 +108,7 @@ export const tradesRouter = router({
       mfeR:             z.number().optional().nullable(),
       regime:           z.enum(["trend", "range", "volatile"]).optional().nullable(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input
-      const trade = await ctx.prisma.trade.update({
-        where: { id, userId: ctx.userId },
-        data,
-        include: { account: true, setup: true, events: true },
-      })
-      if (input.tags?.length) await ensureTagRows(ctx.prisma, ctx.userId, input.tags)
-
-      // User automations — post-update (best-effort; never break the write).
-      try {
-        const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
-        const dateStr = (trade.date as Date).toISOString().slice(0, 10)
-        const postRules = await runRules(ctx.prisma, ctx.userId, postTrigger, () =>
-          buildContext(ctx.prisma, ctx.userId, { id: trade.accountId, initialBalance: Number(trade.account.initialBalance) }, {
-            symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
-            setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
-            tags: trade.tags as string[], date: dateStr,
-            pnl: trade.pnl != null ? Number(trade.pnl) : null,
-            rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
-          }),
-        )
-        if (postRules.addTags.length || postRules.removeTags.length) {
-          const newTags = [...new Set([...(trade.tags as string[]), ...postRules.addTags])].filter((t) => !postRules.removeTags.includes(t))
-          await ctx.prisma.trade.update({ where: { id: trade.id }, data: { tags: newTags } })
-          if (postRules.addTags.length) await ensureTagRows(ctx.prisma, ctx.userId, postRules.addTags)
-        }
-      } catch (err) {
-        console.warn("[rules] post-update automations failed:", err instanceof Error ? err.message : err)
-      }
-
-      // Editing realized P&L can push the account over a limit → re-evaluate lock.
-      if (input.pnl !== undefined) {
-        const a = trade.account
-        await evaluateAndLock(ctx.prisma, ctx.userId, {
-          id:             a.id,
-          type:           a.type,
-          ddModel:        a.ddModel,
-          ddDailyPct:     a.ddDailyPct   != null ? Number(a.ddDailyPct)   : null,
-          ddWeeklyPct:    a.ddWeeklyPct  != null ? Number(a.ddWeeklyPct)  : null,
-          ddMonthlyPct:   a.ddMonthlyPct != null ? Number(a.ddMonthlyPct) : null,
-          ddTotalPct:     a.ddTotalPct   != null ? Number(a.ddTotalPct)   : null,
-          initialBalance: Number(a.initialBalance),
-          locked:         a.locked,
-          lockReason:     a.lockReason,
-        }, (trade.date as Date).toISOString().slice(0, 10))
-        if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      }
-      if (input.notes !== undefined) scheduleEmbedding(ctx.prisma, ctx.userId, trade.id, input.notes ?? "")
-      return serializeTrade(trade)
-    }),
+    .mutation(({ ctx, input }) => updateTrade(ctx.prisma, ctx.userId, input)),
 
   close: protectedProcedure
     .input(z.object({
@@ -171,70 +121,7 @@ export const tradesRouter = router({
       mfeR:       z.number().optional().nullable(),
       regime:     z.enum(["trend", "range", "volatile"]).optional().nullable(),
     }))
-    .mutation(async ({ ctx, input }) => {
-      const trade = await ctx.prisma.trade.findUniqueOrThrow({
-        where: { id: input.id, userId: ctx.userId },
-      })
-      const entry               = Number(trade.entry)
-      const size                = Number(trade.size)
-      // Dollar P&L needs the instrument's point value (e.g. NQ = $20/pt); without
-      // it, futures/FX P&L is wrong by that factor. Look it up from the user's
-      // market catalog by symbol; default to 1 when no market is registered.
-      const market              = await ctx.prisma.market.findFirst({
-        where:  { userId: ctx.userId, symbol: trade.symbol },
-        select: { pointValue: true },
-      })
-      const pointValue          = parsePointValue(market?.pointValue)
-      const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission, pointValue)
-      const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size, pointValue)
-
-      const updated = await ctx.prisma.trade.update({
-        where:   { id: input.id, userId: ctx.userId },
-        data:    {
-          status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission: input.commission, pnl: netPnl, rMultiple,
-          // Capture v3 (S2): persist excursions/regime only when provided (don't clobber with null).
-          ...(input.maeR != null ? { maeR: input.maeR } : {}),
-          ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
-          ...(input.regime != null ? { regime: input.regime } : {}),
-        },
-        include: { account: true, setup: true, events: true },
-      })
-
-      // ── Post-trade risk evaluation (all account types) ────────────────────
-      // Closing a trade realizes P&L that may breach any limit. Temporal limits
-      // lock until their period rolls over; total drawdown locks permanently.
-      const acct = await ctx.prisma.account.findUnique({
-        where:  { id: trade.accountId },
-        select: {
-          type: true, ddModel: true,
-          ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
-          initialBalance: true, locked: true, lockReason: true,
-        },
-      })
-      let breach: Awaited<ReturnType<typeof evaluateAndLock>> = null
-      if (acct) {
-        breach = await evaluateAndLock(ctx.prisma, ctx.userId, {
-          id:             trade.accountId,
-          type:           acct.type,
-          ddModel:        acct.ddModel,
-          ddDailyPct:     acct.ddDailyPct   != null ? Number(acct.ddDailyPct)   : null,
-          ddWeeklyPct:    acct.ddWeeklyPct  != null ? Number(acct.ddWeeklyPct)  : null,
-          ddMonthlyPct:   acct.ddMonthlyPct != null ? Number(acct.ddMonthlyPct) : null,
-          ddTotalPct:     acct.ddTotalPct   != null ? Number(acct.ddTotalPct)   : null,
-          initialBalance: Number(acct.initialBalance),
-          locked:         acct.locked,
-          lockReason:     acct.lockReason,
-        }, (trade.date as Date).toISOString().slice(0, 10))
-      }
-
-      if (isCacheEnabled()) await invalidateCache(ctx.prisma, ctx.userId)
-      // Continuous eval of rule-backed commitments (S5, best-effort).
-      await evaluateRuledCommitmentsOnTrade(ctx.prisma, ctx.userId).catch(() => {})
-      // S7 fast-path: realize losses → run the intervention engine (best-effort, ≤2s).
-      // The row is persisted here; the client reads it via intervention.active.
-      await runIntervention(ctx.prisma, ctx.userId, trade.accountId, (trade.date as Date).toISOString().slice(0, 10)).catch(() => {})
-      return { trade: serializeTrade(updated), accountLocked: breach != null, lockReason: breach?.reason ?? null }
-    }),
+    .mutation(({ ctx, input }) => closeTrade(ctx.prisma, ctx.userId, input)),
 
   addEvent: protectedProcedure
     .input(z.object({
