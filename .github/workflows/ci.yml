@@ -135,6 +135,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: src/pnpm-lock.yaml
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -145,6 +157,20 @@ jobs:
 
       - name: Replay from zero (db reset)
         run: supabase db reset
+
+      - name: Check Prisma↔SQL drift (S0/DT-4)
+        run: |
+          # Verify that schema.prisma matches the applied migrations (drift detection).
+          # supabase db push --dry-run with the local stack's DB URL exits 0 if no changes needed.
+          supabase status | grep -i "db url"
+          # Extract the local DB URL from supabase status output
+          LOCAL_DB_URL=$(supabase status | grep "DB URL:" | awk -F': ' '{print $2}')
+          if [ -z "$LOCAL_DB_URL" ]; then
+            echo "::error::Could not extract local DB URL from supabase status"
+            exit 1
+          fi
+          echo "Testing drift against: $LOCAL_DB_URL"
+          supabase db push --db-url "$LOCAL_DB_URL" --dry-run
 
       - name: Stop local stack
         if: always()
