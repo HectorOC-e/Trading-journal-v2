@@ -279,7 +279,7 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 |---|---|---|---|---|
 | `TD-018` | Extraer lógica de negocio inline del router `trades.ts` (~924 LOC) a `trade-service` | Refactor | P3 | ✅ resuelto — 2026-07-14: orquestación extraída a `src/server/services/trades/` (serializers, embedding-service, dashboard-service, trade-read-service, trade-write-service); el router quedó en 180 LOC (zod + delegación). El **cálculo** ya vivía en `domains/` (deuda sobre-estimada en ese eje, como anticipaba §1). `dashboardStats` ganó su primer test directo (partición practice). Suite 1168/1168 + tsc + eslint. |
 | `TD-019` | Cliente Supabase creado por-request en el contexto tRPC | Refactor/infra | P3 | ✅ resuelto — 2026-07-16: la deuda estaba **mal caracterizada**. `ctx.supabase` es un cliente HTTP stateless de `@supabase/ssr`, no una conexión a Postgres: no hay pool que gestionar (Prisma ya maneja el suyo). El costo real era `auth.getUser()` en `createTRPCContext()`, un round-trip de red al Auth server en **cada** llamada tRPC. Sustituido por `getClaims()`, que verifica la firma ES256 del JWT contra el JWKS que auth-js cachea process-wide (10 min) → sin red en proceso caliente. Verificado que el proyecto usa claves asimétricas (JWKS expone ES256); con el secreto legacy HS256 `getClaims()` habría hecho fallback a red y no habría servido de nada. Mismo cambio aplicado al gate de auth de páginas (`proxy.ts`, que en Next 16 reemplaza a `middleware.ts` y corre en runtime Node): el refresh de sesión se preserva porque `getClaims()` sigue pasando por `getSession()`, que rota el token expirado y reescribe las cookies. De paso se eliminó código muerto en `proxy.ts` (header de respuesta `x-user-id` que nadie leía y que habría sido un bypass spoofeable si se cableaba). |
-| `TD-037` | ~22 efectos "sync-on-open" (setState sincrónico en effect) | Refactor render | P3 | ⬜ sin verificar — requiere auditoría manual de los efectos, no verificable de forma fiable con un grep simple |
+| `TD-037` | ~22 efectos "sync-on-open" (setState sincrónico en effect) | Refactor render | P3 | ⬜ abierto, **dimensionado** 2026-07-16 — sigue sin auditarse a mano, pero medido: **13** efectos con `setState` y `open` en las deps, en 10 archivos (`market-select` ×3, `ai-coach-drawer` ×2, `register-trade-modal`, `command-palette`, `spotlight-tour`, `notification-bell`, `add-edit-resource-modal`, `reviews-calendar-filter`, `retiros`, `mercados`); y **48** `setState`-en-effect en total sobre 31 archivos. Menos que el "~22" original, así que parte pudo cerrarse sola. Cifra orientativa: la heurística no distingue el patrón problemático del legítimo. |
 | `DataTable dev render loop` | Re-render infinito solo en dev; columnas responsivas solo en build prod. No afecta prod. Pre-existente a v3. | Bug conocido (dev-only) | — | ⬜ sin verificar |
 
 ## 4. Backlog
@@ -291,10 +291,10 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| `B-01` | Generar iconos PWA PNG (192/512) y verificar `apple-touch-icon` en iOS | S | ⬜ sin verificar |
-| `B-02` | Añadir `eslint` como gate de CI | S | ⬜ sin verificar |
-| `B-03` | E2E Playwright en CI (smoke tests ya scaffolded) | M | ⬜ sin verificar |
-| `B-04` | Wire de error tracker (Sentry) para runtime | M | ⬜ sin verificar |
+| `B-01` | Generar iconos PWA PNG (192/512) y verificar `apple-touch-icon` en iOS | S | ✅ hecho (verificado 2026-07-16) — `src/public/icons/` tiene `icon-192.png`, `icon-512.png` y `apple-touch-icon.png`. Queda sin verificar solo el render en iOS real. |
+| `B-02` | Añadir `eslint` como gate de CI | S | 🔴 **abierto y confirmado** (2026-07-16) — el job `Type check, Tests & Build` corre `tsc --noEmit`, `pnpm test` y `build`, pero **no** eslint. Se puede mergear código que no lintea. Brecha real y barata de cerrar (un step). |
+| `B-03` | E2E Playwright en CI (smoke tests ya scaffolded) | M | ✅ hecho (verificado 2026-07-16) — job `E2E (authenticated)` corre y pasa 10/10 contra el usuario QA sembrado; los specs se auto-skipean si faltan `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, pero los secrets están puestos, así que sí ejercita el flujo real. |
+| `B-04` | Wire de error tracker (Sentry) para runtime | M | ⬜ abierto (verificado 2026-07-16) — no hay dependencia de Sentry en `src/package.json`. |
 | `B-05` | Test de carga a 1000+ trades; activar/medir `TradeStatsCache` | M | ⬜ sin verificar |
 
 **P2 — Deseable**
@@ -311,7 +311,7 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 
 | ID | Tarea | Esfuerzo | Estado |
 |---|---|---|---|
-| `B-11` | Implementar features IA configurables pero no consumidas (trade/psychology/learning analysis) | L | ⬜ sin verificar |
+| `B-11` | Implementar features IA configurables pero no consumidas (trade/psychology/learning analysis) | L | 🟡 **abierto y re-caracterizado** (verificado 2026-07-16) — el título estaba **mal en dos ejes**. `psychology_analysis` **sí** se consume (`lib/ai/psychology-insights-service.ts:39`), y el doc **omitía** `review_generation`. Las realmente inertes son **3**: `trade_analysis`, `review_generation` y `learning_insights` — no las referencia ningún servicio, solo aparecen en la definición (`lib/ai/feature-models.ts:8`) y en la UI de ajustes. Y como `ai-models-card.tsx:204` itera `AI_FEATURES` completo, **el usuario ve y configura 3 perillas que no hacen nada** ("Análisis de trades", "Generación de reviews", "Insights de aprendizaje"). Las otras 5 sí se consumen. Fix barato = ocultar las 3 en la UI; fix caro = implementarlas. |
 | `B-12` | `AiUsageLog` (tracking de uso/costo IA) | M | ⬜ sin verificar |
 | `B-13` | Soporte multi-divisa | L | ⬜ sin verificar |
 | `B-14` | Integración con API de brokers (import automático) | L | ⬜ sin verificar |

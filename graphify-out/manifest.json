@@ -2470,9 +2470,9 @@
     "semantic_hash": "34e3c633d07398a244a9b3e91b291910"
   },
   "src/proxy.ts": {
-    "mtime": 1782318306.320655,
-    "ast_hash": "c6c16842af37b2e4e88c91cd6dff11a3",
-    "semantic_hash": "c6c16842af37b2e4e88c91cd6dff11a3"
+    "mtime": 1784240720.3395128,
+    "ast_hash": "8b36266b608d06d4f0e550084a4dc066",
+    "semantic_hash": ""
   },
   "src/public/manifest.json": {
     "mtime": 1780680267.6134467,
@@ -2715,9 +2715,9 @@
     "semantic_hash": "42f884fed854ebbee9ebfcc04887a322"
   },
   "src/server/trpc/init.ts": {
-    "mtime": 1780680267.6164472,
-    "ast_hash": "3546ad236c67de9ab435a3313a540f0d",
-    "semantic_hash": "3546ad236c67de9ab435a3313a540f0d"
+    "mtime": 1784240720.3415136,
+    "ast_hash": "69ac2ddd4846364a0f62fb4f24a08a62",
+    "semantic_hash": ""
   },
   "src/server/trpc/root.ts": {
     "mtime": 1784038346.5964942,
@@ -2865,9 +2865,9 @@
     "semantic_hash": "a563b95bab42bd0cec13b2f5f0244969"
   },
   "src/server/trpc/routers/trades.ts": {
-    "mtime": 1784039821.705954,
-    "ast_hash": "17e42e54ffb2a2a0c984866cfcc9d973",
-    "semantic_hash": "17e42e54ffb2a2a0c984866cfcc9d973"
+    "mtime": 1784234580.9134731,
+    "ast_hash": "ff288e1f0f626a4cdfa7377d984c922b",
+    "semantic_hash": ""
   },
   "src/server/trpc/routers/trading-sessions.ts": {
     "mtime": 1780680267.620025,
@@ -3490,9 +3490,9 @@
     "semantic_hash": "b698cdd97fe8e3bd16dcd74899ad7cef"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1784070481.3063457,
-    "ast_hash": "8f75b3caf8d8b15c94a763b33b1916e6",
-    "semantic_hash": "8f75b3caf8d8b15c94a763b33b1916e6"
+    "mtime": 1784234580.8428116,
+    "ast_hash": "c305a5ef171bf4a0cd43d3d3443ca71f",
+    "semantic_hash": ""
   },
   "README.md": {
     "mtime": 1783697108.2544186,
@@ -3505,7 +3505,7 @@
     "semantic_hash": "9d50ab38126195299fc57d9aab2a4311"
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1784070420.5167825,
+    "mtime": 1784234580.8437304,
     "ast_hash": "8daa4b60f5372a7c72150da43046c89f",
     "semantic_hash": "8daa4b60f5372a7c72150da43046c89f"
   },
@@ -3590,9 +3590,9 @@
     "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
   },
   "docs/STATUS.md": {
-    "mtime": 1784070406.0796223,
-    "ast_hash": "71584f870d9efb4970de791efa38e563",
-    "semantic_hash": "71584f870d9efb4970de791efa38e563"
+    "mtime": 1784241594.608663,
+    "ast_hash": "f01712df6c76612e29678d186fef7b92",
+    "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
     "mtime": 1783969720.2353249,
@@ -3655,33 +3655,38 @@
     "semantic_hash": "aaebcc348b8188772877b602ec2e9ac7"
   },
   "src/server/services/trades/dashboard-service.ts": {
-    "mtime": 1784039300.5282507,
-    "ast_hash": "ad1b567c8d9253b7456f7a5118debddb",
-    "semantic_hash": "ad1b567c8d9253b7456f7a5118debddb"
+    "mtime": 1784234580.9083018,
+    "ast_hash": "d62c29453444e8cd947b45ee656ce572",
+    "semantic_hash": ""
   },
   "src/server/services/trades/embedding-service.ts": {
-    "mtime": 1784039119.6521335,
-    "ast_hash": "15dbfeee9787f65aa24a66c6bce90986",
-    "semantic_hash": "15dbfeee9787f65aa24a66c6bce90986"
+    "mtime": 1784234580.9083018,
+    "ast_hash": "8233658cb90416f5d047b399c1773c0c",
+    "semantic_hash": ""
   },
   "src/server/services/trades/serializers.ts": {
-    "mtime": 1784039008.3526895,
-    "ast_hash": "6eef63b9d96e808a818804a5d8f68d79",
-    "semantic_hash": "6eef63b9d96e808a818804a5d8f68d79"
+    "mtime": 1784234580.9093158,
+    "ast_hash": "9816c12accbbbd62f0132e6b4b0ec6c9",
+    "semantic_hash": ""
   },
   "src/server/services/trades/trade-read-service.ts": {
-    "mtime": 1784039427.027093,
-    "ast_hash": "8c55ac3c166dd36362719018fa0b7952",
-    "semantic_hash": "8c55ac3c166dd36362719018fa0b7952"
+    "mtime": 1784234580.9113476,
+    "ast_hash": "a3e4b29e3bb56c722d3e57f99aac8c91",
+    "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1784039791.8865857,
-    "ast_hash": "5f37d3f50b34562f699a962732254521",
-    "semantic_hash": "5f37d3f50b34562f699a962732254521"
+    "mtime": 1784234580.9124606,
+    "ast_hash": "8fc302c7d0d854e313538140a09e5893",
+    "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
-    "mtime": 1784038938.8345597,
-    "ast_hash": "557a4a34d713d6620a75a7291dcb0ab3",
-    "semantic_hash": "557a4a34d713d6620a75a7291dcb0ab3"
+    "mtime": 1784234580.8467524,
+    "ast_hash": "3aa47b667081e800cdfee43c7e33df17",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/handoffs/2026-07-14-graphify-recovery-resume.md": {
+    "mtime": 1784234580.8457537,
+    "ast_hash": "9bc7f3eb373ca66fc92c29e189b23207",
+    "semantic_hash": ""
   }
 }
