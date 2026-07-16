@@ -252,9 +252,21 @@ contra código mostró que A4/C1/C2/A2-SRS estaban parcial/mayormente construido
 
 Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial de git).
 
-- 🔴 **Agendar el cron del digest cognitivo (C4).** La ruta `/api/cron/cognitive-digest` existe y
-  funciona, pero **no está programada**. Sin schedule, el digest semanal no se dispara. Falta añadir
-  en Supabase: pg_cron → pg_net → la ruta, con `Bearer CRON_SECRET` (igual que los demás crons).
+- ✅ **Agendar el cron del digest cognitivo (C4).** — **YA HECHO**; esta entrada estaba obsoleta.
+  La migración `20260710120000_schedule_cognitive_digest.sql` (2026-07-10) lo agendó y CI la aplicó
+  a producción. Verificado contra prod el 2026-07-16: `cron.job` tiene `v3-cognitive-digest`
+  (`0 6 * * 1`, `active = true`), aplicada según `supabase_migrations.schema_migrations`, y
+  `cron.job_run_details` registra una corrida `succeeded` el lunes 2026-07-13 06:00 UTC.
+  `app_settings` (app_url + cron_secret) está bien configurado: el resto de los crons devuelve 200
+  en `net._http_response`.
+
+  **Ojo — no emite nada todavía, y es correcto:** no hay ninguna notificación con
+  `dedupe_key like 'cognitive-digest%'` porque `buildCognitiveDigest` marca `hasContent = false`
+  en semanas vacías (P3/P4: no molestar). Con los datos actuales de prod las tres fuentes están
+  vacías: `improvement_scores` lleva 7 días idéntico (65.0744…, delta = 0), `commitment_checks` = 0
+  en 14 días, y `memory_patterns` = 0. Con un trader realmente activo el delta se movería y sí
+  dispararía. Consecuencia práctica: el digest está vivo pero **dormido** hasta que haya actividad
+  real — no confundir su silencio con una falla.
 - 🟡 **Protección de contraseñas filtradas en Supabase Auth.** TODO del audit de seguridad — toggle
   en el dashboard de Auth, no migrable por código.
 
