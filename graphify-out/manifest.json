@@ -837,12 +837,12 @@
   "src/app/cuentas/modals/create-account-modal.tsx": {
     "mtime": 1783969720.2353249,
     "ast_hash": "9db3fcb220bf9a53785b830a62aa1e94",
-    "semantic_hash": ""
+    "semantic_hash": "9db3fcb220bf9a53785b830a62aa1e94"
   },
   "src/app/cuentas/modals/edit-account-modal.tsx": {
     "mtime": 1783969720.2353249,
     "ast_hash": "be8c286a669ee1dc79ac629d763ec08f",
-    "semantic_hash": ""
+    "semantic_hash": "be8c286a669ee1dc79ac629d763ec08f"
   },
   "src/app/cuentas/modals/promote-phase-modal.tsx": {
     "mtime": 1780680267.5403817,
@@ -877,7 +877,7 @@
   "src/app/dashboard/components/prop-firm-rules.tsx": {
     "mtime": 1783969720.2353249,
     "ast_hash": "daa68fce799420e040540b615da37d8a",
-    "semantic_hash": ""
+    "semantic_hash": "daa68fce799420e040540b615da37d8a"
   },
   "src/app/dashboard/components/shared.ts": {
     "mtime": 1780680267.5403817,
@@ -997,7 +997,7 @@
   "src/app/reglas/page.tsx": {
     "mtime": 1784038346.582674,
     "ast_hash": "615fedd24242f6a41214c6e68e9564aa",
-    "semantic_hash": ""
+    "semantic_hash": "615fedd24242f6a41214c6e68e9564aa"
   },
   "src/app/retiros/page.tsx": {
     "mtime": 1781884172.8683736,
@@ -1742,7 +1742,7 @@
   "src/domains/analytics/services/dashboard-analytics.ts": {
     "mtime": 1783969720.2509587,
     "ast_hash": "adee0f5d4c74f546e97cfddb73fcbce8",
-    "semantic_hash": ""
+    "semantic_hash": "adee0f5d4c74f546e97cfddb73fcbce8"
   },
   "src/domains/analytics/services/discipline-service.ts": {
     "mtime": 1780680267.581383,
@@ -1932,7 +1932,7 @@
   "src/domains/rules/engine.ts": {
     "mtime": 1784038346.5917594,
     "ast_hash": "4abcc2e7dc8f4298d40c929290673d8d",
-    "semantic_hash": ""
+    "semantic_hash": "4abcc2e7dc8f4298d40c929290673d8d"
   },
   "src/domains/rules/fields.ts": {
     "mtime": 1781884172.978138,
@@ -1957,7 +1957,7 @@
   "src/domains/rules/unification.ts": {
     "mtime": 1784038346.5964942,
     "ast_hash": "f702cc034261a0605f4485be0a39954d",
-    "semantic_hash": ""
+    "semantic_hash": "f702cc034261a0605f4485be0a39954d"
   },
   "src/domains/trading/account-reality.ts": {
     "mtime": 1781884172.981598,
@@ -1967,7 +1967,7 @@
   "src/domains/trading/schemas/account-form-schema.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "afa90e7d25f0bbf467839dad22cc3e61",
-    "semantic_hash": ""
+    "semantic_hash": "afa90e7d25f0bbf467839dad22cc3e61"
   },
   "src/domains/trading/schemas/setup-form-schema.ts": {
     "mtime": 1781884172.981598,
@@ -2017,12 +2017,12 @@
   "src/domains/trading/services/prop-firm-guard.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "c7986ca08a81f60de263fb941edc952c",
-    "semantic_hash": ""
+    "semantic_hash": "c7986ca08a81f60de263fb941edc952c"
   },
   "src/domains/trading/services/risk-enforcement.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "066a7029bda288fd61c32c816b6ead91",
-    "semantic_hash": ""
+    "semantic_hash": "066a7029bda288fd61c32c816b6ead91"
   },
   "src/domains/trading/services/risk-engine.ts": {
     "mtime": 1782142246.1513479,
@@ -2722,7 +2722,7 @@
   "src/server/trpc/root.ts": {
     "mtime": 1784038346.5964942,
     "ast_hash": "9e2cdde5ba3e092d036ee8198da79012",
-    "semantic_hash": ""
+    "semantic_hash": "9e2cdde5ba3e092d036ee8198da79012"
   },
   "src/server/trpc/routers/account-logs.ts": {
     "mtime": 1780680267.617447,
@@ -2732,7 +2732,7 @@
   "src/server/trpc/routers/accounts.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "6ebbd9d9d1f09129dded3c5227d0c665",
-    "semantic_hash": ""
+    "semantic_hash": "6ebbd9d9d1f09129dded3c5227d0c665"
   },
   "src/server/trpc/routers/ai-config.ts": {
     "mtime": 1780680267.6179547,
@@ -2842,7 +2842,7 @@
   "src/server/trpc/routers/rules.ts": {
     "mtime": 1784038346.600748,
     "ast_hash": "f4fb3acd14e393336c9ff65d9f3e76d0",
-    "semantic_hash": ""
+    "semantic_hash": "f4fb3acd14e393336c9ff65d9f3e76d0"
   },
   "src/server/trpc/routers/setups.ts": {
     "mtime": 1780680267.620025,
@@ -2867,7 +2867,7 @@
   "src/server/trpc/routers/trades.ts": {
     "mtime": 1784039821.705954,
     "ast_hash": "17e42e54ffb2a2a0c984866cfcc9d973",
-    "semantic_hash": ""
+    "semantic_hash": "17e42e54ffb2a2a0c984866cfcc9d973"
   },
   "src/server/trpc/routers/trading-sessions.ts": {
     "mtime": 1780680267.620025,
@@ -3490,29 +3490,29 @@
     "semantic_hash": "b698cdd97fe8e3bd16dcd74899ad7cef"
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1781884172.7183125,
-    "ast_hash": "db65f0023a415ff1777510d99cf2b7a6",
-    "semantic_hash": "db65f0023a415ff1777510d99cf2b7a6"
+    "mtime": 1784070481.3063457,
+    "ast_hash": "8f75b3caf8d8b15c94a763b33b1916e6",
+    "semantic_hash": "8f75b3caf8d8b15c94a763b33b1916e6"
   },
   "README.md": {
     "mtime": 1783697108.2544186,
     "ast_hash": "ed7b20b637a6a64b5b2a239a1d8228df",
-    "semantic_hash": ""
+    "semantic_hash": "ed7b20b637a6a64b5b2a239a1d8228df"
   },
   "docs/ARCHITECTURE.md": {
     "mtime": 1783697108.2564166,
     "ast_hash": "9d50ab38126195299fc57d9aab2a4311",
-    "semantic_hash": ""
+    "semantic_hash": "9d50ab38126195299fc57d9aab2a4311"
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1784038346.4483516,
-    "ast_hash": "2bdcd182a92a158a9d27bfc615d778ac",
-    "semantic_hash": ""
+    "mtime": 1784070420.5167825,
+    "ast_hash": "8daa4b60f5372a7c72150da43046c89f",
+    "semantic_hash": "8daa4b60f5372a7c72150da43046c89f"
   },
   "docs/PROJECT_GUIDE.md": {
     "mtime": 1784038346.4543805,
     "ast_hash": "964cca7c2f3f0537c493371f2d36fcec",
-    "semantic_hash": ""
+    "semantic_hash": "964cca7c2f3f0537c493371f2d36fcec"
   },
   "docs/auditoria-producto-trading-journal-v2.md": {
     "mtime": 1782772988.3962798,
@@ -3582,7 +3582,7 @@
   ".claude/settings.json": {
     "mtime": 1783697108.248382,
     "ast_hash": "1cfe068865df8f43a39f0cb65bbc9170",
-    "semantic_hash": ""
+    "semantic_hash": "1cfe068865df8f43a39f0cb65bbc9170"
   },
   "CLAUDE.md": {
     "mtime": 1783697108.2524154,
@@ -3590,98 +3590,98 @@
     "semantic_hash": "8a6643a420fdad6bfb583523bc6cef16"
   },
   "docs/STATUS.md": {
-    "mtime": 1784038346.4543805,
-    "ast_hash": "607790a908777896102ab668f486761d",
-    "semantic_hash": ""
+    "mtime": 1784070406.0796223,
+    "ast_hash": "71584f870d9efb4970de791efa38e563",
+    "semantic_hash": "71584f870d9efb4970de791efa38e563"
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
     "mtime": 1783969720.2353249,
     "ast_hash": "15f0e88cf11d2a4e10552372e2aa1a01",
-    "semantic_hash": ""
+    "semantic_hash": "15f0e88cf11d2a4e10552372e2aa1a01"
   },
   "src/domains/trading/data/prop-firm-presets.ts": {
     "mtime": 1783969720.2516825,
     "ast_hash": "db47b993afe3f11fec12d86402d7e717",
-    "semantic_hash": ""
+    "semantic_hash": "db47b993afe3f11fec12d86402d7e717"
   },
   "src/domains/trading/services/prop-firm-status.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "34eb8334ae5673ec94afcd1093e228e2",
-    "semantic_hash": ""
+    "semantic_hash": "34eb8334ae5673ec94afcd1093e228e2"
   },
   "src/server/trpc/routers/prop-firm-presets.ts": {
     "mtime": 1783969720.2534177,
     "ast_hash": "f2f8714065ce7e3ecdd6800e74cc8dec",
-    "semantic_hash": ""
+    "semantic_hash": "f2f8714065ce7e3ecdd6800e74cc8dec"
   },
   "supabase/migrations/20260710120000_schedule_cognitive_digest.sql": {
     "mtime": 1783699278.384288,
     "ast_hash": "bc71006d2b1bf094d0ec7c86a57ef762",
-    "semantic_hash": ""
+    "semantic_hash": "bc71006d2b1bf094d0ec7c86a57ef762"
   },
   "supabase/migrations/20260710140000_post6_prop_firm_rulebase.sql": {
     "mtime": 1783969720.2534177,
     "ast_hash": "681cf5293de9aecc6ba202cb8ff74c83",
-    "semantic_hash": ""
+    "semantic_hash": "681cf5293de9aecc6ba202cb8ff74c83"
   },
   "docs/superpowers/handoffs/2026-07-10-post6-prop-firm-rulebase-qa.md": {
     "mtime": 1783969720.1851015,
     "ast_hash": "2fdab7d510bbd6c9583c2bb0b5d0e94a",
-    "semantic_hash": ""
+    "semantic_hash": "2fdab7d510bbd6c9583c2bb0b5d0e94a"
   },
   "docs/superpowers/plans/2026-07-10-post6-prop-firm-rulebase.md": {
     "mtime": 1783969720.1851015,
     "ast_hash": "16a81570f02245f31f223a08c5c3a6d7",
-    "semantic_hash": ""
+    "semantic_hash": "16a81570f02245f31f223a08c5c3a6d7"
   },
   "docs/superpowers/specs/2026-07-10-post6-prop-firm-rulebase-design.md": {
     "mtime": 1783969720.1851015,
     "ast_hash": "ae267664588d6602ea67d2f17f89ff36",
-    "semantic_hash": ""
+    "semantic_hash": "ae267664588d6602ea67d2f17f89ff36"
   },
   "src/domains/rules/rule-write.ts": {
     "mtime": 1784038346.5917594,
     "ast_hash": "d9c96f08a3f0d4f8b3d4490f3b30d9e1",
-    "semantic_hash": ""
+    "semantic_hash": "d9c96f08a3f0d4f8b3d4490f3b30d9e1"
   },
   "docs/superpowers/plans/2026-07-13-g2-rules-cutover.md": {
     "mtime": 1784038346.4543805,
     "ast_hash": "3d537491776ddb26d8e989bedbdba1cd",
-    "semantic_hash": ""
+    "semantic_hash": "3d537491776ddb26d8e989bedbdba1cd"
   },
   "docs/superpowers/specs/2026-07-13-g2-rules-cutover-design.md": {
     "mtime": 1784038346.4543805,
     "ast_hash": "aaebcc348b8188772877b602ec2e9ac7",
-    "semantic_hash": ""
+    "semantic_hash": "aaebcc348b8188772877b602ec2e9ac7"
   },
   "src/server/services/trades/dashboard-service.ts": {
     "mtime": 1784039300.5282507,
     "ast_hash": "ad1b567c8d9253b7456f7a5118debddb",
-    "semantic_hash": ""
+    "semantic_hash": "ad1b567c8d9253b7456f7a5118debddb"
   },
   "src/server/services/trades/embedding-service.ts": {
     "mtime": 1784039119.6521335,
     "ast_hash": "15dbfeee9787f65aa24a66c6bce90986",
-    "semantic_hash": ""
+    "semantic_hash": "15dbfeee9787f65aa24a66c6bce90986"
   },
   "src/server/services/trades/serializers.ts": {
     "mtime": 1784039008.3526895,
     "ast_hash": "6eef63b9d96e808a818804a5d8f68d79",
-    "semantic_hash": ""
+    "semantic_hash": "6eef63b9d96e808a818804a5d8f68d79"
   },
   "src/server/services/trades/trade-read-service.ts": {
     "mtime": 1784039427.027093,
     "ast_hash": "8c55ac3c166dd36362719018fa0b7952",
-    "semantic_hash": ""
+    "semantic_hash": "8c55ac3c166dd36362719018fa0b7952"
   },
   "src/server/services/trades/trade-write-service.ts": {
     "mtime": 1784039791.8865857,
     "ast_hash": "5f37d3f50b34562f699a962732254521",
-    "semantic_hash": ""
+    "semantic_hash": "5f37d3f50b34562f699a962732254521"
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
     "mtime": 1784038938.8345597,
     "ast_hash": "557a4a34d713d6620a75a7291dcb0ab3",
-    "semantic_hash": ""
+    "semantic_hash": "557a4a34d713d6620a75a7291dcb0ab3"
   }
 }
