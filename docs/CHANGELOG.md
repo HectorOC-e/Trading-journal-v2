@@ -1,11 +1,17 @@
 # Changelog — Trading Journal v2
 
 > Historial consolidado único, por hito. Formato inspirado en Keep a Changelog.
-> Última actualización: 2026-06-10. El detalle verboso por sprint vivía en un
+> Última actualización: 2026-07-14. El detalle verboso por sprint vivía en un
 > `changelog-detailed.md` bajo el antiguo directorio de archivo, eliminado en la consolidación
 > de docs/ (2026-07-09); sigue disponible en el historial de git.
 
 ---
+
+## [2026-07-14] · S0/DT-4 — drift check SQL↔Prisma en CI
+
+> Cierre de deuda técnica de validación (P3).
+
+- **Check en CI:** job `migrate-validate` añade `prisma migrate status` tras el `db reset` local. Falla si el schema.prisma tiene cambios sin migración SQL correspondiente. Previene double-drift.
 
 ## [2026-07-14] · TD-018 — trade services extraídos del router `trades`
 
