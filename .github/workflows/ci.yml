@@ -57,6 +57,17 @@ jobs:
         working-directory: src
         run: pnpm exec tsc --noEmit
 
+      # Closes B-02. Fails on errors only, which is deliberate: eslint.config.mjs
+      # reserves errors for genuine bugs and files known/accepted hints (e.g.
+      # react-hooks/set-state-in-effect, audited in Cycle 1 as TD-037) as warnings.
+      # So no --max-warnings here; forcing it to 0 would fight that decision and
+      # break on 74 pre-existing, deliberate warnings. If warning growth ever needs
+      # a stop, ratchet --max-warnings at the current count rather than flipping
+      # the rules to error.
+      - name: Lint
+        working-directory: src
+        run: pnpm exec eslint .
+
       - name: Unit tests
         working-directory: src
         run: pnpm test -- --reporter=verbose
