@@ -1,257 +1,218 @@
-# Graph Report - Trading-journal-v2  (2026-07-14)
+# Graph Report - .  (2026-07-16)
 
 ## Corpus Check
-- 548 files · ~307,187 words
+- 38 files · ~307,307 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3213 nodes · 6970 edges · 320 communities (157 shown, 163 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 47 edges (avg confidence: 0.67)
+- 3350 nodes · 7160 edges · 232 communities (199 shown, 33 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 119 edges (avg confidence: 0.76)
 - Token cost: 0 input · 0 output
 
-## Graph Freshness
-- Built from commit: `fcc8904b`
-- Run `git rev-parse HEAD` and compare to check if the graph is stale.
-- Run `graphify update .` after code changes (no API cost).
-
 ## Community Hubs (Navigation)
-- page.tsx
-- revisar-recurso-modal.tsx
-- trades.ts
-- root.ts
-- review-report-shell.tsx
+- cn()
+- index.ts
+- trades-table.tsx
+- rule-builder.tsx
 - client.ts
-- insights-engine.ts
-- Sidebar.tsx
 - review-summary.tsx
 - page.tsx
-- Behavior Engine (bounded context: loop de mejora)
-- index.ts
 - dependencies
-- prisma.ts
-- notify.tsx
-- coach-memory-service.ts
-- learning-resources.ts
+- send-review.ts
+- account-card.tsx
+- 3. HALLAZGOS POR MÓDULO
+- review-card.tsx
+- dashboard-analytics.ts
+- tab-portfolio.tsx
+- register-trade-modal.tsx
 - index.ts
-- cn
-- trades-table.tsx
+- prisma.ts
+- monthly-reviews.ts
 - page.tsx
 - ai-context.ts
-- send-review.ts
-- tab-portfolio.tsx
 - page.tsx
-- monthly-reviews.ts
-- review-card.tsx
-- improvement-service.ts
-- report-data.ts
 - page.tsx
-- utils.ts
-- page.tsx
-- analytics-bundle.ts
+- view-model.ts
+- Sidebar.tsx
 - weekly-reviews.ts
-- learning-insights-service.ts
+- isWin()
+- trades.ts
+- review-report-shell.tsx
+- analytics-insights-service.ts
 - feature-models.ts
+- Checklist de QA pendiente de V3 (109 ítems)
+- create-account-modal.tsx
+- resource-drawer.tsx
 - page.tsx
-- condition-group.tsx
-- playbook-service.ts
-- send-learning-digest.ts
-- risk-of-ruin.ts
-- Hardening 2026-06-10 (P&L, enforcement, CI/migraciones, rendimiento)
-- engine.ts
-- page.tsx
-- bayes.ts
-- seed-psych-trades.mjs
-- Tesis del producto: capa cognitiva que cambia el comportamiento del trader
-- route.ts
-- resolveAiCall
-- simple-table.tsx
 - institutional-summary.ts
-- overview.ts
-- event-bus.ts
-- compilerOptions
-- types.ts
-- register-trade-modal.tsx
-- edge-service.ts
+- route.ts
+- playbook-service.ts
+- risk-of-ruin.ts
 - intervention-service.ts
-- motion.ts
-- ConditionNode
-- markdown.tsx
+- study-session-service.ts
+- init.ts
+- Trading Journal (producto)
+- Prop-Firm Guard Rules Engine
+- memory-episode-service.ts
+- engine.ts
+- bayes.ts
+- coach-memory-service.ts
+- seed-psych-trades.mjs
+- Analytics Subsystem
+- route.ts
+- condition-group.tsx
+- learning-resources.ts
+- compilerOptions
+- page.tsx
+- notifications.ts
+- edge-service.ts
 - behavior.ts
-- emit.ts
-- devDependencies
-- data-table.tsx
-- automations.ts
+- learning-insights-service.ts
+- Hardening: P&L, Enforcement, CI/Migrations and Performance (2026-06-10, PRs #6–#17)
+- page.tsx
+- markdown.tsx
+- welch.ts
+- event-bus.ts
+- createClient()
+- page.tsx
+- notify.tsx
+- improvement-service.ts
+- analytics-bundle.ts
 - ai-config.ts
+- resolve.ts
+- parse.ts
+- devDependencies
+- ADR-003: Memory Privacy Boundary
+- TD-018 — extraer orquestación de trades.ts (1146 LOC) a service layer
+- page.tsx
 - ai-coach-drawer.tsx
-- psychology-service.ts
+- motion.ts
+- insight-store.ts
 - risk-service.ts
 - today-service.ts
-- commitment-service.ts
+- insights-engine.ts
+- report-data.ts
+- ARCHITECTURE_FREEZE Canonical Doc
+- trade-write-service.ts
 - gen-theme-css.mjs
-- coach-service.ts
-- page.tsx
-- risk-engine.ts
-- page.tsx
+- types.ts
+- psychology-service.ts
+- commitment-service.ts
+- fx.ts
+- Trading Journal (project)
 - rolling-window.ts
 - apply.ts
 - gen-icons.mjs
+- Behavior Engine Subsystem
+- Intervention Engine Subsystem
+- Changelog — Trading Journal v2
+- rules.ts
+- coach-service.ts
+- reviews-timeline.tsx
 - trajectory-panel.tsx
 - DrawdownModel
-- risk-enforcement.ts
-- route.ts
+- loadWeeklyReport()
+- psychology-insights.ts
+- coach.ts
+- G2 — Rules Cutover: rules Is the Only Source (2026-07-13)
 - ai-models-card.tsx
-- position-log-modal.tsx
-- welch.ts
+- monthly-letter.tsx
 - verifiers.ts
+- actions.ts
+- risk-enforcement.ts
+- resolve-provider.ts
 - pdf-report-html.ts
+- Coach Subsystem
+- Prompt de retoma de sesión
+- Roadmap reservado (apuestas con disparador propio, no iniciadas)
+- POST-6 QA Handoff
 - theme-provider.tsx
 - emotion-feedback.ts
+- improvement-score.ts
 - commitment-machine.ts
-- memory-episode-service.ts
-- engine.ts
-- unification.ts
-- resolve-provider.ts
-- tab-playbook.tsx
+- digest-builder.ts
+- ADR-001: Event Runtime and Delivery
+- AI Config, Migrations and Documentation Consolidation (2026-06-05)
 - useLogout.ts
 - feed.ts
+- risk-ratios.ts
 - analytics-cache.ts
 - profile.ts
-- custom-palettes.ts
+- review-ai.ts
 - scripts
-- Trading Journal — capa cognitiva sobre el bróker
-- setup-intelligence-panel.tsx
-- tag-chip.tsx
-- risk-ratios.ts
+- seed.ts
 - accounts.ts
-- createClient
+- Trade Service Layer (src/server/services/trades/)
+- Memoria del coach (4 capas: episódica, semántica, identidad, mejora)
+- POST-6 Prop-Firm Rulebase Spec
+- Task 5 — Borrar automations router, dual-write e informe de migración
+- runRules()
+- ruleDataFromExecutableInput()
+- add-edit-resource-modal.tsx
+- setup-intelligence-panel.tsx
+- Gate G2 — cutover de reglas (automations → rules)
+- POST-6 Implementation Plan
+- POST-6 Confirmed Decisions Summary
+- intelligence-panel.tsx
 - layout.tsx
 - palette-studio.tsx
-- pattern-detector.ts
-- trade-form-schema.ts
+- cognitive-digest-service.ts
+- memory-pattern-service.ts
+- emit.ts
 - package.json
-- kpi-card.tsx
-- risk-budget.ts
-- leverage.ts
-- discipline-service.ts
-- prop-firm-guard.ts
+- Sprints 9-12 — Portfolio MVP, PWA, PDF, Onboarding (2026-06-04)
+- TECHNICAL_DEBT.md (fuente de la deuda técnica; borrado, 2026-06-05)
 - calibration.ts
-- seed.ts
-- goal-progress-widget.tsx
+- risk-budget.ts
+- config.ts
+- AI Coach
+- Phase 0-1 — Foundation and Learning
+- Digest cognitivo semanal ('Tu semana cognitiva')
+- Prop-Firm Catalog Seed (Anchor Firms)
+- RULES_SOURCE env var
 - account-risk-panel.tsx
+- badge.tsx
 - capture-rules.ts
 - trade-derivation.ts
 - backfill-embeddings.mjs
 - backfill-resource-embeddings.mjs
-- ai-insights-panel.tsx
-- config.ts
+- E2: Rule Entity (unified w/ Automation)
+- Cognitive Engine (root bounded context)
+- Behavior Engine (insight → compromiso → regla → verificación → refuerzo)
+- askCoach()
+- improvement-panel.tsx
+- action-list.tsx
 - note-tag-suggestions.tsx
 - mae-mfe.ts
-- analytics.ts
 - reinforcement.ts
-- email-theme.ts
-- ADR-002 — Estrategia estadística
-- Auditoría Técnica Exhaustiva (37 hallazgos)
+- prop-firm-presets.ts
+- Regla del loop 'Enfriamiento tras una pérdida' (enforce, TRADE_PRE_CREATE, BLOCK)
 - benchmark.ts
 - pnl-heatmap.ts
+- conditions.ts
 - load-state.ts
 - index.ts
 - CI job: checks (type check, tests, build)
-- ADR-003 — Privacidad de la memoria y frontera anti-corrupción
-- E13 — MemoryEpisode (episódica, append-only, embedding, saliencia)
-- Seguridad / RLS / auth
-- Superficies ANALIZAR/PROTEGER/MEJORAR (flag tj.v3Shell)
-- segmented-tabs.tsx
+- BACKLOG.md (fuente del backlog; borrado, 2026-06-05)
+- budget-guard.ts
+- README.md
 - vercel.json
-- Stack v3.2 (Next.js/tRPC/Prisma/Supabase/Vercel/pgvector)
-- Next.js Agent Rules (breaking-changes warning)
 - layout.tsx
 - proxy.ts
-- Módulo Trades (/trades)
-- E14 — MemoryPattern
-- E15 — MemoryIdentity
-- E16 — MemoryImprovement
-- E17 — CoachThread / CoachMessage
-- E18 — SetupEdgeSnapshot
-- E19 — ImprovementScore (snapshot)
-- E20 — RiskBudget (derivado/persistido)
-- E4 — LearningResource (+transferBaseline)
-- D12 — router de modelos
-- D13 — refuerzo de ratio variable + soporte de autonomía
-- D14 — override duro de capital
-- D2 — Cognitive Engine aislado (frontera irreversible; topología reversible)
-- D7 — `Commitment` sólo se ofrece donde existe verificador
-- D8 — la fusión Rule/Automation es semántica
-- P9 — Cada migración es reversible hasta verificación
-- Módulo Aprendizaje (/aprendizaje)
-- Check-in pre-sesión (mood/energía/sueño → go/caution/no_go)
-- Módulo Cuentas (/cuentas)
-- Módulo Etiquetas (/etiquetas)
-- IA Coach (drawer global)
-- Módulo Mercados (/mercados)
-- Módulo Perfil / Settings (/perfil)
-- Módulo Retiros (/retiros)
-- Módulo Reviews (/reviews)
-- Apuesta POST-2: coach multiagente
-- Apuesta POST-5: extracción a servicio
-- TD-037: ~22 efectos sync-on-open
-- Project Guide — Trading Journal v3.2
-- prop-firm-presets.ts
-- handler
-- rules.ts
-- README.md
 - CLAUDE.md
+- Pre-Trade Block Invariant
+- E4: LearningResource Entity
 - AGENTS.md
 - Convención de proyecto: usar graphify (query/path/explain/update) antes de grep/browsing crudo
-- Analytics (bounded context, determinista)
-- Behavior Engine (bounded context: loop de mejora)
-- Coach (subsistema: orquestador + agente(s) + tools)
-- Cognitive Engine (bounded context: events, intervention, memory, coach)
-- D1 — Outbox transaccional + dispatcher, dos caminos de entrega
-- D2 — Cognitive Engine aislado (frontera irreversible)
-- D3 — Analytics es puro y sin efectos
-- D4 — Behavior Engine es el dueño del loop
-- D5 — SLA de intervención redefinido (respuesta síncrona de mutación)
-- D6 — El outbox es la única fuente de verdad de "qué pasó"
-- E1 — Trade (enmienda: maeR/mfeR/regime/riskPct/checklistResultId)
-- E10 — RuleSuggestion (propuesta de regla desde insight)
-- E11 — Intervention (trigger, scores, response, outcome)
-- E12 — PreSessionCheckin (mood/energía/sueño + veredicto go/no-go)
-- E2 — Rule (unificado con Automation: enforce/warn)
-- E3 — WeeklyReview/MonthlyReview (relación con Commitment)
-- E5 — DomainEvent (outbox)
-- E6 — Insight (sampleSize, credibleInterval, effectSize, status)
-- E7 — Commitment (núcleo del loop)
-- E8 — CommitmentCheck (observedValue, result, evidence)
-- E9 — Reinforcement (positive/corrective)
-- EV1 — trade.created
-- EV10 — intervention.responded
-- EV2 — trade.closed
-- EV3 — insight.created
-- EV4 — insight.resolved
-- EV5 — commitment.created
-- EV6 — commitment.kept / broken / partial
-- EV7 — rule.fired
-- EV8 — account.dd_breach / dd_approach
-- EV9 — checkin.submitted
-- D1 — Mecanismo de eventos congelado (outbox, resuelve ADR-001)
-- D11 — write con confirmación explícita
-- D16 — proyecciones prop son no estacionarias
-- D17 — causalidad etiquetada honestamente
-- D18 — régimen v3
-- D5 — SLA de intervención ≤2s redefinido
-- D6 — el outbox es la única fuente de verdad de "qué pasó"
-- D9 — frontera anti-poisoning (irreversible)
-- Intervention Engine (subsistema núcleo)
-- Memory (subsistema: 4 capas + context assembler)
-- P1 — La unidad de valor es el cambio de comportamiento verificado
-- P2 — Determinismo primero; el LLM narra, no calcula
-- P3 — Rigor honesto sobre muestras retail (Bayesiano/shrinkage)
-- P4 — Calma por defecto; la intervención es la única interrupción
-- P5 — El Cognitive Engine es independiente de la piel (app web)
-- P6 — El LLM propone, los datos confirman
-- P7 — Ningún insight muere como texto
-- P8 — Privacidad y autonomía como diseño, no como add-on
-- Trading/Rules (OLTP, bounded context)
+- Ajustes Surface (non-cognitive)
+- ANALIZAR Cognitive Surface
+- FREEZE-P3: Retail Sample Rigor
+- FREEZE-P4: Calm by Default
+- FREEZE-P5: Cognitive Engine Independence
+- FREEZE-P7: Insights Never Die as Text
+- FREEZE-P9: Reversible Migrations
+- POST-7: Setup A/B Variants
+- Auditoría Técnica Exhaustiva (37 hallazgos)
 - KPIs computed over first 50 paginated trades bug
 - Off-schema tables (notes_embedding, email_log) not in Prisma
 - Profile page fully disconnected from backend (CRÍTICO)
@@ -261,709 +222,819 @@
 - Missing longitudinal analysis / rolling windows
 - Broken improvement loop (commitments not verified)
 - Rule vs Automation duality confusion (C6)
-- AI config, migraciones y consolidación documental 2026-06-05
-- Motor de resolución de IA (resolve-provider)
-- CI / migraciones (Supabase CLI, GitHub Actions)
-- dashboardStats (analítica server-side)
-- Discipline scoring / centralización de disciplina
-- Consolidación documental
-- Formula Engine
-- Hardening 2026-06-10 (P&L, enforcement, CI/migraciones, rendimiento)
-- Sistema de aprendizaje (repetición espaciada, streak)
-- Onboarding flow
-- Export PDF de reporte de rendimiento
-- Phase 0-1: Fundación y aprendizaje
-- P&L / point-value engine
-- Portfolio (curva de equity multi-cuenta)
-- Prop-firm enforcement (drawdown, locks)
-- PWA (manifest, service worker, offline)
-- Sprint 4: Psicología, reviews y personalización
-- Sprint 5: Config de IA, metas, planNotes, paginación, UX, soporte internacional
-- Sprint 6: Tema de sistema, filtros de review, sparklines, type safety, hardening de seguridad
-- Sprint 7: Hardening de reviews, centralización de disciplina
-- Sprint 8: Testing, accesibilidad, reviews mensuales
-- Sprints 1-3: Fundación
-- Sprints 9-12: Portfolio MVP, PWA, PDF, Onboarding
-- Stabilization Sprint 2026-06-03: Remediación QA manual
-- Digest cognitivo semanal (notificación opt-outable)
-- Feed HOY (TodayFeed + RiskBudgetMeter)
-- Índice de mejora (ImprovementScore)
-- Intervenciones (InterventionOverlay, motor determinista)
-- Memoria del coach (4 capas: episódica/semántica/identidad/mejora)
-- Persona: Funded Trader
-- Persona: Prop Firm Candidate
-- Persona: Retail Learner
-- Persona: System Trader
-- Módulo Playbook / Setups (/playbook)
-- Tesis del producto: capa cognitiva que cambia el comportamiento del trader
-- Módulo Reglas (/reglas)
-- Reglas unificadas enforce/warn (Rule fusiona Automation)
-- Superficies ANALIZAR/PROTEGER/MEJORAR (flag tj.v3Shell)
-- Write-tools del coach con permiso (propose_rule/propose_commitment)
-- Checklist de QA pendiente de V3 (109 ítems)
-- Ops pendiente: agendar cron del digest cognitivo (C4)
-- Ops pendiente: protección de contraseñas filtradas (Supabase Auth)
-- Apuesta A3: rutas reales de 5 superficies
-- Apuesta POST-1: realtime/SSE
-- Apuesta POST-3: moat cross-user
-- Apuesta POST-4: régimen exógeno ATR
-- Apuesta POST-6: base de reglas prop-firm (moat)
-- Apuesta POST-7: framework A/B completo
-- TD-018: extraer lógica de trades.ts a trade-service
-- TD-019: cliente Supabase por-request en contexto tRPC
-- docs/ARCHITECTURE.md — arquitectura canónica (freeze v3.1 + ADRs)
-- docs/auditoria-producto-trading-journal-v2.md — auditoría vinculante que originó v3 (anexo)
-- docs/CHANGELOG.md — historial por hito (anexo)
-- Invariantes: bloqueo pre-trade, separación práctica/real, frontera anti-envenenamiento, honestidad estadística, permiso
-- Trading Journal — capa cognitiva sobre el bróker
-- docs/PROJECT_GUIDE.md — léeme primero: qué es, módulos, stack, mapa de código
-- Cómo iniciar el proyecto: clonar, .nvmrc, pnpm install, .env, prisma generate, supabase db push, pnpm dev
-- docs/STATUS.md — estado, QA pendiente, deuda, backlog, roadmap, prompt de retoma
+- Notifications P0–P3 with Per-Category Preferences
+- App Scripts (dev/build/start/lint/test/e2e from src/)
+- Tags Catalog (color/icon/category)
+- Next.js Agent Rules (breaking-changes warning)
 - src CLAUDE.md (includes AGENTS.md)
 - src README (Next.js create-next-app)
 
 ## God Nodes (most connected - your core abstractions)
-1. `cn()` - 155 edges
-2. `trpc` - 69 edges
-3. `formatErrorForUser()` - 62 edges
-4. `isWin()` - 39 edges
-5. `protectedProcedure` - 34 edges
-6. `RouterOutputs` - 34 edges
-7. `calcWinRate()` - 33 edges
-8. `toast` - 33 edges
-9. `Apéndice — ADRs` - 29 edges
-10. `Button()` - 28 edges
+1. `cn()` - 149 edges
+2. `trpc` - 65 edges
+3. `formatErrorForUser()` - 55 edges
+4. `Trading Journal (producto)` - 37 edges
+5. `RouterOutputs` - 34 edges
+6. `isWin()` - 32 edges
+7. `toast` - 30 edges
+8. `protectedProcedure` - 30 edges
+9. `calcWinRate()` - 26 edges
+10. `Button()` - 25 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Dropdown()` --indirect_call--> `handler()`  [INFERRED]
-  src/components/ui/market-select.tsx → src/app/api/trpc/[trpc]/route.ts
-- `StatusSelect()` --indirect_call--> `handler()`  [INFERRED]
-  src/app/retiros/page.tsx → src/app/api/trpc/[trpc]/route.ts
-- `AiCoachDrawer()` --indirect_call--> `handler()`  [INFERRED]
-  src/components/ai-coach/ai-coach-drawer.tsx → src/app/api/trpc/[trpc]/route.ts
-- `useWindowWidth()` --indirect_call--> `handler()`  [INFERRED]
-  src/components/layout/Sidebar.tsx → src/app/api/trpc/[trpc]/route.ts
-- `ThemeProvider()` --indirect_call--> `handler()`  [INFERRED]
-  src/components/theme-provider.tsx → src/app/api/trpc/[trpc]/route.ts
+- `runRules()` --semantically_similar_to--> `runAutomations() (retirado en G2)`  [INFERRED] [semantically similar]
+  src/domains/rules/engine.ts → docs/superpowers/specs/2026-07-13-g2-rules-cutover-design.md
+- `Derivación mode/severity (BLOCK ⇒ enforce+CRÍTICA, sin BLOCK ⇒ warn+MEDIA)` --rationale_for--> `ruleDataFromExecutableInput()`  [EXTRACTED]
+  docs/superpowers/plans/2026-07-13-g2-rules-cutover.md → src/domains/rules/rule-write.ts
+- `Task 3: Engine — checkConsistency` --implements--> `checkConsistency()`  [EXTRACTED]
+  docs/superpowers/plans/2026-07-10-post6-prop-firm-rulebase.md → src/domains/trading/services/prop-firm-guard.ts
+- `Task 1: Migration — prop_firm_presets + Account fields` --references--> `20260710140000_post6_prop_firm_rulebase.sql migration`  [EXTRACTED]
+  docs/superpowers/plans/2026-07-10-post6-prop-firm-rulebase.md → supabase/migrations/20260710140000_post6_prop_firm_rulebase.sql
+- `rules.createExecutable` --calls--> `ruleDataFromExecutableInput()`  [EXTRACTED]
+  docs/superpowers/plans/2026-07-13-g2-rules-cutover.md → src/domains/rules/rule-write.ts
 
 ## Import Cycles
-- 3-file cycle: `src/server/trpc/root.ts -> src/server/trpc/routers/accounts.ts -> src/types/index.ts -> src/server/trpc/root.ts`
-- 3-file cycle: `src/server/trpc/root.ts -> src/server/trpc/routers/withdrawals.ts -> src/types/index.ts -> src/server/trpc/root.ts`
-- 4-file cycle: `src/domains/analytics/services/psychology-insights.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/analytics.ts -> src/domains/analytics/services/psychology-insights.ts`
-- 4-file cycle: `src/domains/analytics/services/discipline-service.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/domains/analytics/services/discipline-service.ts`
-- 4-file cycle: `src/server/services/reviews/report-data.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/reviews/report-data.ts`
-- 4-file cycle: `src/domains/trading/services/risk-enforcement.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/accounts.ts -> src/domains/trading/services/risk-enforcement.ts`
-- 4-file cycle: `src/server/services/tags/seed.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/tags.ts -> src/server/services/tags/seed.ts`
-- 4-file cycle: `src/domains/analytics/services/analytics-bundle.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/analytics.ts -> src/domains/analytics/services/analytics-bundle.ts`
-- 4-file cycle: `src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/analytics.ts -> src/domains/analytics/services/insights-engine.ts`
-- 4-file cycle: `src/server/services/reviews/report-data.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/monthly-reviews.ts -> src/server/services/reviews/report-data.ts`
-- 4-file cycle: `src/server/services/trades/trade-read-service.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/trades.ts -> src/server/services/trades/trade-read-service.ts`
-- 5-file cycle: `src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/analytics.ts -> src/domains/analytics/services/psychology-insights.ts -> src/domains/analytics/services/insights-engine.ts`
-- 5-file cycle: `src/server/services/email/send-review.ts -> src/server/services/reviews/report-data.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/email/send-review.ts`
-- 5-file cycle: `src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/reviews/overview.ts -> src/domains/analytics/services/insights-engine.ts`
-- 5-file cycle: `src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/reviews/review-ai.ts -> src/domains/analytics/services/insights-engine.ts`
-- 5-file cycle: `src/domains/analytics/services/analytics-bundle.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/reviews/review-insights.ts -> src/domains/analytics/services/analytics-bundle.ts`
-- 5-file cycle: `src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/weekly-reviews.ts -> src/server/services/reviews/review-insights.ts -> src/domains/analytics/services/insights-engine.ts`
-- 5-file cycle: `src/domains/trading/services/risk-enforcement.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/trades.ts -> src/server/services/trades/trade-write-service.ts -> src/domains/trading/services/risk-enforcement.ts`
-- 5-file cycle: `src/server/services/tags/seed.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/trades.ts -> src/server/services/trades/trade-write-service.ts -> src/server/services/tags/seed.ts`
-- 5-file cycle: `src/domains/analytics/services/analytics-bundle.ts -> src/domains/analytics/services/insights-engine.ts -> src/types/index.ts -> src/server/trpc/root.ts -> src/server/trpc/routers/analytics.ts -> src/domains/analytics/services/analytics-bundle.ts`
+- None detected.
 
 ## Hyperedges (group relationships)
+- **Cadena Insight→Compromiso→Regla→Seguimiento→Verificación→Refuerzo** — docs_architecture_freeze_e6, docs_architecture_freeze_e7, docs_architecture_freeze_e8, docs_architecture_freeze_e9, docs_architecture_behavior_state_machine, docs_architecture_behavior_engine [EXTRACTED 1.00]
+- **Mecanismo de entrega de eventos (outbox durable + fast-path síncrono)** — docs_architecture_outbox_pattern, docs_architecture_fast_path, docs_architecture_freeze_d1, docs_architecture_freeze_d5, docs_architecture_freeze_d6 [EXTRACTED 1.00]
+- **Frontera anti-poisoning de memoria (LLM propone, datos confirman)** — docs_architecture_freeze_p6, docs_architecture_freeze_d9, docs_architecture_context_assembler, docs_architecture_memoria, docs_architecture_freeze_e14, docs_architecture_freeze_e15 [EXTRACTED 1.00]
+- **Behavior Loop Rules Enforcement (loop → rules → blocking)** — readme_behavior_loop, readme_behavior_engine, docs_changelog_g2_rules_cutover, docs_changelog_rules_engine_enforcement, readme_pre_trade_blocking [INFERRED 0.85]
+- **TD-018 Trade Service Extraction** — docs_changelog_trade_service_layer, docs_changelog_trade_serializers, docs_changelog_embedding_service, docs_changelog_dashboard_service, docs_changelog_trade_read_service, docs_changelog_trade_write_service, docs_changelog_trades_router_slimdown [EXTRACTED 1.00]
+- **AI Provider Resolution Flow (persisted key → env → none)** — docs_changelog_resolve_provider_engine, docs_changelog_user_ai_configs_table, docs_changelog_anthropic_key_root_cause, docs_changelog_ai_diagnostics_healthcheck [EXTRACTED 1.00]
+- **Cutover G2 de reglas (automations → rules)** — docs_status_g2_cutover, docs_status_rules_source_env, docs_status_pr_129, docs_status_run_rules_test, docs_project_guide_rules_engine, docs_project_guide_unified_rules [EXTRACTED 1.00]
+- **Loop de mejora de comportamiento (insight → compromiso → regla → verificación → refuerzo → índice)** — docs_project_guide_behavior_engine, docs_project_guide_unified_rules, docs_project_guide_improvement_score, docs_project_guide_today_feed, docs_project_guide_commitment_service [EXTRACTED 1.00]
+- **Compañero cognitivo v3.2 (quinto eje: memoria visible + cierre del bucle con el trader)** — docs_project_guide_coach_memory, docs_project_guide_coach_write_tools, docs_project_guide_cognitive_digest, docs_project_guide_pre_session_checkin, docs_project_guide_ia_coach [INFERRED 0.85]
+- **Prop-Firm Rule Engine Pipeline** — src_domains_trading_services_prop_firm_guard_checktrailingdrawdown, src_domains_trading_services_prop_firm_guard_checkconsistency, src_domains_trading_services_prop_firm_guard_checkweekendholding, src_domains_trading_services_prop_firm_guard_phaseprogress, src_domains_trading_services_prop_firm_status_buildpropfirmextras [INFERRED 0.85]
+- **Snapshot Preset Application Flow** — src_prisma_schema_propfirmpreset, src_server_trpc_routers_prop_firm_presets, src_app_cuentas_components_prop_firm_preset_picker, src_prisma_schema_account, docs_superpowers_specs_2026_07_10_post6_prop_firm_rulebase_design_presetid_field [INFERRED 0.80]
+- **POST-6 QA Closure Blockers (a/b/c)** — docs_superpowers_handoffs_2026_07_10_post6_prop_firm_rulebase_qa_firm_numbers_verified, docs_superpowers_handoffs_2026_07_10_post6_prop_firm_rulebase_qa_e2e_anon_key_resolved, docs_superpowers_handoffs_2026_07_10_post6_prop_firm_rulebase_qa_qa_playwright_blocked [EXTRACTED 1.00]
+- **Secuencia de tasks del retiro de automations (G2 fase 2)** — docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_1_engine_solo_runrules, docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_2_rule_write_helpers, docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_3_router_rules_paridad, docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_4_ui_reglas_trpc_rules, docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_5_borrado_automations, docs_superpowers_plans_2026_07_13_g2_rules_cutover_task_6_validacion_docs_push [EXTRACTED 1.00]
+- **Flujo de enforcement de reglas post-G2 (trades → runRules → evaluate/runAction)** — src_server_trpc_routers_trades, src_domains_rules_engine_runrules, src_domains_rules_conditions_evaluate, src_domains_rules_actions_runaction [EXTRACTED 1.00]
+- **Service layer de trades TD-018 (serializers, embedding, dashboard, read, write)** — src_server_services_trades_serializers_serializetrade, src_server_services_trades_embedding_service_scheduleembedding, src_server_services_trades_dashboard_service_getdashboardstats, src_server_services_trades_trade_read_service_listtrades, src_server_services_trades_trade_write_service_createtrade [EXTRACTED 1.00]
 - **CI/CD antierrores pipeline** — _github_workflows_ci_checks, _github_workflows_ci_e2e, _github_workflows_ci_migrate_validate, _github_workflows_ci_migrate_deploy [EXTRACTED 1.00]
 
-## Communities (320 total, 163 thin omitted)
+## Communities (232 total, 33 thin omitted)
 
-### Community 0 - "page.tsx"
-Cohesion: 0.11
-Nodes (29): PlanSessionModal(), todayISO(), ResourceFromDB, ResourceFromDB, RawAccount, blankDraft(), CATEGORY_SUGGESTIONS, COLOR_PRESETS (+21 more)
+### Community 0 - "cn()"
+Cohesion: 0.04
+Nodes (60): handler(), PromotePhaseModal(), RawAccount, SyncBalanceModal(), SyncBalanceModalProps, syncSchema, SyncValues, COLORS (+52 more)
 
-### Community 1 - "revisar-recurso-modal.tsx"
-Cohesion: 0.13
-Nodes (19): effectiveMasteryLevel(), MASTERY_STAGES, masteryLevel(), MasteryStage, masteryStageIndex(), masteryStageIndexFromLevel(), STATUS_TO_LEVEL, fmtDate() (+11 more)
+### Community 1 - "index.ts"
+Cohesion: 0.05
+Nodes (67): fmt(), FocusSession(), ALL_TYPES, ProgresoSections(), ResourceFromDB, TYPE_COLORS, ResourceFromDB, useResourceActions() (+59 more)
 
-### Community 2 - "trades.ts"
-Cohesion: 0.08
-Nodes (40): CacheDb, CacheDelegate, CacheRow, getCachedStats(), isCacheEnabled(), setCachedStats(), AccountBalance, AccountExposure (+32 more)
-
-### Community 3 - "root.ts"
-Cohesion: 0.11
-Nodes (21): Context, protectedProcedure, t, RouterInputs, accountLogsRouter, goalsRouter, interventionRouter, SuggestedAction (+13 more)
-
-### Community 4 - "review-report-shell.tsx"
+### Community 2 - "trades-table.tsx"
 Cohesion: 0.06
-Nodes (53): EquityCurveChart(), PnlTrendChart(), TrendTooltip(), DownloadPdfButton(), LearningSummary(), Goal, GOAL_STATUS, NEXT_STATUS (+45 more)
+Nodes (58): RFC-4180, checklistColor(), getWeekKey(), HEALTH_CONFIG, LifecycleSuggestions(), sessionCellColor(), TabPlaybook(), RetirosTable() (+50 more)
 
-### Community 5 - "client.ts"
-Cohesion: 0.08
-Nodes (40): AiAnalysisCard(), Period, Period, ReviewActions(), ReviewNotes(), useSaveReview(), Period, SendReviewEmailButton() (+32 more)
-
-### Community 6 - "insights-engine.ts"
-Cohesion: 0.21
-Nodes (14): ComputedInsight, InsightStatus, PersistedInsightRef, reconcileInsights(), ReconcilePlan, ADR-0002, loadActiveRefs(), persistInsights() (+6 more)
-
-### Community 7 - "Sidebar.tsx"
-Cohesion: 0.29
-Nodes (8): formatNotifTime(), NotificationItem(), NotificationItemProps, ToastCard(), TYPE_STYLE, TypeStyle, AppNotification, priorityColor()
-
-### Community 8 - "review-summary.tsx"
+### Community 3 - "rule-builder.tsx"
 Cohesion: 0.07
-Nodes (41): ReviewEmailModel, buildLearningDigest(), daysBetween(), DigestInput, DigestModel, DigestReview, formatDateLabel(), isoDate() (+33 more)
+Nodes (45): PlanSessionModal(), todayISO(), ResourceFromDB, ResourceFromDB, ImportCsvModalProps, ImportResponse, ImportState, RuleBuilder() (+37 more)
 
-### Community 9 - "page.tsx"
+### Community 4 - "client.ts"
+Cohesion: 0.09
+Nodes (30): Period, Period, SendReviewEmailButton(), CoachIdentityEditor(), CoachMemoryLayers(), EVENT_LABEL, fmtDate(), ADR-0003 (+22 more)
+
+### Community 5 - "review-summary.tsx"
+Cohesion: 0.10
+Nodes (31): ReviewEmailModel, DigestModel, CtaButton(), Divider(), EmailFooter(), EmailLayout(), ProgressBlock(), reviewChipLabel() (+23 more)
+
+### Community 6 - "page.tsx"
 Cohesion: 0.06
-Nodes (48): ACCOUNT_STATUS_META, AccountCard(), AccountExposure, AccountRisk, formatSyncAgo(), isPropFirmLike(), KpiBox(), RawAccount (+40 more)
+Nodes (37): ImportCsvModal(), MarketItem, TradesPage(), MetricRow(), MetricRowProps, SESSION_COLOR, SESSION_SHORT, TradeDetailPanel() (+29 more)
 
-### Community 11 - "index.ts"
-Cohesion: 0.11
-Nodes (20): mockAccounts, mockMarkets, mockReviews, mockRules, mockSetups, mockTrades, AccountStatus, DashboardStats (+12 more)
-
-### Community 12 - "dependencies"
+### Community 7 - "dependencies"
 Cohesion: 0.05
 Nodes (42): dependencies, @anthropic-ai/sdk, class-variance-authority, clsx, dotenv, framer-motion, @hookform/resolvers, katex (+34 more)
 
-### Community 13 - "prisma.ts"
+### Community 8 - "send-review.ts"
+Cohesion: 0.09
+Nodes (33): POST(), buildReviewEmailModel(), LearningDigest(), resolveTheme(), react, EmailPrefRow, isEmailChannelEnabled(), accentHex() (+25 more)
+
+### Community 9 - "account-card.tsx"
+Cohesion: 0.09
+Nodes (33): ACCOUNT_STATUS_META, AccountCard(), AccountExposure, AccountRisk, formatSyncAgo(), isPropFirmLike(), KpiBox(), RawAccount (+25 more)
+
+### Community 10 - "3. HALLAZGOS POR MÓDULO"
+Cohesion: 0.05
+Nodes (37): ARCHITECTURE.md (freeze v3.1: principios, decisiones, entidades, eventos, 5 ADRs), 1. EXECUTIVE SUMMARY, 2. HALLAZGOS CRÍTICOS (los que mueven la aguja), 3.10 Etiquetas, 3.11 Mercados, 3.1 Dashboard, 3.2 Trades (journaling), 3.3 Psicología (+29 more)
+
+### Community 11 - "review-card.tsx"
+Cohesion: 0.09
+Nodes (29): CardEquityChart(), DAYS, Pattern, PatternCards(), TONE, Campaign(), disciplineColor(), fmtMoney() (+21 more)
+
+### Community 12 - "dashboard-analytics.ts"
 Cohesion: 0.11
-Nodes (24): POST(), POST(), ADR-0001, POST(), AuthResult, checkCronAuth(), timingSafeMatch(), USER_SELECT (+16 more)
+Nodes (35): Partición practice (financiero excluye DEMO_PERSONAL/DEMO_PROP/BACKTEST; discipline las cuenta), Riesgo principal — dashboardStats sin tests previos (mitigado con test T3 antes de mover), TD-018 Task 3 — Dashboard service + primer test de orquestación, dashboard-service.test.ts (partición practice), AccountBalance, AccountExposure, AccountLimits, AccountStat (+27 more)
 
-### Community 14 - "notify.tsx"
-Cohesion: 0.12
-Nodes (30): ToastCardProps, AppError, isAppError(), toUserMessage(), TRPC_TO_CODE, LABELS, MessageCode, interpolate() (+22 more)
-
-### Community 15 - "coach-memory-service.ts"
-Cohesion: 0.10
-Nodes (30): assembleContextBlock(), AssembleInput, MemoryExtraction, MemoryKind, MemoryStatus, parseMemoryExtraction(), ProposedMemory, proposeMemory() (+22 more)
-
-### Community 16 - "learning-resources.ts"
-Cohesion: 0.13
-Nodes (14): computeNextReview(), Grade, SrsInput, SrsResult, updateEase(), LearningResourceInput, learningResourcesRouter, LinkedSetup (+6 more)
-
-### Community 17 - "index.ts"
-Cohesion: 0.08
-Nodes (35): buildKpis(), calcNetPnl(), calcSharpeRatio(), calcAvgR(), calcExpectancyR(), SetupHealthParams, SetupHealthStatus, AiUsageLog (+27 more)
-
-### Community 18 - "cn"
-Cohesion: 0.07
-Nodes (29): ADR-000 — Decisiones de raíz de Trading Journal v3.1, ADR-001 — Runtime de eventos y entrega, ADR-002 — Estrategia estadística, ADR-003 — Privacidad de la memoria y frontera anti-corrupción, ADR-004 — Reserva de datos cross-user (BIZ-1), Alternativas consideradas, Alternativas consideradas, Alternativas consideradas (+21 more)
-
-### Community 19 - "trades-table.tsx"
-Cohesion: 0.14
-Nodes (20): RFC-4180, Checkbox(), getResult(), QUALITY_TAGS, qualityOf(), RESULT_LABELS, SESSION_CFG, shortAccount() (+12 more)
-
-### Community 20 - "page.tsx"
-Cohesion: 0.07
-Nodes (39): fmt(), FocusSession(), HoyTab(), ALL_TYPES, ProgresoSections(), ResourceFromDB, TYPE_COLORS, ResourceFromDB (+31 more)
-
-### Community 21 - "ai-context.ts"
-Cohesion: 0.13
-Nodes (18): computeProgressPct(), computeResourceStatus(), applyStudyFinish(), minutesThisWeek(), pickStudySuggestion(), ResourceProgressLite, ResourceProgressUpdate, startOfWeekUTC() (+10 more)
-
-### Community 22 - "send-review.ts"
-Cohesion: 0.23
-Nodes (15): POST(), USER_SELECT, GET(), localHour(), ReviewPeriod, finalizeMonthlyReview(), buildHtml(), MONTHS (+7 more)
-
-### Community 23 - "tab-portfolio.tsx"
+### Community 13 - "tab-portfolio.tsx"
 Cohesion: 0.08
 Nodes (28): Card(), CardProps, ChartTooltip(), TooltipPayload, GoalProgressWidget(), GoalProgressWidgetProps, GoalRingProps, KpiSummary (+20 more)
 
-### Community 24 - "page.tsx"
-Cohesion: 0.15
-Nodes (16): JumpItem, MonthJumpIndex(), labelFor(), MonthFilter, MONTHS_LONG, MONTHS_SHORT, ReviewsCalendarFilter(), Overview (+8 more)
+### Community 14 - "register-trade-modal.tsx"
+Cohesion: 0.08
+Nodes (32): AccountLike, computeAutoTag(), computeContracts(), EMOTION_OPTIONS, EmotionBefore, ERROR_FIELD_ORDER, INITIAL, isSelectableSetup() (+24 more)
 
-### Community 25 - "monthly-reviews.ts"
-Cohesion: 0.14
-Nodes (23): MonthlyReport, resolveAiCall(), usableCandidates(), ensureReviewAnalysis(), persistMonthlyAnalysis(), persistWeeklyAnalysis(), LearningSummary, loadLearningSummary() (+15 more)
-
-### Community 26 - "review-card.tsx"
+### Community 15 - "index.ts"
 Cohesion: 0.09
-Nodes (32): Campaign(), MonthlyLetter(), disciplineColor(), fmtMoney(), GRADE_TONE, pnlColor(), ReviewCard(), ReviewFromDB (+24 more)
+Nodes (31): calcNetPnl(), calcAvgR(), calcExpectancyR(), AiUsageLog, AnalyticsCache, AnalyticsInput, AnalyticsOutput, CalibrationPoint (+23 more)
 
-### Community 27 - "improvement-service.ts"
+### Community 16 - "prisma.ts"
 Cohesion: 0.11
-Nodes (26): clamp01(), computeImprovementScore(), costOfIndiscipline(), DEFAULT_WEIGHTS, Driver, ImprovementInputs, ImprovementResult, ImprovementWeights (+18 more)
+Nodes (24): POST(), POST(), ADR-0001, POST(), AuthResult, checkCronAuth(), timingSafeMatch(), USER_SELECT (+16 more)
 
-### Community 28 - "report-data.ts"
-Cohesion: 0.24
-Nodes (9): buildPnlBySymbol(), buildMonthlyReport(), kpisOf(), ReportTrade, sessionsOf(), buildWeeklyReport(), DAY_LABELS, kpisOf() (+1 more)
+### Community 17 - "monthly-reviews.ts"
+Cohesion: 0.11
+Nodes (24): finalizeMonthlyReview(), FinalizeResult, MONTHS_ES, evaluateGoal(), GoalContext, GoalProposal, GoalStatus, deriveLetterTitle() (+16 more)
 
-### Community 29 - "page.tsx"
-Cohesion: 0.06
-Nodes (31): PromotePhaseModal(), RawAccount, CAT_COLOR, CAT_LABELS, CATS, FORM_INIT, MarketForm, MarketItem (+23 more)
+### Community 18 - "page.tsx"
+Cohesion: 0.10
+Nodes (22): Period, useDashboardStats(), DashboardPage(), Tab, TABS, VALID_PERIODS, EMOTION_LABELS, PERIODS (+14 more)
 
-### Community 30 - "utils.ts"
+### Community 19 - "ai-context.ts"
 Cohesion: 0.09
-Nodes (27): Stat(), DOW, TOUR_STEPS, AccountHistoryModal(), EVENT_META, Log, accountToForm(), EditarCuentaModal() (+19 more)
+Nodes (26): buildTraderContext(), RawAccountRow, RawLearningRow, RawMarketRow, RawReviewRow, RawRuleRow, RawSessionRow, RawSetupRow (+18 more)
 
-### Community 31 - "page.tsx"
+### Community 20 - "page.tsx"
+Cohesion: 0.10
+Nodes (22): DOW, HoyTab(), TOUR_STEPS, AccountHistoryModal(), EVENT_META, Log, CuentasPage(), STATUS_FILTER_OPTIONS (+14 more)
+
+### Community 21 - "page.tsx"
 Cohesion: 0.15
 Nodes (23): AccountsIntel(), amt(), AnalyticsPage(), Edges(), fmt(), GoalRow(), Goals(), Institutional (+15 more)
 
-### Community 32 - "analytics-bundle.ts"
-Cohesion: 0.13
-Nodes (24): accountReality, isPracticeType(), PRACTICE_TYPES, COACH_TOOLS, CoachToolName, executeCoachTool(), PERIOD_DAYS, PROTECTION_TO_METRIC (+16 more)
-
-### Community 33 - "weekly-reviews.ts"
-Cohesion: 0.17
-Nodes (18): MetricRow(), MetricRowProps, SESSION_COLOR, SESSION_SHORT, TradeDetailPanelProps, getResult(), RESULT_CFG, SESSION_CFG (+10 more)
-
-### Community 34 - "learning-insights-service.ts"
-Cohesion: 0.18
-Nodes (15): ErrorCard, ErrorCardInput, ErrorTrade, generateErrorCards(), PerfSignal, computeTransfer(), mean(), TransferInput (+7 more)
-
-### Community 35 - "feature-models.ts"
-Cohesion: 0.14
-Nodes (21): AI_FEATURES, AI_PROVIDERS_LIST, AiFeature, AiSettings, CHAT_LADDER, CostPriority, DEFAULT_AI_SETTINGS, EMBEDDING_LADDER (+13 more)
-
-### Community 36 - "page.tsx"
-Cohesion: 0.11
-Nodes (22): Period, useDashboardStats(), DashboardPage(), Tab, TABS, VALID_PERIODS, EMOTION_LABELS, PERIODS (+14 more)
-
-### Community 37 - "condition-group.tsx"
+### Community 22 - "view-model.ts"
 Cohesion: 0.12
-Nodes (19): FinalizeResult, MONTHS_ES, evaluateGoal(), GoalContext, GoalProposal, GoalStatus, deriveLetterTitle(), deriveStructuredThemes() (+11 more)
+Nodes (22): AiAnalysisCard(), Period, LearningSummary(), Card(), Eyebrow(), ReviewActions(), ReviewNotes(), useSaveReview() (+14 more)
 
-### Community 38 - "playbook-service.ts"
+### Community 23 - "Sidebar.tsx"
+Cohesion: 0.12
+Nodes (20): CreateAction, IconTab(), MobileBottomBar(), NavItem, useReducedMotion(), DeskItem(), MobileClock(), NAV (+12 more)
+
+### Community 24 - "weekly-reviews.ts"
+Cohesion: 0.10
+Nodes (24): InsightCategory, InsightSeverity, LearningSummary, loadLearningSummary(), buildPeriodSummary(), CATEGORY_TAG, downsample(), loadPatterns() (+16 more)
+
+### Community 25 - "isWin()"
+Cohesion: 0.16
+Nodes (23): MinimalTrade, detectFridayBias(), detectOversizingAfterLoss(), detectOvertradingAfterWinStreak(), detectPatterns(), detectRevengeTradingPattern(), detectSessionFatigue(), monthSpan() (+15 more)
+
+### Community 26 - "trades.ts"
+Cohesion: 0.16
+Nodes (22): Refactor behavior-preserving (RouterOutputs y schemas zod intactos), Sustituciones mecánicas (ctx.prisma→prisma, ctx.userId→userId, ctx.supabase→supabase), TD-018 Task 1 — Serializers, TD-018 Task 2 — Embedding service, TD-018 Task 4 — Read service (list/violaciones/emoción/patrones), TD-018 Task 6 — Write service: update + close, PrismaClient, backfillEmbeddings() (+14 more)
+
+### Community 27 - "review-report-shell.tsx"
+Cohesion: 0.16
+Nodes (21): EquityCurveChart(), PnlTrendChart(), TrendTooltip(), DownloadPdfButton(), Delta(), pnlColor(), AccountBreakdown(), Analytics (+13 more)
+
+### Community 28 - "analytics-insights-service.ts"
+Cohesion: 0.16
+Nodes (18): PERIODS, POST(), PERIODS, POST(), AnalyticsAiOptions, buildContext(), streamAnalyticsInsights(), windowFor() (+10 more)
+
+### Community 29 - "feature-models.ts"
+Cohesion: 0.14
+Nodes (22): AiProvider, AI_FEATURES, AI_PROVIDERS_LIST, AiFeature, AiSettings, CHAT_LADDER, CostPriority, DEFAULT_AI_SETTINGS (+14 more)
+
+### Community 30 - "Checklist de QA pendiente de V3 (109 ítems)"
+Cohesion: 0.11
+Nodes (24): Check-in pre-sesión (go/caution/no_go), RiskBudgetMeter, Feed HOY (TodayFeed), AUDIT_FINAL.md (auditoría final; §9 manda sobre §5), Gaps de AUDIT_FINAL (GAP-A/B/C/D/E), GAP-A1 — guard de presupuesto diario pre-trade (✅ PR #116), GAP-A2 — transferencia #31 + SRS #45 (✅ PR #118), GAP-A3 — migración real de rutas a 5 superficies (roadmap) (+16 more)
+
+### Community 31 - "create-account-modal.tsx"
 Cohesion: 0.13
-Nodes (25): Dated, Window, detectSetupDrift(), DriftDimension, DriftDimensionKey, DriftInput, DriftResult, DriftTrade (+17 more)
+Nodes (18): Task 9: UI — preset picker + enforceMode toggle, PHASE_LABEL, PropFirmPreset, PropFirmPresetPicker(), ACCOUNT_TYPES, BROKERS, FORM_INIT, NuevaCuentaModal() (+10 more)
 
-### Community 39 - "send-learning-digest.ts"
-Cohesion: 0.22
-Nodes (11): ARCHIVE_REASONS, formatMinutes(), MenuItem(), MenuItemProps, progressColor(), progressLabel(), relativeTime(), ResourceCard() (+3 more)
-
-### Community 40 - "risk-of-ruin.ts"
-Cohesion: 0.15
-Nodes (20): Band, jeffreysBand(), Bottleneck, mean(), PassOutcome, percentile(), projectPhasePass(), PropProjectionResult (+12 more)
-
-### Community 41 - "Hardening 2026-06-10 (P&L, enforcement, CI/migraciones, rendimiento)"
-Cohesion: 0.33
-Nodes (6): [2026-06-10] · Hardening: P&L, enforcement, CI/migraciones y rendimiento, Fixed — financiero (core), Fixed — UX / reglas, Infra / CI / migraciones, Performance, Tests
-
-### Community 42 - "engine.ts"
-Cohesion: 0.06
-Nodes (63): metadata, viewport, ADV_ROLES, CreatorModal(), iconBtn, labelStyle, PaletteStudio(), NOTE: applying the theme on mount / mode-change is intentionally NOT done here. (+55 more)
-
-### Community 43 - "page.tsx"
-Cohesion: 0.06
-Nodes (32): SyncBalanceModal(), SyncBalanceModalProps, syncSchema, SyncValues, COLORS, DbSetup, Direction, DirectionChip() (+24 more)
-
-### Community 44 - "bayes.ts"
-Cohesion: 0.15
-Nodes (19): betaBinomialEstimate(), betacf(), BetaPrior, betaQuantile(), cohensH(), DEFAULT_BETA_PRIOR, DEFAULT_NORMAL_PRIOR, erf() (+11 more)
-
-### Community 45 - "seed-psych-trades.mjs"
+### Community 32 - "resource-drawer.tsx"
 Cohesion: 0.13
-Nodes (21): ACCOUNTS, between(), buildTrade(), c, cols, DRY, EMO_LOSS, EMO_WIN (+13 more)
+Nodes (19): effectiveMasteryLevel(), MASTERY_STAGES, masteryLevel(), MasteryStage, masteryStageIndex(), masteryStageIndexFromLevel(), STATUS_TO_LEVEL, fmtDate() (+11 more)
 
-### Community 47 - "route.ts"
-Cohesion: 0.19
-Nodes (18): dupKey(), POST(), storedKey(), toDirection(), DryRunResponse, CTRADER_COLS, detectFormat(), parseCtraderDate() (+10 more)
+### Community 33 - "page.tsx"
+Cohesion: 0.13
+Nodes (17): JumpItem, MonthJumpIndex(), money(), PeriodSummary(), Summary, labelFor(), MonthFilter, MONTHS_LONG (+9 more)
 
-### Community 48 - "resolveAiCall"
-Cohesion: 0.17
-Nodes (15): POST(), ChatMessage, streamChat(), StreamChatOptions, SystemBlock, systemToString(), CoachAgentOptions, streamCoachAgent() (+7 more)
-
-### Community 49 - "simple-table.tsx"
-Cohesion: 0.19
-Nodes (17): RetirosTable(), AppToaster(), ROW_PAD, SimpleColumn, SimpleRow(), SimpleTable(), ColumnMeta, loadJSON() (+9 more)
-
-### Community 50 - "institutional-summary.ts"
+### Community 34 - "institutional-summary.ts"
 Cohesion: 0.14
 Nodes (19): EquityDrawdownChart(), fmt(), fmt(), RDistributionChart(), analyzeDrawdown(), daysBetween(), DrawdownPoint, DrawdownResult (+11 more)
 
-### Community 51 - "overview.ts"
-Cohesion: 0.13
-Nodes (20): InsightCategory, InsightSeverity, buildPeriodSummary(), CATEGORY_TAG, downsample(), loadPatterns(), loadReviewsOverview(), money() (+12 more)
+### Community 35 - "route.ts"
+Cohesion: 0.18
+Nodes (15): POST(), USER_SELECT, GET(), localDateISO(), localHour(), ReviewPeriod, buildHtml(), MONTHS (+7 more)
 
-### Community 52 - "event-bus.ts"
-Cohesion: 0.13
-Nodes (15): DispatchResult, DomainEventRecord, EventHandler, EventStatus, EventTransition, HandlerOutcome, handlers, isKnownEventType() (+7 more)
+### Community 36 - "playbook-service.ts"
+Cohesion: 0.16
+Nodes (20): Dated, Window, detectSetupDrift(), DriftDimension, DriftDimensionKey, DriftInput, DriftResult, DriftTrade (+12 more)
 
-### Community 53 - "compilerOptions"
+### Community 37 - "risk-of-ruin.ts"
+Cohesion: 0.15
+Nodes (20): Band, jeffreysBand(), Bottleneck, mean(), PassOutcome, percentile(), projectPhasePass(), PropProjectionResult (+12 more)
+
+### Community 38 - "intervention-service.ts"
+Cohesion: 0.13
+Nodes (20): ActionKind, clamp01(), DayState, decideIntervention(), DecisionOpts, detectInterventions(), FatigueState, InterventionCandidate (+12 more)
+
+### Community 39 - "study-session-service.ts"
+Cohesion: 0.13
+Nodes (18): computeProgressPct(), computeResourceStatus(), applyStudyFinish(), minutesThisWeek(), pickStudySuggestion(), ResourceProgressLite, ResourceProgressUpdate, startOfWeekUTC() (+10 more)
+
+### Community 40 - "init.ts"
+Cohesion: 0.11
+Nodes (14): Context, protectedProcedure, t, accountLogsRouter, goalsRouter, MarketInput, marketsRouter, monthlyGoalsRouter (+6 more)
+
+### Community 41 - "Trading Journal (producto)"
+Cohesion: 0.09
+Nodes (22): Módulo Aprendizaje / SRS (/aprendizaje), Módulo Cuentas (/cuentas), Módulo Dashboard (/dashboard), Módulo Etiquetas (/etiquetas), Formula Engine (lib/formulas — performance, win-rate, risk, drawdown, discipline, setup), Persona: Funded Trader, Módulo Mercados (/mercados), Next.js App Router + React (frontend) (+14 more)
+
+### Community 42 - "Prop-Firm Guard Rules Engine"
+Cohesion: 0.14
+Nodes (20): Task 2: Engine — checkTrailingDrawdown, Task 4: Engine — checkWeekendHolding, Task 5: Engine — phaseProgress, Task 8: Wire checks into dashboard status + ENFORCE lock, Gap: Consistency Rule Not Yet Implemented, Gap: Trailing Drawdown Logic Not Yet Implemented, Gap: Weekend Holding Restriction Not Yet Implemented, Realized-Equity-Only Enforcement Limitation (+12 more)
+
+### Community 43 - "memory-episode-service.ts"
+Cohesion: 0.19
+Nodes (18): extractTradeId(), POST(), secretsMatch(), BASE, decayedSalience(), initialSalience(), MemoryEventType, recallScore() (+10 more)
+
+### Community 44 - "engine.ts"
+Cohesion: 0.18
+Nodes (20): CreatorModal(), Swatch(), accentContrastFor(), bestContrastOn(), clamp01(), configFromHex(), contrastRatio(), derivePalette() (+12 more)
+
+### Community 45 - "bayes.ts"
+Cohesion: 0.15
+Nodes (19): betaBinomialEstimate(), betacf(), BetaPrior, betaQuantile(), cohensH(), DEFAULT_BETA_PRIOR, DEFAULT_NORMAL_PRIOR, erf() (+11 more)
+
+### Community 46 - "coach-memory-service.ts"
+Cohesion: 0.15
+Nodes (18): assembleContextBlock(), AssembleInput, MemoryExtraction, MemoryKind, MemoryStatus, parseMemoryExtraction(), ProposedMemory, proposeMemory() (+10 more)
+
+### Community 47 - "seed-psych-trades.mjs"
+Cohesion: 0.13
+Nodes (21): ACCOUNTS, between(), buildTrade(), c, cols, DRY, EMO_LOSS, EMO_WIN (+13 more)
+
+### Community 48 - "Analytics Subsystem"
+Cohesion: 0.13
+Nodes (21): ADR-002: Estrategia estadística, Analytics (subsistema, determinista), ANALYTICS_V3.md, C3: sin longitudinal (crítico auditoría), C4: métricas institucionales (crítico auditoría), C8: insights sin historiar (crítico auditoría), FREEZE-D15: estadística Bayesiana/jerárquica con shrinkage, FREEZE-D16: proyecciones prop no estacionarias (sin puntos sin banda) (+13 more)
+
+### Community 49 - "route.ts"
+Cohesion: 0.19
+Nodes (18): dupKey(), POST(), storedKey(), toDirection(), DryRunResponse, CTRADER_COLS, detectFormat(), parseCtraderDate() (+10 more)
+
+### Community 50 - "condition-group.tsx"
+Cohesion: 0.13
+Nodes (17): CMP_LABEL, ConditionGroup(), Group, isGroup(), isLeaf(), isNot(), newLeaf(), NotNode (+9 more)
+
+### Community 51 - "learning-resources.ts"
+Cohesion: 0.11
+Nodes (16): detectDecayedResources(), ResourceForDecay, computeNextReview(), Grade, SrsInput, SrsResult, updateEase(), LearningResourceInput (+8 more)
+
+### Community 52 - "compilerOptions"
 Cohesion: 0.10
 Nodes (20): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+12 more)
 
-### Community 54 - "types.ts"
+### Community 53 - "page.tsx"
 Cohesion: 0.13
-Nodes (21): AccountIntel, AnalyticsBundle, buildAnalyticsBundle(), EmotionIntel, holdMinutes(), MarketIntel, round1(), round2() (+13 more)
+Nodes (17): Task 3 — Router rules a paridad ejecutable, ACTION_LABEL, AutomationsTab(), ExecRuleRow, RemindersTab(), TABS, Template, TRIGGER_LABEL (+9 more)
 
-### Community 55 - "register-trade-modal.tsx"
-Cohesion: 0.13
-Nodes (19): AccountLike, computeAutoTag(), computeContracts(), EMOTION_OPTIONS, EmotionBefore, ERROR_FIELD_ORDER, INITIAL, isSelectableSetup() (+11 more)
+### Community 54 - "notifications.ts"
+Cohesion: 0.21
+Nodes (14): CATEGORIES, NotificacionesPage(), NotificationBell(), CenterPanel(), CenterSheet(), formatNotifTime(), NotificationItem(), NotificationItemProps (+6 more)
 
-### Community 56 - "edge-service.ts"
+### Community 55 - "edge-service.ts"
 Cohesion: 0.16
 Nodes (16): computeInstrumentEdges(), EdgeVerdict, InstrumentEdge, InstrumentEdgeResult, InstrumentTrade, mean(), computeTagEdges(), mean() (+8 more)
 
-### Community 57 - "intervention-service.ts"
-Cohesion: 0.15
-Nodes (18): ActionKind, clamp01(), DayState, decideIntervention(), DecisionOpts, detectInterventions(), FatigueState, InterventionCandidate (+10 more)
+### Community 56 - "behavior.ts"
+Cohesion: 0.18
+Nodes (16): block(), canEnforce(), ProposedRule, proposeRuleForCommitment(), RuleSuggestionProposal, suggestRuleForInsight(), carryOverCommitments(), dismissProposedCommitment() (+8 more)
 
-### Community 58 - "motion.ts"
-Cohesion: 0.14
-Nodes (14): CardEquityChart(), DAYS, Pattern, PatternCards(), TONE, HeroMetric(), ReportData, CollectionMotion (+6 more)
+### Community 57 - "learning-insights-service.ts"
+Cohesion: 0.17
+Nodes (16): ErrorCard, ErrorCardInput, ErrorTrade, generateErrorCards(), PerfSignal, computeTransfer(), mean(), TransferInput (+8 more)
 
-### Community 59 - "ConditionNode"
-Cohesion: 0.19
-Nodes (15): PERIODS, POST(), PERIODS, POST(), ALLOWED_MIME, POST(), AnalyticsAiOptions, buildContext() (+7 more)
+### Community 58 - "Hardening: P&L, Enforcement, CI/Migrations and Performance (2026-06-10, PRs #6–#17)"
+Cohesion: 0.12
+Nodes (19): Commission Optional on Close (#14), Prop-Firm Drawdown + Limit Enforcement Unified (#6), GitHub Actions Updated Node 20 → 24 (checkout@v5, setup-node@v5, pnpm/action-setup@v5) (#13), Hardening: P&L, Enforcement, CI/Migrations and Performance (2026-06-10, PRs #6–#17), GitHub Actions Secrets → migrate-deploy Job Green, Negative Sign on Losses Fix (#17), Node Pinned to 20.12+ (.nvmrc + engines) (#7), parsePointValue Helper (+11 more)
+
+### Community 59 - "page.tsx"
+Cohesion: 0.12
+Nodes (15): CAT_COLOR, CAT_LABELS, CATS, FORM_INIT, MarketForm, MarketItem, MarketModal(), MercadosPage() (+7 more)
 
 ### Community 60 - "markdown.tsx"
-Cohesion: 0.08
-Nodes (31): AiCoachDrawer(), ApiError, clampPos(), formatTime(), Message, SUGGESTED, TOOL_LABELS, useIsMobile() (+23 more)
+Cohesion: 0.16
+Nodes (17): Block, CALLOUT, CALLOUT_ALIASES, CalloutType, CODE_KEYWORDS, CodeBlock(), detectCallout(), HEADING_CLASS (+9 more)
 
-### Community 61 - "behavior.ts"
-Cohesion: 0.17
-Nodes (17): canCommit(), block(), canEnforce(), ProposedRule, proposeRuleForCommitment(), RuleSuggestionProposal, suggestRuleForInsight(), carryOverCommitments() (+9 more)
+### Community 61 - "welch.ts"
+Cohesion: 0.20
+Nodes (16): mean(), oneSampleTTest(), sampleVariance(), studentTTwoSidedP(), TTestResult, welchTTest(), detectEdgeDecay(), EdgeDecayInput (+8 more)
 
-### Community 62 - "emit.ts"
-Cohesion: 0.05
-Nodes (39): LoginPage(), NotificacionesPage(), AI_PROVIDERS, COLORBLIND_OPTIONS, PerfilPage(), SESSIONS, TIMEZONES, CreateAction (+31 more)
+### Community 62 - "event-bus.ts"
+Cohesion: 0.13
+Nodes (15): DispatchResult, DomainEventRecord, EventHandler, EventStatus, EventTransition, HandlerOutcome, handlers, isKnownEventType() (+7 more)
 
-### Community 63 - "devDependencies"
-Cohesion: 0.11
-Nodes (18): devDependencies, eslint, eslint-config-next, jsdom, @playwright/test, react-email, tailwindcss, @tailwindcss/postcss (+10 more)
+### Community 63 - "createClient()"
+Cohesion: 0.18
+Nodes (12): POST(), Provider, rateLimiter, testAnthropicKey(), testOpenAIKey(), testOpenRouterKey(), ALLOWED_MIME, POST() (+4 more)
 
-### Community 64 - "data-table.tsx"
-Cohesion: 0.17
-Nodes (14): AnimatedItem(), AnimatedList(), DataTable(), gridTemplate(), RovingItemProps, Row(), ROW_PAD, TableSkeleton() (+6 more)
+### Community 64 - "page.tsx"
+Cohesion: 0.18
+Nodes (15): blankDraft(), CATEGORY_SUGGESTIONS, COLOR_PRESETS, DISPLAY_MODES, EtiquetasPage(), ICON_PRESETS, TagRow, SelectableTagChip() (+7 more)
 
-### Community 65 - "automations.ts"
-Cohesion: 0.15
-Nodes (12): 1. Contexto y estado real verificado (2026-07-13), 2. Gate OI-1 — informe de no-mapeo con datos reales (CERRADO 2026-07-13), 3. Fase 1 — Flip (ops, sin código), 4. Fase 2 — Retiro de `automations` (rama `feat/g2-rules-cutover`), 5. Testing y verificación, 6. Rollback y riesgos, Engine, G2 — Cutover de enforcement a `rules` y retiro de `automations` (+4 more)
+### Community 65 - "notify.tsx"
+Cohesion: 0.20
+Nodes (15): ToastCard(), ToastCardProps, TYPE_STYLE, TypeStyle, MessageAction, NotifCategory, NotifType, Priority (+7 more)
 
-### Community 66 - "ai-config.ts"
+### Community 66 - "improvement-service.ts"
+Cohesion: 0.20
+Nodes (14): ImprovementResult, computeRegimePerformance(), mean(), RegimePerformanceResult, RegimeStat, RegimeTrade, getImprovement(), ImprovementOverview (+6 more)
+
+### Community 67 - "analytics-bundle.ts"
+Cohesion: 0.16
+Nodes (15): AccountIntel, AnalyticsBundle, buildAnalyticsBundle(), EmotionIntel, holdMinutes(), MarketIntel, round1(), round2() (+7 more)
+
+### Community 68 - "ai-config.ts"
 Cohesion: 0.18
 Nodes (13): ConnectivityResult, testProviderConnectivity(), decryptApiKey(), encryptApiKey(), EncryptionConfigError, getEncryptionKey(), maskApiKey(), rotateEncryptionKey() (+5 more)
 
-### Community 67 - "ai-coach-drawer.tsx"
-Cohesion: 0.15
-Nodes (14): Chip(), PHASE_LABEL, PropFirmPreset, PropFirmPresetPicker(), ACCOUNT_TYPES, BROKERS, FORM_INIT, NuevaCuentaModal() (+6 more)
+### Community 69 - "resolve.ts"
+Cohesion: 0.21
+Nodes (14): AppError, isAppError(), toUserMessage(), TRPC_TO_CODE, LABELS, MessageCode, interpolate(), isMessageCode() (+6 more)
 
-### Community 68 - "psychology-service.ts"
+### Community 70 - "parse.ts"
 Cohesion: 0.16
-Nodes (18): calibration(), CheckinInput, CheckinResult, checkinVerdict, clamp(), LABEL, avg(), MoodSample (+10 more)
+Nodes (15): isValidSelection(), num(), parsePaletteConfig(), parsePaletteConfigJson(), PaletteConfig, configInput, customPalettesRouter, normalize() (+7 more)
 
-### Community 69 - "risk-service.ts"
+### Community 71 - "devDependencies"
+Cohesion: 0.11
+Nodes (18): devDependencies, eslint, eslint-config-next, jsdom, @playwright/test, react-email, tailwindcss, @tailwindcss/postcss (+10 more)
+
+### Community 72 - "ADR-003: Memory Privacy Boundary"
+Cohesion: 0.15
+Nodes (17): ADR-003: Privacidad de la memoria y frontera anti-corrupción, AI_COACH_V3.md, Máquina de estados del Behavior Engine (ACTIVE→KEPT/PARTIAL/BROKEN/EXPIRED), C2: sin memoria (crítico auditoría), FREEZE-D11: write con confirmación explícita del coach, FREEZE-D9: frontera anti-poisoning de memoria (irreversible), E13: MemoryEpisode, E14: MemoryPattern (+9 more)
+
+### Community 73 - "TD-018 — extraer orquestación de trades.ts (1146 LOC) a service layer"
 Cohesion: 0.14
-Nodes (20): aggregateExposure(), AggregateFreezeInput, aggregateFreezeSignal, CorrelationResult, Direction, OpenPosition, SymbolExposure, clamp01() (+12 more)
+Nodes (17): G2 Fase 2 — Retiro de automations · Implementation Plan, Global constraints G2 (sin migraciones, no merge a main, guard prisma.automation), Task 4 — UI /reglas → trpc.rules.*, TD-018 — Trade Service Extraction Implementation Plan, Patrón I/O shell — load data, run pure logic, persist, Self-review — 14 procedures del router cubiertos por T1-T7, TD-018 — extraer orquestación de trades.ts (1146 LOC) a service layer, G2 Rules Cutover Design Spec (+9 more)
 
-### Community 70 - "today-service.ts"
-Cohesion: 0.18
-Nodes (15): ResourceCardProps, CATEGORY_OPTIONS, ResourceGrid(), ResourceGridProps, SORT_OPTIONS, SortKey, sortResources(), STATUS_OPTIONS (+7 more)
+### Community 74 - "page.tsx"
+Cohesion: 0.12
+Nodes (6): AI_PROVIDERS, COLORBLIND_OPTIONS, SESSIONS, TIMEZONES, SUPPORTED_CURRENCIES, USD_VALUE
 
-### Community 71 - "commitment-service.ts"
-Cohesion: 0.19
-Nodes (16): CommitmentWindow, deriveCommitmentSpec(), getVerifier(), publishEvent(), acceptProposedCommitment(), createCommitmentFromInsight(), CreateCommitmentOverrides, evaluateCommitment() (+8 more)
+### Community 75 - "ai-coach-drawer.tsx"
+Cohesion: 0.16
+Nodes (14): AiCoachDrawer(), ApiError, clampPos(), formatTime(), Message, SUGGESTED, TOOL_LABELS, useIsMobile() (+6 more)
 
-### Community 72 - "gen-theme-css.mjs"
-Cohesion: 0.23
-Nodes (14): accentContrastFor(), clamp01(), contrastRatio(), derivePalette(), hexToRgb(), linearToSrgb(), okl(), oklchToHex() (+6 more)
+### Community 76 - "motion.ts"
+Cohesion: 0.17
+Nodes (14): CountUp(), format(), parse(), Parsed, KpiCardProps, KpiStripItem, CollectionMotion, DUR (+6 more)
 
-### Community 73 - "coach-service.ts"
+### Community 77 - "insight-store.ts"
+Cohesion: 0.21
+Nodes (14): ComputedInsight, InsightStatus, PersistedInsightRef, reconcileInsights(), ReconcilePlan, ADR-0002, loadActiveRefs(), persistInsights() (+6 more)
+
+### Community 78 - "risk-service.ts"
+Cohesion: 0.22
+Nodes (14): aggregateExposure(), AggregateFreezeInput, aggregateFreezeSignal, CorrelationResult, Direction, OpenPosition, SymbolExposure, asDrawdownModel() (+6 more)
+
+### Community 79 - "today-service.ts"
+Cohesion: 0.22
+Nodes (14): RiskBudget, assembleTodayFeed(), detectDailyAnomaly(), SignalInput, TodayItem, getIgnoreCounts(), recordIgnore(), getTodayFeed() (+6 more)
+
+### Community 80 - "insights-engine.ts"
 Cohesion: 0.22
 Nodes (16): bySymbolDate(), detectAccountRisk(), detectEmotionPerformance(), detectIntradayDecay(), detectLosingStreak(), detectSetupConcentration(), detectWeekdayDiscipline(), detectWithdrawalImpact() (+8 more)
 
-### Community 74 - "page.tsx"
-Cohesion: 0.09
-Nodes (28): ImportCsvModal(), MarketItem, TradesPage(), ENERGY_LABELS, LogSessionPopover(), MOOD_LABELS, RatingBar(), SESSION_OPTIONS (+20 more)
+### Community 81 - "report-data.ts"
+Cohesion: 0.24
+Nodes (11): buildMonthlyReport(), kpisOf(), MonthlyReport, ReportTrade, sessionsOf(), buildWeeklyReport(), DAY_LABELS, kpisOf() (+3 more)
 
-### Community 75 - "risk-engine.ts"
-Cohesion: 0.13
-Nodes (29): checkTrailingDrawdown(), assertTradeable(), autoUnlock(), EnforceableAccount, evaluateAndLock(), hasAnyLimit(), loadAccountRisk(), loadEquityCurve() (+21 more)
+### Community 82 - "ARCHITECTURE_FREEZE Canonical Doc"
+Cohesion: 0.16
+Nodes (16): Principio "Absorber, no borrar", ADR-000: Decisiones de raíz de Trading Journal v3.1, ADR-004: Reserva de datos cross-user (BIZ-1), ARCHITECTURE_CHALLENGE.md, auditoria-producto-trading-journal-v2.md, BEHAVIOR_ENGINE_V3.md, BIZ-1: decisión de aislamiento de datos cross-user, Regla de control de cambios (todo cambio arquitectónico cita un ID de freeze) (+8 more)
 
-### Community 76 - "page.tsx"
-Cohesion: 0.30
-Nodes (14): detectCleanStreak(), detectEmotionBeforeLoss(), detectHoldingAsymmetry(), detectImpulsiveExpectancy(), detectOverconfidence(), detectViolationEmotion(), generatePsychologyInsights(), holdMin() (+6 more)
+### Community 83 - "trade-write-service.ts"
+Cohesion: 0.16
+Nodes (15): Stub deprecado 'stats' se queda en el router a propósito, TD-018 Task 5 — Write service: create, TD-018 Task 7 — Write service: addEvent + delete + saveChecklistResult, checkSymbolAllowlist(), checkTradeCountLimit(), addTradeEvent(), AddTradeEventInput, CloseTradeInput (+7 more)
 
-### Community 77 - "rolling-window.ts"
-Cohesion: 0.19
-Nodes (17): calmarRatio(), computeRiskRatios(), Kelly, kellyCriterion(), kellyFromR, mean(), rollingRiskRatios(), sortinoRatio() (+9 more)
+### Community 84 - "gen-theme-css.mjs"
+Cohesion: 0.23
+Nodes (14): accentContrastFor(), clamp01(), contrastRatio(), derivePalette(), hexToRgb(), linearToSrgb(), okl(), oklchToHex() (+6 more)
 
-### Community 78 - "apply.ts"
-Cohesion: 0.22
-Nodes (8): G2 Fase 2 — Retiro de `automations` · Implementation Plan, Global Constraints, Task 1: Engine solo-`runRules` (borrar flag/dispatcher/runAutomations), Task 2: Helpers puros de escritura de reglas (`rule-write.ts`, TDD), Task 3: Router `rules` a paridad ejecutable, Task 4: UI `/reglas` → `trpc.rules.*`, Task 5: Borrar automations router, dual-write e informe de migración, Task 6: Validación final, docs y push
+### Community 85 - "types.ts"
+Cohesion: 0.27
+Nodes (12): RuleDraft, PROTECTION_TEMPLATE_MAP, PROTECTION_TEMPLATES, ProtectionTemplate, AutomationTemplate, BASE_TEMPLATES, PROTECTION_AS_AUTOMATION, ConditionNode (+4 more)
 
-### Community 79 - "gen-icons.mjs"
+### Community 86 - "psychology-service.ts"
+Cohesion: 0.23
+Nodes (13): calibration(), CheckinInput, CheckinResult, checkinVerdict, clamp(), LABEL, getCalibration(), getMoodTrend() (+5 more)
+
+### Community 87 - "commitment-service.ts"
+Cohesion: 0.20
+Nodes (14): CommitmentWindow, getVerifier(), publishEvent(), acceptProposedCommitment(), createCommitmentFromInsight(), CreateCommitmentOverrides, evaluateCommitment(), EvaluateResultOut (+6 more)
+
+### Community 88 - "fx.ts"
+Cohesion: 0.23
+Nodes (12): getISOWeekKey(), convertToBase(), fxFactor(), parseFxRates(), NOTE: rates are static/approximate. Future: make user-configurable or source a, usdValue(), loadWeeklyCardStats(), mondayOf() (+4 more)
+
+### Community 89 - "Trading Journal (project)"
+Cohesion: 0.15
+Nodes (15): dashboardStats Server-Side Analytics (Sprint 2), Formula Engine (Sprint 1), Sprints 1-3 — Foundation, Index trades(user_id, status, date desc) (#11), docs/auditoria-producto-trading-journal-v2.md (binding audit, findings C1–C8), Cognitive Layer Thesis (v3), 5 Cognitive Surfaces (HOY · OPERAR · ANALIZAR · PROTEGER · MEJORAR), domains/ Pure Business Logic by Bounded Context (cognitive · behavior · analytics · rules · trading) (+7 more)
+
+### Community 90 - "rolling-window.ts"
+Cohesion: 0.21
+Nodes (13): addDays(), compareCurrentVsPrevious(), Comparison, isCount(), rollingWindow(), RollingWindowOpts, sortByDate(), windowOf() (+5 more)
+
+### Community 91 - "apply.ts"
+Cohesion: 0.28
+Nodes (13): applyColorTheme(), clearInlineTokens(), injectInline(), LEGACY_KEYS, LEGACY_VARS, reapplyCustomForMode(), tokensToCssText(), CustomPalette (+5 more)
+
+### Community 92 - "gen-icons.mjs"
 Cohesion: 0.19
 Nodes (14): BG, chunk(), clamp(), crc32(), __dirname, distSeg(), DOT, encodePNG() (+6 more)
 
-### Community 80 - "trajectory-panel.tsx"
+### Community 93 - "Behavior Engine Subsystem"
+Cohesion: 0.21
+Nodes (14): Anti-fatiga (token-bucket, decay, cooldown, silencio ganado), Behavior Engine (subsistema), C5: loop reviews abierto (crítico auditoría), FREEZE-D13: refuerzo de ratio variable + soporte de autonomía, FREEZE-D4: Behavior Engine es el dueño del loop, FREEZE-D7: Commitment sólo se ofrece donde existe verificador, E10: RuleSuggestion, E3: WeeklyReview / MonthlyReview (+6 more)
+
+### Community 94 - "Intervention Engine Subsystem"
+Cohesion: 0.21
+Nodes (14): DESIGN_SYSTEM_V3.md, FREEZE-D14: override duro de capital, E11: Intervention (severity/urgency/confidence/expectedImpact), E15: MemoryIdentity, EV1: trade.created, EV10: intervention.responded, EV2: trade.closed, EV7: rule.fired (+6 more)
+
+### Community 95 - "Changelog — Trading Journal v2"
+Cohesion: 0.14
+Nodes (14): Documentation Consolidation (9 master docs + docs/archive/), 21 P0 QA Findings Resolved, Psychology Fields + plan_notes Migration, Sprint 4 — Psychology, Reviews and Personalization, Sprint 5 — AI Config, Goals, planNotes, Pagination, UX, International Support, Sprint 6 — System Theme, Review Filters, Sparklines, Type Safety, Security Hardening, Sprint 7 — Reviews Hardening, Discipline Centralization, Infrastructure, Sprint 8 — Testing, Accessibility, Monthly Reviews (+6 more)
+
+### Community 96 - "rules.ts"
+Cohesion: 0.14
+Nodes (13): Workaround TS2589 (select escalar + tipo de salida explícito), action, ACTION_TYPES, cmp, conditionNode, conditionValue, executableInput, leaf (+5 more)
+
+### Community 97 - "coach-service.ts"
+Cohesion: 0.23
+Nodes (10): POST(), SystemBlock, CoachAgentOptions, streamCoachAgent(), systemToString(), buildSystemPrompt(), CoachStreamOptions, MessageParam (+2 more)
+
+### Community 98 - "reviews-timeline.tsx"
+Cohesion: 0.21
+Nodes (12): EditionHeader(), EditionHeaderData, money(), TONE, nodeColor(), ReviewFromDB, ReviewsTimeline(), TimelineChapter (+4 more)
+
+### Community 99 - "trajectory-panel.tsx"
 Cohesion: 0.18
 Nodes (12): Bead, BEADS, buildChart(), fmtWeek(), HOVER, money(), Overview, STAT (+4 more)
 
-### Community 81 - "DrawdownModel"
+### Community 100 - "DrawdownModel"
 Cohesion: 0.20
 Nodes (11): AccountRiskConfig, DerivedRiskInputs, deriveRiskInputs(), median(), pctToFraction(), PropProjectionInput, DrawdownModel, AccountPhase (+3 more)
 
-### Community 82 - "risk-enforcement.ts"
-Cohesion: 0.12
-Nodes (15): 10. Fuera de alcance (YAGNI / POST), 11. Resumen de decisiones confirmadas, 1. Objetivo y valor, 2. Estado actual (de qué partimos), 3. Decisión arquitectónica — Snapshot (Approach A), 4.1 Nueva tabla `PropFirmPreset` (data de referencia GLOBAL, no per-usuario), 4.2 Campos nuevos en `Account` (los que faltan), 4.3 Migración (+7 more)
+### Community 101 - "loadWeeklyReport()"
+Cohesion: 0.23
+Nodes (11): computeDisciplineScore(), DisciplineDetail, DisciplinePeriod, DisciplineResult, calcDisciplineScore(), DisciplineBreakdown, DisciplineParams, FinalizeResult (+3 more)
 
-### Community 83 - "route.ts"
-Cohesion: 0.22
-Nodes (9): POST(), Provider, rateLimiter, testAnthropicKey(), testOpenAIKey(), testOpenRouterKey(), createRateLimiter(), InMemoryRateLimiter (+1 more)
+### Community 102 - "psychology-insights.ts"
+Cohesion: 0.32
+Nodes (13): detectCleanStreak(), detectEmotionBeforeLoss(), detectHoldingAsymmetry(), detectImpulsiveExpectancy(), detectOverconfidence(), detectViolationEmotion(), generatePsychologyInsights(), holdMin() (+5 more)
 
-### Community 84 - "ai-models-card.tsx"
+### Community 103 - "coach.ts"
+Cohesion: 0.19
+Nodes (12): confirmMemory(), createMemory(), deleteMemory(), editMemory(), listMemory(), appendMessage(), ensureThread(), getThreadMessages() (+4 more)
+
+### Community 104 - "G2 — Rules Cutover: rules Is the Only Source (2026-07-13)"
+Cohesion: 0.21
+Nodes (13): automations Table Archived, G2 — Rules Cutover: rules Is the Only Source (2026-07-13), /reglas Edits rules — Executable Parity Router (builder, merged templates, reorder, badges), rule-sync Dual-Write (retired), Rules Engine Enforcement (runRules-only), /api/cron/rules-migration-report (retired), RULES_SOURCE Flag (retired), Behavior Engine (+5 more)
+
+### Community 105 - "ai-models-card.tsx"
 Cohesion: 0.17
 Nodes (11): AiModelsCard(), ALL_TOOL_MODELS, COST_OPTIONS, FEATURE_LABEL, inputStyle, looksToolIncapable(), Provider, PROVIDER_LABEL (+3 more)
 
-### Community 85 - "position-log-modal.tsx"
-Cohesion: 0.19
-Nodes (12): AccountRules, ADDABLE_TYPES, AddableType, CONTRACTS_TYPES, EVENT_COLORS, EVENT_DESCRIPTIONS, EVENT_LABELS, EventType (+4 more)
+### Community 106 - "monthly-letter.tsx"
+Cohesion: 0.18
+Nodes (10): Goal, GOAL_STATUS, MonthlyLetter(), NEXT_STATUS, ReportData, SENTIMENT, TONE, makeMoney() (+2 more)
 
-### Community 86 - "welch.ts"
-Cohesion: 0.32
-Nodes (11): mean(), oneSampleTTest(), sampleVariance(), studentTTwoSidedP(), TTestResult, welchTTest(), detectEdgeDecay(), EdgeDecayInput (+3 more)
-
-### Community 87 - "verifiers.ts"
-Cohesion: 0.15
-Nodes (10): hasVerifier(), METRIC_KEYS, OFF_PLAN_TAGS, REGISTRY, sortByDateTime(), Verifier, VerifierOpts, VerifierResult (+2 more)
-
-### Community 88 - "pdf-report-html.ts"
-Cohesion: 0.13
-Nodes (10): ACCOUNT_STATUSES, ACCOUNT_TYPES, AccountInput, accountsRouter, ENFORCE_MODES, PHASES, RawAccount, withdrawalsRouter (+2 more)
-
-### Community 89 - "theme-provider.tsx"
-Cohesion: 0.38
-Nodes (5): COPY, RuleModeBadge(), Badge(), BadgeProps, badgeVariants
-
-### Community 90 - "emotion-feedback.ts"
-Cohesion: 0.24
-Nodes (8): EmotionInsight(), LABELS, EmotionFeedback, EmotionStat, EmotionTrade, round1(), ADR-0002, wrByEmotion()
-
-### Community 91 - "commitment-machine.ts"
+### Community 107 - "verifiers.ts"
 Cohesion: 0.17
-Nodes (12): CommitmentResult, CommitmentSpec, CommitmentStatus, Comparator, evaluateResult(), INSIGHT_SPECS, partialBand(), planReinforcement() (+4 more)
+Nodes (9): METRIC_KEYS, OFF_PLAN_TAGS, REGISTRY, sortByDateTime(), Verifier, VerifierOpts, VerifierResult, verifyTradesPerDayBeyond2() (+1 more)
 
-### Community 92 - "memory-episode-service.ts"
-Cohesion: 0.16
-Nodes (22): extractTradeId(), POST(), secretsMatch(), BASE, decayedSalience(), initialSalience(), MemoryEventType, recallScore() (+14 more)
+### Community 108 - "actions.ts"
+Cohesion: 0.17
+Nodes (10): ACTION_TYPES, ActionDeps, ActionResult, Handler, HANDLERS, buildContext(), ContextAccount, ContextTrade (+2 more)
 
-### Community 93 - "engine.ts"
-Cohesion: 0.47
-Nodes (5): fmt(), Improvement, ImprovementPanel(), REGIME_LABEL, scoreColor()
+### Community 109 - "risk-enforcement.ts"
+Cohesion: 0.33
+Nodes (12): assertTradeable(), autoUnlock(), EnforceableAccount, evaluateAndLock(), hasAnyLimit(), loadAccountRisk(), loadEquityCurve(), LOCK_REASON_TEXT (+4 more)
 
-### Community 94 - "unification.ts"
-Cohesion: 0.13
-Nodes (14): Global Constraints, POST-6 — Prop-Firm Rulebase (moat) Implementation Plan, Self-Review, Task 10: UI — dashboard prop-firm panel shows the new rules, Task 11: Full verification + push, Task 1: Migration — `prop_firm_presets` table + new `Account` fields (dual), Task 2: Engine — `checkTrailingDrawdown`, Task 3: Engine — `checkConsistency` (+6 more)
-
-### Community 95 - "resolve-provider.ts"
-Cohesion: 0.15
-Nodes (10): ACTION_LABEL, AutomationsTab(), ExecRuleRow, SystemRulesTab(), TABS, Template, TRIGGER_LABEL, SegmentedOption (+2 more)
-
-### Community 96 - "tab-playbook.tsx"
-Cohesion: 0.36
-Nodes (6): checklistColor(), getWeekKey(), HEALTH_CONFIG, LifecycleSuggestions(), sessionCellColor(), TabPlaybook()
-
-### Community 97 - "useLogout.ts"
-Cohesion: 0.25
-Nodes (11): feedbackForEmotion(), RawAccount, RawTrade, serializeAccount(), SerializedTrade, serializeTrade(), getEmotionFeedback(), getPatternInsights() (+3 more)
-
-### Community 98 - "feed.ts"
-Cohesion: 0.15
-Nodes (12): Global Constraints, Self-Review, Task 0: Rama, Task 1: Serializers, Task 2: Embedding service, Task 3: Dashboard service + primer test de orquestación, Task 4: Read service (list / violaciones / emoción / patrones), Task 5: Write service — create (+4 more)
-
-### Community 99 - "analytics-cache.ts"
+### Community 110 - "resolve-provider.ts"
 Cohesion: 0.21
 Nodes (12): getProviderKey(), ModelRef, ACTIVE_AI_FEATURES, AiDiagnostics, ALL_PROVIDERS, buildAiDiagnostics(), KeySource, ProviderKeyStatus (+4 more)
 
-### Community 100 - "profile.ts"
+### Community 111 - "pdf-report-html.ts"
+Cohesion: 0.36
+Nodes (12): analysisHtml(), C, CALLOUT, calloutHtml(), card(), equitySvg(), esc(), kpiCell() (+4 more)
+
+### Community 112 - "Coach Subsystem"
+Cohesion: 0.20
+Nodes (12): C7: captura psico opcional (crítico auditoría), Coach (subsistema), Context Assembler (presupuesto de tokens), FREEZE-D10: Context Assembler con presupuesto, FREEZE-D12: router de modelos LLM, EV3: insight.created, EV5: commitment.created, EV9: checkin.submitted (+4 more)
+
+### Community 113 - "Prompt de retoma de sesión"
+Cohesion: 0.17
+Nodes (12): Bounded context cognitive/ (events, intervention, memory, coach), Estructura por dominios (src/domains/), Event bus / outbox (publishEvent, dispatchPending, planEventTransition), Intervention Engine (intervenciones en caliente), InterventionOverlay (overlay global), BIZ-1 — aislamiento de datos cross-user (decisión de negocio), Check de drift SQL↔Prisma en CI (siguiente pieza; cierra S0/DT-4), Usuario demo/E2E ariaoc89@gmail.com (GH secret E2E_USER_PASSWORD) (+4 more)
+
+### Community 114 - "Roadmap reservado (apuestas con disparador propio, no iniciadas)"
+Cohesion: 0.18
+Nodes (12): Persona: Prop Firm Candidate, Flag tj.v3Shell (OFF por defecto), Superficies ANALIZAR / PROTEGER / MEJORAR, A3 — rutas reales de 5 superficies (/hoy, /operar, /analizar, /proteger, /mejorar), POST-1 — realtime/SSE (disparador no activado), POST-2 — coach multiagente (disparador no activado), POST-4 — régimen exógeno ATR / datos de mercado (disparador no activado), POST-5 — extracción a servicio (disparador no activado) (+4 more)
+
+### Community 115 - "POST-6 QA Handoff"
+Cohesion: 0.23
+Nodes (11): Deploy/Migration Flow (merge to main → CI applies migration), POST-6 QA Handoff, CI e2e Anon Key Resolved (b), QA Playwright Blocked by Corporate MITM SSL (c), Ready-to-Paste Prompt — QA Playwright Run, UI Blocker for Tasks 9/10 — Resolved by commit 71154ac, Ready-to-Paste Prompt — Complete UI (Tasks 9+10), Task 10: UI — dashboard panel shows new rules (+3 more)
+
+### Community 116 - "theme-provider.tsx"
+Cohesion: 0.23
+Nodes (9): CYCLE, getSystemTheme(), ResolvedTheme, resolveTheme(), ThemeContext, ThemeContextValue, ThemeMode, ThemeProvider() (+1 more)
+
+### Community 117 - "emotion-feedback.ts"
+Cohesion: 0.23
+Nodes (9): EmotionInsight(), LABELS, EmotionFeedback, EmotionStat, EmotionTrade, feedbackForEmotion(), round1(), ADR-0002 (+1 more)
+
+### Community 118 - "improvement-score.ts"
+Cohesion: 0.23
+Nodes (11): clamp01(), computeImprovementScore(), costOfIndiscipline(), DEFAULT_WEIGHTS, Driver, ImprovementInputs, ImprovementWeights, IndisciplineCost (+3 more)
+
+### Community 119 - "commitment-machine.ts"
+Cohesion: 0.23
+Nodes (10): canCommit(), CommitmentSpec, CommitmentStatus, Comparator, deriveCommitmentSpec(), evaluateResult(), INSIGHT_SPECS, partialBand() (+2 more)
+
+### Community 120 - "digest-builder.ts"
+Cohesion: 0.26
+Nodes (10): buildLearningDigest(), daysBetween(), DigestInput, DigestReview, formatDateLabel(), isoDate(), ReviewKind, computeNewStreak() (+2 more)
+
+### Community 121 - "ADR-001: Event Runtime and Delivery"
+Cohesion: 0.35
+Nodes (11): ADR-001: Runtime de eventos y entrega, C1: coach reactivo (crítico auditoría), lib/coach-bus.ts (helper cliente, no es el bus de dominio), Camino rápido (fast-path síncrono in-trade), FREEZE-D1: Outbox transaccional + dispatcher, FREEZE-D5: SLA de intervención redefinido (síncrono ≤2s), FREEZE-D6: el outbox es la única fuente de verdad, Gate G1 (validación spike outbox) (+3 more)
+
+### Community 122 - "AI Config, Migrations and Documentation Consolidation (2026-06-05)"
+Cohesion: 0.27
+Nodes (11): Advisor Migration Made Replay-Safe (#11), AI Config, Migrations and Documentation Consolidation (2026-06-05), AI Diagnostics and Health Check (aiConfig.diagnostics, aiConfig.healthCheck, lib/ai/health-check.ts), Root Cause Fix: 'Configura ANTHROPIC_API_KEY' with OpenRouter Configured, add_color_theme_preferences Migration Name Aligned with Prod (#12), OpenRouter Key Save Fix (user_ai_configs missing in prod), prisma.config.ts: Prisma Generates Client Only, Never Migrates, AI Provider Resolution Engine (lib/ai/resolve-provider.ts) (+3 more)
+
+### Community 123 - "useLogout.ts"
+Cohesion: 0.33
+Nodes (7): LoginPage(), PerfilPage(), useLogout(), clearSessionStorageKeys(), SESSION_SCOPED_STORAGE_KEYS, STORAGE_KEYS, createClient()
+
+### Community 124 - "feed.ts"
+Cohesion: 0.24
+Nodes (9): KIND_ICON, severityColor(), TodayFeed(), AnomalyInput, AnomalyResult, BASE, SEVERITY_MULT, SignalKind (+1 more)
+
+### Community 125 - "risk-ratios.ts"
+Cohesion: 0.33
+Nodes (10): calmarRatio(), computeRiskRatios(), Kelly, kellyCriterion(), kellyFromR, mean(), rollingRiskRatios(), sortinoRatio() (+2 more)
+
+### Community 126 - "analytics-cache.ts"
+Cohesion: 0.24
+Nodes (6): CacheDb, CacheDelegate, CacheRow, getCachedStats(), invalidateCache(), setCachedStats()
+
+### Community 127 - "profile.ts"
 Cohesion: 0.31
 Nodes (8): invalidateAnalyticsCacheIfNeeded(), isValidIanaTimezone(), normalizeProfileInput(), PROFILE_PUBLIC_FIELDS, UpdateProfileInput, validateProfileUpdate(), createAdminClient(), profileRouter
 
-### Community 101 - "custom-palettes.ts"
-Cohesion: 0.25
-Nodes (7): isValidSelection(), COLOR_SCHEMES, DEFAULT_GRAINS, preferencesRouter, TABLE_DENSITIES, THEMES, UpdatePreferencesInput
+### Community 128 - "review-ai.ts"
+Cohesion: 0.33
+Nodes (9): resolveAiCall(), ensureReviewAnalysis(), persistMonthlyAnalysis(), persistWeeklyAnalysis(), AnyReport, buildAnalysisPrompt(), Candidate, fmt() (+1 more)
 
-### Community 102 - "scripts"
+### Community 129 - "scripts"
 Cohesion: 0.18
 Nodes (11): scripts, build, dev, e2e, e2e:ui, email, gen:theme, lint (+3 more)
 
-### Community 103 - "Trading Journal — capa cognitiva sobre el bróker"
-Cohesion: 0.12
-Nodes (16): 1. Clonar e instalar, 2. Variables de entorno, 3. Base de datos, 4. Levantar el dev server, 🚀 Cómo iniciar el proyecto, 📚 Documentación, El núcleo cognitivo, 📁 Estructura (+8 more)
+### Community 130 - "seed.ts"
+Cohesion: 0.22
+Nodes (8): ensureTagsSeeded(), SYSTEM_APPEARANCE, SystemTagDef, systemTagDefs(), DISPLAY_MODES, tagsRouter, QUALITY_TAGS, VIOLATION_TAGS
 
-### Community 104 - "setup-intelligence-panel.tsx"
+### Community 131 - "accounts.ts"
+Cohesion: 0.18
+Nodes (7): ACCOUNT_STATUSES, ACCOUNT_TYPES, AccountInput, accountsRouter, ENFORCE_MODES, PHASES, RawAccount
+
+### Community 132 - "Trade Service Layer (src/server/services/trades/)"
+Cohesion: 0.24
+Nodes (10): Dashboard Service (dashboardStats pipeline), First Direct dashboardStats Test (practice partition), Debt Closure Cycles 1/2 (render purity, a11y ARIA, TD-018/019/037 scoped), TD-018 — Trade Services Extracted from trades Router (2026-07-14, PR #130), Trade Read Service (list/violations/emotion/patterns), Trade Serializers Service, Trade Service Layer (src/server/services/trades/), Trade Write Service (create/update/close/addEvent/delete/checklist) (+2 more)
+
+### Community 133 - "Memoria del coach (4 capas: episódica, semántica, identidad, mejora)"
+Cohesion: 0.22
+Nodes (10): Frontera anti-envenenamiento (memoria), Memoria del coach (4 capas: episódica, semántica, identidad, mejora), CoachMemoryPanel / CoachMemoryLayers, Write-tools del coach con permiso (propose_rule / propose_commitment), Módulo IA Coach (drawer global), pgvector (búsqueda semántica / embeddings), GAP-E1 — memoria jerárquica de 4 capas E13–E16 (reclasificado a v3.2 roadmap), OI-6.x (S6: memoria del coach) (+2 more)
+
+### Community 134 - "POST-6 Prop-Firm Rulebase Spec"
+Cohesion: 0.47
+Nodes (10): Task 1: Migration — prop_firm_presets + Account fields, Task 7: Account input/serialization for new fields, Account.consistencyPct field, POST-6 Prop-Firm Rulebase Design Spec, Dual Migration Requirement (SQL + Prisma), Account.enforceMode field, Prop-Firm Rules as Central Moat, Account.noWeekendHolding field (+2 more)
+
+### Community 135 - "Task 5 — Borrar automations router, dual-write e informe de migración"
+Cohesion: 0.27
+Nodes (10): Derivación mode/severity (BLOCK ⇒ enforce+CRÍTICA, sin BLOCK ⇒ warn+MEDIA), Guard — cero referencias a prisma.automation/trpc.automations en src/, Task 5 — Borrar automations router, dual-write e informe de migración, Dual-write automations→rules, Gate OI-1 — informe de no-mapeo con datos reales, Paridad espejo perfecta (0 faltantes, 0 drift), /api/cron/rules-migration-report (retirado en G2), buildNoMappingReport() (retirado en G2) (+2 more)
+
+### Community 136 - "runRules()"
+Cohesion: 0.24
+Nodes (9): Task 1 — Engine solo-runRules (borrar flag/dispatcher/runAutomations), Test de no-regresión 'G2 cutover invariant', Riesgo residual — divergencia semántica sutil de runRules, run-rules.test.ts (invariante de no-regresión), runAction(), rulesSourceIsUnified() (retirado en G2), runAutomations() (retirado en G2), RunResult (+1 more)
+
+### Community 137 - "ruleDataFromExecutableInput()"
+Cohesion: 0.38
+Nodes (8): Task 2 — Helpers puros de escritura de reglas (rule-write, TDD), rule-write.test.ts, ExecutableRuleInput, ruleDataFromExecutableInput(), ruleDataFromTemplate(), TEMPLATE_MAP, classifyMode(), UnifiedRule
+
+### Community 138 - "add-edit-resource-modal.tsx"
+Cohesion: 0.38
+Nodes (8): AddEditResourceModal(), ResourceFromDB, ALL_TYPES, emptyForm(), FormState, PROGRESS_LABELS, PROGRESS_TYPES, TYPE_EMOJIS
+
+### Community 139 - "setup-intelligence-panel.tsx"
 Cohesion: 0.31
 Nodes (8): EdgeEvolutionChart(), fmt(), Windows, DECAY_META, Drift, driftValue(), fmt(), SetupIntelligencePanel()
 
-### Community 105 - "tag-chip.tsx"
-Cohesion: 0.36
-Nodes (8): SelectableTagChip(), SIZE, TagChip(), TagChipView(), DEFAULT, resolveTagMeta(), TagMeta, useTagCatalog()
+### Community 140 - "Gate G2 — cutover de reglas (automations → rules)"
+Cohesion: 0.25
+Nodes (9): Automation (modelo legado, absorbido por Rule), Módulo Reglas (/reglas), Rules engine (domains/rules — runRules, fuente única post-G2), Reglas unificadas enforce/warn (Rule), Gate G2 — cutover de reglas (automations → rules), PR #129 (cutover G2, mergeado 2026-07-13, a28df30), Env var RULES_SOURCE (flip del cutover), run-rules.test.ts (invariante de no-regresión del bloqueo pre-trade) (+1 more)
 
-### Community 106 - "risk-ratios.ts"
-Cohesion: 0.50
-Nodes (3): money(), PeriodSummary(), Summary
+### Community 141 - "POST-6 Implementation Plan"
+Cohesion: 0.28
+Nodes (9): Local Validation Results (prisma generate, tsc, vitest 1176/1176, eslint), POST-6 Prop-Firm Rulebase Implementation Plan, Global Constraints (dual migration, RLS, full vitest suite, TDD, Node 24, verify firm numbers), Plan Self-Review (spec coverage checklist), Task 11: Full verification + push, Task 3: Engine — checkConsistency, Task 6: tRPC propFirmPresets.list + typed catalog, PropFirmPreset RLS Policy (authenticated read-all, service-role write) (+1 more)
 
-### Community 107 - "accounts.ts"
-Cohesion: 0.27
-Nodes (9): EditionHeader(), EditionHeaderData, money(), TONE, nodeColor(), ReviewFromDB, ReviewsTimeline(), TimelineChapter (+1 more)
+### Community 142 - "POST-6 Confirmed Decisions Summary"
+Cohesion: 0.25
+Nodes (9): Approach B — Live FK Reference (rejected), Approach C — Snapshot + Update Notice (future enhancement), Confirmed Decisions Summary Table, Account.enforceMode WARN/ENFORCE, FREEZE-D13 (respect user autonomy in WARN mode), Reuse of locked/lockReason/lockedAt Mechanism, Out of Scope / YAGNI Items, enforceMode Mirrors Rule.mode warn|enforce Semantics (+1 more)
 
-### Community 108 - "createClient"
-Cohesion: 0.11
-Nodes (30): BudgetGuardInput, BudgetGuardResult, evaluateBudgetGuard(), invalidateCache(), runAction(), buildContext(), ContextAccount, ContextTrade (+22 more)
-
-### Community 109 - "layout.tsx"
-Cohesion: 0.08
-Nodes (24): 0. Alcance de la congelación, 10. Analytics (FREEZE — subsistema), 11.1 Decisiones IRREVERSIBLES (revocar = nuevo freeze v3.2), 11.2 Decisiones REVERSIBLES (cambiables dentro del freeze, sin nuevo freeze), 11.3 Decisiones POSTERGADAS (no se deciden en v3.1; reservadas), 11. Clasificación de decisiones, 12. Trazabilidad: cómo este freeze cierra los hallazgos, 13. Qué desbloquea la implementación (puerta de salida) (+16 more)
-
-### Community 110 - "palette-studio.tsx"
-Cohesion: 0.13
-Nodes (15): [2026-06-05] · AI config, migraciones y consolidación documental, [2026-07-13] · G2 — cutover de reglas: `rules` es la única fuente, Added, Changed, Changelog — Trading Journal v2, Fixed, [Phase 0-1] — Fundación y aprendizaje, [Sprint 4] — Psicología, reviews y personalización. (+7 more)
-
-### Community 111 - "pattern-detector.ts"
-Cohesion: 0.14
-Nodes (24): buildTraderContext(), RawAccountRow, RawLearningRow, RawMarketRow, RawReviewRow, RawRuleRow, RawSessionRow, RawSetupRow (+16 more)
-
-### Community 112 - "trade-form-schema.ts"
+### Community 143 - "intelligence-panel.tsx"
 Cohesion: 0.33
 Nodes (6): AiInsightsPanel(), CAT_ICON, InsightCards(), sevStyle(), IntelligencePanel(), Insight
 
-### Community 113 - "package.json"
+### Community 144 - "layout.tsx"
+Cohesion: 0.28
+Nodes (5): metadata, viewport, AppShell(), ServiceWorkerRegister(), TRPCProvider()
+
+### Community 145 - "palette-studio.tsx"
+Cohesion: 0.31
+Nodes (8): ADV_ROLES, iconBtn, labelStyle, PaletteStudio(), NOTE: applying the theme on mount / mode-change is intentionally NOT done here., tileBtn(), useTheme(), makeCustomSelection()
+
+### Community 146 - "cognitive-digest-service.ts"
+Cohesion: 0.36
+Nodes (7): buildCognitiveDigest(), DigestInput, DigestResult, isoWeekKey(), sendCognitiveDigest(), getImprovementSeries(), getConfirmedPatterns()
+
+### Community 147 - "memory-pattern-service.ts"
+Cohesion: 0.31
+Nodes (7): DetectedPattern, detectPatterns(), EpisodeForPattern, PATTERN_TEXT, PatternStatus, recomputeMemoryPatterns(), recomputeMemoryPatternsForAll()
+
+### Community 148 - "emit.ts"
+Cohesion: 0.33
+Nodes (8): Lang, emitNotification(), EmitOptions, inQuietHours(), localHHMM(), passesPreferences(), PrefRow, RANK
+
+### Community 149 - "package.json"
 Cohesion: 0.22
 Nodes (8): engines, node, name, packageManager, pnpm, onlyBuiltDependencies, private, version
 
-### Community 114 - "kpi-card.tsx"
-Cohesion: 0.31
-Nodes (8): CountUp(), format(), parse(), Parsed, KpiCardProps, KpiStripItem, DUR, KpiCard
+### Community 150 - "Sprints 9-12 — Portfolio MVP, PWA, PDF, Onboarding (2026-06-04)"
+Cohesion: 0.25
+Nodes (8): ISO Week in UTC Fix (weekly metrics and streaks), Onboarding Checklist (4 steps, progress ring), Onboarding Fix Batch (#10), PDF Export of Performance Report, Multi-Account Equity Curve + Comparison (Portfolio tab), PWA (manifest + service worker, installable, offline read) + PNG icons, Service Worker Excluded from Auth Middleware Matcher (#8), Sprints 9-12 — Portfolio MVP, PWA, PDF, Onboarding (2026-06-04)
 
-### Community 115 - "risk-budget.ts"
-Cohesion: 0.22
-Nodes (7): EMOTION_VALUES, REGIME_VALUES, SESSION_VALUES, tradeEditSchema, TradeEditValues, tradeFormSchema, TradeFormValues
+### Community 151 - "TECHNICAL_DEBT.md (fuente de la deuda técnica; borrado, 2026-06-05)"
+Cohesion: 0.25
+Nodes (8): Módulo Trades (/trades), tRPC 11.x (API end-to-end types), DataTable dev render loop (bug dev-only conocido), PR #130 (TD-018 trade-service, 2026-07-14), TD-018 — extraer lógica del router trades.ts a trade-service (✅ 2026-07-14), TD-019 — cliente Supabase por-request en contexto tRPC (⚠️ probablemente abierto), TD-037 — ~22 efectos sync-on-open (setState sincrónico en effect), TECHNICAL_DEBT.md (fuente de la deuda técnica; borrado, 2026-06-05)
 
-### Community 116 - "leverage.ts"
-Cohesion: 0.11
-Nodes (19): 1. EXECUTIVE SUMMARY, 2. HALLAZGOS CRÍTICOS (los que mueven la aguja), 4.1 Qué hace actualmente (exacto, leído del código), 4.2 Qué debería hacer (faltante), 4.3 Nivel actual: **ÚTIL** (no Profesional, no Elite), 4.4 Capacidades críticas faltantes, 4.5 Cómo sería una versión 10x (coach + psicólogo + quant + mentor prop), 4. HALLAZGOS DEL AI COACH (sección central) (+11 more)
-
-### Community 117 - "discipline-service.ts"
-Cohesion: 0.13
-Nodes (14): (a) Números de firma marcados `-- VERIFY`, ✅ ACTUALIZACIÓN (2026-07-10, cont.): a/b resueltos, c bloqueado por entorno, ✅ ACTUALIZACIÓN (2026-07-10): la UI de Tasks 9 y 10 ya está implementada, (b) Rojo del e2e en CI antes de la corrida de QA, Deploy / migración, ⚠️ Dos confirmaciones pendientes del usuario (heredadas del plan), Handoff QA — POST-6 Prop-Firm Rulebase, ⛔ (Histórico) BLOQUEANTE de UI — RESUELTO por `71154ac` (+6 more)
-
-### Community 118 - "prop-firm-guard.ts"
-Cohesion: 0.23
-Nodes (10): checkConsistency(), checkDailyLossLimit(), checkLossLimit(), LOSS_LIMIT_TYPE, LossLimitPeriod, phaseProgress, PropFirmViolation, buildPropFirmExtras() (+2 more)
-
-### Community 119 - "calibration.ts"
+### Community 152 - "calibration.ts"
 Cohesion: 0.29
 Nodes (7): DirectionalEstimate, Estimate, CalibrationResult, CalibrationTrade, CalibrationVerdict, ConfidenceBucket, ADR-0002
 
-### Community 120 - "seed.ts"
-Cohesion: 0.33
-Nodes (6): ensureTagsSeeded(), SYSTEM_APPEARANCE, SystemTagDef, systemTagDefs(), QUALITY_TAGS, VIOLATION_TAGS
+### Community 153 - "risk-budget.ts"
+Cohesion: 0.29
+Nodes (6): clamp01(), computeRiskBudget(), DailyWindow, DailyWindowInput, RiskBudgetInput, RiskOverview
 
-### Community 121 - "goal-progress-widget.tsx"
-Cohesion: 0.14
-Nodes (16): buildCognitiveDigest(), DigestInput, DigestResult, DetectedPattern, detectPatterns(), EpisodeForPattern, PATTERN_TEXT, PatternStatus (+8 more)
-
-### Community 122 - "account-risk-panel.tsx"
-Cohesion: 0.32
-Nodes (7): buildAccountExposure(), computeLeverageMetrics(), computeNotional(), LEVERAGE_BAND_META, leverageBand, LeverageMetrics, MarketCategory
-
-### Community 123 - "capture-rules.ts"
-Cohesion: 0.33
-Nodes (4): ChecklistEvaluation, ChecklistState, Regime, REGIME_VALUES
-
-### Community 124 - "trade-derivation.ts"
-Cohesion: 0.38
-Nodes (6): deriveRiskAmount(), deriveRiskPct(), deriveSession(), parseHour(), RiskInput, SessionLabel
-
-### Community 125 - "backfill-embeddings.mjs"
-Cohesion: 0.33
-Nodes (5): apiKey, c, decryptApiKey(), EMBED_MODEL, encKey()
-
-### Community 126 - "backfill-resource-embeddings.mjs"
-Cohesion: 0.33
-Nodes (5): apiKey, c, decryptApiKey(), EMBED_MODEL, encKey()
-
-### Community 128 - "ai-insights-panel.tsx"
-Cohesion: 0.17
-Nodes (12): 3.10 Etiquetas, 3.11 Mercados, 3.1 Dashboard, 3.2 Trades (journaling), 3.3 Psicología, 3.4 Playbook, 3.5 Reviews, 3.6 Aprendizaje (+4 more)
-
-### Community 129 - "config.ts"
+### Community 154 - "config.ts"
 Cohesion: 0.36
 Nodes (4): detectProvider(), getCoachModel(), getWeeklySummaryModel(), resolveModel()
 
-### Community 130 - "note-tag-suggestions.tsx"
+### Community 155 - "AI Coach"
+Cohesion: 0.33
+Nodes (7): Embedding Service (pgvector schedule/search/backfill), AI Coach, Invariant: Anti-Poisoning Boundary (LLM never writes memory/identity directly; proposes, data/user confirm), 4-Layer Hierarchical Memory (episodic pgvector · semantic · identity · improvement), Invariants (no sprint broke them), Invariant: Permission (the system proposes, the user disposes), Weekly Cognitive Digest
+
+### Community 156 - "Phase 0-1 — Foundation and Learning"
+Cohesion: 0.29
+Nodes (7): Learning System (spaced repetition, decay detection, materialized streak, email idempotency), Phase 0-1 — Foundation and Learning, Security/RLS, Auth, Data Correction (Phase 0-1), Bayesian Confidence Bands (shrinkage estimator), Institutional Analytics (drawdown, R distribution, Sortino/Calmar/Kelly, MAE/MFE, benchmark, heatmap), Learning & Transfer (edge by instrument/tag, study↔trading transfer, performance-adapted SRS, error cards), Invariant: Statistical Honesty (confidence bands, association not cause, no fake certainty)
+
+### Community 157 - "Digest cognitivo semanal ('Tu semana cognitiva')"
+Cohesion: 0.33
+Nodes (7): Digest cognitivo semanal ('Tu semana cognitiva'), Rutas api/cron (recompute-insights, dispatch-events, evaluate-commitments, cognitive-digest, rules-migration-report), Cron cognitive-digest sin agendar (/api/cron/cognitive-digest), Protección de contraseñas filtradas en Supabase Auth (toggle manual), Ops pendientes (acción del usuario, sin código), PENDING_AND_RESUME.md (fuente de ops y roadmap; borrado), Crons existentes en prod (dispatch-events, recompute-insights, evaluate-commitments, learning-digest, reviews-digest)
+
+### Community 158 - "Prop-Firm Catalog Seed (Anchor Firms)"
+Cohesion: 0.38
+Nodes (7): Firm Numbers Verified (a) — MyFundedFX replaced by MyFundedFutures, MyFundedFutures Preset (replacement firm), Catalog Seed v1 — 3 Anchor Firms, FTMO Preset Rules, Gap: Firm Catalog Does Not Exist Yet, MyFundedFX Preset Rules, Topstep Preset Rules
+
+### Community 159 - "RULES_SOURCE env var"
+Cohesion: 0.29
+Nodes (7): Nota post-merge — borrar RULES_SOURCE de Vercel + smoke opcional, Task 6 — Validación final, docs y push, TD-018 Task 8 — Gates finales + docs + PR, Gates pre-push (tsc --noEmit + vitest run + eslint, 0 errores), Rollback fase 1 — quitar RULES_SOURCE (instantáneo), RULES_SOURCE env var, runRuleEngine()
+
+### Community 160 - "account-risk-panel.tsx"
+Cohesion: 0.43
+Nodes (5): AccountRiskPanel(), asPct(), BOTTLENECK, pct(), RiskBudgetMeter()
+
+### Community 161 - "badge.tsx"
+Cohesion: 0.38
+Nodes (4): COPY, Badge(), BadgeProps, badgeVariants
+
+### Community 162 - "capture-rules.ts"
+Cohesion: 0.29
+Nodes (4): ChecklistEvaluation, ChecklistState, Regime, REGIME_VALUES
+
+### Community 163 - "trade-derivation.ts"
+Cohesion: 0.38
+Nodes (6): deriveRiskAmount(), deriveRiskPct(), deriveSession(), parseHour(), RiskInput, SessionLabel
+
+### Community 164 - "backfill-embeddings.mjs"
+Cohesion: 0.33
+Nodes (5): apiKey, c, decryptApiKey(), EMBED_MODEL, encKey()
+
+### Community 165 - "backfill-resource-embeddings.mjs"
+Cohesion: 0.33
+Nodes (5): apiKey, c, decryptApiKey(), EMBED_MODEL, encKey()
+
+### Community 166 - "E2: Rule Entity (unified w/ Automation)"
+Cohesion: 0.40
+Nodes (6): C6: dualidad reglas (crítico auditoría), FREEZE-D8: la fusión Rule/Automation es semántica, E2: Rule (unificado con Automation), Riesgo: moat débil, POST-6: Base de reglas prop-firm como activo central (moat), RI-2: fusión de reglas (riesgo)
+
+### Community 167 - "Cognitive Engine (root bounded context)"
+Cohesion: 0.33
+Nodes (6): Cognitive Engine (bounded context raíz), FREEZE-D2: Cognitive Engine aislado, E12: PreSessionCheckin, E5: DomainEvent (outbox), POST-5: Extracción del Cognitive Engine a servicio independiente, Riesgo: reescritura a 24 meses
+
+### Community 168 - "Behavior Engine (insight → compromiso → regla → verificación → refuerzo)"
+Cohesion: 0.33
+Nodes (6): Behavior Engine (insight → compromiso → regla → verificación → refuerzo), BehaviorLoopPanel (UI en /analytics), commitment-service (createCommitmentFromInsight / evaluateWindowCommitments / carryOverCommitments), ImprovementScore / Índice de mejora (0–100), GAP-B1 — historización de ImprovementScore (✅ PR #117, E19 + cron + curva), OI-14.x (S14: ImprovementScore — snapshots, régimen, pesos)
+
+### Community 169 - "askCoach()"
+Cohesion: 0.53
+Nodes (4): Stat(), ErrorCardsPanel(), fmt(), askCoach()
+
+### Community 170 - "improvement-panel.tsx"
+Cohesion: 0.47
+Nodes (5): fmt(), Improvement, ImprovementPanel(), REGIME_LABEL, scoreColor()
+
+### Community 171 - "action-list.tsx"
+Cohesion: 0.40
+Nodes (5): ACTION_LABEL, ActionList(), ALL, TAG_ACTIONS, RuleActionType
+
+### Community 172 - "note-tag-suggestions.tsx"
 Cohesion: 0.47
 Nodes (4): NoteTagSuggestions(), RULES, suggestTagsFromNote(), TagRule
 
-### Community 131 - "mae-mfe.ts"
+### Community 173 - "mae-mfe.ts"
 Cohesion: 0.40
 Nodes (5): analyzeMaeMfe(), EMPTY, MaeMfeResult, MaeMfeTrade, mean()
 
-### Community 132 - "analytics.ts"
-Cohesion: 0.33
-Nodes (4): analyticsRouter, Period, PeriodInput, PERIODS
-
-### Community 133 - "reinforcement.ts"
+### Community 174 - "reinforcement.ts"
 Cohesion: 0.40
-Nodes (3): CATEGORIES, notificationsRouter, PRIORITIES
+Nodes (5): CommitmentResult, planReinforcement(), positiveIsVisible(), ReinforcementKind, ReinforcementPlan
 
-### Community 134 - "email-theme.ts"
-Cohesion: 0.10
-Nodes (31): POST(), detectDecayedResources(), ResourceForDecay, LearningDigest(), resolveTheme(), react, EmailPrefRow, isEmailChannelEnabled() (+23 more)
-
-### Community 137 - "benchmark.ts"
-Cohesion: 0.50
-Nodes (4): analyzeBenchmark(), BenchmarkResult, BenchmarkSetupRow, weightedComparison()
-
-### Community 138 - "pnl-heatmap.ts"
-Cohesion: 0.40
-Nodes (3): DailyPnl, HeatmapDay, HeatmapResult
-
-### Community 140 - "index.ts"
-Cohesion: 0.50
-Nodes (3): sendEmail(), sendPropFirmHealthAlert(), supabase
-
-### Community 141 - "CI job: checks (type check, tests, build)"
-Cohesion: 0.50
-Nodes (4): CI job: checks (type check, tests, build), CI job: authenticated E2E (Playwright), CI job: migrate-deploy (apply migrations to production), CI job: migrate-validate (replay from scratch)
-
-### Community 147 - "segmented-tabs.tsx"
-Cohesion: 0.18
-Nodes (11): 1. Checklist de QA pendiente de V3, 2. Ops pendientes (acción del usuario, sin código), 3. Deuda técnica, 4. Backlog, 5. Roadmap reservado, 6. Prompt de retoma de sesión, Descripciones originales (§5, estado SUPERADO por §9), Gaps de `AUDIT_FINAL.md` (+3 more)
-
-### Community 149 - "vercel.json"
-Cohesion: 0.50
-Nodes (3): buildCommand, framework, installCommand
-
-### Community 196 - "Project Guide — Trading Journal v3.2"
-Cohesion: 0.20
-Nodes (10): 1. ¿Qué es?, 2. ¿Qué NO es?, 3. Usuarios objetivo, 4. Módulos y rutas, 5. Stack, 6. Mapa de código, 7. Dónde está todo, Lo que v3 y v3.2 añadieron (+2 more)
-
-### Community 200 - "prop-firm-presets.ts"
+### Community 175 - "prop-firm-presets.ts"
 Cohesion: 0.33
 Nodes (5): DrawdownModel, FIRMS, Phase, PROP_FIRM_PRESETS, PropFirmPresetSeed
 
-### Community 202 - "handler"
+### Community 176 - "Regla del loop 'Enfriamiento tras una pérdida' (enforce, TRADE_PRE_CREATE, BLOCK)"
+Cohesion: 0.40
+Nodes (5): Prueba observable del flip (rules.last_fired_at bumps, automations quieto), Regla del loop 'Enfriamiento tras una pérdida' (enforce, TRADE_PRE_CREATE, BLOCK), Fase 1 ejecutada y verificada en prod (Playwright + SQL, RULE_BLOCKED), Triaje de las 13 'falsa protección', Verificación post-merge en prod (/reglas edita, BLOCK bloquea, last_fired_at bumps)
+
+### Community 177 - "benchmark.ts"
+Cohesion: 0.50
+Nodes (4): analyzeBenchmark(), BenchmarkResult, BenchmarkSetupRow, weightedComparison()
+
+### Community 178 - "pnl-heatmap.ts"
+Cohesion: 0.40
+Nodes (3): DailyPnl, HeatmapDay, HeatmapResult
+
+### Community 179 - "conditions.ts"
 Cohesion: 0.60
-Nodes (4): handler(), StatusSelect(), createTRPCContext(), AppRouter
+Nodes (4): compare(), evaluate(), toNum(), ConditionValue
 
-### Community 204 - "rules.ts"
-Cohesion: 0.05
-Nodes (63): ACTION_LABEL, ActionList(), ALL, TAG_ACTIONS, CMP_LABEL, ConditionGroup(), Group, isLeaf() (+55 more)
+### Community 181 - "index.ts"
+Cohesion: 0.50
+Nodes (3): sendEmail(), sendPropFirmHealthAlert(), supabase
 
-### Community 209 - "README.md"
+### Community 182 - "CI job: checks (type check, tests, build)"
+Cohesion: 0.50
+Nodes (4): CI job: checks (type check, tests, build), CI job: authenticated E2E (Playwright), CI job: migrate-deploy (apply migrations to production), CI job: migrate-validate (replay from scratch)
+
+### Community 183 - "BACKLOG.md (fuente del backlog; borrado, 2026-06-05)"
+Cohesion: 0.50
+Nodes (4): BACKLOG.md (fuente del backlog; borrado, 2026-06-05), Backlog P1 — próximo v2.1 (B-01..B-05: iconos PWA, eslint CI, E2E Playwright, Sentry, carga 1000+ trades), Backlog P2 — deseable (B-06..B-10: charts en PDF, patrones en UI, onboarding fallback, SW cache bump, comparar reviews), Backlog P3 — oportunista (B-11..B-16: features IA, AiUsageLog, multi-divisa, API brokers, PWA móvil, social)
+
+### Community 186 - "README.md"
 Cohesion: 0.50
 Nodes (3): Deploy on Vercel, Getting Started, Learn More
 
+### Community 187 - "vercel.json"
+Cohesion: 0.50
+Nodes (3): buildCommand, framework, installCommand
+
 ## Knowledge Gaps
-- **1159 isolated node(s):** `PALETTES`, `target`, `Instruments`, `TagEdges`, `Overview` (+1154 more)
+- **1053 isolated node(s):** `PALETTES`, `target`, `Instruments`, `TagEdges`, `Overview` (+1048 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **163 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `page.tsx` to `page.tsx`, `revisar-recurso-modal.tsx`, `review-report-shell.tsx`, `client.ts`, `trades-table.tsx`, `page.tsx`, `tab-portfolio.tsx`, `page.tsx`, `page.tsx`, `utils.ts`, `weekly-reviews.ts`, `page.tsx`, `send-learning-digest.ts`, `page.tsx`, `simple-table.tsx`, `register-trade-modal.tsx`, `markdown.tsx`, `emit.ts`, `data-table.tsx`, `ai-coach-drawer.tsx`, `today-service.ts`, `position-log-modal.tsx`, `theme-provider.tsx`, `resolve-provider.ts`, `tab-playbook.tsx`, `kpi-card.tsx`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `dependencies` connect `dependencies` to `package.json`, `email-theme.ts`?**
+- **Why does `cn()` connect `cn()` to `index.ts`, `trades-table.tsx`, `rule-builder.tsx`, `client.ts`, `page.tsx`, `add-edit-resource-modal.tsx`, `tab-portfolio.tsx`, `register-trade-modal.tsx`, `page.tsx`, `page.tsx`, `view-model.ts`, `Sidebar.tsx`, `review-report-shell.tsx`, `resource-drawer.tsx`, `page.tsx`, `badge.tsx`, `notifications.ts`, `page.tsx`, `markdown.tsx`, `ai-coach-drawer.tsx`, `motion.ts`?**
+  _High betweenness centrality (0.054) - this node is a cross-community bridge._
+- **Why does `protectedProcedure` connect `init.ts` to `seed.ts`, `send-review.ts`, `monthly-reviews.ts`, `weekly-reviews.ts`, `isWin()`, `feature-models.ts`, `intervention-service.ts`, `study-session-service.ts`, `learning-resources.ts`, `edge-service.ts`, `behavior.ts`, `learning-insights-service.ts`, `improvement-service.ts`, `analytics-bundle.ts`, `ai-config.ts`, `parse.ts`, `risk-service.ts`, `today-service.ts`, `psychology-service.ts`, `coach.ts`, `profile.ts`?**
   _High betweenness centrality (0.032) - this node is a cross-community bridge._
-- **Why does `trpc` connect `client.ts` to `page.tsx`, `revisar-recurso-modal.tsx`, `review-report-shell.tsx`, `page.tsx`, `page.tsx`, `tab-portfolio.tsx`, `page.tsx`, `page.tsx`, `utils.ts`, `page.tsx`, `page.tsx`, `engine.ts`, `page.tsx`, `register-trade-modal.tsx`, `markdown.tsx`, `emit.ts`, `ai-coach-drawer.tsx`, `page.tsx`, `ai-models-card.tsx`, `resolve-provider.ts`, `tab-playbook.tsx`, `setup-intelligence-panel.tsx`, `tag-chip.tsx`, `trade-form-schema.ts`?**
-  _High betweenness centrality (0.027) - this node is a cross-community bridge._
+- **Why does `trpc` connect `client.ts` to `cn()`, `index.ts`, `trades-table.tsx`, `rule-builder.tsx`, `page.tsx`, `account-card.tsx`, `add-edit-resource-modal.tsx`, `setup-intelligence-panel.tsx`, `tab-portfolio.tsx`, `register-trade-modal.tsx`, `intelligence-panel.tsx`, `layout.tsx`, `palette-studio.tsx`, `page.tsx`, `page.tsx`, `page.tsx`, `view-model.ts`, `Sidebar.tsx`, `resource-drawer.tsx`, `page.tsx`, `account-risk-panel.tsx`, `askCoach()`, `notifications.ts`, `page.tsx`, `page.tsx`, `page.tsx`, `ai-coach-drawer.tsx`, `ai-models-card.tsx`, `monthly-letter.tsx`, `theme-provider.tsx`, `feed.ts`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
 - **What connects `PALETTES`, `target`, `Instruments` to the rest of the system?**
-  _1201 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `page.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.11382113821138211 - nodes in this community are weakly interconnected._
-- **Should `revisar-recurso-modal.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.13043478260869565 - nodes in this community are weakly interconnected._
-- **Should `trades.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07686274509803921 - nodes in this community are weakly interconnected._
+  _1074 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `cn()` be split into smaller, more focused modules?**
+  _Cohesion score 0.04231560387893035 - nodes in this community are weakly interconnected._
+- **Should `index.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.04701733764325595 - nodes in this community are weakly interconnected._
+- **Should `trades-table.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.055087719298245616 - nodes in this community are weakly interconnected._
