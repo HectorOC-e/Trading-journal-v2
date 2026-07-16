@@ -4,8 +4,13 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function createTRPCContext() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return { prisma, supabase, userId: user?.id ?? null }
+  // getUser() round-tripped to the Auth server on every single tRPC call (TD-019).
+  // getClaims() verifies the access token's ES256 signature against the project's
+  // JWKS, which auth-js caches process-wide for 10 minutes, so a warm process
+  // resolves the caller without leaving the box. Verification is still
+  // cryptographic, not a decode: a forged or tampered token yields no claims.
+  const { data } = await supabase.auth.getClaims()
+  return { prisma, supabase, userId: data?.claims.sub ?? null }
 }
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
