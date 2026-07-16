@@ -27,13 +27,20 @@ export async function proxy(request: NextRequest) {
     },
   })
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Verifies the token's ES256 signature against the JWKS auth-js caches
+  // process-wide, so the gate costs no network on a warm process. Do not
+  // collapse this into a bare decode: getClaims() still calls getSession()
+  // underneath, which rotates an expired token and writes the refreshed cookies
+  // through setAll above. That refresh is why the Supabase docs warn against
+  // dropping the auth call here.
+  const { data } = await supabase.auth.getClaims()
+  const isAuthenticated = Boolean(data?.claims.sub)
 
-  if (!user && pathname !== "/login") {
+  if (!isAuthenticated && pathname !== "/login") {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  if (user && pathname === "/login") {
+  if (isAuthenticated && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
