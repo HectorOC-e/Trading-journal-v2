@@ -162,9 +162,13 @@ jobs:
         run: |
           # Verify that schema.prisma matches the applied migrations (drift detection).
           # supabase db push --dry-run with the local stack's DB URL exits 0 if no changes needed.
-          supabase status | grep -i "db url"
+          # `supabase status` can exit non-zero when secondary services (imgproxy, pooler)
+          # show as stopped even though Postgres itself is up and the DB URL is valid -
+          # capture its output with `|| true` so that doesn't abort the step under pipefail.
+          STATUS_OUTPUT="$(supabase status || true)"
+          echo "$STATUS_OUTPUT" | grep -i "db url"
           # Extract the local DB URL from supabase status output
-          LOCAL_DB_URL=$(supabase status | grep "DB URL:" | awk -F': ' '{print $2}')
+          LOCAL_DB_URL=$(echo "$STATUS_OUTPUT" | grep "DB URL:" | awk -F': ' '{print $2}')
           if [ -z "$LOCAL_DB_URL" ]; then
             echo "::error::Could not extract local DB URL from supabase status"
             exit 1
