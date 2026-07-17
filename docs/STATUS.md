@@ -338,18 +338,14 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados y mergeados. POST-6 mergeado
-(PR #128). Cutover G2 CERRADO: PR #129 mergeado el 2026-07-13 (a28df30); RULES_SOURCE
-verificada inerte en código (el borrado de la env var en Vercel es cosmético y no es
-verificable desde la sesión — no bloquear nada por eso). TD-018 (trade-service) HECHO
-el 2026-07-14: PR #130.
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. El roadmap que veníamos
+arrastrando quedó COMPLETO el 2026-07-16 y main está limpio (sin ramas ni PRs abiertos):
 
-ESTADO DEL PR #130 — verificar primero con `gh pr view 130`:
-- Si está mergeado: seguir con lo siguiente en el orden acordado:
-  (1) check de drift SQL↔Prisma en CI (cierra S0/DT-4),
-  (2) pendientes de STATUS.md §2 Ops (cron cognitive-digest sigue sin agendar, a propósito).
-- Si NO está mergeado: yo (usuario) debo mergearlo con CI verde; no tiene migraciones.
-  Plan (ejecutado): docs/superpowers/plans/2026-07-14-td018-trade-service.md
+  POST-6 (#128) · G2 cutover (#129) · TD-018 trade-service (#130) · DT-4 drift check (#131)
+  · recuperación del grafo graphify (#132) · TD-019 (#133) · auditoría de STATUS (#134)
+  · B-02 eslint como gate de CI (#135)
+
+No hay nada a medias esperando merge. Arrancá eligiendo trabajo nuevo, no retomando.
 
 Lee primero, en este orden:
   1) docs/STATUS.md        (estado, pendientes, checklist de QA)
@@ -358,15 +354,30 @@ Lee primero, en este orden:
 
 Confirma al arrancar que tienes acceso a gh, Vercel MCP, Supabase MCP y .env (handoff §0).
 
-Reglas de trabajo (las de toda la sesión anterior):
+Candidatos para la próxima pieza (ninguno urgente, confirmá conmigo antes de arrancar):
+- 3 perillas de IA INERTES en Perfil (§4 B-11): trade_analysis, review_generation y
+  learning_insights son configurables pero NINGÚN servicio las consume, y
+  ai-models-card.tsx itera AI_FEATURES entero → el usuario ajusta 3 controles que no
+  hacen nada. Fix barato = ocultarlas; fix caro = implementarlas. Es el hallazgo con
+  impacto de usuario más claro que queda.
+- B-04 Sentry (sin instalar) · B-05 test de carga 1000+ trades / TradeStatsCache.
+- TD-037 NO es trabajo pendiente de diagnóstico: ya fue auditado (Cycle 1), los 34 sitios
+  son intencionales y está diferido al refactor de key-remount de v3. No lo "descubras"
+  de nuevo.
+
+Reglas de trabajo (estables desde hace varias sesiones):
 - Trabaja desde origin/main; una rama por pieza; PR + CI verde + merge yo mismo (gh).
 - TDD para dominios puros; migraciones DUALES (SQL en supabase/migrations + modelo
   prisma) con `npx prisma generate`; RLS per-usuario en tablas nuevas.
-- Corre la suite vitest COMPLETA antes de cada push (no un subconjunto).
-- Re-verifica vs CÓDIGO antes de construir (varias veces la deuda estaba sobre-estimada).
+- Corre la suite vitest COMPLETA antes de cada push (hoy: 1173 tests). No un subconjunto.
+- Re-verifica vs CÓDIGO antes de construir. Esto NO es ceremonia: en 2026-07-16, cuatro
+  entradas del doc estaban mal (TD-019 mal caracterizada, el cron ya estaba hecho, B-01/B-03
+  ya hechos, B-11 mal en dos ejes). El doc miente más seguido que el código.
 - Verifica vs BD/UI real: smoke con .env para lógica; Playwright + Vercel MCP (bypass SSO)
   para UI; usuario demo ariaoc89@gmail.com (pw S12bVerify!2026, = E2E_USER).
-- Node 24 (nvm); binarios vía ./node_modules/.bin/ desde src/.
+- Node 20 (.nvmrc; engines >=20.12.0). Binarios desde src/ con `pnpm exec` o npx.
+- CI ahora LINTEA (step "Lint" = `pnpm exec eslint .`, falla solo en errores; hay 74
+  warnings aceptados a propósito — ver eslint.config.mjs antes de "arreglarlos").
 - Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
 GOTCHA crítico de migraciones: migrate-deploy (ci.yml, job "Apply migrations to
@@ -374,9 +385,20 @@ production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run lis
 tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
 ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
 
-Orden de trabajo acordado (2026-07-13): G2 (hecho, PR #129) → TD-018 (hecho, PR #130)
-→ check de drift SQL↔Prisma en CI. El cron cognitive-digest queda pospuesto a propósito.
-No arranques nada grande sin confirmarlo conmigo primero.
+GOTCHA de graphify: NO corras `graphify update .` a secas y commitees el resultado.
+Recrea los nodos de código con IDs distintos y deja huérfanos los edges docs→código
+(medido: 741 → 220 doc edges; INFERRED 119 → 47), tirando la extracción semántica del
+PR #132. Los nodos SOBREVIVEN y el total hasta sube, así que la pérdida es silenciosa y
+la guardia anti-shrink no la frena (cuenta nodos, no edges). Vía correcta: restaurar el
+grafo curado (el propio update lo respalda en graphify-out/<fecha>/), extraer AST fresco
+y fusionar con build_merge(root='.'), luego re-clusterizar y verificar doc-edges/INFERRED
+antes de commitear. Ojo: .graphifyignore excluye tests/Prisma generado/configs a
+propósito — si un .graphify_incremental.json viejo lista ~150 "archivos borrados", NO son
+borrados, son ignorados. No los podes.
+
+GOTCHA de TD-019: el fix de auth rinde SOLO porque el proyecto usa claves JWT asimétricas
+(su JWKS sirve ES256). Si alguna vez se rota al secreto legacy HS256, getClaims() vuelve a
+salir a la red en cada request y el fix se anula EN SILENCIO, sin que nada falle.
 
 Gotcha de credenciales QA: la password del usuario demo fue restaurada el 2026-07-13 al
 valor documentado abajo y el GH secret E2E_USER_PASSWORD re-sincronizado. Si el login
@@ -391,5 +413,13 @@ e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
   secret `E2E_USER_PASSWORD` igualado). UID demo: `5c69e364-3819-4df7-abf0-f484794250ed`.
 - **Migraciones v3.2 aplicadas:** `improvement_scores` (E19), `memory_episodes` (E13, pgvector),
   `memory_patterns` (E14), `memory_identity` (E15), `feed_ignores` (C3).
-- **Crons existentes:** dispatch-events, recompute-insights (+snapshot improvement +patterns),
-  evaluate-commitments, learning-digest, reviews-digest. **Nuevo sin agendar:** cognitive-digest.
+- **Crons existentes (todos agendados y activos):** dispatch-events, recompute-insights
+  (+snapshot improvement +patterns), evaluate-commitments, learning-digest, reviews-digest,
+  **cognitive-digest** (`v3-cognitive-digest`, lunes 06:00 UTC — agendado por la migración
+  `20260710120000`; ya NO está pendiente, la entrada anterior estaba obsoleta). El digest está
+  **vivo pero dormido**: no emite nada porque salta semanas vacías por diseño y las tres fuentes
+  están planas en prod. Su silencio no es una falla.
+- **Verificar un cron de verdad:** `cron.job_run_details` marca `succeeded` en cuanto
+  `net.http_post` **encola** la petición — no prueba que el HTTP funcionara. La respuesta real
+  está en `net._http_response` (TTL corto, se purga), y en última instancia el efecto observable
+  del servicio.
