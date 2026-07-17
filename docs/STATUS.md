@@ -1,7 +1,7 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-16.
+> Última actualización: 2026-07-17.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
 ## 1. Checklist de QA pendiente de V3
@@ -73,7 +73,7 @@
 | `OI-4.5` | S4 | **Feed a `ImprovementScore`** desde `commitment.kept/broken` | el índice de mejora es S14 | ⬜ sin verificar |
 | `OI-4.6` | S4 | **Scheduling de crons en prod** (`evaluate-commitments`, `dispatch-events`) | ops (pg_cron → pg_net + cron_secret ya configurado) | ⬜ sin verificar |
 | `OI-4.7` | S4 | **Insights persistidos poblados en prod** | depende de programar `recompute-insights` (hoy invocable, no agendado) → sin él, `behavior.openInsights` está vacío en prod | ⬜ sin verificar |
-| `OI-4.8` | S4 | **Más specs insight→commitment** (revenge/oversizing/off-plan necesitan sus detectores) | hoy solo `intraday-decay` tiene detector + spec; los otros 3 verificadores existen, faltan sus detectores | ⬜ sin verificar |
+| `OI-4.8` | S4 | **Más specs insight→commitment** (revenge/oversizing/off-plan necesitan sus detectores) | hoy solo `intraday-decay` tiene detector + spec; los otros 3 verificadores existen, faltan sus detectores | ✅ resuelto — 2026-07-17 (PR #144). Verificado en código que era la deuda: `commitment-machine` tenía 4 specs y `verifiers.ts` los 4 verificadores, pero `insights-engine` **solo emitía `intraday-decay`** → `canCommit` solo era true para ese. Añadidos 3 detectores puros (`detectRevengeTrading`/`detectOversizing`/`detectOffPlan`) que emiten los ids exactos; como `toComputedInsight` mapea `id→type`, verificador+compromiso+regla (ya construidos) se encienden sin más cambios. Señal híbrida: gate rico tras-pérdida (revenge=Impulsivo/revengeFlag, oversizing=size>2×avg) + espejo del verifier para off-plan (tags). `stat` Bayesiano omitido a propósito (alarmas de frecuencia, no dos-muestras; R6). 13 tests (3/detector + round-trip que prueba `canCommit`+guard de cobertura de los 4 loops). Suite 1204/1204, tsc/eslint limpios. Desplegado (b6ec448), 0 errores runtime; **vivo pero dormido** hasta que un usuario tenga los patrones (datos de prod planos). Spec+plan en `docs/superpowers/`. |
 | `OI-5.1` | S5 | Reglas del loop visibles en `/reglas` (la UI lista `automations`; las del loop viven en `rules`) | S12 (cohesión de superficies) | ✅ resuelto — cutover G2 2026-07-13: `/reglas` lista `rules` (ejecutables con badge de origen "desde compromiso/insight"; descriptivas en Recordatorios) |
 | `OI-5.2` | S5 | `offPlanTrades` como regla "warn" (no prevenible pre-trade, pero avisable) | S8/incremental | ⬜ sin verificar |
 | `OI-5.3` | S5 | Plantillas extra (energía<3 → S8; no-aumentar-tamaño-tras-pérdida → captura) | S8+ | ⬜ sin verificar |
@@ -294,7 +294,7 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 | `B-01` | Generar iconos PWA PNG (192/512) y verificar `apple-touch-icon` en iOS | S | ✅ hecho (verificado 2026-07-16) — `src/public/icons/` tiene `icon-192.png`, `icon-512.png` y `apple-touch-icon.png`. Queda sin verificar solo el render en iOS real. |
 | `B-02` | Añadir `eslint` como gate de CI | S | ✅ **hecho — 2026-07-16**: step `Lint` (`pnpm exec eslint .`) en el job de code gates, tras el TypeScript check. Falla **solo en errores**, a propósito: `eslint.config.mjs` reserva los errores para bugs reales y deja los avisos conocidos/aceptados (TD-037 y cía.) como warnings — hoy son **75 warnings / 0 errores** (medido sobre `origin/main` el 2026-07-16; la entrada decía 74), así que un `--max-warnings=0` rompería CI de entrada y pelearía contra esa decisión deliberada. Si en algún momento hay que frenar el crecimiento de warnings, la vía es un ratchet `--max-warnings=75`, no convertir reglas en error. |
 | `B-03` | E2E Playwright en CI (smoke tests ya scaffolded) | M | ✅ hecho (verificado 2026-07-16) — job `E2E (authenticated)` corre y pasa 10/10 contra el usuario QA sembrado; los specs se auto-skipean si faltan `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, pero los secrets están puestos, así que sí ejercita el flujo real. |
-| `B-04` | Wire de error tracker (Sentry) para runtime | M | ⬜ abierto (verificado 2026-07-16) — no hay dependencia de Sentry en `src/package.json`. |
+| `B-04` | Wire de error tracker (Sentry) para runtime | M | ✅ hecho **y activado en prod** — 2026-07-17 (PR #143). `@sentry/nextjs` 10.66 cableado con convenciones de Next 16 (`instrumentation.ts` + `instrumentation-client.ts`). Se mergeó inerte (sin DSN = no-op); el usuario puso las 5 env vars en Vercel (`SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_AUTH_TOKEN`/`ORG`/`PROJECT` para source maps). **Verificado contra prod (2026-07-17):** el build de `b6ec448` logueó `[@sentry/nextjs] Successfully uploaded source maps to Sentry` → token/org/project válidos y DSN horneado en el bundle → captura cliente+servidor activa con stack traces legibles. Postura de privacidad deliberada: `sendDefaultPii:false` + `stripRequestPii`, Session Replay OFF, `tracesSampleRate:0`. Pendiente único (solo el usuario): confirmar el evento end-to-end en el dashboard de sentry.io. |
 | `B-05` | Test de carga a 1000+ trades; activar/medir `TradeStatsCache` | M | 🟡 **medido — 2026-07-16.** El cache **está construido y cableado** (`dashboard-service` lookup+write, TTL 5 min, invalidación) pero **nunca ha corrido**: `trade_stats_cache` tiene **0 filas en prod** (`ANALYTICS_CACHE_ENABLED` no está en `true` allí). **Su invalidación estaba incompleta** — solo trades invalidaba; `accounts`/`setups`/`markets` no, en ninguna de sus 18 mutaciones → prender el flag habría servido dashboards rancios 5 min. **Cerrado en PR #138** con el middleware `dashboardMutation` + guard estático. **Números** (arnés `src/scripts/bench-dashboard-cache.test.ts`, `BENCH=1`, BD local): a **1000 trades** OFF 110.7 ms / **cold 211.5 ms** / warm 8.0 ms (13.8×); a **137 trades** (la carga real) OFF 33.5 ms / **cold 79.9 ms** / warm 5.5 ms (6.1×). **Ojo con el cold: un miss cuesta ~2× lo que no tener cache** (paga cómputo + escritura JSON), y como cada mutación invalida, un trader activo caería en cold seguido → el cache lo dejaría *más lento*. **Contexto de escala:** prod tiene **137 trades en total**, 3 usuarios, máx 137/usuario. Los índices están bien (`trades_user_status_date_idx`). Prender el flag hoy es optimización prematura; queda **seguro** de prender (tras #138) cuando exista un usuario con volumen real. **La mitad que sí valía se hizo (PR #140):** `getDashboardStats` iba **5 veces en serie** a la BD (incl. la fila de `user` pedida DOS veces, y el lookup de cache *después* de una query que no necesitaba). Consolidado a **2 rondas paralelas** → medido contra prod, misma máquina/red, cache off: **963 ms → 420 ms** (2.3×, n=7). Acelera a todos hoy, sin flag ni staleness. Verificado por UI en prod. |
 
 **P2 — Deseable**
@@ -338,12 +338,14 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. El roadmap que veníamos
-arrastrando quedó COMPLETO el 2026-07-16 y main está limpio (sin ramas ni PRs abiertos):
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. main está limpio (sin ramas
+ni PRs abiertos). Últimas piezas mergeadas:
 
-  POST-6 (#128) · G2 cutover (#129) · TD-018 trade-service (#130) · DT-4 drift check (#131)
-  · recuperación del grafo graphify (#132) · TD-019 (#133) · auditoría de STATUS (#134)
-  · B-02 eslint como gate de CI (#135)
+  POST-6 (#128) · G2 cutover (#129) · TD-018 (#130) · DT-4 drift check (#131)
+  · grafo graphify (#132) · TD-019 (#133) · auditoría STATUS (#134) · B-02 eslint gate (#135)
+  · B-11 ocultar perillas IA inertes (#137) · B-05 cache invalidation + consolidación de
+  queries (#138/#140) · DT-4 real (#139) · S2/OI-2 emoción 1-tap (#141)
+  · B-04 Sentry activado en prod (#143) · OI-4.8 loops de compromiso (#144)
 
 No hay nada a medias esperando merge. Arrancá eligiendo trabajo nuevo, no retomando.
 
@@ -355,12 +357,15 @@ Lee primero, en este orden:
 Confirma al arrancar que tienes acceso a gh, Vercel MCP, Supabase MCP y .env (handoff §0).
 
 Candidatos para la próxima pieza (ninguno urgente, confirmá conmigo antes de arrancar):
-- 3 perillas de IA INERTES en Perfil (§4 B-11): trade_analysis, review_generation y
-  learning_insights son configurables pero NINGÚN servicio las consume, y
-  ai-models-card.tsx itera AI_FEATURES entero → el usuario ajusta 3 controles que no
-  hacen nada. Fix barato = ocultarlas; fix caro = implementarlas. Es el hallazgo con
-  impacto de usuario más claro que queda.
-- B-04 Sentry (sin instalar) · B-05 test de carga 1000+ trades / TradeStatsCache.
+- El pozo de deuda/features-a-medias quedó casi vacío tras OI-4.8 (#144), que era la
+  ÚNICA funcionalidad genuinamente a medias verificada en código (auditoría 2026-07-17).
+  Lo que resta:
+  - Los DT-x/R-x de S0–S2 (§1) marcados ⬜ NUNCA se auditaron contra código a fondo:
+    es el nicho más probable de deuda real oculta. Verificá ANTES de construir.
+  - B-05 (§4): prender ANALYTICS_CACHE_ENABLED sigue siendo prematuro (137 trades en
+    prod); seguro de prender recién con un usuario de volumen real.
+  - El resto de §1 (OI-x.y de S3–S14) es roadmap CONGELADO por diseño (FREEZE), no deuda.
+- Sentry (#143) ya activo en prod: si aparece un error real, triarlo es trabajo nuevo.
 - TD-037 NO es trabajo pendiente de diagnóstico: ya fue auditado (Cycle 1), los 34 sitios
   son intencionales y está diferido al refactor de key-remount de v3. No lo "descubras"
   de nuevo.
@@ -369,7 +374,7 @@ Reglas de trabajo (estables desde hace varias sesiones):
 - Trabaja desde origin/main; una rama por pieza; PR + CI verde + merge yo mismo (gh).
 - TDD para dominios puros; migraciones DUALES (SQL en supabase/migrations + modelo
   prisma) con `npx prisma generate`; RLS per-usuario en tablas nuevas.
-- Corre la suite vitest COMPLETA antes de cada push (hoy: 1176 tests). No un subconjunto.
+- Corre la suite vitest COMPLETA antes de cada push (hoy: 1204 tests). No un subconjunto.
 - Re-verifica vs CÓDIGO antes de construir. Esto NO es ceremonia: en 2026-07-16, cuatro
   entradas del doc estaban mal (TD-019 mal caracterizada, el cron ya estaba hecho, B-01/B-03
   ya hechos, B-11 mal en dos ejes). El doc miente más seguido que el código.
@@ -385,19 +390,20 @@ production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run lis
 tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
 ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
 
-GOTCHA de graphify (RE-MEDIDO 2026-07-16 — el aviso de abajo NO se reprodujo):
-El aviso histórico decía que `graphify update .` a secas huerfaniza los edges docs→código
-(medido entonces: 741 → 220 doc edges; INFERRED 119 → 47) y que la pérdida es silenciosa.
-**Medido de nuevo el 2026-07-16 contra un respaldo del grafo curado, NO ocurrió:**
-doc→código 84 → 84 (0 perdidos), INFERRED 119 → 119, hyperedges 16 → 16, huérfanos 0 → 0.
-Los doc-links totales bajaron 786 → 763, y los 23 eran doc→doc de documentos editados ese
-mismo día. O sea: `graphify update .` fue seguro y la vía larga (restaurar + build_merge)
-no hizo falta. Aun así, el método sigue siendo el correcto: **respaldá `graph.json` antes
-(el propio update lo hace en `graphify-out/<fecha>/`, y ese respaldo se commitea) y MEDÍ
-doc→código/INFERRED/huérfanos antes de commitear**, porque la guardia anti-shrink cuenta
-nodos y no vería una regresión de edges si vuelve. Ojo: `.graphifyignore` excluye
-tests/`*.config.ts`/Prisma generado a propósito — si algo no aparece en el grafo, comprobá
-ahí antes de pensar que se perdió.
+GOTCHA de graphify (RE-CONFIRMADO 2026-07-17 — el "NO se reprodujo" de #143 fue un
+espejismo, NO te fíes de él): `graphify update .` a secas SÍ huerfaniza la capa semántica.
+Medido hoy contra el grafo curado (#143), justo tras OI-4.8: **INFERRED 119 → 49, doc→código
+107 → 0 (TODOS perdidos), doc→doc 643 → 264, mientras los NODOS SUBEN 3410 → 3577.** Por eso
+la guardia anti-shrink (cuenta nodos) nunca lo frena: la pérdida es 100% de edges y silenciosa.
+El re-measure de #143 que dio "84→84 / 119→119" fue un caso afortunado (poco cambió ese día),
+no la regla. **Vía correcta:** NO commitees el resultado de `update .` a secas. Restaurá el
+curado (`git checkout -- graphify-out/`, o el respaldo que el propio update deja en
+`graphify-out/<fecha>/`) y fusioná preservando la capa semántica (extracción semántica con
+API key, o build_merge), midiendo ANTES de commitear. Medir: contar links con
+`confidence==="INFERRED"` y los que cruzan docs↔código vía el mapa nodo→`source_file`
+(script usado hoy: cuenta inferred/doc2code/huérfanos desde graph.json). En OI-4.8 (#144) el
+grafo se dejó **curado a propósito, sin los 3 nodos nuevos** de detectores, antes que
+degradarlo. Ojo: `.graphifyignore` excluye tests/`*.config.ts`/Prisma generado a propósito.
 
 GOTCHA de TD-019: el fix de auth rinde SOLO porque el proyecto usa claves JWT asimétricas
 (su JWKS sirve ES256). Si alguna vez se rota al secreto legacy HS256, getClaims() vuelve a
