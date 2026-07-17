@@ -20,7 +20,12 @@ const requiredNumber = (opts?: { positive?: boolean }) => {
   return s
 }
 
-export const EMOTION_VALUES = ["calm", "anxious", "excited", "fearful", "overconfident"] as const
+// Re-exported, not redefined: the catalog lives in domains/trading/emotions.ts
+// alongside its display labels, so the form schema and the chip rows cannot drift.
+// Imported as well as re-exported — `export ... from` creates no local binding and
+// the schema below uses it.
+import { EMOTION_VALUES } from "@/domains/trading/emotions"
+export { EMOTION_VALUES }
 export const SESSION_VALUES = ["London", "New York", "Asia", "London Close"] as const
 export const REGIME_VALUES = ["trend", "range", "volatile"] as const
 

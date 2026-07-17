@@ -98,10 +98,16 @@ function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
   return {
     account: {
       findUniqueOrThrow: vi.fn().mockResolvedValue(account),
+      findUnique:        vi.fn().mockResolvedValue(account),
+      findFirst:         vi.fn().mockResolvedValue(account),
       update:            vi.fn().mockResolvedValue(account),
     },
     setup: {
       findUnique: vi.fn().mockResolvedValue({ status: "ACTIVO" }),
+    },
+    // closeTrade looks the instrument's point value up by symbol.
+    market: {
+      findFirst: vi.fn().mockResolvedValue({ pointValue: "1" }),
     },
     trade: {
       create: vi.fn().mockResolvedValue(trade),
@@ -479,5 +485,54 @@ describe("trades.create — max drawdown auto-lock", () => {
       expect.objectContaining({ data: expect.objectContaining({ locked: true, lockReason: "MAX_DRAWDOWN" }) }),
     )
     expect(prisma.trade.create).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * S2/OI-2 — capturing the pre-trade emotion at close.
+ *
+ * Emotion is normally recorded when the trade is opened. When it was skipped, the
+ * close form is the last honest moment to ask, so `trades.close` accepts it. It
+ * must never overwrite an emotion the trader already recorded: closing a trade
+ * says nothing new about how they felt entering it.
+ */
+describe("trades.close — emotionBefore capture (S2/OI-2)", () => {
+  let mockPrisma: ReturnType<typeof makeMockPrisma>
+  let caller: ReturnType<typeof appRouter.createCaller>
+
+  beforeEach(() => {
+    mockPrisma = makeMockPrisma()
+    caller = appRouter.createCaller({
+      prisma: mockPrisma as never,
+      supabase: {} as never,
+      userId: USER_ID,
+    })
+  })
+
+  const CLOSE_INPUT = { id: TRADE_ID, closePrice: 21100, commission: 0 }
+
+  it("persists emotionBefore when the trader taps one at close", async () => {
+    await caller.trades.close({ ...CLOSE_INPUT, emotionBefore: "anxious" })
+    expect(mockPrisma.trade.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ emotionBefore: "anxious" }) })
+    )
+  })
+
+  it("leaves emotionBefore alone when none is sent", async () => {
+    await caller.trades.close(CLOSE_INPUT)
+    const data = mockPrisma.trade.update.mock.calls[0][0].data
+    expect(data).not.toHaveProperty("emotionBefore")
+  })
+
+  it("does not clobber a recorded emotion with an explicit null", async () => {
+    await caller.trades.close({ ...CLOSE_INPUT, emotionBefore: null })
+    const data = mockPrisma.trade.update.mock.calls[0][0].data
+    expect(data).not.toHaveProperty("emotionBefore")
+  })
+
+  it("rejects an emotion outside the catalog", async () => {
+    await expect(
+      caller.trades.close({ ...CLOSE_INPUT, emotionBefore: "hangry" as never })
+    ).rejects.toThrow()
   })
 })

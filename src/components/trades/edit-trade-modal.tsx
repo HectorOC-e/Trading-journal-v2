@@ -9,19 +9,11 @@ import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { tradeEditSchema, type TradeEditValues } from "@/domains/trading/schemas/trade-form-schema"
+import { EMOTION_OPTIONS, type EmotionBefore } from "@/domains/trading/emotions"
 
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
 
-type EmotionBefore = "calm" | "anxious" | "excited" | "fearful" | "overconfident"
-
-const EMOTION_OPTIONS: { value: EmotionBefore; label: string }[] = [
-  { value: "calm",          label: "Tranquilo" },
-  { value: "anxious",       label: "Ansioso" },
-  { value: "excited",       label: "Eufórico" },
-  { value: "fearful",       label: "Temeroso" },
-  { value: "overconfident", label: "Sobreconfiado" },
-]
 
 interface Setup {
   id: string
