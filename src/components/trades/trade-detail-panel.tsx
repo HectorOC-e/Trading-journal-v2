@@ -350,8 +350,9 @@ export function TradeDetailPanel({
               <div className="px-3 pt-3 pb-3 flex flex-col gap-2.5">
                 {/* Close price — big input */}
                 <div>
-                  <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Precio de cierre *</label>
+                  <label htmlFor="close-price" className="text-[10px] text-[var(--ink-3)] font-medium block mb-1">Precio de cierre *</label>
                   <input
+                    id="close-price"
                     type="number"
                     inputMode="decimal"
                     className="w-full rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-base font-mono font-semibold text-[var(--ink)] focus:outline-none focus:border-[var(--accent)] transition-colors"
