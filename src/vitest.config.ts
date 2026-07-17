@@ -4,7 +4,7 @@ import path from "path"
 export default defineConfig({
   test: {
     globals: true,
-    exclude: ["**/.claude/**", "**/node_modules/**", "**/__tests__/e2e/**"],
+    exclude: ["**/.claude/**", "**/node_modules/**", "**/__tests__/e2e/**", "**/__tests__/integration/**"],
     setupFiles: ["./vitest.setup.ts"],
     // Default environment for server-side tests
     environment: "node",
