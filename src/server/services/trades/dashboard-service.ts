@@ -87,23 +87,7 @@ export type DashboardStatsInput = {
 }
 
 export async function getDashboardStats(prisma: PrismaClient, userId: string, input?: DashboardStatsInput): Promise<DashboardOutput> {
-  // Trading-day boundaries ("today / this week / this month") are computed in the
-  // USER's timezone, not UTC — a trade logged at 23:00 local must count toward the
-  // local day. See lib/datetime/local.ts.
-  const { timezone } = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { timezone: true } })
-  const now        = new Date()
-  const today      = localDateISO(now, timezone)
-  const monthStart = monthStartISO(today)
-  const weekStart  = weekStartISO(today)
-  const period     = input?.period ?? "3M"
-
-  const periodDays: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
-  const days       = periodDays[period]
-  const periodFrom = days != null ? addDaysISO(today, -days) : undefined
-  const queryFrom  = input?.from ?? periodFrom
-  const queryTo    = input?.to
-  const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
-  const grain      = grainMap[period]
+  const period = input?.period ?? "3M"
 
   // ── Practice (demo/backtest) scope ────────────────────────────────────
   // A single explicit account selection always wins (the user picked it on
@@ -113,39 +97,66 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const financialScope  = (includePractice || singleAccount) ? "all" : "real"
 
   // ── Cache lookup (feature-flagged) ────────────────────────────────────
+  // Before any read: the key is derived entirely from `input`, so a hit costs
+  // one query rather than one plus whatever we fetched to get here.
   const cacheKey = `${period}:${input?.accountId ?? "all"}:${financialScope}`
   if (isCacheEnabled()) {
     const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
     if (hit) return hit
   }
 
-  // ── Fetch ─────────────────────────────────────────────────────────────
-  // Only active/paused accounts; archived (INACTIVE/LOST) are excluded from
-  // all dashboard analytics (QA-002/003/004/005/009).
-  const activeAccounts = await prisma.account.findMany({
-    where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
-    select: {
-      id: true, name: true, type: true, status: true, currency: true,
-      initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
-      ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
-      maxLeverage: true, targetLeverage: true,
-      consistencyPct: true, targetPct: true, minTradingDays: true,
-      noWeekendHolding: true,
-    },
-  })
+  // ── Fetch, round 1: everything that depends on nothing ────────────────
+  // Accounts are fetched here rather than after the profile because they never
+  // needed it. Only active/paused ones; archived (INACTIVE/LOST) are excluded
+  // from all dashboard analytics (QA-002/003/004/005/009).
+  const [userRow, activeAccounts] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where:  { id: userId },
+      select: { timezone: true, baseCurrency: true, fxRates: true },
+    }),
+    prisma.account.findMany({
+      where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
+      select: {
+        id: true, name: true, type: true, status: true, currency: true,
+        initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
+        ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
+        maxLeverage: true, targetLeverage: true,
+        consistencyPct: true, targetPct: true, minTradingDays: true,
+        noWeekendHolding: true,
+      },
+    }),
+  ])
+
+  // Trading-day boundaries ("today / this week / this month") are computed in the
+  // USER's timezone, not UTC — a trade logged at 23:00 local must count toward the
+  // local day. See lib/datetime/local.ts.
+  const { timezone } = userRow
+  const now        = new Date()
+  const today      = localDateISO(now, timezone)
+  const monthStart = monthStartISO(today)
+  const weekStart  = weekStartISO(today)
+
+  const periodDays: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
+  const days       = periodDays[period]
+  const periodFrom = days != null ? addDaysISO(today, -days) : undefined
+  const queryFrom  = input?.from ?? periodFrom
+  const queryTo    = input?.to
+  const grainMap: Record<string, Grain> = { "7d": "daily", "1M": "daily", "3M": "daily", "6M": "weekly", "1Y": "weekly", "ALL": "monthly" }
+  const grain      = grainMap[period]
+
   const activeAccountIds = activeAccounts.map(a => a.id)
 
   // ── FX normalization (D-03) ───────────────────────────────────────────
   // Dashboard is portfolio-wide in the user's base currency. Convert each
   // account's amounts (P&L, balance) by its currency→base factor so the
   // aggregates and the account table stay consistent (no mixed divisas).
-  const userProfile = await prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } })
-  const baseCurrency = userProfile?.baseCurrency ?? "USD"
-  const fxRates = parseFxRates(userProfile?.fxRates)
+  const baseCurrency = userRow.baseCurrency ?? "USD"
+  const fxRates = parseFxRates(userRow.fxRates)
   const fxByAccount = new Map(activeAccounts.map(a => [a.id, fxFactor(a.currency, baseCurrency, fxRates)]))
   const fx = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
-  const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows] = await Promise.all([
+  // ── Fetch, round 2: everything that needed round 1 ────────────────────
+  const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows, todayRaw] = await Promise.all([
     prisma.trade.findMany({
       where: {
         userId,
@@ -184,6 +195,13 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     prisma.market.findMany({
       where:  { userId },
       select: { symbol: true, category: true, pointValue: true },
+    }),
+    // Today's rows feed the prop-firm daily-loss check further down. Only needs
+    // `today` (from round 1), so it rides along here instead of costing its own
+    // round trip after the aggregates are already built.
+    prisma.trade.findMany({
+      where:  { userId, date: new Date(today) },
+      select: { accountId: true, pnl: true, status: true },
     }),
   ])
 
@@ -283,10 +301,6 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const directionStats = setupIds.map(id => computeDirectionBreakdown(id, trades)).filter((d): d is DirectionStats => d !== null)
 
   // ── Prop firm status ──────────────────────────────────────────────────
-  const todayRaw = await prisma.trade.findMany({
-    where:  { userId, date: new Date(today) },
-    select: { accountId: true, pnl: true, status: true },
-  })
   const propFirmStatus = buildPropFirmStatus(
     acctWithLimits,
     trades,
