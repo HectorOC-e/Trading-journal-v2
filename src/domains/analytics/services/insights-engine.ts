@@ -305,6 +305,30 @@ export function detectOversizing(trades: AnalyticsTrade[]): Insight | null {
   }
 }
 
+// ── 10. Off-plan: share of trades tagged outside the plan ─────────────────────
+// Tag set mirrors verifiers.ts OFF_PLAN_TAGS (source of truth for the commitment
+// verifier). Kept local to keep insights-engine dependency-light; the round-trip
+// coverage test pins that this insight type still maps to a live verifier.
+const OFF_PLAN_TAGS = new Set(["Off-plan", "Impulsivo", "Revanche"])
+export function detectOffPlan(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const offenders = trades.filter((t) => t.tags.some((tag) => OFF_PLAN_TAGS.has(tag)))
+  const count = offenders.length
+  const rate = count / trades.length
+  if (count < 3 || rate < 0.20) return null
+  const ratePct = rate * 100
+  return {
+    id: "off-plan",
+    category: "pattern",
+    severity: rate >= 0.35 ? "warning" : "info",
+    title: "Una parte de tus trades queda fuera de tu plan",
+    detail: `${count} de tus ${trades.length} trades (${pct(ratePct)}%) están marcados fuera de plan (Off-plan/Impulsivo/Revancha).`,
+    recommendation: "Valida tu checklist antes de cada entrada; comprométete a operar solo setups dentro del plan esta semana.",
+    evidence: `${count} trades fuera de plan sobre ${trades.length}.`,
+    metric: pct(ratePct),
+  }
+}
+
 const SEVERITY_RANK: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
 
 /** Run all detectors and return a ranked list of insights. */
@@ -321,6 +345,7 @@ export function generateInsights(input: InsightInput): Insight[] {
   push(detectLosingStreak(t))
   push(detectRevengeTrading(t))
   push(detectOversizing(t))
+  push(detectOffPlan(t))
   out.push(...detectAccountRisk(input))
 
   return out.sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9))

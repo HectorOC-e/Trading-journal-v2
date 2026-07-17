@@ -160,3 +160,29 @@ describe("detectOversizing", () => {
     expect(insight!.stat).toBeUndefined()
   })
 })
+
+describe("detectOffPlan", () => {
+  it("returns null below the minimum sample", () => {
+    expect(detectOffPlan([trade({ id: "1", date: "2026-01-01", pnl: 10, tags: ["Off-plan"] })])).toBeNull()
+  })
+
+  it("returns null when off-plan trades are rare", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: 10 }))
+    trades[0].tags = ["Off-plan"] // 1/24 ≈ 4% < 20%
+    expect(detectOffPlan(trades)).toBeNull()
+  })
+
+  it("emits id 'off-plan' when a meaningful share is off-plan", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      const off = i < 8 // 8/24 = 33% off-plan
+      trades.push(trade({ id: `t${i}`, date: `2026-05-${String(i + 1).padStart(2, "0")}`, pnl: 10, tags: off ? ["Impulsivo"] : [] }))
+    }
+    const insight = detectOffPlan(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("off-plan")
+    expect(insight!.metric).toBeGreaterThanOrEqual(20)
+    expect(insight!.stat).toBeUndefined()
+  })
+})
