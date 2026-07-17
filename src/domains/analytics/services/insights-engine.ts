@@ -275,6 +275,36 @@ export function detectRevengeTrading(trades: AnalyticsTrade[]): Insight | null {
   }
 }
 
+// ── 9. Oversizing: position size spikes right after a loss ────────────────────
+const OVERSIZE_MULT = 2
+export function detectOversizing(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const sorted = [...trades].sort(bySymbolDate)
+  const avgSize = sorted.reduce((s, t) => s + t.size, 0) / sorted.length
+  if (avgSize <= 0) return null
+  let offenders = 0, afterLoss = 0
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].pnl < 0) {
+      afterLoss++
+      if (sorted[i].size > avgSize * OVERSIZE_MULT) offenders++
+    }
+  }
+  if (afterLoss === 0) return null
+  const rate = offenders / afterLoss
+  if (rate < 0.20) return null
+  const ratePct = rate * 100
+  return {
+    id: "oversizing",
+    category: "risk",
+    severity: rate >= 0.40 ? "warning" : "info",
+    title: "Aumentas el tamaño después de perder",
+    detail: `En el ${pct(ratePct)}% de los trades que siguen a una pérdida duplicas o más tu tamaño promedio, subiendo la exposición en el peor momento.`,
+    recommendation: "Fija un tope de 1× tu tamaño promedio en el trade inmediatamente posterior a una pérdida.",
+    evidence: `${offenders} de ${afterLoss} trades que siguen a una pérdida.`,
+    metric: pct(ratePct),
+  }
+}
+
 const SEVERITY_RANK: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
 
 /** Run all detectors and return a ranked list of insights. */
@@ -290,6 +320,7 @@ export function generateInsights(input: InsightInput): Insight[] {
   push(detectWithdrawalImpact(input))
   push(detectLosingStreak(t))
   push(detectRevengeTrading(t))
+  push(detectOversizing(t))
   out.push(...detectAccountRisk(input))
 
   return out.sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9))

@@ -21,7 +21,7 @@ function trade(o: Partial<AnalyticsTrade> & { id: string; date: string; pnl: num
     openTime: o.openTime ?? "08:00", closeTime: o.closeTime ?? "09:00",
     pnl: o.pnl, rMultiple: o.rMultiple ?? (o.pnl >= 0 ? 1 : -1),
     tags: o.tags ?? [], date: o.date, setupId: o.setupId ?? null,
-    entry: 1, stop: 0.99, target: 1.02, size: 1,
+    entry: 1, stop: 0.99, target: 1.02, size: o.size ?? 1,
     emotionBefore: o.emotionBefore ?? null, fomoFlag: o.fomoFlag, revengeFlag: o.revengeFlag,
   }
 }
@@ -125,6 +125,38 @@ describe("detectRevengeTrading", () => {
     expect(insight).not.toBeNull()
     expect(insight!.id).toBe("revenge-trading")
     expect(insight!.severity).toBe("warning")
+    expect(insight!.stat).toBeUndefined()
+  })
+})
+
+describe("detectOversizing", () => {
+  it("returns null below the minimum sample", () => {
+    expect(detectOversizing([trade({ id: "1", date: "2026-01-01", pnl: -10, size: 10 })])).toBeNull()
+  })
+
+  it("returns null when post-loss size stays at baseline", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: i % 2 === 0 ? -50 : 50, size: 1 }))
+    }
+    expect(detectOversizing(trades)).toBeNull()
+  })
+
+  it("emits id 'oversizing' when size spikes after losses", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 18; i++) {
+      trades.push(trade({ id: `w${String(i).padStart(2, "0")}`, date: `2026-04-${String(i + 1).padStart(2, "0")}`, pnl: 10, size: 1 }))
+    }
+    for (let i = 0; i < 4; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `loss${i}`, date: `2026-05-${d1}`, pnl: -50, size: 1 }))
+      trades.push(trade({ id: `big${i}`, date: `2026-05-${d2}`, pnl: 100, size: 20 }))
+    }
+    const insight = detectOversizing(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("oversizing")
+    expect(insight!.category).toBe("risk")
     expect(insight!.stat).toBeUndefined()
   })
 })
