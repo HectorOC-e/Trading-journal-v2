@@ -18,6 +18,22 @@ export const AI_FEATURES = [
 
 export type AiFeature = typeof AI_FEATURES[number]
 
+/**
+ * Features that are actually consumed by a live LLM call-site today.
+ *
+ * The rest of `AI_FEATURES` is still accepted and persisted — a user may already
+ * have an override saved for one — but configuring it has no effect, so the
+ * settings UI does not offer it. `active-ai-features.test.ts` derives this list
+ * from the real call-sites and fails if the two drift apart.
+ */
+export const ACTIVE_AI_FEATURES: AiFeature[] = [
+  "ai_chat",
+  "analytics_insights",
+  "psychology_analysis",
+  "weekly_reviews",
+  "embeddings",
+]
+
 export const AI_PROVIDERS_LIST: AiProvider[] = ["openrouter", "anthropic", "openai"]
 
 export type CostPriority = "quality" | "speed" | "cost"

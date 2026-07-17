@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
-import { AI_FEATURES, type AiFeature } from "@/lib/ai/feature-models"
+import { AI_FEATURES, ACTIVE_AI_FEATURES, type AiFeature } from "@/lib/ai/feature-models"
 
 const PROVIDERS = ["openrouter", "anthropic", "openai"] as const
 type Provider = typeof PROVIDERS[number]
@@ -113,6 +113,9 @@ export function AiModelsCard() {
       fallbackProvider: fallbackModel.trim() ? fallbackProvider : null,
       fallbackModel:    fallbackModel.trim() || null,
       costPriority,
+      // Iterates every feature, not just the offered ones: the mutation replaces
+      // featureModels wholesale, so omitting a key would delete an override a user
+      // saved back when the inactive features were still configurable.
       featureModels: Object.fromEntries(
         AI_FEATURES.map(f => [f, features[f]?.model?.trim()
           ? { provider: features[f]!.provider, model: features[f]!.model.trim() }
@@ -201,7 +204,7 @@ export function AiModelsCard() {
       </button>
       {showFeatures && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-          {AI_FEATURES.map(f => (
+          {ACTIVE_AI_FEATURES.map(f => (
             <div key={f} style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.4fr", gap: 8, alignItems: "center" }}>
               <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{FEATURE_LABEL[f]}</span>
               <ProviderSelect value={features[f]?.provider ?? defaultProvider} onChange={p => setFeature(f, { provider: p })} />
@@ -273,9 +276,6 @@ export function AiModelsCard() {
                   </div>
                 ))}
               </div>
-              <p style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 6 }}>
-                Las demás funcionalidades del configurador aún no consumen IA en vivo (solo Chat, Reviews y Embeddings).
-              </p>
             </div>
           </div>
         )}
