@@ -192,6 +192,22 @@ jobs:
           fi
           ./scripts/check-schema-drift.sh "$LOCAL_DB_URL"
 
+      # S0/DT-3: the outbox/persistence layer's transactional guarantees (events +
+      # writes in one tx, FREEZE-D6) can only be proven against a real Postgres —
+      # the unit suite mocks prisma. Runs here because the fresh migrated DB is up.
+      - name: Integration tests (outbox / persistence, real DB)
+        working-directory: src
+        run: |
+          pnpm exec prisma generate
+          STATUS_ENV="$(cd .. && supabase status -o env || true)"
+          LOCAL_DB_URL=$(echo "$STATUS_ENV" | grep '^DB_URL=' | cut -d'=' -f2- | tr -d '"')
+          if [ -z "$LOCAL_DB_URL" ]; then
+            echo "::error::Could not extract local DB URL from supabase status -o env"
+            echo "$STATUS_ENV"
+            exit 1
+          fi
+          DATABASE_URL="$LOCAL_DB_URL" pnpm exec vitest run --config vitest.integration.config.ts
+
       - name: Stop local stack
         if: always()
         run: supabase stop --no-backup
