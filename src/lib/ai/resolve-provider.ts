@@ -15,6 +15,7 @@ import { decryptApiKey } from "./key-encryption"
 import { getProviderKey } from "./config"
 import { resolveModelForFeature, loadAiSettings } from "./resolve-model"
 import {
+  ACTIVE_AI_FEATURES,
   type AiProvider, type AiFeature, type ModelRef,
 } from "./feature-models"
 
@@ -140,8 +141,7 @@ export type AiDiagnostics = {
   }>
 }
 
-/** Features that are actually consumed by a live LLM call-site today. */
-export const ACTIVE_AI_FEATURES: AiFeature[] = ["ai_chat", "analytics_insights", "weekly_reviews", "embeddings"]
+export { ACTIVE_AI_FEATURES } from "./feature-models"
 
 const ALL_PROVIDERS: AiProvider[] = ["openrouter", "anthropic", "openai"]
 
