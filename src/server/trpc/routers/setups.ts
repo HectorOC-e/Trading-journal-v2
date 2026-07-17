@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { router, protectedProcedure } from "../init"
+import { router, protectedProcedure, dashboardMutation } from "../init"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
@@ -49,7 +49,7 @@ export const setupsRouter = router({
       })
     ),
 
-  create: protectedProcedure
+  create: dashboardMutation
     .input(SetupInput)
     .mutation(({ ctx, input }) =>
       ctx.prisma.setup.create({
@@ -57,7 +57,7 @@ export const setupsRouter = router({
       })
     ),
 
-  update: protectedProcedure
+  update: dashboardMutation
     .input(z.object({ id: z.string().uuid() }).merge(SetupInput.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
@@ -101,7 +101,7 @@ export const setupsRouter = router({
       })
     }),
 
-  setStatus: protectedProcedure
+  setStatus: dashboardMutation
     .input(z.object({ id: z.string().uuid(), status: z.enum(SETUP_STATUSES) }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.setup.update({
@@ -110,7 +110,7 @@ export const setupsRouter = router({
       })
     ),
 
-  delete: protectedProcedure
+  delete: dashboardMutation
     .input(z.string().uuid())
     .mutation(({ ctx, input }) =>
       ctx.prisma.setup.delete({ where: { id: input, userId: ctx.userId } })

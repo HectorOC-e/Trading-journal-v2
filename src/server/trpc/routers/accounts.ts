@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import type { Prisma } from "@/lib/generated/prisma/client"
-import { router, protectedProcedure } from "../init"
+import { router, protectedProcedure, dashboardMutation } from "../init"
 import type { AccountLogPayload } from "@/types"
 import { reconcileTemporalLock, isPermanentLockReason } from "@/domains/trading/services/risk-enforcement"
 
@@ -116,7 +116,7 @@ export const accountsRouter = router({
       return reconciled.map((a) => serializeAccount(a, pnlMap.get(a.id) ?? 0))
     }),
 
-  create: protectedProcedure
+  create: dashboardMutation
     .input(AccountInput)
     .mutation(async ({ ctx, input }) => {
       const account = await ctx.prisma.account.create({
@@ -139,7 +139,7 @@ export const accountsRouter = router({
       return serializeAccount(account) // TD-031: serialize Decimal fields
     }),
 
-  update: protectedProcedure
+  update: dashboardMutation
     .input(z.object({ id: z.string().uuid() }).merge(AccountInput.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
@@ -147,7 +147,7 @@ export const accountsRouter = router({
       return serializeAccount(account) // TD-031
     }),
 
-  changeStatus: protectedProcedure
+  changeStatus: dashboardMutation
     .input(z.object({
       id:         z.string().uuid(),
       status:     z.enum(ACCOUNT_STATUSES),
@@ -180,7 +180,7 @@ export const accountsRouter = router({
     }),
 
   // ── HALLAZGO 1B — manual lock / unlock with audit ──────────────────────────
-  lock: protectedProcedure
+  lock: dashboardMutation
     .input(z.object({
       id:     z.string().uuid(),
       reason: z.string().min(1).max(200).default("MANUAL"),
@@ -197,7 +197,7 @@ export const accountsRouter = router({
       return serializeAccount(account)
     }),
 
-  unlock: protectedProcedure
+  unlock: dashboardMutation
     .input(z.object({
       id:   z.string().uuid(),
       note: z.string().max(200).optional(),
@@ -214,7 +214,7 @@ export const accountsRouter = router({
       return serializeAccount(account)
     }),
 
-  changePhase: protectedProcedure
+  changePhase: dashboardMutation
     .input(z.object({
       id:              z.string().uuid(),
       phase:           z.enum(PHASES),
@@ -274,7 +274,7 @@ export const accountsRouter = router({
       return serializeAccount(account) // TD-031
     }),
 
-  archive: protectedProcedure
+  archive: dashboardMutation
     .input(z.string().uuid())
     .mutation(async ({ ctx, input }) => {
       const prev = await ctx.prisma.account.findUniqueOrThrow({
@@ -292,13 +292,13 @@ export const accountsRouter = router({
       return serializeAccount(account) // TD-031
     }),
 
-  delete: protectedProcedure
+  delete: dashboardMutation
     .input(z.string().uuid())
     .mutation(({ ctx, input }) =>
       ctx.prisma.account.delete({ where: { id: input, userId: ctx.userId } })
     ),
 
-  syncBalance: protectedProcedure
+  syncBalance: dashboardMutation
     .input(z.object({
       accountId:     z.string().uuid(),
       actualBalance: z.number(),
