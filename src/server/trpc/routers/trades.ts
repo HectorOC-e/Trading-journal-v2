@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { EMOTION_VALUES } from "@/domains/trading/emotions"
 import { router, protectedProcedure } from "../init"
 import { semanticSearch, backfillEmbeddings } from "@/server/services/trades/embedding-service"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
@@ -54,7 +55,7 @@ export const tradesRouter = router({
       commission:      z.number().optional(),
       status:          z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN"),
       // Psychology fields (TASK-034)
-      emotionBefore:   z.enum(["calm", "anxious", "excited", "fearful", "overconfident"]).optional().nullable(),
+      emotionBefore:   z.enum(EMOTION_VALUES).optional().nullable(),
       confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
       executionQuality: z.number().int().min(1).max(5).optional().nullable(),
       fomoFlag:        z.boolean().optional(),
@@ -84,7 +85,7 @@ export const tradesRouter = router({
       session:          z.string().optional(),
       setupId:          z.string().uuid().optional().nullable(),
       // Psychology fields (TASK-034)
-      emotionBefore:    z.enum(["calm", "anxious", "excited", "fearful", "overconfident"]).optional().nullable(),
+      emotionBefore:    z.enum(EMOTION_VALUES).optional().nullable(),
       confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
       executionQuality: z.number().int().min(1).max(5).optional().nullable(),
       fomoFlag:         z.boolean().optional(),
@@ -108,6 +109,9 @@ export const tradesRouter = router({
       maeR:       z.number().optional().nullable(),
       mfeR:       z.number().optional().nullable(),
       regime:     z.enum(["trend", "range", "volatile"]).optional().nullable(),
+      // S2/OI-2: the last honest moment to record the entry emotion when it was
+      // skipped at open. Never overwrites one already recorded.
+      emotionBefore: z.enum(EMOTION_VALUES).optional().nullable(),
     }))
     .mutation(({ ctx, input }) => closeTrade(ctx.prisma, ctx.userId, input)),
 

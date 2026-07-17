@@ -23,6 +23,7 @@ import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
 import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { serializeTrade, type SerializedTrade } from "./serializers"
 import { scheduleEmbedding } from "./embedding-service"
+import type { EmotionBefore } from "@/domains/trading/emotions"
 
 export type CreateTradeInput = {
   accountId:        string
@@ -44,7 +45,7 @@ export type CreateTradeInput = {
   closeTime?:       string
   commission?:      number
   status:           "OPEN" | "CLOSED" | "CANCELLED"
-  emotionBefore?:   "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
+  emotionBefore?:   EmotionBefore | null
   confidenceRating?: number | null
   executionQuality?: number | null
   fomoFlag?:        boolean
@@ -305,6 +306,7 @@ export type CloseTradeInput = {
   maeR?:      number | null
   mfeR?:      number | null
   regime?:    "trend" | "range" | "volatile" | null
+  emotionBefore?: EmotionBefore | null
 }
 
 export async function closeTrade(prisma: PrismaClient, userId: string, input: CloseTradeInput) {
@@ -332,6 +334,10 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
       ...(input.maeR != null ? { maeR: input.maeR } : {}),
       ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
       ...(input.regime != null ? { regime: input.regime } : {}),
+      // S2/OI-2: same rule, and it matters more here — closing a trade reveals
+      // nothing new about the state the trader entered in, so a close must never
+      // overwrite an emotion they already recorded at open.
+      ...(input.emotionBefore != null ? { emotionBefore: input.emotionBefore } : {}),
     },
     include: { account: true, setup: true, events: true },
   })

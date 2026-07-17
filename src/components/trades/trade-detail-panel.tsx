@@ -8,6 +8,8 @@ import { TagChip } from "@/components/tags/tag-chip"
 import { Button } from "@/components/ui/button"
 import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronUp, Edit2, Activity, TrendingUp, TrendingDown, Minus, ArrowLeft, Brain } from "lucide-react"
 import type { Trade, TradeSession, Account, Setup } from "@/types"
+import { EMOTION_OPTIONS, type EmotionBefore } from "@/domains/trading/emotions"
+import { needsEmotionNudge } from "@/domains/trading/services/emotion-feedback"
 
 const SESSION_COLOR: Record<TradeSession, string> = {
   "New York":     "bg-blue-500/15 text-blue-400",
@@ -59,6 +61,7 @@ interface TradeDetailPanelProps {
   onCloseTrade?: (data: {
     closePrice: number; closeTime: string; commission: number
     maeR?: number | null; mfeR?: number | null; regime?: "trend" | "range" | "volatile" | null
+    emotionBefore?: EmotionBefore | null
   }) => void
   closingTrade?: boolean
   /** Dollar value of one full point for this trade's instrument (e.g. NQ = $20). */
@@ -91,6 +94,8 @@ export function TradeDetailPanel({
   const [maeR, setMaeR]       = useState("")
   const [mfeR, setMfeR]       = useState("")
   const [regime, setRegime]   = useState<"trend" | "range" | "volatile" | null>(null)
+  // S2/OI-2: only offered when the entry emotion was never recorded (see the nudge).
+  const [emotionBefore, setEmotionBefore] = useState<EmotionBefore | null>(null)
 
   const pnlPositive = (trade.pnl ?? 0) >= 0
   const rPositive   = (trade.rMultiple ?? 0) >= 0
@@ -136,6 +141,7 @@ export function TradeDetailPanel({
       maeR: isNaN(mae) ? null : mae,
       mfeR: isNaN(mfe) ? null : mfe,
       regime,
+      emotionBefore,
     })
   }
 
@@ -442,13 +448,37 @@ export function TradeDetailPanel({
                   </div>
                 </div>
 
-                {/* #10 nudge — closing without a recorded pre-trade emotion loses the psychology signal. */}
-                {!trade.emotionBefore && (
-                  <div className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border border-[var(--be)]">
-                    <Brain size={13} className="text-[var(--be)] shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-[var(--be)] leading-snug">
-                      No registraste tu estado emocional en este trade. Añádelo al editarlo — es lo que conecta tu psicología con tus resultados.
-                    </p>
+                {/* #10 nudge — the entry emotion was never recorded, and closing is the
+                    last moment the trader still remembers it. Answering it here is one
+                    tap: sending them to the edit modal is how the signal got lost.
+                    The predicate is asked of the state this trade is ABOUT to enter —
+                    it is still OPEN while this form is on screen, and an open trade
+                    never needs the nudge. */}
+                {needsEmotionNudge({ status: "CLOSED", emotionBefore: trade.emotionBefore ?? null }) && (
+                  <div className="flex flex-col gap-2 px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--be-soft)] border border-[var(--be)]">
+                    <div className="flex items-start gap-2">
+                      <Brain size={13} className="text-[var(--be)] shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-[var(--be)] leading-snug">
+                        ¿Cómo entraste a este trade? Es lo que conecta tu psicología con tus resultados.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {EMOTION_OPTIONS.map(({ value, label }) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setEmotionBefore(emotionBefore === value ? null : value)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                            emotionBefore === value
+                              ? "bg-[var(--be)] text-white"
+                              : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]",
+                          )}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

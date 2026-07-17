@@ -24,18 +24,10 @@ import { deriveSession } from "@/domains/trading/services/trade-derivation"
 import { tradeFormSchema, type TradeFormValues } from "@/domains/trading/schemas/trade-form-schema"
 import { computeNotional, computeLeverageMetrics, leverageBand, LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import type { TradeDirection, TradeSession, TradeTag } from "@/types"
+import { EMOTION_OPTIONS } from "@/domains/trading/emotions"
 
 // ── Psychology types ────────────────────────────────────────────────────────
 
-type EmotionBefore = "calm" | "anxious" | "excited" | "fearful" | "overconfident"
-
-const EMOTION_OPTIONS: { value: EmotionBefore; label: string }[] = [
-  { value: "calm",          label: "Tranquilo" },
-  { value: "anxious",       label: "Ansioso" },
-  { value: "excited",       label: "Eufórico" },
-  { value: "fearful",       label: "Temeroso" },
-  { value: "overconfident", label: "Sobreconfiado" },
-]
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
