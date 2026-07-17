@@ -161,7 +161,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Start local stack (applies all migrations to a fresh DB)
         run: supabase start
@@ -246,7 +246,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.109.1
 
       - name: Preview pending migrations (dry run)
         run: supabase db push --db-url "$MIGRATION_DB_URL" --dry-run
