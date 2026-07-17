@@ -169,13 +169,20 @@ jobs:
       - name: Replay from zero (db reset)
         run: supabase db reset
 
+      - name: Install deps (for prisma)
+        run: pnpm install --frozen-lockfile
+        working-directory: src
+
       - name: Check Prisma↔SQL drift (S0/DT-4)
         run: |
-          # Verify that schema.prisma matches the applied migrations (drift detection).
-          # supabase db push --dry-run with the local stack's DB URL exits 0 if no changes needed.
-          # Use `-o env` (machine-readable, stable key=value output) instead of parsing the
-          # human-readable box-table format: that format has no "DB URL:" text at all in
-          # current CLI versions, so grepping it always failed regardless of exit-code handling.
+          # The previous version of this step ran `supabase db push --dry-run`
+          # against the local stack. That could never fail: db push compares the
+          # repo's migrations to the target's migration HISTORY, and the two steps
+          # above had just replayed every one of them, so the answer was always
+          # "nothing to apply". It never read schema.prisma. Real drift accrued
+          # behind that green — resource_reviews plus 18 columns lived in prod and
+          # in schema.prisma but in no migration, so `supabase db reset` produced a
+          # database the app could not start against.
           STATUS_ENV="$(supabase status -o env || true)"
           LOCAL_DB_URL=$(echo "$STATUS_ENV" | grep '^DB_URL=' | cut -d'=' -f2- | tr -d '"')
           if [ -z "$LOCAL_DB_URL" ]; then
@@ -183,8 +190,7 @@ jobs:
             echo "$STATUS_ENV"
             exit 1
           fi
-          echo "Testing drift against local stack"
-          supabase db push --db-url "$LOCAL_DB_URL" --dry-run
+          ./scripts/check-schema-drift.sh "$LOCAL_DB_URL"
 
       - name: Stop local stack
         if: always()
