@@ -13,3 +13,7 @@ qa-e2e/
 
 # Superpowers brainstorm companion
 .superpowers/
+
+# Supabase local stack artifacts (supabase start / db reset)
+supabase/.branches/
+supabase/.temp/

@@ -46,7 +46,6 @@ model User {
   tradeStatsCache      TradeStatsCache[]
   checklistResults     TradeChecklistResult[]
   tradingSessionLogs   TradingSessionLog[]
-  tradeEmbeddings      TradeEmbedding[]
   emailLogs            EmailLog[]
   preferences          UserPreferences?
   aiConfigs            UserAiConfig[]
@@ -315,7 +314,6 @@ model Trade {
   account Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   setup   Setup?       @relation(fields: [setupId], references: [id], onDelete: SetNull)
   events  TradeEvent[]
-  embedding TradeEmbedding?
 
   @@index([userId, date(sort: Desc)])
   @@index([userId, status, date(sort: Desc)])
@@ -717,22 +715,6 @@ model TradingSessionLog {
 // TRADE EMBEDDING (Phase XIII)
 // Tracks embedding vector state per trade. Actual vector stored in pgvector.
 // Deferred: EmbeddingService requires UserAiConfig (Phase XI) for key resolution.
-// ─────────────────────────────────────────────
-model TradeEmbedding {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  tradeId     String   @unique @map("trade_id") @db.Uuid
-  model       String
-  notesHash   String   @map("notes_hash")
-  embeddedAt  DateTime @default(now()) @map("embedded_at")
-
-  user  User  @relation(fields: [userId],  references: [id], onDelete: Cascade)
-  trade Trade @relation(fields: [tradeId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("trade_embeddings")
-}
-
 // ─────────────────────────────────────────────
 // USER PREFERENCES (Sprint 4, TASK-030)
 // Per-user UI preferences persisted server-side.
