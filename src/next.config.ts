@@ -1,4 +1,5 @@
 import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs"
 
 const nextConfig: NextConfig = {
   distDir: ".next",
@@ -18,4 +19,22 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+// Source-map upload turns Sentry's minified stack traces back into real file:line,
+// which is most of why an error tracker is worth having. It needs SENTRY_AUTH_TOKEN
+// + org/project, which only exist in Vercel — so it is gated: without them the
+// wrapper still applies (instrumentation, error capture) but skips the upload
+// instead of failing the build. CI builds have no token and must stay green.
+const sentryUploadConfigured = Boolean(
+  process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT,
+)
+
+export default withSentryConfig(nextConfig, {
+  org:     process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent:  !process.env.CI,
+  sourcemaps: { disable: !sentryUploadConfigured },
+  // Route browser events through the app's own origin so ad blockers don't drop
+  // them — the errors most worth seeing come from the users running blockers.
+  tunnelRoute: "/monitoring",
+  disableLogger: true,
+})
