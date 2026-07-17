@@ -5,9 +5,14 @@ import {
   detectSetupConcentration,
   detectLosingStreak,
   detectAccountRisk,
+  detectRevengeTrading,
+  detectOversizing,
+  detectOffPlan,
   type AnalyticsTrade,
   type InsightInput,
 } from "@/domains/analytics/services/insights-engine"
+import { toComputedInsight } from "@/domains/analytics/insights/insight-store"
+import { canCommit, deriveCommitmentSpec } from "@/domains/behavior/commitment-machine"
 
 function trade(o: Partial<AnalyticsTrade> & { id: string; date: string; pnl: number }): AnalyticsTrade {
   return {
@@ -91,5 +96,35 @@ describe("insights-engine", () => {
       withdrawals: [],
     })
     expect(result[0].severity).toBe("critical")
+  })
+})
+
+describe("detectRevengeTrading", () => {
+  it("returns null below the minimum sample", () => {
+    const trades = [trade({ id: "1", date: "2026-01-01", pnl: -10 })]
+    expect(detectRevengeTrading(trades)).toBeNull()
+  })
+
+  it("returns null when post-loss trades are disciplined", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: i % 2 === 0 ? -50 : 50 }))
+    }
+    expect(detectRevengeTrading(trades)).toBeNull()
+  })
+
+  it("emits id 'revenge-trading' when impulsive trades follow losses", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 12; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `loss${i}`, date: `2026-03-${d1}`, pnl: -50 }))
+      trades.push(trade({ id: `rev${i}`, date: `2026-03-${d2}`, pnl: -30, tags: ["Impulsivo"] }))
+    }
+    const insight = detectRevengeTrading(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("revenge-trading")
+    expect(insight!.severity).toBe("warning")
+    expect(insight!.stat).toBeUndefined()
   })
 })

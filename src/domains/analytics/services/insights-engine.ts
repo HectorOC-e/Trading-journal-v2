@@ -247,6 +247,34 @@ export function detectLosingStreak(trades: AnalyticsTrade[]): Insight | null {
   }
 }
 
+// ── 8. Revenge trading: impulsive/revenge entries right after a loss ──────────
+export function detectRevengeTrading(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const sorted = [...trades].sort(bySymbolDate)
+  let offenders = 0, afterLoss = 0
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].pnl < 0) {
+      afterLoss++
+      const t = sorted[i]
+      if (t.tags.includes("Impulsivo") || t.revengeFlag === true) offenders++
+    }
+  }
+  if (afterLoss === 0) return null
+  const rate = offenders / afterLoss
+  if (rate < 0.30) return null
+  const ratePct = rate * 100
+  return {
+    id: "revenge-trading",
+    category: "pattern",
+    severity: rate >= 0.50 ? "warning" : "info",
+    title: "Operas por impulso justo después de perder",
+    detail: `El ${pct(ratePct)}% de tus trades que siguen a una pérdida son impulsivos o de revancha. Operar para recuperar amplifica el sesgo emocional.`,
+    recommendation: "Impón una pausa obligatoria de 15 minutos tras cada pérdida antes de volver a operar.",
+    evidence: `${offenders} de ${afterLoss} trades que siguen a una pérdida.`,
+    metric: pct(ratePct),
+  }
+}
+
 const SEVERITY_RANK: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
 
 /** Run all detectors and return a ranked list of insights. */
@@ -261,6 +289,7 @@ export function generateInsights(input: InsightInput): Insight[] {
   push(detectSetupConcentration(input))
   push(detectWithdrawalImpact(input))
   push(detectLosingStreak(t))
+  push(detectRevengeTrading(t))
   out.push(...detectAccountRisk(input))
 
   return out.sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9))
