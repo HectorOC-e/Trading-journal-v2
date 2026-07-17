@@ -385,16 +385,19 @@ production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run lis
 tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
 ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
 
-GOTCHA de graphify: NO corras `graphify update .` a secas y commitees el resultado.
-Recrea los nodos de código con IDs distintos y deja huérfanos los edges docs→código
-(medido: 741 → 220 doc edges; INFERRED 119 → 47), tirando la extracción semántica del
-PR #132. Los nodos SOBREVIVEN y el total hasta sube, así que la pérdida es silenciosa y
-la guardia anti-shrink no la frena (cuenta nodos, no edges). Vía correcta: restaurar el
-grafo curado (el propio update lo respalda en graphify-out/<fecha>/), extraer AST fresco
-y fusionar con build_merge(root='.'), luego re-clusterizar y verificar doc-edges/INFERRED
-antes de commitear. Ojo: .graphifyignore excluye tests/Prisma generado/configs a
-propósito — si un .graphify_incremental.json viejo lista ~150 "archivos borrados", NO son
-borrados, son ignorados. No los podes.
+GOTCHA de graphify (RE-MEDIDO 2026-07-16 — el aviso de abajo NO se reprodujo):
+El aviso histórico decía que `graphify update .` a secas huerfaniza los edges docs→código
+(medido entonces: 741 → 220 doc edges; INFERRED 119 → 47) y que la pérdida es silenciosa.
+**Medido de nuevo el 2026-07-16 contra un respaldo del grafo curado, NO ocurrió:**
+doc→código 84 → 84 (0 perdidos), INFERRED 119 → 119, hyperedges 16 → 16, huérfanos 0 → 0.
+Los doc-links totales bajaron 786 → 763, y los 23 eran doc→doc de documentos editados ese
+mismo día. O sea: `graphify update .` fue seguro y la vía larga (restaurar + build_merge)
+no hizo falta. Aun así, el método sigue siendo el correcto: **respaldá `graph.json` antes
+(el propio update lo hace en `graphify-out/<fecha>/`, y ese respaldo se commitea) y MEDÍ
+doc→código/INFERRED/huérfanos antes de commitear**, porque la guardia anti-shrink cuenta
+nodos y no vería una regresión de edges si vuelve. Ojo: `.graphifyignore` excluye
+tests/`*.config.ts`/Prisma generado a propósito — si algo no aparece en el grafo, comprobá
+ahí antes de pensar que se perdió.
 
 GOTCHA de TD-019: el fix de auth rinde SOLO porque el proyecto usa claves JWT asimétricas
 (su JWKS sirve ES256). Si alguna vez se rota al secreto legacy HS256, getClaims() vuelve a
