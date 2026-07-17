@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure } from "../init"
+import { router, protectedProcedure, dashboardMutation } from "../init"
 
 /** Prisma unique-constraint violation code. */
 function isUniqueViolation(e: unknown): boolean {
@@ -37,7 +37,7 @@ export const marketsRouter = router({
       })
     ),
 
-  create: protectedProcedure
+  create: dashboardMutation
     .input(MarketInput)
     .mutation(async ({ ctx, input }) => {
       try {
@@ -55,7 +55,7 @@ export const marketsRouter = router({
       }
     }),
 
-  update: protectedProcedure
+  update: dashboardMutation
     .input(z.object({ id: z.string().uuid() }).merge(MarketInput.partial()))
     .mutation(({ ctx, input }) => {
       const { id, ...data } = input
@@ -65,7 +65,7 @@ export const marketsRouter = router({
       })
     }),
 
-  toggleWatch: protectedProcedure
+  toggleWatch: dashboardMutation
     .input(z.object({ id: z.string().uuid(), isWatchlisted: z.boolean() }))
     .mutation(({ ctx, input }) =>
       ctx.prisma.market.update({
@@ -74,14 +74,14 @@ export const marketsRouter = router({
       })
     ),
 
-  delete: protectedProcedure
+  delete: dashboardMutation
     .input(z.string().uuid())
     .mutation(({ ctx, input }) =>
       ctx.prisma.market.delete({ where: { id: input, userId: ctx.userId } })
     ),
 
   // Seed default instruments for a new user (called once on first visit)
-  seedDefaults: protectedProcedure
+  seedDefaults: dashboardMutation
     .mutation(async ({ ctx }) => {
       const existing = await ctx.prisma.market.count({ where: { userId: ctx.userId } })
       if (existing > 0) return { seeded: false }
