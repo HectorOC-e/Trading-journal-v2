@@ -5,9 +5,14 @@ import {
   detectSetupConcentration,
   detectLosingStreak,
   detectAccountRisk,
+  detectRevengeTrading,
+  detectOversizing,
+  detectOffPlan,
   type AnalyticsTrade,
   type InsightInput,
 } from "@/domains/analytics/services/insights-engine"
+import { toComputedInsight } from "@/domains/analytics/insights/insight-store"
+import { canCommit, deriveCommitmentSpec } from "@/domains/behavior/commitment-machine"
 
 function trade(o: Partial<AnalyticsTrade> & { id: string; date: string; pnl: number }): AnalyticsTrade {
   return {
@@ -16,7 +21,7 @@ function trade(o: Partial<AnalyticsTrade> & { id: string; date: string; pnl: num
     openTime: o.openTime ?? "08:00", closeTime: o.closeTime ?? "09:00",
     pnl: o.pnl, rMultiple: o.rMultiple ?? (o.pnl >= 0 ? 1 : -1),
     tags: o.tags ?? [], date: o.date, setupId: o.setupId ?? null,
-    entry: 1, stop: 0.99, target: 1.02, size: 1,
+    entry: 1, stop: 0.99, target: 1.02, size: o.size ?? 1,
     emotionBefore: o.emotionBefore ?? null, fomoFlag: o.fomoFlag, revengeFlag: o.revengeFlag,
   }
 }
@@ -91,5 +96,129 @@ describe("insights-engine", () => {
       withdrawals: [],
     })
     expect(result[0].severity).toBe("critical")
+  })
+})
+
+describe("detectRevengeTrading", () => {
+  it("returns null below the minimum sample", () => {
+    const trades = [trade({ id: "1", date: "2026-01-01", pnl: -10 })]
+    expect(detectRevengeTrading(trades)).toBeNull()
+  })
+
+  it("returns null when post-loss trades are disciplined", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: i % 2 === 0 ? -50 : 50 }))
+    }
+    expect(detectRevengeTrading(trades)).toBeNull()
+  })
+
+  it("emits id 'revenge-trading' when impulsive trades follow losses", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 12; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `loss${i}`, date: `2026-03-${d1}`, pnl: -50 }))
+      trades.push(trade({ id: `rev${i}`, date: `2026-03-${d2}`, pnl: -30, tags: ["Impulsivo"] }))
+    }
+    const insight = detectRevengeTrading(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("revenge-trading")
+    expect(insight!.severity).toBe("warning")
+    expect(insight!.stat).toBeUndefined()
+  })
+})
+
+describe("detectOversizing", () => {
+  it("returns null below the minimum sample", () => {
+    expect(detectOversizing([trade({ id: "1", date: "2026-01-01", pnl: -10, size: 10 })])).toBeNull()
+  })
+
+  it("returns null when post-loss size stays at baseline", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: i % 2 === 0 ? -50 : 50, size: 1 }))
+    }
+    expect(detectOversizing(trades)).toBeNull()
+  })
+
+  it("emits id 'oversizing' when size spikes after losses", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 18; i++) {
+      trades.push(trade({ id: `w${String(i).padStart(2, "0")}`, date: `2026-04-${String(i + 1).padStart(2, "0")}`, pnl: 10, size: 1 }))
+    }
+    for (let i = 0; i < 4; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `loss${i}`, date: `2026-05-${d1}`, pnl: -50, size: 1 }))
+      trades.push(trade({ id: `big${i}`, date: `2026-05-${d2}`, pnl: 100, size: 20 }))
+    }
+    const insight = detectOversizing(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("oversizing")
+    expect(insight!.category).toBe("risk")
+    expect(insight!.stat).toBeUndefined()
+  })
+})
+
+describe("detectOffPlan", () => {
+  it("returns null below the minimum sample", () => {
+    expect(detectOffPlan([trade({ id: "1", date: "2026-01-01", pnl: 10, tags: ["Off-plan"] })])).toBeNull()
+  })
+
+  it("returns null when off-plan trades are rare", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) trades.push(trade({ id: `t${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: 10 }))
+    trades[0].tags = ["Off-plan"] // 1/24 ≈ 4% < 20%
+    expect(detectOffPlan(trades)).toBeNull()
+  })
+
+  it("emits id 'off-plan' when a meaningful share is off-plan", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 24; i++) {
+      const off = i < 8 // 8/24 = 33% off-plan
+      trades.push(trade({ id: `t${i}`, date: `2026-05-${String(i + 1).padStart(2, "0")}`, pnl: 10, tags: off ? ["Impulsivo"] : [] }))
+    }
+    const insight = detectOffPlan(trades)
+    expect(insight).not.toBeNull()
+    expect(insight!.id).toBe("off-plan")
+    expect(insight!.metric).toBeGreaterThanOrEqual(20)
+    expect(insight!.stat).toBeUndefined()
+  })
+})
+
+describe("OI-4.8 loop closes: new insight types map to a live commitment spec", () => {
+  function loopDataset(): AnalyticsTrade[] {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 16; i++) {
+      trades.push(trade({ id: `w${String(i).padStart(2, "0")}`, date: `2026-04-${String(i + 1).padStart(2, "0")}`, pnl: 10, size: 1 }))
+    }
+    for (let i = 0; i < 6; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `L${i}`, date: `2026-05-${d1}`, pnl: -50, size: 1 }))
+      trades.push(trade({ id: `X${i}`, date: `2026-05-${d2}`, pnl: 100, size: 20, tags: ["Impulsivo"] }))
+    }
+    return trades
+  }
+
+  it.each(["revenge-trading", "oversizing", "off-plan"])(
+    "%s: toComputedInsight().type is committable",
+    (expectedType) => {
+      const insight =
+        expectedType === "revenge-trading" ? detectRevengeTrading(loopDataset())
+        : expectedType === "oversizing"    ? detectOversizing(loopDataset())
+        :                                    detectOffPlan(loopDataset())
+      expect(insight).not.toBeNull()
+      const computed = toComputedInsight(insight!, loopDataset().length)
+      expect(computed.type).toBe(expectedType)
+      expect(canCommit(computed.type)).toBe(true)
+      expect(deriveCommitmentSpec(computed.type)).not.toBeNull()
+    },
+  )
+
+  it("every committable type generateInsights can emit maps to a spec", () => {
+    const emittable = ["intraday-decay", "revenge-trading", "oversizing", "off-plan"]
+    for (const type of emittable) expect(canCommit(type)).toBe(true)
   })
 })

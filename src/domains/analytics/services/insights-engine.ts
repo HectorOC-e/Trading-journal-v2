@@ -247,6 +247,88 @@ export function detectLosingStreak(trades: AnalyticsTrade[]): Insight | null {
   }
 }
 
+// ── 8. Revenge trading: impulsive/revenge entries right after a loss ──────────
+export function detectRevengeTrading(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const sorted = [...trades].sort(bySymbolDate)
+  let offenders = 0, afterLoss = 0
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].pnl < 0) {
+      afterLoss++
+      const t = sorted[i]
+      if (t.tags.includes("Impulsivo") || t.revengeFlag === true) offenders++
+    }
+  }
+  if (afterLoss === 0) return null
+  const rate = offenders / afterLoss
+  if (rate < 0.30) return null
+  const ratePct = rate * 100
+  return {
+    id: "revenge-trading",
+    category: "pattern",
+    severity: rate >= 0.50 ? "warning" : "info",
+    title: "Operas por impulso justo después de perder",
+    detail: `El ${pct(ratePct)}% de tus trades que siguen a una pérdida son impulsivos o de revancha. Operar para recuperar amplifica el sesgo emocional.`,
+    recommendation: "Impón una pausa obligatoria de 15 minutos tras cada pérdida antes de volver a operar.",
+    evidence: `${offenders} de ${afterLoss} trades que siguen a una pérdida.`,
+    metric: pct(ratePct),
+  }
+}
+
+// ── 9. Oversizing: position size spikes right after a loss ────────────────────
+const OVERSIZE_MULT = 2
+export function detectOversizing(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const sorted = [...trades].sort(bySymbolDate)
+  const avgSize = sorted.reduce((s, t) => s + t.size, 0) / sorted.length
+  if (avgSize <= 0) return null
+  let offenders = 0, afterLoss = 0
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i - 1].pnl < 0) {
+      afterLoss++
+      if (sorted[i].size > avgSize * OVERSIZE_MULT) offenders++
+    }
+  }
+  if (afterLoss === 0) return null
+  const rate = offenders / afterLoss
+  if (rate < 0.20) return null
+  const ratePct = rate * 100
+  return {
+    id: "oversizing",
+    category: "risk",
+    severity: rate >= 0.40 ? "warning" : "info",
+    title: "Aumentas el tamaño después de perder",
+    detail: `En el ${pct(ratePct)}% de los trades que siguen a una pérdida duplicas o más tu tamaño promedio, subiendo la exposición en el peor momento.`,
+    recommendation: "Fija un tope de 1× tu tamaño promedio en el trade inmediatamente posterior a una pérdida.",
+    evidence: `${offenders} de ${afterLoss} trades que siguen a una pérdida.`,
+    metric: pct(ratePct),
+  }
+}
+
+// ── 10. Off-plan: share of trades tagged outside the plan ─────────────────────
+// Tag set mirrors verifiers.ts OFF_PLAN_TAGS (source of truth for the commitment
+// verifier). Kept local to keep insights-engine dependency-light; the round-trip
+// coverage test pins that this insight type still maps to a live verifier.
+const OFF_PLAN_TAGS = new Set(["Off-plan", "Impulsivo", "Revanche"])
+export function detectOffPlan(trades: AnalyticsTrade[]): Insight | null {
+  if (trades.length < MIN_SAMPLE) return null
+  const offenders = trades.filter((t) => t.tags.some((tag) => OFF_PLAN_TAGS.has(tag)))
+  const count = offenders.length
+  const rate = count / trades.length
+  if (count < 3 || rate < 0.20) return null
+  const ratePct = rate * 100
+  return {
+    id: "off-plan",
+    category: "pattern",
+    severity: rate >= 0.35 ? "warning" : "info",
+    title: "Una parte de tus trades queda fuera de tu plan",
+    detail: `${count} de tus ${trades.length} trades (${pct(ratePct)}%) están marcados fuera de plan (Off-plan/Impulsivo/Revancha).`,
+    recommendation: "Valida tu checklist antes de cada entrada; comprométete a operar solo setups dentro del plan esta semana.",
+    evidence: `${count} trades fuera de plan sobre ${trades.length}.`,
+    metric: pct(ratePct),
+  }
+}
+
 const SEVERITY_RANK: Record<InsightSeverity, number> = { critical: 0, warning: 1, positive: 2, info: 3 }
 
 /** Run all detectors and return a ranked list of insights. */
@@ -261,6 +343,9 @@ export function generateInsights(input: InsightInput): Insight[] {
   push(detectSetupConcentration(input))
   push(detectWithdrawalImpact(input))
   push(detectLosingStreak(t))
+  push(detectRevengeTrading(t))
+  push(detectOversizing(t))
+  push(detectOffPlan(t))
   out.push(...detectAccountRisk(input))
 
   return out.sort((a, b) => (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9))
