@@ -52,6 +52,12 @@ export const config = {
     // Exclude framework internals, public PWA assets (sw.js, manifest, icons)
     // and unauthenticated endpoints so they are served directly instead of
     // being redirected to /login.
-    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|api/cron|sw\\.js|manifest\\.json|icons/).*)",
+    //
+    // `monitoring` is Sentry's browser tunnel (next.config.ts tunnelRoute). Left
+    // in, the gate would redirect it to /login for anyone without a session — so
+    // errors from logged-out users, including failures on the login screen
+    // itself, would vanish. Authenticated traffic would still work, which is
+    // what makes it worth excluding explicitly: it would look fine.
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|api/cron|monitoring|sw\\.js|manifest\\.json|icons/).*)",
   ],
 }
