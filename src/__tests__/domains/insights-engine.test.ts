@@ -186,3 +186,39 @@ describe("detectOffPlan", () => {
     expect(insight!.stat).toBeUndefined()
   })
 })
+
+describe("OI-4.8 loop closes: new insight types map to a live commitment spec", () => {
+  function loopDataset(): AnalyticsTrade[] {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 16; i++) {
+      trades.push(trade({ id: `w${String(i).padStart(2, "0")}`, date: `2026-04-${String(i + 1).padStart(2, "0")}`, pnl: 10, size: 1 }))
+    }
+    for (let i = 0; i < 6; i++) {
+      const d1 = String(i * 2 + 1).padStart(2, "0")
+      const d2 = String(i * 2 + 2).padStart(2, "0")
+      trades.push(trade({ id: `L${i}`, date: `2026-05-${d1}`, pnl: -50, size: 1 }))
+      trades.push(trade({ id: `X${i}`, date: `2026-05-${d2}`, pnl: 100, size: 20, tags: ["Impulsivo"] }))
+    }
+    return trades
+  }
+
+  it.each(["revenge-trading", "oversizing", "off-plan"])(
+    "%s: toComputedInsight().type is committable",
+    (expectedType) => {
+      const insight =
+        expectedType === "revenge-trading" ? detectRevengeTrading(loopDataset())
+        : expectedType === "oversizing"    ? detectOversizing(loopDataset())
+        :                                    detectOffPlan(loopDataset())
+      expect(insight).not.toBeNull()
+      const computed = toComputedInsight(insight!, loopDataset().length)
+      expect(computed.type).toBe(expectedType)
+      expect(canCommit(computed.type)).toBe(true)
+      expect(deriveCommitmentSpec(computed.type)).not.toBeNull()
+    },
+  )
+
+  it("every committable type generateInsights can emit maps to a spec", () => {
+    const emittable = ["intraday-decay", "revenge-trading", "oversizing", "off-plan"]
+    for (const type of emittable) expect(canCommit(type)).toBe(true)
+  })
+})
