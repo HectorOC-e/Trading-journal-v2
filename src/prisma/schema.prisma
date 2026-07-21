@@ -371,11 +371,13 @@ model Rule {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  commitments Commitment[]
+  commitments Commitment[] @relation("CommitmentRule")
+  sourceCommitment Commitment? @relation("RuleSourceCommitment", fields: [sourceCommitmentId], references: [id], onDelete: SetNull)
   ruleSuggestions RuleSuggestion[]
 
   @@index([userId])
   @@index([sourceAutomationId])
+  @@index([sourceCommitmentId])
   @@map("rules")
 }
 
@@ -962,7 +964,8 @@ model Commitment {
 
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceInsight Insight?          @relation(fields: [sourceInsightId], references: [id], onDelete: SetNull)
-  rule          Rule?             @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  rule          Rule?             @relation("CommitmentRule", fields: [ruleId], references: [id], onDelete: SetNull)
+  sourcedRules  Rule[]            @relation("RuleSourceCommitment")
   checks        CommitmentCheck[]
   reinforcements Reinforcement[]
 
