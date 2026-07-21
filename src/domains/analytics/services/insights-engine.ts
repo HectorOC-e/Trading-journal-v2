@@ -86,8 +86,17 @@ function pct(n: number): number { return Math.round(n * 10) / 10 }
 function hasViolation(t: AnalyticsTrade): boolean {
   return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(tag => isViolationTag(tag))
 }
+// Orden CRONOLÓGICO real. Antes ordenaba date→id, así que "el trade que sigue a
+// una pérdida" se resolvía por orden alfabético de UUID dentro del mismo día — no
+// por el reloj. Los tres consumidores (detectLosingStreak, detectRevengeTrading,
+// detectOversizing) dependen de la secuencia, así que los tres estaban afectados.
+// Alineado con sortByDateTime de domains/behavior/verifiers.ts, que ya lo hacía bien.
 function bySymbolDate(a: AnalyticsTrade, b: AnalyticsTrade): number {
-  return a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
+  return (
+    a.date.localeCompare(b.date) ||
+    (a.openTime ?? "").localeCompare(b.openTime ?? "") ||
+    a.id.localeCompare(b.id)
+  )
 }
 
 // ── 1. Intraday decay: win rate by Nth trade of the day ──────────────────────
