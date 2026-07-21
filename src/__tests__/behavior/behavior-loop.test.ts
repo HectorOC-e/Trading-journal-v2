@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest"
-import { buildScenario, CLEAN_PROFILE, DIRTY_PROFILE } from "../support/behavior-scenario"
+import {
+  buildScenario,
+  CLEAN_PROFILE,
+  DIRTY_PROFILE,
+  type ScenarioTrade,
+} from "../support/behavior-scenario"
+import {
+  detectInterventions,
+  decideIntervention,
+  priority,
+  type DayState,
+  type FatigueState,
+} from "@/domains/cognitive/intervention/engine"
 import {
   detectIntradayDecay,
   detectRevengeTrading,
@@ -133,5 +145,60 @@ describe("cadena insight → commitment → verificación → reinforcement", ()
     expect(evidence.tradeIds.length).toBeGreaterThan(0)
     const ids = new Set(dirty.history.map((t) => t.id))
     for (const id of evidence.tradeIds) expect(ids.has(id)).toBe(true)
+  })
+})
+
+describe("día vivo → decisión de intervención", () => {
+  /** Compone el DayState que el motor lee, desde el día vivo + la media histórica. */
+  function dayState(liveDay: ScenarioTrade[], history: ScenarioTrade[]): DayState {
+    const ordered = [...liveDay].sort((a, b) => (a.openTime ?? "").localeCompare(b.openTime ?? ""))
+    let consecutiveLosses = 0
+    for (const t of ordered) consecutiveLosses = t.pnl < 0 ? consecutiveLosses + 1 : 0
+    const last = ordered[ordered.length - 1]
+    return {
+      tradesToday: ordered.length,
+      lossesToday: ordered.filter((t) => t.pnl < 0).length,
+      consecutiveLosses,
+      lastRiskPct: last.riskPct,
+      avgRiskPct: history.reduce((s, t) => s + t.riskPct, 0) / history.length,
+      dayPnlPct: -2,
+      drawdownPct: 0,
+      ddDailyLimitPct: null,
+      impulsiveToday: ordered.filter((t) => t.revengeFlag === true).length,
+    }
+  }
+
+  const silent: FatigueState = { activeCount: 0, minsSinceLast: null, shownToday: 0 }
+
+  it("la cascada del día vivo produce candidatos", () => {
+    const candidates = detectInterventions(dayState(dirty.liveDay, dirty.history))
+    expect(candidates.length).toBeGreaterThan(0)
+    expect(candidates.map((c) => c.trigger)).toContain("cascade")
+  })
+
+  it("la cascada supera θ y se elige para mostrar", () => {
+    const state = dayState(dirty.liveDay, dirty.history)
+    const chosen = decideIntervention(detectInterventions(state), silent)
+    expect(chosen).not.toBeNull()
+    expect(chosen!.trigger).toBe("cascade")
+    expect(chosen!.severity).toBe("critical")
+    expect(chosen!.suggestedAction.kind).toBe("stop_for_day")
+    expect(priority(chosen!.scores)).toBeGreaterThan(0.18) // θ por defecto
+  })
+
+  it("un día limpio no produce ninguna intervención", () => {
+    const calm: DayState = {
+      tradesToday: 2, lossesToday: 0, consecutiveLosses: 0,
+      lastRiskPct: 0.5, avgRiskPct: 0.5, dayPnlPct: 1,
+      drawdownPct: 0, ddDailyLimitPct: null, impulsiveToday: 0,
+    }
+    expect(detectInterventions(calm)).toEqual([])
+    expect(decideIntervention(detectInterventions(calm), silent)).toBeNull()
+  })
+
+  it("respeta la anti-fatiga: con una intervención ya activa, calla", () => {
+    const state = dayState(dirty.liveDay, dirty.history)
+    const busy: FatigueState = { activeCount: 1, minsSinceLast: 5, shownToday: 1 }
+    expect(decideIntervention(detectInterventions(state), busy)).toBeNull()
   })
 })
