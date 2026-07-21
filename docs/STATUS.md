@@ -42,7 +42,7 @@
 | `S1/DT-1` | S1 | **Doble fuente temporal de reglas** (`automations` enforza; `rules` tiene copias inertes). | Media · Inherente a la migración no destructiva. Se resuelve con el cutover (OI-2) + retiro de `automations` (OI-3). Mientras tanto, editar una automatización **no** actualiza su copia en `rules` (la copia es un snapshot del backfill). | ✅ resuelto — cutover G2 2026-07-13: fuente única `rules` (el dual-write de S1.5 mantuvo el espejo; paridad 10/10 verificada antes del flip) |
 | `S1/DT-2` | S1 | **Backfill = snapshot**, no sincronización viva. | Media · Si el usuario edita automatizaciones tras la migración, `rules` queda desfasado hasta el cutover. Aceptable porque `rules` es inerte; documentar para no confiar en esas filas antes de G2. | ✅ resuelto — cutover G2 2026-07-13: `rules` es la fuente editable y de enforcement; el snapshot dejó de existir como concepto |
 | `S1/DT-3` | S1 | **2 plantillas gated** (`no-size-increase-after-loss`, `no-trade-low-energy`). | Baja · Esperan campos de S2 (contexto trade anterior) y S8 (energía). Activarlas es añadir el campo al registro + `available:true` + `rule`. | ✅ auditado 2026-07-17 — correcto por diseño (FREEZE-P3): `available:false` gatea las 2 plantillas hasta que exista su capacidad (contexto trade anterior / energía S8). No es deuda. |
-| `S1/DT-4` | S1 | **`source_commitment_id` sin FK** (Commitment no existe hasta S4). | Baja · Añadir FK cuando nazca `Commitment` (S4/S5). | ✅ resuelto — 2026-07-17. FK `rules.source_commitment_id → commitments(id)` ON DELETE SET NULL + índice (migración `20260717120000`), relaciones Prisma nombradas. Guard defensivo de refs colgantes (hoy la columna está vacía: OI-4.1 sin construir). |
+| `S1/DT-4` | S1 | **`source_commitment_id` sin FK** (Commitment no existe hasta S4). | Baja · Añadir FK cuando nazca `Commitment` (S4/S5). | ✅ resuelto — 2026-07-17. FK `rules.source_commitment_id → commitments(id)` ON DELETE SET NULL + índice (migración `20260717120000`), relaciones Prisma nombradas. Guard defensivo de refs colgantes. ⚠️ **Corrección 2026-07-21:** este cierre decía "hoy la columna está vacía: OI-4.1 sin construir" — **falso**. `linkRule` está construido (`rule-suggestion-service.ts:51`), expuesto en el router y usado por la UI, y **puebla `sourceCommitmentId`** (L63). La columna está vacía porque nadie usó la feature todavía (1 commitment en prod), no porque falte código. |
 | `S1/DT-5` | S1 | **Badge sólo en `app/reglas`** (lista de automatizaciones). | Baja · Cuando exista la superficie PROTEGER (S12) y el cutover, el badge debe reflejar `rule.mode` directamente, no `classifyMode(actions)`. | ✅ resuelto — cutover G2 2026-07-13: `/reglas` renderiza `<RuleModeBadge mode={r.mode}>` desde `rules.list` |
 | `S1/DT-6` | S1 | **Plantillas de protección aún no expuestas en la galería de UI** (`automations.templates`). | Baja-media · `PROTECTION_TEMPLATES` existe y está testeado, pero la galería actual usa `TEMPLATES` (automatizaciones). Integrarlas en la UI de creación es trabajo de S1.5/S12. | ✅ resuelto — tsc + suite — 3 plantillas de protección en la galería (closeout S0–S2) |
 | `S1/R-1` | S1 | **Falsa protección no resuelta hasta G2.** El informe la detecta, pero las reglas CRÍTICA descriptivas siguen sin bloquear hasta el cutover. | RI-2 / R3 · G2 (OI-1/OI-2) | ✅ resuelto — triaje OI-1 2026-07-13: 3 descriptivas tienen protección real en risk-enforcement, 3 no son enforceables hoy (aviso honesto); cutover ejecutado |
@@ -174,6 +174,65 @@ ficheros S3–S14 escriben el ID sin negrita (`| OI-3.1 | ...`), por eso sí se 
 (69) es correcto, pero el motivo no es "los ficheros no existen": es un accidente de formato. Si
 algún día se homogeneiza el formato de esas 3 tablas a texto plano, el universo de ítems de S0–S2
 subiría en 11 (2 de S0 + 4 de S1 + 5 de S2) respecto a los ya volcados arriba con prefijo `S*/`.
+
+### Auditoría S3–S14 contra código (2026-07-21) — clasificación en 3 pistas
+
+> Segunda ronda de la auditoría. Mismo método: **el código manda, el doc miente.** Las filas
+> `OI-x.y` de arriba **no se editaron una por una** (son 69); esta sección es el veredicto
+> vinculante y prevalece sobre su columna Estado.
+>
+> Hallazgo dominante: **casi todo está construido y cableado.** Lo que parecía deuda es en su
+> mayoría *maquinaria viva pero dormida* — prod tiene 137 trades, 3 usuarios y patrones planos,
+> así que los detectores no disparan y las tablas quedan vacías. **Vacío ≠ roto.**
+
+#### Pista A — Deuda técnica (código que existe y está mal)
+
+| Ítem | Evidencia | Nota |
+|---|---|---|
+| `DataTable` render loop en dev | §3 | Solo dev, no afecta prod. Único ⬜ real de §3. |
+| `TD-037` (34 efectos sync-on-open) | `eslint.config.mjs:26-33` | Auditado en Cycle 1, intencionales, diferido al refactor de key-remount. **No re-descubrir.** |
+| Comentario stale en `learning-insights-service.ts:6` | dice que el wiring de `computeNextReview` "es la tarea de superficie de S12" | Mentira: ya está cableado en `learning-resources.ts:245`. Borrar el comentario. |
+
+**La pista A está esencialmente vacía.** `TD-018` y `TD-019` se cerraron; no hay deuda estructural pendiente.
+
+#### Pista B — Funcionalidad a medias (construida pero nadie la llama)
+
+El patrón que la auditoría hizo visible: maquinaria testeada sin call-site. Es el pozo real.
+
+| Ítem | Qué existe | Qué falta |
+|---|---|---|
+| **Outbox sin consumidores** (`S0/R-3`) | `publishEvent` en 5 call-sites | `registerHandler`: **0 call-sites**. Cron pausado por la migración `20260721190000`. El primer consumidor es S4. |
+| **Telemetría de feed ignorado** (`OI-13.1`) | `feed-ignore-service.ts` con `upsert` + lectura; tabla `feed_ignores` migrada | **Nada la consume en el ranking del feed** (0 hits fuera del propio servicio). 0 filas en prod. El decay sigue usando la edad como proxy. |
+| **Cobertura de `stat`** (`OI-3.3`, `OI-3.5`) | `proportionEstimate` + `normalEstimate` testeados | Solo **2 detectores** cableados. El resto sigue con `sampleSize` coarse y campos bayesianos nulos. Es el residual que `DT-1`/`DT-2` nombran. |
+| **`aggregateCapAmount`** (`OI-9.3`) | Input en `correlation.ts:79-101`, inerte si `null` | Sin setting por usuario que lo llene → hoy siempre `null`. |
+| **`expectedImpact`** (`OI-7.3`) | Factor del scoring en `intervention/engine.ts:54` | Es **estático**; no se aprende de `Intervention.outcome`. En prod: 0 interventions. |
+
+#### Pista C — Roadmap / backlog (no construido, por diseño)
+
+Congelado por FREEZE o esperando su disparador. **No es deuda.**
+
+- **Superficies UI:** `OI-3.1`, `OI-3.2` (mapper + cuadrante institucional), `OI-9.1`, `OI-10.1`, `OI-11.1`, `OI-4.4`, `OI-5.4` → S12/S13 con DS v3.
+- **Bloqueado por `SetupEdgeSnapshot`** (que **no existe como modelo**, solo se menciona en comentarios): `OI-4.3` (verificador edge-decay), `OI-10.3`.
+- **Enforcement no construido:** `OI-9.2` (bloqueo duro por budget — ojo: `GAP-A1` cerró el *guard* forward-looking, **no** el bloqueo), `OI-7.4` (intervención en `trade.create`), `OI-5.2` (off-plan warn), `OI-8.2` (`no_go` → regla stop).
+- **Memoria:** `OI-6.3` (cifrado), `OI-6.4`, `OI-6.5`, `OI-6.6` (`thread.summary` — 0 call-sites).
+- **Absorción de pantallas (A3):** `OI-11.6`, `OI-13.3`. Verificado en `app/`: `mercados`, `etiquetas` y `notificaciones` **siguen existiendo** como rutas propias, y no hay `/hoy` `/operar` `/analizar` `/proteger` `/mejorar`. Las filas son exactas.
+- **Resto:** `OI-10.4`, `OI-10.6`, `OI-11.4` (`transferBaseline`: 0 call-sites), `OI-11.5`, `OI-14.2`..`OI-14.5`, `OI-8.3`, `OI-3.4`.
+- **Verificaciones live e2e** (`OI-8.5`, `OI-9.7`, `OI-10.7`, `OI-11.7`, `OI-13.6`): dependen de que existan las superficies. No son trabajo independiente.
+
+#### Pista D — Stale: filas que el código desmiente (cerrar en el doc)
+
+| Fila | Evidencia en código / prod |
+|---|---|
+| `OI-4.1` `linkRule` | **Construido y completo:** `rule-suggestion-service.ts:51`, expuesto en `behavior.ts:20` y usado por la UI (`behavior-loop-panel.tsx:48`). Y **sí puebla** `sourceCommitmentId` (L63) — la nota de `S1/DT-4` que dice "OI-4.1 sin construir" es **falsa**; la columna está vacía por falta de uso (1 commitment en prod), no por falta de código. |
+| `OI-4.2` `suggestRulesFromInsights` | Construido y **corriendo**: llamado desde `recompute-insights.ts:40`. Prod tiene 1 `rule_suggestion` (29-jun) → produjo de verdad. |
+| `OI-4.6` scheduling de crons | Los **6** endpoints de `app/api/cron/` tienen su `cron.schedule` en migraciones. Nada pendiente. |
+| `OI-4.7` insights poblados en prod | El cron corre; prod tiene 6 insights (26-jun). **Dormido por datos planos, no roto.** |
+| `OI-5.5` `generateSuggestions` agendado | Ya corre dentro del cron: `recompute-insights.ts:40`. |
+| `OI-6.1` / `OI-7.2` auto-extracción LLM | `proposeMemories` llamado en `coach-memory-service.ts:163` con los hechos extraídos. Coincide con la nota "cerrado por PR #103". |
+| `OI-8.1` disposition effect (#40) | `detectHoldingAsymmetry` definido (`psychology-insights.ts:83`) **y llamado** (L147). |
+| `OI-11.2` `computeNextReview` | **Cableado** en la mutación de grade: `learning-resources.ts:245`. `GAP-A2` tenía razón; la fila `OI-11.2` no. |
+| `OI-13.5` productor de Reinforcement | `planReinforcement` llamado en `commitment-service.ts:194` + `tx.reinforcement.create` (L204). Prod: 0 filas — dormido, no ausente. |
+| `OI-14.1` snapshot de `ImprovementScore` | `recordImprovementSnapshotForAll` corre en el cron (`recompute-insights/route.ts:28`). **Prod: 23 filas, la última 2026-07-21 05:15 UTC** = hoy, en el horario del cron. La curva temporal existe. |
 
 ### Notas de correspondencia con `OPENITEMS_CLOSEOUT_S0_S2.md`
 
