@@ -468,6 +468,8 @@ ni PRs abiertos). Últimas piezas mergeadas:
   · B-11 ocultar perillas IA inertes (#137) · B-05 cache invalidation + consolidación de
   queries (#138/#140) · DT-4 real (#139) · S2/OI-2 emoción 1-tap (#141)
   · B-04 Sentry activado en prod (#143) · OI-4.8 loops de compromiso (#144)
+  · auditoría S0–S2 (#146) · S0/R-3 unschedule del dispatcher (#148)
+  · auditoría S3–S14 + clasificación en 3 pistas (#149) · OI-3.5 stat (#150)
 
 No hay nada a medias esperando merge. Arrancá eligiendo trabajo nuevo, no retomando.
 
@@ -478,21 +480,39 @@ Lee primero, en este orden:
 
 Confirma al arrancar que tienes acceso a gh, Vercel MCP, Supabase MCP y .env (handoff §0).
 
-Candidatos para la próxima pieza (ninguno urgente, confirmá conmigo antes de arrancar):
-- El pozo de deuda/features-a-medias quedó casi vacío tras OI-4.8 (#144), que era la
-  ÚNICA funcionalidad genuinamente a medias verificada en código (auditoría 2026-07-17).
-  Lo que resta:
-  - Los DT-x/R-x de S0–S2 (§1) YA SE AUDITARON (2026-07-21). 12 de 13 filas eran stale.
-    NO quedan ⬜ en S0–S2. El único hallazgo real es S0/R-3 (la outbox se drena sin
-    consumidores; 7 eventos en prod quemados a `processed`) — ver la nota de acción bajo
-    la tabla de §1. Recomendado: des-agendar `v3-dispatch-events` hasta el 1er consumidor S4.
-  - B-05 (§4): prender ANALYTICS_CACHE_ENABLED sigue siendo prematuro (137 trades en
-    prod); seguro de prender recién con un usuario de volumen real.
-  - El resto de §1 (OI-x.y de S3–S14) es roadmap CONGELADO por diseño (FREEZE), no deuda.
-- Sentry (#143) ya activo en prod: si aparece un error real, triarlo es trabajo nuevo.
-- TD-037 NO es trabajo pendiente de diagnóstico: ya fue auditado (Cycle 1), los 34 sitios
-  son intencionales y está diferido al refactor de key-remount de v3. No lo "descubras"
-  de nuevo.
+ESTADO DE LA DEUDA — auditado contra CÓDIGO el 2026-07-21 (§1, "Auditoría S3–S14",
+3 pistas). Leé esa sección antes que las 109 filas de la tabla: PREVALECE sobre su
+columna Estado. Resumen:
+
+- Pista A (deuda técnica): CERRADA salvo el bug dev-only de DataTable (no afecta prod,
+  el usuario pidió dejarlo) y TD-037 (diferido a conciencia; NO lo re-descubras).
+- Pista B (funcionalidad a medias): 3 ítems, y NINGUNO es limpieza —
+    · Outbox sin consumidores (S0/R-3): publishEvent en 5 call-sites, registerHandler en 0.
+      Cron des-agendado por la migración 20260721190000, así que los eventos ya se ACUMULAN
+      en pending en vez de quemarse. Cerrarlo = construir el 1er consumidor de S4 = sprint.
+      El primer consumidor DEBE re-agendar el cron (bloque citado en el header de la migración).
+    · OI-3.3: los detectores de MEDIAS necesitan un comparador de dos muestras que NO existe
+      (normalEstimate es de una sola). OI-3.5 ya se cerró en #150.
+    · OI-7.3 (expectedImpact estático): NO validable hoy — prod tiene 0 interventions.
+- Pista C (roadmap): todo lo demás. Incluye OI-9.3, reclasificado de B a C: el código
+  es inerte de verdad, pero su bloqueo es la superficie PROTEGER (S13), no código.
+
+DATO QUE REORDENA PRIORIDADES: casi todo está construido y cableado; lo que el doc
+pintaba como pozo era maquinaria VIVA PERO DORMIDA. Prod tiene 137 trades, 3 usuarios
+y patrones planos → los detectores no disparan. insights=6 (jun), reinforcements=0,
+interventions=0, feed_ignores=0, commitments=1. VACÍO ≠ ROTO. El cuello de botella no
+es código: es que nadie ejercita el sistema. Construir más features encima es difícil
+de justificar frente a conseguir un usuario con volumen real (que además es la
+precondición explícita de B-05).
+
+TRAMPA DE MÉTODO (me costó 2 hallazgos falsos el 2026-07-21): NUNCA concluyas "nadie
+llama a X" desde un grep del NOMBRE de X. Grepeá los IMPORTS DEL MÓDULO
+(`from ".*mi-servicio"`) —captura a todo consumidor use el símbolo que use— verificá
+que el path exista y mirá el exit code, y ABRÍ el consumidor antes de afirmar nada.
+Así se cayeron OI-4.1 (linkRule estaba completo) y OI-13.1 (el loop de feed_ignores
+estaba cerrado: today.ts:16 → today-service.ts:141-143 → feed.ts:71). Un grep vacío
+acusa al grep, no al código. El hook-guard de .claude/settings.json existe para
+forzar graphify antes de grep: si no lo ves dispararse, algo lo desactivó.
 
 Reglas de trabajo (estables desde hace varias sesiones):
 - Trabaja desde origin/main; una rama por pieza; PR + CI verde + merge yo mismo (gh).
