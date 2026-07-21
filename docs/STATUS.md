@@ -192,8 +192,13 @@ subiría en 11 (2 de S0 + 4 de S1 + 5 de S2) respecto a los ya volcados arriba c
 > vinculante y prevalece sobre su columna Estado.
 >
 > Hallazgo dominante: **casi todo está construido y cableado.** Lo que parecía deuda es en su
-> mayoría *maquinaria viva pero dormida* — prod tiene 137 trades, 3 usuarios y patrones planos,
-> así que los detectores no disparan y las tablas quedan vacías. **Vacío ≠ roto.**
+> mayoría *maquinaria viva pero dormida* — prod tiene 137 trades y patrones planos, así que los
+> detectores no disparan y las tablas quedan vacías. **Vacío ≠ roto.**
+>
+> ⚠️ **Corregido el 2026-07-21 por #151** (ver "Fixture conductual" más abajo, que **prevalece**
+> sobre este párrafo): eran **13 usuarios, no 3** (10 son cuentas QA), y la causa de los patrones
+> planos no es el poco volumen sino que **el dato sembrado no tiene correlación temporal**. La
+> conclusión ("vivo pero dormido") se sostiene; la causa que se le atribuía, no.
 
 #### Pista A — Deuda técnica (código que existe y está mal)
 
@@ -269,6 +274,71 @@ Congelado por FREEZE o esperando su disparador. **No es deuda.**
 | `OI-13.5` productor de Reinforcement | `planReinforcement` llamado en `commitment-service.ts:194` + `tx.reinforcement.create` (L204). Prod: 0 filas — dormido, no ausente. |
 | `OI-14.1` snapshot de `ImprovementScore` | `recordImprovementSnapshotForAll` corre en el cron (`recompute-insights/route.ts:28`). **Prod: 23 filas, la última 2026-07-21 05:15 UTC** = hoy, en el horario del cron. La curva temporal existe. |
 | `OI-13.1` telemetría de feed ignorado | **Cableado de punta a punta:** `today.ts:16` (`dismiss` → `recordIgnore`) → `today-service.ts:141-143` (`getIgnoreCounts` → `s.ignored`) → `feed.ts:71` (`ignorePenalty` en el ranking). El decay **no** usa la edad como proxy: usa los ignores reales. 0 filas en prod = nadie descartó nada. |
+
+### Fixture conductual + validación del loop (2026-07-21, PR #151) — corrige el diagnóstico de arriba
+
+> Esta sección **matiza el hallazgo dominante** de la auditoría S3–S14. Aquella concluyó
+> "maquinaria viva pero dormida; los detectores no disparan porque prod tiene patrones planos".
+> Correcto en la conclusión, incompleto en la causa — y la causa importa, porque cambia qué hay
+> que hacer al respecto.
+
+**Los detectores no disparan porque NO HAY PATRÓN QUE DETECTAR, por construcción.** No es falta
+de volumen. Verificado contra la BD el 2026-07-21, los 137 trades son dos poblaciones y ninguna
+puede activar un detector:
+
+| Origen | n | Emoción | revenge | fomo |
+|---|---|---|---|---|
+| `seed:psych` (script) | 85 | 85 | 13 | 15 |
+| Manuales (reales) | 52 | **0** | **0** | **0** |
+
+- Los **85 sembrados** por `src/scripts/seed-psych-trades.mjs` asignan resultado y emoción por
+  tiradas **independientes** (`roll < 0.50` → win; `revenge_flag` desde un `rnd() < 0.55`).
+  `revengeFlag` **no depende de haber perdido el trade anterior**: es ruido con forma de
+  psicología. Los detectores de secuencia buscan correlación temporal y ahí no hay ninguna.
+- Los **52 reales** no capturaron psicología en absoluto.
+- El seed etiqueta `'fomo'`/`'revenge'` en **minúscula**; `detectOffPlan` busca
+  `{Off-plan, Impulsivo, Revanche}`. **Cero solape** → off-plan no podía disparar ni por accidente.
+
+**Consecuencia práctica:** sembrar *más* trades con ese script no habría despertado nada. Y
+"conseguir un usuario con volumen" tampoco basta por sí solo si ese usuario no captura emoción
+— los 52 trades manuales lo demuestran.
+
+**Correcciones al estado registrado:**
+
+- Prod tiene **13 usuarios, no 3**. Diez son cuentas de QA (`s2qa+`, `s4qa+`, `s7v+`… todas del
+  26-jun, 0 trades). Reales hay 3, y **solo la cuenta demo tiene trades**.
+- El **último trade de todo el sistema es del 2026-06-19**. El sistema lleva más de un mes sin que
+  nadie lo ejercite.
+
+**Defecto encontrado y arreglado (PR #151):** `bySymbolDate` (`insights-engine.ts:89`) ordenaba
+`date → id`. Como `id` es un UUID, *"el trade que sigue a una pérdida"* se resolvía por orden
+**alfabético** dentro del mismo día, no cronológicamente. Afectaba a los tres detectores
+sensibles a secuencia: `detectLosingStreak`, `detectRevengeTrading`, `detectOversizing`. Ahora
+ordena `date → openTime → id`, alineado con `sortByDateTime` de `verifiers.ts:53`.
+
+- **Por qué llevaba invisible:** los tests existentes usan ids `${d}-1..-4` con horas
+  `08:00..11:00` — orden alfabético y cronológico **coinciden por accidente**, así que ningún test
+  podía distinguirlos.
+- **Alcance real:** el 73 % de los trades de prod (100 de 137) vive en días con 2+ operaciones,
+  así que el bug mal-secuenciaba la mayoría de los datos reales. **Medido antes/después:** los
+  pares tras-pérdida marcados como revancha pasan de 6 a 5 (9.8 % → 8.2 %). **Ningún insight
+  cambia**, porque ambos valores están muy por debajo del umbral del 30 % — coherente con que el
+  dato sea ruido.
+
+**Lo que añadió el PR:** un generador determinista de escenarios conductuales
+(`src/__tests__/support/behavior-scenario.ts`) con cuotas exactas y self-check, más 38 tests que
+fijan la cadena `insight → commitment → rule → verificación → reinforcement` y la decisión de
+intervención. **Es la primera vez que los cuatro detectores disparan en cualquier entorno.**
+
+**Hallazgo fijado por sus tests:** `linkRule` lanza `NotEnforceableError` para `off-plan` —
+`proposeRuleForCommitment` solo mapea 3 de las 4 métricas. Es **por diseño**: off-plan se conoce
+al *etiquetar* el trade, no antes de abrirlo, así que un `enforce` ahí sería falsa protección (R3).
+**3 de los 4 compromisos son respaldables con regla, uno no.**
+
+**Lo que NO cierra, y conviene no leer de más:** un fixture prueba que la maquinaria funciona, no
+que el producto tenga valor. **OI-7.3** sigue sin ser validable (0 filas en `interventions`; se
+ejerció el camino puro de decisión, no `runIntervention`) y **S0/R-3** sigue abierto (sin
+consumidor S4; el test fija que los eventos se acumulan en `pending`, que es lo correcto hoy).
 
 ### Notas de correspondencia con `OPENITEMS_CLOSEOUT_S0_S2.md`
 
@@ -389,8 +459,21 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
   en 14 días, y `memory_patterns` = 0. Con un trader realmente activo el delta se movería y sí
   dispararía. Consecuencia práctica: el digest está vivo pero **dormido** hasta que haya actividad
   real — no confundir su silencio con una falla.
-- 🟡 **Protección de contraseñas filtradas en Supabase Auth.** TODO del audit de seguridad — toggle
-  en el dashboard de Auth, no migrable por código.
+- ⛔ **Protección de contraseñas filtradas en Supabase Auth — NO es un toggle pendiente, es una
+  decisión de gasto.** Verificado el 2026-07-21: la organización `Trading Journal`
+  (`ooxhrosjbyztwtmmyefl`) está en plan **`free`**, y los docs de Supabase dicen textualmente
+  *"Leaked password protection is available on the Pro Plan and above"*. El control **no existe en
+  el dashboard** con este plan, así que la entrada anterior ("toggle en el dashboard") describía
+  una acción imposible y llevaba meses leyéndose como un descuido. El advisor de seguridad lo
+  seguirá reportando como `WARN` mientras el proyecto siga en free; eso es esperado, no una
+  regresión. **Decisión registrada:** con 1 usuario real y ~0 tráfico no justifica el upgrade
+  (~$25/mes). Reabrir cuando haya usuarios reales con contraseña propia.
+  Ruta para cuando aplique: `/dashboard/project/jpojusluihjjsjvcubdp/auth/providers?provider=Email`.
+
+- 🟡 **Tres avisos del advisor de seguridad sin triar** (detectados 2026-07-21, ninguno urgente):
+  `app_settings` tiene **RLS habilitado y cero políticas** (INFO — la tabla la leen los crons vía
+  service role, así que hoy no rompe nada, pero conviene una política explícita o documentar el
+  porqué); `pg_net` y `vector` están instaladas en el schema `public` (WARN ×2).
 
 ## 3. Deuda técnica
 
@@ -416,7 +499,7 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 | `B-01` | Generar iconos PWA PNG (192/512) y verificar `apple-touch-icon` en iOS | S | ✅ hecho (verificado 2026-07-16) — `src/public/icons/` tiene `icon-192.png`, `icon-512.png` y `apple-touch-icon.png`. Queda sin verificar solo el render en iOS real. |
 | `B-02` | Añadir `eslint` como gate de CI | S | ✅ **hecho — 2026-07-16**: step `Lint` (`pnpm exec eslint .`) en el job de code gates, tras el TypeScript check. Falla **solo en errores**, a propósito: `eslint.config.mjs` reserva los errores para bugs reales y deja los avisos conocidos/aceptados (TD-037 y cía.) como warnings — hoy son **75 warnings / 0 errores** (medido sobre `origin/main` el 2026-07-16; la entrada decía 74), así que un `--max-warnings=0` rompería CI de entrada y pelearía contra esa decisión deliberada. Si en algún momento hay que frenar el crecimiento de warnings, la vía es un ratchet `--max-warnings=75`, no convertir reglas en error. |
 | `B-03` | E2E Playwright en CI (smoke tests ya scaffolded) | M | ✅ hecho (verificado 2026-07-16) — job `E2E (authenticated)` corre y pasa 10/10 contra el usuario QA sembrado; los specs se auto-skipean si faltan `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`, pero los secrets están puestos, así que sí ejercita el flujo real. |
-| `B-04` | Wire de error tracker (Sentry) para runtime | M | ✅ hecho **y activado en prod** — 2026-07-17 (PR #143). `@sentry/nextjs` 10.66 cableado con convenciones de Next 16 (`instrumentation.ts` + `instrumentation-client.ts`). Se mergeó inerte (sin DSN = no-op); el usuario puso las 5 env vars en Vercel (`SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_AUTH_TOKEN`/`ORG`/`PROJECT` para source maps). **Verificado contra prod (2026-07-17):** el build de `b6ec448` logueó `[@sentry/nextjs] Successfully uploaded source maps to Sentry` → token/org/project válidos y DSN horneado en el bundle → captura cliente+servidor activa con stack traces legibles. Postura de privacidad deliberada: `sendDefaultPii:false` + `stripRequestPii`, Session Replay OFF, `tracesSampleRate:0`. Pendiente único (solo el usuario): confirmar el evento end-to-end en el dashboard de sentry.io. |
+| `B-04` | Wire de error tracker (Sentry) para runtime | M | ✅ hecho **y activado en prod** — 2026-07-17 (PR #143). `@sentry/nextjs` 10.66 cableado con convenciones de Next 16 (`instrumentation.ts` + `instrumentation-client.ts`). Se mergeó inerte (sin DSN = no-op); el usuario puso las 5 env vars en Vercel (`SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` + `SENTRY_AUTH_TOKEN`/`ORG`/`PROJECT` para source maps). **Verificado contra prod (2026-07-17):** el build de `b6ec448` logueó `[@sentry/nextjs] Successfully uploaded source maps to Sentry` → token/org/project válidos y DSN horneado en el bundle → captura cliente+servidor activa con stack traces legibles. Postura de privacidad deliberada: `sendDefaultPii:false` + `stripRequestPii`, Session Replay OFF, `tracesSampleRate:0`. **CERRADO 2026-07-21: el usuario confirmo el evento end-to-end en sentry.io.** No quedan pendientes. |
 | `B-05` | Test de carga a 1000+ trades; activar/medir `TradeStatsCache` | M | 🟡 **medido — 2026-07-16.** El cache **está construido y cableado** (`dashboard-service` lookup+write, TTL 5 min, invalidación) pero **nunca ha corrido**: `trade_stats_cache` tiene **0 filas en prod** (`ANALYTICS_CACHE_ENABLED` no está en `true` allí). **Su invalidación estaba incompleta** — solo trades invalidaba; `accounts`/`setups`/`markets` no, en ninguna de sus 18 mutaciones → prender el flag habría servido dashboards rancios 5 min. **Cerrado en PR #138** con el middleware `dashboardMutation` + guard estático. **Números** (arnés `src/scripts/bench-dashboard-cache.test.ts`, `BENCH=1`, BD local): a **1000 trades** OFF 110.7 ms / **cold 211.5 ms** / warm 8.0 ms (13.8×); a **137 trades** (la carga real) OFF 33.5 ms / **cold 79.9 ms** / warm 5.5 ms (6.1×). **Ojo con el cold: un miss cuesta ~2× lo que no tener cache** (paga cómputo + escritura JSON), y como cada mutación invalida, un trader activo caería en cold seguido → el cache lo dejaría *más lento*. **Contexto de escala:** prod tiene **137 trades en total**, 3 usuarios, máx 137/usuario. Los índices están bien (`trades_user_status_date_idx`). Prender el flag hoy es optimización prematura; queda **seguro** de prender (tras #138) cuando exista un usuario con volumen real. **La mitad que sí valía se hizo (PR #140):** `getDashboardStats` iba **5 veces en serie** a la BD (incl. la fila de `user` pedida DOS veces, y el lookup de cache *después* de una query que no necesitaba). Consolidado a **2 rondas paralelas** → medido contra prod, misma máquina/red, cache off: **963 ms → 420 ms** (2.3×, n=7). Acelera a todos hoy, sin flag ni staleness. Verificado por UI en prod. |
 
 **P2 — Deseable**
@@ -470,6 +553,7 @@ ni PRs abiertos). Últimas piezas mergeadas:
   · B-04 Sentry activado en prod (#143) · OI-4.8 loops de compromiso (#144)
   · auditoría S0–S2 (#146) · S0/R-3 unschedule del dispatcher (#148)
   · auditoría S3–S14 + clasificación en 3 pistas (#149) · OI-3.5 stat (#150)
+  · fixture conductual + validación del loop e2e (#151)
 
 No hay nada a medias esperando merge. Arrancá eligiendo trabajo nuevo, no retomando.
 
@@ -486,6 +570,9 @@ columna Estado. Resumen:
 
 - Pista A (deuda técnica): CERRADA salvo el bug dev-only de DataTable (no afecta prod,
   el usuario pidió dejarlo) y TD-037 (diferido a conciencia; NO lo re-descubras).
+  #151 añadió y cerró un ítem que la auditoría no había visto: bySymbolDate ordenaba
+  por UUID en vez de por hora (los tests no podían cazarlo porque sus fixtures alinean
+  ambos órdenes por accidente).
 - Pista B (funcionalidad a medias): 3 ítems, y NINGUNO es limpieza —
     · Outbox sin consumidores (S0/R-3): publishEvent en 5 call-sites, registerHandler en 0.
       Cron des-agendado por la migración 20260721190000, así que los eventos ya se ACUMULAN
@@ -497,13 +584,24 @@ columna Estado. Resumen:
 - Pista C (roadmap): todo lo demás. Incluye OI-9.3, reclasificado de B a C: el código
   es inerte de verdad, pero su bloqueo es la superficie PROTEGER (S13), no código.
 
-DATO QUE REORDENA PRIORIDADES: casi todo está construido y cableado; lo que el doc
-pintaba como pozo era maquinaria VIVA PERO DORMIDA. Prod tiene 137 trades, 3 usuarios
-y patrones planos → los detectores no disparan. insights=6 (jun), reinforcements=0,
-interventions=0, feed_ignores=0, commitments=1. VACÍO ≠ ROTO. El cuello de botella no
-es código: es que nadie ejercita el sistema. Construir más features encima es difícil
-de justificar frente a conseguir un usuario con volumen real (que además es la
-precondición explícita de B-05).
+DATO QUE REORDENA PRIORIDADES (afinado por #151 — lee §1 "Fixture conductual"):
+casi todo está construido y cableado; lo que el doc pintaba como pozo era maquinaria
+VIVA PERO DORMIDA. Pero la causa NO es "poco volumen": es que NO HAY PATRÓN QUE
+DETECTAR, por construcción. Los 137 trades = 85 sembrados con psicología por tiradas
+INDEPENDIENTES (revengeFlag no depende de haber perdido antes → cero correlación
+temporal, que es justo lo que buscan los detectores) + 52 manuales SIN psicología
+alguna. Y el seed etiqueta en minúscula mientras detectOffPlan busca Off-plan/
+Impulsivo/Revanche: cero solape. Sembrar más con ese script no despertaría nada.
+
+Prod: 13 usuarios (10 son cuentas QA del 26-jun con 0 trades; reales 3, y solo la
+demo tiene trades). Último trade de TODO el sistema: 2026-06-19. insights=6 (jun),
+reinforcements=0, interventions=0, feed_ignores=0, commitments=1. VACÍO ≠ ROTO.
+
+El cuello de botella no es código: es que nadie ejercita el sistema. Ojo con la
+conclusión fácil: "conseguir un usuario con volumen" NO basta por sí solo — los 52
+trades reales ya existentes no capturaron ni una emoción. Hace falta un usuario que
+además USE la captura psicológica. #151 dejó un fixture que prueba que la maquinaria
+funciona, pero un fixture no sustituye eso.
 
 TRAMPA DE MÉTODO (me costó 2 hallazgos falsos el 2026-07-21): NUNCA concluyas "nadie
 llama a X" desde un grep del NOMBRE de X. Grepeá los IMPORTS DEL MÓDULO
@@ -549,6 +647,12 @@ API key, o build_merge), midiendo ANTES de commitear. Medir: contar links con
 grafo se dejó **curado a propósito, sin los 3 nodos nuevos** de detectores, antes que
 degradarlo. Ojo: `.graphifyignore` excluye tests/`*.config.ts`/Prisma generado a propósito.
 
+GOTCHA del entorno local (medido 2026-07-21): @sentry/nextjs y puppeteer-core están
+declarados en package.json pero AUSENTES de node_modules en la máquina de desarrollo
+(el pnpm install se atasca en esta red). Provocan 2 fallos de la suite y 9 errores de
+tsc que NO son regresiones. Antes de alarmarte por una suite roja en local, comprueba
+si los fallos son "Cannot find module" de esos dos paquetes. En CI pasan.
+
 GOTCHA de TD-019: el fix de auth rinde SOLO porque el proyecto usa claves JWT asimétricas
 (su JWKS sirve ES256). Si alguna vez se rota al secreto legacy HS256, getClaims() vuelve a
 salir a la red en cada request y el fix se anula EN SILENCIO, sin que nada falle.
@@ -559,7 +663,13 @@ e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
 ```
 
 **Datos útiles para la próxima sesión:**
-- **Supabase project ref:** `jpojusluihjjsjvcubdp`.
+- **Supabase project ref:** `jpojusluihjjsjvcubdp`. **Organización `ooxhrosjbyztwtmmyefl`, plan
+  `free`** — relevante porque varias features de Auth (p. ej. protección de contraseñas
+  filtradas) exigen Pro y por tanto NO son accionables desde el dashboard hoy (ver §2).
+- **Fixture conductual (#151):** `src/__tests__/support/behavior-scenario.ts` genera historiales
+  con patrón real. `buildScenario(DIRTY_PROFILE)` despierta los 4 detectores; `CLEAN_PROFILE` los
+  calla. Úsalo antes de "arreglar" un detector que parezca muerto — puede que solo le falten datos
+  con estructura. Corre `pnpm exec vitest run __tests__/behavior/` para verlo.
 - **Vercel:** projectId `prj_qKKQQLDmGREOf0GYHqA4H95tdsFs`, teamId `team_H1wCGwK6JxmFhFUsBf8zd3M8`.
   Preview SSO se saltea con `get_access_to_vercel_url` (MCP).
 - **Prod:** www.tjournalx.com. **Usuario demo/E2E:** ariaoc89@gmail.com / `S12bVerify!2026` (GH
