@@ -706,11 +706,26 @@ TAREA: simular a un trader profesional operando en la cuenta aria, vía Playwrig
 PROD, para validar de punta a punta las funcionalidades que v3 promete y que NUNCA se han
 ejercitado con un humano delante.
 
+EL PLAN COMPLETO, POR FASES, ESTÁ EN:
+  docs/superpowers/plans/2026-07-21-simulacion-trader-aria.md
+Léelo entero antes de empezar. Este bloque es solo el encuadre.
+
 POR QUÉ ESTA CUENTA Y POR QUÉ SINTÉTICO. aria (ariaoc89@gmail.com) es el BANCO DE
 SIMULACIÓN del proyecto: su función declarada es validar funcionalidades pensadas para un
 trader profesional. Ninguno de los dos lo es todavía — el objetivo es llegar a serlo usando
 este journal. Así que datos sintéticos ahí NO contaminan la muestra: son su propósito.
-La cuenta fue vaciada de trades a propósito antes de empezar.
+
+QUÉ SE BORRA Y QUÉ NO (decidido 2026-07-21): se borran SOLO los 85 trades tageados
+`seed:psych` (ruido sin correlación temporal, ver §1). Los 52 manuales SE CONSERVAN: su
+vacío de campos cualitativos —0 emociones, 0 notas, 0 calidad de ejecución— es la única
+evidencia que existe de cómo se comportó un humano ante este producto. Exportarlos a CSV
+antes igualmente. NO se toca el usuario, ni sus cuentas, ni sus setups (CI E2E depende).
+
+LA REGLA QUE AHORRA HORAS: NO metas 32 trades a mano. Separa las dos actividades —
+validar los INPUTS (5-6 trades a mano, con captura en cada punto: ahí está el valor) y
+alcanzar los UMBRALES (~30 trades por script, reusando el generador de #151, que ya
+produce correlación temporal real). Del 6º trade en adelante, el formulario no enseña
+nada nuevo.
 
 EL ERROR QUE NO SE PUEDE REPETIR (costó dos sesiones, ver §1 "Fixture conductual"):
 el seed anterior (scripts/seed-psych-trades.mjs) asignaba resultado y emoción por tiradas
@@ -739,9 +754,14 @@ nada que ver con el cambio que estés haciendo.
 
 CÓMO. Usa la skill webapp-testing (Playwright). Prod: www.tjournalx.com.
 Credenciales: ariaoc89@gmail.com / S12bVerify!2026. UID 5c69e364-3819-4df7-abf0-f484794250ed.
-Volumen mínimo: los detectores exigen MIN_SAMPLE=20 trades, e intraday-decay además pide
->=10 trades tempranos Y >=10 tardíos (o sea >=5 días con 3+ operaciones). Con menos de ~25
-trades repartidos en >=8 días NO esperes que dispare nada, y eso no sería un hallazgo.
+
+VOLUMEN, calculado sobre la línea base REAL que queda tras borrar los 85 (52 trades, 22
+pares tras-pérdida con 1 ofensor, 7 trades tardíos, tamaño medio 0.97):
+  · intraday-decay: hacen falta >=10 tardíos; hoy hay 7  -> ~8 días x 4 trades
+  · off-plan:       >=20% del total                      -> ~17 trades tageados
+  · revenge:        >=30% de post-pérdida (base 1/22)    -> ~12 revanchas tras pérdida
+  · oversizing:     >=20% de post-pérdida                -> ~8 trades a >2x la media
+Total ~32 trades sobre 8-9 días. Con menos NO dispara nada, y eso no sería un hallazgo.
 
 QUÉ OBSERVAR Y REPORTAR (con captura de pantalla en cada punto):
  1. Registro: ¿se derivan solos session y riskPct? ¿aparecen las sugerencias de tags al
