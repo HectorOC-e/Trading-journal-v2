@@ -661,6 +661,14 @@ salir a la red en cada request y el fix se anula EN SILENCIO, sin que nada falle
 Gotcha de credenciales QA: la password del usuario demo fue restaurada el 2026-07-13 al
 valor documentado abajo y el GH secret E2E_USER_PASSWORD re-sincronizado. Si el login
 e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
+
+QUÉ HACER AHORA: el paso acordado es la SIMULACIÓN DE TRADER en aria vía Playwright
+(ver §7, prompt aparte). aria fue vaciada de trades a propósito para eso. Su función
+declarada es ser banco de simulación: validar funcionalidades pensadas para un trader
+profesional, con datos sintéticos pero realistas. No es contaminar la muestra — es su
+propósito. Si esa simulación ya se hizo, los candidatos siguientes son, por orden:
+re-verificar Pista C con el método de imports · fixture nivel 3 para desbloquear
+OI-7.3 · primer consumidor S4 del outbox (S0/R-3).
 ```
 
 **Datos útiles para la próxima sesión:**
@@ -687,3 +695,76 @@ e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
   `net.http_post` **encola** la petición — no prueba que el HTTP funcionara. La respuesta real
   está en `net._http_response` (TTL corto, se purga), y en última instancia el efecto observable
   del servicio.
+
+## 7. Prompt: simulación de trader profesional en aria (Playwright)
+
+> Tarea acordada el 2026-07-21, pendiente de ejecutar. Copia y pega esto **después** del prompt
+> de retoma de §6.
+
+```
+TAREA: simular a un trader profesional operando en la cuenta aria, vía Playwright contra
+PROD, para validar de punta a punta las funcionalidades que v3 promete y que NUNCA se han
+ejercitado con un humano delante.
+
+POR QUÉ ESTA CUENTA Y POR QUÉ SINTÉTICO. aria (ariaoc89@gmail.com) es el BANCO DE
+SIMULACIÓN del proyecto: su función declarada es validar funcionalidades pensadas para un
+trader profesional. Ninguno de los dos lo es todavía — el objetivo es llegar a serlo usando
+este journal. Así que datos sintéticos ahí NO contaminan la muestra: son su propósito.
+La cuenta fue vaciada de trades a propósito antes de empezar.
+
+EL ERROR QUE NO SE PUEDE REPETIR (costó dos sesiones, ver §1 "Fixture conductual"):
+el seed anterior (scripts/seed-psych-trades.mjs) asignaba resultado y emoción por tiradas
+INDEPENDIENTES — revengeFlag salía de un rnd(), no de haber perdido el trade anterior. Eso
+produjo 85 trades que PARECÍAN señal psicológica y eran ruido, y el doc lleva meses
+concluyendo "patrones planos" a partir de ellos. Los detectores buscan CORRELACIÓN
+TEMPORAL; sin ella no disparan, por muchos trades que haya.
+
+Por tanto: al simular, opera COMO UN TRADER, no como un generador. El estado emocional debe
+SEGUIRSE de la secuencia, no sortearse:
+  · pierdes → tilt → el siguiente trade entra antes de tiempo, con más tamaño y peor nota
+  · ganas 2 seguidos → exceso de confianza → subes riesgo sin setup A+
+  · 3 pérdidas seguidas en el día → ahí debe saltar la intervención de cascada
+Si al terminar los detectores no disparan, la primera hipótesis es que la simulación no tuvo
+estructura, no que el código esté roto.
+
+MARCADO OBLIGATORIO: cada trade que registres lleva el tag `sim:<fecha>` (p. ej.
+`sim:2026-07-22`). Cuesta lo mismo y dentro de tres meses sigue siendo distinguible de un
+dato humano. Sin el tag, esta simulación es indistinguible de uso real y se repite el
+malentendido que originó todo esto. También permite deshacer:
+DELETE FROM trades WHERE user_id='5c69e364-3819-4df7-abf0-f484794250ed' AND 'sim:<fecha>' = ANY(tags)
+
+NO TOQUES: el usuario, sus cuentas ni sus setups. El job "E2E (authenticated)" de CI corre
+10/10 contra aria; si desaparece la estructura, CI se pone rojo por una razón que no tiene
+nada que ver con el cambio que estés haciendo.
+
+CÓMO. Usa la skill webapp-testing (Playwright). Prod: www.tjournalx.com.
+Credenciales: ariaoc89@gmail.com / S12bVerify!2026. UID 5c69e364-3819-4df7-abf0-f484794250ed.
+Volumen mínimo: los detectores exigen MIN_SAMPLE=20 trades, e intraday-decay además pide
+>=10 trades tempranos Y >=10 tardíos (o sea >=5 días con 3+ operaciones). Con menos de ~25
+trades repartidos en >=8 días NO esperes que dispare nada, y eso no sería un hallazgo.
+
+QUÉ OBSERVAR Y REPORTAR (con captura de pantalla en cada punto):
+ 1. Registro: ¿se derivan solos session y riskPct? ¿aparecen las sugerencias de tags al
+    escribir la nota (NoteTagSuggestions)? ¿y el EmotionInsight al elegir emoción?
+ 2. Cierre: ¿aparece el nudge de emoción a 1 toque (PR #141, mergeado el 16-jul y ejercitado
+    CERO veces)? ¿los chips viajan con el cierre sin mandarte a otra pantalla?
+ 3. Los inputs de MAE/MFE y el selector de régimen viven en el CIERRE (trade-detail-panel),
+    no en el registro. Verifica que estén y se guarden.
+ 4. Tras >=20 trades: dispara el cron de recompute e inspecciona /analytics
+    (BehaviorLoopPanel). ¿Aparecen insights con su badge "confianza X% · n=Y"? ¿Se activa el
+    CTA de comprometerse? ¿Se puede respaldar el compromiso con una regla?
+ 5. OJO con off-plan: linkRule lo RECHAZA con NotEnforceableError, y es correcto (no es
+    prevenible pre-trade). 3 de los 4 compromisos son respaldables con regla, uno no.
+ 6. Si logras 3 pérdidas seguidas en un mismo día, comprueba si salta la intervención de
+    cascada (fast-path de trade-write-service, <=2s). Sería la PRIMERA fila de la tabla
+    interventions, que hoy está vacía y por eso OI-7.3 es no-validable.
+
+LO QUE ESTO SÍ PRUEBA: que el mecanismo funciona de punta a punta. Cierra la verificación
+live de S2/OI-1, S2/OI-2 y S2/OI-4, que llevan desde julio marcados "resuelto" sin que nadie
+los haya visto en vivo.
+LO QUE NO PRUEBA: que a un trader le compense el gesto de capturar. Eso solo lo contesta
+alguien operando de verdad. No lo escribas como si lo hubiera probado.
+
+AL TERMINAR: reporta en 3 ejes (backend / observable-en-UI / razón de ser), actualiza §1 de
+STATUS.md con lo que hayas encontrado, y anota explícitamente lo que NO pudiste verificar.
+```
