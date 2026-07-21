@@ -3,7 +3,8 @@
 // analytics: transfer (#31, before/after a resource's study date over its linked
 // setups, honest association per D17), the linked-setup performance signal that
 // adapts SRS cadence (#45), and errors→cards (#42). Read-only; surfaces in S12.
-// The computeNextReview wiring into the grade mutation is the S12 surface task.
+// (`computeNextReview` is already wired into the grade mutation — see
+// learning-resources.ts:245. An older comment here claimed it was pending.)
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
