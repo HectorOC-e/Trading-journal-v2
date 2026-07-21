@@ -326,9 +326,10 @@ ordena `date → openTime → id`, alineado con `sortByDateTime` de `verifiers.t
   dato sea ruido.
 
 **Lo que añadió el PR:** un generador determinista de escenarios conductuales
-(`src/__tests__/support/behavior-scenario.ts`) con cuotas exactas y self-check, más 38 tests que
-fijan la cadena `insight → commitment → rule → verificación → reinforcement` y la decisión de
-intervención. **Es la primera vez que los cuatro detectores disparan en cualquier entorno.**
+(`src/__tests__/support/behavior-scenario.ts`) con cuotas exactas y self-check, más **40 tests**
+(13 de self-check + 2 de ordenamiento + 17 de dominio + 8 de integración) que fijan la cadena
+`insight → commitment → rule → verificación → reinforcement` y la decisión de intervención.
+**Es la primera vez que los cuatro detectores disparan en cualquier entorno.**
 
 **Hallazgo fijado por sus tests:** `linkRule` lanza `NotEnforceableError` para `off-plan` —
 `proposeRuleForCommitment` solo mapea 3 de las 4 métricas. Es **por diseño**: off-plan se conoce
