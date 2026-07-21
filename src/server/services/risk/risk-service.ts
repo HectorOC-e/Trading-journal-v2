@@ -153,8 +153,16 @@ export interface ExposureOverview {
 
 /**
  * Aggregate open-position exposure by symbol across all of the user's accounts —
- * the real, summed risk (#39). `aggregateCapAmount` (a future per-user setting)
- * drives the freeze signal; null keeps it inert.
+ * the real, summed risk (#39). `aggregateCapAmount` drives the freeze signal;
+ * null keeps it inert.
+ *
+ * OI-9.3 (auditado 2026-07-21): hoy SIEMPRE llega null — es sólo un input del
+ * router (`risk.ts:15-16`) y ningún llamador lo pasa, así que
+ * `aggregateFreezeSignal` sale por el early-return de `correlation.ts:98`.
+ * Persistirlo como setting está **reclasificado a roadmap (PROTEGER, S13)**, no
+ * a deuda: es un tope de riesgo CROSS-CUENTA, así que no encaja en `/cuentas`
+ * (parámetros por cuenta) y colocarlo en `/perfil` sería inventarle ubicación.
+ * Nace con su superficie, junto a OI-9.1/OI-9.2. Ver docs/STATUS.md §1, Pista C.
  */
 export async function getAggregateExposure(
   prisma: PrismaClient,
