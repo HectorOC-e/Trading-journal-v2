@@ -76,6 +76,11 @@ export function detectOverconfidence(trades: AnalyticsTrade[]): Insight | null {
     detail: `Tus trades de máxima confianza (4-5/5) ganan ${pct(wr)}% vs tu media de ${pct(overallWr)}%. Tu confianza no está calibrada con el resultado.`,
     recommendation: "Cuando sientas certeza total, reduce tamaño en lugar de aumentarlo; la sobreconfianza precede a tus peores entradas.",
     evidence: `${high.length} trades de alta confianza.`, metric: pct(overallWr - wr),
+    // OI-3.5: win rate de los trades de alta confianza contra la media del propio
+    // trader. Bernoulli con baseline explícito (misma forma que intraday-decay),
+    // así que el estimador puede darle intervalo creíble y un n POR DETECTOR
+    // (los de alta confianza) en vez del n coarse de todos los trades (DT-1).
+    stat: { kind: "proportion", successes: wins, trials: high.length, baseline: overallWr / 100, direction: "below" },
   }
 }
 
