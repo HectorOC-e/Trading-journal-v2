@@ -201,11 +201,27 @@ El patrón que la auditoría hizo visible: maquinaria testeada sin call-site. Es
 
 | Ítem | Qué existe | Qué falta |
 |---|---|---|
-| **Outbox sin consumidores** (`S0/R-3`) | `publishEvent` en 5 call-sites | `registerHandler`: **0 call-sites**. Cron pausado por la migración `20260721190000`. El primer consumidor es S4. |
-| **Telemetría de feed ignorado** (`OI-13.1`) | `feed-ignore-service.ts` con `upsert` + lectura; tabla `feed_ignores` migrada | **Nada la consume en el ranking del feed** (0 hits fuera del propio servicio). 0 filas en prod. El decay sigue usando la edad como proxy. |
-| **Cobertura de `stat`** (`OI-3.3`, `OI-3.5`) | `proportionEstimate` + `normalEstimate` testeados | Solo **2 detectores** cableados. El resto sigue con `sampleSize` coarse y campos bayesianos nulos. Es el residual que `DT-1`/`DT-2` nombran. |
-| **`aggregateCapAmount`** (`OI-9.3`) | Input en `correlation.ts:79-101`, inerte si `null` | Sin setting por usuario que lo llene → hoy siempre `null`. |
-| **`expectedImpact`** (`OI-7.3`) | Factor del scoring en `intervention/engine.ts:54` | Es **estático**; no se aprende de `Intervention.outcome`. En prod: 0 interventions. |
+| **Outbox sin consumidores** (`S0/R-3`) | `publishEvent` en 5 call-sites | `registerHandler`: **0 call-sites**. Cron pausado por la migración `20260721190000`. El primer consumidor es S4 → **es trabajo de sprint, no limpieza**. |
+| **Cobertura de `stat`** (`OI-3.3`, `OI-3.5`) | `proportionEstimate` + `normalEstimate` testeados | `OI-3.5` **cerrado** (ver abajo). Queda `OI-3.3`: los detectores de MEDIAS necesitan un comparador de dos muestras que **no existe** (`normalEstimate` es de una sola). |
+| **`expectedImpact`** (`OI-7.3`) | Factor del scoring en `intervention/engine.ts:54` | Es **estático**; no se aprende de `Intervention.outcome`. **No validable hoy**: prod tiene 0 interventions. |
+
+**Cerrado de esta pista (2026-07-21):**
+
+- **`OI-3.5` — cobertura de `stat`.** `detectOverconfidence` ya comparaba la WR de alta confianza
+  contra la media global (Bernoulli con baseline) pero no exponía `stat`; ahora sí, y su `n` pasa de
+  coarse (20) a por-detector (10). ⚠️ **El ítem sugería "setup concentration" como candidato y esa
+  sugerencia es incorrecta**: su métrica es un cociente de DINERO, no `successes/trials`; un
+  intervalo Beta-binomial ahí afirmaría certeza que el dato no soporta (**R6**). Los criterios de
+  inclusión/exclusión quedaron documentados junto al tipo `InsightStat` en `insights-engine.ts`.
+
+**Corrección — `OI-13.1` NO pertenecía a esta pista.** La primera versión de esta sección afirmaba
+que nada consumía `feed_ignores`. **Falso, y el error fue de método**: el grep buscaba
+`feedIgnore|listIgnores|signalKey` y un path `domains/today/` que no existe (es
+`domains/cognitive/today/`), así que no vio al consumidor, que expone `getIgnoreCounts`. El loop
+está **cerrado de punta a punta**: `today.ts:16` (`dismiss` → `recordIgnore`) →
+`today-service.ts:141-143` (`getIgnoreCounts` → `s.ignored`) → `feed.ts:71`
+(`ignorePenalty` aplicado en el ranking). Las 0 filas en prod significan que nadie descartó nada.
+**Va a la Pista D (stale).**
 
 #### Pista C — Roadmap / backlog (no construido, por diseño)
 
@@ -214,6 +230,15 @@ Congelado por FREEZE o esperando su disparador. **No es deuda.**
 - **Superficies UI:** `OI-3.1`, `OI-3.2` (mapper + cuadrante institucional), `OI-9.1`, `OI-10.1`, `OI-11.1`, `OI-4.4`, `OI-5.4` → S12/S13 con DS v3.
 - **Bloqueado por `SetupEdgeSnapshot`** (que **no existe como modelo**, solo se menciona en comentarios): `OI-4.3` (verificador edge-decay), `OI-10.3`.
 - **Enforcement no construido:** `OI-9.2` (bloqueo duro por budget — ojo: `GAP-A1` cerró el *guard* forward-looking, **no** el bloqueo), `OI-7.4` (intervención en `trade.create`), `OI-5.2` (off-plan warn), `OI-8.2` (`no_go` → regla stop).
+- **`OI-9.3` (`aggregateCapAmount` como setting de usuario) — reclasificado de Pista B a C el
+  2026-07-21.** El código está verificado como genuinamente inerte: es input del router
+  (`risk.ts:15-16`), no hay columna en `schema.prisma` ni migración, y ningún llamador lo pasa →
+  siempre `null`, así que `aggregateFreezeSignal` sale por el early-return de
+  `correlation.ts:98`. **Pero su bloqueo real es una superficie que no existe.** Es un control de
+  riesgo *cross-cuenta*: no encaja en `/cuentas` (parámetros por cuenta) y meterlo en `/perfil`
+  sería inventarle ubicación para poder tachar una casilla. Nace con **PROTEGER (S13)**, junto a
+  `OI-9.1` y `OI-9.2`, que es donde el propio ítem lo scopeaba. **No es deuda: es roadmap con
+  dependencia de UI.**
 - **Memoria:** `OI-6.3` (cifrado), `OI-6.4`, `OI-6.5`, `OI-6.6` (`thread.summary` — 0 call-sites).
 - **Absorción de pantallas (A3):** `OI-11.6`, `OI-13.3`. Verificado en `app/`: `mercados`, `etiquetas` y `notificaciones` **siguen existiendo** como rutas propias, y no hay `/hoy` `/operar` `/analizar` `/proteger` `/mejorar`. Las filas son exactas.
 - **Resto:** `OI-10.4`, `OI-10.6`, `OI-11.4` (`transferBaseline`: 0 call-sites), `OI-11.5`, `OI-14.2`..`OI-14.5`, `OI-8.3`, `OI-3.4`.
@@ -233,6 +258,7 @@ Congelado por FREEZE o esperando su disparador. **No es deuda.**
 | `OI-11.2` `computeNextReview` | **Cableado** en la mutación de grade: `learning-resources.ts:245`. `GAP-A2` tenía razón; la fila `OI-11.2` no. |
 | `OI-13.5` productor de Reinforcement | `planReinforcement` llamado en `commitment-service.ts:194` + `tx.reinforcement.create` (L204). Prod: 0 filas — dormido, no ausente. |
 | `OI-14.1` snapshot de `ImprovementScore` | `recordImprovementSnapshotForAll` corre en el cron (`recompute-insights/route.ts:28`). **Prod: 23 filas, la última 2026-07-21 05:15 UTC** = hoy, en el horario del cron. La curva temporal existe. |
+| `OI-13.1` telemetría de feed ignorado | **Cableado de punta a punta:** `today.ts:16` (`dismiss` → `recordIgnore`) → `today-service.ts:141-143` (`getIgnoreCounts` → `s.ignored`) → `feed.ts:71` (`ignorePenalty` en el ranking). El decay **no** usa la edad como proxy: usa los ignores reales. 0 filas en prod = nadie descartó nada. |
 
 ### Notas de correspondencia con `OPENITEMS_CLOSEOUT_S0_S2.md`
 
