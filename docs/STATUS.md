@@ -159,6 +159,16 @@ entonces se quema igual. El coste crece solo con el tiempo.
 
 Recomendación: **(1)**, por ser exactamente lo que el diseño pedía y costar una migración.
 
+**Resuelto (2026-07-21) con la opción (1):** migración `20260721190000_unschedule_dispatch_events_until_s4.sql`
+des-agenda `v3-dispatch-events`. Los productores siguen escribiendo a la outbox; los eventos ahora
+**se acumulan en `pending`** en vez de quemarse. Los 7 ya marcados `processed` no se recuperan — la
+migración detiene la hemorragia, no la revierte.
+
+> ⚠️ **Deuda que esto crea, a propósito:** la outbox ya no se drena. Si algún día se publican eventos
+> a ritmo alto sin que S4 haya aterrizado, `domain_events` crece sin techo. Hoy es irrelevante
+> (7 eventos en 4 semanas), pero **el primer consumidor de S4 debe re-agendar el cron** — el bloque
+> `cron.schedule` a restaurar está citado en el encabezado de la propia migración.
+
 ### Nota metodológica sobre el conteo
 
 El brief original daba como "dato ya verificado" que `docs/v3/OPEN_ITEMS_SPRINT_{0,1,2,12}.md` **no
