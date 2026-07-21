@@ -17,3 +17,6 @@ qa-e2e/
 # Supabase local stack artifacts (supabase start / db reset)
 supabase/.branches/
 supabase/.temp/
+
+# Claude Code settings: machine-specific (graphify hook uses an absolute binary path)
+.claude/settings.json
