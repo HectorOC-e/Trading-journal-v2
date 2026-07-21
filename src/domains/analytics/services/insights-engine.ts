@@ -25,6 +25,31 @@ export type InsightSeverity = "critical" | "warning" | "info" | "positive"
 export type InsightStat =
   | { kind: "proportion"; successes: number; trials: number; baseline: number; direction: "below" | "above" }
 
+/*
+ * Cobertura de `stat` (OI-3.5, auditado 2026-07-21). Quién la expone y quién NO,
+ * y por qué — para que nadie "complete" la cobertura rompiendo la estadística.
+ *
+ * LA EXPONEN (Bernoulli con baseline explícito: successes/trials sobre ensayos
+ * comparables contra una tasa de referencia del propio trader):
+ *   • intraday-decay      — WR tardía vs baseline temprano
+ *   • weekday-discipline  — tasa de violación del peor día vs la global
+ *   • overconfidence-bias — WR de alta confianza vs la media global
+ *
+ * NO la exponen, a propósito:
+ *   • setup-concentration / withdrawal-impact — su métrica es un COCIENTE DE
+ *     DINERO (share de beneficio, retirado/PnL), no successes/trials. Un
+ *     intervalo Beta-binomial ahí no significa nada y afirmaría una certeza que
+ *     el dato no soporta: exactamente R6. Ojo: el ítem OI-3.5 sugería
+ *     "setup concentration" como candidato — la sugerencia del doc es incorrecta.
+ *   • emotion-performance / impulsive-expectancy / holding-asymmetry — comparan
+ *     MEDIAS de dos muestras (P&L, expectancy). Necesitan un comparador de dos
+ *     muestras que hoy no existe (`normalEstimate` es de una sola). Eso es
+ *     OI-3.3, no OI-3.5.
+ *   • revenge-trading / oversizing / off-plan — omitidos deliberadamente en
+ *     OI-4.8: son alarmas de frecuencia, no contrastes de dos muestras.
+ *   • clean-streak / account-* — racha y umbrales deterministas; no hay muestreo.
+ */
+
 export interface Insight {
   id:              string
   category:        InsightCategory
