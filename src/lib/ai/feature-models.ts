@@ -112,7 +112,13 @@ export function pickAutoModel(provider: AiProvider, costPriority: CostPriority, 
 export function resolveFeatureModel(settings: AiSettings, feature: AiFeature): ResolvedFeatureModel {
   const override = settings.featureModels[feature]
   const provider = override?.provider ?? settings.defaultProvider
-  const rawModel = override ? override.model : settings.defaultModel
+
+  // Embeddings NUNCA heredan el default global: ese default es un modelo de
+  // CHAT, y un modelo de chat no puede embeber — `embedText` falla en cada
+  // llamada, en silencio, y la feature figura como activa sin serlo. Sin un
+  // override explícito por feature, salen siempre de EMBEDDING_LADDER.
+  const inheritsGlobal = feature !== "embeddings"
+  const rawModel = override ? override.model : (inheritsGlobal ? settings.defaultModel : "auto")
   const model    = isAutoModel(rawModel)
     ? pickAutoModel(provider, settings.costPriority, feature)
     : rawModel
@@ -120,9 +126,10 @@ export function resolveFeatureModel(settings: AiSettings, feature: AiFeature): R
 
   let fallback: ModelRef | null = null
   if (settings.fallbackModel && settings.fallbackProvider) {
-    const fbModel = isAutoModel(settings.fallbackModel)
+    const rawFallback = inheritsGlobal ? settings.fallbackModel : "auto"
+    const fbModel = isAutoModel(rawFallback)
       ? pickAutoModel(settings.fallbackProvider, settings.costPriority, feature)
-      : settings.fallbackModel
+      : rawFallback
     const fb: ModelRef = { provider: settings.fallbackProvider, model: fbModel }
     if (!(fb.provider === primary.provider && fb.model === primary.model)) {
       fallback = fb
