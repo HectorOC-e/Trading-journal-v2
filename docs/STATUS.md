@@ -64,6 +64,94 @@ Los tres defectos comparten causa: el proyecto aprendió la lección del `pointV
 **P&L** (ver el comentario en `trade-write-service.ts`, ruta de cierre) y nunca la trasladó
 al **riesgo**.
 
+## Resultado de la simulación de trader en aria (2026-07-22)
+
+Ejecutadas las fases 0-3 del plan (`docs/superpowers/plans/2026-07-21-simulacion-trader-aria.md`).
+**15 trades sintéticos**, todos con tag `sim:2026-07-22`. Estado final de aria: 67 trades,
+10 insights activos (3 con estadística bayesiana), 2 compromisos, 1 regla derivada,
+1 refuerzo, 2 intervenciones, 15 eventos en la outbox, 2 patrones de memoria.
+
+### El hallazgo principal: la captura psicológica es lo que enciende la maquinaria
+
+Tres detectores que **no podían existir** aparecieron en cuanto hubo trades con emoción:
+
+| Detector | Hallazgo |
+|---|---|
+| `emotion-before-loss` | "La frustración/ansiedad aparece antes del 66.7 % de tus pérdidas" |
+| `emotion-performance` | "Tus pérdidas aumentan cuando operas en estado emocional negativo" |
+| `violation-emotion` | "Tus violaciones de reglas se asocian a `anxious`" |
+
+Los 52 trades históricos tienen **cero emociones capturadas**. Estos tres correlacionan emoción
+con resultado, así que llevaban desde siempre estructuralmente mudos — no por falta de volumen,
+sino porque nadie había capturado nunca el dato que necesitan. **Bastaron 15 trades con
+psicología.** Es la validación que ningún fixture podía dar (#151 probó la maquinaria; esto
+prueba que el gesto de capturar es lo que la activa).
+
+### Loop conductual: validado en vivo, de punta a punta
+
+`insight → compromiso → regla → verificación`, ejercitado por primera vez contra producción:
+
+- **Badge de confianza visible**: `confianza 92% · n=14` sobre `intraday-decay`. Tres insights
+  llevan estadística bayesiana (`intraday-decay` 0.920, `weekday-discipline` 0.956); el resto
+  con `confidence` nulo, como corresponde.
+- **CTA "Comprometerme"** crea el compromiso inline, sin diálogo.
+- **`linkRule` rechaza `off-plan`** con *"Este compromiso no se puede proteger con una regla
+  automática"* (400). **Es correcto, no es un bug** — no es prevenible pre-trade. Reportarlo
+  como defecto habría sido el falso positivo que el plan anticipaba.
+- **`linkRule` acepta `intraday-decay`** → crea la regla "Máx. 2 trades por día"
+  (`TRADE_PRE_CREATE`, enabled), visible en `/reglas` con su badge **"desde compromiso"**.
+- **`Verificar ahora`** marcó el compromiso off-plan como `broken` — correcto: 16 trades
+  off-plan contra objetivo 0.
+- **Outbox**: 15 eventos acumulados en `pending`, que es lo correcto con el dispatcher
+  des-agendado hasta S4. *(Una observación intermedia de que "el camino de trades no publica
+  eventos" resultó FALSA: se midió antes de que corriera el recompute.)*
+
+### `OI-7.3` deja de ser no-validable
+
+`interventions` pasó de vacía a 2 filas. La intervención de cascada saltó sola tras 3 pérdidas
+en un día, con el ciclo completo registrado:
+
+```
+trigger: cascade · severity: critical
+scores: { urgency 0.95, severity 0.9, confidence 0.85, expectedImpact 0.6 }
+status: active → responded · response: dismissed · outcome: overridden
+```
+
+El `expectedImpact` estático ya tiene una fila real y un desenlace contra el que contrastarse.
+
+### Defectos encontrados y corregidos
+
+Cuatro PRs, todos mergeados y verificados en producción:
+
+| PR | Defecto | Consecuencia que tenía |
+|---|---|---|
+| **#152** | `riskPct` derivaba contra `initialBalance` (0 en 3 de 5 cuentas) | `risk_pct` NULL en **53 de 53** trades |
+| **#153** | `buildContext` dividía por `initialBalance` en 3 campos | `riskPct`/`dayPnlPct`/`weekPnlPct` = **cero constante** en reglas |
+| **#154** | El riesgo en dinero ignoraba el `point_value` | Riesgo **×20 subestimado** en NQ (0.07 % vs 1.3 % real) |
+| **#155** | Los crons esperaban 5 s por trabajos de 60-300 s | El job se ejecutaba pero se registraba como fallido |
+
+Los tres primeros convergían en el mismo punto: `verifyOversizedTrades` reportaba *"cumplimiento
+perfecto"* pasara lo que pasara, fabricando refuerzo positivo falso. Ninguno tenía cobertura:
+`createTrade` y `buildContext` no tenían **un solo test directo** — así sobrevivieron.
+
+### Lo que NO se pudo verificar
+
+- **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
+  sobre protecciones. No es un fallo de la simulación.
+- **El nudge de emoción de #141 sigue sin verse en vivo.** Está localizado
+  (`trade-detail-panel.tsx:458`, dentro del formulario de cierre, no del panel) y el helper de
+  simulación ya está corregido, pero ningún trade llegó al cierre sin emoción previa: el que iba
+  a probarlo lo bloqueó una regla. **Pendiente.**
+- **Fases 4 y 5 no ejecutadas**: las 5 features de IA y el recorrido de superficies analíticas.
+- **`avgPlannedRisk`** (`dashboard-analytics:515`) sigue mal por el `point_value` — ver la
+  auditoría de riesgo más arriba.
+
+### Lo que esto NO prueba
+
+Que a un trader le compense el gesto de capturar psicología. Eso sólo lo contesta alguien
+operando de verdad, con dinero y sin saber el resultado. Lo que sí queda probado es que **si lo
+captura, el sistema responde**: tres detectores nuevos con 15 trades.
+
 ## 1. Checklist de QA pendiente de V3
 
 > Los 109 ítems provienen de los 17 `OPEN_ITEMS_SPRINT_N.md` (hoy borrados; ver git). Se volcaron
