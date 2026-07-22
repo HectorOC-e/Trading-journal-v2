@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { streamAnalyticsInsights, type AnalyticsAiOptions } from "@/lib/ai/analytics-insights-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
+import { logger } from "@/lib/logger"
 
 // Streaming AI on a Node serverless function. Without a raised maxDuration the
 // function is killed mid-stream (slow model + bundle build) → client "network error".
@@ -35,6 +36,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     if (err instanceof NoApiKeyError) return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
+    // El cliente sólo ve "STREAM_ERROR"; sin esta línea la causa se pierde.
+    logger.error("analytics-ai stream failed", {
+      period, message: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ error: "STREAM_ERROR" }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { streamCoachReply, type MessageParam } from "@/lib/ai/coach-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
+import { logger } from "@/lib/logger"
 import { assembleCoachContext } from "@/server/services/coach/coach-memory-service"
 
 export const runtime = "nodejs"
@@ -46,6 +47,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (err instanceof NoApiKeyError) {
       return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
     }
+    // El cliente sólo ve "STREAM_ERROR"; sin esta línea la causa se pierde.
+    logger.error("ai-coach stream failed", {
+      message: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ error: "STREAM_ERROR" }, { status: 500 })
   }
 }
