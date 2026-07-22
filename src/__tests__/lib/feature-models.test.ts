@@ -92,6 +92,49 @@ describe("costPriority auto-pick (ladders)", () => {
     expect(r.primary.model).toBe("text-embedding-3-small")
   })
 
+  // El caso de producción: el default global NO es "auto", es un modelo de chat
+  // explícito. Sin override por feature, embeddings lo heredaba y `embedText`
+  // fallaba en cada llamada (EMBED_FAILED), en silencio. Un modelo de chat no
+  // puede embeber, así que el default global nunca debe aplicarse a embeddings.
+  it("embeddings never inherit an explicit chat default (the prod bug)", () => {
+    const r = resolveFeatureModel(
+      settings({ defaultProvider: "openrouter", defaultModel: "openrouter/free" }),
+      "embeddings",
+    )
+    expect(r.primary.model).toBe("openai/text-embedding-3-small")
+    expect(r.primary.provider).toBe("openrouter")
+  })
+
+  it("embeddings still honour an explicit per-feature override", () => {
+    const r = resolveFeatureModel(
+      settings({
+        defaultProvider: "openrouter", defaultModel: "openrouter/free",
+        featureModels: { embeddings: { provider: "openai", model: "text-embedding-3-large" } },
+      }),
+      "embeddings",
+    )
+    expect(r.primary).toEqual({ provider: "openai", model: "text-embedding-3-large" })
+  })
+
+  it("the embeddings fallback is an embedding model too, never the chat fallback", () => {
+    const r = resolveFeatureModel(
+      settings({
+        defaultProvider: "openrouter", defaultModel: "openrouter/free",
+        fallbackProvider: "openai", fallbackModel: "gpt-4o",
+      }),
+      "embeddings",
+    )
+    expect(r.fallback).toEqual({ provider: "openai", model: "text-embedding-3-small" })
+  })
+
+  it("chat features are untouched by the embeddings rule", () => {
+    const r = resolveFeatureModel(
+      settings({ defaultProvider: "openrouter", defaultModel: "openrouter/free" }),
+      "ai_chat",
+    )
+    expect(r.primary).toEqual({ provider: "openrouter", model: "openrouter/free" })
+  })
+
   it("pickAutoModel routes openrouter cost to a cheap model", () => {
     expect(pickAutoModel("openrouter", "cost", "ai_chat")).toBe("openai/gpt-4o-mini")
   })
