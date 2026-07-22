@@ -196,9 +196,12 @@ export function detectSetupConcentration(input: InsightInput): Insight | null {
   const { trades, setups } = input
   if (trades.length < MIN_SAMPLE) return null
   const profitBySetup = new Map<string, number>()
+  const netBySetup    = new Map<string, number>()
   let totalProfit = 0
   for (const t of trades) {
-    if (t.pnl <= 0 || !t.setupId) continue
+    if (!t.setupId) continue
+    netBySetup.set(t.setupId, (netBySetup.get(t.setupId) ?? 0) + t.pnl)
+    if (t.pnl <= 0) continue
     profitBySetup.set(t.setupId, (profitBySetup.get(t.setupId) ?? 0) + t.pnl)
     totalProfit += t.pnl
   }
@@ -208,12 +211,38 @@ export function detectSetupConcentration(input: InsightInput): Insight | null {
   const share = (best.profit / totalProfit) * 100
   if (share < 45) return null
   const name = setups.find(s => s.id === best.id)?.name ?? "tu mejor setup"
+  const nameOf = (id: string) => setups.find(s => s.id === id)?.name ?? "otro setup"
+
+  // Concentrar la ganancia BRUTA no es lo mismo que ser el más rentable: un setup
+  // puede acumular el grueso de los aciertos y devolverlo casi entero en pérdidas.
+  // Medido en aria: el líder en bruto tenía $9.300 brutos y $314 netos, mientras
+  // otro con menos bruto netaba $1.715. Recomendar "sube el tamaño y poda el resto"
+  // mirando sólo el bruto es consejo activamente malo — sube la exposición justo
+  // en el peor. Por eso el NETO decide qué se recomienda.
+  let netLeader = { id: best.id, net: -Infinity }
+  for (const [id, n] of netBySetup) if (n > netLeader.net) netLeader = { id, net: n }
+  const bestNet = Math.round(netBySetup.get(best.id) ?? 0)
+
+  if (netLeader.id !== best.id) {
+    const otro = nameOf(netLeader.id)
+    return {
+      id: "setup-concentration",
+      category: "pattern",
+      severity: "warning",
+      title: `"${name}" concentra tus aciertos, pero "${otro}" es el que deja dinero`,
+      detail: `"${name}" acumula ${pct(share)}% de tu ganancia bruta y sólo ${bestNet} netos: devuelve casi todo en pérdidas. "${otro}" cierra en ${Math.round(netLeader.net)} netos con menos ganancia bruta.`,
+      recommendation: `No subas tamaño en "${name}" todavía: primero corta sus pérdidas, que es donde se va su ventaja. El foco y el tamaño los merece "${otro}".`,
+      evidence: `Sobre ${trades.length} trades cerrados. Bruto vs neto por setup.`,
+      metric: pct(share),
+    }
+  }
+
   return {
     id: "setup-concentration",
     category: "opportunity",
     severity: "positive",
     title: `"${name}" genera el ${pct(share)}% de tus beneficios`,
-    detail: `"${name}" concentra ${pct(share)}% de tu ganancia bruta. El resto de setups aportan marginalmente.`,
+    detail: `"${name}" concentra ${pct(share)}% de tu ganancia bruta y también lidera en neto (${bestNet}). El resto de setups aportan marginalmente.`,
     recommendation: `Aumenta foco y tamaño en "${name}" y poda los setups que no aportan; estás diversificando tu edge en exceso.`,
     evidence: `Sobre ${trades.length} trades cerrados.`,
     metric: pct(share),

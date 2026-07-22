@@ -67,6 +67,59 @@ describe("insights-engine", () => {
     expect(insight!.title).toContain("Breakout")
   })
 
+  // Caso real medido en aria: "Order Block Reversal" concentraba el 61.5 % de la
+  // ganancia BRUTA ($9.300) y dejaba $314 netos, porque devolvía casi todo en
+  // pérdidas. "Breakout London", con menos bruto, netaba 5 veces más ($1.715).
+  // El detector miraba sólo el bruto (`if (t.pnl <= 0) continue`) y recomendaba
+  // "aumenta foco y tamaño" en el peor de los dos, y "poda" el mejor.
+  it("no recomienda subir tamaño cuando el líder en bruto no lidera en neto", () => {
+    const trades: AnalyticsTrade[] = []
+    // A: mucho bruto, casi todo devuelto en pérdidas → neto 295
+    for (let i = 0; i < 20; i++) {
+      trades.push(trade({ id: `a${i}`, date: `2026-02-${String((i % 28) + 1).padStart(2, "0")}`, pnl: 200, setupId: "A" }))
+    }
+    for (let i = 0; i < 19; i++) {
+      trades.push(trade({ id: `al${i}`, date: `2026-04-${String((i % 28) + 1).padStart(2, "0")}`, pnl: -195, setupId: "A" }))
+    }
+    // B: menos bruto, pero neto muy superior → 900
+    for (let i = 0; i < 5; i++) {
+      trades.push(trade({ id: `b${i}`, date: `2026-03-${String((i % 28) + 1).padStart(2, "0")}`, pnl: 200, setupId: "B" }))
+    }
+    trades.push(trade({ id: "bl0", date: "2026-05-01", pnl: -100, setupId: "B" }))
+
+    const insight = detectSetupConcentration({
+      trades,
+      setups: [{ id: "A", name: "Order Block Reversal" }, { id: "B", name: "Breakout London" }],
+      accounts: [], withdrawals: [],
+    })
+    expect(insight).not.toBeNull()
+    // Sigue siendo cierto que A concentra el bruto, así que el insight aparece…
+    expect(insight!.detail).toContain("Order Block Reversal")
+    // …pero NO como una oportunidad que invite a doblar la apuesta.
+    expect(insight!.severity).not.toBe("positive")
+    // Y debe nombrar al que realmente deja dinero.
+    expect(`${insight!.title} ${insight!.detail} ${insight!.recommendation}`).toContain("Breakout London")
+    // Nunca el consejo de subir tamaño sobre el líder en bruto.
+    expect(insight!.recommendation).not.toMatch(/aumenta foco y tamaño/i)
+  })
+
+  it("mantiene la recomendación positiva cuando el líder en bruto también lidera en neto", () => {
+    const trades: AnalyticsTrade[] = []
+    for (let i = 0; i < 20; i++) {
+      trades.push(trade({ id: `a${i}`, date: `2026-02-${String((i % 28) + 1).padStart(2, "0")}`, pnl: 200, setupId: "A" }))
+    }
+    for (let i = 0; i < 5; i++) {
+      trades.push(trade({ id: `b${i}`, date: `2026-03-${String((i % 28) + 1).padStart(2, "0")}`, pnl: 20, setupId: "B" }))
+    }
+    const insight = detectSetupConcentration({
+      trades,
+      setups: [{ id: "A", name: "Breakout" }, { id: "B", name: "Otro" }],
+      accounts: [], withdrawals: [],
+    })
+    expect(insight!.severity).toBe("positive")
+    expect(insight!.recommendation).toMatch(/aumenta foco y tamaño/i)
+  })
+
   it("detects a losing streak", () => {
     const trades: AnalyticsTrade[] = []
     for (let i = 0; i < 15; i++) trades.push(trade({ id: `w${i}`, date: `2026-01-${String(i + 1).padStart(2, "0")}`, pnl: 50 }))
