@@ -24,6 +24,33 @@ Verificar después: `select name, enabled from rules where id in (…)` → amba
 Ambas quedaron **probadas y funcionando** antes de desactivarlas: bloquearon un intento
 real de revancha, dispararon `CRITICAL_ALERT` y generaron notificación.
 
+## Auditoría de la matemática de riesgo (2026-07-22)
+
+Tres defectos de la misma familia aparecieron seguidos al simular en aria. Se auditaron
+**todos** los sitios que calculan riesgo. Regla que los separa: si la cifra representa
+**dinero**, necesita `pointValue`; si es un **ratio**, el factor se cancela y no lo necesita.
+
+| Sitio | Veredicto |
+|---|---|
+| `trading/services/trade-service.ts:27` (`computeRMultiple`) | ✅ ya aplicaba `pointValue` |
+| `components/trades/trade-detail-panel.tsx:301` | ✅ ya lo aplicaba |
+| `lib/formulas/risk.ts:38` (`calcRMultiple`) | ✅ correcto — ratio, se cancela |
+| `components/trades/register-trade-modal.tsx:332` (`calcRR`) | ✅ correcto — ratio, se cancela |
+| `trading/services/trade-derivation.ts:47` (`deriveRiskAmount`) | 🔴 **arreglado (#154)** |
+| `rules/context.ts:66` (`riskPct` de reglas) | 🔴 **arreglado (#154)** |
+| `analytics/services/dashboard-analytics.ts:515` (`avgPlannedRisk`) | 🔴 **PENDIENTE** |
+
+**Lo que queda pendiente y por qué.** `avgPlannedRisk` se muestra en `tab-operador.tsx:295`
+como `$${valor}` con el subtítulo "riesgo en $ al abrir el trade": es **dinero mal calculado
+y visible al usuario**, infravalorado por el multiplicador del instrumento (×20 NQ, ×50 ES,
+×100 GC, ×1000 CL). No entró en #154 porque exige llevar `pointValue` hasta `MinimalTrade`
+y la consulta de `dashboard-service`, que es otra tubería. El `riskRewardRatio` de al lado
+**sí es correcto**: es un ratio.
+
+Los tres defectos comparten causa: el proyecto aprendió la lección del `pointValue` para el
+**P&L** (ver el comentario en `trade-write-service.ts`, ruta de cierre) y nunca la trasladó
+al **riesgo**.
+
 ## 1. Checklist de QA pendiente de V3
 
 > Los 109 ítems provienen de los 17 `OPEN_ITEMS_SPRINT_N.md` (hoy borrados; ver git). Se volcaron

@@ -40,16 +40,30 @@ export interface RiskInput {
   entry: number
   stop: number
   size: number
+  /**
+   * Dollar value of one full point per contract/unit (e.g. NQ = $20, ES = $50).
+   * Defaults to 1 so price-difference instruments (1 unit = $1) are unchanged —
+   * the same convention `computeClosedTradePnl` uses.
+   */
+  pointValue?: number
 }
 
-/** Money at risk = |entry − stop| × size. */
-export function deriveRiskAmount({ entry, stop, size }: RiskInput): number {
-  return Math.abs(entry - stop) * size
+/**
+ * Money at risk = |entry − stop| × size × pointValue.
+ *
+ * The point value is NOT optional in meaning, only in the signature: without it
+ * a 70-point NQ stop on 0.02 contracts reads as $1.40 instead of $28 — wrong by
+ * the instrument's multiplier (×20 NQ, ×50 ES, ×100 GC, ×1000 CL). That is how
+ * every `riskPct` in production came out ~20× too small, which in turn kept the
+ * 1.5 % oversizing threshold permanently out of reach.
+ */
+export function deriveRiskAmount({ entry, stop, size, pointValue = 1 }: RiskInput): number {
+  return Math.abs(entry - stop) * size * pointValue
 }
 
 /** Risk as % of account balance, rounded to 2dp. Null when balance ≤ 0. */
-export function deriveRiskPct({ entry, stop, size, balance }: RiskInput & { balance: number }): number | null {
+export function deriveRiskPct({ entry, stop, size, pointValue, balance }: RiskInput & { balance: number }): number | null {
   if (!(balance > 0)) return null
-  const pct = (deriveRiskAmount({ entry, stop, size }) / balance) * 100
+  const pct = (deriveRiskAmount({ entry, stop, size, pointValue }) / balance) * 100
   return Math.round(pct * 100) / 100
 }

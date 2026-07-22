@@ -59,6 +59,8 @@ function buildCreateCaller(planNotes: string | null) {
     // realised P&L); no closed trades here, so equity is the initial balance.
     trade:      { create: vi.fn().mockResolvedValue(trade), findUniqueOrThrow: vi.fn().mockResolvedValue(trade), update: vi.fn().mockResolvedValue(trade), aggregate: vi.fn().mockResolvedValue({ _sum: { pnl: 0 } }) },
     tradeEvent: { create: vi.fn().mockResolvedValue({}) },
+    // Risk in money needs the instrument's point value; no market row → 1.
+    market:     { findFirst: vi.fn().mockResolvedValue(null) },
     tag:        { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     rule: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
   }

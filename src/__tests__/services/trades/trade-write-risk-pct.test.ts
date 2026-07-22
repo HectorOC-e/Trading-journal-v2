@@ -52,7 +52,7 @@ const INPUT = {
   status: "OPEN", tags: [] as string[],
 }
 
-function mockPrisma(opts: { initialBalance: number; closedPnl: number }) {
+function mockPrisma(opts: { initialBalance: number; closedPnl: number; pointValue?: string | null }) {
   const created = { id: "t-1", accountId: ACCOUNT, symbol: "NQ", direction: "LONG",
     session: null, setupId: null, size: 0.02, entry: 21450, stop: 21380,
     status: "OPEN", tags: [] as string[], pnl: null, rMultiple: null }
@@ -74,6 +74,8 @@ function mockPrisma(opts: { initialBalance: number; closedPnl: number }) {
       findUniqueOrThrow: vi.fn().mockResolvedValue(created),
     },
     tradeEvent: { create: vi.fn().mockResolvedValue({}) },
+    // Symbol not in the catalog → pointValue 1 (price-difference instrument).
+    market: { findFirst: vi.fn().mockResolvedValue(opts.pointValue ? { pointValue: opts.pointValue } : null) },
   } as unknown as PrismaClient
 }
 
@@ -111,6 +113,15 @@ describe("createTrade — riskPct fallback", () => {
     await createTrade(prisma, USER, { ...INPUT, riskPct: 1.5 } as never)
     expect(riskPctPassedTo(prisma)).toBe(1.5)
     expect(prisma.trade.aggregate).not.toHaveBeenCalled()
+  })
+
+  it("applies the instrument's point value — a 70pt NQ stop risks $28, not $1.40", async () => {
+    // Cuenta Sana reproducida: equity 2150, NQ a $20/pt, 70 pts, 0.02 contratos.
+    // Riesgo real 70 × 0.02 × 20 = $28 → 1.30 %. Sin pointValue salía 0.07 %,
+    // veinte veces menos, y el umbral de oversizing (1.5 %) quedaba inalcanzable.
+    const prisma = mockPrisma({ initialBalance: 0, closedPnl: 2150, pointValue: "$20" })
+    await createTrade(prisma, USER, { ...INPUT } as never)
+    expect(riskPctPassedTo(prisma)).toBeCloseTo(1.3, 2)
   })
 
   it("leaves riskPct null when equity is genuinely zero (nothing to divide by)", async () => {

@@ -84,6 +84,14 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     .aggregate({ where: { accountId: input.accountId, userId, status: "CLOSED" }, _sum: { pnl: true } })
     .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0)))
 
+  // Dollar value of one point for this instrument. Risk in money is meaningless
+  // without it — the same lookup the close path already does for P&L. Resolved
+  // at most once; defaults to 1 when the symbol is not in the user's catalog.
+  let pv: Promise<number> | null = null
+  const pointValue = () => (pv ??= prisma.market
+    .findFirst({ where: { userId, symbol: input.symbol }, select: { pointValue: true } })
+    .then((m) => parsePointValue(m?.pointValue)))
+
   // 1) Risk-limit pre-trade guard (all account types). Throws ACCOUNT_LOCKED
   //    on an active lock; auto-reactivates an elapsed temporal lock.
   const enforceAccount: EnforceableAccount = {
@@ -144,18 +152,18 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     const dayBase = initialBalance + (totalPnl - dayPnl)
     if (dayBase > 0) {
       const remainingPct = Number(account.ddDailyPct) / 100 + dayPnl / dayBase
-      const tradeRiskPct = (deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: initialBalance + totalPnl }) ?? 0) / 100
+      const tradeRiskPct = (deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, pointValue: await pointValue(), balance: initialBalance + totalPnl }) ?? 0) / 100
       const guard = evaluateBudgetGuard({ remainingPct, tradeRiskPct, exhausted: remainingPct <= 0 })
       if (guard.block) throw new AppError("BUDGET_EXCEEDED", { detail: guard.message ?? "" })
     }
   }
 
   // 4) User automations — PRE-trade (may block the operation / mutate tags)
-  const preRules = await runRules(prisma, userId, "TRADE_PRE_CREATE", () =>
+  const preRules = await runRules(prisma, userId, "TRADE_PRE_CREATE", async () =>
     buildContext(prisma, userId, { id: input.accountId, initialBalance: Number(account.initialBalance) }, {
       symbol: input.symbol, direction: input.direction, session: input.session ?? null,
       setupId: input.setupId ?? null, size: input.size, entry: input.entry, stop: input.stop,
-      tags: input.tags, date: input.date,
+      tags: input.tags, date: input.date, pointValue: await pointValue(),
     }),
   )
   if (preRules.blocked) throw new AppError("RULE_BLOCKED", { detail: preRules.blockMessage ?? "" })
@@ -176,6 +184,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     input.riskPct ??
     deriveRiskPct({
       entry: input.entry, stop: input.stop, size: input.size,
+      pointValue: await pointValue(),
       balance: await accountEquity(),
     })
 
@@ -190,11 +199,11 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   // User automations — POST-trade (best-effort; never break the write).
   try {
     const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_CREATED"
-    const postRules = await runRules(prisma, userId, postTrigger, () =>
+    const postRules = await runRules(prisma, userId, postTrigger, async () =>
       buildContext(prisma, userId, { id: trade.accountId, initialBalance: Number(account.initialBalance) }, {
         symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
         setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
-        tags: trade.tags as string[], date: input.date,
+        tags: trade.tags as string[], date: input.date, pointValue: await pointValue(),
         pnl: trade.pnl != null ? Number(trade.pnl) : null,
         rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
       }),
@@ -276,11 +285,14 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
   try {
     const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
     const dateStr = (trade.date as Date).toISOString().slice(0, 10)
-    const postRules = await runRules(prisma, userId, postTrigger, () =>
+    const postRules = await runRules(prisma, userId, postTrigger, async () =>
       buildContext(prisma, userId, { id: trade.accountId, initialBalance: Number(trade.account.initialBalance) }, {
         symbol: trade.symbol, direction: trade.direction, session: trade.session as string | null,
         setupId: trade.setupId, size: Number(trade.size), entry: Number(trade.entry), stop: Number(trade.stop),
         tags: trade.tags as string[], date: dateStr,
+        pointValue: parsePointValue(
+          (await prisma.market.findFirst({ where: { userId, symbol: trade.symbol }, select: { pointValue: true } }))?.pointValue,
+        ),
         pnl: trade.pnl != null ? Number(trade.pnl) : null,
         rMultiple: trade.rMultiple != null ? Number(trade.rMultiple) : null,
       }),

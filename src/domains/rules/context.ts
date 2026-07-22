@@ -17,6 +17,9 @@ export interface ContextTrade {
   date: string                 // YYYY-MM-DD
   pnl?: number | null          // known post-trade
   rMultiple?: number | null    // known post-trade
+  /** Dollar value of one point (NQ = $20). Without it `riskPct` is off by the
+   *  instrument multiplier. Defaults to 1 (price-difference instruments). */
+  pointValue?: number
 }
 export interface ContextAccount { id: string; initialBalance: number }
 
@@ -63,7 +66,8 @@ export async function buildContext(
   // balance was never set (0 — 3 of 5 in production), so a rule conditioned on
   // riskPct/dayPnlPct/weekPnlPct evaluated 0 % forever and protected nothing.
   // Same defect fixed in `createTrade` (#152); same basis used there.
-  const risk = Math.abs(t.entry - t.stop) * t.size
+  // Money at risk — needs the point value for the same reason P&L does.
+  const risk = Math.abs(t.entry - t.stop) * t.size * (t.pointValue ?? 1)
 
   return {
     symbol: t.symbol,
