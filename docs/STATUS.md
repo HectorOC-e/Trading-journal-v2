@@ -261,12 +261,38 @@ se reescribía. Dos consecuencias:
 Tras el arreglo, el mismo recompute (`touched: 10`) sí reescribió: `severity` pasó de `positive`
 a `warning` y el texto al nuevo, con las cifras exactas ($314 / $1.715 / 62.1 %).
 
+### Fase 5 — superficies analíticas, recorridas
+
+11 superficies con datos reales: **todas HTTP 200 y cero errores de consola** en el recorrido
+completo (`/dashboard`, `/trades`, `/psicologia`, `/aprendizaje`, `/playbook`, `/mercados`,
+`/etiquetas`, `/retiros`, `/cuentas`, `/notificaciones`, `/reglas`).
+
+Las cuatro pestañas de `/dashboard` responden con datos coherentes:
+
+| Pestaña | Contenido |
+|---|---|
+| Portfolio | Net P&L +$2.719,80 · 68 operaciones |
+| Operador | Riesgo Planificado prom. **$155,92** · Reward $207,32 |
+| Playbook | Más usado: OBR · 38 trades · **Más rentable: BL** |
+| Disciplina | Costo indisciplina −$1.520,40 · Off-plan 14, Revanche 1 |
+
+**#159 verificado en vivo.** El riesgo planificado se contrastó contra un cálculo SQL
+independiente: con `point_value` da **155,92** (lo que muestra la UI) y sin él **9,44** (lo que
+mostraba antes). Estaba ~16× por debajo.
+
+**Confirmación independiente de #157:** la pestaña Playbook ya usaba el **neto** para "más
+rentable" y decía **BL**, mientras el insight determinista decía OBR. Dos superficies del propio
+producto discrepaban entre sí; ahora ambas coinciden.
+
+`/psicologia` y `/aprendizaje` muestran mensajes de vacío — coherente: el check-in pre-sesión y
+los recursos de estudio no se ejercitaron en esta simulación.
+
 ### Lo que NO se pudo verificar
 
 - **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
   sobre protecciones. No es un fallo de la simulación.
-- **La Fase 5 entera** (recorrido de superficies analíticas) queda sin ejecutar, y
-  `psychology_analysis` sin validar a fondo su salida.
+- **`psychology_analysis`** sin validar a fondo su salida, y el check-in pre-sesión y los
+  recursos de aprendizaje sin ejercitar (ambas superficies muestran vacío, coherentemente).
 - **No hay UI para la búsqueda semántica.** Desde #156 los vectores se generan (16/16), pero
   `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin consumidor: el
   usuario no tiene dónde buscar. Es producto, no un defecto.
