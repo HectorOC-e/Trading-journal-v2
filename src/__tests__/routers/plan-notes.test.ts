@@ -55,7 +55,9 @@ function buildCreateCaller(planNotes: string | null) {
   const trade = makeTrade(planNotes)
   const mockPrisma = {
     account:    { findUniqueOrThrow: vi.fn().mockResolvedValue(BASE_ACCOUNT) },
-    trade:      { create: vi.fn().mockResolvedValue(trade), findUniqueOrThrow: vi.fn().mockResolvedValue(trade), update: vi.fn().mockResolvedValue(trade) },
+    // `aggregate` backs the riskPct fallback's equity lookup (initial balance +
+    // realised P&L); no closed trades here, so equity is the initial balance.
+    trade:      { create: vi.fn().mockResolvedValue(trade), findUniqueOrThrow: vi.fn().mockResolvedValue(trade), update: vi.fn().mockResolvedValue(trade), aggregate: vi.fn().mockResolvedValue({ _sum: { pnl: 0 } }) },
     tradeEvent: { create: vi.fn().mockResolvedValue({}) },
     tag:        { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     rule: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
