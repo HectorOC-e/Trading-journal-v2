@@ -47,15 +47,22 @@ export async function buildContext(
   const wins = rows.filter((r) => r.pnl > 0).length
   const winRate = rows.length ? (wins / rows.length) * 100 : 0
 
-  // Max drawdown % over the closed-trade equity path.
+  // Max drawdown % over the closed-trade equity path. The walk starts at the
+  // initial balance on purpose — drawdown is measured along the whole path.
   let bal = account.initialBalance, peak = bal, ddMax = 0
   for (const r of rows) { bal += r.pnl; peak = Math.max(peak, bal); if (peak > 0) ddMax = Math.max(ddMax, ((peak - bal) / peak) * 100) }
+  // …and having walked it, `bal` is the current equity.
+  const equity = bal
 
   // Minutes since the most recent losing trade (for revenge-trade rules).
   const lastLoss = [...rows].reverse().find((r) => r.pnl < 0)
   const minsSinceLastLoss = lastLoss ? Math.max(0, Math.round((Date.now() - lastLoss.createdAt.getTime()) / 60000)) : 999999
 
-  const ib = account.initialBalance
+  // Percentages divide by EQUITY, not by the initial balance. Dividing by the
+  // latter made these three fields a constant 0 on every account whose initial
+  // balance was never set (0 — 3 of 5 in production), so a rule conditioned on
+  // riskPct/dayPnlPct/weekPnlPct evaluated 0 % forever and protected nothing.
+  // Same defect fixed in `createTrade` (#152); same basis used there.
   const risk = Math.abs(t.entry - t.stop) * t.size
 
   return {
@@ -67,9 +74,9 @@ export async function buildContext(
     tags: t.tags,
     pnl: t.pnl ?? null,
     rMultiple: t.rMultiple ?? null,
-    riskPct: ib > 0 ? (risk / ib) * 100 : 0,
-    dayPnlPct: ib > 0 ? (dayPnl / ib) * 100 : 0,
-    weekPnlPct: ib > 0 ? (weekPnl / ib) * 100 : 0,
+    riskPct: equity > 0 ? (risk / equity) * 100 : 0,
+    dayPnlPct: equity > 0 ? (dayPnl / equity) * 100 : 0,
+    weekPnlPct: equity > 0 ? (weekPnl / equity) * 100 : 0,
     drawdownPct: ddMax,
     winRate,
     tradesToday,
