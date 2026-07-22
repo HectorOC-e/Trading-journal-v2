@@ -4,25 +4,38 @@
 > Última actualización: 2026-07-22.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
-## ⛔ ACCIÓN PENDIENTE DE REVERTIR — dos reglas de aria desactivadas (2026-07-22)
+## Hallazgo de diseño: las protecciones impiden la conducta que los detectores miden (2026-07-22)
 
-La Fase 2 de la simulación necesita registrar revanchas tras pérdida, y el cooldown
-anti-revancha las bloquea (usa **reloj real**: `Date.now() − lastLoss.createdAt`, ver
-`domains/rules/context.ts`). Se desactivaron **temporalmente** dos reglas `enforce` de
-severidad CRÍTICA. **Si esta sesión se cortó antes de restaurarlas, prod está desprotegida.**
+> Las dos reglas anti-revancha de aria se desactivaron temporalmente durante la simulación y
+> **quedaron restauradas** (`enabled = true`, verificado). No hay acción pendiente.
 
-Restaurar con:
+Al intentar generar volumen con patrón para Fase 2, **tres capas de protección distintas
+bloquearon los trades**, cada una correctamente:
 
-```sql
-update rules set enabled = true
-where id in ('17e224ce-a169-4350-80ef-10c5d092e8a3',   -- Enfriamiento tras una pérdida
-             'c4e63c9d-29bf-411f-9148-11bafdfe5001');  -- Bloquear revenge trade
-```
+1. **Cooldown anti-revancha** (`Bloquear revenge trade` + `Enfriamiento tras una pérdida`):
+   `minsSinceLastLoss < 15`. Usa **reloj real** (`Date.now() − lastLoss.createdAt`, ver
+   `rules/context.ts`), no la fecha del trade — así que ninguna simulación rápida puede
+   registrar una revancha, ponga la fecha que ponga. Disparó `CRITICAL_ALERT` y generó
+   notificación: el loop `regla → alerta → notificación` funciona de punta a punta.
+2. **Guard de presupuesto diario** (`evaluateBudgetGuard`): rechazó una revancha con **triple
+   tamaño** tras dos pérdidas. Aritmética verificada: margen restante 2.39 %, riesgo del trade
+   4.02 % → bloqueo. Exactamente su propósito.
+3. **Guard de margen** en el formulario: deshabilita el submit si el margen requerido supera
+   el balance.
 
-Verificar después: `select name, enabled from rules where id in (…)` → ambas `true`.
+**La consecuencia es estructural, no un bug.** El detector de *oversizing* necesita ≥20 % de
+trades post-pérdida sobredimensionados, y el de *revenge* ≥30 % de post-pérdida. En una cuenta
+con las protecciones puestas **esas muestras no se pueden acumular**: el producto impide la
+conducta antes de que llegue a ser un patrón. Los detectores correspondientes son, por diseño,
+inalcanzables en una cuenta protegida — y eso explica en parte por qué `interventions` sigue
+vacía en producción.
 
-Ambas quedaron **probadas y funcionando** antes de desactivarlas: bloquearon un intento
-real de revancha, dispararon `CRITICAL_ALERT` y generaron notificación.
+Los únicos detectores que pueden alcanzar umbral sin desmontar protecciones son los que **no
+chocan con ningún guard**: `intraday-decay` (trades tardíos) y `off-plan` (checklist sin marcar).
+
+⚠️ **Nota sobre el guard de presupuesto:** estaba prácticamente inerte antes de #154. Con el
+riesgo infravalorado ×20 casi nunca alcanzaba el umbral; al corregir el `point_value` empezó a
+bloquear de verdad. Su comportamiento actual es nuevo en la práctica, aunque el código sea viejo.
 
 ## Auditoría de la matemática de riesgo (2026-07-22)
 
