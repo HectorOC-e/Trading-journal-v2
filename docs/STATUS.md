@@ -51,14 +51,19 @@ Tres defectos de la misma familia aparecieron seguidos al simular en aria. Se au
 | `components/trades/register-trade-modal.tsx:332` (`calcRR`) | ✅ correcto — ratio, se cancela |
 | `trading/services/trade-derivation.ts:47` (`deriveRiskAmount`) | 🔴 **arreglado (#154)** |
 | `rules/context.ts:66` (`riskPct` de reglas) | 🔴 **arreglado (#154)** |
-| `analytics/services/dashboard-analytics.ts:515` (`avgPlannedRisk`) | 🔴 **PENDIENTE** |
+| `analytics/services/dashboard-analytics.ts:515` (`avgPlannedRisk`) | 🔴 **arreglado (#159)** |
 
-**Lo que queda pendiente y por qué.** `avgPlannedRisk` se muestra en `tab-operador.tsx:295`
-como `$${valor}` con el subtítulo "riesgo en $ al abrir el trade": es **dinero mal calculado
-y visible al usuario**, infravalorado por el multiplicador del instrumento (×20 NQ, ×50 ES,
-×100 GC, ×1000 CL). No entró en #154 porque exige llevar `pointValue` hasta `MinimalTrade`
-y la consulta de `dashboard-service`, que es otra tubería. El `riskRewardRatio` de al lado
-**sí es correcto**: es un ratio.
+**Cerrado en #159.** `avgPlannedRisk` se muestra en `tab-operador.tsx:295` como `$${valor}` con
+el subtítulo "riesgo en $ al abrir el trade": era **dinero mal calculado y visible al usuario**,
+infravalorado por el multiplicador del instrumento (×20 NQ, ×50 ES, ×100 GC, ×1000 CL). El
+`riskRewardRatio` de al lado **siempre fue correcto**: es un ratio y el factor se cancela.
+
+> Al aplazarlo en #154 se justificó diciendo que exigía otra tubería. **Era falso**:
+> `dashboard-service` ya cargaba `marketRows` con `pointValue` para la exposición apalancada;
+> sólo había que construir el mapa antes de normalizar los trades. Sin consulta nueva.
+
+**Con esto la auditoría queda cerrada**: no quedan sitios que traten una diferencia de precios
+como dinero sin el multiplicador del instrumento.
 
 Los tres defectos comparten causa: el proyecto aprendió la lección del `pointValue` para el
 **P&L** (ver el comentario en `trade-write-service.ts`, ruta de cierre) y nunca la trasladó
@@ -262,8 +267,9 @@ a `warning` y el texto al nuevo, con las cifras exactas ($314 / $1.715 / 62.1 %)
   sobre protecciones. No es un fallo de la simulación.
 - **La Fase 5 entera** (recorrido de superficies analíticas) queda sin ejecutar, y
   `psychology_analysis` sin validar a fondo su salida.
-- **`avgPlannedRisk`** (`dashboard-analytics:515`) sigue mal por el `point_value` — ver la
-  auditoría de riesgo más arriba.
+- **No hay UI para la búsqueda semántica.** Desde #156 los vectores se generan (16/16), pero
+  `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin consumidor: el
+  usuario no tiene dónde buscar. Es producto, no un defecto.
 
 ### Lo que esto NO prueba
 
