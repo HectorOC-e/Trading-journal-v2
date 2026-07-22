@@ -218,6 +218,44 @@ Aparte, el modelo gratuito produjo dos fallos de redacción en la misma respuest
 encima del esperado 55 %)"* —52.6 < 55— y la palabra inventada *"onderachievar"*. Son calidad de
 `openrouter/free`, no de los datos.
 
+### Corrección de los hallazgos de Fase 4 y re-verificación (2026-07-22)
+
+Tres PRs más, todos verificados **en producción** después de desplegar:
+
+**#156 — los embeddings heredaban el modelo de chat.** `resolveFeatureModel` aplicaba el
+`defaultModel` global a todas las features; ese default es un modelo de chat y no puede embeber.
+`EMBEDDING_LADDER` existía y estaba bien, pero sólo se consultaba con `"auto"`. Ahora los
+embeddings nunca heredan el default de chat.
+
+- `/perfil` pasa a decir la verdad **sin tocar el diagnóstico**: muestra
+  `Embeddings (búsqueda) · openai/text-embedding-3-small`, y las otras 4 features siguen en
+  `openrouter/free`, que es lo correcto para chat.
+- `backfillEmbeddings` → **`{embedded: 16, failed: 0, remaining: 0}`**. Antes fallaban las 16.
+- `semanticSearch` con *"entré antes de tiempo fuera de plan"* devuelve como primer resultado
+  la nota *"Ya llevaba horas delante. Entré fuera de plan, buscando algo que no estaba ahí."*
+
+**#157 — la concentración de setup ignoraba las pérdidas.** El detector sumaba sólo ganancia
+bruta y desde ahí recomendaba subir tamaño. Medido: Order Block Reversal tenía $9.300 brutos y
+**$314 netos**; Breakout London, $5.680 brutos y **$1.715 netos**. El sistema recomendaba doblar
+la apuesta en el peor y podar el mejor. Ahora el neto decide: si el líder en bruto no lidera en
+neto, el insight pasa a `warning` y nombra al que sí deja dinero.
+
+Esto **resuelve la contradicción con el Coach**: ambos apuntan ya a Breakout London. El Coach
+tenía razón; el insight determinista era el equivocado.
+
+**#158 — un insight vivo se congelaba en su primer cálculo.** Descubierto al re-probar #157:
+estaba mergeado, desplegado, y el usuario **seguía viendo el consejo malo**. Al reconciliar, los
+supervivientes se tocaban con un `updateMany` que sólo bumpeaba `lastSeenAt`; el contenido nunca
+se reescribía. Dos consecuencias:
+
+1. Las cifras envejecían en silencio — un `off-plan` detectado al 23.9 % seguiría diciendo 23.9 %
+   con el trader al 50 %, y el badge `n=14` seguiría en 14 haya los trades que haya.
+2. **Un detector corregido no alcanzaba a quien ya tenía el insight.** El recompute devolvía
+   `{created: 0, touched: 10}` y la fila quedaba intacta.
+
+Tras el arreglo, el mismo recompute (`touched: 10`) sí reescribió: `severity` pasó de `positive`
+a `warning` y el texto al nuevo, con las cifras exactas ($314 / $1.715 / 62.1 %).
+
 ### Lo que NO se pudo verificar
 
 - **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
