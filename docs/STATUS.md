@@ -284,15 +284,34 @@ mostraba antes). Estaba ~16× por debajo.
 rentable" y decía **BL**, mientras el insight determinista decía OBR. Dos superficies del propio
 producto discrepaban entre sí; ahora ambas coinciden.
 
-`/psicologia` y `/aprendizaje` muestran mensajes de vacío — coherente: el check-in pre-sesión y
-los recursos de estudio no se ejercitaron en esta simulación.
+> ⚠️ **Corrección a una versión anterior de esta sección.** Se reportó que `/psicologia` y
+> `/aprendizaje` "muestran mensajes de vacío". Era un **falso positivo de la heurística** del
+> script de recorrido, no un hecho: al abrirlas de verdad, `/aprendizaje` tiene calendario
+> semanal, **"3 repasos vencen hoy"**, un recurso en curso ("Order Flow Mechanics") y acciones
+> de planificar/revisar. El SRS está vivo.
+
+### Lo que quedaba sin verificar, ya verificado
+
+- **Check-in pre-sesión ✅** — `psychology.submitCheckin` devuelve veredicto real
+  (`{verdict:"caution", score:3, reasons:["energía bajo (2/5)"], recommendation:"Opera con
+  cautela: reduce el riesgo y limítate a tus mejores setups."}`) y la UI lo renderiza completo.
+- **SRS / aprendizaje ✅** — 3 repasos vencidos hoy, recurso en curso, calendario semanal.
+- **`psychology_analysis` ✅ — NO está roto.** Devolvió 500 dos veces y quince minutos después
+  respondía `200` en los cuatro periodos con análisis real. El fallo es **transitorio**, no
+  determinista: `openrouter/free` **sin fallback configurado**. Lo que sí era un defecto es que
+  la causa se perdía — corregido en #160.
+
+**Calidad del tier gratuito.** Tres muestras de basura en las salidas del modelo: *"52.6 % (por
+encima del esperado 55 %)"* (52.6 < 55), la palabra inventada *"onderachievar"*, y caracteres
+bengalíes (*"ফোন"*) a mitad de una frase en español. Los **datos** siempre fueron correctos; es
+la redacción. Si la IA va a ser superficie de producto, ese tier se nota — decisión de coste.
 
 ### Lo que NO se pudo verificar
 
 - **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
   sobre protecciones. No es un fallo de la simulación.
-- **`psychology_analysis`** sin validar a fondo su salida, y el check-in pre-sesión y los
-  recursos de aprendizaje sin ejercitar (ambas superficies muestran vacío, coherentemente).
+- **Sin fallback de IA configurado.** `openrouter/free` sin respaldo: cualquier fallo
+  transitorio del proveedor llega al usuario como error. Es configuración, no código.
 - **No hay UI para la búsqueda semántica.** Desde #156 los vectores se generan (16/16), pero
   `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin consumidor: el
   usuario no tiene dónde buscar. Es producto, no un defecto.
