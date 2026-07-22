@@ -355,6 +355,35 @@ describe("buildExecutionStats", () => {
     expect(r.avgPlannedReward).toBeCloseTo(0.2, 5)
     expect(r.riskRewardRatio).toBeCloseTo(2, 4)
   })
+
+  // `avgPlannedRisk` se pinta como "$X · riesgo en $ al abrir el trade"
+  // (tab-operador.tsx). Sin el valor del punto, un stop de 70 puntos en NQ con
+  // 0.02 contratos se mostraba como $1.40 en vez de $28 — ×20, y ×50 en ES,
+  // ×100 en GC, ×1000 en CL. Último superviviente de la familia de #154.
+  it("aplica el point value del instrumento al riesgo en dinero", () => {
+    const r = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, entry: 21500, stop: 21430, target: 21620, size: 0.02, pointValue: 20 }),
+    ])
+    expect(r.avgPlannedRisk).toBeCloseTo(28, 5)     // 70 × 0.02 × 20
+    expect(r.avgPlannedReward).toBeCloseTo(48, 5)   // 120 × 0.02 × 20
+  })
+
+  it("el R:R no cambia con el point value — es un ratio y el factor se cancela", () => {
+    const sin = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, entry: 21500, stop: 21430, target: 21620, size: 0.02 }),
+    ])
+    const con = buildExecutionStats([
+      trade({ id: "2", date: "2026-05-01", pnl: 10, entry: 21500, stop: 21430, target: 21620, size: 0.02, pointValue: 20 }),
+    ])
+    expect(con.riskRewardRatio).toBeCloseTo(sin.riskRewardRatio!, 4)
+  })
+
+  it("sin point value asume 1, para instrumentos donde 1 unidad = $1", () => {
+    const r = buildExecutionStats([
+      trade({ id: "1", date: "2026-05-01", pnl: 10, entry: 1.10, stop: 1.09, target: 1.12, size: 10 }),
+    ])
+    expect(r.avgPlannedRisk).toBeCloseTo(0.1, 5)
+  })
 })
 
 // ── buildDiscipline (TD-018 extraction) ─────────────────────────────────────

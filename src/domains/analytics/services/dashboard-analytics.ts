@@ -21,6 +21,13 @@ export type MinimalTrade = {
   stop:      number
   target:    number
   size:      number
+  /**
+   * Valor en dólares de un punto completo del instrumento (NQ = $20, ES = $50).
+   * Sin él, cualquier cifra de DINERO derivada de precios queda mal por el
+   * multiplicador. Opcional y con defecto 1 para instrumentos donde 1 unidad
+   * = $1, la misma convención que `computeClosedTradePnl`.
+   */
+  pointValue?: number
 }
 
 export type AccountBalance = { id: string; initialBalance: number }
@@ -512,8 +519,12 @@ export function buildExecutionStats(trades: MinimalTrade[]): ExecutionStats {
       const mins = (ch * 60 + cm) - (oh * 60 + om)
       if (mins > 0) durations.push(mins)
     }
-    const risk   = Math.abs(t.entry - t.stop)   * t.size
-    const reward = Math.abs(t.target - t.entry) * t.size
+    // Riesgo y recompensa PLANIFICADOS, en dinero: necesitan el valor del punto
+    // igual que el P&L. `riskRewardRatio`, más abajo, es inmune — al ser un
+    // cociente el factor se cancela, y por eso era correcto sin esto.
+    const pv     = t.pointValue ?? 1
+    const risk   = Math.abs(t.entry - t.stop)   * t.size * pv
+    const reward = Math.abs(t.target - t.entry) * t.size * pv
     if (risk   > 0) risks.push(risk)
     if (reward > 0) rewards.push(reward)
   }

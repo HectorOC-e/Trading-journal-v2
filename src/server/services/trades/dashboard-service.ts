@@ -207,6 +207,13 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
 
   const setupMap      = new Map(setupRows.map(s => [s.id, s]))
   const checklistMap  = new Map(checklistRows.map(r => [r.tradeId, { checked: r.itemsChecked.length, total: r.itemsTotal }]))
+  // Alimenta la exposición apalancada de las posiciones abiertas y el riesgo
+  // planificado en dinero: sin el valor del punto, ambos quedan mal por el
+  // multiplicador del instrumento.
+  const marketBySymbol = new Map(marketRows.map(m => [m.symbol, {
+    category:   m.category as string,
+    pointValue: parsePointValue(m.pointValue),
+  }]))
 
   // ── Normalize trades ──────────────────────────────────────────────────
   const allTrades: MinimalTrade[] = tradeRows.map(t => ({
@@ -226,6 +233,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     stop:      Number(t.stop),
     target:    Number(t.target),
     size:      Number(t.size),
+    pointValue: marketBySymbol.get(t.symbol)?.pointValue ?? 1,
   }))
 
   // ── Practice partition ────────────────────────────────────────────────
@@ -268,10 +276,6 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const accountStats = buildAccountStats(trades, acctBalances, today, monthStart, weekStart, limitsById)
 
   // ── Live leverage exposure from OPEN positions ───────────────────────────
-  const marketBySymbol = new Map(marketRows.map(m => [m.symbol, {
-    category:   m.category as string,
-    pointValue: parsePointValue(m.pointValue),
-  }]))
   const balanceById = new Map(accountStats.map(s => [s.accountId, s.balance]))
   const exposureById = buildAccountExposure(
     openTradeRows.map(t => ({ accountId: t.accountId, symbol: t.symbol, entry: Number(t.entry), size: Number(t.size) })),
