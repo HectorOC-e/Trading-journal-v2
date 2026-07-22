@@ -77,6 +77,13 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     },
   })
 
+  // Account equity = initial balance + realised P&L. Resolved at most once, and
+  // only when something actually needs it (today: the riskPct fallback below).
+  let equity: Promise<number> | null = null
+  const accountEquity = () => (equity ??= prisma.trade
+    .aggregate({ where: { accountId: input.accountId, userId, status: "CLOSED" }, _sum: { pnl: true } })
+    .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0)))
+
   // 1) Risk-limit pre-trade guard (all account types). Throws ACCOUNT_LOCKED
   //    on an active lock; auto-reactivates an elapsed temporal lock.
   const enforceAccount: EnforceableAccount = {
@@ -158,9 +165,19 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
 
   // riskPct fallback (#27, S2 DT-1): derive server-side when the client did not
   // send it (e.g. imports / API), so the column is never silently null.
+  //
+  // Measured against EQUITY, the same basis the daily-budget guard above uses.
+  // Deriving against `initialBalance` alone returns null on every account whose
+  // initial balance was never set (0) — which is how `risk_pct` ended up null on
+  // 53 of 53 trades in production, silently disabling `verifyOversizedTrades`:
+  // it skips null rows, so it reported zero offenders no matter how the user
+  // traded, and a "stop oversizing" commitment always verified as met.
   const riskPctValue =
     input.riskPct ??
-    deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, balance: Number(account.initialBalance) })
+    deriveRiskPct({
+      entry: input.entry, stop: input.stop, size: input.size,
+      balance: await accountEquity(),
+    })
 
   const trade = await prisma.trade.create({
     data: { ...input, riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date) },
