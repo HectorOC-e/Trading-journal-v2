@@ -862,131 +862,140 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. main está limpio (sin ramas
-ni PRs abiertos). Últimas piezas mergeadas:
-
-  POST-6 (#128) · G2 cutover (#129) · TD-018 (#130) · DT-4 drift check (#131)
-  · grafo graphify (#132) · TD-019 (#133) · auditoría STATUS (#134) · B-02 eslint gate (#135)
-  · B-11 ocultar perillas IA inertes (#137) · B-05 cache invalidation + consolidación de
-  queries (#138/#140) · DT-4 real (#139) · S2/OI-2 emoción 1-tap (#141)
-  · B-04 Sentry activado en prod (#143) · OI-4.8 loops de compromiso (#144)
-  · auditoría S0–S2 (#146) · S0/R-3 unschedule del dispatcher (#148)
-  · auditoría S3–S14 + clasificación en 3 pistas (#149) · OI-3.5 stat (#150)
-  · fixture conductual + validación del loop e2e (#151)
-
-No hay nada a medias esperando merge. Arrancá eligiendo trabajo nuevo, no retomando.
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. main limpio, sin ramas ni PRs
+abiertos. Confirma al arrancar que tienes gh, Supabase MCP, Vercel MCP y Playwright
+(§0 más abajo). OJO: `.env` NO existe en esta máquina — sólo `.env.example`. Supabase MCP
+lo sustituye para todo lo que necesites de BD.
 
 Lee primero, en este orden:
-  1) docs/STATUS.md        (estado, pendientes, checklist de QA)
-  2) docs/PROJECT_GUIDE.md (qué es el producto)
-  3) docs/ARCHITECTURE.md  (principios/decisiones/entidades congelados)
+  1) docs/STATUS.md        — empieza por las 4 secciones de cabecera con fecha 2026-07-22,
+                             que PREVALECEN sobre las 109 filas de la tabla de §1
+  2) docs/PROJECT_GUIDE.md — qué es el producto
+  3) docs/ARCHITECTURE.md  — principios y entidades congelados
 
-Confirma al arrancar que tienes acceso a gh, Vercel MCP, Supabase MCP y .env (handoff §0).
+LA SIMULACIÓN DE TRADER EN ARIA ESTÁ TERMINADA. Fases 0 a 5, el 2026-07-22. NO la repitas.
+Su resultado completo está en STATUS.md, sección "Resultado de la simulación de trader en
+aria". 15 trades sintéticos marcados `sim:2026-07-22` viven en prod a propósito: aria es el
+banco de simulación, no contaminación.
 
-ESTADO DE LA DEUDA — auditado contra CÓDIGO el 2026-07-21 (§1, "Auditoría S3–S14",
-3 pistas). Leé esa sección antes que las 109 filas de la tabla: PREVALECE sobre su
-columna Estado. Resumen:
+LO QUE LA SIMULACIÓN DEMOSTRÓ, y reordena prioridades:
+Tres detectores (`emotion-before-loss`, `emotion-performance`, `violation-emotion`)
+aparecieron en cuanto hubo trades CON EMOCIÓN CAPTURADA. Los 52 históricos tienen cero.
+Bastaron 15 trades. No faltaba volumen: faltaba el gesto. Si vuelves a leer en algún sitio
+que "hace falta más volumen para que los detectores despierten", está obsoleto.
 
-- Pista A (deuda técnica): CERRADA salvo el bug dev-only de DataTable (no afecta prod,
-  el usuario pidió dejarlo) y TD-037 (diferido a conciencia; NO lo re-descubras).
-  #151 añadió y cerró un ítem que la auditoría no había visto: bySymbolDate ordenaba
-  por UUID en vez de por hora (los tests no podían cazarlo porque sus fixtures alinean
-  ambos órdenes por accidente).
-- Pista B (funcionalidad a medias): 3 ítems, y NINGUNO es limpieza —
-    · Outbox sin consumidores (S0/R-3): publishEvent en 5 call-sites, registerHandler en 0.
-      Cron des-agendado por la migración 20260721190000, así que los eventos ya se ACUMULAN
-      en pending en vez de quemarse. Cerrarlo = construir el 1er consumidor de S4 = sprint.
-      El primer consumidor DEBE re-agendar el cron (bloque citado en el header de la migración).
-    · OI-3.3: los detectores de MEDIAS necesitan un comparador de dos muestras que NO existe
-      (normalEstimate es de una sola). OI-3.5 ya se cerró en #150.
-    · OI-7.3 (expectedImpact estático): NO validable hoy — prod tiene 0 interventions.
-- Pista C (roadmap): todo lo demás. Incluye OI-9.3, reclasificado de B a C: el código
-  es inerte de verdad, pero su bloqueo es la superficie PROTEGER (S13), no código.
+9 PRs mergeados ese día (#152-#160), suite 1204 → 1269 tests:
+  · Familia del riesgo mal calculado: #152 (riskPct vs initialBalance) · #153 (mismo bug en
+    buildContext) · #154 (riesgo ignoraba point_value, ×20 en NQ) · #159 (avgPlannedRisk,
+    ×16). La auditoría de riesgo queda CERRADA: no quedan sitios que traten una diferencia
+    de precios como dinero sin el multiplicador del instrumento.
+  · Infra: #155 (crons esperaban 5 s por trabajos declarados para 300 s).
+  · IA/insights: #156 (embeddings heredaban el modelo de chat) · #157 (concentración de setup
+    ignoraba las pérdidas y recomendaba doblar la apuesta en el peor setup) · #158 (un insight
+    vivo se congelaba en su primer cálculo) · #160 (las rutas de IA se tragaban la causa).
 
-DATO QUE REORDENA PRIORIDADES (afinado por #151 — lee §1 "Fixture conductual"):
-casi todo está construido y cableado; lo que el doc pintaba como pozo era maquinaria
-VIVA PERO DORMIDA. Pero la causa NO es "poco volumen": es que NO HAY PATRÓN QUE
-DETECTAR, por construcción. Los 137 trades = 85 sembrados con psicología por tiradas
-INDEPENDIENTES (revengeFlag no depende de haber perdido antes → cero correlación
-temporal, que es justo lo que buscan los detectores) + 52 manuales SIN psicología
-alguna. Y el seed etiqueta en minúscula mientras detectOffPlan busca Off-plan/
-Impulsivo/Revanche: cero solape. Sembrar más con ese script no despertaría nada.
+EL PATRÓN QUE LOS UNE, y la lección: `createTrade`, `buildContext` y `persistInsights` no
+tenían UN SOLO TEST DIRECTO. Así sobrevivieron todos. Si vas a tocar un servidor de escritura
+o de reconciliación, mira primero si tiene cobertura antes de fiarte de él.
 
-Prod: 13 usuarios (10 son cuentas QA del 26-jun con 0 trades; reales 3, y solo la
-demo tiene trades). Último trade de TODO el sistema: 2026-06-19. insights=6 (jun),
-reinforcements=0, interventions=0, feed_ignores=0, commitments=1. VACÍO ≠ ROTO.
+QUÉ QUEDA PENDIENTE, y nada de esto se arregla escribiendo un detector nuevo:
+ 1. Sin fallback de IA. `openrouter/free` sin respaldo: cualquier fallo transitorio del
+    proveedor llega al usuario como error. Es CONFIGURACIÓN, no código. Además el tier
+    gratuito produce basura ocasional en la redacción (se vieron una contradicción
+    aritmética, una palabra inventada y caracteres bengalíes en una frase en español).
+    Los datos siempre fueron correctos; es la prosa. Decisión de coste del usuario.
+ 2. No hay UI de búsqueda semántica. Desde #156 los vectores se generan (16/16 verificados),
+    pero `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin ningún
+    consumidor en la app. El usuario no tiene dónde buscar. Es producto.
+ 3. `revenge` y `oversizing` no alcanzan umbral, y es ESTRUCTURAL: las tres capas de
+    protección (cooldown anti-revancha, guard de presupuesto diario, guard de margen)
+    impiden esa conducta ANTES de que llegue a ser patrón. No lo trates como bug ni
+    intentes "conseguir más datos": el producto está haciendo su trabajo.
+ 4. Primer consumidor S4 de la outbox (S0/R-3). 15+ eventos acumulados en `pending`, que es
+    lo correcto con el dispatcher des-agendado. Construirlo = un sprint. El primer consumidor
+    DEBE re-agendar el cron (bloque citado en el header de la migración 20260721190000), y
+    al hacerlo incluir `timeout_milliseconds := 60000` (ver #155).
+ 5. TD-037: diferido a conciencia. NO lo re-descubras.
+ 6. Bug dev-only de DataTable: no afecta prod, el usuario pidió dejarlo.
 
-El cuello de botella no es código: es que nadie ejercita el sistema. Ojo con la
-conclusión fácil: "conseguir un usuario con volumen" NO basta por sí solo — los 52
-trades reales ya existentes no capturaron ni una emoción. Hace falta un usuario que
-además USE la captura psicológica. #151 dejó un fixture que prueba que la maquinaria
-funciona, pero un fixture no sustituye eso.
+TRAMPAS DE MÉTODO — me costaron varios diagnósticos falsos el 2026-07-22:
+ · NUNCA concluyas "nadie llama a X" desde un grep del NOMBRE de X. Grepea los IMPORTS del
+   módulo, verifica el exit code y ABRE el consumidor. Un grep vacío acusa al grep.
+ · NUNCA declares una feature de IA rota por UN 500. `openrouter/free` falla de forma
+   TRANSITORIA. Reporté `psychology_analysis` como roto y quince minutos después respondía
+   200 en los cuatro periodos. Reintenta antes de diagnosticar.
+ · NO te fíes de heurísticas de "página vacía" sobre el texto del DOM. Reporté /aprendizaje
+   como vacía y tiene el SRS vivo con 3 repasos vencidos. ABRE LA CAPTURA.
+ · Si un arreglo está desplegado y el usuario sigue viendo lo viejo, sospecha de la capa de
+   persistencia antes que del arreglo. Así se encontró #158.
+ · Cuando dos superficies del producto se contradigan, ve a la BD y adjudica: puede que
+   AMBAS tengan razón sobre métricas distintas. El Coach y el motor determinista discrepaban
+   sobre el mejor setup; el Coach tenía razón (neto) y el insight estaba mal (bruto).
 
-TRAMPA DE MÉTODO (me costó 2 hallazgos falsos el 2026-07-21): NUNCA concluyas "nadie
-llama a X" desde un grep del NOMBRE de X. Grepeá los IMPORTS DEL MÓDULO
-(`from ".*mi-servicio"`) —captura a todo consumidor use el símbolo que use— verificá
-que el path exista y mirá el exit code, y ABRÍ el consumidor antes de afirmar nada.
-Así se cayeron OI-4.1 (linkRule estaba completo) y OI-13.1 (el loop de feed_ignores
-estaba cerrado: today.ts:16 → today-service.ts:141-143 → feed.ts:71). Un grep vacío
-acusa al grep, no al código. El hook-guard de .claude/settings.json existe para
-forzar graphify antes de grep: si no lo ves dispararse, algo lo desactivó.
+Reglas de trabajo (estables):
+ · Trabaja desde origin/main; una rama por pieza; PR + CI verde + MERGEA TÚ MISMO con gh
+   (el usuario lo autorizó explícitamente el 2026-07-22 para no frenar el proceso).
+ · TDD para dominios puros. VERIFICA EL ROJO antes de implementar: un test que nunca viste
+   fallar no prueba nada.
+ · Migraciones DUALES (SQL en supabase/migrations + modelo prisma) con `npx prisma generate`;
+   RLS per-usuario en tablas nuevas.
+ · Corre la suite vitest COMPLETA antes de cada push (hoy: 1269). No un subconjunto.
+ · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
+ · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
-Reglas de trabajo (estables desde hace varias sesiones):
-- Trabaja desde origin/main; una rama por pieza; PR + CI verde + merge yo mismo (gh).
-- TDD para dominios puros; migraciones DUALES (SQL en supabase/migrations + modelo
-  prisma) con `npx prisma generate`; RLS per-usuario en tablas nuevas.
-- Corre la suite vitest COMPLETA antes de cada push (hoy: 1204 tests). No un subconjunto.
-- Re-verifica vs CÓDIGO antes de construir. Esto NO es ceremonia: en 2026-07-16, cuatro
-  entradas del doc estaban mal (TD-019 mal caracterizada, el cron ya estaba hecho, B-01/B-03
-  ya hechos, B-11 mal en dos ejes). El doc miente más seguido que el código.
-- Verifica vs BD/UI real: smoke con .env para lógica; Playwright + Vercel MCP (bypass SSO)
-  para UI; usuario demo ariaoc89@gmail.com (pw S12bVerify!2026, = E2E_USER).
-- Node 20 (.nvmrc; engines >=20.12.0). Binarios desde src/ con `pnpm exec` o npx.
-- CI ahora LINTEA (step "Lint" = `pnpm exec eslint .`, falla solo en errores; hay 74
-  warnings aceptados a propósito — ver eslint.config.mjs antes de "arreglarlos").
-- Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
+CANDIDATOS SIGUIENTES, por orden de valor:
+ a) Fallback de IA + elegir modelo de pago (desbloquea calidad de las 5 features).
+ b) UI de búsqueda semántica (los vectores ya existen; falta la superficie).
+ c) Primer consumidor S4 del outbox — sprint completo, ver punto 4.
+ d) Re-verificar la Pista C del roadmap con el método de imports.
 
-GOTCHA crítico de migraciones: migrate-deploy (ci.yml, job "Apply migrations to
-production") corre SOLO en el run del SHA del merge a main (~5 min). `gh run list` justo
-tras mergear suele cazar un run anterior — identifica el run por headSha == HEAD y espera
-ESE `migrate-deploy: success` antes del smoke post-merge (verifica que la tabla exista).
+═══ GOTCHAS QUE SIGUEN VIGENTES ═══
 
-GOTCHA de graphify (RE-CONFIRMADO 2026-07-17 — el "NO se reprodujo" de #143 fue un
-espejismo, NO te fíes de él): `graphify update .` a secas SÍ huerfaniza la capa semántica.
-Medido hoy contra el grafo curado (#143), justo tras OI-4.8: **INFERRED 119 → 49, doc→código
-107 → 0 (TODOS perdidos), doc→doc 643 → 264, mientras los NODOS SUBEN 3410 → 3577.** Por eso
-la guardia anti-shrink (cuenta nodos) nunca lo frena: la pérdida es 100% de edges y silenciosa.
-El re-measure de #143 que dio "84→84 / 119→119" fue un caso afortunado (poco cambió ese día),
-no la regla. **Vía correcta:** NO commitees el resultado de `update .` a secas. Restaurá el
-curado (`git checkout -- graphify-out/`, o el respaldo que el propio update deja en
-`graphify-out/<fecha>/`) y fusioná preservando la capa semántica (extracción semántica con
-API key, o build_merge), midiendo ANTES de commitear. Medir: contar links con
-`confidence==="INFERRED"` y los que cruzan docs↔código vía el mapa nodo→`source_file`
-(script usado hoy: cuenta inferred/doc2code/huérfanos desde graph.json). En OI-4.8 (#144) el
-grafo se dejó **curado a propósito, sin los 3 nodos nuevos** de detectores, antes que
-degradarlo. Ojo: `.graphifyignore` excluye tests/`*.config.ts`/Prisma generado a propósito.
+ENTORNO LOCAL: @sentry/nextjs y puppeteer-core están declarados en package.json pero
+AUSENTES de node_modules (pnpm install se atasca en esta red). Provocan 2 fallos de suite
+(`sentry-wiring`) y 9 errores de tsc que NO son regresiones. En CI pasan. Antes de alarmarte
+por una suite roja en local, comprueba si son "Cannot find module" de esos dos.
+  Vía que SÍ funciona para reinstalar: retirar temporalmente esos dos paquetes de
+  package.json, `pnpm install --offline --no-frozen-lockfile` (20 s desde el store) y
+  restaurar los manifiestos. Verifica luego que git los ve limpios.
+  El node_modules real está en src/, NO en la raíz (la de la raíz está vacía).
 
-GOTCHA del entorno local (medido 2026-07-21): @sentry/nextjs y puppeteer-core están
-declarados en package.json pero AUSENTES de node_modules en la máquina de desarrollo
-(el pnpm install se atasca en esta red). Provocan 2 fallos de la suite y 9 errores de
-tsc que NO son regresiones. Antes de alarmarte por una suite roja en local, comprueba
-si los fallos son "Cannot find module" de esos dos paquetes. En CI pasan.
+GRAPHIFY: `graphify update .` a secas huerfaniza la capa semántica en silencio (INFERRED
+119→49, doc→código 107→0) mientras los NODOS SUBEN, así que la guardia anti-shrink no lo
+frena. NO commitees su resultado a secas: restaura el curado (`git checkout -- graphify-out/`
+o el respaldo en `graphify-out/<fecha>/`) y fusiona preservando la capa semántica, midiendo
+ANTES de commitear.
 
-GOTCHA de TD-019: el fix de auth rinde SOLO porque el proyecto usa claves JWT asimétricas
-(su JWKS sirve ES256). Si alguna vez se rota al secreto legacy HS256, getClaims() vuelve a
-salir a la red en cada request y el fix se anula EN SILENCIO, sin que nada falle.
+TD-019: el fix de auth rinde SÓLO porque el proyecto usa claves JWT asimétricas (JWKS ES256).
+Si se rota al secreto legacy HS256, getClaims() vuelve a salir a la red en cada request y el
+fix se anula EN SILENCIO, sin que nada falle.
 
-Gotcha de credenciales QA: la password del usuario demo fue restaurada el 2026-07-13 al
-valor documentado abajo y el GH secret E2E_USER_PASSWORD re-sincronizado. Si el login
-e2e falla con "Email o contraseña incorrectos", sospecha rotación posterior.
+MIGRACIONES: migrate-deploy corre SÓLO en el run del SHA del merge a main (~5 min).
+`gh run list` justo tras mergear suele cazar un run anterior — identifica el run por
+headSha == HEAD y espera ESE `migrate-deploy: success` antes del smoke post-merge.
 
-QUÉ HACER AHORA: el paso acordado es la SIMULACIÓN DE TRADER en aria vía Playwright
-(ver §7, prompt aparte). aria fue vaciada de trades a propósito para eso. Su función
-declarada es ser banco de simulación: validar funcionalidades pensadas para un trader
-profesional, con datos sintéticos pero realistas. No es contaminar la muestra — es su
-propósito. Si esa simulación ya se hizo, los candidatos siguientes son, por orden:
-re-verificar Pista C con el método de imports · fixture nivel 3 para desbloquear
-OI-7.3 · primer consumidor S4 del outbox (S0/R-3).
+DISPARAR UN CRON SIN .env NI SECRETOS: ejecuta por SQL el mismo `net.http_post` que usa
+`cron.job`; el secreto sale de `public.app_setting('cron_secret')`. Ojo: el comentario de
+la ruta `recompute-insights` dice que la cadencia real "se añadirá cuando el job se promueva"
+— está DESACTUALIZADO, el cron lleva agendado desde 20260626140000.
+
+UI (aprendido operando con Playwright, ahorra horas):
+ · Una INTERVENCIÓN ACTIVA bloquea la app entera con overlay `fixed inset-0` sin salida:
+   sólo "Detener por hoy" o "Seguir, asumo el riesgo". Cualquier automatización muere ahí y
+   PARECE UN CUELGUE. Fue la causa de dos tandas fallidas.
+ · `planNotes` y `notes` son <textarea>, no <input>: `input[name=…]` no los encuentra.
+ · Los resultados del buscador de símbolos son <button> con textContent concatenado
+   ("NQNasdaq-100 E-mini"); el nombre accesible normaliza espacios y rompe el anclaje.
+   Filtra por textContent. El catálogo de aria NO tiene NAS100 ni US30 pese a que los
+   trades históricos los usan.
+ · Los ítems de checklist del setup son BOTONES, no checkboxes. 6/6 → auto-tag `A+`;
+   0/6 → auto-tag `Off-plan`. Es la palanca para controlar el ratio off-plan.
+ · La tabla de trades NO ordena por fecha de creación dentro del mismo día: para cerrar el
+   trade recién creado, filtra la fila por `OPEN` + `fecha||hora` concatenadas.
+ · El nudge de emoción (#141) vive DENTRO del formulario de cierre (trade-detail-panel:458),
+   no del panel de detalle, y sólo si el trade no tiene emoción. Buscarlo en el panel o
+   después de confirmar no lo encuentra nunca.
+ · Prod es público (200 sin bypass SSO) y Vercel MCP NO expone variables de entorno.
 ```
 
 **Datos útiles para la próxima sesión:**
@@ -1014,10 +1023,12 @@ OI-7.3 · primer consumidor S4 del outbox (S0/R-3).
   está en `net._http_response` (TTL corto, se purga), y en última instancia el efecto observable
   del servicio.
 
-## 7. Prompt: simulación de trader profesional en aria (Playwright)
+## 7. Prompt: simulación de trader profesional en aria (Playwright) — ✅ EJECUTADA
 
-> Tarea acordada el 2026-07-21, pendiente de ejecutar. Copia y pega esto **después** del prompt
-> de retoma de §6.
+> ⚠️ **NO VOLVER A EJECUTAR.** Fases 0-5 completadas el 2026-07-22. El resultado está en la
+> sección "Resultado de la simulación de trader en aria", arriba. Este prompt se conserva
+> sólo como registro de lo que se acordó y por qué; el plan por fases sigue en
+> `docs/superpowers/plans/2026-07-21-simulacion-trader-aria.md`.
 
 ```
 TAREA: simular a un trader profesional operando en la cuenta aria, vía Playwright contra
