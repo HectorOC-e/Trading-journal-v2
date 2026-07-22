@@ -118,11 +118,40 @@ export async function persistInsights(
       await publishEvent(tx, { userId, type: "insight.created", payload: { insightId: created.id } })
     }
 
+    // Un insight vivo debe mostrar la medida de HOY. Cuando sólo se bumpeaba
+    // `lastSeenAt`, su contenido quedaba congelado en el primer cálculo: la
+    // métrica y el n del badge envejecían en silencio (un off-plan detectado al
+    // 23.9 % seguía diciendo 23.9 % con el trader al 50 %), y un detector
+    // corregido no alcanzaba jamás a quien ya tenía el insight.
+    // Se refresca el payload y se preserva la identidad: fingerprint, type,
+    // sourceDetector, createdAt y status no se tocan.
     if (plan.toTouch.length > 0) {
-      await tx.insight.updateMany({
-        where: { id: { in: plan.toTouch.map((t) => t.id) } },
-        data: { lastSeenAt: new Date() },
-      })
+      const byFingerprint = new Map(computed.map((c) => [c.fingerprint, c]))
+      const seenAt = new Date()
+      for (const t of plan.toTouch) {
+        const c = byFingerprint.get(t.fingerprint)
+        if (!c) continue
+        await tx.insight.update({
+          where: { id: t.id },
+          data: {
+            lastSeenAt: seenAt,
+            category: c.category,
+            severity: c.severity,
+            title: c.title,
+            detail: c.detail,
+            evidence: c.evidence,
+            recommendation: c.recommendation ?? null,
+            metric: c.metric ?? null,
+            sampleSize: c.sampleSize,
+            confidence: c.confidence ?? null,
+            credibleIntervalLow: c.credibleIntervalLow ?? null,
+            credibleIntervalHigh: c.credibleIntervalHigh ?? null,
+            effectSize: c.effectSize ?? null,
+            windowFrom: c.windowFrom ? new Date(c.windowFrom) : null,
+            windowTo: c.windowTo ? new Date(c.windowTo) : null,
+          },
+        })
+      }
     }
 
     for (const r of plan.toResolve) {
