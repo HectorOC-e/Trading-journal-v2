@@ -1,8 +1,28 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-21.
+> Última actualización: 2026-07-22.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## ⛔ ACCIÓN PENDIENTE DE REVERTIR — dos reglas de aria desactivadas (2026-07-22)
+
+La Fase 2 de la simulación necesita registrar revanchas tras pérdida, y el cooldown
+anti-revancha las bloquea (usa **reloj real**: `Date.now() − lastLoss.createdAt`, ver
+`domains/rules/context.ts`). Se desactivaron **temporalmente** dos reglas `enforce` de
+severidad CRÍTICA. **Si esta sesión se cortó antes de restaurarlas, prod está desprotegida.**
+
+Restaurar con:
+
+```sql
+update rules set enabled = true
+where id in ('17e224ce-a169-4350-80ef-10c5d092e8a3',   -- Enfriamiento tras una pérdida
+             'c4e63c9d-29bf-411f-9148-11bafdfe5001');  -- Bloquear revenge trade
+```
+
+Verificar después: `select name, enabled from rules where id in (…)` → ambas `true`.
+
+Ambas quedaron **probadas y funcionando** antes de desactivarlas: bloquearon un intento
+real de revancha, dispararon `CRITICAL_ALERT` y generaron notificación.
 
 ## 1. Checklist de QA pendiente de V3
 
