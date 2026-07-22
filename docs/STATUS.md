@@ -134,15 +134,58 @@ Los tres primeros convergían en el mismo punto: `verifyOversizedTrades` reporta
 perfecto"* pasara lo que pasara, fabricando refuerzo positivo falso. Ninguno tenía cobertura:
 `createTrade` y `buildContext` no tenían **un solo test directo** — así sobrevivieron.
 
+### Nudge de emoción (#141) — VERIFICADO en vivo
+
+Mergeado el 16-jul y **ejercitado cero veces** hasta ahora. Vive **dentro del formulario de
+cierre** (`trade-detail-panel.tsx:458`), no del panel de detalle: el predicado se pregunta sobre
+el estado al que el trade *va a entrar* (`"CLOSED"` hardcodeado) porque mientras el formulario
+está en pantalla el trade sigue OPEN. Buscarlo en el panel, o después de confirmar, no lo
+encuentra — costó tres intentos.
+
+Con un trade sin `emotion_before`, aparece *"¿Cómo entraste a este trade? Es lo que conecta tu
+psicología con tus resultados."* y las 5 emociones a un toque. Elegida "Sobreconfiado", el cierre
+persistió `emotion_before = overconfident` junto con régimen, MAE y MFE — **sin mandar al usuario
+a otra pantalla**, que era la garantía de diseño. Con emoción ya registrada el nudge **no**
+aparece, también como está diseñado.
+
+### Fase 4 — features de IA
+
+**Paso 0 (cortafuegos): PASA.** Las 5 resuelven con `Clave de usuario` vía OpenRouter, modelo
+`openrouter/free`, sin fallback. Ninguna en `none`.
+
+- **`analytics_insights` ✅** — el panel "Inteligencia IA" narra sobre los insights deterministas
+  con categoría (`CORRELATION` / `OPPORTUNITY`) y recomendación accionable. Incluye un
+  clasificador `User Safety: safe`.
+- **`ai_chat` ✅** — responde con contexto real del trader: violaciones, coste en dólares, R por
+  trade y estado del Playbook. Datos verificados contra BD y **exactos** (52.6 % WR, +0.3479R,
+  19 trades, 27.9 % del total).
+- **`psychology_analysis`** — superficies presentes (check-in pre-sesión Ánimo/Energía/Descanso,
+  calibración). No se validó su salida a fondo.
+- **`weekly_reviews`, `embeddings`** — no ejecutadas.
+
+⚠️ **Hallazgo: dos superficies dan respuestas opuestas a "¿cuál es mi mejor setup?"**
+
+| Setup | WR | P&L neto | Ganancia bruta |
+|---|---|---|---|
+| Order Block Reversal | 50.0 % | $314 | **$9.300** |
+| Breakout London | 52.6 % | **$1.715** | $5.680 |
+
+El insight determinista dice *"Order Block Reversal genera el 61.5 % de tus beneficios"* (mide
+**ganancia bruta**, y el 61.5 % es correcto). El Coach dice que *Breakout London* es "claramente
+su setup más rentable" (mide **P&L neto**, donde gana 5×). **Los dos tienen razón**, ninguno
+declara su definición, y el usuario los lee en la misma pantalla. No es un bug de datos: es una
+inconsistencia de criterio entre capas.
+
+Aparte, el modelo gratuito produjo dos fallos de redacción en la misma respuesta: *"52.6 % (por
+encima del esperado 55 %)"* —52.6 < 55— y la palabra inventada *"onderachievar"*. Son calidad de
+`openrouter/free`, no de los datos.
+
 ### Lo que NO se pudo verificar
 
 - **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
   sobre protecciones. No es un fallo de la simulación.
-- **El nudge de emoción de #141 sigue sin verse en vivo.** Está localizado
-  (`trade-detail-panel.tsx:458`, dentro del formulario de cierre, no del panel) y el helper de
-  simulación ya está corregido, pero ningún trade llegó al cierre sin emoción previa: el que iba
-  a probarlo lo bloqueó una regla. **Pendiente.**
-- **Fases 4 y 5 no ejecutadas**: las 5 features de IA y el recorrido de superficies analíticas.
+- **`weekly_reviews` y `embeddings`** (Fase 4) y **la Fase 5 entera** (recorrido de superficies
+  analíticas) quedan sin ejecutar.
 - **`avgPlannedRisk`** (`dashboard-analytics:515`) sigue mal por el `point_value` — ver la
   auditoría de riesgo más arriba.
 
