@@ -42,8 +42,11 @@ describe("key-encryption: encryptApiKey / decryptApiKey (AES-256-GCM)", () => {
   it("tamper detection: decrypting modified ciphertext throws", () => {
     const encrypted = encryptApiKey("sk-testkey")
     const parts = encrypted.split(":")
-    // Flip a bit in the ciphertext
-    parts[2] = parts[2].slice(0, -2) + "00"
+    // Flip a bit in the ciphertext. Sustituir el último byte por "00" a secas
+    // NO lo altera cuando ya era "00" — 1 de cada 256 ejecuciones, en las que
+    // el descifrado tiene éxito y el test falla sin que nada esté roto.
+    const ultimo = parts[2].slice(-2)
+    parts[2] = parts[2].slice(0, -2) + (ultimo === "00" ? "ff" : "00")
     expect(() => decryptApiKey(parts.join(":"))).toThrow()
   })
 

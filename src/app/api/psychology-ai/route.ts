@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { streamPsychologyInsights, type PsychologyAiOptions } from "@/lib/ai/psychology-insights-service"
 import { NoApiKeyError } from "@/lib/ai/resolve-provider"
+import { logger } from "@/lib/logger"
 
 export const runtime = "nodejs"
 export const maxDuration = 300
@@ -29,6 +30,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     })
   } catch (err) {
     if (err instanceof NoApiKeyError) return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })
+    // El cliente sólo ve "STREAM_ERROR". Sin esta línea la causa se pierde: un
+    // 500 aquí no dejaba rastro alguno en los logs y sólo podía diagnosticarse
+    // sondeando el endpoint a mano.
+    logger.error("psychology-ai stream failed", {
+      period, message: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ error: "STREAM_ERROR" }, { status: 500 })
   }
 }
