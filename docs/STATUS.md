@@ -159,9 +159,47 @@ aparece, también como está diseñado.
 - **`ai_chat` ✅** — responde con contexto real del trader: violaciones, coste en dólares, R por
   trade y estado del Playbook. Datos verificados contra BD y **exactos** (52.6 % WR, +0.3479R,
   19 trades, 27.9 % del total).
+- **`weekly_reviews` ✅** — "Semana del 20 jul", 15 trades. El bloque "Análisis IA" produjo
+  *"Tus pérdidas aumentan cuando operas en estado emocional negativo · P&L medio calmado +21 vs
+  ansiedad/FOMO/revancha −21 por trade"*. La review incluye el desglose **emoción vs P&L** que no
+  podía existir antes de la simulación:
+
+  | Emoción | n | WR | $/trade |
+  |---|---|---|---|
+  | Calm | 8 | 62.5 % | +$20.50 |
+  | Overconfident | 1 | 100 % | +$24.00 |
+  | Anxious | 4 | **0 %** | −$28.00 |
+  | Fearful | 2 | **0 %** | −$28.00 |
+
 - **`psychology_analysis`** — superficies presentes (check-in pre-sesión Ánimo/Energía/Descanso,
   calibración). No se validó su salida a fondo.
-- **`weekly_reviews`, `embeddings`** — no ejecutadas.
+- **`embeddings` 🔴 INERTE** — ver abajo.
+
+### `embeddings`: roto en silencio, en tres capas
+
+**16 trades con nota, 0 con `notes_embedding`.** Nada lo delata. Diagnóstico:
+
+`trades.semanticSearch` devuelve **`EMBED_FAILED`**, no `NO_EMBEDDING_KEY` — la clave sí resuelve,
+lo que falla es la llamada de embedding. La causa está en la configuración: `default_model` es
+`openrouter/free`, un modelo de **chat**, y `feature_models` está en `{}`, así que no hay override
+que apunte los embeddings a un modelo de embeddings real.
+
+Lo grave no es el fallo, es que sea **invisible**:
+
+1. **`/perfil` afirma que funciona.** Muestra *"Embeddings (búsqueda) · OpenRouter ·
+   openrouter/free · Clave de usuario"* y "Verificar configuración IA" **pasa** (`last_tested` se
+   actualizó, `error_log` vacío). El diagnóstico valida que hay clave y que el chat responde —
+   **no** que el proveedor sepa generar embeddings.
+2. **`scheduleEmbedding` se traga todo** (`catch {}`, fire-and-forget, con dos `return` mudos
+   antes de guardar). 16 notas produjeron 0 vectores sin una sola traza.
+3. **No hay superficie de UI.** `semanticSearch` y `backfillEmbeddings` están expuestos en tRPC
+   con **cero consumidores** en toda la app (verificado por grep sobre `src` completo: sólo
+   aparecen en el servicio y el router). Aunque los embeddings existieran, no habría forma de
+   buscarlos.
+
+El arreglo mínimo no es tocar `scheduleEmbedding`: es que el diagnóstico de `/perfil` distinga
+capacidad de **chat** de capacidad de **embedding**, y que `feature_models` permita apuntar
+`embeddings` a un modelo adecuado. Mientras eso no exista, la feature figura como activa y no lo está.
 
 ⚠️ **Hallazgo: dos superficies dan respuestas opuestas a "¿cuál es mi mejor setup?"**
 
@@ -184,8 +222,8 @@ encima del esperado 55 %)"* —52.6 < 55— y la palabra inventada *"onderachiev
 
 - **`revenge` y `oversizing` no alcanzaron umbral**, y es estructural: ver la sección anterior
   sobre protecciones. No es un fallo de la simulación.
-- **`weekly_reviews` y `embeddings`** (Fase 4) y **la Fase 5 entera** (recorrido de superficies
-  analíticas) quedan sin ejecutar.
+- **La Fase 5 entera** (recorrido de superficies analíticas) queda sin ejecutar, y
+  `psychology_analysis` sin validar a fondo su salida.
 - **`avgPlannedRisk`** (`dashboard-analytics:515`) sigue mal por el `point_value` — ver la
   auditoría de riesgo más arriba.
 
