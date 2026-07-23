@@ -34,6 +34,14 @@ export default function TradesPage() {
   const [importModalOpen, setImportModalOpen]       = useState(false)
   const [filterAccountId, setFilterAccountId]       = useState<string | null>(null)
 
+  // Deep-link via ?trade= (citas del Coach). Client-only, mismo patrón que
+  // /aprendizaje:38 — evita a propósito el requisito de Suspense de useSearchParams.
+  const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("trade")
+    if (id) { setSelectedId(id); setDeepLinkId(id) }
+  }, [])
+
   function handleAccountFilter(id: string | null) {
     setFilterAccountId(id)
     setSelectedId(null)
@@ -173,9 +181,18 @@ export default function TradesPage() {
   })
 
   // ── Derived state ──────────────────────────────────────
+  // `list` pagina de 50 con cursor: un trade citado por el Coach puede no estar
+  // en la página cargada, así que se pide por id como respaldo.
+  const deepLinkInList = trades.some(t => t.id === deepLinkId)
+  const { data: deepLinkTrade } = trpc.trades.byId.useQuery(
+    { id: deepLinkId ?? "" },
+    { enabled: !!deepLinkId && !deepLinkInList },
+  )
+
   const selected = useMemo(
-    () => trades.find(t => t.id === selectedId) ?? null,
-    [trades, selectedId]
+    () => trades.find(t => t.id === selectedId)
+      ?? (selectedId && selectedId === deepLinkId ? (deepLinkTrade as Trade | null) ?? null : null),
+    [trades, selectedId, deepLinkId, deepLinkTrade]
   )
 
   const editTarget = useMemo(
