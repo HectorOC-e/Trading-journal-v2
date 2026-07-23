@@ -75,10 +75,10 @@ test de regresión.
 > reutilizado por la simulación del 22-jul), así que las tarjetas se ven repetidas. El dedup por
 > `(corpus, id)` hace lo correcto — son ids distintos. Con notas reales no ocurre.
 
-### Ampliación a seis corpus (2026-07-23, PRs #162-#166)
+### Ampliación a siete corpus (2026-07-23, PRs #162-#167)
 
 Tras cerrar la deuda de `/api/ai-embed`, se llevó la misma superficie de recuperación a **todo el
-texto que escribe el trader**. De dos corpus se pasó a **seis**, un PR por pieza:
+texto que escribe el trader**. De dos corpus se pasó a **siete**, un PR por pieza:
 
 | PR | Corpus | Qué captura | Filas con texto |
 |---|---|---|---|
@@ -87,6 +87,12 @@ texto que escribe el trader**. De dos corpus se pasó a **seis**, un PR por piez
 | #164 | `trade_events` | lo escrito **dentro** del trade (stop, parcial, scale-in) | 21 |
 | #165 | `weekly_reviews` | la reflexión semanal del trader (`executive_summary`) | 4 |
 | #166 | `setups` | la descripción del setup *(a pedido del usuario; ver nota)* | 1 |
+| #167 | `monthly_reviews` | la reflexión mensual del trader (`summary`) | 0 hoy |
+
+> `monthly_reviews` (#167) cerró una **asimetría** de #165: se indexaban las reviews semanales pero
+> no las mensuales, siendo idénticas en naturaleza (ambas escritas por el trader, ambas con su
+> `ai_analysis` excluido). Hoy 0 filas con texto en prod; el cableado queda listo para cuando el
+> trader escriba una.
 
 **Qué queda deliberadamente fuera**, y por qué no es omisión:
 
@@ -111,9 +117,16 @@ tipo `vector`) se derivan de ella. Añadir un corpus vuelve a ser: migración SQ
 registrarlo + cablear la escritura. **Cuatro sitios, ninguno de ellos una lista de claves.**
 
 **Verificado en producción (2026-07-23).** Un solo "Indexar ahora" en `/perfil` llevó los seis
-corpus al 100%: `trade_notes 16/16 · trade_plans 2/2 · trade_events 21/21 · weekly_reviews 4/4 ·
-setups 1/1 · learning_notes 3/3`. Confirmado contra BD por columna. Suite **1291 → 1299**; cada PR
-con CI verde incluido replay de migraciones y E2E.
+corpus con datos al 100%: `trade_notes 16/16 · trade_plans 2/2 · trade_events 21/21 ·
+weekly_reviews 4/4 · setups 1/1 · learning_notes 3/3`. Confirmado contra BD por columna.
+`monthly_reviews` tiene su columna en prod pero 0 filas con texto, así que no había nada que
+indexar. Suite **1291 → 1301**; cada PR con CI verde incluido replay de migraciones y E2E.
+
+**Lo que quedó sin demostrar en vivo, dicho con precisión:** las citas de los corpus *nuevos* no se
+llegaron a ver renderizadas en el drawer. Al preguntarle al Coach, el LLM eligió `search_trades`
+(filtro exacto) en vez de `semantic_search`, así que la corrida no produjo tarjetas. El camino está
+cableado y cubierto por unit tests (forma de cita + href por corpus); lo que falta es la foto de
+punta a punta, y depende de que el modelo elija la tool semántica — tuning de prompt, no cableado.
 
 ### Deuda residual — CERRADA el mismo día
 

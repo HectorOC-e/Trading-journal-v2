@@ -656,5 +656,19 @@
   "654": "rules.templates",
   "655": "rules.updateExecutable",
   "656": "20260710140000_post6_prop_firm_rulebase.sql migration",
-  "657": "reinforcement.ts"
+  "657": "reinforcement.ts",
+  "658": "layout.tsx",
+  "659": "palette-studio.tsx",
+  "660": "email-theme.ts",
+  "661": "config.ts",
+  "662": "account-risk-panel.tsx",
+  "663": "rule-mode-badge.tsx",
+  "664": "leverage.ts",
+  "665": "prop-firm-status.ts",
+  "666": "trade-derivation.ts",
+  "667": "types.ts",
+  "668": "improvement-panel.tsx",
+  "669": "notifications.ts",
+  "670": "context.ts",
+  "671": "r-distribution-chart.tsx"
 }
