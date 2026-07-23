@@ -3,7 +3,7 @@ import { EMOTION_VALUES } from "@/domains/trading/emotions"
 import { router, protectedProcedure } from "../init"
 import { search, reindex } from "@/server/services/retrieval/pipeline"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
-import { listTrades, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
+import { listTrades, getTradeById, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
 import { createTrade, updateTrade, closeTrade, addTradeEvent, deleteTrade, saveTradeChecklistResult } from "@/server/services/trades/trade-write-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
@@ -19,6 +19,12 @@ export const tradesRouter = router({
       cursor:    z.string().uuid().optional(),
     }).optional())
     .query(({ ctx, input }) => listTrades(ctx.prisma, ctx.userId, input)),
+
+  // Deep-link de las citas del Coach: `list` pagina de 50, así que el trade
+  // citado puede no estar cargado.
+  byId: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(({ ctx, input }) => getTradeById(ctx.prisma, ctx.userId, input.id)),
 
   dashboardStats: protectedProcedure
     .input(z.object({

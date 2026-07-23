@@ -11,6 +11,19 @@ import { detectPatterns } from "@/domains/analytics/services/pattern-detector"
 import { VIOLATION_TAGS } from "@/types"
 import { serializeTrade } from "./serializers"
 
+/**
+ * Un trade por id. Necesario para el deep-link de las citas del Coach: `listTrades`
+ * pagina de 50 con cursor, así que el trade citado puede no estar en la página
+ * cargada y la selección local no lo encontraría nunca.
+ */
+export async function getTradeById(prisma: PrismaClient, userId: string, id: string) {
+  const trade = await prisma.trade.findFirst({
+    where:   { id, userId },
+    include: { account: true, setup: true, events: { orderBy: { timestamp: "asc" } } },
+  })
+  return trade ? serializeTrade(trade) : null
+}
+
 export async function listTrades(
   prisma: PrismaClient,
   userId: string,
