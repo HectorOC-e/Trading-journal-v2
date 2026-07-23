@@ -13,6 +13,7 @@ import { evaluateGoal } from "@/server/services/reviews/goal-eval"
 import { deriveGrade, deriveVerdict } from "@/server/services/reviews/verdict"
 import { sendReviewEmail } from "@/server/services/email/send-review"
 import { emailFailureMessage } from "@/server/services/email/resend-client"
+import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 
 const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 const monthLabelOf = (year: number, month: number) => `${MONTHS_ES[month - 1]} ${year}`
@@ -182,8 +183,11 @@ export const monthlyReviewsRouter = router({
         where:  { userId_year_month: { userId: ctx.userId, year: input.year, month: input.month } },
         create: { userId: ctx.userId, year: input.year, month: input.month, summary: input.notes ?? "", status: input.status ?? "draft" },
         update: data,
-        select: { status: true, summary: true },
+        select: { id: true, status: true, summary: true },
       })
+      if (input.notes !== undefined) {
+        scheduleEmbedding(ctx.prisma, ctx.userId, "monthly_reviews", row.id, input.notes)
+      }
       return { status: row.status, notes: row.summary }
     }),
 

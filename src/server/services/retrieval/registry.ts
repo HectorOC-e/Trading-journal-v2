@@ -6,16 +6,18 @@ import { tradeNotesAdapter } from "./corpora/trade-notes"
 import { tradePlansAdapter } from "./corpora/trade-plans"
 import { tradeEventNotesAdapter } from "./corpora/trade-event-notes"
 import { weeklyReviewNotesAdapter } from "./corpora/weekly-review-notes"
+import { monthlyReviewNotesAdapter } from "./corpora/monthly-review-notes"
 import { setupNotesAdapter } from "./corpora/setup-notes"
 import { resourceNotesAdapter } from "./corpora/resource-notes"
 
 export const CORPORA = {
-  trade_notes:    tradeNotesAdapter,
-  trade_plans:    tradePlansAdapter,
-  trade_events:   tradeEventNotesAdapter,
-  weekly_reviews: weeklyReviewNotesAdapter,
-  setups:         setupNotesAdapter,
-  learning_notes: resourceNotesAdapter,
+  trade_notes:     tradeNotesAdapter,
+  trade_plans:     tradePlansAdapter,
+  trade_events:    tradeEventNotesAdapter,
+  weekly_reviews:  weeklyReviewNotesAdapter,
+  monthly_reviews: monthlyReviewNotesAdapter,
+  setups:          setupNotesAdapter,
+  learning_notes:  resourceNotesAdapter,
 } as unknown as Record<CorpusKey, CorpusAdapter<never>>
 
 export function getAdapter(key: CorpusKey): CorpusAdapter<never> {
