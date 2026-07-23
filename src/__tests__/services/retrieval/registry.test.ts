@@ -40,6 +40,21 @@ describe("registro de corpus", () => {
     expect(c.positive).toBe(false)
   })
 
+  it("trade_events navega al trade PADRE, no al evento", () => {
+    const row = {
+      id: "44444444-4444-4444-4444-444444444444", tradeId: "55555555-5555-5555-5555-555555555555",
+      type: "PARTIAL_CLOSE", price: 21050, contracts: 2, notes: "cerre mitad",
+      timestamp: new Date("2026-07-22"), trade: { symbol: "NQ", direction: "LONG" },
+    }
+    const c = getAdapter("trade_events").toCitation(row as never, 0.9)
+    expect(c.corpus).toBe("trade_events")
+    // El href usa tradeId, NO el id del evento: un evento no tiene pantalla propia.
+    expect(c.href).toBe(`/trades?trade=${row.tradeId}`)
+    expect(c.id).toBe(row.id)
+    expect(c.label).toBe("NQ · cierre parcial")
+    expect(c.positive).toBeNull()
+  })
+
   it("learning_notes cita hacia /aprendizaje y se declara learning_notes", () => {
     const row = { id: "22222222-2222-2222-2222-222222222222", title: "Trading in the Zone", type: "LIBRO", status: "EN_CURSO", progressPct: 60, notes: "nota" }
     const c = getAdapter("learning_notes").toCitation(row as never, 0.9)

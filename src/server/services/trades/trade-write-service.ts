@@ -448,7 +448,7 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
     })
   }
 
-  return prisma.tradeEvent.create({
+  const event = await prisma.tradeEvent.create({
     data: {
       userId,
       tradeId:   input.tradeId,
@@ -459,6 +459,8 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
       timestamp: input.timestamp ? new Date(input.timestamp) : new Date(),
     },
   })
+  scheduleEmbedding(prisma, userId, "trade_events", event.id, input.notes ?? "")
+  return event
 }
 
 type SupabaseServer = Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>
