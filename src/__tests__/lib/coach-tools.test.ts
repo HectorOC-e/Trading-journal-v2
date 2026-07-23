@@ -8,14 +8,14 @@ describe("coach tools", () => {
     expect(COACH_TOOLS.map(t => t.name)).toEqual([
       "get_account_detail", "get_setup_detail", "search_trades",
       "get_trade_detail", "get_period_stats", "semantic_search",
-      "get_learning_resources", "get_study_agenda", "suggest_study", "search_learning_resources",
+      "get_learning_resources", "get_study_agenda", "suggest_study",
       "get_recent_notifications", "propose_commitment", "propose_rule",
     ])
   })
 
   it("propose_rule creates a PENDING suggestion (never auto-applies)", async () => {
     const create = vi.fn().mockResolvedValue({ id: "sug1" })
-    const out = JSON.parse(await executeCoachTool("propose_rule", { protection: "cooldown_after_loss", reason: "revenge-trading detectado" }, ctx({ ruleSuggestion: { create } })))
+    const out = JSON.parse((await executeCoachTool("propose_rule", { protection: "cooldown_after_loss", reason: "revenge-trading detectado" }, ctx({ ruleSuggestion: { create } }))).text)
     expect(out.proposed).toBe(true)
     expect(out.suggestionId).toBe("sug1")
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "pending", insightId: null }) }))
@@ -31,7 +31,7 @@ describe("coach tools", () => {
         events: [{ type: "OPEN", price: 1.1, contracts: 1, notes: "" }],
       }) },
     }
-    const out = JSON.parse(await executeCoachTool("get_trade_detail", { id: "t1" }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("get_trade_detail", { id: "t1" }, ctx(prisma))).text)
     expect(out.symbol).toBe("EURUSD")
     expect(out.setup).toBe("Breakout")
     expect(out.psychology.emotionBefore).toBe("calm")
@@ -40,7 +40,7 @@ describe("coach tools", () => {
 
   it("get_trade_detail returns error when not found", async () => {
     const prisma = { trade: { findFirst: vi.fn().mockResolvedValue(null) } }
-    const out = JSON.parse(await executeCoachTool("get_trade_detail", { id: "x" }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("get_trade_detail", { id: "x" }, ctx(prisma))).text)
     expect(out.error).toMatch(/No encontré/)
   })
 
@@ -49,7 +49,7 @@ describe("coach tools", () => {
       account: { findFirst: vi.fn().mockResolvedValue({ id: "a1", name: "FTMO", type: "PROP_FIRM", currency: "USD", phase: "FUNDED", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 100000, ddDailyPct: 5, ddTotalPct: 10, targetPct: 8 }) },
       trade:   { findMany: vi.fn().mockResolvedValue([{ pnl: 400 }, { pnl: -100 }, { pnl: 200 }]) },
     }
-    const out = JSON.parse(await executeCoachTool("get_account_detail", { name: "ftmo" }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("get_account_detail", { name: "ftmo" }, ctx(prisma))).text)
     expect(out.name).toBe("FTMO")
     expect(out.netPnl).toBe(500)
     expect(out.balance).toBe(100500)
@@ -59,7 +59,7 @@ describe("coach tools", () => {
 
   it("get_account_detail returns error when not found", async () => {
     const prisma = { account: { findFirst: vi.fn().mockResolvedValue(null) } }
-    const out = JSON.parse(await executeCoachTool("get_account_detail", { name: "zzz" }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("get_account_detail", { name: "zzz" }, ctx(prisma))).text)
     expect(out.error).toMatch(/No encontré/)
   })
 
@@ -68,7 +68,7 @@ describe("coach tools", () => {
       setup: { findFirst: vi.fn().mockResolvedValue({ id: "s1", name: "Breakout", abbreviation: "BL", market: "Forex", direction: "AMBAS", status: "ACTIVO", expectedWr: 55, expectedAvgR: 1.2 }) },
       trade: { findMany: vi.fn().mockResolvedValue([{ pnl: 100, rMultiple: 2 }, { pnl: -50, rMultiple: -1 }, { pnl: 80, rMultiple: 1 }, { pnl: 90, rMultiple: 1.5 }, { pnl: -40, rMultiple: -0.5 }]) },
     }
-    const out = JSON.parse(await executeCoachTool("get_setup_detail", { name: "break" }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("get_setup_detail", { name: "break" }, ctx(prisma))).text)
     expect(out.name).toBe("Breakout")
     expect(out.trades).toBe(5)
     expect(out.winRate).toBe(60)
@@ -78,15 +78,20 @@ describe("coach tools", () => {
   it("search_trades filters and caps the limit", async () => {
     const findMany = vi.fn().mockResolvedValue([{ date: new Date("2026-06-01"), symbol: "EURUSD", direction: "LONG", pnl: 400, rMultiple: 2, tags: [] }])
     const prisma = { trade: { findMany } }
-    const out = JSON.parse(await executeCoachTool("search_trades", { symbol: "EUR", limit: 999 }, ctx(prisma)))
+    const out = JSON.parse((await executeCoachTool("search_trades", { symbol: "EUR", limit: 999 }, ctx(prisma))).text)
     expect(out.count).toBe(1)
     expect(out.trades[0].symbol).toBe("EURUSD")
     // limit capped at 25
     expect(findMany.mock.calls[0][0].take).toBe(25)
   })
 
+  it("semantic_search rechaza un corpus desconocido", async () => {
+    const out = JSON.parse((await executeCoachTool("semantic_search", { query: "x", corpus: "inventado" }, ctx({}))).text)
+    expect(out.error).toMatch(/Corpus desconocido/)
+  })
+
   it("unknown tool returns an error", async () => {
-    const out = JSON.parse(await executeCoachTool("nope", {}, ctx({})))
+    const out = JSON.parse((await executeCoachTool("nope", {}, ctx({}))).text)
     expect(out.error).toMatch(/desconocida/)
   })
 })

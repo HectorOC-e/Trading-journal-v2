@@ -9,8 +9,8 @@ import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { isPracticeType } from "@/domains/trading/account-reality"
-import { embedText } from "@/lib/ai/embeddings"
-import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
+import { search } from "@/server/services/retrieval/pipeline"
+import type { Citation, CorpusKey, CorpusOutcome } from "@/server/services/retrieval/types"
 
 const PERIOD_DAYS: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
 
@@ -69,10 +69,14 @@ export const COACH_TOOLS = [
   },
   {
     name: "semantic_search",
-    description: "Búsqueda semántica sobre las NOTAS de los trades (significado, no filtros exactos). Útil para 'trades donde rompí mi plan por FOMO' o 'cuando dudé del setup'. Requiere que el trader tenga notas y una clave de embeddings configurada.",
+    description: "Búsqueda semántica por SIGNIFICADO sobre lo que el trader ha escrito. Corpus: 'trade_notes' (notas de sus trades) y 'learning_notes' (apuntes de libros/cursos). Omite 'corpus' para buscar en todos. Útil para 'trades donde rompí mi plan por FOMO' o 'dónde anoté algo sobre gestión de riesgo'.",
     input_schema: {
       type: "object" as const,
-      properties: { query: { type: "string", description: "Qué buscar, en lenguaje natural" }, limit: { type: "number", description: "Máx. resultados (default 8)" } },
+      properties: {
+        query:  { type: "string", description: "Qué buscar, en lenguaje natural" },
+        corpus: { type: "string", enum: ["trade_notes", "learning_notes"], description: "Opcional. Omitir para buscar en todos." },
+        limit:  { type: "number", description: "Máx. resultados (1-10, default 5)" },
+      },
       required: ["query"],
     },
   },
@@ -100,15 +104,6 @@ export const COACH_TOOLS = [
     name: "suggest_study",
     description: "Cruza las debilidades del trader (peor setup por win rate, tag de indisciplina más frecuente) con sus recursos vinculados para sugerir QUÉ estudiar para mejorar. Devuelve 1-3 recomendaciones con su razón. Úsalo cuando el trader pida 'qué debería estudiar' o 'cómo mejoro X'.",
     input_schema: { type: "object" as const, properties: {} },
-  },
-  {
-    name: "search_learning_resources",
-    description: "Búsqueda semántica sobre las NOTAS de los recursos de aprendizaje (significado, no filtros exactos). Útil para 'dónde anoté algo sobre gestión de riesgo'. Requiere notas embebidas y una clave de embeddings configurada.",
-    input_schema: {
-      type: "object" as const,
-      properties: { query: { type: "string", description: "Qué buscar, en lenguaje natural" }, limit: { type: "number", description: "Máx. resultados (default 8)" } },
-      required: ["query"],
-    },
   },
   {
     name: "get_recent_notifications",
@@ -159,8 +154,56 @@ const PROTECTION_TO_METRIC: Record<string, string> = {
 
 export interface ToolCtx { userId: string; prisma: PrismaClient }
 
-/** Execute a tool by name. Returns a JSON string fed back to the model. */
-export async function executeCoachTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<string> {
+/**
+ * Resultado de una tool con DOS destinos y necesidades distintas:
+ * `text` va al modelo (compacto, presupuesto de contexto — FREEZE-D10) y
+ * `cites` va al cliente para pintar las tarjetas de evidencia.
+ */
+export interface ToolResult { text: string; cites?: Citation[] }
+
+/**
+ * Traduce el estado a algo que el modelo pueda narrar sin mentir.
+ *
+ * REGLA VINCULANTE (spec §6): sólo EMPTY_CORPUS y NO_MATCHES pueden redactarse
+ * como ausencia. NO_KEY / EMBED_FAILED / NOT_INDEXED dicen "no pude buscar".
+ * Colapsarlos es lo que hacía que el coach afirmara "no has anotado nada sobre
+ * eso" sobre un trader que sí lo había anotado.
+ */
+function explainState(o: CorpusOutcome): { pudeBuscar: boolean; explicacion: string } {
+  switch (o.state) {
+    case "NO_KEY":
+      return { pudeBuscar: false, explicacion: "No pude buscar: no hay clave de embeddings configurada. Dile al trader que la configure en /perfil. NO afirmes que no ha escrito nada." }
+    case "EMBED_FAILED":
+      return { pudeBuscar: false, explicacion: "No pude buscar: fallo transitorio del proveedor de embeddings. Sugiere reintentar. NO afirmes que no ha escrito nada." }
+    case "NOT_INDEXED":
+      return { pudeBuscar: false, explicacion: `No pude buscar en todo: quedan ${o.remaining} textos sin indexar. NO afirmes que no ha escrito nada sobre el tema.` }
+    case "EMPTY_CORPUS":
+      return { pudeBuscar: true, explicacion: "El trader todavía no ha escrito nada en este corpus." }
+    case "NO_MATCHES":
+      return { pudeBuscar: true, explicacion: "Busqué sobre todo lo indexado y no hay nada parecido." }
+    default:
+      return { pudeBuscar: true, explicacion: o.remaining > 0 ? `Encontré resultados, pero quedan ${o.remaining} textos sin indexar.` : "Encontré resultados." }
+  }
+}
+
+/**
+ * Ejecuta una tool por nombre. `text` alimenta al modelo; `cites` al cliente.
+ *
+ * El cuerpo interno sigue devolviendo string y sólo la rama que produce
+ * evidencia llama a `emitCites` — así las 30 salidas restantes no se tocan.
+ */
+export async function executeCoachTool(name: string, input: Record<string, unknown>, ctx: ToolCtx): Promise<ToolResult> {
+  let cites: Citation[] | undefined
+  const text = await runCoachTool(name, input, ctx, (c) => { cites = c })
+  return cites?.length ? { text, cites } : { text }
+}
+
+async function runCoachTool(
+  name: string,
+  input: Record<string, unknown>,
+  ctx: ToolCtx,
+  emitCites: (c: Citation[]) => void,
+): Promise<string> {
   const { userId, prisma } = ctx
   try {
     if (name === "get_account_detail") {
@@ -308,26 +351,20 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
     if (name === "semantic_search") {
       const query = String(input.query ?? "").trim()
       if (!query) return JSON.stringify({ error: "Falta la consulta." })
-      const limit = Math.min(20, Math.max(1, Number(input.limit) || 8))
-      const emb = await resolveEmbeddingCall(prisma, userId)
-      if (emb.source === "none") return JSON.stringify({ error: "El trader no tiene una clave de embeddings configurada para búsqueda semántica.", trades: [] })
-      const vec = await embedText(query, { model: emb.model, apiKey: emb.apiKey })
-      if (!vec) return JSON.stringify({ error: "No se pudo generar el embedding de la consulta.", trades: [] })
-      type Row = { id: string; similarity: number }
-      const hits = await prisma.$queryRaw<Row[]>`
-        SELECT id, (1 - (notes_embedding <=> ${`[${vec.join(",")}]`}::vector)) AS similarity
-        FROM trades WHERE user_id = ${userId}::uuid AND notes_embedding IS NOT NULL
-        ORDER BY notes_embedding <=> ${`[${vec.join(",")}]`}::vector LIMIT ${limit}`
-      if (!hits.length) return JSON.stringify({ trades: [], note: "Sin trades con notas embebidas que coincidan." })
-      const ids = hits.map(h => h.id)
-      const found = await prisma.trade.findMany({ where: { id: { in: ids }, userId }, select: { id: true, date: true, symbol: true, direction: true, pnl: true, tags: true, notes: true } })
-      const simById = new Map(hits.map(h => [h.id, h.similarity]))
+      const corpus = typeof input.corpus === "string" ? input.corpus as CorpusKey : undefined
+      if (corpus && corpus !== "trade_notes" && corpus !== "learning_notes") {
+        return JSON.stringify({ error: `Corpus desconocido: ${corpus}` })
+      }
+      const result = await search(prisma, userId, { query, corpus, limit: Number(input.limit) || undefined })
+      emitCites(result.citations)
       return JSON.stringify({
-        trades: ids.map(id => found.find(t => t.id === id)).filter(Boolean).map(t => ({
-          id: t!.id, date: (t!.date as Date).toISOString().slice(0, 10), symbol: t!.symbol, direction: t!.direction,
-          pnl: t!.pnl != null ? parseFloat(Number(t!.pnl).toFixed(2)) : 0, tags: t!.tags as string[],
-          notes: (t!.notes || "").slice(0, 200), similarity: parseFloat((simById.get(t!.id) ?? 0).toFixed(3)),
+        resultados: result.citations.map(c => ({
+          corpus: c.corpus, etiqueta: c.label, cuando: c.sublabel,
+          desenlace: c.outcome, nota: c.snippet, similitud: c.similarity,
         })),
+        // Un estado POR corpus, sin colapsar: un corpus mudo no puede esconderse
+        // detrás de otro sano.
+        estado: result.outcomes.map(o => ({ corpus: o.corpus, ...explainState(o) })),
       })
     }
 
@@ -426,31 +463,6 @@ export async function executeCoachTool(name: string, input: Record<string, unkno
         suggestions: ranked.map(r => ({
           resourceId: r.id, title: r.title, type: r.type, status: r.status, progressPct: r.progressPct,
           reason: `Refuerza el setup "${r.setup}" (${r.setupWinRate}% WR).`,
-        })),
-      })
-    }
-
-    if (name === "search_learning_resources") {
-      const query = String(input.query ?? "").trim()
-      if (!query) return JSON.stringify({ error: "Falta la consulta." })
-      const limit = Math.min(20, Math.max(1, Number(input.limit) || 8))
-      const emb = await resolveEmbeddingCall(prisma, userId)
-      if (emb.source === "none") return JSON.stringify({ error: "El trader no tiene una clave de embeddings configurada para búsqueda semántica.", resources: [] })
-      const vec = await embedText(query, { model: emb.model, apiKey: emb.apiKey })
-      if (!vec) return JSON.stringify({ error: "No se pudo generar el embedding de la consulta.", resources: [] })
-      type Row = { id: string; similarity: number }
-      const hits = await prisma.$queryRaw<Row[]>`
-        SELECT id, (1 - (notes_embedding <=> ${`[${vec.join(",")}]`}::vector)) AS similarity
-        FROM learning_resources WHERE user_id = ${userId}::uuid AND notes_embedding IS NOT NULL
-        ORDER BY notes_embedding <=> ${`[${vec.join(",")}]`}::vector LIMIT ${limit}`
-      if (!hits.length) return JSON.stringify({ resources: [], note: "Sin recursos con notas embebidas que coincidan." })
-      const ids = hits.map(h => h.id)
-      const found = await prisma.learningResource.findMany({ where: { id: { in: ids }, userId }, select: { id: true, title: true, type: true, status: true, notes: true } })
-      const simById = new Map(hits.map(h => [h.id, h.similarity]))
-      return JSON.stringify({
-        resources: ids.map(id => found.find(r => r.id === id)).filter(Boolean).map(r => ({
-          id: r!.id, title: r!.title, type: r!.type, status: r!.status,
-          notes: (r!.notes || "").slice(0, 240), similarity: parseFloat((simById.get(r!.id) ?? 0).toFixed(3)),
         })),
       })
     }
