@@ -4,6 +4,7 @@ import { encryptApiKey, decryptApiKey, maskApiKey, EncryptionConfigError } from 
 import { buildAiDiagnostics, resolveAiCall } from "@/lib/ai/resolve-provider"
 import { testProviderConnectivity } from "@/lib/ai/health-check"
 import { indexStatus, reindex } from "@/server/services/retrieval/pipeline"
+import { CORPUS_KEYS } from "@/server/services/retrieval/types"
 
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
 type Provider = typeof PROVIDERS[number]
@@ -169,7 +170,7 @@ export const aiConfigRouter = router({
 
   reindex: protectedProcedure
     .input(z.object({
-      corpus: z.enum(["trade_notes", "learning_notes"]).optional(),
+      corpus: z.enum(CORPUS_KEYS).optional(),
       limit:  z.number().int().min(1).max(500).default(200),
     }).optional())
     .mutation(({ ctx, input }) => reindex(ctx.prisma, ctx.userId, input)),

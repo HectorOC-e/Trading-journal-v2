@@ -311,9 +311,7 @@ export function AiModelsCard() {
             const done = row.withText > 0 && row.embedded >= row.withText
             return (
               <div key={row.corpus} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5 }}>
-                <span style={{ color: "var(--ink-2)" }}>
-                  {row.corpus === "trade_notes" ? "Notas de trades" : "Apuntes de aprendizaje"}
-                </span>
+                <span style={{ color: "var(--ink-2)" }}>{row.label}</span>
                 <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: done ? "var(--win)" : "var(--ink-3)" }}>
                   {row.embedded}/{row.withText} indexadas
                 </span>

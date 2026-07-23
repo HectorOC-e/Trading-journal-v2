@@ -29,6 +29,17 @@ describe("registro de corpus", () => {
     expect(c.label).toBe("NQ · LONG")
   })
 
+  it("trade_plans se distingue de trade_notes en la etiqueta, no solo en el corpus", () => {
+    const row = { id: "33333333-3333-3333-3333-333333333333", date: new Date("2026-07-21"), symbol: "NQ", direction: "LONG", pnl: -280, rMultiple: -1, planNotes: "esperar confirmacion" }
+    const c = getAdapter("trade_plans").toCitation(row as never, 0.9)
+    expect(c.corpus).toBe("trade_plans")
+    expect(c.href).toBe(`/trades?trade=${row.id}`)
+    // Ambos corpus citan el MISMO trade: sin marca, el trader veria dos tarjetas
+    // identicas sin saber cual es el plan y cual la nota posterior.
+    expect(c.label).toBe("NQ · LONG · plan")
+    expect(c.positive).toBe(false)
+  })
+
   it("learning_notes cita hacia /aprendizaje y se declara learning_notes", () => {
     const row = { id: "22222222-2222-2222-2222-222222222222", title: "Trading in the Zone", type: "LIBRO", status: "EN_CURSO", progressPct: 60, notes: "nota" }
     const c = getAdapter("learning_notes").toCitation(row as never, 0.9)

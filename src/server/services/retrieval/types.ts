@@ -5,10 +5,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
-/** Corpus indexables. Añadir uno = añadir un adaptador y registrarlo. */
-export type CorpusKey = "trade_notes" | "learning_notes"
+/**
+ * Corpus indexables. **Fuente única**: añadir uno aquí y registrar su adaptador.
+ * El tipo se deriva de la tupla, y los `z.enum` de los routers y el `input_schema`
+ * de la tool del Coach se construyen desde ella — no se repite la lista en ningún
+ * otro sitio. Con dos corpus la duplicación era tolerable; con cinco es deriva
+ * garantizada.
+ */
+export const CORPUS_KEYS = ["trade_notes", "trade_plans", "learning_notes"] as const
 
-export const CORPUS_KEYS = ["trade_notes", "learning_notes"] as const
+export type CorpusKey = (typeof CORPUS_KEYS)[number]
+
+/** Type guard para validar entrada externa (tool del Coach, query params). */
+export function isCorpusKey(v: unknown): v is CorpusKey {
+  return typeof v === "string" && (CORPUS_KEYS as readonly string[]).includes(v)
+}
 
 /**
  * Los 5 estados + OK. La regla vinculante (spec §6): sólo EMPTY_CORPUS y
@@ -57,6 +68,8 @@ export interface SearchResult {
 
 export interface IndexStatus {
   corpus:   CorpusKey
+  /** Rótulo humano, tomado del adaptador: la UI no duplica nombres de corpus. */
+  label:    string
   total:    number
   withText: number
   embedded: number

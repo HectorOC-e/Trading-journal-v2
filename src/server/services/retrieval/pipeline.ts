@@ -123,8 +123,9 @@ export async function reindex(
 export async function indexStatus(prisma: PrismaClient, userId: string): Promise<IndexStatus[]> {
   const out: IndexStatus[] = []
   for (const key of CORPUS_KEYS) {
-    const counts = await CORPORA[key].counts(prisma, userId)
-    out.push({ corpus: key, ...counts })
+    const adapter = CORPORA[key]
+    const counts = await adapter.counts(prisma, userId)
+    out.push({ corpus: key, label: adapter.label, ...counts })
   }
   return out
 }

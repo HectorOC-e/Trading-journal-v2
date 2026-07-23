@@ -3,10 +3,12 @@
 // incompleto o registrado bajo la clave equivocada.
 import type { CorpusAdapter, CorpusKey } from "./types"
 import { tradeNotesAdapter } from "./corpora/trade-notes"
+import { tradePlansAdapter } from "./corpora/trade-plans"
 import { resourceNotesAdapter } from "./corpora/resource-notes"
 
 export const CORPORA = {
   trade_notes:    tradeNotesAdapter,
+  trade_plans:    tradePlansAdapter,
   learning_notes: resourceNotesAdapter,
 } as unknown as Record<CorpusKey, CorpusAdapter<never>>
 

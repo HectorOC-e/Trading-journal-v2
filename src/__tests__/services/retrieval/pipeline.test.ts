@@ -6,6 +6,7 @@ vi.mock("@/lib/ai/embeddings", () => ({ embedText: vi.fn() }))
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 import { embedText } from "@/lib/ai/embeddings"
 import { search } from "@/server/services/retrieval/pipeline"
+import { CORPUS_KEYS } from "@/server/services/retrieval/types"
 
 const withKey = { provider: "openai", model: "text-embedding-3-small", apiKey: "k", source: "user" } as const
 const noKey   = { provider: "openai", model: "text-embedding-3-small", apiKey: "", source: "none" } as const
@@ -36,7 +37,9 @@ describe("pipeline.search", () => {
   it("sin corpus explicito reporta un estado POR corpus, sin colapsarlos", async () => {
     vi.mocked(resolveEmbeddingCall).mockResolvedValue(noKey as never)
     const out = await search(prisma, "u1", { query: "plan" })
-    expect(out.outcomes.map(o => o.corpus).sort()).toEqual(["learning_notes", "trade_notes"])
+    // Derivado de CORPUS_KEYS a proposito: si esta lista se fijara a mano, cada
+    // corpus nuevo rompería el test sin que hubiera nada roto.
+    expect(out.outcomes.map(o => o.corpus).sort()).toEqual([...CORPUS_KEYS].sort())
     expect(out.outcomes.every(o => o.state === "NO_KEY")).toBe(true)
   })
 })

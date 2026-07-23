@@ -243,6 +243,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
 
   if (isCacheEnabled()) await invalidateCache(prisma, userId)
   scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
+  scheduleEmbedding(prisma, userId, "trade_plans", trade.id, input.planNotes ?? "")
   // Continuous eval of rule-backed commitments (S5, best-effort).
   await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
   return serializeTrade(full)
@@ -324,6 +325,7 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     if (isCacheEnabled()) await invalidateCache(prisma, userId)
   }
   if (input.notes !== undefined) scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
+  if (input.planNotes !== undefined) scheduleEmbedding(prisma, userId, "trade_plans", trade.id, input.planNotes ?? "")
   return serializeTrade(trade)
 }
 
