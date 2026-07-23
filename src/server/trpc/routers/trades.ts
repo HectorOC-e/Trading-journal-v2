@@ -2,6 +2,7 @@ import { z } from "zod"
 import { EMOTION_VALUES } from "@/domains/trading/emotions"
 import { router, protectedProcedure } from "../init"
 import { search, reindex } from "@/server/services/retrieval/pipeline"
+import { CORPUS_KEYS } from "@/server/services/retrieval/types"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
 import { listTrades, getTradeById, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
 import { createTrade, updateTrade, closeTrade, addTradeEvent, deleteTrade, saveTradeChecklistResult } from "@/server/services/trades/trade-write-service"
@@ -179,7 +180,7 @@ export const tradesRouter = router({
   semanticSearch: protectedProcedure
     .input(z.object({
       query:  z.string().min(1).max(500),
-      corpus: z.enum(["trade_notes", "learning_notes"]).optional(),
+      corpus: z.enum(CORPUS_KEYS).optional(),
       limit:  z.number().int().min(1).max(10).default(5),
     }))
     .query(({ ctx, input }) => search(ctx.prisma, ctx.userId, input)),

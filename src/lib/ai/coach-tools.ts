@@ -10,6 +10,7 @@ import { calcSetupHealth } from "@/lib/formulas/setup"
 import { fxFactor, parseFxRates } from "@/lib/fx"
 import { isPracticeType } from "@/domains/trading/account-reality"
 import { search } from "@/server/services/retrieval/pipeline"
+import { CORPUS_KEYS, isCorpusKey } from "@/server/services/retrieval/types"
 import type { Citation, CorpusKey, CorpusOutcome } from "@/server/services/retrieval/types"
 
 const PERIOD_DAYS: Record<string, number | null> = { "7d": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": null }
@@ -69,12 +70,12 @@ export const COACH_TOOLS = [
   },
   {
     name: "semantic_search",
-    description: "Búsqueda semántica por SIGNIFICADO sobre lo que el trader ha escrito. Corpus: 'trade_notes' (notas de sus trades) y 'learning_notes' (apuntes de libros/cursos). Omite 'corpus' para buscar en todos. Útil para 'trades donde rompí mi plan por FOMO' o 'dónde anoté algo sobre gestión de riesgo'.",
+    description: "Búsqueda semántica por SIGNIFICADO sobre lo que el trader ha escrito. Corpus: 'trade_notes' (lo que anotó DESPUÉS de cada trade), 'trade_plans' (el plan que se fijó ANTES de entrar) y 'learning_notes' (apuntes de libros/cursos). Omite 'corpus' para buscar en todos. Útil para 'trades donde rompí mi plan por FOMO', 'qué me dije que iba a hacer' o 'dónde anoté algo sobre gestión de riesgo'.",
     input_schema: {
       type: "object" as const,
       properties: {
         query:  { type: "string", description: "Qué buscar, en lenguaje natural" },
-        corpus: { type: "string", enum: ["trade_notes", "learning_notes"], description: "Opcional. Omitir para buscar en todos." },
+        corpus: { type: "string", enum: [...CORPUS_KEYS], description: "Opcional. Omitir para buscar en todos." },
         limit:  { type: "number", description: "Máx. resultados (1-10, default 5)" },
       },
       required: ["query"],
@@ -351,10 +352,10 @@ async function runCoachTool(
     if (name === "semantic_search") {
       const query = String(input.query ?? "").trim()
       if (!query) return JSON.stringify({ error: "Falta la consulta." })
-      const corpus = typeof input.corpus === "string" ? input.corpus as CorpusKey : undefined
-      if (corpus && corpus !== "trade_notes" && corpus !== "learning_notes") {
-        return JSON.stringify({ error: `Corpus desconocido: ${corpus}` })
+      if (input.corpus != null && !isCorpusKey(input.corpus)) {
+        return JSON.stringify({ error: `Corpus desconocido: ${String(input.corpus)}` })
       }
+      const corpus = input.corpus as CorpusKey | undefined
       const result = await search(prisma, userId, { query, corpus, limit: Number(input.limit) || undefined })
       emitCites(result.citations)
       return JSON.stringify({

@@ -26,12 +26,25 @@ cd "$(dirname "$0")/../src"
 # Differences that are deliberate and documented, so the check must not flag them:
 #   app_settings          — cron settings table, read via the app_setting() SQL
 #                           function; intentionally not a Prisma model.
-#   *.notes_embedding /
-#   memory_episodes.embedding
-#                         — pgvector columns, read/written via raw SQL. Prisma has
-#                           no vector type; schema.prisma says so at its
-#                           MemoryEpisode model.
-ALLOWED='^(app_settings|trades\.notes_embedding|learning_resources\.notes_embedding|memory_episodes\.embedding)$'
+#   <tabla>.*embedding    — columnas pgvector, leídas/escritas por SQL crudo.
+#
+# La regla de las columnas vectoriales es GENÉRICA a propósito. Antes listaba una
+# por una (trades.notes_embedding, learning_resources.notes_embedding,
+# memory_episodes.embedding) y cada corpus semántico nuevo exigía tocar este
+# fichero — un sitio más, en shell, donde vivía el conocimiento de los corpus y
+# donde se olvidaría.
+#
+# Por qué generalizar no afloja el guard: Prisma NO tiene tipo `vector`, así que
+# una columna cuyo nombre acaba en `embedding` es por construcción de gestión por
+# SQL crudo y nunca un campo del modelo. Y una columna vectorial ausente de
+# schema.prisma jamás rompe un rebuild —el código nunca la selecciona por
+# Prisma—, que es exactamente la clase de deriva que este check existe para cazar.
+# Exige el punto, así que una TABLA llamada `embeddings` seguiría marcándose.
+#
+# Lo que esto NO cubre, y no le toca: que exista la columna pero falte su
+# adaptador de recuperación. De eso responde la guarda de contrato del registro
+# (src/__tests__/services/retrieval/registry.test.ts).
+ALLOWED='^(app_settings|[a-z_]+\.[a-z_]*embedding)$'
 
 DIFF="$(DATABASE_URL="$DB_URL" npx prisma migrate diff \
           --from-config-datasource --to-schema prisma/schema.prisma 2>/dev/null)"
