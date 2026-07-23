@@ -75,6 +75,46 @@ test de regresión.
 > reutilizado por la simulación del 22-jul), así que las tarjetas se ven repetidas. El dedup por
 > `(corpus, id)` hace lo correcto — son ids distintos. Con notas reales no ocurre.
 
+### Ampliación a seis corpus (2026-07-23, PRs #162-#166)
+
+Tras cerrar la deuda de `/api/ai-embed`, se llevó la misma superficie de recuperación a **todo el
+texto que escribe el trader**. De dos corpus se pasó a **seis**, un PR por pieza:
+
+| PR | Corpus | Qué captura | Filas con texto |
+|---|---|---|---|
+| #162 | — | borra `/api/ai-embed` (deuda) | — |
+| #163 | `trade_plans` | el plan fijado **antes** de entrar | 2 |
+| #164 | `trade_events` | lo escrito **dentro** del trade (stop, parcial, scale-in) | 21 |
+| #165 | `weekly_reviews` | la reflexión semanal del trader (`executive_summary`) | 4 |
+| #166 | `setups` | la descripción del setup *(a pedido del usuario; ver nota)* | 1 |
+
+**Qué queda deliberadamente fuera**, y por qué no es omisión:
+
+- **`coach_messages` y `weekly_reviews.ai_analysis`** — texto del **LLM**. Indexarlo para que el LLM
+  lo recupere como evidencia del trader es un bucle prohibido por `FREEZE-P6` ("el LLM propone, los
+  datos confirman") y la frontera anti-poisoning `FREEZE-D9`. La distinción entre `executive_summary`
+  (trader) y `ai_analysis` (IA) en la misma tabla es la línea entre corpus y envenenamiento.
+- **`memory_episodes`** — su recuperación es híbrida por saliencia decaída (`ARCHITECTURE.md §6`), no
+  por similitud pura; no cabe en el pipeline sin destruir su razón de ser.
+- Tablas vacías (`trading_sessions`, `study_sessions`, `monthly_reviews` hoy).
+
+> ⚠️ **Nota de alcance sobre `setups`:** se añadió a pedido explícito del usuario, con reserva
+> registrada. La descripción es **definitoria** (qué es el setup), no reflexiva, y `get_setup_detail`
+> ya la recupera por nombre. Aporta menos que los corpus de notas — documentado para que no se lea
+> como recomendación de diseño.
+
+**Deriva cerrada de paso.** Con el segundo corpus la lista de claves ya estaba duplicada en **seis**
+sitios (incluido el shell `check-schema-drift.sh`). `CORPUS_KEYS` pasó a ser fuente única: el tipo,
+los `z.enum`, la validación (type guard), el rótulo de `/perfil` (del adaptador) y la excepción del
+drift check (regla genérica `<tabla>.*embedding`, que **no** afloja el guard porque Prisma no tiene
+tipo `vector`) se derivan de ella. Añadir un corpus vuelve a ser: migración SQL + adaptador +
+registrarlo + cablear la escritura. **Cuatro sitios, ninguno de ellos una lista de claves.**
+
+**Verificado en producción (2026-07-23).** Un solo "Indexar ahora" en `/perfil` llevó los seis
+corpus al 100%: `trade_notes 16/16 · trade_plans 2/2 · trade_events 21/21 · weekly_reviews 4/4 ·
+setups 1/1 · learning_notes 3/3`. Confirmado contra BD por columna. Suite **1291 → 1299**; cada PR
+con CI verde incluido replay de migraciones y E2E.
+
 ### Deuda residual — CERRADA el mismo día
 
 `/api/ai-embed` quedó fuera del PR #161 como deuda declarada. Al ir a resolverla se descubrió que

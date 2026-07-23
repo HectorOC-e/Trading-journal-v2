@@ -655,5 +655,6 @@
   "653": "rules.seedDefaults (descriptivas de bienvenida)",
   "654": "rules.templates",
   "655": "rules.updateExecutable",
-  "656": "20260710140000_post6_prop_firm_rulebase.sql migration"
+  "656": "20260710140000_post6_prop_firm_rulebase.sql migration",
+  "657": "reinforcement.ts"
 }

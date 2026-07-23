@@ -14,11 +14,6 @@
     "ast_hash": "9f6e013b4fd56a8b71b4b86965405715",
     "semantic_hash": ""
   },
-  "src/app/api/ai-embed/route.ts": {
-    "mtime": 1780680267.5273795,
-    "ast_hash": "018e482135b0785a69868b7dab612f7b",
-    "semantic_hash": ""
-  },
   "src/app/api/ai-test/route.ts": {
     "mtime": 1780680267.5273795,
     "ast_hash": "54cb66c3bb84e367317aafdf6102cdcc",
@@ -325,8 +320,8 @@
     "semantic_hash": ""
   },
   "src/app/perfil/components/ai-models-card.tsx": {
-    "mtime": 1784823163.4278295,
-    "ast_hash": "1de719ba4cf72575523ce5f7ba7065e5",
+    "mtime": 1784826126.031864,
+    "ast_hash": "cf8281f0ecde65fcbf25f4d7330e4ce2",
     "semantic_hash": ""
   },
   "src/app/perfil/components/palette-studio.tsx": {
@@ -1500,8 +1495,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
-    "mtime": 1784823163.4345021,
-    "ast_hash": "b694ea43ec5a26dfbb7cc4f1697882e1",
+    "mtime": 1784826126.0328617,
+    "ast_hash": "c4a1e771ab4c2ae7bc925e35cc455114",
     "semantic_hash": ""
   },
   "src/lib/ai/complete.ts": {
@@ -2035,8 +2030,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/ai-config.ts": {
-    "mtime": 1784823163.4441261,
-    "ast_hash": "389a37b181cddf3acf220e054c7d1789",
+    "mtime": 1784826126.0389833,
+    "ast_hash": "b74ab4acb844d951eed520bb43b5ad18",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/ai-settings.ts": {
@@ -2145,8 +2140,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/setups.ts": {
-    "mtime": 1784305466.5962088,
-    "ast_hash": "37a3e79befe05227caab8fa5cebad102",
+    "mtime": 1784828665.7078474,
+    "ast_hash": "3c5d187f4d676be996887703aa08c369",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/study-sessions.ts": {
@@ -2165,8 +2160,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trades.ts": {
-    "mtime": 1784823163.4453938,
-    "ast_hash": "8c018b36c50ae530e7c1da559df861eb",
+    "mtime": 1784826126.039991,
+    "ast_hash": "3f6370332a4d845e052c8244407083ac",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trading-sessions.ts": {
@@ -2175,8 +2170,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1782402292.2025092,
-    "ast_hash": "4d8a93020814543bb6f11e7bf193408a",
+    "mtime": 1784827664.118654,
+    "ast_hash": "b9a52aee56f781962471553ed03a7749",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
@@ -2640,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1784759477.6306179,
-    "ast_hash": "d5a679bece30aad86f4ee3d04c2b02ef",
+    "mtime": 1784829150.8195777,
+    "ast_hash": "4dc17d5a10e0f58f924b3f1e9f2613b6",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2720,8 +2715,8 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1784823163.4421308,
-    "ast_hash": "bc56eca4db5d6428cd53c56c3bd8bc96",
+    "mtime": 1784826851.6918547,
+    "ast_hash": "963c318184a7a1890ae910bcf55b93d1",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
@@ -2735,8 +2730,8 @@
     "semantic_hash": ""
   },
   "scripts/check-schema-drift.sh": {
-    "mtime": 1784305466.576917,
-    "ast_hash": "af925705f6428d839c319a490aff3bec",
+    "mtime": 1784826126.0123677,
+    "ast_hash": "8fcca23c2a727d117d296e51b1f1355b",
     "semantic_hash": ""
   },
   "src/domains/trading/emotions.ts": {
@@ -2780,13 +2775,13 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/pipeline.ts": {
-    "mtime": 1784823163.4374921,
-    "ast_hash": "f3af2afaa80b1b4fe235da40cb85a6b2",
+    "mtime": 1784826126.034858,
+    "ast_hash": "ba82844896ed14066e73eea525d05b52",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/registry.ts": {
-    "mtime": 1784823163.4384968,
-    "ast_hash": "649ad516bc2e3644b79950364b1f8c12",
+    "mtime": 1784828665.7058427,
+    "ast_hash": "d42e658111155bf52b002f933706baf2",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/shape.ts": {
@@ -2795,8 +2790,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/types.ts": {
-    "mtime": 1784823163.4395006,
-    "ast_hash": "7eaab9b2c7fc2f8beea3eb039c79f8a3",
+    "mtime": 1784828665.7068357,
+    "ast_hash": "9d4b8955d6c9ae407789dc6e6d429dd2",
     "semantic_hash": ""
   },
   "supabase/migrations/20260717120000_rule_source_commitment_fk.sql": {
@@ -2857,6 +2852,46 @@
   "docs/superpowers/specs/2026-07-23-recuperacion-semantica-coach-design.md": {
     "mtime": 1784823163.4171677,
     "ast_hash": "5fdf7502e0f1e75e3aaf2ac77ae6edc0",
+    "semantic_hash": ""
+  },
+  "src/server/services/retrieval/corpora/setup-notes.ts": {
+    "mtime": 1784828665.704839,
+    "ast_hash": "5d645b0ae9803c3a6435b9fa52e81f78",
+    "semantic_hash": ""
+  },
+  "src/server/services/retrieval/corpora/trade-event-notes.ts": {
+    "mtime": 1784826851.6890988,
+    "ast_hash": "52389935f5c90bc9f25e165001f3f261",
+    "semantic_hash": ""
+  },
+  "src/server/services/retrieval/corpora/trade-plans.ts": {
+    "mtime": 1784826126.0338566,
+    "ast_hash": "8e584c3e34afc2997a13e78c3b3165db",
+    "semantic_hash": ""
+  },
+  "src/server/services/retrieval/corpora/weekly-review-notes.ts": {
+    "mtime": 1784827664.1167216,
+    "ast_hash": "50a3c9abdfe8d877f590b082e396ed92",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260723120000_trade_plan_notes_embeddings.sql": {
+    "mtime": 1784826126.040983,
+    "ast_hash": "2f33c789482625622a1ccef9951154cf",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260723130000_trade_event_notes_embeddings.sql": {
+    "mtime": 1784826851.6927898,
+    "ast_hash": "9eff517db638791d629d0654577779f6",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260723140000_weekly_review_summary_embeddings.sql": {
+    "mtime": 1784827664.1197643,
+    "ast_hash": "7d1fa0234207fb11467d405b4f20068b",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260723150000_setup_description_embeddings.sql": {
+    "mtime": 1784828665.7088342,
+    "ast_hash": "7fb082e5327a75089c2c8d433ba96626",
     "semantic_hash": ""
   }
 }
