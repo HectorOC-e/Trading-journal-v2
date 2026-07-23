@@ -94,6 +94,13 @@ texto que escribe el trader**. De dos corpus se pasó a **siete**, un PR por pie
 > `ai_analysis` excluido). Hoy 0 filas con texto en prod; el cableado queda listo para cuando el
 > trader escriba una.
 
+**Índices vectoriales: ivfflat → HNSW (PR #168).** Los siete índices del pipeline se crearon con
+`ivfflat lists=100` sobre tablas **sin vectores** (la columna nacía vacía; el backfill viene
+después), así que sus centroides nunca se entrenaron → recall degradado desde el día uno. Migrados a
+**HNSW** (no entrena al crearse, buen recall a cualquier escala; prod es pgvector 0.8.0), incluidos
+los dos pre-existentes con el mismo defecto. `memory_episodes` queda en ivfflat: no usa este
+pipeline. Verificado en prod: 7 índices HNSW + 1 ivfflat.
+
 **Qué queda deliberadamente fuera**, y por qué no es omisión:
 
 - **`coach_messages` y `weekly_reviews.ai_analysis`** — texto del **LLM**. Indexarlo para que el LLM
@@ -122,11 +129,13 @@ weekly_reviews 4/4 · setups 1/1 · learning_notes 3/3`. Confirmado contra BD po
 `monthly_reviews` tiene su columna en prod pero 0 filas con texto, así que no había nada que
 indexar. Suite **1291 → 1301**; cada PR con CI verde incluido replay de migraciones y E2E.
 
-**Lo que quedó sin demostrar en vivo, dicho con precisión:** las citas de los corpus *nuevos* no se
-llegaron a ver renderizadas en el drawer. Al preguntarle al Coach, el LLM eligió `search_trades`
-(filtro exacto) en vez de `semantic_search`, así que la corrida no produjo tarjetas. El camino está
-cableado y cubierto por unit tests (forma de cita + href por corpus); lo que falta es la foto de
-punta a punta, y depende de que el modelo elija la tool semántica — tuning de prompt, no cableado.
+**Verificación de punta a punta — CERRADA (PR #168).** En la primera corrida el LLM eligió
+`search_trades` (filtro exacto) en vez de `semantic_search`, así que no salieron tarjetas. **No era
+cableado, era tuning:** `search_trades` no aclaraba que filtra por campos estructurados, no por el
+texto. Corregidas las dos descripciones de tool y añadida una regla de selección al system prompt
+(texto escrito → semántica; campo exacto → filtro; desempate a favor de la semántica). Reverificado
+en vivo: la misma clase de pregunta dispara ahora `semantic_search` (chip *"buscó en lo que has
+escrito"*), el drawer pinta las tarjetas con R/P&L en color, nota y "Abrir", y navegan al trade.
 
 ### Deuda residual — CERRADA el mismo día
 
@@ -1010,8 +1019,10 @@ abiertos. Confirma al arrancar que tienes gh, Supabase MCP, Vercel MCP y Playwri
 lo sustituye para todo lo que necesites de BD.
 
 Lee primero, en este orden:
-  1) docs/STATUS.md        — empieza por las 4 secciones de cabecera con fecha 2026-07-22,
-                             que PREVALECEN sobre las 109 filas de la tabla de §1
+  1) docs/STATUS.md        — empieza por las secciones de cabecera con fecha 2026-07-22 y
+                             2026-07-23, que PREVALECEN sobre las 109 filas de la tabla de §1.
+                             La recuperación semántica (7 corpus + citas en el Coach) se cerró
+                             el 2026-07-23; su sección de cabecera es la más reciente.
   2) docs/PROJECT_GUIDE.md — qué es el producto
   3) docs/ARCHITECTURE.md  — principios y entidades congelados
 
@@ -1046,9 +1057,11 @@ QUÉ QUEDA PENDIENTE, y nada de esto se arregla escribiendo un detector nuevo:
     gratuito produce basura ocasional en la redacción (se vieron una contradicción
     aritmética, una palabra inventada y caracteres bengalíes en una frase en español).
     Los datos siempre fueron correctos; es la prosa. Decisión de coste del usuario.
- 2. No hay UI de búsqueda semántica. Desde #156 los vectores se generan (16/16 verificados),
-    pero `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin ningún
-    consumidor en la app. El usuario no tiene dónde buscar. Es producto.
+ 2. [HECHO 2026-07-23, PRs #161-#168] Búsqueda semántica: el Coach recupera y CITA sobre siete
+    corpus (trade_notes, trade_plans, trade_events, weekly_reviews, monthly_reviews, setups,
+    learning_notes) con tarjetas abribles y deep-link. Módulo único `services/retrieval/`
+    (adaptador por corpus, consultas literales). El texto del LLM (coach_messages, ai_analysis)
+    queda fuera por FREEZE-P6/D9. Verificado en vivo. Ya NO es pendiente.
  3. `revenge` y `oversizing` no alcanzan umbral, y es ESTRUCTURAL: las tres capas de
     protección (cooldown anti-revancha, guard de presupuesto diario, guard de margen)
     impiden esa conducta ANTES de que llegue a ser patrón. No lo trates como bug ni
@@ -1080,16 +1093,21 @@ Reglas de trabajo (estables):
  · TDD para dominios puros. VERIFICA EL ROJO antes de implementar: un test que nunca viste
    fallar no prueba nada.
  · Migraciones DUALES (SQL en supabase/migrations + modelo prisma) con `npx prisma generate`;
-   RLS per-usuario en tablas nuevas.
- · Corre la suite vitest COMPLETA antes de cada push (hoy: 1269). No un subconjunto.
+   RLS per-usuario en tablas nuevas. EXCEPCIÓN: las columnas `vector` (pgvector) van SÓLO en
+   SQL, NO en schema.prisma — Prisma no soporta el tipo y se leen/escriben por SQL crudo (el
+   drift check DT-4 las exceptúa con la regla genérica `<tabla>.*embedding`). Índices
+   vectoriales: usa HNSW, no ivfflat (ivfflat sobre tabla vacía no entrena centroides).
+ · Corre la suite vitest COMPLETA antes de cada push (hoy: 1301). No un subconjunto.
  · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
  · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
-CANDIDATOS SIGUIENTES, por orden de valor:
- a) Fallback de IA + elegir modelo de pago (desbloquea calidad de las 5 features).
- b) UI de búsqueda semántica (los vectores ya existen; falta la superficie).
- c) Primer consumidor S4 del outbox — sprint completo, ver punto 4.
- d) Re-verificar la Pista C del roadmap con el método de imports.
+CANDIDATOS SIGUIENTES, por orden de valor (la búsqueda semántica ya se hizo — #161-#168):
+ a) Fallback de IA + elegir modelo de pago. EL DE MÁS IMPACTO: desbloquea la calidad de las
+    5 features de IA Y de las 7 superficies de recuperación semántica — toda la redacción del
+    Coach pasa por `openrouter/free`. Requiere decisión de coste del usuario. Es lo siguiente.
+ b) Primer consumidor S4 del outbox — sprint completo, ver punto 4. Deuda arquitectónica de
+    más peso (FREEZE-D1/D6), pero el daño crece lento; no urge.
+ c) Re-verificar la Pista C del roadmap con el método de imports.
 
 ═══ GOTCHAS QUE SIGUEN VIGENTES ═══
 
@@ -1115,6 +1133,21 @@ fix se anula EN SILENCIO, sin que nada falle.
 MIGRACIONES: migrate-deploy corre SÓLO en el run del SHA del merge a main (~5 min).
 `gh run list` justo tras mergear suele cazar un run anterior — identifica el run por
 headSha == HEAD y espera ESE `migrate-deploy: success` antes del smoke post-merge.
+
+RECUPERACIÓN SEMÁNTICA (services/retrieval/): añadir un corpus = 4 sitios, NINGUNO una lista de
+claves. (1) migración SQL con columna `vector` + índice HNSW; (2) un adaptador en `corpora/`
+(consultas LITERALES, nunca interpolar tabla/columna); (3) registrarlo en `registry.ts`;
+(4) cablear `scheduleEmbedding(prisma, userId, "<key>", id, texto)` en la mutación que escribe.
+`CORPUS_KEYS` (types.ts) es la ÚNICA fuente de la lista: tipo, z.enum de routers, validación,
+rótulo de /perfil y la excepción del drift check se derivan de ahí. La guarda de contrato
+(registry.test.ts) corre sobre cada corpus y rompe si el adaptador está incompleto. VERIFICA el
+href contra la ruta REAL antes de cablearlo (dos veces el href supuesto no existía: `/reviews?week=`
+era `/reviews/semanal/<fecha>`). NO indexes texto del LLM (coach_messages, ai_analysis): FREEZE-P6/D9.
+
+PLAYWRIGHT CONTRA PROD (login): importa de `@playwright/test`, NO de `playwright` (playwright-core
+falta en node_modules, misma familia que sentry/puppeteer). El botón "Iniciar sesión" NACE
+`disabled` por hidratación: `pressSequentially` en los campos, luego espera en bucle a que
+`isDisabled()` sea false antes de click. El FAB del Coach se ancla por `aria-label*="coach"`.
 
 DISPARAR UN CRON SIN .env NI SECRETOS: ejecuta por SQL el mismo `net.http_post` que usa
 `cron.job`; el secreto sale de `public.app_setting('cron_secret')`. Ojo: el comentario de

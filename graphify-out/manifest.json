@@ -1490,13 +1490,13 @@
     "semantic_hash": ""
   },
   "src/lib/ai/coach-service.ts": {
-    "mtime": 1782772988.6510255,
-    "ast_hash": "17b8c6165762d62c4989a34e5ef82156",
+    "mtime": 1784835033.7224767,
+    "ast_hash": "4b0d6ecc12d71fa3a873b6140f4f3962",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
-    "mtime": 1784826126.0328617,
-    "ast_hash": "c4a1e771ab4c2ae7bc925e35cc455114",
+    "mtime": 1784835033.7272866,
+    "ast_hash": "e9e810a04e80041d369b58c8ec50e7de",
     "semantic_hash": ""
   },
   "src/lib/ai/complete.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1784834160.8338997,
-    "ast_hash": "30bb3cd4548f277c626d16e5ee78d907",
+    "mtime": 1784835763.6560335,
+    "ast_hash": "7929a9530b3c769823e49d5402247272",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2902,6 +2902,11 @@
   "supabase/migrations/20260723160000_monthly_review_summary_embeddings.sql": {
     "mtime": 1784833830.5056353,
     "ast_hash": "3a963db00376baa877025ccccc21d998",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20260723170000_retrieval_indexes_ivfflat_to_hnsw.sql": {
+    "mtime": 1784835033.7272866,
+    "ast_hash": "fb9f3ab3f5bdf2ee76818499c9c5629d",
     "semantic_hash": ""
   }
 }
