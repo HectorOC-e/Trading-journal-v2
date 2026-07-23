@@ -65,6 +65,15 @@ describe("registro de corpus", () => {
     expect(c.label).toBe("Semana del 20 jul")
   })
 
+  it("setups cita hacia /playbook con ?highlight, que abre el drawer", () => {
+    const row = { id: "77777777-7777-7777-7777-777777777777", name: "Breakout London", abbreviation: "BL", market: "Forex", status: "ACTIVO", description: "ruptura de rango asiatico" }
+    const c = getAdapter("setups").toCitation(row as never, 0.9)
+    expect(c.corpus).toBe("setups")
+    // ?highlight abre el drawer del setup (playbook/page.tsx:1204), no solo resalta.
+    expect(c.href).toBe(`/playbook?highlight=${row.id}`)
+    expect(c.label).toBe("Breakout London")
+  })
+
   it("learning_notes cita hacia /aprendizaje y se declara learning_notes", () => {
     const row = { id: "22222222-2222-2222-2222-222222222222", title: "Trading in the Zone", type: "LIBRO", status: "EN_CURSO", progressPct: 60, notes: "nota" }
     const c = getAdapter("learning_notes").toCitation(row as never, 0.9)
