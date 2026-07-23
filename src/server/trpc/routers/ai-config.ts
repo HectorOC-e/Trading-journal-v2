@@ -3,6 +3,7 @@ import { router, protectedProcedure } from "../init"
 import { encryptApiKey, decryptApiKey, maskApiKey, EncryptionConfigError } from "@/lib/ai/key-encryption"
 import { buildAiDiagnostics, resolveAiCall } from "@/lib/ai/resolve-provider"
 import { testProviderConnectivity } from "@/lib/ai/health-check"
+import { indexStatus, reindex } from "@/server/services/retrieval/pipeline"
 
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
 type Provider = typeof PROVIDERS[number]
@@ -156,6 +157,22 @@ export const aiConfigRouter = router({
       error:          result.valid ? null : (result.error ?? "Error desconocido"),
     }
   }),
+
+  /**
+   * Estado real de indexación por corpus. El diagnóstico de arriba comprueba que
+   * hay clave y que el proveedor responde; esto comprueba la otra dimensión: si
+   * existe algún vector. Sin ella la feature figura activa sin estarlo — que es
+   * exactamente cómo `search_learning_resources` estuvo muda sin que nada lo dijera.
+   */
+  indexStatus: protectedProcedure
+    .query(({ ctx }) => indexStatus(ctx.prisma, ctx.userId)),
+
+  reindex: protectedProcedure
+    .input(z.object({
+      corpus: z.enum(["trade_notes", "learning_notes"]).optional(),
+      limit:  z.number().int().min(1).max(500).default(200),
+    }).optional())
+    .mutation(({ ctx, input }) => reindex(ctx.prisma, ctx.userId, input)),
 })
 
 /**

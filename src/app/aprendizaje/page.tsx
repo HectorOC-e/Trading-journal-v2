@@ -40,6 +40,13 @@ export default function AprendizajePage() {
     const t = new URLSearchParams(window.location.search).get("tab")
     if (t === "repaso" || t === "biblioteca") setTab(t)
   }, [])
+  // Deep-link via ?resource= (citas del Coach). Sin fetch por id: learningResources.list
+  // trae todo sin paginar, así que el recurso citado siempre está en la lista.
+  const [deepLinkResource, setDeepLinkResource] = useState<string | null>(null)
+  useEffect(() => {
+    setDeepLinkResource(new URLSearchParams(window.location.search).get("resource"))
+  }, [])
+
   function selectTab(t: Tab) {
     setTab(t)
     const url = new URL(window.location.href)
@@ -70,6 +77,15 @@ export default function AprendizajePage() {
   }, [])
 
   const resources = rawResources as unknown as LearningResource[]
+
+  // Resuelve el ?resource= una vez que la lista ha cargado, y limpia la marca
+  // para no reabrir el drawer si el trader lo cierra.
+  useEffect(() => {
+    if (!deepLinkResource || !resources.length) return
+    const r = resources.find(x => x.id === deepLinkResource)
+    if (r) { setTab("biblioteca"); setDrawerResource(r) }
+    setDeepLinkResource(null)
+  }, [deepLinkResource, resources, setDrawerResource])
 
   const deleteResource = trpc.learningResources.delete.useMutation({
     onSuccess: () => utils.learningResources.list.invalidate(),

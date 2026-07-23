@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
 import { STORAGE_KEYS } from "@/lib/storage-keys"
 import { useAnyDialogOpen } from "@/lib/dialog-open-store"
+import type { Citation } from "@/server/services/retrieval/types"
 
 type Message = {
   id:      string
@@ -15,6 +16,18 @@ type Message = {
   content: string
   ts?:     number      // epoch ms — shown as a small timestamp
   tools?:  string[]    // coach tools consulted while producing this reply
+  cites?:  Citation[]  // notas del trader que sustentan la respuesta
+}
+
+/** Dedup por (corpus, id): una misma nota puede volver en dos rondas de tools. */
+function dedupeById(cs: Citation[]): Citation[] {
+  const seen = new Set<string>()
+  return cs.filter(c => {
+    const k = `${c.corpus}:${c.id}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
 }
 
 // Friendly Spanish labels for the read-only coach tools (transparency chips).
@@ -24,11 +37,10 @@ const TOOL_LABELS: Record<string, string> = {
   search_trades:      "buscó en tus trades",
   get_trade_detail:   "revisó un trade",
   get_period_stats:   "calculó stats del periodo",
-  semantic_search:    "búsqueda semántica en notas",
+  semantic_search:    "buscó en lo que has escrito",
   get_learning_resources:    "revisó tus recursos de estudio",
   get_study_agenda:          "consultó tu agenda de estudio",
   suggest_study:             "cruzó tus debilidades con recursos",
-  search_learning_resources: "búsqueda semántica en recursos",
 }
 
 // Starter prompts shown on an empty conversation.
@@ -209,6 +221,7 @@ export function AiCoachDrawer() {
 
         let text = ""
         const newTools: string[] = []
+        const newCites: Citation[] = []
         for (;;) {
           const start = buf.indexOf("\0")
           if (start === -1) { text += buf; buf = ""; break }
@@ -216,16 +229,24 @@ export function AiCoachDrawer() {
           const end = buf.indexOf("\0", start + 1)
           if (end === -1) { buf = buf.slice(start); break } // wait for marker's rest
           try {
-            const ev = JSON.parse(buf.slice(start + 1, end)) as { tool?: string }
+            // Dos formas sobre el mismo canal: {tool} al empezar la llamada y
+            // {cites} al terminarla.
+            const ev = JSON.parse(buf.slice(start + 1, end)) as { tool?: string; cites?: Citation[] }
             if (ev.tool) newTools.push(ev.tool)
+            if (ev.cites?.length) newCites.push(...ev.cites)
           } catch { /* ignore malformed marker */ }
           buf = buf.slice(end + 1)
         }
 
-        if (text || newTools.length) {
+        if (text || newTools.length || newCites.length) {
           assistantText += text
           setMessages(prev => prev.map(m => m.id === assistantId
-            ? { ...m, content: m.content + text, tools: [...(m.tools ?? []), ...newTools] }
+            ? {
+                ...m,
+                content: m.content + text,
+                tools:   [...(m.tools ?? []), ...newTools],
+                cites:   newCites.length ? dedupeById([...(m.cites ?? []), ...newCites]) : m.cites,
+              }
             : m))
         }
       }
@@ -464,6 +485,15 @@ export function AiCoachDrawer() {
                         ))}
                       </div>
                     )}
+
+                    {isAssistant && m.cites && m.cites.length > 0 && (
+                      <div className="mt-2 flex flex-col gap-1.5">
+                        <p className="text-[9px] uppercase tracking-[.07em] text-[var(--ink-3)]">
+                          Tus notas en las que me apoyo
+                        </p>
+                        {m.cites.map(c => <CiteCard key={`${c.corpus}:${c.id}`} cite={c} />)}
+                      </div>
+                    )}
                   </div>
 
                   {/* Meta row: timestamp + actions (copy / regenerate) */}
@@ -557,6 +587,37 @@ export function AiCoachDrawer() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ── Tarjeta de cita: la nota concreta en la que el coach se apoya ─────────────
+// Existe para que una afirmación sobre lo que el trader escribió sea AUDITABLE
+// por el trader, no sólo narrada. Refuerza P2 desde el lado de la UI.
+function CiteCard({ cite }: { cite: Citation }) {
+  const [open, setOpen] = useState(false)
+  const outcomeColor = cite.positive === null ? "var(--ink-3)" : cite.positive ? "var(--win)" : "var(--loss)"
+  return (
+    <div className="rounded-[var(--radius-xs)] border border-[var(--line)] bg-[var(--panel)] p-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11.5px] font-bold text-[var(--ink)]">{cite.label}</span>
+        {cite.outcome && (
+          <span className="font-mono text-[11px] font-bold shrink-0" style={{ color: outcomeColor }}>{cite.outcome}</span>
+        )}
+      </div>
+      <p className="text-[10px] text-[var(--ink-3)]">{cite.sublabel}</p>
+      <p className={cn("text-[11px] text-[var(--ink-2)] mt-1", !open && "line-clamp-2")}>{cite.snippet}</p>
+      <div className="flex items-center gap-3 mt-1.5">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="text-[10px] text-[var(--ink-3)] hover:text-[var(--ink)] transition-colors"
+        >
+          {open ? "Menos" : "Leer entera"}
+        </button>
+        <a href={cite.href} className="text-[10px] font-medium text-[var(--accent)] hover:underline">
+          Abrir
+        </a>
+      </div>
     </div>
   )
 }

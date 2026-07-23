@@ -86,6 +86,15 @@ export function AiModelsCard() {
     onError: (err) => toast.error(formatErrorForUser(err)),
   })
 
+  const { data: indexRows = [] } = trpc.aiConfig.indexStatus.useQuery()
+  const reindexMut = trpc.aiConfig.reindex.useMutation({
+    onSuccess: (r) => {
+      utils.aiConfig.indexStatus.invalidate()
+      toast.success(`Indexadas ${r.embedded}${r.remaining > 0 ? ` · quedan ${r.remaining}` : ""}`)
+    },
+    onError: (err) => toast.error(formatErrorForUser(err)),
+  })
+
   const [defaultProvider,  setDefaultProvider]  = useState<Provider>("anthropic")
   const [defaultModel,     setDefaultModel]     = useState("claude-sonnet-4-6")
   const [fallbackProvider, setFallbackProvider] = useState<Provider>("openrouter")
@@ -278,6 +287,44 @@ export function AiModelsCard() {
               </div>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* ── Indexación semántica ── */}
+      <div style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--ink)" }}>Indexación semántica</p>
+          <button type="button" onClick={() => reindexMut.mutate({})} disabled={reindexMut.isPending}
+            style={{
+              height: 32, padding: "0 14px", borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)",
+              fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: reindexMut.isPending ? 0.6 : 1,
+            }}>
+            {reindexMut.isPending ? "Indexando…" : "Indexar ahora"}
+          </button>
+        </div>
+        <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 10 }}>
+          Cuántas de tus notas puede encontrar el Coach por significado.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {indexRows.map(row => {
+            const done = row.withText > 0 && row.embedded >= row.withText
+            return (
+              <div key={row.corpus} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11.5 }}>
+                <span style={{ color: "var(--ink-2)" }}>
+                  {row.corpus === "trade_notes" ? "Notas de trades" : "Apuntes de aprendizaje"}
+                </span>
+                <span style={{ fontFamily: "'JetBrains Mono',monospace", fontWeight: 700, color: done ? "var(--win)" : "var(--ink-3)" }}>
+                  {row.embedded}/{row.withText} indexadas
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {reindexMut.data && (
+          <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 8 }}>
+            Indexadas {reindexMut.data.embedded} · fallaron {reindexMut.data.failed} · quedan {reindexMut.data.remaining}
+          </p>
         )}
       </div>
     </div>
