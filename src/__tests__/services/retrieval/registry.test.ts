@@ -55,6 +55,16 @@ describe("registro de corpus", () => {
     expect(c.positive).toBeNull()
   })
 
+  it("weekly_reviews cita hacia la ruta dinamica /reviews/semanal/<weekStart>", () => {
+    const row = { id: "66666666-6666-6666-6666-666666666666", weekLabel: "Semana del 20 jul", weekStart: new Date("2026-07-20"), status: "submitted", executiveSummary: "semana disciplinada" }
+    const c = getAdapter("weekly_reviews").toCitation(row as never, 0.9)
+    expect(c.corpus).toBe("weekly_reviews")
+    // Ruta dinamica real, NO ?week= (que no existe). Formato YYYY-MM-DD que valida
+    // VALID_DATE en reviews/semanal/[weekStart].
+    expect(c.href).toBe("/reviews/semanal/2026-07-20")
+    expect(c.label).toBe("Semana del 20 jul")
+  })
+
   it("learning_notes cita hacia /aprendizaje y se declara learning_notes", () => {
     const row = { id: "22222222-2222-2222-2222-222222222222", title: "Trading in the Zone", type: "LIBRO", status: "EN_CURSO", progressPct: 60, notes: "nota" }
     const c = getAdapter("learning_notes").toCitation(row as never, 0.9)

@@ -5,12 +5,14 @@ import type { CorpusAdapter, CorpusKey } from "./types"
 import { tradeNotesAdapter } from "./corpora/trade-notes"
 import { tradePlansAdapter } from "./corpora/trade-plans"
 import { tradeEventNotesAdapter } from "./corpora/trade-event-notes"
+import { weeklyReviewNotesAdapter } from "./corpora/weekly-review-notes"
 import { resourceNotesAdapter } from "./corpora/resource-notes"
 
 export const CORPORA = {
   trade_notes:    tradeNotesAdapter,
   trade_plans:    tradePlansAdapter,
   trade_events:   tradeEventNotesAdapter,
+  weekly_reviews: weeklyReviewNotesAdapter,
   learning_notes: resourceNotesAdapter,
 } as unknown as Record<CorpusKey, CorpusAdapter<never>>
 
