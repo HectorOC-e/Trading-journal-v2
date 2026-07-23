@@ -6,6 +6,7 @@ import { isWin, calcWinRate } from "@/lib/formulas"
 import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider"
 import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
 import { loadWeeklyReport, aiMetaOf } from "@/server/services/reviews/report-data"
+import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 import { loadWeeklyCardStats } from "@/server/services/reviews/card-stats"
 import { loadReviewInsights, loadReviewAnalytics } from "@/server/services/reviews/review-insights"
 import { loadReviewsOverview } from "@/server/services/reviews/overview"
@@ -324,8 +325,11 @@ export const weeklyReviewsRouter = router({
       if (existing) {
         const row = await ctx.prisma.weeklyReview.update({
           where: { id: existing.id }, data,
-          select: { status: true, executiveSummary: true },
+          select: { id: true, status: true, executiveSummary: true },
         })
+        if (input.notes !== undefined) {
+          scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes)
+        }
         return { status: row.status, notes: row.executiveSummary }
       }
       const we = new Date(ws); we.setDate(ws.getDate() + 6)
@@ -335,8 +339,9 @@ export const weeklyReviewsRouter = router({
           userId: ctx.userId, weekStart: ws, weekEnd: we, weekLabel: label, weekRange: label,
           executiveSummary: input.notes ?? "", status: input.status ?? "draft",
         },
-        select: { status: true, executiveSummary: true },
+        select: { id: true, status: true, executiveSummary: true },
       })
+      scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes ?? "")
       return { status: row.status, notes: row.executiveSummary }
     }),
 })

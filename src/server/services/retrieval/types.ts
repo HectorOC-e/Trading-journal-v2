@@ -12,7 +12,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
  * otro sitio. Con dos corpus la duplicación era tolerable; con cinco es deriva
  * garantizada.
  */
-export const CORPUS_KEYS = ["trade_notes", "trade_plans", "trade_events", "learning_notes"] as const
+export const CORPUS_KEYS = ["trade_notes", "trade_plans", "trade_events", "weekly_reviews", "learning_notes"] as const
 
 export type CorpusKey = (typeof CORPUS_KEYS)[number]
 
