@@ -1052,11 +1052,17 @@ tenían UN SOLO TEST DIRECTO. Así sobrevivieron todos. Si vas a tocar un servid
 o de reconciliación, mira primero si tiene cobertura antes de fiarte de él.
 
 QUÉ QUEDA PENDIENTE, y nada de esto se arregla escribiendo un detector nuevo:
- 1. Sin fallback de IA. `openrouter/free` sin respaldo: cualquier fallo transitorio del
-    proveedor llega al usuario como error. Es CONFIGURACIÓN, no código. Además el tier
-    gratuito produce basura ocasional en la redacción (se vieron una contradicción
-    aritmética, una palabra inventada y caracteres bengalíes en una frase en español).
-    Los datos siempre fueron correctos; es la prosa. Decisión de coste del usuario.
+ 1. Fallback/resiliencia de IA. MATIZ VERIFICADO EL 2026-07-23 (método de imports): el mecanismo
+    de fallback YA EXISTE — `complete.ts:24` itera `usableCandidates` con try/catch (si un modelo
+    falla, prueba el siguiente); coach/insights/reviews/psychology usan el mismo patrón. Pero está
+    VACÍO: hoy `fallback` es null (nadie configuró un 2º modelo) → un solo candidato → un 500
+    transitorio llega directo al usuario. Y el camino de EMBEDDINGS ni siquiera tiene ese mecanismo
+    (`resolveEmbeddingCall` da un solo call; `embedText` devuelve null al primer fallo). Se parte
+    en dos: (a) RESILIENCIA ante hipos transitorios = retry con backoff + cadena de modelos
+    GRATUITOS + llevar el patrón a embeddings → es CÓDIGO, no requiere pago; (b) CALIDAD de
+    redacción (basura ocasional del free tier) → sí requiere modelo de pago. **El usuario decidió
+    2026-07-23 NO usar modelos de pago por ahora (etapa de pruebas)**, así que (b) queda aparcado;
+    (a) sigue disponible sin gasto si se prioriza la robustez.
  2. [HECHO 2026-07-23, PRs #161-#168] Búsqueda semántica: el Coach recupera y CITA sobre siete
     corpus (trade_notes, trade_plans, trade_events, weekly_reviews, monthly_reviews, setups,
     learning_notes) con tarjetas abribles y deep-link. Módulo único `services/retrieval/`
@@ -1066,10 +1072,17 @@ QUÉ QUEDA PENDIENTE, y nada de esto se arregla escribiendo un detector nuevo:
     protección (cooldown anti-revancha, guard de presupuesto diario, guard de margen)
     impiden esa conducta ANTES de que llegue a ser patrón. No lo trates como bug ni
     intentes "conseguir más datos": el producto está haciendo su trabajo.
- 4. Primer consumidor S4 de la outbox (S0/R-3). 15+ eventos acumulados en `pending`, que es
-    lo correcto con el dispatcher des-agendado. Construirlo = un sprint. El primer consumidor
-    DEBE re-agendar el cron (bloque citado en el header de la migración 20260721190000), y
-    al hacerlo incluir `timeout_milliseconds := 60000` (ver #155).
+ 4. ► **LA SIGUIENTE ACCIÓN. Primer consumidor S4 de la outbox — DISEÑADO Y PLANIFICADO el
+    2026-07-23, listo para ejecutar.** Spec: `docs/superpowers/specs/2026-07-23-outbox-s4-consumer-design.md`.
+    Plan (9 tareas, TDD): `docs/superpowers/plans/2026-07-23-outbox-s4-consumer.md`. La
+    implementación se dejó a propósito para esta sesión. Arranca creando una rama desde main y
+    ejecutando el plan con superpowers:executing-plans (o subagent-driven).
+    Resumen: 16 eventos en `pending` (insight.created ×12, commitment.created ×2, commitment.broken ×2).
+    Dos consumidores — memoria episódica (commitment.* → recordEpisodeOnce) y notificación
+    (insight.created → emitNotification). Decisión clave: `dispatchPending` pasa de un Map mutable
+    global (trampa serverless que quema eventos sin handler) a INYECCIÓN de un mapa estático
+    HANDLERS, y el claim se restringe a tipos con handler (un tipo sin consumidor queda pending,
+    replayable — protege FREEZE-D6). Re-agenda el cron con `timeout_milliseconds := 60000` (#155).
  5. TD-037: diferido a conciencia. NO lo re-descubras.
  6. Bug dev-only de DataTable: no afecta prod, el usuario pidió dejarlo.
 
@@ -1101,13 +1114,15 @@ Reglas de trabajo (estables):
  · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
  · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
-CANDIDATOS SIGUIENTES, por orden de valor (la búsqueda semántica ya se hizo — #161-#168):
- a) Fallback de IA + elegir modelo de pago. EL DE MÁS IMPACTO: desbloquea la calidad de las
-    5 features de IA Y de las 7 superficies de recuperación semántica — toda la redacción del
-    Coach pasa por `openrouter/free`. Requiere decisión de coste del usuario. Es lo siguiente.
- b) Primer consumidor S4 del outbox — sprint completo, ver punto 4. Deuda arquitectónica de
-    más peso (FREEZE-D1/D6), pero el daño crece lento; no urge.
- c) Re-verificar la Pista C del roadmap con el método de imports.
+CANDIDATOS SIGUIENTES (la búsqueda semántica ya se hizo — #161-#168):
+ ► **AHORA: ejecutar el plan del consumidor S4 del outbox** (punto 4 de arriba). Spec + plan
+   escritos y mergeados a main el 2026-07-23; sólo falta implementar. Rama nueva desde main +
+   superpowers:executing-plans. ES LO SIGUIENTE, ya decidido.
+ Después, por valor:
+ a) Resiliencia de IA SIN pago (punto 1): retry con backoff + cadena de modelos gratuitos +
+    llevar el patrón a embeddings. Es código, no requiere gasto. Los modelos de PAGO (calidad de
+    redacción) quedaron aplazados por el usuario — etapa de pruebas.
+ b) Re-verificar la Pista C del roadmap con el método de imports.
 
 ═══ GOTCHAS QUE SIGUEN VIGENTES ═══
 
