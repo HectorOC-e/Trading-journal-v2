@@ -74,6 +74,15 @@ describe("registro de corpus", () => {
     expect(c.label).toBe("Breakout London")
   })
 
+  it("monthly_reviews cita a /reviews/mensual/<YYYY-MM> con mes cero-padded", () => {
+    const row = { id: "88888888-8888-8888-8888-888888888888", year: 2026, month: 7, status: "submitted", summary: "mes de consolidacion" }
+    const c = getAdapter("monthly_reviews").toCitation(row as never, 0.9)
+    expect(c.corpus).toBe("monthly_reviews")
+    // El mes va cero-padded: mensual/[yearMonth] hace split("-") y espera YYYY-MM.
+    expect(c.href).toBe("/reviews/mensual/2026-07")
+    expect(c.label).toBe("Julio 2026")
+  })
+
   it("learning_notes cita hacia /aprendizaje y se declara learning_notes", () => {
     const row = { id: "22222222-2222-2222-2222-222222222222", title: "Trading in the Zone", type: "LIBRO", status: "EN_CURSO", progressPct: 60, notes: "nota" }
     const c = getAdapter("learning_notes").toCitation(row as never, 0.9)
