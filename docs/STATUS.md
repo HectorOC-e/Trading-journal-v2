@@ -75,11 +75,22 @@ test de regresión.
 > reutilizado por la simulación del 22-jul), así que las tarjetas se ven repetidas. El dedup por
 > `(corpus, id)` hace lo correcto — son ids distintos. Con notas reales no ocurre.
 
-### Deuda residual, declarada
+### Deuda residual — CERRADA el mismo día
 
-`/api/ai-embed` **no** se consolidó: es un webhook con secreto compartido, camino de escritura
-independiente. Incluirlo ampliaba el radio de fallo sin servir a la meta. Se declara en vez de
-afirmar una consolidación total que sería falsa.
+`/api/ai-embed` quedó fuera del PR #161 como deuda declarada. Al ir a resolverla se descubrió que
+**no había nada que consolidar: la ruta estaba muerta por los dos caminos.**
+
+- **Camino directo** (`{tradeId}` con sesión): su propio comentario afirmaba *"called from
+  `scheduleEmbedding()` in trades router"*. **Falso** — `scheduleEmbedding` siempre escribió
+  directo por Prisma, nunca por HTTP. Cero llamantes.
+- **Camino webhook** (`X-Webhook-Secret`): exigía un Database Webhook de Supabase sobre `trades`.
+  Los webhooks de Supabase se implementan como triggers que llaman a
+  `supabase_functions.http_request`; en prod **no existe ninguno**. Los únicos triggers sobre
+  `trades` y `learning_resources` son `set_updated_at`. Cero invocaciones posibles.
+
+Borrada la ruta y retirado `SUPABASE_WEBHOOK_SECRET` de `.env.example`. Lección: una ruta con
+autenticación cuidada, guard de IDOR y comparación en tiempo constante puede llevar meses sin que
+nadie la llame; el rigor del código no prueba que esté viva.
 
 ## Hallazgo de diseño: las protecciones impiden la conducta que los detectores miden (2026-07-22)
 
