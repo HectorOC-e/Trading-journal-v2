@@ -1,8 +1,8 @@
 # Diseño — primer consumidor S4 del outbox de eventos de dominio
 
-> Fecha: 2026-07-23 · Rama: `feat/outbox-s4-consumer`
-> Estado: diseño aprobado, pendiente de plan e implementación (la implementación se deja para la
-> próxima sesión).
+> Fecha: 2026-07-23 · Spec + plan mergeados a `main`; implementación en la próxima sesión.
+> Estado: diseño aprobado, plan escrito (`docs/superpowers/plans/2026-07-23-outbox-s4-consumer.md`),
+> implementación pendiente.
 > IDs de arquitectura: `FREEZE-D1` (outbox+dispatcher), `FREEZE-D6` (outbox = fuente de verdad
 > replayable), `FREEZE-EV3/EV5/EV6` (catálogo de eventos), `ARCHITECTURE.md §4`. Ninguna decisión de
 > §11.1 se revoca; se cambia la *firma* de `dispatchPending`, no el mecanismo congelado.
