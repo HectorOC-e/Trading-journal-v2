@@ -3,6 +3,7 @@ import { router, protectedProcedure, dashboardMutation } from "../init"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
+import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 
 const PeriodEnum = z.enum(["1M", "3M", "6M", "1Y", "ALL"])
 
@@ -51,11 +52,13 @@ export const setupsRouter = router({
 
   create: dashboardMutation
     .input(SetupInput)
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.setup.create({
+    .mutation(async ({ ctx, input }) => {
+      const setup = await ctx.prisma.setup.create({
         data: { ...input, userId: ctx.userId },
       })
-    ),
+      scheduleEmbedding(ctx.prisma, ctx.userId, "setups", setup.id, input.description ?? "")
+      return setup
+    }),
 
   update: dashboardMutation
     .input(z.object({ id: z.string().uuid() }).merge(SetupInput.partial()))
@@ -95,10 +98,14 @@ export const setupsRouter = router({
 
       // ── Apply the update ────────────────────────────────────────────────
       // Numeric edge fields come in as JS numbers; Prisma Decimal fields accept numbers directly.
-      return ctx.prisma.setup.update({
+      const setup = await ctx.prisma.setup.update({
         where: { id, userId: ctx.userId },
         data,
       })
+      if (data.description !== undefined) {
+        scheduleEmbedding(ctx.prisma, ctx.userId, "setups", setup.id, data.description ?? "")
+      }
+      return setup
     }),
 
   setStatus: dashboardMutation

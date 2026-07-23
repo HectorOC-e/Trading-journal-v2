@@ -6,6 +6,7 @@ import { tradeNotesAdapter } from "./corpora/trade-notes"
 import { tradePlansAdapter } from "./corpora/trade-plans"
 import { tradeEventNotesAdapter } from "./corpora/trade-event-notes"
 import { weeklyReviewNotesAdapter } from "./corpora/weekly-review-notes"
+import { setupNotesAdapter } from "./corpora/setup-notes"
 import { resourceNotesAdapter } from "./corpora/resource-notes"
 
 export const CORPORA = {
@@ -13,6 +14,7 @@ export const CORPORA = {
   trade_plans:    tradePlansAdapter,
   trade_events:   tradeEventNotesAdapter,
   weekly_reviews: weeklyReviewNotesAdapter,
+  setups:         setupNotesAdapter,
   learning_notes: resourceNotesAdapter,
 } as unknown as Record<CorpusKey, CorpusAdapter<never>>
 
