@@ -8,29 +8,18 @@ import { computeNewStreak } from "@/domains/learning/services/streak-service"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { computeSetupStats } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
-import { embedText } from "@/lib/ai/embeddings"
-import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
+import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 
-/** Fire-and-forget: embed a resource's notes and store the vector (SP2). Errors silent.
- *  Clears the embedding when notes are empty. */
+/** Fire-and-forget: embebe las notas del recurso (SP2). La escritura del vector
+ *  vive ahora en el pipeline de retrieval — un solo dueño de notes_embedding.
+ *  Al vaciar las notas se limpia el vector, que sigue siendo la invalidación
+ *  correcta: un recurso sin texto no debe seguir siendo recuperable. */
 function scheduleResourceEmbedding(resourceId: string, notes: string, userId: string, prismaClient: typeof import("@/lib/prisma").prisma): void {
-  void (async () => {
-    try {
-      if (!notes.trim()) {
-        await prismaClient.$executeRaw`UPDATE learning_resources SET notes_embedding = NULL WHERE id = ${resourceId}::uuid`
-        return
-      }
-      const emb = await resolveEmbeddingCall(prismaClient, userId)
-      if (emb.source === "none") return
-      const vector = await embedText(notes, { model: emb.model, apiKey: emb.apiKey })
-      if (!vector) return
-      await prismaClient.$executeRaw`
-        UPDATE learning_resources SET notes_embedding = ${`[${vector.join(",")}]`}::vector
-        WHERE id = ${resourceId}::uuid`
-    } catch {
-      // best-effort, never throw
-    }
-  })()
+  if (!notes.trim()) {
+    void prismaClient.$executeRaw`UPDATE learning_resources SET notes_embedding = NULL WHERE id = ${resourceId}::uuid`.catch(() => {})
+    return
+  }
+  scheduleEmbedding(prismaClient, userId, "learning_notes", resourceId, notes)
 }
 
 const RESOURCE_TYPES = [

@@ -37,7 +37,7 @@ vi.mock("@/domains/analytics/services/analytics-cache", () => ({
   invalidateCache: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("@/server/services/trades/serializers", () => ({ serializeTrade: (t: unknown) => t }))
-vi.mock("@/server/services/trades/embedding-service", () => ({ scheduleEmbedding: vi.fn() }))
+vi.mock("@/server/services/retrieval/pipeline", () => ({ scheduleEmbedding: vi.fn() }))
 
 import { createTrade } from "@/server/services/trades/trade-write-service"
 import type { PrismaClient } from "@/lib/generated/prisma/client"

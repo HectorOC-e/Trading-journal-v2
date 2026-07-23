@@ -22,7 +22,7 @@ import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parseP
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
 import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { serializeTrade, type SerializedTrade } from "./serializers"
-import { scheduleEmbedding } from "./embedding-service"
+import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 import type { EmotionBefore } from "@/domains/trading/emotions"
 
 export type CreateTradeInput = {
@@ -242,7 +242,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   })
 
   if (isCacheEnabled()) await invalidateCache(prisma, userId)
-  scheduleEmbedding(prisma, userId, trade.id, input.notes ?? "")
+  scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
   // Continuous eval of rule-backed commitments (S5, best-effort).
   await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
   return serializeTrade(full)
@@ -323,7 +323,7 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     }, (trade.date as Date).toISOString().slice(0, 10))
     if (isCacheEnabled()) await invalidateCache(prisma, userId)
   }
-  if (input.notes !== undefined) scheduleEmbedding(prisma, userId, trade.id, input.notes ?? "")
+  if (input.notes !== undefined) scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
   return serializeTrade(trade)
 }
 
