@@ -37,7 +37,7 @@ export const COACH_TOOLS = [
   },
   {
     name: "search_trades",
-    description: "Busca trades cerrados del trader por símbolo, setup, resultado, dirección, tag (p.ej. Impulsivo/Revanche/Off-plan) y/o emoción previa (calm/anxious/excited/fearful/overconfident). Devuelve una lista compacta con id. Úsalo para preguntas específicas sobre operaciones.",
+    description: "Filtro EXACTO por campos ESTRUCTURADOS: símbolo, setup, resultado, dirección, tag (Impulsivo/Revanche/Off-plan) y/o emoción previa (calm/anxious/excited/fearful/overconfident). NO busca dentro del TEXTO de las notas ni por significado — para eso usa semantic_search. Úsalo cuando el trader nombre un símbolo/tag/emoción concretos ('mis trades en NQ', 'los off-plan', 'cuando operé ansioso').",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -70,7 +70,7 @@ export const COACH_TOOLS = [
   },
   {
     name: "semantic_search",
-    description: "Búsqueda semántica por SIGNIFICADO sobre lo que el trader ha escrito. Corpus: 'trade_notes' (lo que anotó DESPUÉS de cada trade), 'trade_plans' (el plan que se fijó ANTES de entrar) y 'learning_notes' (apuntes de libros/cursos). Omite 'corpus' para buscar en todos. Útil para 'trades donde rompí mi plan por FOMO', 'qué me dije que iba a hacer' o 'dónde anoté algo sobre gestión de riesgo'.",
+    description: "Búsqueda por SIGNIFICADO sobre TODO lo que el trader ha ESCRITO. ÚSALA siempre que la pregunta sea sobre lo que anotó, escribió, dijo, pensó o reflexionó — no sobre un campo exacto. Corpus: 'trade_notes' (lo anotado DESPUÉS de cada trade), 'trade_plans' (el plan fijado ANTES de entrar), 'trade_events' (lo escrito DENTRO del trade: mover el stop, cerrar parcial), 'weekly_reviews'/'monthly_reviews' (sus reflexiones periódicas), 'setups' (descripciones de setup), 'learning_notes' (apuntes de libros/cursos). Omite 'corpus' para buscar en todos. Ejemplos: 'trades donde rompí mi plan por FOMO', 'qué me dije que iba a hacer', 'cuándo anoté que movía el stop', 'dónde reflexioné sobre gestión de riesgo'. Devuelve las notas concretas, que el trader ve como tarjetas — es la forma HONESTA de citar lo que escribió.",
     input_schema: {
       type: "object" as const,
       properties: {
