@@ -1,8 +1,85 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-22.
+> Última actualización: 2026-07-23.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## Recuperación semántica consolidada y citada por el Coach (2026-07-23, PR #161)
+
+> ⚠️ **Corrección a la sección "Lo que NO se pudo verificar" (2026-07-22).** Decía que
+> *"`semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin ningún consumidor"*.
+> Era **literalmente cierto pero engañoso**: las *procedures tRPC* no tenían consumidor, pero el
+> Coach ya tenía la capacidad cableada por otra vía, duplicada — `COACH_TOOLS.semantic_search`,
+> implementada inline en `coach-tools.ts` y pasada al modelo por `coach-agent.ts`. La afirmación
+> ya no aplica: hoy hay un solo camino, y tiene superficie.
+
+### Lo que estaba roto y nadie veía
+
+`search_learning_resources` devolvía `{resources: []}` **en silencio**. En prod había 3 recursos
+con notas y **0 embebidos**: `learning-resources.ts` sí embebía al guardar, pero los recursos no
+se tocaban desde el 06-jul, antes del arreglo de #156. Existía un script standalone que nadie
+había corrido nunca (exigía URL de BD).
+
+Un `[]` no es un error: el LLM lo narra como *"no has anotado nada sobre eso"*. **El sistema
+afirmaba algo falso sobre el trader** — la clase de cosa que `FREEZE-P2` existe para impedir.
+Es el gemelo exacto de #156, y sobrevivió por la misma causa: la resolución del modelo de
+embeddings vivía en **cuatro copias**.
+
+### Qué se construyó
+
+**Módulo único `src/server/services/retrieval/`** — registro de corpus donde cada adaptador aporta
+**consultas literales**; ningún identificador SQL se interpola. Absorbe `embedding-service.ts`
+(borrado), las dos búsquedas inline de `coach-tools` y los dos scripts `.mjs` (borrados). Añadir un
+corpus (reviews, setups, planes) = un adaptador + registrarlo, sin tocar el pipeline. Una guarda de
+contrato corre sobre **cada** corpus registrado: registrar uno incompleto rompe la suite.
+
+`recallEpisodes` queda **fuera a propósito**: rankea por saliencia decaída, no por similitud
+(`ARCHITECTURE.md §6`). Meterlo en un `search(corpus, query, limit)` destruiría su razón de ser.
+
+**Taxonomía de 5 estados**, el corazón del sprint. `NO_KEY` / `EMBED_FAILED` / `NOT_INDEXED` /
+`EMPTY_CORPUS` / `NO_MATCHES`. **Regla vinculante: sólo los dos últimos pueden redactarse como
+ausencia**; los tres primeros dicen *no pude buscar*. Con varios corpus el estado se reporta **por
+corpus**, sin colapsar — un corpus mudo no puede esconderse detrás de uno sano.
+
+**Auto-reparación acotada** (50 filas/llamada) antes de buscar, que devuelve cuántas **siguen**
+pendientes. Sin ese dato, una reparación acotada reintroduce la misma mentira a menor escala.
+Concurrencia asumida: dos búsquedas simultáneas pueden embeber la misma fila dos veces; `pending`
+filtra `IS NULL` y la escritura es idempotente, así que el peor caso es **gasto duplicado, no
+corrupción**.
+
+**Una sola tool** `semantic_search(query, corpus?, limit)`; desaparece `search_learning_resources`.
+**Citas abribles**: segunda trama NUL con la evidencia (la primera sigue emitiéndose *antes* de
+ejecutar, para no matar el indicador "consultando"), tarjetas bajo la respuesta y deep-link
+`?trade=` / `?resource=`. **`/perfil`** gana el bloque "Indexación semántica" por corpus.
+
+### Defecto encontrado de paso
+
+`embedding-service.ts:58-64` **desalineaba las similitudes**: filtraba `trades` por las filas que
+hidrataron y dejaba `similarity` sin filtrar. Dos arrays paralelos que se desplazan si un id no
+hidrata → cada trade recibía la similitud del siguiente. Disparador estrecho (un trade borrado
+entre las dos consultas), por eso nadie lo vio. Eliminado por construcción (un `Map` por id), con
+test de regresión.
+
+### Verificado en producción
+
+- **Recursos indexados: 0/3 → 3/3** tras pulsar "Indexar ahora" en `/perfil`. Trades siguen 16/16.
+  *(Nota: son **3** recursos con notas, no 4 — dos de los cinco tienen `notes` vacío.)*
+- **Citas en vivo**: el drawer pinta las tarjetas con símbolo, dirección, R y P&L en color, fecha y
+  fragmento; "Abrir" navega a `/trades?trade=<id>`. **Cero errores de consola.**
+- La consulta *"¿cuándo he entrado fuera de plan por impaciencia?"* devuelve como primera cita la
+  nota *"Ya llevaba horas delante. Entré fuera de plan, buscando algo que no estaba ahí."* — la
+  misma que #156 estableció como respuesta correcta.
+- Suite **1269 → 1291**. CI verde incluido E2E autenticado.
+
+> **Observación de producto, no defecto:** seis trades distintos comparten esa nota literal (texto
+> reutilizado por la simulación del 22-jul), así que las tarjetas se ven repetidas. El dedup por
+> `(corpus, id)` hace lo correcto — son ids distintos. Con notas reales no ocurre.
+
+### Deuda residual, declarada
+
+`/api/ai-embed` **no** se consolidó: es un webhook con secreto compartido, camino de escritura
+independiente. Incluirlo ampliaba el radio de fallo sin servir a la meta. Se declara en vez de
+afirmar una consolidación total que sería falsa.
 
 ## Hallazgo de diseño: las protecciones impiden la conducta que los detectores miden (2026-07-22)
 
@@ -312,9 +389,10 @@ la redacción. Si la IA va a ser superficie de producto, ese tier se nota — de
   sobre protecciones. No es un fallo de la simulación.
 - **Sin fallback de IA configurado.** `openrouter/free` sin respaldo: cualquier fallo
   transitorio del proveedor llega al usuario como error. Es configuración, no código.
-- **No hay UI para la búsqueda semántica.** Desde #156 los vectores se generan (16/16), pero
-  `semanticSearch` y `backfillEmbeddings` siguen expuestos sólo en tRPC, sin consumidor: el
-  usuario no tiene dónde buscar. Es producto, no un defecto.
+- ~~**No hay UI para la búsqueda semántica.**~~ **RESUELTO y RE-CARACTERIZADO el 2026-07-23
+  (PR #161).** La afirmación era literalmente cierta sobre las *procedures tRPC* pero engañosa: el
+  Coach ya tenía la capacidad cableada por otra vía, duplicada, y una de las dos mitades estaba
+  muda. Ver la sección de cabecera "Recuperación semántica consolidada y citada por el Coach".
 
 ### Lo que esto NO prueba
 
