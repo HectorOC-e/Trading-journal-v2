@@ -57,6 +57,22 @@ silencio.** El usuario ve un Coach que "no usa las herramientas" y concluye que 
 es capaz — cuando lo que pasó fue un rate limit. Clasificar el error corrige el síntoma y, de paso,
 limpia el terreno para la auditoría de tool-use que viene después.
 
+**El catch no está del todo mal, y el arreglo debe preservar su caso bueno.** Caer a la ruta estática
+ante un modelo que genuinamente **no soporta function calling** es lo correcto: ese modelo nunca va a
+soportarlas, reintentar es inútil, y una respuesta sin tools vale más que ningún error. Lo que hoy
+falta es distinguir esa condición —permanente para ese modelo— de un fallo transitorio, que sí debe
+reintentarse **manteniendo** la ruta agéntica. Tras el arreglo:
+
+| Causa del fallo agéntico | Acción |
+|---|---|
+| Transitoria (429 / 5xx / red) | reintentar la ruta **agéntica** según el perfil; sólo al agotarla, siguiente candidato |
+| El modelo no soporta tools | caer a la ruta estática con ese mismo modelo (comportamiento actual, correcto) |
+| Otra permanente (400/401/403) | siguiente candidato, sin degradar a estático |
+
+De los cuatro modelos de la cadena (§4) sólo está **confirmado** el soporte de tools en Nemotron. El
+plan **no** debe asumirlo en los demás: la clasificación es precisamente lo que permite que un modelo
+sin tools degrade limpiamente en vez de contaminar la señal de fallo.
+
 ## 2. Objetivo y no-objetivos
 
 Hacer que un hipo transitorio del free tier **no** se convierta en un fallo visible ni en una
@@ -106,13 +122,44 @@ deduplicando por `provider + model` y conservando el orden. Los 7 call-sites gan
 **sin tocar ni una línea** de ellos.
 
 Los ids viven en **una sola constante exportada**, con el comentario de que caducan y de dónde se
-revisan. **El plan debe verificarlos contra el catálogo real de OpenRouter antes de fijarlos**: hoy
-prod usa `openrouter/free` —que es un *meta-router* sobre modelos gratuitos, no un modelo— y
-`openai/gpt-oss-20b:free`. Una cadena de tres alias del mismo modelo no es una cadena; hace falta
-**diversidad real de proveedor upstream**, o el rate limit que tumba al primero tumba a los tres.
+revisan. **Cadena fijada (aportada por el usuario desde el catálogo de OpenRouter, 2026-07-24):**
 
-Sólo se añaden candidatos **con clave utilizable**: la cadena por defecto es de OpenRouter, así que
-si el usuario no tiene clave de OpenRouter no aporta nada y la lista queda como hoy.
+```
+1. nvidia/nemotron-3-ultra-550b-a55b:free   (NVIDIA · function calling confirmado)
+2. google/gemma-4-31b-it:free               (Google)
+3. openrouter/free                          (meta-router sobre modelos gratuitos)
+4. google/gemma-4-26b-a4b-it:free           (Google)
+```
+
+**El orden no es arbitrario.** Los dos Gemma comparten upstream, así que van **separados**: un rate
+limit del lado de Google no debe tumbar dos eslabones consecutivos. La diversidad real es
+NVIDIA → Google → meta-router → Google. `openrouter/free` no es un modelo sino un enrutador, de modo
+que aporta un camino de resolución distinto, no un cuarto modelo concreto.
+
+> **No se pudo verificar el catálogo desde la máquina de desarrollo**: `curl` no sale (inspección SSL
+> corporativa, HTTP 000) y `WebFetch` trunca un catálogo de ese tamaño — llegó a negar la existencia
+> de un id que sí está configurado en prod. Los ids de arriba los aportó el usuario. **Un id caduco
+> se auto-limita**: el propio mecanismo lo salta y pasa al siguiente candidato, así que el coste de
+> que uno pudra es un viaje desperdiciado, no un fallo.
+
+### Regla cross-provider (decidida el 2026-07-24)
+
+La cadena gratuita **sólo se engancha si el proveedor primario del usuario ya es OpenRouter**.
+
+Con primario **OpenAI o Anthropic** se obtiene el retry sobre el propio modelo, pero **no** la
+cadena, aunque exista clave de OpenRouter. Dos razones:
+
+1. **`ADR-003 §444` — minimización hacia terceros.** `ARCHITECTURE.md:440` reconoce que estos datos
+   sensibles viajan a proveedores externos. Reenrutar el contexto del trader a NVIDIA o Google por un
+   hipo transitorio es un cambio de destinatario que el usuario no autorizó **para esa llamada**.
+2. **Calidad.** Caer de un modelo de primera línea a un 26B gratuito produce un bajón brusco sin
+   señal visible de por qué. Un error honesto es preferible a una respuesta peor e inexplicada.
+
+El fallback cross-provider **sigue disponible como elección explícita**: `fallbackProvider` ya es
+independiente del primario. Lo que se descarta es hacerlo por defecto, no permitirlo.
+
+Y en todo caso sólo se añaden candidatos **con clave utilizable**, así que sin clave de OpenRouter la
+lista queda exactamente como hoy.
 
 ## 5. Clasificación del error y política de reintento
 
@@ -145,14 +192,15 @@ reintentos se sincronizan contra el mismo rate limit y lo reproducen.
 El perfil interactivo lleva **techo de latencia total**: agotar la cadena entera con esperas ante un
 usuario que mira un spinner es peor que fallar rápido.
 
-**Parámetros que el PLAN debe fijar con valores concretos**, no diferir:
+**Parámetros fijados (2026-07-24), no diferibles:**
 
-- el retardo base y el multiplicador del backoff, y el rango del jitter;
-- el techo de latencia del perfil interactivo, en milisegundos;
-- los ids exactos de la cadena gratuita, **verificados contra el catálogo de OpenRouter** (§4).
-
-Ninguno admite "se ajusta después": un número sin fijar en el plan acaba siendo un número inventado
-en la implementación.
+| Parámetro | Valor | Razón |
+|---|---|---|
+| Backoff de fondo: base | 500 ms | |
+| Backoff de fondo: multiplicador | ×2 → 500 / 1000 / 2000 | 3 reintentos ≈ 3.5 s en el peor caso, muy por debajo del `maxDuration` de 60 s de los crons y del `timeout_milliseconds := 60000` del dispatcher |
+| Jitter | ±25 % del retardo | desincroniza los reintentos en lote de crons y dispatcher |
+| Interactivo: reintentos | 1, retardo fijo 400 ms | |
+| Interactivo: techo total | **8 s** para la cadena entera | margen para 2-3 candidatos con su reintento sin que la espera se lea como cuelgue; superado el techo se propaga el fallo |
 
 ## 6. Embeddings
 
