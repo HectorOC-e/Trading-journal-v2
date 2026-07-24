@@ -78,7 +78,14 @@ describe("resolveAiCall — Case 1: OpenRouter, no fallback, no feature models",
     expect(call.primary.model).toBe("anthropic/claude-sonnet-4-6")
     expect(call.primary.source).toBe("user")
     expect(call.fallback).toBeNull()
-    expect(usableCandidates(call)).toHaveLength(1)
+
+    // Sin fallback configurado el usuario NO se queda con un solo candidato: al
+    // ser OpenRouter el primario, se le engancha la cadena gratuita por defecto.
+    // Antes de esto un 500 transitorio no tenia a donde caer.
+    const candidates = usableCandidates(call)
+    expect(candidates[0].model).toBe("anthropic/claude-sonnet-4-6")
+    expect(candidates.length).toBeGreaterThan(1)
+    expect(candidates.every((c) => c.apiKey === "sk-or-v1-KEY")).toBe(true)
   })
 })
 
