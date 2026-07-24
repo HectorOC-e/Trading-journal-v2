@@ -1470,8 +1470,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/analytics-insights-service.ts": {
-    "mtime": 1781884173.00239,
-    "ast_hash": "1c8a3b81ea20b130e591cc41202e4fd1",
+    "mtime": 1784919008.961393,
+    "ast_hash": "48d2950f01d99b8b35c12b86b09d0bc4",
     "semantic_hash": ""
   },
   "src/lib/ai/app-knowledge.ts": {
@@ -1480,18 +1480,18 @@
     "semantic_hash": ""
   },
   "src/lib/ai/chat.ts": {
-    "mtime": 1781884173.00239,
-    "ast_hash": "b38e13569a1d802a3aa7cf79d229232f",
+    "mtime": 1784919008.962395,
+    "ast_hash": "6c604375bf2b41be7d826983de3529a5",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-agent.ts": {
-    "mtime": 1784823163.4324841,
-    "ast_hash": "1fa0ffdf6cc88a8ca6401af9316f8996",
+    "mtime": 1784919008.963395,
+    "ast_hash": "da87232d068ecd57b03870d562cf69a6",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-service.ts": {
-    "mtime": 1784835033.7224767,
-    "ast_hash": "4b0d6ecc12d71fa3a873b6140f4f3962",
+    "mtime": 1784919008.9643936,
+    "ast_hash": "100fd11c4d3e06d09746e18002d750fd",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/complete.ts": {
-    "mtime": 1782772988.6530256,
-    "ast_hash": "5029e636f46273e4d7a7373c2727d485",
+    "mtime": 1784919008.9653952,
+    "ast_hash": "0f4f850f0c5be30880a8186d570e6d63",
     "semantic_hash": ""
   },
   "src/lib/ai/config.ts": {
@@ -1510,8 +1510,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/embeddings.ts": {
-    "mtime": 1780680267.591303,
-    "ast_hash": "dc457c16df6681ec9496789880b8b6f9",
+    "mtime": 1784919008.9653952,
+    "ast_hash": "d4d186747220d16bd21835972d177b85",
     "semantic_hash": ""
   },
   "src/lib/ai/feature-models.ts": {
@@ -1530,8 +1530,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/psychology-insights-service.ts": {
-    "mtime": 1781884173.0104258,
-    "ast_hash": "3b57f42fc1f3d8025904366bc2e03a75",
+    "mtime": 1784919008.968393,
+    "ast_hash": "25e0ceb8887fb56d3caad43f0ee8a0fa",
     "semantic_hash": ""
   },
   "src/lib/ai/resolve-model.ts": {
@@ -1540,8 +1540,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/resolve-provider.ts": {
-    "mtime": 1784305466.5903628,
-    "ast_hash": "cd08368dfb193091f7b28b6961d7f3c7",
+    "mtime": 1784919008.9693933,
+    "ast_hash": "242b4089c97758ccdcd40d8b92a4bdb0",
     "semantic_hash": ""
   },
   "src/lib/coach-bus.ts": {
@@ -1905,8 +1905,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/ensure-analysis.ts": {
-    "mtime": 1782318306.3272955,
-    "ast_hash": "4ca484cb03864744a37ae5282d87fd8a",
+    "mtime": 1784919008.9713945,
+    "ast_hash": "48e4308e2ed8d862172b35f9979bf29f",
     "semantic_hash": ""
   },
   "src/server/services/reviews/finalize-monthly.ts": {
@@ -1965,8 +1965,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-ai.ts": {
-    "mtime": 1782318306.333993,
-    "ast_hash": "7fdd0fd307bd7c097bb2d1a4add0154f",
+    "mtime": 1784919008.9723928,
+    "ast_hash": "2bfd9701cc3eac76a3bb1eea69fcce00",
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-insights.ts": {
@@ -2100,8 +2100,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-reviews.ts": {
-    "mtime": 1784833830.5044477,
-    "ast_hash": "2f9f4d058b79c35f9e9fe7618552a510",
+    "mtime": 1784919008.973393,
+    "ast_hash": "e149534a3bab1a6d17f3bde7b46eb0d8",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/notifications.ts": {
@@ -2170,8 +2170,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1784827664.118654,
-    "ast_hash": "b9a52aee56f781962471553ed03a7749",
+    "mtime": 1784919008.9743924,
+    "ast_hash": "6be64bffad839d3210a222f3d6c6fb79",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1784839404.6558547,
-    "ast_hash": "fb7de3196a171aa5e9ac345c953270ba",
+    "mtime": 1784904625.3789375,
+    "ast_hash": "d578c4724fdc81db7129f5ce4e29bb55",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2775,8 +2775,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/pipeline.ts": {
-    "mtime": 1784826126.034858,
-    "ast_hash": "ba82844896ed14066e73eea525d05b52",
+    "mtime": 1784919008.9713945,
+    "ast_hash": "7944cb9cbb6b6d92bfc012ef4447ce42",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/registry.ts": {
@@ -2937,6 +2937,36 @@
   "docs/superpowers/specs/2026-07-23-outbox-s4-consumer-design.md": {
     "mtime": 1784839404.6593995,
     "ast_hash": "9d2e7d8ea7cb29598658248455eb6030",
+    "semantic_hash": ""
+  },
+  "src/lib/ai/ai-error.ts": {
+    "mtime": 1784919008.9603927,
+    "ast_hash": "8ee04629352beeae835a1fae86dd4dce",
+    "semantic_hash": ""
+  },
+  "src/lib/ai/execute.ts": {
+    "mtime": 1784919008.9663956,
+    "ast_hash": "232b71118ea80754a5c720885296d419",
+    "semantic_hash": ""
+  },
+  "src/lib/ai/free-chain.ts": {
+    "mtime": 1784919008.9673932,
+    "ast_hash": "dd2526b48553916f133673fe579e2850",
+    "semantic_hash": ""
+  },
+  "src/lib/ai/retry-profile.ts": {
+    "mtime": 1784919008.9703932,
+    "ast_hash": "bee122f613f71c97f4bb3d45ce91f5e1",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-07-24-ai-resilience-free-tier.md": {
+    "mtime": 1784919008.9513955,
+    "ast_hash": "b4b0059f706c07674efea3f7c02acc63",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-07-24-ai-resilience-free-tier-design.md": {
+    "mtime": 1784919008.9513955,
+    "ast_hash": "183ac3f0a9710aefb68001ea74e1313f",
     "semantic_hash": ""
   }
 }

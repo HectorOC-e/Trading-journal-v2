@@ -4,6 +4,76 @@
 > Última actualización: 2026-07-24.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
+## Resiliencia de IA sobre el free tier (2026-07-24, PR #171)
+
+Hace **usable** el free tier sin gastar un céntimo. Ataca disponibilidad y diagnóstico, **no calidad
+de redacción** — ésa sigue aparcada por decisión del usuario (etapa de pruebas).
+
+### El punto de partida, verificado contra prod
+
+El mecanismo de fallback **existía pero estaba vacío**: ambos usuarios tienen `fallback_provider` y
+`fallback_model` a `NULL`, así que `usableCandidates` devolvía **un solo candidato** y el bucle
+try/catch no tenía a dónde caer. No había reintento en ningún sitio. Y el status HTTP viajaba
+**dentro del texto** del error, así que distinguir por programa un 429 transitorio de un 401 por
+clave mala era imposible.
+
+### Qué se construyó
+
+**Un ejecutor, un comportamiento.** El bucle de candidatos vivía en **cinco** módulos, cada uno con
+su variante. `executeAiCall` lo posee: itera, reintenta lo transitorio, espera con backoff y registra.
+Los contratos de "lista vacía" se quedan en cada call-site (`NoApiKeyError` / `null` / `TRPCError`):
+esa decisión es del llamador, no del transporte.
+
+**Clasificación real:** 429/5xx/red → reintentar; 400/401/403/404 → siguiente candidato sin quemar
+reintentos.
+
+**Dos perfiles, elegidos por el CALL-SITE.** `weekly_reviews` se llama desde un router (el trader
+espera) y desde el cron `reviews-digest` (nadie espera); atar el perfil a la *feature* sería atarlo al
+sitio equivocado. Interactivo: 1 reintento, 400 ms, techo total 8 s. Fondo: 3 reintentos, 500 ms ×2,
+jitter ±25 %. El jitter no es adorno: sin él los crons y el dispatcher resincronizan sus reintentos
+contra el mismo rate limit.
+
+**Cadena gratuita, sólo si el primario ya es OpenRouter.** Con primario OpenAI/Anthropic se obtiene el
+retry sobre el propio modelo pero **no** la cadena: un hipo transitorio no debe reenrutar el contexto
+del trader a un tercero que no eligió para esa llamada (`ADR-003 §444`), ni provocar un bajón de
+calidad sin señal visible. El fallback cross-provider sigue disponible como elección **explícita**.
+
+> Los ids (`nvidia/nemotron-3-ultra…`, `google/gemma-4-31b…`, `openrouter/free`,
+> `google/gemma-4-26b…`) los aportó el usuario desde el catálogo: **no se pudieron verificar desde la
+> máquina de desarrollo** (curl bloqueado por inspección SSL; WebFetch trunca un catálogo de ese
+> tamaño y llegó a negar un id que sí está en prod). Un id caduco **se auto-limita**: el ejecutor
+> recibe un 404, lo clasifica como permanente y pasa al siguiente. Los dos Gemma van separados en el
+> orden porque comparten upstream.
+
+### Dos defectos encontrados por el camino
+
+**El Coach se degradaba a modo sin tools por un 429.** El `catch` anidado de `coach-service`
+interpretaba *cualquier* fallo de la ruta agéntica como *"este modelo no soporta tools"* y caía a la
+ruta estática. Un rate limit se leía como *"el modelo gratuito no aprovecha sus herramientas"*.
+`shouldDegradeToStatic` sólo degrada cuando el **modelo** es la razón (400/404 en la ruta de tools);
+lo transitorio se reintenta **manteniendo** las tools. El caso bueno del catch se preserva: ante un
+modelo genuinamente sin function calling, caer a estático sigue siendo lo correcto.
+
+**El cambio de contrato de `embedText` habría roto tres sitios, y la suite no lo veía.** Al pasar de
+devolver `null` a lanzar: `search` habría propagado en vez de devolver `EMBED_FAILED` (tirando la
+taxonomía de 5 estados); `repairCorpus` habría reportado `remaining: 0` —**la mentira exacta** que esa
+taxonomía existe para impedir—; y `reindex` habría abortado "Indexar ahora" entero en vez de contar la
+fila y seguir. **Ningún test ejercitaba un embedding que falla**, así que la suite verde no probaba
+nada: es la lección de `createTrade`/`buildContext` repitiéndose. `embedWithRetry` reconcilia las dos
+cosas — reintenta de verdad y sólo al agotarse degrada a `null`, que es el contrato que la frontera
+del pipeline necesita.
+
+### Frontera declarada
+
+Todo actúa **antes del primer token**. `chat.ts:115` lanza antes de devolver el stream: ahí el status
+se conoce y nada llegó al usuario. Un fallo posterior (`chat.ts:157`) deja texto en pantalla y
+reintentar sería contradecirse; recuperarlo es otro diseño y no se fuerza aquí.
+
+### Verificado
+
+Suite **1333 → 1395** (62 tests nuevos). El backoff se prueba con reloj y espera **inyectados**, no
+con `sleep` real. CI verde incluido E2E autenticado. Sin migración.
+
 ## El outbox estrena consumidor: la S4 cierra (2026-07-24, PR #170)
 
 El outbox de eventos de dominio existía desde S0 y **nunca tuvo un consumidor**. Ya lo tiene: dos.
