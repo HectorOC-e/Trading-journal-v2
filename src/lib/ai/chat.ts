@@ -6,6 +6,7 @@
 // root cause of the "configure ANTHROPIC_API_KEY" inconsistency.
 
 import type { AiProvider } from "./config"
+import { AiCallError } from "./ai-error"
 
 export type ChatMessage = { role: "user" | "assistant"; content: string }
 
@@ -113,8 +114,12 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
   })
 
   if (!res.ok || !res.body) {
+    // Thrown BEFORE the stream is returned: the status is known and no token has
+    // reached the user, so this is the recoverable moment the executor acts on.
     const errText = await res.text().catch(() => "")
-    throw new Error(`${provider} chat error ${res.status}: ${errText}`)
+    throw new AiCallError({
+      status: res.status, provider, model: opts.model, kind: "chat", detail: errText,
+    })
   }
 
   // Parse SSE stream: "data: {json}\n\n" → extract delta text
