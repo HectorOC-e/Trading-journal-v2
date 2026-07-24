@@ -3,11 +3,14 @@ import { HANDLERS } from "@/domains/cognitive/events/handlers"
 import { DOMAIN_EVENT_TYPES } from "@/domains/cognitive/events/event-types"
 
 describe("HANDLERS — mapa de composición del outbox", () => {
-  it("cubre los cuatro commitment.* y insight.created", () => {
+  it("cubre los cuatro commitment.* y el ciclo completo del insight", () => {
     for (const t of ["commitment.created", "commitment.broken", "commitment.kept", "commitment.partial"] as const) {
       expect(HANDLERS[t]?.length).toBeGreaterThan(0)
     }
+    // Las dos mitades de la vida de un insight: si sólo una tuviera consumidor,
+    // la notificación sobreviviría al patrón que la justificaba.
     expect(HANDLERS["insight.created"]?.length).toBeGreaterThan(0)
+    expect(HANDLERS["insight.resolved"]?.length).toBeGreaterThan(0)
   })
 
   it("sólo declara tipos del catálogo congelado (una clave con typo nunca se reclamaría)", () => {
