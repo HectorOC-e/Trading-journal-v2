@@ -1,16 +1,20 @@
 // POST /api/cron/dispatch-events — outbox dispatcher (ADR-001, FREEZE-D1).
 //
-// Claims pending domain_events and runs their registered handlers. In Sprint 0
-// NO handlers are registered (consumers arrive in S4+), so this is a transport
-// validation / ops tool, NOT scheduled in production yet — it would otherwise
-// drain events no one consumes. Run manually (Bearer <CRON_SECRET>) to validate
-// the G1 spike: an event crosses the outbox to a server consumer reliably.
+// Claims pending domain_events WHOSE TYPE HAS A HANDLER and runs them. Handlers
+// are injected from handlers/index.ts (HANDLERS): the import IS the registry, so
+// a cold lambda can never run with an empty one. A type with no consumer is not
+// claimed at all and stays pending, replayable (FREEZE-D6).
+//
+// Scheduled every 5 min by 20260724120000 (v3-dispatch-events). It was
+// deliberately unscheduled between 20260721190000 and that migration, while no
+// consumer existed.
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import { checkCronAuth } from "@/app/api/cron/learning-digest/route"
 import { dispatchPending } from "@/domains/cognitive/events/event-bus"
+import { HANDLERS } from "@/domains/cognitive/events/handlers"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -21,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (auth === "unauthorized") return new NextResponse("Unauthorized", { status: 401 })
 
   try {
-    const result = await dispatchPending(prisma)
+    const result = await dispatchPending(prisma, HANDLERS)
     logger.info("dispatch-events complete", { ...result })
     return NextResponse.json({ ok: true, ...result })
   } catch (err) {

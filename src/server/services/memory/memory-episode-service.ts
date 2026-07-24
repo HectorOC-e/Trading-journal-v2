@@ -19,33 +19,55 @@ export interface RecordEpisodeInput {
   occurredAt?: Date
 }
 
+/** Insert the episode + best-effort embedding. THROWS if the insert fails. */
+async function insertEpisode(prisma: PrismaClient, userId: string, input: RecordEpisodeInput): Promise<string> {
+  const ep = await prisma.memoryEpisode.create({
+    data: {
+      userId,
+      eventType: input.eventType,
+      content: input.content.trim().slice(0, 1000),
+      salience: initialSalience(input.eventType),
+      sourceId: input.sourceId ?? null,
+      occurredAt: input.occurredAt ?? new Date(),
+    },
+    select: { id: true },
+  })
+  try {
+    const emb = await resolveEmbeddingCall(prisma, userId)
+    if (emb.source !== "none") {
+      const vector = await embedText(input.content, { model: emb.model, apiKey: emb.apiKey })
+      if (vector) {
+        await prisma.$executeRaw`UPDATE memory_episodes SET embedding = ${`[${vector.join(",")}]`}::vector WHERE id = ${ep.id}::uuid`
+      }
+    }
+  } catch { /* embedding is best-effort */ }
+  return ep.id
+}
+
 /** Append a salient episode (+ best-effort embedding). Never throws. */
 export async function recordEpisode(prisma: PrismaClient, userId: string, input: RecordEpisodeInput): Promise<string | null> {
   try {
-    const ep = await prisma.memoryEpisode.create({
-      data: {
-        userId,
-        eventType: input.eventType,
-        content: input.content.trim().slice(0, 1000),
-        salience: initialSalience(input.eventType),
-        sourceId: input.sourceId ?? null,
-        occurredAt: input.occurredAt ?? new Date(),
-      },
-      select: { id: true },
-    })
-    try {
-      const emb = await resolveEmbeddingCall(prisma, userId)
-      if (emb.source !== "none") {
-        const vector = await embedText(input.content, { model: emb.model, apiKey: emb.apiKey })
-        if (vector) {
-          await prisma.$executeRaw`UPDATE memory_episodes SET embedding = ${`[${vector.join(",")}]`}::vector WHERE id = ${ep.id}::uuid`
-        }
-      }
-    } catch { /* embedding is best-effort */ }
-    return ep.id
+    return await insertEpisode(prisma, userId, input)
   } catch {
     return null
   }
+}
+
+/**
+ * Idempotent by `sourceId`: if an episode with that sourceId already exists, do
+ * not create another. Unlike `recordEpisode`, this PROPAGATES insert errors —
+ * its caller is the outbox consumer, which needs a failure to bubble up so
+ * `planEventTransition` can decide the retry (FREEZE-D6).
+ */
+export async function recordEpisodeOnce(prisma: PrismaClient, userId: string, input: RecordEpisodeInput): Promise<string | null> {
+  if (input.sourceId) {
+    const existing = await prisma.memoryEpisode.findFirst({
+      where: { userId, sourceId: input.sourceId },
+      select: { id: true },
+    })
+    if (existing) return existing.id
+  }
+  return insertEpisode(prisma, userId, input)
 }
 
 export interface RecalledEpisode {

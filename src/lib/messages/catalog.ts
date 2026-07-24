@@ -84,6 +84,12 @@ export const MESSAGES = {
     type: "INFO", priority: "P2", category: "Sistema", persist: true,
     es: { title: "Importación terminada", body: "{count} trades importados." },
   },
+  // Emitida por el consumidor del outbox (insight.created → notification-handler).
+  // P3: informa de un patrón detectado, no interrumpe la operativa.
+  INSIGHT_DETECTED: {
+    type: "INFO", priority: "P3", category: "Sistema", persist: true,
+    es: { title: "Nuevo patrón detectado", body: "{title}" },
+  },
 
   // ── Errors (toast; not persisted) ─────────────────────────────────────────
   GENERIC_ERROR:   { type: "ERROR", priority: "P1", persist: false, es: { title: "Operación fallida", body: "Intenta de nuevo." }, actions: [{ labelCode: "RETRY", actionCode: "RETRY", style: "ghost" }] },

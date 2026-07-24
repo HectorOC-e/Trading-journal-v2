@@ -7,7 +7,7 @@
 
 export type MemoryEventType =
   | "intervention" | "commitment_broken" | "checkin_red" | "commitment_kept"
-  | "streak" | "trade_emotional" | "manual"
+  | "commitment_created" | "streak" | "trade_emotional" | "manual"
 
 // Base salience by event type — in-the-moment errors and broken commitments are
 // the most memorable; routine emotional trades the least.
@@ -17,6 +17,7 @@ const BASE: Record<MemoryEventType, number> = {
   checkin_red: 0.7,
   manual: 0.7,
   commitment_kept: 0.6,
+  commitment_created: 0.55, // proponerse algo es menos memorable que romperlo
   streak: 0.6,
   trade_emotional: 0.5,
 }
