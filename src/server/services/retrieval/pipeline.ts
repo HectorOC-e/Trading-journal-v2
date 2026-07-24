@@ -6,6 +6,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 import { embedText } from "@/lib/ai/embeddings"
+import { executeAiCall } from "@/lib/ai/execute"
 import { logger } from "@/lib/logger"
 import { classify } from "./classify"
 import { dedupeCitations, orderByHits } from "./shape"
@@ -14,6 +15,32 @@ import {
   CORPUS_KEYS, DEFAULT_LIMIT, MAX_LIMIT, REPAIR_BATCH,
   type Citation, type CorpusKey, type CorpusOutcome, type IndexStatus, type SearchResult,
 } from "./types"
+
+/**
+ * Embebe con reintento, devolviendo null cuando la cadena se agota.
+ *
+ * `embedText` pasó a LANZAR para que se pueda reintentar (antes devolvía null
+ * ante cualquier fallo, indistinguible de "no hay nada que embeber"). Pero este
+ * pipeline necesita el contrato de null en su frontera: la taxonomía de 5 estados
+ * existe para decir `EMBED_FAILED` en vez de reventar, y un lote de reparación
+ * debe contar la fila fallida y seguir, no abortarse. Este helper reconcilia las
+ * dos cosas: reintenta de verdad y, sólo al agotarse, degrada a null.
+ */
+async function embedWithRetry(
+  text: string, model: string, apiKey: string, feature: string,
+): Promise<number[] | null> {
+  try {
+    return await executeAiCall({
+      candidates: [{ provider: model.includes("/") ? "openrouter" : "openai", model, apiKey, source: "user" }],
+      profile: "background",
+      feature,
+      run: () => embedText(text, { model, apiKey }),
+    })
+  } catch (err) {
+    logger.warn("retrieval: embedding agoto sus reintentos", { feature, err: String(err) })
+    return null
+  }
+}
 
 const toVec = (v: number[]): string => `[${v.join(",")}]`
 const clamp = (n: number | undefined, def: number, max: number) =>
@@ -32,7 +59,7 @@ export async function search(
     return { citations: [], outcomes: keys.map(c => ({ corpus: c, state: "NO_KEY" as const, remaining: 0 })) }
   }
 
-  const vector = await embedText(input.query, { model: emb.model, apiKey: emb.apiKey })
+  const vector = await embedWithRetry(input.query, emb.model, emb.apiKey, "retrieval:search")
   if (!vector) {
     return { citations: [], outcomes: keys.map(c => ({ corpus: c, state: "EMBED_FAILED" as const, remaining: 0 })) }
   }
@@ -82,7 +109,7 @@ async function repairCorpus(
   try {
     const pending = await adapter.pending(prisma, userId, REPAIR_BATCH)
     for (const row of pending) {
-      const v = await embedText(row.text, { model, apiKey })
+      const v = await embedWithRetry(row.text, model, apiKey, "retrieval:repair")
       if (!v) continue
       await adapter.writeVector(prisma, row.id, toVec(v))
     }
@@ -109,7 +136,7 @@ export async function reindex(
     const adapter = getAdapter(key)
     const pending = await adapter.pending(prisma, userId, limit)
     for (const row of pending) {
-      const v = await embedText(row.text, { model: emb.model, apiKey: emb.apiKey })
+      const v = await embedWithRetry(row.text, emb.model, emb.apiKey, "retrieval:reindex")
       if (!v) { failed++; continue }
       await adapter.writeVector(prisma, row.id, toVec(v))
       embedded++
@@ -139,8 +166,8 @@ export function scheduleEmbedding(
     try {
       const emb = await resolveEmbeddingCall(prisma, userId)
       if (emb.source === "none") return
-      const v = await embedText(text, { model: emb.model, apiKey: emb.apiKey })
-      if (!v) { logger.warn("retrieval: embedText devolvio null", { corpus, id }); return }
+      const v = await embedWithRetry(text, emb.model, emb.apiKey, "retrieval:schedule")
+      if (!v) { logger.warn("retrieval: no se pudo embeber", { corpus, id }); return }
       await getAdapter(corpus).writeVector(prisma, id, toVec(v))
     } catch (err) {
       logger.warn("retrieval: scheduleEmbedding fallo", { corpus, id, err: String(err) })

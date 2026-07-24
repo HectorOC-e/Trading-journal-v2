@@ -153,6 +153,24 @@ export async function resolveEmbeddingCall(
   return { provider: "openai", model, apiKey: oa.apiKey, source: oa.source }
 }
 
+/**
+ * Embedding candidates, in order, for `executeAiCall`.
+ *
+ * Returns ONLY the primary — not FREE_MODEL_CHAIN. Those are CHAT models, and
+ * appending them to an embedding call would send requests no embedding endpoint
+ * can serve. Embeddings gain the RETRY, not the chain, until a verified free
+ * EMBEDDING chain exists. The list shape is kept so that day needs no signature
+ * change.
+ */
+export async function resolveEmbeddingCandidates(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<ResolvedCall[]> {
+  const primary = await resolveEmbeddingCall(prisma, userId)
+  if (primary.source === "none" || primary.apiKey.length === 0) return []
+  return [primary]
+}
+
 // ── Diagnostics ─────────────────────────────────────────────────────────────
 
 export type ProviderKeyStatus = { provider: AiProvider; source: KeySource; configured: boolean }
