@@ -5,7 +5,7 @@
 // a cold lambda can never run with an empty one. A type with no consumer is not
 // claimed at all and stays pending, replayable (FREEZE-D6).
 //
-// Scheduled every 5 min by 20260723180000 (v3-dispatch-events). It was
+// Scheduled every 5 min by 20260724120000 (v3-dispatch-events). It was
 // deliberately unscheduled between 20260721190000 and that migration, while no
 // consumer existed.
 
