@@ -3,6 +3,7 @@ import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bun
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
 import { streamChat } from "./chat"
 import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provider"
+import { executeAiCall } from "./execute"
 
 export interface AnalyticsAiOptions {
   userId: string
@@ -67,14 +68,13 @@ export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise
 
   const userMsg = `${buildContext(bundle)}${detected}\n\nGenera el análisis de inteligencia para este trader.`
 
-  let lastErr: unknown
-  for (const c of candidates) {
-    try {
-      return await streamChat({
-        provider: c.provider, apiKey: c.apiKey, model: c.model,
-        system: SYSTEM, messages: [{ role: "user", content: userMsg }], maxTokens: 4096,
-      })
-    } catch (err) { lastErr = err }
-  }
-  throw lastErr
+  return executeAiCall({
+    candidates,
+    profile: "interactive", // streamed into the panel while the user waits
+    feature: "analytics_insights",
+    run: (c) => streamChat({
+      provider: c.provider, apiKey: c.apiKey, model: c.model,
+      system: SYSTEM, messages: [{ role: "user", content: userMsg }], maxTokens: 4096,
+    }),
+  })
 }

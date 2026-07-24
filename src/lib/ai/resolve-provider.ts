@@ -14,6 +14,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { decryptApiKey } from "./key-encryption"
 import { getProviderKey } from "./config"
 import { resolveModelForFeature, loadAiSettings } from "./resolve-model"
+import { FREE_MODEL_CHAIN } from "./free-chain"
 import {
   ACTIVE_AI_FEATURES,
   type AiProvider, type AiFeature, type ModelRef,
@@ -87,13 +88,45 @@ export async function resolveAiCall(
 }
 
 /**
- * Return the ordered list of call candidates that actually have a key.
- * Primary first, then fallback. Empty when nothing is configured.
+ * The ordered list of call candidates that actually have a key: the user's
+ * primary, their configured fallback, then the default free chain.
+ *
+ * The free chain is appended ONLY when the primary provider is already
+ * OpenRouter. With an OpenAI/Anthropic primary the user still gets retries on
+ * their own model, but their data is NOT silently rerouted to a third party they
+ * did not choose for that call (ADR-003 §444, minimisation toward third
+ * parties) — and they are spared an unexplained quality drop. A cross-provider
+ * fallback remains available as an EXPLICIT choice via fallbackProvider.
+ *
+ * Stays synchronous: the chain only applies when the primary is OpenRouter, so
+ * every link reuses the primary's already-resolved key. No new key lookup.
  */
 export function usableCandidates(call: ResolvedFeatureCall): ResolvedCall[] {
-  return [call.primary, call.fallback].filter(
+  const configured = [call.primary, call.fallback].filter(
     (c): c is ResolvedCall => c != null && c.source !== "none" && c.apiKey.length > 0,
   )
+  if (configured.length === 0) return []
+
+  const out = [...configured]
+  if (call.primary.provider === "openrouter") {
+    for (const model of FREE_MODEL_CHAIN) {
+      out.push({
+        provider: "openrouter",
+        model,
+        apiKey: call.primary.apiKey,
+        source: call.primary.source,
+      })
+    }
+  }
+
+  // Dedupe by provider+model, preserving order (the primary wins over a chain twin).
+  const seen = new Set<string>()
+  return out.filter((c) => {
+    const key = `${c.provider}/${c.model}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 /**
@@ -118,6 +151,24 @@ export async function resolveEmbeddingCall(
   }
   const oa = await resolveProviderKey(prisma, userId, "openai")
   return { provider: "openai", model, apiKey: oa.apiKey, source: oa.source }
+}
+
+/**
+ * Embedding candidates, in order, for `executeAiCall`.
+ *
+ * Returns ONLY the primary — not FREE_MODEL_CHAIN. Those are CHAT models, and
+ * appending them to an embedding call would send requests no embedding endpoint
+ * can serve. Embeddings gain the RETRY, not the chain, until a verified free
+ * EMBEDDING chain exists. The list shape is kept so that day needs no signature
+ * change.
+ */
+export async function resolveEmbeddingCandidates(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<ResolvedCall[]> {
+  const primary = await resolveEmbeddingCall(prisma, userId)
+  if (primary.source === "none" || primary.apiKey.length === 0) return []
+  return [primary]
 }
 
 // ── Diagnostics ─────────────────────────────────────────────────────────────

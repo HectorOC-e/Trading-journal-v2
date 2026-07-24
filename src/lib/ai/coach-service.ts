@@ -4,6 +4,26 @@ import { streamChat }         from "./chat"
 import { streamCoachAgent }   from "./coach-agent"
 import { APP_KNOWLEDGE }      from "./app-knowledge"
 import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provider"
+import { executeAiCall } from "./execute"
+import { AiCallError, isRetryable } from "./ai-error"
+
+/**
+ * Did the agentic path fail because this MODEL cannot do function calling?
+ *
+ * Falling back to the static path is CORRECT for a model without tools: it will
+ * never have them, retrying is pointless, and an answer without tools beats an
+ * error. It is WRONG for a transient failure — which is what used to happen: a
+ * 429 silently degraded the Coach to a tool-less mode, and the trader concluded
+ * the free model "doesn't use its tools" when it had merely been rate-limited.
+ *
+ * 400/404 on the tools endpoint = unsupported. Transient (429/5xx/network) and
+ * auth (401/403) failures are not a tools problem, so they must not degrade.
+ */
+export function shouldDegradeToStatic(err: unknown): boolean {
+  if (!(err instanceof AiCallError)) return false
+  if (isRetryable(err)) return false
+  return err.status === 400 || err.status === 404
+}
 
 export type MessageParam = { role: "user" | "assistant"; content: string }
 
@@ -172,11 +192,12 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
     throw new NoApiKeyError(resolved.primary.provider)
   }
 
-  let lastErr: unknown
-  for (const c of candidates) {
-    try {
-      // Agentic path with read-only tools (drill-down on demand). If the model
-      // doesn't support tools, fall back to the static-context streaming path.
+  return executeAiCall({
+    candidates,
+    profile: "interactive", // a user is watching the spinner
+    feature: "ai_chat",
+    run: async (c) => {
+      // Agentic path with read-only tools (drill-down on demand).
       try {
         return await streamCoachAgent({
           provider: c.provider,
@@ -188,7 +209,10 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
           userId:   opts.userId,
         })
       } catch (agentErr) {
-        console.warn(`[coach] agentic path failed for ${c.provider}/${c.model}, falling back to static:`, agentErr instanceof Error ? agentErr.message : agentErr)
+        // Only degrade when the MODEL is the reason. Anything else must bubble
+        // up so the executor can retry it WITH tools, or move to the next model.
+        if (!shouldDegradeToStatic(agentErr)) throw agentErr
+        console.warn(`[coach] ${c.provider}/${c.model} has no tool support, using static path`)
         return await streamChat({
           provider: c.provider,
           apiKey:   c.apiKey,
@@ -197,9 +221,6 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
           system:   systemBlocks,
         })
       }
-    } catch (err) {
-      lastErr = err
-    }
-  }
-  throw lastErr
+    },
+  })
 }

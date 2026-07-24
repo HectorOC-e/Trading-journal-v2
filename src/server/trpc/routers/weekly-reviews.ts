@@ -154,7 +154,8 @@ export const weeklyReviewsRouter = router({
 
       let analysis: string
       try {
-        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report, insights))
+        // "interactive": lo dispara el trader desde la review y espera el resultado.
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report, insights), "interactive")
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
       }

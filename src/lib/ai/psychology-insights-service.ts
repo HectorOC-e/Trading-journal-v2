@@ -3,6 +3,7 @@ import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bun
 import { generatePsychologyInsights } from "@/domains/analytics/services/psychology-insights"
 import { streamChat } from "./chat"
 import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provider"
+import { executeAiCall } from "./execute"
 
 export interface PsychologyAiOptions {
   userId: string
@@ -51,11 +52,13 @@ export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promi
     "\nGenera el análisis psicológico de este trader.",
   ].join("\n")
 
-  let lastErr: unknown
-  for (const c of candidates) {
-    try {
-      return await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, system: SYSTEM, messages: [{ role: "user", content: ctx }], maxTokens: 4096 })
-    } catch (err) { lastErr = err }
-  }
-  throw lastErr
+  return executeAiCall({
+    candidates,
+    profile: "interactive", // streamed into /psicologia while the user waits
+    feature: "psychology_analysis",
+    run: (c) => streamChat({
+      provider: c.provider, apiKey: c.apiKey, model: c.model,
+      system: SYSTEM, messages: [{ role: "user", content: ctx }], maxTokens: 4096,
+    }),
+  })
 }
