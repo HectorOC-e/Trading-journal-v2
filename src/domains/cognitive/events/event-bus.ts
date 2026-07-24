@@ -6,9 +6,10 @@
 // in the SAME transaction as its business change; a dispatcher later claims pending
 // rows and hands them to registered handlers (at-least-once + idempotent).
 //
-// Sprint 0 scope: publish + claim/dispatch + handler registry + the PURE state
-// machine (`planEventTransition`). No real handlers are registered yet — consumers
-// arrive in S4+. This file ships the transport, not the reactions.
+// This file ships the TRANSPORT, not the reactions: publish + claim/dispatch +
+// the PURE state machine (`planEventTransition`). It stays agnostic of which
+// consumers exist — the handler map is injected by the caller (S4: the cron
+// endpoint passes `HANDLERS` from events/handlers/index.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
@@ -99,28 +100,25 @@ export async function publishEvent<T extends DomainEventType>(tx: Tx, input: Pub
   })
 }
 
-// ── Handler registry + dispatcher ────────────────────────────────────────────
+// ── Handlers (injected) + dispatcher ─────────────────────────────────────────
+// There is NO mutable global registry: the handler map is INJECTED into
+// dispatchPending. The old `registerHandler` populated a module-level Map by
+// import side-effect, which is a serverless trap — a cold lambda whose import
+// chain missed the registering module ran with an EMPTY map, and every event
+// was treated as "no handler → processed", burning it. Injection removes the
+// failure mode: the import IS the registry (see events/handlers/index.ts).
 
-export type EventHandler = (event: {
-  id: string
-  userId: string
-  type: DomainEventType
-  payload: unknown
-}) => Promise<void>
+export type EventHandler = (
+  prisma: PrismaClient,
+  event: {
+    id: string
+    userId: string
+    type: DomainEventType
+    payload: unknown
+  },
+) => Promise<void>
 
-const handlers = new Map<DomainEventType, EventHandler[]>()
-
-/** Register a consumer for an event type. Consumers are added in S4+. */
-export function registerHandler(type: DomainEventType, handler: EventHandler): void {
-  const list = handlers.get(type) ?? []
-  list.push(handler)
-  handlers.set(type, list)
-}
-
-/** Test/maintenance helper — clears the in-memory registry. */
-export function _resetHandlers(): void {
-  handlers.clear()
-}
+export type HandlerMap = Partial<Record<DomainEventType, EventHandler[]>>
 
 export interface DispatchResult {
   claimed: number
@@ -129,18 +127,25 @@ export interface DispatchResult {
 }
 
 /**
- * Claim a batch of pending events and run their handlers. Idempotent and safe to
- * run concurrently: rows are claimed with `FOR UPDATE SKIP LOCKED`. An event with
- * no registered handler is considered processed (no-op) — the catalog can outrun
- * its consumers without blocking the outbox.
+ * Claim a batch of pending events WHOSE TYPE HAS A HANDLER and run them.
+ * Idempotent and concurrency-safe: rows are claimed with `FOR UPDATE SKIP
+ * LOCKED`. A type with no handler is never claimed, so it stays `pending` and
+ * remains replayable (FREEZE-D6) instead of being silently burned. An empty
+ * handler map claims nothing.
  */
-export async function dispatchPending(prisma: PrismaClient, batchSize = 50): Promise<DispatchResult> {
+export async function dispatchPending(
+  prisma: PrismaClient,
+  handlers: HandlerMap,
+  batchSize = 50,
+): Promise<DispatchResult> {
+  const handledTypes = Object.keys(handlers)
   const claimed = await prisma.$queryRaw<Array<{ id: string; user_id: string; type: string; payload: unknown; attempts: number; max_attempts: number }>>`
     UPDATE domain_events
        SET status = 'processing'
      WHERE id IN (
        SELECT id FROM domain_events
         WHERE status = 'pending'
+          AND type = ANY(${handledTypes}::text[])
         ORDER BY occurred_at ASC
         LIMIT ${batchSize}
         FOR UPDATE SKIP LOCKED
@@ -153,11 +158,11 @@ export async function dispatchPending(prisma: PrismaClient, batchSize = 50): Pro
 
   for (const row of claimed) {
     const type = row.type as DomainEventType
-    const list = handlers.get(type) ?? []
+    const list = handlers[type] ?? []
     let outcome: HandlerOutcome = { ok: true }
     try {
       for (const h of list) {
-        await h({ id: row.id, userId: row.user_id, type, payload: row.payload })
+        await h(prisma, { id: row.id, userId: row.user_id, type, payload: row.payload })
       }
     } catch (e) {
       outcome = { ok: false, error: e instanceof Error ? e.message : String(e) }
