@@ -1185,10 +1185,11 @@ abiertos. Confirma al arrancar que tienes gh, Supabase MCP, Vercel MCP y Playwri
 lo sustituye para todo lo que necesites de BD.
 
 Lee primero, en este orden:
-  1) docs/STATUS.md        — empieza por las secciones de cabecera con fecha 2026-07-22 y
-                             2026-07-23, que PREVALECEN sobre las 109 filas de la tabla de §1.
-                             La recuperación semántica (7 corpus + citas en el Coach) se cerró
-                             el 2026-07-23; su sección de cabecera es la más reciente.
+  1) docs/STATUS.md        — empieza por las secciones de cabecera con fecha 2026-07-24, que
+                             PREVALECEN sobre todo lo anterior y sobre las 109 filas de la tabla
+                             de §1. El 2026-07-24 se cerraron TRES piezas (#170 outbox S4, #171
+                             resiliencia de IA, #172 insight.resolved); sus secciones de cabecera
+                             son las más recientes. Suite hoy: 1401.
   2) docs/PROJECT_GUIDE.md — qué es el producto
   3) docs/ARCHITECTURE.md  — principios y entidades congelados
 
@@ -1217,40 +1218,56 @@ EL PATRÓN QUE LOS UNE, y la lección: `createTrade`, `buildContext` y `persistI
 tenían UN SOLO TEST DIRECTO. Así sobrevivieron todos. Si vas a tocar un servidor de escritura
 o de reconciliación, mira primero si tiene cobertura antes de fiarte de él.
 
-QUÉ QUEDA PENDIENTE, y nada de esto se arregla escribiendo un detector nuevo:
- 1. Fallback/resiliencia de IA. MATIZ VERIFICADO EL 2026-07-23 (método de imports): el mecanismo
-    de fallback YA EXISTE — `complete.ts:24` itera `usableCandidates` con try/catch (si un modelo
-    falla, prueba el siguiente); coach/insights/reviews/psychology usan el mismo patrón. Pero está
-    VACÍO: hoy `fallback` es null (nadie configuró un 2º modelo) → un solo candidato → un 500
-    transitorio llega directo al usuario. Y el camino de EMBEDDINGS ni siquiera tiene ese mecanismo
-    (`resolveEmbeddingCall` da un solo call; `embedText` devuelve null al primer fallo). Se parte
-    en dos: (a) RESILIENCIA ante hipos transitorios = retry con backoff + cadena de modelos
-    GRATUITOS + llevar el patrón a embeddings → es CÓDIGO, no requiere pago; (b) CALIDAD de
-    redacción (basura ocasional del free tier) → sí requiere modelo de pago. **El usuario decidió
-    2026-07-23 NO usar modelos de pago por ahora (etapa de pruebas)**, así que (b) queda aparcado;
-    (a) sigue disponible sin gasto si se prioriza la robustez.
- 2. [HECHO 2026-07-23, PRs #161-#168] Búsqueda semántica: el Coach recupera y CITA sobre siete
-    corpus (trade_notes, trade_plans, trade_events, weekly_reviews, monthly_reviews, setups,
-    learning_notes) con tarjetas abribles y deep-link. Módulo único `services/retrieval/`
-    (adaptador por corpus, consultas literales). El texto del LLM (coach_messages, ai_analysis)
-    queda fuera por FREEZE-P6/D9. Verificado en vivo. Ya NO es pendiente.
- 3. `revenge` y `oversizing` no alcanzan umbral, y es ESTRUCTURAL: las tres capas de
-    protección (cooldown anti-revancha, guard de presupuesto diario, guard de margen)
-    impiden esa conducta ANTES de que llegue a ser patrón. No lo trates como bug ni
-    intentes "conseguir más datos": el producto está haciendo su trabajo.
- 4. ► **LA SIGUIENTE ACCIÓN. Primer consumidor S4 de la outbox — DISEÑADO Y PLANIFICADO el
-    2026-07-23, listo para ejecutar.** Spec: `docs/superpowers/specs/2026-07-23-outbox-s4-consumer-design.md`.
-    Plan (9 tareas, TDD): `docs/superpowers/plans/2026-07-23-outbox-s4-consumer.md`. La
-    implementación se dejó a propósito para esta sesión. Arranca creando una rama desde main y
-    ejecutando el plan con superpowers:executing-plans (o subagent-driven).
-    Resumen: 16 eventos en `pending` (insight.created ×12, commitment.created ×2, commitment.broken ×2).
-    Dos consumidores — memoria episódica (commitment.* → recordEpisodeOnce) y notificación
-    (insight.created → emitNotification). Decisión clave: `dispatchPending` pasa de un Map mutable
-    global (trampa serverless que quema eventos sin handler) a INYECCIÓN de un mapa estático
-    HANDLERS, y el claim se restringe a tipos con handler (un tipo sin consumidor queda pending,
-    replayable — protege FREEZE-D6). Re-agenda el cron con `timeout_milliseconds := 60000` (#155).
+► **LA SIGUIENTE ACCIÓN — arreglar el bucle agéntico del Coach (`coach-agent.ts`).** Auditado el
+2026-07-24 (pieza 3 de la sesión: "aprovechar mejor las tools"). El tuning NO es el problema esta
+vez: las 12 descripciones de tools y la regla de selección del system prompt están bien (#168 se
+sostiene). El problema es MECÁNICO, y produce exactamente el síntoma "el modelo no aprovecha sus
+herramientas". TRES defectos, ninguno tocado todavía (sólo diagnosticado):
+   (1) **Rondas 2+ fallan en silencio y sin reintento.** `coach-agent.ts` (rama OpenRouter):
+       `if (round > 0) { res = await doFetch(); if (!res.ok || !res.body) break }`. Un 429/500 en
+       cualquier ronda posterior a la primera hace `break` → stream truncado, sin error, sin
+       reintento. Es un HUECO de #171: la resiliencia protege sólo el pre-flight (la 1ª petición);
+       todo lo de dentro del `ReadableStream` cae al otro lado de la frontera "antes del primer
+       token". Sobre free tier tiene que estar pasando.
+   (2) **Agotar `MAX_ROUNDS` corta sin respuesta.** Si en la última ronda el modelo pide tools, el
+       código las EJECUTA, mete los resultados en la conversación… y el `for` termina →
+       `controller.close()`. El modelo nunca responde con esos datos: el trader ve "consultando" y
+       luego nada. En AMBAS rutas (Anthropic y OpenRouter).
+   (3) **`streamCoachAgent` no tiene UN SOLO test directo** — sólo aparece mockeado en
+       `coach-service.test.ts`. 181 líneas que deciden si las tools funcionan, cobertura cero. Es el
+       mismo patrón que dejó pasar los bugs de `createTrade`/`buildContext`/`persistInsights`.
+   PLAN PROPUESTO (no escrito aún, brainstorm primero): retry DENTRO del bucle (rondas 2+, perfil
+   interactivo, reusando `executeAiCall`); agotar rondas fuerza una respuesta final (una última
+   llamada SIN tools para que el modelo cierre con lo recopilado); + los tests del bucle que faltan.
+   MATIZ HONESTO: esto no prueba que un modelo de pago no ayudaría a la redacción; arregla el fallo
+   MECÁNICO que se leía como torpeza. El usuario aplazó los modelos de pago (etapa de pruebas).
+   Antes de tocar, es razonable verificar en vivo con Playwright cuántas rondas usa el Coach de
+   verdad (orden más honesto, más lento).
+
+QUÉ QUEDA PENDIENTE (además de la siguiente acción), y nada se arregla escribiendo un detector nuevo:
+ 1. [HECHO 2026-07-24, PR #171] Resiliencia de IA sobre el free tier: `executeAiCall` (dueño único
+    del reintento), `AiCallError` con status estructurado, dos perfiles por call-site (interactivo/
+    fondo), cadena de modelos GRATUITOS sólo si el primario ya es OpenRouter (ADR-003 §444),
+    embeddings que LANZAN en vez de devolver null mudo. Ya NO es pendiente. (b) La CALIDAD de
+    redacción sigue aparcada por decisión del usuario: no usar modelos de pago en etapa de pruebas.
+    ⚠️ Su límite conocido es la SIGUIENTE ACCIÓN de arriba: la resiliencia cubre la 1ª petición, no
+    las rondas del bucle agéntico.
+ 2. [HECHO 2026-07-23, PRs #161-#168] Búsqueda semántica sobre siete corpus. Ya NO es pendiente.
+ 3. `revenge` y `oversizing` no alcanzan umbral, y es ESTRUCTURAL: las tres capas de protección
+    impiden esa conducta ANTES de que llegue a ser patrón. No es bug ni faltan datos.
+ 4. [HECHO 2026-07-24, PRs #170 + #172] Outbox S4: dos consumidores por INYECCIÓN de handlers (el
+    Map mutable global era una trampa serverless que quemaba eventos). `commitment.*` → memoria
+    episódica; `insight.created` → notificación; `insight.resolved` → archiva esa notificación
+    (#172, el patrón dejó de cumplirse). El claim se restringe a tipos con handler → un tipo sin
+    consumidor queda pending, replayable (FREEZE-D6). Cron `v3-dispatch-events` revivió con
+    `timeout_milliseconds := 60000`. Verificado en prod: 22 eventos drenados, 14 notifs, 8 episodios.
  5. TD-037: diferido a conciencia. NO lo re-descubras.
  6. Bug dev-only de DataTable: no afecta prod, el usuario pidió dejarlo.
+
+CANDIDATOS SIGUIENTES por valor (después del bucle agéntico):
+ a) Re-verificar la Pista C del roadmap con el método de imports (higiene de doc, no mueve producto).
+ b) Auditoría de tool-use EN VIVO con Playwright, una vez arreglado el bucle: ver si con señal limpia
+    (sin 429 disfrazados) el modelo elige bien las tools, o si de verdad falta capacidad.
 
 TRAMPAS DE MÉTODO — me costaron varios diagnósticos falsos el 2026-07-22:
  · NUNCA concluyas "nadie llama a X" desde un grep del NOMBRE de X. Grepea los IMPORTS del
@@ -1276,21 +1293,26 @@ Reglas de trabajo (estables):
    SQL, NO en schema.prisma — Prisma no soporta el tipo y se leen/escriben por SQL crudo (el
    drift check DT-4 las exceptúa con la regla genérica `<tabla>.*embedding`). Índices
    vectoriales: usa HNSW, no ivfflat (ivfflat sobre tabla vacía no entrena centroides).
- · Corre la suite vitest COMPLETA antes de cada push (hoy: 1301). No un subconjunto.
+ · Corre la suite vitest COMPLETA antes de cada push (hoy: 1401). No un subconjunto.
  · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
  · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
-CANDIDATOS SIGUIENTES (la búsqueda semántica ya se hizo — #161-#168):
- ► **AHORA: ejecutar el plan del consumidor S4 del outbox** (punto 4 de arriba). Spec + plan
-   escritos y mergeados a main el 2026-07-23; sólo falta implementar. Rama nueva desde main +
-   superpowers:executing-plans. ES LO SIGUIENTE, ya decidido.
- Después, por valor:
- a) Resiliencia de IA SIN pago (punto 1): retry con backoff + cadena de modelos gratuitos +
-    llevar el patrón a embeddings. Es código, no requiere gasto. Los modelos de PAGO (calidad de
-    redacción) quedaron aplazados por el usuario — etapa de pruebas.
- b) Re-verificar la Pista C del roadmap con el método de imports.
-
 ═══ GOTCHAS QUE SIGUEN VIGENTES ═══
+
+RED CORPORATIVA / `--ssl-no-revoke` (ahorra un diagnóstico falso entero): `curl` a secas devuelve
+HTTP 000 contra CUALQUIER host externo porque la red bloquea las comprobaciones de revocación SSL.
+Con `--ssl-no-revoke` funciona. El 2026-07-24 esto me hizo declarar en falso que "el catálogo de
+OpenRouter no es verificable desde esta máquina" (PR #171); con la bandera responde 200 y verifiqué
+los 4 ids de la cadena gratuita + que los CUATRO soportan tools. Re-verificar el catálogo:
+`curl -sS --ssl-no-revoke https://openrouter.ai/api/v1/models` (comando también en `lib/ai/free-chain.ts`).
+Y OJO: `WebFetch` SÍ llega pero TRUNCA respuestas grandes (catálogo de 535 KB) y llegó a NEGAR un id
+que sí existía — dos respuestas contradictorias de la misma fuente acusan a la herramienta, no al dato.
+
+`gh` FUNCIONA (v2.96.0, autenticado): se usó para #170/#171. Si `gh pr create` falla con "GraphQL:
+Something went wrong" y la REST da HTTP 500, sospecha de un INCIDENTE de GitHub antes que del entorno
+(pasó el 2026-07-24: "Pull Requests → degraded_performance"). Compruébalo:
+`curl -sS --ssl-no-revoke https://www.githubstatus.com/api/v2/summary.json`. El PR #172 se acabó
+abriendo con un reintento en bucle cuando GitHub se recuperó.
 
 ENTORNO LOCAL: @sentry/nextjs y puppeteer-core están declarados en package.json pero
 AUSENTES de node_modules (pnpm install se atasca en esta red). Provocan 2 fallos de suite
