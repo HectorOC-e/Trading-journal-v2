@@ -7,6 +7,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { streamChat, type ChatMessage, type SystemBlock } from "./chat"
 import { resolveAiCall, usableCandidates } from "./resolve-provider"
+import { executeAiCall } from "./execute"
 import type { AiFeature } from "./feature-models"
 
 export async function completeText(
@@ -18,11 +19,15 @@ export async function completeText(
 ): Promise<string | null> {
   const resolved = await resolveAiCall(prisma, userId, feature)
   const candidates = usableCandidates(resolved)
-  if (candidates.length === 0) return null
+  if (candidates.length === 0) return null // contract preserved: best-effort caller
 
-  let lastErr: unknown
-  for (const c of candidates) {
-    try {
+  return executeAiCall({
+    candidates,
+    // Nobody watches a one-shot completion (thread summarisation, memory
+    // extraction): it runs inside a job, so it can afford to be patient.
+    profile: "background",
+    feature,
+    run: async (c) => {
       const stream = await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, messages, system })
       const reader = stream.getReader()
       const dec = new TextDecoder()
@@ -33,9 +38,6 @@ export async function completeText(
         out += dec.decode(value, { stream: true })
       }
       return out.trim()
-    } catch (err) {
-      lastErr = err
-    }
-  }
-  throw lastErr
+    },
+  })
 }

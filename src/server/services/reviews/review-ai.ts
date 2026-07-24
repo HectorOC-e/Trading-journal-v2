@@ -3,6 +3,8 @@
 // mutations and the cron auto-generate path.
 
 import { streamChat } from "@/lib/ai/chat"
+import { executeAiCall } from "@/lib/ai/execute"
+import type { RetryProfileName } from "@/lib/ai/retry-profile"
 import type { usableCandidates } from "@/lib/ai/resolve-provider"
 import type { WeeklyReport } from "@/domains/analytics/services/weekly-report"
 import type { MonthlyReport } from "@/domains/analytics/services/monthly-report"
@@ -62,27 +64,37 @@ Reglas de formato:
 - NO uses LaTeX ni notación matemática (nada de $...$, \\frac, \\times, etc.). Escribe fórmulas y divisiones en texto plano (p. ej. "ganancias/pérdidas", "2.1x").`
 }
 
-/** Stream the analysis from the first usable provider candidate. Throws on failure. */
-export async function runReviewAnalysis(candidates: Candidate[], prompt: string): Promise<string> {
-  let stream: ReadableStream<Uint8Array> | null = null
-  let streamErr: unknown
-  for (const c of candidates) {
-    try {
-      stream = await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, messages: [{ role: "user", content: prompt }] })
-      break
-    } catch (e) {
-      streamErr = e
-    }
-  }
-  if (!stream) throw streamErr ?? new Error("AI stream failed")
-
-  const reader = stream.getReader()
-  const decoder = new TextDecoder()
-  let raw = ""
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    raw += decoder.decode(value, { stream: true })
-  }
-  return raw.trim()
+/**
+ * Stream the analysis from the first usable provider candidate. Throws on failure.
+ *
+ * `profile` is REQUIRED, with no default, because this same function serves a
+ * router (a user is waiting on the spinner) and a cron (nobody is). A default
+ * would let a call-site compile without declaring its situation and silently
+ * inherit the wrong one — so the compiler asks instead.
+ */
+export async function runReviewAnalysis(
+  candidates: Candidate[],
+  prompt: string,
+  profile: RetryProfileName,
+): Promise<string> {
+  return executeAiCall({
+    candidates,
+    profile,
+    feature: "weekly_reviews",
+    run: async (c) => {
+      const stream = await streamChat({
+        provider: c.provider, apiKey: c.apiKey, model: c.model,
+        messages: [{ role: "user", content: prompt }],
+      })
+      const reader = stream.getReader()
+      const decoder = new TextDecoder()
+      let raw = ""
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += decoder.decode(value, { stream: true })
+      }
+      return raw.trim()
+    },
+  })
 }

@@ -213,7 +213,8 @@ export const monthlyReviewsRouter = router({
       const periodLabel = `${String(input.month).padStart(2, "0")}/${input.year}`
       let analysis: string
       try {
-        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(periodLabel, "monthly", report, insights))
+        // "interactive": lo dispara el trader desde la review y espera el resultado.
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(periodLabel, "monthly", report, insights), "interactive")
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
       }
