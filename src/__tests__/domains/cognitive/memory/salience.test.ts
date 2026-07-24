@@ -11,6 +11,11 @@ describe("initialSalience", () => {
     expect(s).toBeGreaterThan(0)
     expect(s).toBeLessThanOrEqual(1)
   })
+  it("makes a commitment less memorable to create than to break", () => {
+    expect(initialSalience("commitment_created")).toBe(0.55)
+    expect(initialSalience("commitment_broken")).toBe(0.85)
+    expect(initialSalience("commitment_created")).toBeLessThan(initialSalience("commitment_kept"))
+  })
 })
 
 describe("decayedSalience", () => {
