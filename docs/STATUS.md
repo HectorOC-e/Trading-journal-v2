@@ -1,8 +1,80 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-23.
+> Última actualización: 2026-07-24.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## El outbox estrena consumidor: la S4 cierra (2026-07-24, PR #170)
+
+El outbox de eventos de dominio existía desde S0 y **nunca tuvo un consumidor**. Ya lo tiene: dos.
+Ejecutado el plan `docs/superpowers/plans/2026-07-23-outbox-s4-consumer.md`.
+
+### El gap era una trampa serverless, no una pieza que faltara
+
+`registerHandler` poblaba un `Map` mutable a nivel de módulo y **el endpoint no lo poblaba**. En
+Vercel cada invocación re-importa: si el módulo que registra no está en la cadena de imports del
+endpoint, el `Map` está vacío, `dispatchPending` trata todo como *"sin handler → processed"* y
+**quema los eventos**. No es hipotético: `20260721190000` documentó 7 eventos perdidos así, y por eso
+des-agendó el cron.
+
+Se resuelve por **inyección**: `dispatchPending(prisma, HANDLERS, batchSize?)`. Desaparecen el `Map`
+global, `registerHandler` y `_resetHandlers`. El import *es* el registro — no hay ventana donde una
+lambda fría corra con el registro vacío, ni dependencia del orden de evaluación o de que un import
+con efecto secundario sobreviva al tree-shaking.
+
+Y el claim pasa a restringirse a los tipos con handler: **un tipo sin consumidor no se reclama**,
+queda `pending` y replayable. El modo de fallo queda eliminado **por construcción y para tipos
+futuros**, no evitado. Es la protección de `FREEZE-D6` que S0/R-3 pedía.
+
+### Los dos consumidores
+
+| Evento | Reacción | Idempotencia |
+|---|---|---|
+| `commitment.created/kept/partial/broken` | episodio de memoria del coach | `recordEpisodeOnce`, `sourceId = event.id` |
+| `insight.created` | notificación `INSIGHT_DETECTED` | `dedupeKey = insight:<id>` (upsert ya existente) |
+
+`sourceId = event.id` y **no** `commitmentId`: crear y romper el mismo compromiso son dos episodios
+legítimos distintos; dedupear por compromiso haría que el segundo pisara al primero. El handler cubre
+los **cuatro** `commitment.*`, no sólo los dos que había en pending, para que `kept`/`partial` no
+queden en `pending` indefinido cuando el loop los publique.
+
+Los handlers **no tragan errores**: el fallo sube y `planEventTransition` decide el reintento.
+Entidad borrada entre publicación y consumo → no-op, para no reintentar contra algo que ya no existe.
+
+### El defecto que el spec dio por descartado
+
+El spec afirmó que *"el productor está limpio: sólo PUBLICA, no notifica inline"*. Cierto para
+`insight-store`; **falso para compromisos**. `commitment-service` publicaba `commitment.{kept,broken}`
+al outbox **y además escribía el episodio inline** (`sourceId` = id del compromiso). Con el consumidor
+escribiendo el suyo (`sourceId` = id del EVENTO), el mismo hecho producía **dos episodios**, y ningún
+dedupe podía reconciliarlo: las dos claves difieren **por diseño**.
+
+Se encontró midiendo la línea base de prod antes de mergear —había 4 episodios `commitment_*` que el
+consumidor aún no había escrito—, no leyendo el spec. El productor deja de escribir; el outbox es el
+sitio desacoplado para la reacción. Guarda de regresión de un solo escritor incluida.
+
+### Verificado en producción
+
+- El cron `v3-dispatch-events` revivió con `timeout_milliseconds := 60000` (#155) y **disparó solo**
+  a las 14:45 UTC: `succeeded`, sin el falso-fallo de los 5 s.
+- Los **22 eventos** que llevaban meses en `pending` (`insight.created` ×14, `commitment.created` ×4,
+  `commitment.broken` ×4) pasaron a `processed` en una sola corrida.
+- **14 notificaciones** `INSIGHT_DETECTED` con **14 claves de dedupe distintas** — una por insight,
+  sin apilar.
+- **8 episodios** nuevos (4 `commitment_created` + 4 `commitment_broken`), todos derivados del outbox.
+  Los 4 legacy duplicados se borraron; los 2 de `intervention` (otra ruta, sin handler) intactos.
+- Suite **1301 → 1333**. CI verde incluido replay de migraciones y E2E autenticado.
+
+> El criterio *"un tipo sin handler queda pending"* no tenía caso natural en prod (los 22 eventos
+> eran de los 3 tipos con consumidor). Lo cubre el test de integración contra Postgres real, que lo
+> afirma explícitamente y pasa en CI, más el unitario del claim restringido. No se fabricó un evento
+> sintético en prod para ello.
+
+### Lo que queda abierto
+
+`insight.resolved` **tiene productor** (`insight-store.ts:162`) y **no tiene consumidor**. Con el
+claim restringido eso ya no es una fuga: sus eventos se acumularán en `pending`, replayables, hasta
+que se decida qué debe reaccionar. Es el comportamiento correcto, pero conviene no olvidarlo.
 
 ## Recuperación semántica consolidada y citada por el Coach (2026-07-23, PR #161)
 

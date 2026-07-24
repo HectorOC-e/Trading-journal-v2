@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "src/app/api/cron/dispatch-events/route.ts": {
-    "mtime": 1784903994.5337884,
-    "ast_hash": "1fdce835e283a125a0d73d8a366a8676",
+    "mtime": 1782772988.5462883,
+    "ast_hash": "ad7e8db76265c6dc42f22571c61358c5",
     "semantic_hash": ""
   },
   "src/app/api/cron/evaluate-commitments/route.ts": {
@@ -1190,8 +1190,8 @@
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/event-bus.ts": {
-    "mtime": 1784903994.535789,
-    "ast_hash": "17eae87cebe30cc06d743dbbb6f5fd5d",
+    "mtime": 1782772988.6299758,
+    "ast_hash": "c595ef31aac9ece0b45a4c8a3a138163",
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/event-types.ts": {
@@ -1210,8 +1210,8 @@
     "semantic_hash": ""
   },
   "src/domains/cognitive/memory/salience.ts": {
-    "mtime": 1784903994.5453281,
-    "ast_hash": "c2abdcc53c75fb613b88c01249f05288",
+    "mtime": 1782772988.6339748,
+    "ast_hash": "13b75dfd2d6c03fdde3b062bee0b1fc2",
     "semantic_hash": ""
   },
   "src/domains/cognitive/today/feed.ts": {
@@ -1640,8 +1640,8 @@
     "semantic_hash": ""
   },
   "src/lib/messages/catalog.ts": {
-    "mtime": 1784903994.5488508,
-    "ast_hash": "015c6e7f76164f7fe7603bee659c2846",
+    "mtime": 1782772988.6530256,
+    "ast_hash": "30f14a7c69e05751691495e1eaa48f59",
     "semantic_hash": ""
   },
   "src/lib/messages/resolve.ts": {
@@ -1805,8 +1805,8 @@
     "semantic_hash": ""
   },
   "src/server/services/behavior/commitment-service.ts": {
-    "mtime": 1784903994.552862,
-    "ast_hash": "f00a72f8d8bf3f9b989675ab483ef518",
+    "mtime": 1782772988.660539,
+    "ast_hash": "054a6f2228cd899ade6f38a2b767b39b",
     "semantic_hash": ""
   },
   "src/server/services/behavior/rule-suggestion-service.ts": {
@@ -1875,8 +1875,8 @@
     "semantic_hash": ""
   },
   "src/server/services/memory/memory-episode-service.ts": {
-    "mtime": 1784903994.5573726,
-    "ast_hash": "3f8325c13e375277fdf999b8182c5bac",
+    "mtime": 1782772988.6705658,
+    "ast_hash": "0b49740265ed384d3c358b3061d52a9d",
     "semantic_hash": ""
   },
   "src/server/services/memory/memory-identity-service.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1784839404.6558547,
-    "ast_hash": "fb7de3196a171aa5e9ac345c953270ba",
+    "mtime": 1784835763.6560335,
+    "ast_hash": "7929a9530b3c769823e49d5402247272",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2907,36 +2907,6 @@
   "supabase/migrations/20260723170000_retrieval_indexes_ivfflat_to_hnsw.sql": {
     "mtime": 1784835033.7272866,
     "ast_hash": "fb9f3ab3f5bdf2ee76818499c9c5629d",
-    "semantic_hash": ""
-  },
-  "src/domains/cognitive/events/handlers/index.ts": {
-    "mtime": 1784903994.5393157,
-    "ast_hash": "2fc7c4226ccf2ca4e6061e9738b27b38",
-    "semantic_hash": ""
-  },
-  "src/domains/cognitive/events/handlers/memory-handler.ts": {
-    "mtime": 1784903994.5413282,
-    "ast_hash": "a4e32b71dafccd8c1fac5686381c8540",
-    "semantic_hash": ""
-  },
-  "src/domains/cognitive/events/handlers/notification-handler.ts": {
-    "mtime": 1784903994.5433283,
-    "ast_hash": "f4671612887d7a2800b89ff8ece46581",
-    "semantic_hash": ""
-  },
-  "supabase/migrations/20260724120000_reschedule_dispatch_events_s4.sql": {
-    "mtime": 1784903994.5593822,
-    "ast_hash": "b6f3c1ba3a9c7b26976b498099a00c99",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-07-23-outbox-s4-consumer.md": {
-    "mtime": 1784839404.6583905,
-    "ast_hash": "b5552a24aa10ad120874a09eb087f870",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-07-23-outbox-s4-consumer-design.md": {
-    "mtime": 1784839404.6593995,
-    "ast_hash": "9d2e7d8ea7cb29598658248455eb6030",
     "semantic_hash": ""
   }
 }
