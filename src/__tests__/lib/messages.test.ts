@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { resolveMessage, isMessageCode } from "@/lib/messages/resolve"
+import { MESSAGES } from "@/lib/messages/catalog"
 import { AppError, toUserMessage } from "@/lib/errors/app-error"
 
 describe("resolveMessage", () => {
@@ -41,6 +42,22 @@ describe("resolveMessage", () => {
     expect(es.actions[0]).toMatchObject({ label: "Ver cuenta", href: "/cuentas", style: "primary" })
     const en = resolveMessage("ACCOUNT_LOCKED", { name: "X", reason: "y" }, "en")
     expect(en.actions[0].label).toBe("View account")
+  })
+})
+
+describe("INSIGHT_DETECTED — notificación del consumidor del outbox", () => {
+  it("es persistida e informativa (no interrumpe)", () => {
+    const def = MESSAGES.INSIGHT_DETECTED
+    expect(def.persist).toBe(true)
+    expect(def.category).toBe("Sistema")
+    expect(def.priority).toBe("P3")
+    expect(def.type).toBe("INFO")
+  })
+
+  it("resuelve el título del insight en el cuerpo", () => {
+    const m = resolveMessage("INSIGHT_DETECTED", { title: "Operas peor tras 2 pérdidas" })
+    expect(m.body).toContain("Operas peor tras 2 pérdidas")
+    expect(m.persist).toBe(true)
   })
 })
 
