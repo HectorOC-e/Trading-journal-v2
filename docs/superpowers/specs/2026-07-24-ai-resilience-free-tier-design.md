@@ -206,7 +206,13 @@ usuario que mira un spinner es peor que fallar rápido.
 
 Es el camino con peor comportamiento hoy y el que más se beneficia.
 
-- `resolveEmbeddingCall` pasa a devolver **lista de candidatos** (misma composición que §4), no uno.
+- Se añade `resolveEmbeddingCandidates` que devuelve **lista**, para que el ejecutor la consuma.
+
+> **Corrección al diseño (detectada al escribir el plan):** la lista de embeddings contiene **sólo el
+> primario**, no la cadena de §4. `FREE_MODEL_CHAIN` son modelos de **chat**; añadirlos a una llamada
+> de embeddings produciría peticiones que ningún endpoint de embeddings puede servir. **Los
+> embeddings ganan el retry, no la cadena.** Una cadena de embeddings gratuitos verificada es trabajo
+> futuro. La forma de lista se mantiene para que el día que exista no haya que cambiar la firma.
 - `embedText` **lanza** el error tipado en vez de devolver `null` ante un fallo. Sigue devolviendo
   `null` en los casos que **no** son fallo: sin clave, sin modelo, texto vacío. La distinción es el
   punto: hoy los cuatro casos colapsan al mismo `null`.
