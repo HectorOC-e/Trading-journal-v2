@@ -38,12 +38,21 @@ retry sobre el propio modelo pero **no** la cadena: un hipo transitorio no debe 
 del trader a un tercero que no eligió para esa llamada (`ADR-003 §444`), ni provocar un bajón de
 calidad sin señal visible. El fallback cross-provider sigue disponible como elección **explícita**.
 
-> Los ids (`nvidia/nemotron-3-ultra…`, `google/gemma-4-31b…`, `openrouter/free`,
-> `google/gemma-4-26b…`) los aportó el usuario desde el catálogo: **no se pudieron verificar desde la
-> máquina de desarrollo** (curl bloqueado por inspección SSL; WebFetch trunca un catálogo de ese
-> tamaño y llegó a negar un id que sí está en prod). Un id caduco **se auto-limita**: el ejecutor
-> recibe un 404, lo clasifica como permanente y pasa al siguiente. Los dos Gemma van separados en el
-> orden porque comparten upstream.
+> **Corrección (mismo día).** El PR #171 declaró que los ids "no se pudieron verificar desde la
+> máquina de desarrollo". **Era falso, y la causa era una bandera de curl:** la red corporativa
+> bloquea las comprobaciones de revocación SSL, así que `curl` a secas devuelve HTTP 000 contra
+> cualquier host externo; con **`--ssl-no-revoke`** responde 200. (`WebFetch` sí llega, pero trunca un
+> catálogo de 535 KB y llegó a negar un id que sí está en prod — dos respuestas contradictorias de la
+> misma fuente deberían haber bastado para desconfiar de la herramienta, no del dato.)
+>
+> **Verificado el 2026-07-24** contra los 345 modelos del catálogo real: los cuatro ids existen, y
+> **los cuatro anuncian `tools`** en `supported_parameters` — no sólo Nemotron, como asumía el spec.
+> La ruta agéntica del Coach funciona en toda la cadena, así que degradar a la ruta estática queda
+> como caso de borde real y no como algo frecuente. El comando de re-verificación vive en
+> `lib/ai/free-chain.ts`.
+>
+> Un id caduco **se auto-limita** igualmente: el ejecutor recibe un 404, lo clasifica como permanente
+> y pasa al siguiente. Los dos Gemma van separados en el orden porque comparten upstream.
 
 ### Dos defectos encontrados por el camino
 
@@ -140,11 +149,26 @@ sitio desacoplado para la reacción. Guarda de regresión de un solo escritor in
 > afirma explícitamente y pasa en CI, más el unitario del claim restringido. No se fabricó un evento
 > sintético en prod para ello.
 
-### Lo que queda abierto
+### `insight.resolved` — CERRADO el mismo día (PR #172)
 
-`insight.resolved` **tiene productor** (`insight-store.ts:162`) y **no tiene consumidor**. Con el
-claim restringido eso ya no es una fuga: sus eventos se acumularán en `pending`, replayables, hasta
-que se decida qué debe reaccionar. Es el comportamiento correcto, pero conviene no olvidarlo.
+Quedó anotado como cabo abierto: tenía productor (`insight-store.ts:162`) y ningún consumidor. Ya lo
+tiene. Cuando el motor resuelve un insight **el patrón dejó de cumplirse**, así que el handler
+**archiva** la notificación de ese insight: dejarla viva sería que el producto siguiera afirmando
+*"Nuevo patrón detectado: operas peor tras 2 pérdidas"* sobre alguien de quien ya no es cierto —
+`FREEZE-P2`, el gemelo del `[]` silencioso de #156.
+
+**El riesgo que se cerró de paso.** El `dedupeKey` iba a quedar duplicado entre el handler que crea
+la notificación y el que la archiva. Si los dos lo derivaran distinto, el archivado no encontraría
+nada y **fallaría en silencio** — la notificación sobreviviría al patrón sin que nada diera error.
+`insightDedupeKey` es fuente única, con un test que compara literalmente la clave de ambos lados.
+
+Archiva pero **no borra** (la notificación es historia, accesible con `includeArchived`) y **no marca
+leída** (eso afirmaría que el trader la vio). Filtra por `archivedAt: null`, así un reproceso es
+no-op y no repisa el archivado manual. Simétrico con `emit.ts:110`, que des-archiva al re-emitir: si
+el patrón vuelve, la notificación vuelve.
+
+En prod no había ningún `insight.resolved` todavía —el camino de resolución no ha disparado—, así que
+es **preventivo**. Suite 1395 → 1401.
 
 ## Recuperación semántica consolidada y citada por el Coach (2026-07-23, PR #161)
 

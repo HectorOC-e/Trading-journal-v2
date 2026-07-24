@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1784904625.3789375,
-    "ast_hash": "d578c4724fdc81db7129f5ce4e29bb55",
+    "mtime": 1784923906.6562996,
+    "ast_hash": "f037123acf0d84a83090ac131f70cd8d",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2910,8 +2910,8 @@
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/handlers/index.ts": {
-    "mtime": 1784903994.5393157,
-    "ast_hash": "2fc7c4226ccf2ca4e6061e9738b27b38",
+    "mtime": 1784923269.7194371,
+    "ast_hash": "a6753ae87d40710918b3af784a885613",
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/handlers/memory-handler.ts": {
@@ -2920,8 +2920,8 @@
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/handlers/notification-handler.ts": {
-    "mtime": 1784903994.5433283,
-    "ast_hash": "f4671612887d7a2800b89ff8ece46581",
+    "mtime": 1784923269.7204401,
+    "ast_hash": "5f5fc6fa618b2a3931483e2be2d7fd0d",
     "semantic_hash": ""
   },
   "supabase/migrations/20260724120000_reschedule_dispatch_events_s4.sql": {
@@ -2950,8 +2950,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/free-chain.ts": {
-    "mtime": 1784919008.9673932,
-    "ast_hash": "dd2526b48553916f133673fe579e2850",
+    "mtime": 1784923269.7218072,
+    "ast_hash": "7716316f2fee11450a4ed071fe7916e3",
     "semantic_hash": ""
   },
   "src/lib/ai/retry-profile.ts": {
