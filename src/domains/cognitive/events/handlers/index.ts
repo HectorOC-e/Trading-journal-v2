@@ -9,12 +9,13 @@
 
 import type { HandlerMap } from "../event-bus"
 import { memoryHandler } from "./memory-handler"
-import { notificationHandler } from "./notification-handler"
+import { insightCreatedHandler, insightResolvedHandler } from "./notification-handler"
 
 export const HANDLERS: HandlerMap = {
   "commitment.created": [memoryHandler],
   "commitment.broken": [memoryHandler],
   "commitment.kept": [memoryHandler],
   "commitment.partial": [memoryHandler],
-  "insight.created": [notificationHandler],
+  "insight.created": [insightCreatedHandler],
+  "insight.resolved": [insightResolvedHandler],
 }

@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 const { emitNotification } = vi.hoisted(() => ({ emitNotification: vi.fn() }))
 vi.mock("@/server/services/notifications/emit", () => ({ emitNotification }))
 
-import { notificationHandler } from "@/domains/cognitive/events/handlers/notification-handler"
+import { insightCreatedHandler } from "@/domains/cognitive/events/handlers/notification-handler"
 
 const prismaWith = (insight: unknown) =>
   ({ insight: { findFirst: vi.fn().mockResolvedValue(insight) } }) as never
@@ -20,9 +20,9 @@ beforeEach(() => {
   emitNotification.mockResolvedValue({ id: "n1" })
 })
 
-describe("notificationHandler — insight.created → notificación", () => {
+describe("insightCreatedHandler — insight.created → notificación", () => {
   it("emite INSIGHT_DETECTED con el título del insight y href a /analytics", async () => {
-    await notificationHandler(prismaWith({ title: "Operas peor tras 2 pérdidas" }), evt)
+    await insightCreatedHandler(prismaWith({ title: "Operas peor tras 2 pérdidas" }), evt)
 
     expect(emitNotification).toHaveBeenCalledWith(
       expect.anything(),
@@ -37,19 +37,19 @@ describe("notificationHandler — insight.created → notificación", () => {
   })
 
   it("dedupea por insight:<id>, no por el id del evento — reprocesar refresca, no apila", async () => {
-    await notificationHandler(prismaWith({ title: "x" }), evt)
+    await insightCreatedHandler(prismaWith({ title: "x" }), evt)
 
     const opts = emitNotification.mock.calls[0][3]
     expect(opts.dedupeKey).toBe("insight:i1")
   })
 
   it("no-op sin lanzar si el insight fue borrado entre publicación y consumo", async () => {
-    await expect(notificationHandler(prismaWith(null), evt)).resolves.toBeUndefined()
+    await expect(insightCreatedHandler(prismaWith(null), evt)).resolves.toBeUndefined()
     expect(emitNotification).not.toHaveBeenCalled()
   })
 
   it("NO traga el error de emitNotification — el dispatcher debe reintentar", async () => {
     emitNotification.mockRejectedValueOnce(new Error("db down"))
-    await expect(notificationHandler(prismaWith({ title: "x" }), evt)).rejects.toThrow("db down")
+    await expect(insightCreatedHandler(prismaWith({ title: "x" }), evt)).rejects.toThrow("db down")
   })
 })
