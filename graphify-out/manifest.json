@@ -500,8 +500,8 @@
     "semantic_hash": ""
   },
   "src/components/ai-coach/ai-coach-drawer.tsx": {
-    "mtime": 1784823163.4314747,
-    "ast_hash": "e14c9ecd9e9f80784b837f3f184614f3",
+    "mtime": 1785187790.8310883,
+    "ast_hash": "b3a1fe5ef5e2186fdbae6fe464574f90",
     "semantic_hash": ""
   },
   "src/components/ai-coach/coach-identity-editor.tsx": {
@@ -1470,8 +1470,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/analytics-insights-service.ts": {
-    "mtime": 1784919008.961393,
-    "ast_hash": "48d2950f01d99b8b35c12b86b09d0bc4",
+    "mtime": 1785187790.8340392,
+    "ast_hash": "a293e53edd1c18c90ad85c1082bd849c",
     "semantic_hash": ""
   },
   "src/lib/ai/app-knowledge.ts": {
@@ -1480,18 +1480,18 @@
     "semantic_hash": ""
   },
   "src/lib/ai/chat.ts": {
-    "mtime": 1784919008.962395,
-    "ast_hash": "6c604375bf2b41be7d826983de3529a5",
+    "mtime": 1785187790.8350394,
+    "ast_hash": "7255a24df416ba49fe667e7141a2e321",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-agent.ts": {
-    "mtime": 1785169850.6333227,
-    "ast_hash": "7ae6e84365d8da38cd3d33f7b8be79e9",
+    "mtime": 1785187790.8366444,
+    "ast_hash": "04a7204bac82be1eb622abedc1635a27",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-service.ts": {
-    "mtime": 1785169850.6343236,
-    "ast_hash": "2efc764c9c40670b5dbced3eeaf2e9cd",
+    "mtime": 1785187790.8376467,
+    "ast_hash": "d048e5a5e94ca2f44f2d4ba1576b0ea5",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
@@ -1500,8 +1500,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/complete.ts": {
-    "mtime": 1784919008.9653952,
-    "ast_hash": "0f4f850f0c5be30880a8186d570e6d63",
+    "mtime": 1785187790.839645,
+    "ast_hash": "91a544ee2d83e758a01073924b7b564f",
     "semantic_hash": ""
   },
   "src/lib/ai/config.ts": {
@@ -1510,8 +1510,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/embeddings.ts": {
-    "mtime": 1784919008.9653952,
-    "ast_hash": "d4d186747220d16bd21835972d177b85",
+    "mtime": 1785187790.839645,
+    "ast_hash": "6783d6f2c12f4f21f7c8a70ab3e9b8a4",
     "semantic_hash": ""
   },
   "src/lib/ai/feature-models.ts": {
@@ -1530,8 +1530,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/psychology-insights-service.ts": {
-    "mtime": 1784919008.968393,
-    "ast_hash": "25e0ceb8887fb56d3caad43f0ee8a0fa",
+    "mtime": 1785187790.8426442,
+    "ast_hash": "384d063d3c1e57eaf9d3bdc2e1427632",
     "semantic_hash": ""
   },
   "src/lib/ai/resolve-model.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1785169850.6273122,
-    "ast_hash": "fc3c472e766b856fc9cc697d79833e7e",
+    "mtime": 1785187790.8271122,
+    "ast_hash": "e4de99dc87a0e27039079e9762e2db38",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2775,8 +2775,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/pipeline.ts": {
-    "mtime": 1784919008.9713945,
-    "ast_hash": "7944cb9cbb6b6d92bfc012ef4447ce42",
+    "mtime": 1785187790.8446443,
+    "ast_hash": "3ff398860d6130b47c5a39bb007ec553",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/registry.ts": {
@@ -2945,8 +2945,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/execute.ts": {
-    "mtime": 1784919008.9663956,
-    "ast_hash": "232b71118ea80754a5c720885296d419",
+    "mtime": 1785187790.8416438,
+    "ast_hash": "c4447facedf0bc2e818f90bcb5d7ad20",
     "semantic_hash": ""
   },
   "src/lib/ai/free-chain.ts": {
@@ -2955,8 +2955,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/retry-profile.ts": {
-    "mtime": 1784919008.9703932,
-    "ast_hash": "bee122f613f71c97f4bb3d45ce91f5e1",
+    "mtime": 1785187790.8436441,
+    "ast_hash": "3a295bfe4342c9a6c9191f00dc14ca16",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-24-ai-resilience-free-tier.md": {
