@@ -1293,200 +1293,169 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 
 ```
 Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. main limpio, sin ramas ni PRs
-abiertos. Confirma al arrancar que tienes gh, Supabase MCP, Vercel MCP y Playwright
-(§0 más abajo). OJO: `.env` NO existe en esta máquina — sólo `.env.example`. Supabase MCP
-lo sustituye para todo lo que necesites de BD.
+abiertos. Confirma al arrancar qué tienes de esto: gh, Supabase MCP, Playwright y graphify.
+OJO CON DOS COSAS: (1) `.env` NO existe en esta máquina — sólo `.env.example`; Supabase MCP
+lo sustituye para todo lo de BD. (2) El 2026-07-27 **Vercel MCP NO estaba disponible**; no
+des por hecho que lo tienes, y si no está, dilo en vez de improvisar — sin él no puedes leer
+los logs de Vercel, que es donde vive la única evidencia de varios fallos de IA.
 
 Lee primero, en este orden:
-  1) docs/STATUS.md        — empieza por las secciones de cabecera con fecha 2026-07-24, que
-                             PREVALECEN sobre todo lo anterior y sobre las 109 filas de la tabla
-                             de §1. El 2026-07-24 se cerraron TRES piezas (#170 outbox S4, #171
-                             resiliencia de IA, #172 insight.resolved); sus secciones de cabecera
-                             son las más recientes. Suite hoy: 1401.
+  1) docs/STATUS.md        — las secciones de cabecera con fecha 2026-07-27 PREVALECEN sobre
+                             todo lo anterior y sobre las 109 filas de la tabla de §1.
   2) docs/PROJECT_GUIDE.md — qué es el producto
   3) docs/ARCHITECTURE.md  — principios y entidades congelados
 
-LA SIMULACIÓN DE TRADER EN ARIA ESTÁ TERMINADA. Fases 0 a 5, el 2026-07-22. NO la repitas.
-Su resultado completo está en STATUS.md, sección "Resultado de la simulación de trader en
-aria". 15 trades sintéticos marcados `sim:2026-07-22` viven en prod a propósito: aria es el
-banco de simulación, no contaminación.
+═══ NO HAY DEFECTO PENDIENTE. LA SIGUIENTE JUGADA ES UNA DECISIÓN, NO UNA TAREA ═══
 
-LO QUE LA SIMULACIÓN DEMOSTRÓ, y reordena prioridades:
-Tres detectores (`emotion-before-loss`, `emotion-performance`, `violation-emotion`)
-aparecieron en cuanto hubo trades CON EMOCIÓN CAPTURADA. Los 52 históricos tienen cero.
-Bastaron 15 trades. No faltaba volumen: faltaba el gesto. Si vuelves a leer en algún sitio
-que "hace falta más volumen para que los detectores despierten", está obsoleto.
+No busques trabajo en la mecánica de IA: está agotada, y con evidencia, no por cansancio.
+Si te pones a "mejorar el Coach" sin que el usuario lo pida, te lo estarás inventando.
 
-9 PRs mergeados ese día (#152-#160), suite 1204 → 1269 tests:
-  · Familia del riesgo mal calculado: #152 (riskPct vs initialBalance) · #153 (mismo bug en
-    buildContext) · #154 (riesgo ignoraba point_value, ×20 en NQ) · #159 (avgPlannedRisk,
-    ×16). La auditoría de riesgo queda CERRADA: no quedan sitios que traten una diferencia
-    de precios como dinero sin el multiplicador del instrumento.
-  · Infra: #155 (crons esperaban 5 s por trabajos declarados para 300 s).
-  · IA/insights: #156 (embeddings heredaban el modelo de chat) · #157 (concentración de setup
-    ignoraba las pérdidas y recomendaba doblar la apuesta en el peor setup) · #158 (un insight
-    vivo se congelaba en su primer cálculo) · #160 (las rutas de IA se tragaban la causa).
+Las dos palancas reales, ambas del usuario:
 
-EL PATRÓN QUE LOS UNE, y la lección: `createTrade`, `buildContext` y `persistInsights` no
-tenían UN SOLO TEST DIRECTO. Así sobrevivieron todos. Si vas a tocar un servidor de escritura
-o de reconciliación, mira primero si tiene cobertura antes de fiarte de él.
+ A) **La captura de emoción.** La simulación demostró que los detectores encienden en cuanto
+    hay emoción capturada — bastaron 15 trades — y los 52 históricos tienen CERO. El motor de
+    comportamiento está construido y esperando un gesto que no ocurre. La pregunta no es
+    técnica: es cómo se consigue ese gesto. NO lo resuelvas con un detector nuevo.
+ B) **La calidad de redacción del Coach.** Aparcada por decisión del usuario (etapa de
+    pruebas, sin modelos de pago). La auditoría del 27-jul acotó la decisión: la selección de
+    herramientas YA NO es el cuello de botella, así que si el Coach sabe a poco, ahora sí es
+    la prosa — y eso se compra con modelo, no se programa.
 
-► **LA SIGUIENTE ACCIÓN — arreglar el bucle agéntico del Coach (`coach-agent.ts`).** Auditado el
-2026-07-24 (pieza 3 de la sesión: "aprovechar mejor las tools"). El tuning NO es el problema esta
-vez: las 12 descripciones de tools y la regla de selección del system prompt están bien (#168 se
-sostiene). El problema es MECÁNICO, y produce exactamente el síntoma "el modelo no aprovecha sus
-herramientas". TRES defectos, ninguno tocado todavía (sólo diagnosticado):
-   (1) **Rondas 2+ fallan en silencio y sin reintento.** `coach-agent.ts` (rama OpenRouter):
-       `if (round > 0) { res = await doFetch(); if (!res.ok || !res.body) break }`. Un 429/500 en
-       cualquier ronda posterior a la primera hace `break` → stream truncado, sin error, sin
-       reintento. Es un HUECO de #171: la resiliencia protege sólo el pre-flight (la 1ª petición);
-       todo lo de dentro del `ReadableStream` cae al otro lado de la frontera "antes del primer
-       token". Sobre free tier tiene que estar pasando.
-   (2) **Agotar `MAX_ROUNDS` corta sin respuesta.** Si en la última ronda el modelo pide tools, el
-       código las EJECUTA, mete los resultados en la conversación… y el `for` termina →
-       `controller.close()`. El modelo nunca responde con esos datos: el trader ve "consultando" y
-       luego nada. En AMBAS rutas (Anthropic y OpenRouter).
-   (3) **`streamCoachAgent` no tiene UN SOLO test directo** — sólo aparece mockeado en
-       `coach-service.test.ts`. 181 líneas que deciden si las tools funcionan, cobertura cero. Es el
-       mismo patrón que dejó pasar los bugs de `createTrade`/`buildContext`/`persistInsights`.
-   PLAN PROPUESTO (no escrito aún, brainstorm primero): retry DENTRO del bucle (rondas 2+, perfil
-   interactivo, reusando `executeAiCall`); agotar rondas fuerza una respuesta final (una última
-   llamada SIN tools para que el modelo cierre con lo recopilado); + los tests del bucle que faltan.
-   MATIZ HONESTO: esto no prueba que un modelo de pago no ayudaría a la redacción; arregla el fallo
-   MECÁNICO que se leía como torpeza. El usuario aplazó los modelos de pago (etapa de pruebas).
-   Antes de tocar, es razonable verificar en vivo con Playwright cuántas rondas usa el Coach de
-   verdad (orden más honesto, más lento).
+═══ QUÉ SE CERRÓ Y NO DEBES REHACER ═══
 
-QUÉ QUEDA PENDIENTE (además de la siguiente acción), y nada se arregla escribiendo un detector nuevo:
- 1. [HECHO 2026-07-24, PR #171] Resiliencia de IA sobre el free tier: `executeAiCall` (dueño único
-    del reintento), `AiCallError` con status estructurado, dos perfiles por call-site (interactivo/
-    fondo), cadena de modelos GRATUITOS sólo si el primario ya es OpenRouter (ADR-003 §444),
-    embeddings que LANZAN en vez de devolver null mudo. Ya NO es pendiente. (b) La CALIDAD de
-    redacción sigue aparcada por decisión del usuario: no usar modelos de pago en etapa de pruebas.
-    ⚠️ Su límite conocido es la SIGUIENTE ACCIÓN de arriba: la resiliencia cubre la 1ª petición, no
-    las rondas del bucle agéntico.
- 2. [HECHO 2026-07-23, PRs #161-#168] Búsqueda semántica sobre siete corpus. Ya NO es pendiente.
- 3. `revenge` y `oversizing` no alcanzan umbral, y es ESTRUCTURAL: las tres capas de protección
-    impiden esa conducta ANTES de que llegue a ser patrón. No es bug ni faltan datos.
- 4. [HECHO 2026-07-24, PRs #170 + #172] Outbox S4: dos consumidores por INYECCIÓN de handlers (el
-    Map mutable global era una trampa serverless que quemaba eventos). `commitment.*` → memoria
-    episódica; `insight.created` → notificación; `insight.resolved` → archiva esa notificación
-    (#172, el patrón dejó de cumplirse). El claim se restringe a tipos con handler → un tipo sin
-    consumidor queda pending, replayable (FREEZE-D6). Cron `v3-dispatch-events` revivió con
-    `timeout_milliseconds := 60000`. Verificado en prod: 22 eventos drenados, 14 notifs, 8 episodios.
- 5. TD-037: diferido a conciencia. NO lo re-descubras.
- 6. Bug dev-only de DataTable: no afecta prod, el usuario pidió dejarlo.
+ · Simulación de trader en aria (2026-07-22, fases 0-5, PRs #152-#160). Los 15 trades
+   sintéticos marcados `sim:2026-07-22` viven en prod A PROPÓSITO: aria es el banco de
+   simulación. La auditoría de riesgo quedó CERRADA — no quedan sitios que traten una
+   diferencia de precios como dinero sin el multiplicador del instrumento.
+ · Búsqueda semántica sobre siete corpus (2026-07-23, PRs #161-#168).
+ · Outbox S4, dos consumidores por INYECCIÓN de handlers (PRs #170 + #172).
+ · Resiliencia de IA sobre el free tier (PR #171): `executeAiCall` como dueño único del
+   reintento, `AiCallError` con status estructurado, dos perfiles por call-site.
+ · **Bucle agéntico del Coach (PR #173, 2026-07-27).** Reintento en rondas 2+ con
+   `executeAiCall` de UN candidato; `tool_choice: "none"` en la última ronda para forzar
+   respuesta; 8 tests directos donde había cobertura cero.
+ · **Auditoría de tool-use EN VIVO (2026-07-27).** Veredicto: **el modelo ELIGE BIEN sus
+   herramientas**. Pasa la prueba dura de alucinación (citó textual una review y el SQL lo
+   confirma). Rondas reales: máximo 2 de 5.
+ · **Techo por intento + aviso real (PR #174, 2026-07-27).** `RetryProfile.attemptTimeoutMs`
+   (45 s / 90 s) acota UN intento; la señal llega a los tres `fetch` de la ruta por los seis
+   call-sites. Y el cliente por fin PINTA algo cuando el stream muere: trama
+   `{error:{status,kind}}` por el canal NUL → 429 / 5xx / conexión cortada.
 
-CANDIDATOS SIGUIENTES por valor (después del bucle agéntico):
- a) Re-verificar la Pista C del roadmap con el método de imports (higiene de doc, no mueve producto).
- b) Auditoría de tool-use EN VIVO con Playwright, una vez arreglado el bucle: ver si con señal limpia
-    (sin 429 disfrazados) el modelo elige bien las tools, o si de verdad falta capacidad.
+═══ NO RE-DESCUBRAS ESTO (no son olvidos) ═══
+ · TD-037: diferido a conciencia.
+ · Bug dev-only de DataTable: el usuario pidió dejarlo.
+ · `revenge` y `oversizing` no alcanzan umbral y es ESTRUCTURAL: las tres capas de protección
+   impiden esa conducta ANTES de que llegue a ser patrón. No es bug ni faltan datos.
+ · `GRAPH_REPORT.md` sub-reporta la capa semántica (se regenera desde el AST antes de la
+   fusión). Declarado en dos commits. Ponerlo al día exige la pasada LLM con coste de API.
+ · Pista C del roadmap: higiene de doc, no mueve producto.
 
-TRAMPAS DE MÉTODO — me costaron varios diagnósticos falsos el 2026-07-22:
- · NUNCA concluyas "nadie llama a X" desde un grep del NOMBRE de X. Grepea los IMPORTS del
-   módulo, verifica el exit code y ABRE el consumidor. Un grep vacío acusa al grep.
- · NUNCA declares una feature de IA rota por UN 500. `openrouter/free` falla de forma
-   TRANSITORIA. Reporté `psychology_analysis` como roto y quince minutos después respondía
-   200 en los cuatro periodos. Reintenta antes de diagnosticar.
- · NO te fíes de heurísticas de "página vacía" sobre el texto del DOM. Reporté /aprendizaje
-   como vacía y tiene el SRS vivo con 3 repasos vencidos. ABRE LA CAPTURA.
+═══ EN VIGILANCIA (observado UNA vez, NO reprodujo — no lo asciendas a defecto) ═══
+ · Un corte a mitad de stream a los 162 s. NO es el `maxDuration` de la ruta (300). Se le
+   puso techo en #174, pero la causa raíz no se identificó.
+ · Una respuesta del Coach con CERO tools que afirmaba haber buscado en las reviews. Si
+   REAPARECE, eso es `FREEZE-P2` y merece pieza propia.
+
+═══ TRAMPAS DE MÉTODO (cada una me costó un diagnóstico falso) ═══
+ · **Un grep de UNA forma concreta no prueba ausencia.** El 27-jul afirmé "este test sólo
+   asevera sobre .system" tras grepear `mock.calls[0][0].`; había dos aserciones más vía una
+   variable intermedia y rompieron. Hermano del clásico: NUNCA concluyas "nadie llama a X"
+   desde un grep del NOMBRE de X — grepea los IMPORTS y ABRE el consumidor.
+ · **REINTENTA ANTES DE DIAGNOSTICAR.** El 27-jul iba a reportar dos defectos graves del
+   Coach; ninguno reprodujo en la segunda pasada. `openrouter/free` falla transitoriamente, y
+   la red de esta máquina tira TLS timeouts en `gh` y en Playwright por igual.
+ · **Cuando dos superficies se contradigan, ve a la BD y adjudica.** Así se comprobó que la
+   cita del Coach era real: `order by week_start desc limit 2` NO la vio; hubo que buscar en
+   TODAS las filas.
+ · **Frontera "el stream ya fue devuelto".** Si tocas resiliencia de streaming, pregúntate de
+   qué lado estás: cuando corre la ronda 2 de `coach-agent.ts`, la función ya devolvió el
+   `ReadableStream` y `start(controller)` corre asíncrono — ni el try/catch del llamador, ni
+   `shouldDegradeToStatic`, ni el `executeAiCall` externo siguen en el camino.
+ · **Abortar un `AbortSignal` no corta un `run` que lo ignora.** Mi primer techo por intento
+   era decorativo y lo cazó el test. Hay que CARRERAR contra el temporizador además de
+   abortar. Ya está hecho en `execute.ts`; no lo "simplifiques" quitando la carrera.
+ · NO te fíes de heurísticas de "página vacía" sobre el texto del DOM. ABRE LA CAPTURA.
  · Si un arreglo está desplegado y el usuario sigue viendo lo viejo, sospecha de la capa de
    persistencia antes que del arreglo. Así se encontró #158.
- · Cuando dos superficies del producto se contradigan, ve a la BD y adjudica: puede que
-   AMBAS tengan razón sobre métricas distintas. El Coach y el motor determinista discrepaban
-   sobre el mejor setup; el Coach tenía razón (neto) y el insight estaba mal (bruto).
 
-Reglas de trabajo (estables):
+═══ REGLAS DE TRABAJO (estables) ═══
  · Trabaja desde origin/main; una rama por pieza; PR + CI verde + MERGEA TÚ MISMO con gh
-   (el usuario lo autorizó explícitamente el 2026-07-22 para no frenar el proceso).
- · TDD para dominios puros. VERIFICA EL ROJO antes de implementar: un test que nunca viste
-   fallar no prueba nada.
- · Migraciones DUALES (SQL en supabase/migrations + modelo prisma) con `npx prisma generate`;
-   RLS per-usuario en tablas nuevas. EXCEPCIÓN: las columnas `vector` (pgvector) van SÓLO en
-   SQL, NO en schema.prisma — Prisma no soporta el tipo y se leen/escriben por SQL crudo (el
-   drift check DT-4 las exceptúa con la regla genérica `<tabla>.*embedding`). Índices
-   vectoriales: usa HNSW, no ivfflat (ivfflat sobre tabla vacía no entrena centroides).
- · Corre la suite vitest COMPLETA antes de cada push (hoy: 1401). No un subconjunto.
+   (autorizado explícitamente el 2026-07-22).
+ · TDD para dominios puros. VERIFICA EL ROJO: un test que nunca viste fallar no prueba nada.
+   Y el rojo tiene que ser el correcto — en #173 era `promise resolved ... instead of
+   rejecting`, que ERA el defecto.
+ · Migraciones DUALES (SQL + prisma) con `npx prisma generate`; RLS per-usuario en tablas
+   nuevas. EXCEPCIÓN: columnas `vector` (pgvector) van SÓLO en SQL, NO en schema.prisma.
+   Índices vectoriales: HNSW, no ivfflat.
+ · Corre la suite vitest COMPLETA antes de cada push (hoy: **1413**). No un subconjunto.
  · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
  · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
-═══ GOTCHAS QUE SIGUEN VIGENTES ═══
+═══ GOTCHAS VIGENTES ═══
 
-RED CORPORATIVA / `--ssl-no-revoke` (ahorra un diagnóstico falso entero): `curl` a secas devuelve
-HTTP 000 contra CUALQUIER host externo porque la red bloquea las comprobaciones de revocación SSL.
-Con `--ssl-no-revoke` funciona. El 2026-07-24 esto me hizo declarar en falso que "el catálogo de
-OpenRouter no es verificable desde esta máquina" (PR #171); con la bandera responde 200 y verifiqué
-los 4 ids de la cadena gratuita + que los CUATRO soportan tools. Re-verificar el catálogo:
-`curl -sS --ssl-no-revoke https://openrouter.ai/api/v1/models` (comando también en `lib/ai/free-chain.ts`).
-Y OJO: `WebFetch` SÍ llega pero TRUNCA respuestas grandes (catálogo de 535 KB) y llegó a NEGAR un id
-que sí existía — dos respuestas contradictorias de la misma fuente acusan a la herramienta, no al dato.
+ENTORNO LOCAL: `@sentry/nextjs` y `puppeteer-core` están en package.json pero AUSENTES de
+node_modules (pnpm install se atasca en esta red). Provocan **exactamente 2 fallos** de suite
+(`sentry-wiring`) y errores de tsc que NO son regresiones. Si `npm test` da más de 2 fallos,
+comprueba primero si son "Cannot find module" de esos dos. El node_modules real está en
+`src/`, NO en la raíz. **Todo comando de test se ejecuta desde `src/`.**
 
-`gh` FUNCIONA (v2.96.0, autenticado): se usó para #170/#171. Si `gh pr create` falla con "GraphQL:
-Something went wrong" y la REST da HTTP 500, sospecha de un INCIDENTE de GitHub antes que del entorno
-(pasó el 2026-07-24: "Pull Requests → degraded_performance"). Compruébalo:
-`curl -sS --ssl-no-revoke https://www.githubstatus.com/api/v2/summary.json`. El PR #172 se acabó
-abriendo con un reintento en bucle cuando GitHub se recuperó.
+RED CORPORATIVA: `curl` a secas devuelve HTTP 000 contra cualquier host externo (bloqueo de
+comprobaciones de revocación SSL). Con `--ssl-no-revoke` funciona. `gh` y Playwright sufren
+TLS handshake timeouts intermitentes: **reintenta en bucle antes de diagnosticar**. Y `gh run
+watch | tail` te da el exit code de `tail`, no el de `gh` — comprueba la conclusión por JSON.
+`WebFetch` SÍ llega pero TRUNCA respuestas grandes y llegó a NEGAR un id que sí existía.
 
-ENTORNO LOCAL: @sentry/nextjs y puppeteer-core están declarados en package.json pero
-AUSENTES de node_modules (pnpm install se atasca en esta red). Provocan 2 fallos de suite
-(`sentry-wiring`) y 9 errores de tsc que NO son regresiones. En CI pasan. Antes de alarmarte
-por una suite roja en local, comprueba si son "Cannot find module" de esos dos.
-  Vía que SÍ funciona para reinstalar: retirar temporalmente esos dos paquetes de
-  package.json, `pnpm install --offline --no-frozen-lockfile` (20 s desde el store) y
-  restaurar los manifiestos. Verifica luego que git los ve limpios.
-  El node_modules real está en src/, NO en la raíz (la de la raíz está vacía).
+GRAPHIFY (reconfirmado DOS veces más el 27-jul): `graphify update .` a secas huerfaniza la
+capa semántica en silencio (INFERRED 125→53, doc→código 81→4) mientras los NODOS suben o
+apenas bajan, así que la guardia anti-shrink no lo frena. NO commitees su resultado a secas.
+Vía que funciona: `graphify update .` respalda el curado en `graphify-out/<fecha>/`; luego
+fusión quirúrgica con el script guardado junto a la memoria del proyecto
+(`graphify-merge-semantic.py <nuevo> <curado> <salida>`), y EXIGE INFERRED y doc→código ≥ los
+del curado antes de commitear. `graphify merge-graphs` NO sirve (duplica).
 
-GRAPHIFY: `graphify update .` a secas huerfaniza la capa semántica en silencio (INFERRED
-119→49, doc→código 107→0) mientras los NODOS SUBEN, así que la guardia anti-shrink no lo
-frena. NO commitees su resultado a secas: restaura el curado (`git checkout -- graphify-out/`
-o el respaldo en `graphify-out/<fecha>/`) y fusiona preservando la capa semántica, midiendo
-ANTES de commitear.
+PLAYWRIGHT CONTRA PROD: funciona (Python y JS, chromium instalado). Prod es
+`https://www.tjournalx.com` y es público (200 sin bypass SSO). Login: el botón "Iniciar
+sesión" NACE disabled por hidratación — `press_sequentially` en los campos y espera en bucle
+a que deje de estarlo. Usuario QA `ariaoc89@gmail.com`; contraseña **`S12bVerify!2026`**
+(verificada el 27-jul; la nota vieja que decía `Develop2026` está OBSOLETA). Una INTERVENCIÓN
+ACTIVA bloquea la app con overlay `fixed inset-0` sin salida y PARECE UN CUELGUE: detecta y
+pulsa "Seguir, asumo el riesgo".
+
+AUDITAR EL TOOL-USE DEL COACH: hay arnés listo en `scripts/coach-tool-audit.py`. Instrumenta
+`window.fetch` para capturar el stream CRUDO de `/api/ai-coach` y parsea las tramas NUL — da
+qué tools pidió el modelo y en qué orden, en vez de inferirlo del DOM. Córrelo con
+`QA_PASSWORD=... python scripts/coach-tool-audit.py`. Para reutilizarlo cambia `PREGUNTAS` y
+su campo `espera`: la tool que la REGLA del system prompt exige, no la que te guste.
+
+UI (aprendido operando, ahorra horas):
+ · `planNotes` y `notes` son <textarea>, no <input>: `input[name=…]` no los encuentra.
+ · Los resultados del buscador de símbolos son <button> con textContent concatenado
+   ("NQNasdaq-100 E-mini"); filtra por textContent, no por nombre accesible. El catálogo de
+   aria NO tiene NAS100 ni US30 pese a que los trades históricos los usan.
+ · Los ítems de checklist del setup son BOTONES, no checkboxes. 6/6 → auto-tag `A+`;
+   0/6 → auto-tag `Off-plan`.
+ · La tabla de trades NO ordena por fecha de creación dentro del mismo día: filtra la fila
+   por `OPEN` + `fecha||hora` concatenadas.
+ · El nudge de emoción (#141) vive DENTRO del formulario de cierre (trade-detail-panel:458),
+   no del panel de detalle, y sólo si el trade no tiene emoción.
 
 TD-019: el fix de auth rinde SÓLO porque el proyecto usa claves JWT asimétricas (JWKS ES256).
 Si se rota al secreto legacy HS256, getClaims() vuelve a salir a la red en cada request y el
-fix se anula EN SILENCIO, sin que nada falle.
+fix se anula EN SILENCIO.
 
-MIGRACIONES: migrate-deploy corre SÓLO en el run del SHA del merge a main (~5 min).
-`gh run list` justo tras mergear suele cazar un run anterior — identifica el run por
-headSha == HEAD y espera ESE `migrate-deploy: success` antes del smoke post-merge.
+MIGRACIONES: migrate-deploy corre SÓLO en el run del SHA del merge a main (~5 min). Identifica
+el run por headSha == HEAD y espera ESE `migrate-deploy: success` antes del smoke post-merge.
 
-RECUPERACIÓN SEMÁNTICA (services/retrieval/): añadir un corpus = 4 sitios, NINGUNO una lista de
-claves. (1) migración SQL con columna `vector` + índice HNSW; (2) un adaptador en `corpora/`
+RECUPERACIÓN SEMÁNTICA (services/retrieval/): añadir un corpus = 4 sitios, NINGUNO una lista
+de claves. (1) migración SQL con columna `vector` + índice HNSW; (2) adaptador en `corpora/`
 (consultas LITERALES, nunca interpolar tabla/columna); (3) registrarlo en `registry.ts`;
-(4) cablear `scheduleEmbedding(prisma, userId, "<key>", id, texto)` en la mutación que escribe.
-`CORPUS_KEYS` (types.ts) es la ÚNICA fuente de la lista: tipo, z.enum de routers, validación,
-rótulo de /perfil y la excepción del drift check se derivan de ahí. La guarda de contrato
-(registry.test.ts) corre sobre cada corpus y rompe si el adaptador está incompleto. VERIFICA el
-href contra la ruta REAL antes de cablearlo (dos veces el href supuesto no existía: `/reviews?week=`
-era `/reviews/semanal/<fecha>`). NO indexes texto del LLM (coach_messages, ai_analysis): FREEZE-P6/D9.
-
-PLAYWRIGHT CONTRA PROD (login): importa de `@playwright/test`, NO de `playwright` (playwright-core
-falta en node_modules, misma familia que sentry/puppeteer). El botón "Iniciar sesión" NACE
-`disabled` por hidratación: `pressSequentially` en los campos, luego espera en bucle a que
-`isDisabled()` sea false antes de click. El FAB del Coach se ancla por `aria-label*="coach"`.
+(4) cablear `scheduleEmbedding(...)` en la mutación que escribe. `CORPUS_KEYS` (types.ts) es
+la ÚNICA fuente de la lista. VERIFICA el href contra la ruta REAL antes de cablearlo.
+NO indexes texto del LLM (coach_messages, ai_analysis): FREEZE-P6/D9.
 
 DISPARAR UN CRON SIN .env NI SECRETOS: ejecuta por SQL el mismo `net.http_post` que usa
-`cron.job`; el secreto sale de `public.app_setting('cron_secret')`. Ojo: el comentario de
-la ruta `recompute-insights` dice que la cadencia real "se añadirá cuando el job se promueva"
-— está DESACTUALIZADO, el cron lleva agendado desde 20260626140000.
-
-UI (aprendido operando con Playwright, ahorra horas):
- · Una INTERVENCIÓN ACTIVA bloquea la app entera con overlay `fixed inset-0` sin salida:
-   sólo "Detener por hoy" o "Seguir, asumo el riesgo". Cualquier automatización muere ahí y
-   PARECE UN CUELGUE. Fue la causa de dos tandas fallidas.
- · `planNotes` y `notes` son <textarea>, no <input>: `input[name=…]` no los encuentra.
- · Los resultados del buscador de símbolos son <button> con textContent concatenado
-   ("NQNasdaq-100 E-mini"); el nombre accesible normaliza espacios y rompe el anclaje.
-   Filtra por textContent. El catálogo de aria NO tiene NAS100 ni US30 pese a que los
-   trades históricos los usan.
- · Los ítems de checklist del setup son BOTONES, no checkboxes. 6/6 → auto-tag `A+`;
-   0/6 → auto-tag `Off-plan`. Es la palanca para controlar el ratio off-plan.
- · La tabla de trades NO ordena por fecha de creación dentro del mismo día: para cerrar el
-   trade recién creado, filtra la fila por `OPEN` + `fecha||hora` concatenadas.
- · El nudge de emoción (#141) vive DENTRO del formulario de cierre (trade-detail-panel:458),
-   no del panel de detalle, y sólo si el trade no tiene emoción. Buscarlo en el panel o
-   después de confirmar no lo encuentra nunca.
- · Prod es público (200 sin bypass SSO) y Vercel MCP NO expone variables de entorno.
+`cron.job`; el secreto sale de `public.app_setting('cron_secret')`.
 ```
 
 **Datos útiles para la próxima sesión:**
@@ -1498,7 +1467,13 @@ UI (aprendido operando con Playwright, ahorra horas):
   calla. Úsalo antes de "arreglar" un detector que parezca muerto — puede que solo le falten datos
   con estructura. Corre `pnpm exec vitest run __tests__/behavior/` para verlo.
 - **Vercel:** projectId `prj_qKKQQLDmGREOf0GYHqA4H95tdsFs`, teamId `team_H1wCGwK6JxmFhFUsBf8zd3M8`.
-  Preview SSO se saltea con `get_access_to_vercel_url` (MCP).
+  Preview SSO se saltea con `get_access_to_vercel_url` (MCP). ⚠️ **El 2026-07-27 el Vercel MCP
+  NO estaba disponible en la sesión.** Sin él no hay forma de leer los logs de Vercel, que es
+  donde vive la única evidencia de un fallo de IA a mitad de stream. Compruébalo al arrancar.
+- **Auditar el tool-use del Coach:** `scripts/coach-tool-audit.py` (escrito el 27-jul).
+  Instrumenta `window.fetch` para capturar el stream CRUDO de `/api/ai-coach` y parsear las
+  tramas NUL — da qué tools pidió el modelo y en qué orden, sin inferirlo del DOM.
+  `QA_PASSWORD=... python scripts/coach-tool-audit.py`.
 - **Prod:** www.tjournalx.com. **Usuario demo/E2E:** ariaoc89@gmail.com / `S12bVerify!2026` (GH
   secret `E2E_USER_PASSWORD` igualado). UID demo: `5c69e364-3819-4df7-abf0-f484794250ed`.
 - **Migraciones v3.2 aplicadas:** `improvement_scores` (E19), `memory_episodes` (E13, pgvector),
