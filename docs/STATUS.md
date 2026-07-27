@@ -4,7 +4,7 @@
 > Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
-## Un fallo de IA se siente como un fallo, no como un cuelgue (2026-07-27, PR #PENDIENTE)
+## Un fallo de IA se siente como un fallo, no como un cuelgue (2026-07-27, PR #174)
 
 Sale directamente de la auditoría: un intento de 162 s con el trader mirando el spinner, y después
 **ningún aviso**. Dos puntas de la misma experiencia.
