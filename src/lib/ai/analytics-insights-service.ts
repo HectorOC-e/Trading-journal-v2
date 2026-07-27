@@ -72,9 +72,10 @@ export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise
     candidates,
     profile: "interactive", // streamed into the panel while the user waits
     feature: "analytics_insights",
-    run: (c) => streamChat({
+    run: (c, signal) => streamChat({
       provider: c.provider, apiKey: c.apiKey, model: c.model,
       system: SYSTEM, messages: [{ role: "user", content: userMsg }], maxTokens: 4096,
+      signal,
     }),
   })
 }

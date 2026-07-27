@@ -51,7 +51,12 @@ const SUGGESTED = [
   "Analiza mis últimas operaciones perdedoras",
 ]
 
-type ApiError = "NO_API_KEY" | "UNAUTHORIZED" | "BAD_REQUEST" | null
+type ApiError =
+  | "NO_API_KEY" | "UNAUTHORIZED" | "BAD_REQUEST"
+  // Fallos a mitad de stream. Antes TODOS caian en BAD_REQUEST, que ademas no
+  // se pintaba: el trader se quedaba sin spinner, sin respuesta y sin aviso.
+  | "RATE_LIMITED" | "PROVIDER_DOWN" | "INTERRUPTED"
+  | null
 
 /** panel = floating window · expanded = wide · minimized = collapsed header bar */
 type ViewMode = "panel" | "expanded" | "minimized"
@@ -187,6 +192,11 @@ export function AiCoachDrawer() {
     abortRef.current = controller
 
     const assistantId = crypto.randomUUID()
+    // Fuera del try: lo escribe el bucle de lectura y lo lee el catch.
+    // `undefined` = no llegó trama de error; `null` = fallo sin status (red o
+    // techo de intento agotado). Distinguirlos es lo que separa "se cortó" de
+    // "el proveedor te está limitando".
+    let streamFailure: number | null | undefined
     try {
       const res = await fetch("/api/ai-coach", {
         method:  "POST",
@@ -231,9 +241,15 @@ export function AiCoachDrawer() {
           try {
             // Dos formas sobre el mismo canal: {tool} al empezar la llamada y
             // {cites} al terminarla.
-            const ev = JSON.parse(buf.slice(start + 1, end)) as { tool?: string; cites?: Citation[] }
+            const ev = JSON.parse(buf.slice(start + 1, end)) as {
+              tool?: string; cites?: Citation[]; error?: { status: number | null }
+            }
             if (ev.tool) newTools.push(ev.tool)
             if (ev.cites?.length) newCites.push(...ev.cites)
+            // El servidor manda el motivo justo ANTES de romper el stream. Sin
+            // esto lo unico que llega es una conexion rota, y un 429 y un 500 se
+            // veian igual.
+            if (ev.error) streamFailure = ev.error.status
           } catch { /* ignore malformed marker */ }
           buf = buf.slice(end + 1)
         }
@@ -261,7 +277,15 @@ export function AiCoachDrawer() {
       }
     } catch (err) {
       // AbortError = user pressed Stop; keep whatever streamed so far.
-      if ((err as Error)?.name !== "AbortError") setApiError("BAD_REQUEST")
+      if ((err as Error)?.name !== "AbortError") {
+        setApiError(
+          streamFailure === undefined ? "INTERRUPTED"
+          : streamFailure === 429      ? "RATE_LIMITED"
+          : streamFailure != null && streamFailure >= 500 ? "PROVIDER_DOWN"
+          : streamFailure === null     ? "INTERRUPTED"
+          : "BAD_REQUEST",
+        )
+      }
     } finally {
       setStreaming(false)
       abortRef.current = null
@@ -446,6 +470,17 @@ export function AiCoachDrawer() {
             {apiError === "UNAUTHORIZED" && (
               <div className="rounded-[var(--radius)] border border-[var(--loss)]/40 bg-[var(--loss-soft)] px-4 py-3 text-sm text-[var(--loss)]">
                 Sesión expirada. Vuelve a iniciar sesión.
+              </div>
+            )}
+            {(apiError === "RATE_LIMITED" || apiError === "PROVIDER_DOWN" || apiError === "INTERRUPTED" || apiError === "BAD_REQUEST") && (
+              <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel-2)] px-4 py-3 text-sm text-[var(--ink-3)]">
+                <strong className="text-[var(--ink)]">La respuesta se interrumpió.</strong>{" "}
+                {apiError === "RATE_LIMITED"
+                  ? "Tu proveedor de IA está limitando las peticiones. Espera un momento y vuelve a preguntar."
+                  : apiError === "PROVIDER_DOWN"
+                  ? "Tu proveedor de IA está fallando. Suele resolverse solo en unos minutos."
+                  : "Se cortó la conexión con el proveedor de IA. Vuelve a preguntar."}
+                {" "}Lo que llegó a escribirse queda arriba.
               </div>
             )}
 

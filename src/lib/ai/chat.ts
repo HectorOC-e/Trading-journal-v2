@@ -20,6 +20,8 @@ export type StreamChatOptions = {
   messages:  ChatMessage[]
   system?:   string | SystemBlock[]
   maxTokens?: number
+  /** Del `executeAiCall` que envuelve la llamada: aborta el intento al agotar su techo. */
+  signal?:   AbortSignal
 }
 
 /** Flatten system blocks (or a plain string) into one string — for providers without explicit caching. */
@@ -111,6 +113,9 @@ export async function streamChat(opts: StreamChatOptions): Promise<ReadableStrea
     method:  "POST",
     headers,
     body:    JSON.stringify(body),
+    // Acota el tiempo hasta CABECERAS: la promesa resuelve aquí y el cuerpo se
+    // sigue leyendo después, así que una respuesta larga legítima no se corta.
+    signal:  opts.signal,
   })
 
   if (!res.ok || !res.body) {

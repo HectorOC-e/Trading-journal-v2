@@ -21,12 +21,22 @@ import { logger } from "@/lib/logger"
 
 const realSleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
+/** Centinela interno del techo por intento; nunca sale de este modulo. */
+const TIMED_OUT = Symbol("ai-attempt-timeout")
+
 export interface ExecuteAiCallOptions<T> {
   candidates: ResolvedCall[]
   profile: RetryProfileName
   /** For the log line — which AI feature this call belongs to. */
   feature: string
-  run: (candidate: ResolvedCall) => Promise<T>
+  /**
+   * `signal` se aborta cuando el intento agota `attemptTimeoutMs`. Pásalo al
+   * `fetch` (o al SDK): sin eso el temporizador dispara pero la conexión sigue
+   * viva y el intento no se corta.
+   */
+  run: (candidate: ResolvedCall, signal: AbortSignal) => Promise<T>
+  /** Techo por intento; por defecto el del perfil. Los tests lo bajan a milisegundos. */
+  attemptTimeoutMs?: number
   /** Injected so backoff tests do not burn wall-clock seconds. */
   sleep?: (ms: number) => Promise<void>
   now?: () => number
@@ -60,9 +70,34 @@ export async function executeAiCall<T>(opts: ExecuteAiCallOptions<T>): Promise<T
         throw lastErr ?? new Error(`executeAiCall: budget exhausted for ${feature}`)
       }
 
+      // Un intento colgado no lo corta `outOfBudget`: ése se comprueba ARRIBA,
+      // antes de llamar. Sin este temporizador la llamada corre hasta que la
+      // plataforma mata la función.
+      const attemptTimeoutMs = opts.attemptTimeoutMs ?? profile.attemptTimeoutMs
+      const ac = new AbortController()
+      let timedOut = false
+      let fire: () => void = () => {}
+      // Se CARRERA contra el temporizador ademas de abortar la señal. Abortar
+      // sola no basta: si el `run` no honra el signal —o lo honra tarde— el
+      // await se queda colgado igual y el techo no existe. El abort sigue
+      // haciendo falta para que el fetch subyacente muera de verdad y no se
+      // filtre una conexion.
+      const expired = new Promise<never>((_res, rej) => { fire = () => rej(TIMED_OUT) })
+      const timer = setTimeout(() => { timedOut = true; ac.abort(); fire() }, attemptTimeoutMs)
+
       try {
-        return await run(candidate)
-      } catch (err) {
+        return await Promise.race([run(candidate, ac.signal), expired])
+      } catch (rawErr) {
+        // Se traduce a AiCallError con status null = transitorio (isRetryable),
+        // que es lo correcto: una conexión que se cuelga suele ceder al segundo
+        // intento. Sin traducir, el abort saldría como un error sin tipar y el
+        // log no diría por qué murió.
+        const err = timedOut
+          ? new AiCallError({
+              status: null, provider: candidate.provider, model: candidate.model,
+              kind: "chat", detail: `attempt timeout after ${attemptTimeoutMs}ms`,
+            })
+          : rawErr
         lastErr = err
         const retryable = isRetryable(err)
 
@@ -82,6 +117,10 @@ export async function executeAiCall<T>(opts: ExecuteAiCallOptions<T>): Promise<T
         if (attempt === profile.retries) break
 
         await sleep(backoffDelay(profile, attempt, rand))
+      } finally {
+        // Sin esto el temporizador sobrevive al intento: en serverless un timer
+        // pendiente puede mantener viva la lambda.
+        clearTimeout(timer)
       }
     }
   }

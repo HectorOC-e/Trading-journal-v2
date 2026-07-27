@@ -4,6 +4,43 @@
 > Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
+## Un fallo de IA se siente como un fallo, no como un cuelgue (2026-07-27, PR #PENDIENTE)
+
+Sale directamente de la auditoría: un intento de 162 s con el trader mirando el spinner, y después
+**ningún aviso**. Dos puntas de la misma experiencia.
+
+### `totalBudgetMs` prometía un techo que no existía
+
+`interactive` declara `totalBudgetMs: 8000`, y se lee como *"el trader espera 8 s como mucho"*. No
+lo cumplía: `outOfBudget()` se comprueba en `execute.ts` **antes** de llamar al proveedor, así que
+decide si **arrancar** otro intento — nunca acota uno en vuelo. Y no había **ni un solo**
+`AbortSignal` en toda la ruta de IA, así que una conexión colgada corría hasta que la plataforma
+mataba la función (`maxDuration = 300`). Es la tercera frontera de este proyecto declarada en un
+comentario que el código no sostenía; las otras dos fueron #171 y #173.
+
+Ahora `RetryProfile.attemptTimeoutMs` (interactivo 45 s, fondo 90 s) acota **un intento**, y la
+señal llega a los tres `fetch` de la ruta (`chat.ts`, `embeddings.ts`, `coach-agent.ts`) por los
+seis call-sites. Holgado a propósito: el caso sano observado va de 8 a 40 s, así que apretarlo a
+los 8 s fabricaría fallos donde hoy no los hay.
+
+> **El test encontró un defecto en mi propio arreglo.** La primera versión sólo abortaba la señal,
+> y un `run` que la ignora deja el `await` colgado igual — el techo no existía. Se **carrera**
+> contra el temporizador además de abortar: la carrera garantiza que el ejecutor deja de esperar,
+> el abort garantiza que el `fetch` muere de verdad y no se filtra la conexión.
+
+### El aviso que no existía
+
+`BAD_REQUEST` no tenía render. Ninguno. Un fallo a mitad de stream apagaba el spinner y dejaba al
+trader sin respuesta **y sin explicación**. Antes de #173 daba igual porque estos fallos eran
+mudos; hacerlos visibles subió el valor de contarlos.
+
+El servidor deja una trama `{error:{status,kind}}` **antes** de romper el stream — el mismo canal
+NUL de `{tool}` y `{cites}` — y el cliente la traduce: 429 → *"tu proveedor está limitando las
+peticiones"*, 5xx → *"tu proveedor está fallando"*, sin status → *"se cortó la conexión"*. Siempre
+con *"lo que llegó a escribirse queda arriba"*, porque el texto parcial sobrevive.
+
+Suite 1409 → 1413. Sin migración.
+
 ## Auditoría de tool-use EN VIVO, con la señal ya limpia (2026-07-27)
 
 Corrida contra prod tras #173, instrumentando `window.fetch` para capturar el stream **crudo** de
