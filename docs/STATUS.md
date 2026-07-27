@@ -4,7 +4,7 @@
 > Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
-## El bucle agéntico del Coach cierra siempre (2026-07-27, PR #PENDIENTE)
+## El bucle agéntico del Coach cierra siempre (2026-07-27, PR #173)
 
 El síntoma era *"el Coach no aprovecha sus herramientas"*. El tuning no tenía nada que ver
 (#168 se sostiene): eran tres defectos mecánicos.
