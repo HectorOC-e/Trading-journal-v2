@@ -4,6 +4,45 @@
 > Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
+## Auditoría de tool-use EN VIVO, con la señal ya limpia (2026-07-27)
+
+Corrida contra prod tras #173, instrumentando `window.fetch` para capturar el stream **crudo** de
+`/api/ai-coach` y parsear las tramas NUL. Eso da qué tools pidió el modelo y en qué orden, en vez
+de inferirlo del DOM. 8 observaciones sobre el usuario QA.
+
+**La respuesta a la pregunta que motivó la pieza: el modelo elige BIEN sus herramientas.** No falta
+capacidad. Con señal limpia la regla de selección de #168 se cumple:
+
+| Pregunta | Tools pedidas | Veredicto |
+|---|---|---|
+| "qué **escribí** en las notas sobre salirme antes" | `semantic_search` ×2 | correcto (la regla dice: menciona lo escrito → semántica) |
+| "cuántos trades de NQ cerré en pérdida" | `semantic_search`, `search_trades` | correcto, con sobre-alcance a semántica |
+| "qué debería estudiar hoy" | `suggest_study`, `get_learning_resources` | correcto |
+| "detalle de mi peor setup" | `get_setup_detail` | correcto, 1 ronda, 8 s |
+| "compara los números con lo que anoté" | `get_setup_detail`, `semantic_search` | correcto |
+| "**cítame mis palabras** de la última review" | `semantic_search` ×2 | correcto **y verificado en BD** |
+
+**La prueba dura de alucinación la pasa.** A "cítame mis palabras" respondió con
+*"Semana sólida con disciplina mejorando."* Adjudicado por SQL: la review `Semana actual` tiene
+exactamente esa cadena en `executive_summary`. Cita textual, review correcta. (Matiz menor:
+afirmó que no había más contenido, y esa review sí tenía `what_worked` y `to_improve` cortos —
+incompletitud, no invención.)
+
+**El sobre-alcance a `semantic_search` no es un bug.** En la pregunta de campos exactos (NQ +
+pérdida) disparó primero la semántica. Es lo que el propio system prompt ordena: *"ante la duda
+entre las dos, prefiere la semántica"*. Es un compromiso de diseño, no un fallo del modelo.
+
+**Rondas reales: máximo 2 de 5.** `MAX_ROUNDS` no se rozó en ninguna observación. El defecto que
+#173 eliminó por construcción era real pero **raro**; no era el motor del síntoma reportado.
+
+> **Dos anomalías observadas UNA vez y que NO reprodujeron.** Se registran sin ascenderlas a
+> defecto, porque una sola observación no lo sostiene. (a) Un corte a mitad de stream a los 162 s
+> con la respuesta ya empezada — **no** es el timeout de la ruta (`maxDuration = 300`); en la
+> segunda pasada la misma pregunta cerró limpia en 40 s. Es el modo de fallo que #173 hace
+> **visible** en vez de mudo. (b) Una respuesta con **cero** tools que afirmaba haber buscado en
+> las reviews; en la segunda pasada la misma pregunta pidió `get_setup_detail` + `semantic_search`
+> correctamente. Si (b) reaparece, es un asunto de `FREEZE-P2` y merece pieza propia.
+
 ## El bucle agéntico del Coach cierra siempre (2026-07-27, PR #173)
 
 El síntoma era *"el Coach no aprovecha sus herramientas"*. El tuning no tenía nada que ver
