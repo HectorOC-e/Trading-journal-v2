@@ -1485,13 +1485,13 @@
     "semantic_hash": ""
   },
   "src/lib/ai/coach-agent.ts": {
-    "mtime": 1785169850.6333227,
-    "ast_hash": "7ae6e84365d8da38cd3d33f7b8be79e9",
+    "mtime": 1784919008.963395,
+    "ast_hash": "da87232d068ecd57b03870d562cf69a6",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-service.ts": {
-    "mtime": 1785169850.6343236,
-    "ast_hash": "2efc764c9c40670b5dbced3eeaf2e9cd",
+    "mtime": 1784919008.9643936,
+    "ast_hash": "100fd11c4d3e06d09746e18002d750fd",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1785169850.6273122,
-    "ast_hash": "fc3c472e766b856fc9cc697d79833e7e",
+    "mtime": 1784923906.6562996,
+    "ast_hash": "f037123acf0d84a83090ac131f70cd8d",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2967,16 +2967,6 @@
   "docs/superpowers/specs/2026-07-24-ai-resilience-free-tier-design.md": {
     "mtime": 1784919008.9513955,
     "ast_hash": "183ac3f0a9710aefb68001ea74e1313f",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-07-27-coach-agentic-loop.md": {
-    "mtime": 1785169850.6283112,
-    "ast_hash": "dd7a76576466fe9235edd933f1317bff",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-07-27-coach-agentic-loop-design.md": {
-    "mtime": 1785169850.6293197,
-    "ast_hash": "40e0c452c40a58b916c5972e6aa3319d",
     "semantic_hash": ""
   }
 }
