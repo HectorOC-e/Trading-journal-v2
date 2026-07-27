@@ -174,3 +174,65 @@ describe("streamCoachAgent — agotar MAX_ROUNDS no puede terminar sin respuesta
     expect(out).toContain("Cierro con lo que recopile.")
   })
 })
+
+// ── D1: rondas 2+ ────────────────────────────────────────────────────────────
+
+describe("streamCoachAgent — las rondas 2+ ya no fallan en silencio", () => {
+  it("un 429 en la ronda 1 se reintenta y el stream llega entero", async () => {
+    const c = fakeClock()
+    let n = 0
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      n++
+      if (n === 1) return okSse([toolDelta("t1", "get_trade_detail", "{}")]) as unknown as Response
+      if (n === 2) return badRes(429) as unknown as Response
+      return okSse([textDelta("Tu peor setup es BL.")]) as unknown as Response
+    }))
+
+    const out = await drain(await streamCoachAgent(baseOpts({
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    })))
+
+    expect(n).toBe(3)
+    expect(out).toContain("Tu peor setup es BL.")
+    // Perfil interactivo: 400 ms base, factor 1, jitter neutralizado con rand 0.5.
+    expect(c.slept).toEqual([400])
+  })
+
+  it("un 429 que no cede AGOTA el reintento y hace fallar el stream: un truncamiento mudo se lee como torpeza del modelo", async () => {
+    const c = fakeClock()
+    let n = 0
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      n++
+      return (n === 1
+        ? okSse([toolDelta("t1", "get_trade_detail", "{}")])
+        : badRes(429)) as unknown as Response
+    }))
+
+    const stream = await streamCoachAgent(baseOpts({
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    }))
+
+    await expect(drain(stream)).rejects.toThrow(AiCallError)
+    // Pre-flight + 2 intentos (perfil interactivo: 1 reintento).
+    expect(n).toBe(3)
+  })
+
+  it("un 400 en la ronda 1 falla sin quemar reintentos: es permanente, esperar no lo arregla", async () => {
+    const c = fakeClock()
+    let n = 0
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      n++
+      return (n === 1
+        ? okSse([toolDelta("t1", "get_trade_detail", "{}")])
+        : badRes(400)) as unknown as Response
+    }))
+
+    const stream = await streamCoachAgent(baseOpts({
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    }))
+
+    await expect(drain(stream)).rejects.toThrow(AiCallError)
+    expect(n).toBe(2)
+    expect(c.slept).toEqual([])
+  })
+})
