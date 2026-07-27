@@ -200,13 +200,11 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
       // Agentic path with read-only tools (drill-down on demand).
       try {
         return await streamCoachAgent({
-          provider: c.provider,
-          apiKey:   c.apiKey,
-          model:    c.model,
-          system:   systemBlocks,
-          messages: opts.messages,
-          prisma:   opts.prisma,
-          userId:   opts.userId,
+          candidate: c,
+          system:    systemBlocks,
+          messages:  opts.messages,
+          prisma:    opts.prisma,
+          userId:    opts.userId,
         })
       } catch (agentErr) {
         // Only degrade when the MODEL is the reason. Anything else must bubble

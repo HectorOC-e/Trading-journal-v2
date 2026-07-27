@@ -130,13 +130,13 @@ describe("coach-service (TASK-065)", () => {
   it("resolves the default model from settings (platform default)", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
     const callArgs = mockAgent.mock.calls[0][0]
-    expect(callArgs.model).toBe("claude-sonnet-4-6")
+    expect(callArgs.candidate.model).toBe("claude-sonnet-4-6")
   })
 
   it("routes the Anthropic default through the agentic path with key + prisma + userId", async () => {
     await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
     const callArgs = mockAgent.mock.calls[0][0]
-    expect(callArgs.apiKey).toBe("test-key") // from env fallback
+    expect(callArgs.candidate.apiKey).toBe("test-key") // from env fallback
     expect(callArgs.prisma).toBe(mockPrisma) // tools need DB access
     expect(callArgs.userId).toBe("user-123")
   })
