@@ -147,3 +147,30 @@ describe("streamCoachAgent — contrato con el llamador", () => {
     expect(mockTool).toHaveBeenCalledTimes(1)
   })
 })
+
+// ── D2: agotar MAX_ROUNDS ────────────────────────────────────────────────────
+
+describe("streamCoachAgent — agotar MAX_ROUNDS no puede terminar sin respuesta", () => {
+  it("OpenRouter: la ultima ronda va con tool_choice 'none', asi el modelo cierra con lo recopilado", async () => {
+    const bodies: string[] = []
+    const fetchMock = vi.fn(async (_url: string, init: { body: string }) => {
+      bodies.push(init.body)
+      const tc = JSON.parse(init.body).tool_choice
+      // Un proveedor real que recibe "none" no puede pedir tools: responde.
+      return (tc === "none"
+        ? okSse([textDelta("Cierro con lo que recopile.")])
+        : okSse([toolDelta(`t${bodies.length}`, "get_trade_detail", `{"n":${bodies.length}}`)])) as unknown as Response
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const out = await drain(await streamCoachAgent(baseOpts()))
+
+    // El techo de peticiones no sube: sigue siendo MAX_ROUNDS.
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+    // El pre-flight ES la ronda 0 y debe seguir pudiendo pedir tools.
+    expect(JSON.parse(bodies[0]).tool_choice).toBe("auto")
+    expect(JSON.parse(bodies[4]).tool_choice).toBe("none")
+    // Lo que de verdad importa: el trader recibe texto, no silencio.
+    expect(out).toContain("Cierro con lo que recopile.")
+  })
+})
