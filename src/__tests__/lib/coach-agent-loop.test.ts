@@ -217,6 +217,38 @@ describe("streamCoachAgent — las rondas 2+ ya no fallan en silencio", () => {
     expect(n).toBe(3)
   })
 
+  it("antes de romper deja una trama {error} con el status: sin ella el cliente no puede distinguir un 429 de un 500", async () => {
+    const c = fakeClock()
+    let n = 0
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      n++
+      return (n === 1
+        ? okSse([toolDelta("t1", "get_trade_detail", "{}")])
+        : badRes(429)) as unknown as Response
+    }))
+
+    const stream = await streamCoachAgent(baseOpts({
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    }))
+
+    // Se lee a mano: drain() re-lanza y perderiamos lo ya encolado.
+    const reader = stream.getReader()
+    const dec = new TextDecoder()
+    let raw = ""
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        raw += dec.decode(value, { stream: true })
+      }
+      throw new Error("deberia haber roto el stream")
+    } catch (err) {
+      expect((err as Error).message).not.toBe("deberia haber roto el stream")
+    }
+
+    expect(raw).toContain('{"error":{"status":429,"kind":"chat"}}')
+  })
+
   it("un 400 en la ronda 1 falla sin quemar reintentos: es permanente, esperar no lo arregla", async () => {
     const c = fakeClock()
     let n = 0

@@ -27,8 +27,8 @@ export async function completeText(
     // extraction): it runs inside a job, so it can afford to be patient.
     profile: "background",
     feature,
-    run: async (c) => {
-      const stream = await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, messages, system })
+    run: async (c, signal) => {
+      const stream = await streamChat({ provider: c.provider, apiKey: c.apiKey, model: c.model, messages, system, signal })
       const reader = stream.getReader()
       const dec = new TextDecoder()
       let out = ""

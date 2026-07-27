@@ -56,9 +56,10 @@ export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promi
     candidates,
     profile: "interactive", // streamed into /psicologia while the user waits
     feature: "psychology_analysis",
-    run: (c) => streamChat({
+    run: (c, signal) => streamChat({
       provider: c.provider, apiKey: c.apiKey, model: c.model,
       system: SYSTEM, messages: [{ role: "user", content: ctx }], maxTokens: 4096,
+      signal,
     }),
   })
 }

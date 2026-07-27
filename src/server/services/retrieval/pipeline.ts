@@ -34,7 +34,7 @@ async function embedWithRetry(
       candidates: [{ provider: model.includes("/") ? "openrouter" : "openai", model, apiKey, source: "user" }],
       profile: "background",
       feature,
-      run: () => embedText(text, { model, apiKey }),
+      run: (_c, signal) => embedText(text, { model, apiKey, signal }),
     })
   } catch (err) {
     logger.warn("retrieval: embedding agoto sus reintentos", { feature, err: String(err) })

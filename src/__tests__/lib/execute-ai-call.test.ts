@@ -56,6 +56,52 @@ describe("executeAiCall — reintento sobre el mismo candidato", () => {
   })
 })
 
+describe("executeAiCall — techo por intento", () => {
+  it("corta un intento colgado: totalBudgetMs decide si ARRANCAR otro, no acota el que ya corre", async () => {
+    const c = fakeClock()
+    // Nunca resuelve: es la conexion colgada que se observo en vivo (162 s con
+    // el trader mirando el spinner, muy por debajo del maxDuration de 300 s).
+    const run = vi.fn(() => new Promise(() => {}))
+
+    await expect(executeAiCall({
+      candidates: [cand("a")], profile: "interactive", feature: "ai_chat",
+      run: run as never, attemptTimeoutMs: 20,
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    })).rejects.toMatchObject({ name: "AiCallError", status: null })
+
+    // Perfil interactivo = 1 reintento, asi que 2 intentos y un backoff.
+    expect(run).toHaveBeenCalledTimes(2)
+    expect(c.slept).toEqual([400])
+  })
+
+  it("aborta la señal que recibe el run, para que el fetch muera de verdad y no solo la promesa", async () => {
+    const c = fakeClock()
+    let abortada = false
+    const run = vi.fn((_c: unknown, signal: AbortSignal) => new Promise((_res, rej) => {
+      signal.addEventListener("abort", () => { abortada = true; rej(new Error("aborted")) })
+    }))
+
+    await expect(executeAiCall({
+      candidates: [cand("a")], profile: "interactive", feature: "ai_chat",
+      run: run as never, attemptTimeoutMs: 20,
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    })).rejects.toThrow()
+
+    expect(abortada).toBe(true)
+  })
+
+  it("un intento que resuelve a tiempo no se ve afectado", async () => {
+    const c = fakeClock()
+    const out = await executeAiCall({
+      candidates: [cand("a")], profile: "interactive", feature: "ai_chat",
+      run: async () => "ok", attemptTimeoutMs: 5000,
+      sleep: c.sleep, now: c.now, rand: () => 0.5,
+    })
+    expect(out).toBe("ok")
+    expect(c.slept).toEqual([])
+  })
+})
+
 describe("executeAiCall — errores permanentes", () => {
   it("un 401 NO se reintenta: salta al siguiente candidato sin dormir", async () => {
     const c = fakeClock()
@@ -141,6 +187,10 @@ describe("executeAiCall — exito inmediato", () => {
     await executeAiCall({
       candidates: [cand("modelo-x")], profile: "interactive", feature: "ai_chat", run,
     })
-    expect(run).toHaveBeenCalledWith(expect.objectContaining({ model: "modelo-x", apiKey: "k" }))
+    // Segundo argumento: la señal del techo por intento, que el call-site pasa al fetch.
+    expect(run).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "modelo-x", apiKey: "k" }),
+      expect.any(AbortSignal),
+    )
   })
 })

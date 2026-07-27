@@ -196,7 +196,7 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
     candidates,
     profile: "interactive", // a user is watching the spinner
     feature: "ai_chat",
-    run: async (c) => {
+    run: async (c, signal) => {
       // Agentic path with read-only tools (drill-down on demand).
       try {
         return await streamCoachAgent({
@@ -205,6 +205,7 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
           messages:  opts.messages,
           prisma:    opts.prisma,
           userId:    opts.userId,
+          signal,
         })
       } catch (agentErr) {
         // Only degrade when the MODEL is the reason. Anything else must bubble
@@ -217,6 +218,7 @@ export async function streamCoachReply(opts: CoachStreamOptions): Promise<Readab
           model:    c.model,
           messages: opts.messages,
           system:   systemBlocks,
+          signal,
         })
       }
     },

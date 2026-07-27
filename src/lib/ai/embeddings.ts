@@ -9,6 +9,8 @@ import { AiCallError } from "./ai-error"
 export type EmbedOptions = {
   model:  string
   apiKey: string
+  /** Del `executeAiCall` que envuelve la llamada: aborta el intento al agotar su techo. */
+  signal?: AbortSignal
 }
 
 /**
@@ -45,6 +47,7 @@ export async function embedText(text: string, opts: EmbedOptions): Promise<numbe
         "Content-Type":  "application/json",
       },
       body: JSON.stringify({ model, input: text }),
+      signal: opts.signal,
     })
   } catch (err) {
     // Network fault: no status. Classified as transient, so it gets retried.
