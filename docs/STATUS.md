@@ -1,8 +1,45 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-24.
+> Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## El bucle agéntico del Coach cierra siempre (2026-07-27, PR #PENDIENTE)
+
+El síntoma era *"el Coach no aprovecha sus herramientas"*. El tuning no tenía nada que ver
+(#168 se sostiene): eran tres defectos mecánicos.
+
+**El hecho que gobierna el arreglo.** El `catch` de `coach-service.ts:211` **no puede ver** un
+fallo de ronda 2+: para cuando esa ronda corre, `streamCoachAgent` ya devolvió el
+`ReadableStream` y `start(controller)` corre asíncrono. Ni `shouldDegradeToStatic` ni el
+`executeAiCall` externo siguen en el camino. De ahí que el reintento tenga que vivir *dentro*
+del bucle y la extenuación salir por `controller.error` — no son preferencias de diseño.
+
+**Rondas 2+ con reintento.** Era el hueco declarado de #171, cuya frontera es "antes del primer
+token": el `executeAiCall` del llamador sólo cubría el pre-flight. Ahora cada ronda se envuelve
+en `executeAiCall` con lista de **un** candidato — reintentar sí, reenrutar a otro modelo a
+mitad de conversación no. Al agotarse, el stream falla de forma visible; el `break` mudo que
+producía una respuesta truncada con pinta de completa desaparece. Sólo la rama OpenRouter: la
+de Anthropic ya lanzaba y ya reintentaba sola.
+
+**Agotar rondas fuerza una respuesta.** La última ronda va con `tool_choice: "none"`, así que el
+modelo no *puede* pedir más herramientas y responde con lo recopilado. El modo de fallo queda
+eliminado **por construcción**, con el techo de 5 peticiones intacto. Se cambia `tool_choice` y
+no se omiten los `tools`: el historial ya lleva bloques `tool_use`, y cambiar las definiciones
+invalidaría la caché de prompt del bloque estático del system.
+
+**Los tests que faltaban.** `streamCoachAgent` eran 181 líneas que deciden si las tools funcionan,
+con cobertura cero — sólo aparecía mockeado. Mismo patrón que dejó pasar los bugs de
+`createTrade` / `buildContext` / `persistInsights`. Ahora tiene 8 tests directos, con el backoff
+sobre reloj y espera inyectados. El rojo previo fue la mejor prueba de que el defecto era real:
+los tests de agotamiento devolvían `promise resolved '\0{"tool":"get_trade_detail"}…' instead of
+rejecting` — el stream cerraba limpio con **sólo la trama "consultando" y ninguna respuesta**.
+
+> **Límite conocido, dicho a propósito.** `ai-coach-drawer.tsx:264` fija
+> `setApiError("BAD_REQUEST")`, así que el trader ve un aviso genérico sea un 429 o un 500.
+> Ensanchar esa taxonomía es otra pieza.
+
+Suite 1401 → 1409. Sin migración.
 
 ## Resiliencia de IA sobre el free tier (2026-07-24, PR #171)
 
