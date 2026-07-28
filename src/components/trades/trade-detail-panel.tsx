@@ -10,6 +10,21 @@ import { X, CheckCircle2, Circle, Star, ImagePlus, Trash2, ChevronDown, ChevronU
 import type { Trade, TradeSession, Account, Setup } from "@/types"
 import { EMOTION_OPTIONS, type EmotionBefore } from "@/domains/trading/emotions"
 import { needsEmotionNudge } from "@/domains/trading/services/emotion-feedback"
+import { EmotionCapture } from "@/components/trades/emotion-capture"
+import { isWithinEmotionWindow } from "@/domains/trading/services/emotion-provenance"
+
+/**
+ * Un trade cerrado sin emoción escondía la sección Psicología entera
+ * (`if (!hasPsych) return null`): el producto ocultaba justo la casilla que
+ * necesita. Se ofrece el gesto mientras la ventana siga abierta; cerrada, se
+ * vuelve a callar, porque ahí ya no hay nada que ofrecer.
+ */
+export function shouldOfferEmotionCapture(
+  trade: { status: string; emotionBefore: string | null; date: Date },
+  now: Date,
+): boolean {
+  return trade.status === "CLOSED" && trade.emotionBefore == null && isWithinEmotionWindow(trade.date, now)
+}
 
 const SESSION_COLOR: Record<TradeSession, string> = {
   "New York":     "bg-blue-500/15 text-blue-400",
@@ -637,8 +652,12 @@ export function TradeDetailPanel({
 
       {/* ── Psicología ── */}
       {(() => {
+        const offerCapture = shouldOfferEmotionCapture(
+          { status: trade.status, emotionBefore: trade.emotionBefore ?? null, date: new Date(trade.date) },
+          new Date(),
+        )
         const hasPsych = trade.emotionBefore || trade.confidenceRating != null || trade.executionQuality != null || trade.fomoFlag || trade.revengeFlag
-        if (!hasPsych) return null
+        if (!hasPsych && !offerCapture) return null
         const EMOTION_LABELS: Record<string, string> = {
           calm: "Tranquilo", anxious: "Ansioso", excited: "Eufórico",
           fearful: "Temeroso", overconfident: "Sobreconfiado",
@@ -647,6 +666,14 @@ export function TradeDetailPanel({
           <div>
             <p className="text-eyebrow mb-2">Psicología</p>
             <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-2">
+              {offerCapture && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs text-[var(--ink-3)]">
+                    ¿Cómo entraste a este trade? Puedes anotarlo durante 7 días.
+                  </span>
+                  <EmotionCapture tradeId={trade.id} current={null} withinWindow />
+                </div>
+              )}
               {trade.emotionBefore && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-[var(--ink-3)]">Estado emocional</span>
