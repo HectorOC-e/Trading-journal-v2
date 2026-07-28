@@ -415,13 +415,13 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-report-shell.tsx": {
-    "mtime": 1785258897.5866804,
-    "ast_hash": "9ada83dd1e5fd88b43f921b8ad9fa0b3",
+    "mtime": 1782318306.302326,
+    "ast_hash": "b904389f40232b09b5a7706b69dcc1cf",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/sections.tsx": {
-    "mtime": 1785259955.9574702,
-    "ast_hash": "06c3e2f665a7160e9b3f10b4d1fe7b1d",
+    "mtime": 1782318306.302326,
+    "ast_hash": "801c4ca8e994bd2bba9704dd8044db95",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/send-email-button.tsx": {
@@ -430,8 +430,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/view-model.ts": {
-    "mtime": 1785258897.59068,
-    "ast_hash": "c85b0235a5b3dcf1be8bf22ce99b2fea",
+    "mtime": 1782318306.302326,
+    "ast_hash": "39b39783f617f22f5bba11f14b3c0e12",
     "semantic_hash": ""
   },
   "src/app/reviews/components/review-card.tsx": {
@@ -710,8 +710,8 @@
     "semantic_hash": ""
   },
   "src/components/trades/edit-trade-modal.tsx": {
-    "mtime": 1785258897.5916817,
-    "ast_hash": "24408ad044ed601efda18695fe9eaae4",
+    "mtime": 1784305466.5856059,
+    "ast_hash": "31dce369d35df052bb629f5a439aa333",
     "semantic_hash": ""
   },
   "src/components/trades/emotion-insight.tsx": {
@@ -740,8 +740,8 @@
     "semantic_hash": ""
   },
   "src/components/trades/trade-detail-panel.tsx": {
-    "mtime": 1785258897.5946898,
-    "ast_hash": "d0bf06cbad240a0293cedaaa4aba4fe7",
+    "mtime": 1784305466.5856059,
+    "ast_hash": "a7ae6a85ca302ba76beacdafbe7f7456",
     "semantic_hash": ""
   },
   "src/components/trades/trade-row.tsx": {
@@ -1080,8 +1080,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/analytics-bundle.ts": {
-    "mtime": 1785258897.5976992,
-    "ast_hash": "65c9804e1e7d4f8ef254539cd556cc9a",
+    "mtime": 1781884172.9582255,
+    "ast_hash": "12cc86a88ca2f1278bfed3e1a7533711",
     "semantic_hash": ""
   },
   "src/domains/analytics/services/analytics-cache.ts": {
@@ -1100,8 +1100,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/insights-engine.ts": {
-    "mtime": 1785258897.5997,
-    "ast_hash": "a4ba0940b6f5cb65e293554d39535087",
+    "mtime": 1784752461.349832,
+    "ast_hash": "0a19ffa529a5309f39500c7e33ca4ab0",
     "semantic_hash": ""
   },
   "src/domains/analytics/services/monthly-report.ts": {
@@ -1115,8 +1115,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/psychology-insights.ts": {
-    "mtime": 1785258897.6017003,
-    "ast_hash": "13cdebb0bbf65bc0d7c5b090b3fdde25",
+    "mtime": 1784665214.127077,
+    "ast_hash": "0a6673e8c6bf956d72282dbf649eea8e",
     "semantic_hash": ""
   },
   "src/domains/analytics/services/review-email-model.ts": {
@@ -1960,8 +1960,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/report-data.ts": {
-    "mtime": 1785259955.9594796,
-    "ast_hash": "762157f237616c306fd7ea59f0249db9",
+    "mtime": 1782318306.333993,
+    "ast_hash": "81e6519e85b87e45c94eeeb533e7b04f",
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-ai.ts": {
@@ -1970,8 +1970,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-insights.ts": {
-    "mtime": 1785258897.6077032,
-    "ast_hash": "c1fab40743beba9be0fee92c32c3fa28",
+    "mtime": 1782402292.1975088,
+    "ast_hash": "31a2d67974c7d9f937a8f849972f63ce",
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-schedule.ts": {
@@ -2160,8 +2160,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trades.ts": {
-    "mtime": 1785258897.6112332,
-    "ast_hash": "03481bd255591cf3d455121bb3c271a4",
+    "mtime": 1784826126.039991,
+    "ast_hash": "3f6370332a4d845e052c8244407083ac",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trading-sessions.ts": {
@@ -2170,8 +2170,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1785258897.6132443,
-    "ast_hash": "1f48b1f6d64f6ff718e334f586acff65",
+    "mtime": 1784919008.9743924,
+    "ast_hash": "6be64bffad839d3210a222f3d6c6fb79",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1785258897.566682,
-    "ast_hash": "77daa980891a123fcab8edc21d10e870",
+    "mtime": 1785187790.8271122,
+    "ast_hash": "e4de99dc87a0e27039079e9762e2db38",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
@@ -2715,8 +2715,8 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1785258897.6102223,
-    "ast_hash": "f6e64063e98cf6f3a1267a897e90305d",
+    "mtime": 1784826851.6918547,
+    "ast_hash": "963c318184a7a1890ae910bcf55b93d1",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
@@ -2977,36 +2977,6 @@
   "docs/superpowers/specs/2026-07-27-coach-agentic-loop-design.md": {
     "mtime": 1785169850.6293197,
     "ast_hash": "40e0c452c40a58b916c5972e6aa3319d",
-    "semantic_hash": ""
-  },
-  "scripts/coach-tool-audit.py": {
-    "mtime": 1785188585.7491522,
-    "ast_hash": "c248e58f80c792062c561c1c4c2b677c",
-    "semantic_hash": ""
-  },
-  "src/components/trades/emotion-capture.tsx": {
-    "mtime": 1785258897.5926778,
-    "ast_hash": "53f9ffd7a01c42fef3e3b7a05a6736ea",
-    "semantic_hash": ""
-  },
-  "src/domains/trading/services/emotion-provenance.ts": {
-    "mtime": 1785258897.6027162,
-    "ast_hash": "746be0ba123bc808f3cd7e1a34609146",
-    "semantic_hash": ""
-  },
-  "supabase/migrations/20260727120000_trade_emotion_source.sql": {
-    "mtime": 1785258897.6142333,
-    "ast_hash": "7df74f6efe81121441b89a3f762daa9b",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/plans/2026-07-27-captura-emocion-reconstruida.md": {
-    "mtime": 1785258897.5686924,
-    "ast_hash": "c339d135cc98737764b1962ed4b728a1",
-    "semantic_hash": ""
-  },
-  "docs/superpowers/specs/2026-07-27-captura-emocion-reconstruida-design.md": {
-    "mtime": 1785258897.5706809,
-    "ast_hash": "8eb3233f3d7cab230d23c6d4bc74b6d4",
     "semantic_hash": ""
   }
 }
