@@ -6,7 +6,7 @@
 
 import { isWin } from "@/lib/formulas"
 import { isViolationTag } from "@/types"
-import type { AnalyticsTrade, Insight } from "./insights-engine"
+import { capturedEmotion, type AnalyticsTrade, type Insight } from "./insights-engine"
 
 const NEG_EMOTIONS = new Set(["anxious", "fearful", "frustrated", "overconfident", "angry"])
 
@@ -14,7 +14,8 @@ function isImpulsive(t: AnalyticsTrade): boolean {
   return t.fomoFlag === true || t.revengeFlag === true || t.tags.some(x => isViolationTag(x))
 }
 function isNegative(t: AnalyticsTrade): boolean {
-  return (t.emotionBefore != null && NEG_EMOTIONS.has(t.emotionBefore)) || t.fomoFlag === true || t.revengeFlag === true
+  const e = capturedEmotion(t)
+  return (e != null && NEG_EMOTIONS.has(e)) || t.fomoFlag === true || t.revengeFlag === true
 }
 function pct(n: number): number { return Math.round(n * 10) / 10 }
 function holdMin(t: AnalyticsTrade): number | null {
@@ -30,7 +31,7 @@ const MIN = 15
 
 // ── 1. Negative emotion before losses ────────────────────────────────────────
 export function detectEmotionBeforeLoss(trades: AnalyticsTrade[]): Insight | null {
-  const losses = trades.filter(t => t.pnl < 0 && (t.emotionBefore != null || t.fomoFlag || t.revengeFlag))
+  const losses = trades.filter(t => t.pnl < 0 && (capturedEmotion(t) != null || t.fomoFlag || t.revengeFlag))
   if (losses.length < 8) return null
   const negLosses = losses.filter(isNegative).length
   const share = (negLosses / losses.length) * 100
@@ -104,10 +105,10 @@ export function detectHoldingAsymmetry(trades: AnalyticsTrade[]): Insight | null
 
 // ── 5. Rule-violation emotion ─────────────────────────────────────────────────
 export function detectViolationEmotion(trades: AnalyticsTrade[]): Insight | null {
-  const viol = trades.filter(isImpulsive).filter(t => t.emotionBefore)
+  const viol = trades.filter(isImpulsive).filter(t => capturedEmotion(t) != null)
   if (viol.length < 6) return null
   const counts = new Map<string, number>()
-  for (const t of viol) counts.set(t.emotionBefore!, (counts.get(t.emotionBefore!) ?? 0) + 1)
+  for (const t of viol) { const e = capturedEmotion(t)!; counts.set(e, (counts.get(e) ?? 0) + 1) }
   let top = { emo: "", n: 0 }
   for (const [emo, n] of counts) if (n > top.n) top = { emo, n }
   const share = (top.n / viol.length) * 100
