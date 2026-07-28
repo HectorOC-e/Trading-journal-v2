@@ -46,9 +46,15 @@ export interface ReviewReportVM {
   notes:     string
   /** Rich "/analytics scoped to the period" slice (equity, markets, psychology…). */
   analytics: ReviewAnalytics
+  /**
+   * Trades de la semana sin emoción, ofrecibles porque la semana de la review
+   * ES la ventana de 7 días. Vacío en mensual: una review mensual abarca cuatro
+   * semanas y casi ninguno de sus trades sigue en plazo.
+   */
+  pendingEmotion: { id: string; symbol: string; date: string }[]
 }
 
-export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string; analytics: ReviewAnalytics }): ReviewReportVM {
+export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string; analytics: ReviewAnalytics; pendingEmotion: { id: string; symbol: string; date: string }[] }): ReviewReportVM {
   return {
     kind:         "weekly",
     title:        r.weekLabel,
@@ -70,6 +76,7 @@ export function weeklyToVM(r: WeeklyReport & { ai: AiMeta; status: string; analy
     status:       r.status,
     notes:        r.saved?.executiveSummary ?? "",
     analytics:    r.analytics,
+    pendingEmotion: r.pendingEmotion,
   }
 }
 
@@ -97,5 +104,8 @@ export function monthlyToVM(r: MonthlyReport & { ai: AiMeta; status: string; ana
     status:       r.status,
     notes:        r.saved?.summary ?? "",
     analytics:    r.analytics,
+    // No es un olvido: la ventana es de 7 días y una review mensual abarca
+    // cuatro semanas, así que casi ningún trade suyo sigue en plazo.
+    pendingEmotion: [],
   }
 }

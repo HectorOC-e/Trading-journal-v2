@@ -22,7 +22,7 @@ describe("renderReviewReportHtml", () => {
       expectancy: 110, avgR: 0.55, avgWin: 300, avgLoss: -80,
       equityCurve: [{ date: "2026-06-15", balance: 300 }, { date: "2026-06-16", balance: 220 }],
       markets: [{ symbol: "EURUSD", netPnl: 220, trades: 2, winRate: 50 }],
-      byEmotion: [{ emotion: "calma", trades: 1, avgPnl: 300, winRate: 100 }],
+      byEmotion: [{ emotion: "calma", trades: 1, reconstructed: 0, avgPnl: 300, winRate: 100 }],
     },
   })
 

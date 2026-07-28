@@ -8,7 +8,16 @@ import { VIOLATION_TAGS } from "@/types"
 import { buildWeeklyReport, type WeeklyReport, type ReportTrade } from "@/domains/analytics/services/weekly-report"
 import { buildMonthlyReport, type MonthlyReport } from "@/domains/analytics/services/monthly-report"
 
-export interface WeeklyReportBundle { report: WeeklyReport; saved: WeeklyReview | null }
+export interface WeeklyReportBundle {
+  report: WeeklyReport
+  saved: WeeklyReview | null
+  /**
+   * Trades cerrados de la semana sin emoción. La semana de la review ES la
+   * ventana de 7 días, así que por construcción todo lo que sale aquí es
+   * rellenable — no hace falta comprobar plazo por fila.
+   */
+  pendingEmotion: { id: string; symbol: string; date: string }[]
+}
 export interface MonthlyReportBundle { report: MonthlyReport; saved: MonthlyReview | null }
 
 const TRADE_SELECT = { accountId: true, pnl: true, rMultiple: true, date: true, setupId: true, tags: true, session: true } as const
@@ -18,7 +27,7 @@ export async function loadWeeklyReport(prisma: PrismaClient, userId: string, wee
   const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7)   // exclusive
   const prevStart = new Date(weekStart); prevStart.setDate(weekStart.getDate() - 7)
 
-  const [user, accounts, setups, weekRows, prevRows, saved, prevSaved] = await Promise.all([
+  const [user, accounts, setups, weekRows, prevRows, saved, prevSaved, pendingEmotionRows] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
     prisma.account.findMany({ where: { userId }, select: { id: true, name: true, currency: true } }),
     prisma.setup.findMany({ where: { userId }, select: { id: true, name: true } }),
@@ -26,6 +35,13 @@ export async function loadWeeklyReport(prisma: PrismaClient, userId: string, wee
     prisma.trade.findMany({ where: { userId, status: "CLOSED", date: { gte: prevStart, lt: weekStart } }, select: TRADE_SELECT }),
     prisma.weeklyReview.findFirst({ where: { userId, weekStart } }),
     prisma.weeklyReview.findFirst({ where: { userId, weekStart: prevStart } }),
+    // Los trades de la semana a los que les falta la emoción. Consulta aparte:
+    // TRADE_SELECT alimenta la matemática del report y no lleva id ni emoción.
+    prisma.trade.findMany({
+      where:   { userId, status: "CLOSED", date: { gte: weekStart, lt: weekEnd }, emotionBefore: null },
+      select:  { id: true, symbol: true, date: true },
+      orderBy: { date: "asc" },
+    }),
   ])
 
   const baseCurrency = user?.baseCurrency ?? "USD"
@@ -59,7 +75,13 @@ export async function loadWeeklyReport(prisma: PrismaClient, userId: string, wee
     saved: saved ? { executiveSummary: saved.executiveSummary, whatWorked: saved.whatWorked, toImprove: saved.toImprove, status: saved.status } : null,
   })
 
-  return { report, saved }
+  return {
+    report,
+    saved,
+    pendingEmotion: pendingEmotionRows.map(t => ({
+      id: t.id, symbol: t.symbol, date: (t.date as Date).toISOString().slice(0, 10),
+    })),
+  }
 }
 
 export async function loadMonthlyReport(prisma: PrismaClient, userId: string, year: number, month: number): Promise<MonthlyReportBundle> {

@@ -46,7 +46,7 @@ export interface ReviewAnalytics {
   avgLoss:     number
   equityCurve: { date: string; balance: number }[]
   markets:     { symbol: string; netPnl: number; trades: number; winRate: number }[]
-  byEmotion:   { emotion: string; trades: number; avgPnl: number; winRate: number }[]
+  byEmotion:   { emotion: string; trades: number; reconstructed: number; avgPnl: number; winRate: number }[]
 }
 
 export async function loadReviewAnalytics(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<ReviewAnalytics> {
@@ -58,6 +58,8 @@ export async function loadReviewAnalytics(prisma: PrismaClient, userId: string, 
     avgLoss:     b.performance.avgLoss,
     equityCurve: b.risk.equityCurve,
     markets:     b.markets.slice(0, 8).map(m => ({ symbol: m.symbol, netPnl: m.netPnl, trades: m.trades, winRate: m.winRate })),
-    byEmotion:   b.psychology.byEmotion.slice(0, 6).map(e => ({ emotion: e.emotion, trades: e.trades, avgPnl: e.avgPnl, winRate: e.winRate })),
+    // Este re-mapeo DESCARTA todo campo que no liste: añadir uno sólo en el
+    // origen daría `undefined` pintado como un cero que parece dato.
+    byEmotion:   b.psychology.byEmotion.slice(0, 6).map(e => ({ emotion: e.emotion, trades: e.trades, reconstructed: e.reconstructed, avgPnl: e.avgPnl, winRate: e.winRate })),
   }
 }

@@ -86,7 +86,7 @@ export function ReviewReportShell({ vm, aiSlot, actions, notesSlot, learningSlot
         </div>
 
         <div className="grid md:grid-cols-2 gap-5">
-          <PsychologyPanel byEmotion={vm.analytics.byEmotion} money={money} />
+          <PsychologyPanel byEmotion={vm.analytics.byEmotion} money={money} pendingEmotion={vm.pendingEmotion} />
           <AccountBreakdown byAccount={vm.byAccount} money={money} />
         </div>
 

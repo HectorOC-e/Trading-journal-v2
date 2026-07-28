@@ -35,7 +35,7 @@ function prismaWith(tradeDate: string) {
         update:            vi.fn().mockResolvedValue(account),
       },
       market: { findFirst: vi.fn().mockResolvedValue(null) },
-    } as never,
+    },
     update,
   }
 }
@@ -48,7 +48,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
 
   it("updateTrade marca como RECONSTRUIDA la emoción escrita después del momento", async () => {
     const { prisma, update } = prismaWith(DENTRO)
-    await updateTrade(prisma, "u1", { id: "t1", emotionBefore: "anxious" })
+    await updateTrade(prisma as never, "u1", { id: "t1", emotionBefore: "anxious" })
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ emotionBefore: "anxious", emotionSource: "reconstructed" }),
     }))
@@ -56,14 +56,14 @@ describe("procedencia y ventana en el servicio de escritura", () => {
 
   it("updateTrade RECHAZA escribir emoción fuera de ventana", async () => {
     const { prisma, update } = prismaWith(FUERA)
-    await expect(updateTrade(prisma, "u1", { id: "t1", emotionBefore: "anxious" }))
+    await expect(updateTrade(prisma as never, "u1", { id: "t1", emotionBefore: "anxious" }))
       .rejects.toThrow(/EMOTION_WINDOW_CLOSED/)
     expect(update).not.toHaveBeenCalled()
   })
 
   it("captureEmotion dentro de ventana escribe marcada como reconstruida", async () => {
     const { prisma, update } = prismaWith(DENTRO)
-    await captureEmotion(prisma, "u1", { tradeId: "t1", emotion: "anxious" })
+    await captureEmotion(prisma as never, "u1", { tradeId: "t1", emotion: "anxious" })
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
       data: { emotionBefore: "anxious", emotionSource: "reconstructed" },
     }))
@@ -71,7 +71,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
 
   it("captureEmotion fuera de ventana rechaza y no escribe nada", async () => {
     const { prisma, update } = prismaWith(FUERA)
-    await expect(captureEmotion(prisma, "u1", { tradeId: "t1", emotion: "anxious" }))
+    await expect(captureEmotion(prisma as never, "u1", { tradeId: "t1", emotion: "anxious" }))
       .rejects.toThrow(/EMOTION_WINDOW_CLOSED/)
     expect(update).not.toHaveBeenCalled()
   })
@@ -83,7 +83,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
       entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1",
       emotionBefore: "calm",   // ya la registró al abrir
     })
-    await closeTrade(prisma, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })
+    await closeTrade(prisma as never, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })
     const data = update.mock.calls[0][0].data
     expect(data).not.toHaveProperty("emotionBefore")
     expect(data).not.toHaveProperty("emotionSource")
@@ -96,7 +96,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
       entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1",
       emotionBefore: null,   // el nudge del cierre es la primera vez que se pregunta
     })
-    await closeTrade(prisma, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })
+    await closeTrade(prisma as never, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })
     const data = update.mock.calls[0][0].data
     expect(data).toMatchObject({ emotionBefore: "anxious", emotionSource: "captured" })
   })

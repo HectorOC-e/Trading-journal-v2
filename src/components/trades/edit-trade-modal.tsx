@@ -29,6 +29,8 @@ interface EditTradeModalProps {
   onOpenChange: (v: boolean) => void
   trade: {
     id: string
+    /** "YYYY-MM-DD". Ancla de la ventana de 7 días para editar la emoción. */
+    date: string
     symbol: string
     direction: string
     entry: number
