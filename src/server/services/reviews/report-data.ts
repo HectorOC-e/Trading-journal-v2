@@ -7,14 +7,19 @@ import { fxFactor, parseFxRates } from "@/lib/fx"
 import { VIOLATION_TAGS } from "@/types"
 import { buildWeeklyReport, type WeeklyReport, type ReportTrade } from "@/domains/analytics/services/weekly-report"
 import { buildMonthlyReport, type MonthlyReport } from "@/domains/analytics/services/monthly-report"
+import { isWithinEmotionWindow } from "@/domains/trading/services/emotion-provenance"
 
 export interface WeeklyReportBundle {
   report: WeeklyReport
   saved: WeeklyReview | null
   /**
-   * Trades cerrados de la semana sin emoción. La semana de la review ES la
-   * ventana de 7 días, así que por construcción todo lo que sale aquí es
-   * rellenable — no hace falta comprobar plazo por fila.
+   * Trades cerrados de la semana sin emoción y **todavía dentro de la ventana**.
+   *
+   * La semana de la review NO es la ventana, aunque coincidan en tamaño: una
+   * review se abre cuando el trader quiere, y el lunes de una semana ya pasada
+   * está a más de 7 días de hoy. Sin este filtro la UI ofrecería un gesto que
+   * el servidor rechaza con `EMOTION_WINDOW_CLOSED` — que es exactamente el
+   * defecto que esta pieza vino a matar, reintroducido por la puerta de atrás.
    */
   pendingEmotion: { id: string; symbol: string; date: string }[]
 }
@@ -37,6 +42,8 @@ export async function loadWeeklyReport(prisma: PrismaClient, userId: string, wee
     prisma.weeklyReview.findFirst({ where: { userId, weekStart: prevStart } }),
     // Los trades de la semana a los que les falta la emoción. Consulta aparte:
     // TRADE_SELECT alimenta la matemática del report y no lleva id ni emoción.
+    // El plazo se filtra abajo contra `isWithinEmotionWindow`, la MISMA función
+    // que aplica el servidor al escribir — no una fecha recalculada aquí.
     prisma.trade.findMany({
       where:   { userId, status: "CLOSED", date: { gte: weekStart, lt: weekEnd }, emotionBefore: null },
       select:  { id: true, symbol: true, date: true },
@@ -78,9 +85,11 @@ export async function loadWeeklyReport(prisma: PrismaClient, userId: string, wee
   return {
     report,
     saved,
-    pendingEmotion: pendingEmotionRows.map(t => ({
-      id: t.id, symbol: t.symbol, date: (t.date as Date).toISOString().slice(0, 10),
-    })),
+    pendingEmotion: pendingEmotionRows
+      .filter(t => isWithinEmotionWindow(t.date as Date, new Date()))
+      .map(t => ({
+        id: t.id, symbol: t.symbol, date: (t.date as Date).toISOString().slice(0, 10),
+      })),
   }
 }
 
