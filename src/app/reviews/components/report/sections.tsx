@@ -1,5 +1,6 @@
 "use client"
 
+import { cn } from "@/lib/utils"
 import { CountUp } from "@/components/ui/count-up"
 import { EmotionCapture } from "@/components/trades/emotion-capture"
 import { Card, Eyebrow, Delta, pnlColor } from "./primitives"
@@ -232,29 +233,18 @@ export function PsychologyPanel({ byEmotion, money, pendingEmotion }: {
   return (
     <Card>
       <Eyebrow>Psicología · emoción vs P&amp;L</Eyebrow>
-      {byEmotion.length === 0 ? (
-        // Este panel PEDÍA el gesto con una frase que no llevaba a ninguna
-        // parte: para cuando el trader la leía, los trades de la semana ya
-        // estaban cerrados y el nudge del cierre había desaparecido. La semana
-        // de la review ES la ventana, así que aquí el gesto sí se puede hacer.
-        pendingEmotion.length > 0 ? (
-          <div className="mt-2 flex flex-col gap-3">
-            <p className="text-sm text-[var(--ink-3)]">
-              Aún puedes registrar cómo entraste a estos trades de la semana:
-            </p>
-            {pendingEmotion.map((t) => (
-              <div key={t.id} className="flex flex-col gap-1.5">
-                <span className="text-[12.5px] text-[var(--ink-2)]">{t.symbol} <span className="text-[var(--ink-3)]">· {t.date}</span></span>
-                <EmotionCapture tradeId={t.id} current={null} withinWindow />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--ink-3)] mt-1">
-            No registraste tu estado emocional en los trades de esta semana, y la ventana de 7 días ya se cerró.
-          </p>
-        )
-      ) : (
+
+      {/* Este panel PEDÍA el gesto con una frase que no llevaba a ninguna parte:
+          para cuando el trader la leía, los trades de la semana ya estaban
+          cerrados y el nudge del cierre había desaparecido.
+
+          El gesto se ofrece cuando HAY algo que rellenar, independientemente de
+          la tabla. Colgarlo de `byEmotion.length === 0` lo volvía inalcanzable:
+          un trade sin emoción cae en el grupo "sin registro"
+          (`analytics-bundle:229`) y nada lo filtra, así que byEmotion sólo se
+          vacía en una semana SIN TRADES — donde, por construcción, tampoco hay
+          nada pendiente. Las dos condiciones se excluían. */}
+      {byEmotion.length > 0 && (
         <div className="mt-2 flex flex-col gap-1.5">
           {byEmotion.map((e) => (
             <div key={e.emotion} className="flex items-center justify-between text-[12.5px]">
@@ -270,6 +260,26 @@ export function PsychologyPanel({ byEmotion, money, pendingEmotion }: {
             </div>
           ))}
         </div>
+      )}
+
+      {pendingEmotion.length > 0 && (
+        <div className={cn("flex flex-col gap-3", byEmotion.length > 0 ? "mt-4 pt-3 border-t border-[var(--line)]" : "mt-2")}>
+          <p className="text-sm text-[var(--ink-3)]">
+            Aún puedes registrar cómo entraste a estos trades:
+          </p>
+          {pendingEmotion.map((t) => (
+            <div key={t.id} className="flex flex-col gap-1.5">
+              <span className="text-[12.5px] text-[var(--ink-2)]">{t.symbol} <span className="text-[var(--ink-3)]">· {t.date}</span></span>
+              <EmotionCapture tradeId={t.id} current={null} withinWindow />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {byEmotion.length === 0 && pendingEmotion.length === 0 && (
+        <p className="text-sm text-[var(--ink-3)] mt-1">
+          No registraste tu estado emocional en los trades de esta semana, y la ventana de 7 días ya se cerró.
+        </p>
       )}
     </Card>
   )
