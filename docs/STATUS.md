@@ -1,8 +1,63 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-07-27.
+> Última actualización: 2026-07-28.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## Captura de emoción: IMPLEMENTADA y verificada en prod (2026-07-28, PRs #175 + #176)
+
+El plan del 27-jul se ejecutó entero. **Y verificarlo destapó que la mitad de lo que entregaba
+no funcionaba** — el defecto no se veía leyendo el código, porque el plan lo declaraba resuelto.
+
+### Qué hay en producción
+
+- Columna `emotion_source` (`captured` | `reconstructed`) con CHECK, derivada **por posición
+  del camino de escritura** en `trade-write-service`: alta y cierre ⇒ `captured`; `updateTrade`
+  y `captureEmotion` ⇒ `reconstructed`. El cliente no la envía nunca. Backfill exacto de 15.
+- Ventana de 7 días desde `Trade.date` (`domains/trading/services/emotion-provenance.ts`),
+  impuesta en el SERVIDOR. La UI que esconde chips es cortesía.
+- `capturedEmotion()` gobierna los TRES detectores de `category: "correlation"`, puertas de
+  entrada incluidas. El contrato se afirma sobre el REGISTRO, no sobre las tres funciones
+  conocidas: **la emoción reconstruida es INERTE — borrarla no cambia un solo insight de
+  correlación**, con gemelo en positivo para que no pase por accidente.
+- Superficie A: `trade-detail-panel` deja de esconder Psicología cuando falta el dato.
+  Superficie B: la review semanal ofrece los chips. `edit-trade-modal` respeta el mismo plazo,
+  sin lo cual la ventana era decorativa.
+
+### Verificado contra prod, no supuesto
+
+`captured`=15 / `NULL`=53, restricción presente, cero filas con emoción sin marca o marca sin
+emoción. Con Playwright: la sección Psicología aparece en un trade cerrado sin emoción, se pulsó
+"Ansioso", y la BD quedó en `emotion_before='anxious'` + **`emotion_source='reconstructed'`**.
+Trade de verificación marcado `sim:2026-07-28-verify-emocion`.
+
+### Los dos defectos que sólo aparecieron yendo a la BD (#176)
+
+1. **Los chips de la review eran código muerto.** Colgaban de `byEmotion.length === 0`, y eso no
+   ocurre nunca con trades en la semana: los que no llevan emoción caen en el grupo
+   `"sin registro"` (`analytics-bundle:229`) y nada lo filtra. Hacían falta a la vez cero trades
+   (para vaciar `byEmotion`) y trades cerrados sin emoción (para llenar `pendingEmotion`) —
+   excluyentes. La frase muerta que la pieza venía a matar tampoco se veía salvo en una semana
+   sin operar. Ahora el gesto se ofrece cuando HAY algo que rellenar, junto a la tabla.
+2. **`pendingEmotion` no filtraba por la ventana.** El plan declaraba *"la semana de la review ES
+   la ventana, no hace falta comprobar plazo por fila"*: **falso**, una review se abre cuando el
+   trader quiere. Se ofrecían chips que el servidor rechaza con `EMOTION_WINDOW_CLOSED` — pedir
+   un gesto y no dejar hacerlo, el mismo defecto que la pieza mataba, por la puerta de atrás.
+
+### Y uno que la suite no habría cazado nunca
+
+`analytics-bundle` tiene un `select` explícito de Prisma **y** un re-mapeo campo por campo, y
+ninguno nombraba `emotion_source`. Sin arreglarlo, `capturedEmotion()` habría devuelto `null`
+para TODO y los tres detectores habrían quedado **mudos en producción con la suite en verde**,
+porque los fixtures de dominio traen el campo a mano. Hay test que lo afirma sobre el camino
+real: que se PIDE en el `select` y que se PROPAGA al `AnalyticsTrade`. `buildAnalyticsBundle` es
+el único constructor de `AnalyticsTrade`; los cinco consumidores pasan por él.
+
+> **Corrección factual al spec:** los 16 trades de la simulación NO están a 38 días. Sus `date`
+> van del 2026-07-20 al 07-27; los 38 días eran de los 52 históricos. No cambia el diseño (la
+> ventana sigue sin recuperar ninguno de los 52).
+
+Suite 1413 → 1452. Vercel MCP **no estaba disponible** el 28-jul, al revés que el 27.
 
 ## La palanca A estaba mal enunciada, y la BD lo desmintió (2026-07-27, spec + plan)
 
