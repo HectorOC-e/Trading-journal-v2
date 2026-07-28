@@ -24,6 +24,17 @@ import { runIntervention } from "@/server/services/intervention/intervention-ser
 import { serializeTrade, type SerializedTrade } from "./serializers"
 import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
 import type { EmotionBefore } from "@/domains/trading/emotions"
+import { isWithinEmotionWindow, EMOTION_BACKFILL_WINDOW_DAYS } from "@/domains/trading/services/emotion-provenance"
+
+/** La ventana la impone el SERVIDOR. La UI que esconde los chips es cortesía. */
+function assertEmotionWindowOpen(tradeDate: Date, now: Date): void {
+  if (!isWithinEmotionWindow(tradeDate, now)) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `EMOTION_WINDOW_CLOSED:${EMOTION_BACKFILL_WINDOW_DAYS}`,
+    })
+  }
+}
 
 export type CreateTradeInput = {
   accountId:        string
@@ -189,7 +200,11 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     })
 
   const trade = await prisma.trade.create({
-    data: { ...input, riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date) },
+    data: {
+      ...input, riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date),
+      // Procedencia posicional: el alta es EL momento; si viene emoción, es capturada.
+      emotionSource: input.emotionBefore != null ? "captured" : null,
+    },
     include: { account: true, setup: true, events: true },
   })
 
@@ -274,10 +289,27 @@ export type UpdateTradeInput = {
 }
 
 export async function updateTrade(prisma: PrismaClient, userId: string, input: UpdateTradeInput): Promise<SerializedTrade> {
-  const { id, ...data } = input
+  const { id, ...rest } = input
+  // El spread ciego no deja interceptar nada: la emoción se extrae para que la
+  // regla de procedencia y la ventana no dependan de quién llame.
+  const { emotionBefore, ...data } = rest
+
+  if (emotionBefore !== undefined) {
+    const current = await prisma.trade.findUniqueOrThrow({ where: { id, userId }, select: { date: true } })
+    assertEmotionWindowOpen(current.date, new Date())
+  }
+
   const trade = await prisma.trade.update({
     where: { id, userId },
-    data,
+    data: {
+      ...data,
+      // Toda escritura posterior al momento es reconstrucción — incluida la
+      // corrección de una emoción ya registrada: no hay forma de distinguir
+      // "me equivoqué de chip" de un recuerdo revisado a la luz del resultado.
+      ...(emotionBefore !== undefined
+        ? { emotionBefore, emotionSource: emotionBefore == null ? null : "reconstructed" as const }
+        : {}),
+    },
     include: { account: true, setup: true, events: true },
   })
   if (input.tags?.length) await ensureTagRows(prisma, userId, input.tags)
@@ -365,10 +397,13 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
       ...(input.maeR != null ? { maeR: input.maeR } : {}),
       ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
       ...(input.regime != null ? { regime: input.regime } : {}),
-      // S2/OI-2: same rule, and it matters more here — closing a trade reveals
-      // nothing new about the state the trader entered in, so a close must never
-      // overwrite an emotion they already recorded at open.
-      ...(input.emotionBefore != null ? { emotionBefore: input.emotionBefore } : {}),
+      // S2/OI-2: el cierre no revela nada nuevo sobre el estado con el que se
+      // ENTRÓ, así que nunca puede pisar una emoción ya registrada al abrir.
+      // El comentario prometía esto desde S2; el código sólo miraba el input.
+      // Como consecuencia, si escribe, siempre es primera escritura ⇒ capturada.
+      ...(input.emotionBefore != null && trade.emotionBefore == null
+        ? { emotionBefore: input.emotionBefore, emotionSource: "captured" as const }
+        : {}),
     },
     include: { account: true, setup: true, events: true },
   })
@@ -527,4 +562,29 @@ export async function saveTradeChecklistResult(prisma: PrismaClient, userId: str
       itemsTotal:   input.itemsTotal,
     },
   })
+}
+
+export type CaptureEmotionInput = {
+  tradeId: string
+  emotion: EmotionBefore
+}
+
+/**
+ * La vía dedicada de las superficies de backfill (panel del trade y review
+ * semanal). No se reutiliza `updateTrade`: allí la emoción viaja entre otros
+ * veinte campos y la regla se diluiría.
+ */
+export async function captureEmotion(prisma: PrismaClient, userId: string, input: CaptureEmotionInput): Promise<SerializedTrade> {
+  const current = await prisma.trade.findUniqueOrThrow({
+    where:  { id: input.tradeId, userId },
+    select: { date: true },
+  })
+  assertEmotionWindowOpen(current.date, new Date())
+
+  const trade = await prisma.trade.update({
+    where:   { id: input.tradeId, userId },
+    data:    { emotionBefore: input.emotion, emotionSource: "reconstructed" },
+    include: { account: true, setup: true, events: true },
+  })
+  return serializeTrade(trade)
 }

@@ -5,7 +5,7 @@ import { search, reindex } from "@/server/services/retrieval/pipeline"
 import { CORPUS_KEYS } from "@/server/services/retrieval/types"
 import { getDashboardStats } from "@/server/services/trades/dashboard-service"
 import { listTrades, getTradeById, getRuleViolationStats, getEmotionFeedback, getPatternInsights } from "@/server/services/trades/trade-read-service"
-import { createTrade, updateTrade, closeTrade, addTradeEvent, deleteTrade, saveTradeChecklistResult } from "@/server/services/trades/trade-write-service"
+import { createTrade, updateTrade, closeTrade, addTradeEvent, deleteTrade, saveTradeChecklistResult, captureEmotion } from "@/server/services/trades/trade-write-service"
 
 export type { SerializedTrade } from "@/server/services/trades/serializers"
 
@@ -162,6 +162,16 @@ export const tradesRouter = router({
       itemsTotal:   z.number().int().min(0),
     }))
     .mutation(({ ctx, input }) => saveTradeChecklistResult(ctx.prisma, ctx.userId, input)),
+
+  // Backfill acotado: registrar la emoción de un trade ya cerrado, dentro de la
+  // ventana de 7 días. La procedencia la pone el servidor ("reconstructed"), no
+  // el cliente; el cliente no puede declararse "capturado".
+  captureEmotion: protectedProcedure
+    .input(z.object({
+      tradeId: z.string().uuid(),
+      emotion: z.enum(EMOTION_VALUES),
+    }))
+    .mutation(({ ctx, input }) => captureEmotion(ctx.prisma, ctx.userId, input)),
 
   // Emotion incentive (DELTA D10): the trader's historical WR/avgR for a given
   // pre-trade emotion, so capturing it returns value in the moment. Null below the
