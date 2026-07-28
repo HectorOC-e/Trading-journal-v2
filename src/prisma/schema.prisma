@@ -297,6 +297,7 @@ model Trade {
   importTicket   String?  @map("import_ticket")
   // ── Psychology fields (Sprint 4, TASK-034) ──────────────
   emotionBefore    String?  @map("emotion_before")    // "calm" | "anxious" | "excited" | "fearful" | "overconfident"
+  emotionSource    String?  @map("emotion_source")    // "captured" (en el momento) | "reconstructed" (rellenada después)
   confidenceRating Int?     @map("confidence_rating") // 1–5
   executionQuality Int?     @map("execution_quality") // 1–5
   fomoFlag         Boolean  @default(false) @map("fomo_flag")

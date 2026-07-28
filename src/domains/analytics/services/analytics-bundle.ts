@@ -21,7 +21,7 @@ export interface AccountIntel {
 
 export interface MarketIntel { symbol: string; trades: number; netPnl: number; winRate: number; avgR: number }
 
-export interface EmotionIntel { emotion: string; trades: number; avgPnl: number; winRate: number }
+export interface EmotionIntel { emotion: string; trades: number; reconstructed: number; avgPnl: number; winRate: number }
 
 export interface AnalyticsBundle {
   window: { from: string | null; to: string | null }
@@ -90,7 +90,9 @@ export async function buildAnalyticsBundle(
         id: true, accountId: true, symbol: true, direction: true, session: true,
         openTime: true, closeTime: true, pnl: true, rMultiple: true, tags: true, date: true,
         setupId: true, entry: true, stop: true, target: true, size: true,
-        emotionBefore: true, fomoFlag: true, revengeFlag: true, confidenceRating: true,
+        // `emotionSource` NO es decorativo: sin él `capturedEmotion()` devuelve
+        // null para todo y los tres detectores de correlación quedan mudos.
+        emotionBefore: true, emotionSource: true, fomoFlag: true, revengeFlag: true, confidenceRating: true,
       },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
       take: 1000,
@@ -131,7 +133,8 @@ export async function buildAnalyticsBundle(
     pnl: (t.pnl != null ? Number(t.pnl) : 0) * fxOf(t.accountId), rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
     tags: (t.tags as string[]) ?? [], date: (t.date as Date).toISOString().slice(0, 10),
     setupId: t.setupId, entry: Number(t.entry), stop: Number(t.stop), target: Number(t.target), size: Number(t.size),
-    emotionBefore: t.emotionBefore as string | null, fomoFlag: t.fomoFlag, revengeFlag: t.revengeFlag,
+    emotionBefore: t.emotionBefore as string | null, emotionSource: t.emotionSource as string | null,
+    fomoFlag: t.fomoFlag, revengeFlag: t.revengeFlag,
     confidenceRating: t.confidenceRating,
   }))
 
@@ -228,6 +231,9 @@ export async function buildAnalyticsBundle(
   }
   const byEmotion: EmotionIntel[] = [...emotions.entries()].map(([emotion, ts]) => ({
     emotion, trades: ts.length,
+    // Cuántas de este grupo son recuerdo reconstruido. El número se muestra,
+    // pero no se disfraza de lo que no es.
+    reconstructed: ts.filter((t) => t.emotionSource === "reconstructed").length,
     avgPnl: round2(ts.reduce((s, t) => s + t.pnl, 0) / ts.length),
     winRate: round1(calcWinRate(ts.filter((t) => isWin({ pnl: t.pnl })).length, ts.length)),
   })).sort((a, b) => b.trades - a.trades)

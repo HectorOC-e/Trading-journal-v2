@@ -4,6 +4,54 @@
 > Última actualización: 2026-07-27.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
+## La palanca A estaba mal enunciada, y la BD lo desmintió (2026-07-27, spec + plan)
+
+El usuario eligió trabajar la **captura de emoción**. Antes de diseñar nada se fue a la BD a
+adjudicar el enunciado — *"el motor de comportamiento espera un gesto que no ocurre"* — y **no se
+sostiene**.
+
+| Lote de creación | n | con emoción | con notas |
+|---|---|---|---|
+| 2026-06-10 / 06-18 / 06-19 (sueltos) | 5 | 0 | 0 |
+| **2026-06-11 04:00 UTC — una sola hora** | **47** | **0** | **0** |
+| 2026-07-22, cinco horas (simulación) | 16 | 15 | 16 |
+
+Los 52 anteriores a julio tienen además **0 notas, 0 `confidence_rating`, 0 `execution_quality`**
+— pero 41 con `setup_id`. Cuatro campos subjetivos vacíos *a la vez* no es un trader que salta una
+casilla: es una carga masiva. Lo confirma el código: `csv-import.ts` y `mt4-parser.ts` **no
+mencionan** `emotion`, `confidence`, `executionQuality` ni `notes`, así que la ruta de importación
+estructuralmente no puede traer psicología. Y `import_ticket` está a `NULL` en los 52 — ni siquiera
+pasaron por el importador.
+
+**Los 52 nunca pasaron por un formulario, y los 15 con emoción los tecleó un script de simulación
+siguiendo un guion que ordenaba capturarla.** No hay evidencia en ningún sentido sobre la voluntad
+de un trader real: los 52 no son una negativa y los 15 no son una aceptación.
+
+### Los dos defectos que sí existen
+
+- **El producto esconde el campo que necesita.** `trade-detail-panel.tsx:640` hace
+  `if (!hasPsych) return null`: un trade cerrado sin emoción no muestra la sección Psicología, ni
+  un hueco, ni una pista de que el campo exista.
+- **El producto pide el gesto y no deja hacerlo.** `PsychologyPanel` (`sections.tsx:230`, montado
+  en `review-report-shell.tsx:89`) muestra *"Registra tu estado emocional en los trades para ver
+  este análisis."* Cuando el trader lee esa frase, los trades de esa semana ya cerraron y el nudge
+  del cierre desapareció para siempre. Es una instrucción sin salida.
+
+### Qué se decidió (del usuario, no reabrir)
+
+Marca de procedencia (`emotion_source`: `captured` | `reconstructed`, derivada **por posición** en
+servidor) **+** ventana de 7 días desde `Trade.date` **+** exclusión de la emoción reconstruida de
+los detectores de `category: "correlation"`. Se le señaló al usuario que la ventana recupera **0 de
+los 52** trades actuales y lo mantuvo: **la pieza es hacia adelante**, y la emoción reconstruida no
+enciende los detectores por diseño.
+
+> Los detectores de correlación que leen `emotionBefore` son **tres, en dos ficheros**:
+> `emotion-performance` (`insights-engine.ts:172`), `emotion-before-loss` y `violation-emotion`
+> (`psychology-insights.ts`). Mirar sólo el fichero con nombre temático deja uno fuera.
+
+Spec y plan escritos y commiteados en `feat/captura-emocion-reconstruida`. **Sin implementar** — el
+usuario aparcó la ejecución para la sesión siguiente.
+
 ## Un fallo de IA se siente como un fallo, no como un cuelgue (2026-07-27, PR #174)
 
 Sale directamente de la auditoría: un intento de 162 s con el trader mirando el spinner, y después
@@ -1292,34 +1340,78 @@ Fuente: `PENDING_AND_RESUME.md` §1 (borrado en la consolidación; ver historial
 > Copia y pega esto al iniciar la próxima sesión:
 
 ```
-Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. main limpio, sin ramas ni PRs
-abiertos. Confirma al arrancar qué tienes de esto: gh, Supabase MCP, Playwright y graphify.
+Continúo el proyecto Trading Journal. v3.1/v3.2 cerrados. Confirma al arrancar qué tienes de
+esto: gh, Supabase MCP, Playwright, graphify y Vercel MCP.
 OJO CON DOS COSAS: (1) `.env` NO existe en esta máquina — sólo `.env.example`; Supabase MCP
-lo sustituye para todo lo de BD. (2) El 2026-07-27 **Vercel MCP NO estaba disponible**; no
-des por hecho que lo tienes, y si no está, dilo en vez de improvisar — sin él no puedes leer
-los logs de Vercel, que es donde vive la única evidencia de varios fallos de IA.
+lo sustituye para todo lo de BD. (2) El 2026-07-27 **Vercel MCP SÍ estaba disponible** y se
+verificó hasta el fondo (`list_teams` → `list_projects` → `get_runtime_logs` con datos
+reales). La nota anterior que decía lo contrario está OBSOLETA. Pero compruébalo igual, y si
+no está, dilo en vez de improvisar.
+
+⚠️ **HAY TRABAJO EN UNA RAMA, main NO lo tiene.** `feat/captura-emocion-reconstruida` está en
+origin con DOS commits de documentación (spec + plan) y CERO de implementación. No hay PR
+abierto. Empieza por ahí: `git checkout feat/captura-emocion-reconstruida`.
 
 Lee primero, en este orden:
   1) docs/STATUS.md        — las secciones de cabecera con fecha 2026-07-27 PREVALECEN sobre
                              todo lo anterior y sobre las 109 filas de la tabla de §1.
-  2) docs/PROJECT_GUIDE.md — qué es el producto
-  3) docs/ARCHITECTURE.md  — principios y entidades congelados
+  2) docs/superpowers/specs/2026-07-27-captura-emocion-reconstruida-design.md
+  3) docs/superpowers/plans/2026-07-27-captura-emocion-reconstruida.md
+  4) docs/PROJECT_GUIDE.md — qué es el producto
+  5) docs/ARCHITECTURE.md  — principios y entidades congelados
 
-═══ NO HAY DEFECTO PENDIENTE. LA SIGUIENTE JUGADA ES UNA DECISIÓN, NO UNA TAREA ═══
+═══ LA SIGUIENTE JUGADA ES EJECUTAR UN PLAN QUE YA ESTÁ ESCRITO ═══
 
-No busques trabajo en la mecánica de IA: está agotada, y con evidencia, no por cansancio.
-Si te pones a "mejorar el Coach" sin que el usuario lo pida, te lo estarás inventando.
+El usuario eligió la palanca A el 27-jul, se diseñó entera y se aparcó la implementación para
+esta sesión. **No rediseñes: ejecuta.** El plan tiene seis tareas con su código, sus tests y
+su rojo esperado declarado tarea por tarea.
 
-Las dos palancas reales, ambas del usuario:
+  Task 1  migración dual + columna `emotion_source` + backfill de 15 filas
+  Task 2  `capturedEmotion()` y el contrato en los TRES detectores de correlación
+  Task 3  procedencia posicional + ventana de 7 días en servidor + `trades.captureEmotion`
+  Task 4  componente `EmotionCapture` compartido
+  Task 5  superficie A (panel del trade) + cerrar el agujero del modal de edición
+  Task 6  superficie B (review semanal) + `byEmotion` declarando reconstruidas
 
- A) **La captura de emoción.** La simulación demostró que los detectores encienden en cuanto
-    hay emoción capturada — bastaron 15 trades — y los 52 históricos tienen CERO. El motor de
-    comportamiento está construido y esperando un gesto que no ocurre. La pregunta no es
-    técnica: es cómo se consigue ese gesto. NO lo resuelvas con un detector nuevo.
+El usuario aún no eligió modo de ejecución: pregúntale entre subagente-por-tarea (recomendado)
+y ejecución inline con checkpoints.
+
+═══ LO QUE SE APRENDIÓ DISEÑANDO ESTO, Y NO DEBES RE-DESCUBRIR ═══
+
+**El enunciado original de la palanca A era FALSO, y la BD lo desmintió.** Decía "el motor
+espera un gesto que no ocurre". Lo que pasó de verdad:
+
+  · Los 52 trades "sin emoción" entraron en una CARGA MASIVA — 47 en una sola hora el
+    2026-06-11 — con 0 notas, 0 confianza y 0 calidad de ejecución A LA VEZ. Cuatro campos
+    subjetivos vacíos simultáneamente no es un trader que salta una casilla.
+  · `csv-import.ts` y `mt4-parser.ts` NO mencionan `emotion`, `confidence`, `executionQuality`
+    ni `notes`. La ruta de importación estructuralmente no puede traer psicología.
+  · `import_ticket` está a NULL en los 52: ni siquiera pasaron por el importador.
+  · Los 15 que SÍ tienen emoción los tecleó el script de la simulación del 22-jul siguiendo un
+    guion que ordenaba capturarla.
+
+**Conclusión: no hay evidencia en ningún sentido sobre la voluntad de un trader real.** Los 52
+no son una negativa; los 15 no son una aceptación. No vuelvas a citar "52 históricos con CERO
+emoción" como prueba de conducta.
+
+Los dos defectos que sí son reales y que el plan arregla:
+  · `trade-detail-panel.tsx:640` hace `if (!hasPsych) return null` — el producto ESCONDE la
+    casilla justo cuando falta el dato.
+  · `PsychologyPanel` (`sections.tsx:230`) pide el gesto con una frase sin salida: cuando el
+    trader la lee, los trades de esa semana ya cerraron y el nudge del cierre desapareció.
+
+**Alcance declarado, no lo "mejores" por tu cuenta:** con ventana de 7 días los 52 trades
+actuales NO recuperan psicología nunca (el más reciente cerró hace 38 días), y la emoción
+reconstruida NO enciende los detectores — decisión explícita del usuario. La pieza es hacia
+adelante. Si eso te parece poco, es una conversación con el usuario, no un cambio de diseño.
+
+═══ LA OTRA PALANCA, INTACTA ═══
+
  B) **La calidad de redacción del Coach.** Aparcada por decisión del usuario (etapa de
     pruebas, sin modelos de pago). La auditoría del 27-jul acotó la decisión: la selección de
     herramientas YA NO es el cuello de botella, así que si el Coach sabe a poco, ahora sí es
-    la prosa — y eso se compra con modelo, no se programa.
+    la prosa — y eso se compra con modelo, no se programa. No busques trabajo en la mecánica
+    de IA: está agotada, y con evidencia, no por cansancio.
 
 ═══ QUÉ SE CERRÓ Y NO DEBES REHACER ═══
 
@@ -1341,6 +1433,10 @@ Las dos palancas reales, ambas del usuario:
    (45 s / 90 s) acota UN intento; la señal llega a los tres `fetch` de la ruta por los seis
    call-sites. Y el cliente por fin PINTA algo cuando el stream muere: trama
    `{error:{status,kind}}` por el canal NUL → 429 / 5xx / conexión cortada.
+ · **Diseño de la captura de emoción (2026-07-27, spec + plan, SIN implementar).** Rama
+   `feat/captura-emocion-reconstruida`. Las decisiones ya están tomadas por el usuario y no
+   se reabren: marca de procedencia + ventana de 7 días desde `Trade.date` + exclusión de la
+   emoción reconstruida de los detectores de `category: "correlation"`.
 
 ═══ NO RE-DESCUBRAS ESTO (no son olvidos) ═══
  · TD-037: diferido a conciencia.
@@ -1356,6 +1452,10 @@ Las dos palancas reales, ambas del usuario:
    puso techo en #174, pero la causa raíz no se identificó.
  · Una respuesta del Coach con CERO tools que afirmaba haber buscado en las reviews. Si
    REAPARECE, eso es `FREEZE-P2` y merece pieza propia.
+ ⚠️ **La evidencia de las dos ya NO es recuperable.** El 27-jul, con Vercel MCP funcionando,
+   `get_runtime_logs` filtrado por `ai-coach` sobre 24 h devolvió CERO líneas: la retención se
+   comió la corrida de la auditoría. Los logs sirven de aquí en adelante, no hacia atrás. Si
+   alguna reaparece, captúrala EN EL MOMENTO.
 
 ═══ TRAMPAS DE MÉTODO (cada una me costó un diagnóstico falso) ═══
  · **Un grep de UNA forma concreta no prueba ausencia.** El 27-jul afirmé "este test sólo
@@ -1378,10 +1478,27 @@ Las dos palancas reales, ambas del usuario:
  · NO te fíes de heurísticas de "página vacía" sobre el texto del DOM. ABRE LA CAPTURA.
  · Si un arreglo está desplegado y el usuario sigue viendo lo viejo, sospecha de la capa de
    persistencia antes que del arreglo. Así se encontró #158.
+ · **Un campo vacío no te dice por qué está vacío. Mira sus HERMANOS y el LOTE DE CREACIÓN.**
+   El 27-jul, "52 trades sin emoción" parecía conducta del trader. Agrupando por
+   `date_trunc('hour', created_at)` salieron 47 en una sola hora, y contando los otros campos
+   subjetivos salieron 0 notas / 0 confianza / 0 calidad A LA VEZ. Cuatro campos vacíos
+   simultáneamente = carga masiva, no una casilla que alguien salta. Un solo campo nunca
+   distingue "no quiso" de "no pasó por el formulario"; el conjunto sí.
+ · **El detector que se te escapa vive en OTRO FICHERO.** Los detectores de `correlation` que
+   leen `emotionBefore` son TRES: dos en `psychology-insights.ts` y uno en
+   `insights-engine.ts:172`. Mirar sólo el fichero con nombre temático deja uno fuera. Cuando
+   apliques un contrato "a todos los X", afírmalo sobre el REGISTRO en un test, no enumerando
+   las funciones que hoy conoces — así el que se añada mañana rompe la suite.
+ · **Una capa que re-mapea campo por campo DESCARTA lo que no lista.** `byEmotion` nace en
+   `analytics-bundle.ts:229` y `review-insights.ts:61` lo re-mapea explícitamente. Añadir un
+   campo sólo en el origen da `undefined` que se pinta como cero — un cero que parece dato.
+   Antes de añadir un campo a una estructura, sigue su camino hasta la UI.
 
 ═══ REGLAS DE TRABAJO (estables) ═══
- · Trabaja desde origin/main; una rama por pieza; PR + CI verde + MERGEA TÚ MISMO con gh
-   (autorizado explícitamente el 2026-07-22).
+ · Una rama por pieza; PR + CI verde + MERGEA TÚ MISMO con gh (autorizado explícitamente el
+   2026-07-22). **Excepción hoy:** la pieza en curso ya tiene rama
+   (`feat/captura-emocion-reconstruida`, con spec y plan dentro). Continúa EN ELLA, no abras
+   otra desde main ni rehagas la documentación que ya lleva.
  · TDD para dominios puros. VERIFICA EL ROJO: un test que nunca viste fallar no prueba nada.
    Y el rojo tiene que ser el correcto — en #173 era `promise resolved ... instead of
    rejecting`, que ERA el defecto.
@@ -1467,9 +1584,11 @@ DISPARAR UN CRON SIN .env NI SECRETOS: ejecuta por SQL el mismo `net.http_post` 
   calla. Úsalo antes de "arreglar" un detector que parezca muerto — puede que solo le falten datos
   con estructura. Corre `pnpm exec vitest run __tests__/behavior/` para verlo.
 - **Vercel:** projectId `prj_qKKQQLDmGREOf0GYHqA4H95tdsFs`, teamId `team_H1wCGwK6JxmFhFUsBf8zd3M8`.
-  Preview SSO se saltea con `get_access_to_vercel_url` (MCP). ⚠️ **El 2026-07-27 el Vercel MCP
-  NO estaba disponible en la sesión.** Sin él no hay forma de leer los logs de Vercel, que es
-  donde vive la única evidencia de un fallo de IA a mitad de stream. Compruébalo al arrancar.
+  Preview SSO se saltea con `get_access_to_vercel_url` (MCP). ✅ **El 2026-07-27 el Vercel MCP
+  SÍ estaba disponible**, verificado de punta a punta hasta `get_runtime_logs` con datos reales
+  (la nota anterior que decía lo contrario era de una sesión previa y está corregida). ⚠️ Pero
+  la RETENCIÓN es corta: filtrando `ai-coach` sobre 24 h ese mismo día ya no quedaba ni una
+  línea de la auditoría. Sirve hacia adelante, no hacia atrás.
 - **Auditar el tool-use del Coach:** `scripts/coach-tool-audit.py` (escrito el 27-jul).
   Instrumenta `window.fetch` para capturar el stream CRUDO de `/api/ai-coach` y parsear las
   tramas NUL — da qué tools pidió el modelo y en qué orden, sin inferirlo del DOM.

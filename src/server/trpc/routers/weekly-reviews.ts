@@ -105,7 +105,7 @@ export const weeklyReviewsRouter = router({
   report: protectedProcedure
     .input(z.object({ weekStart: z.string() }))
     .query(async ({ ctx, input }) => {
-      const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
+      const { report, saved, pendingEmotion } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
       const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
       // Live discipline so the hero/report show a real score even before finalize
       // (auto-draft rows store 0). Only when the week has trades.
@@ -115,7 +115,10 @@ export const weeklyReviewsRouter = router({
         const disc = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to })
         report.kpis.disciplineScore = disc.score ?? report.kpis.disciplineScore
       }
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics }
+      // `pendingEmotion` viaja hasta el VM: la semana de la review ES la ventana
+      // de 7 días, así que el panel de Psicología puede ofrecer el gesto en vez
+      // de una instrucción sin salida.
+      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pendingEmotion }
     }),
 
   // Light learning summary for the week (study minutes, streak, repasos).

@@ -67,9 +67,24 @@ export interface Insight {
 /** A trade enriched with the psychology fields the engine correlates on. */
 export type AnalyticsTrade = MinimalTrade & {
   emotionBefore?:    string | null
+  /** "captured" (registrada en el momento) | "reconstructed" (rellenada después). */
+  emotionSource?:    string | null
   fomoFlag?:         boolean
   revengeFlag?:      boolean
   confidenceRating?: number | null
+}
+
+/**
+ * La emoción que una afirmación causal puede usar: SÓLO la registrada en el
+ * momento. Una emoción reconstruida se revisa a la luz del resultado ya
+ * conocido, así que fundar una correlación en ella es afirmar como dato lo que
+ * es una historia posterior (FREEZE-P2/P3/P6). Sin marca ⇒ no utilizable.
+ *
+ * Sigue valiendo para mostrarse, para la cobertura y para el contexto del
+ * Coach; la frontera es el TIPO DE AFIRMACIÓN, no la superficie.
+ */
+export function capturedEmotion(t: AnalyticsTrade): string | null {
+  return t.emotionSource === "captured" ? t.emotionBefore ?? null : null
 }
 
 export interface InsightInput {
@@ -170,11 +185,14 @@ export function detectWeekdayDiscipline(trades: AnalyticsTrade[]): Insight | nul
 
 // ── 3. Emotion ↔ performance correlation ─────────────────────────────────────
 export function detectEmotionPerformance(trades: AnalyticsTrade[]): Insight | null {
-  const withEmotion = trades.filter(t => t.emotionBefore || t.fomoFlag || t.revengeFlag)
+  // La puerta cuenta captured-only igual que el cálculo: si admitiera
+  // reconstruida, el detector se abriría con datos que luego no puede usar y
+  // produciría silencios inexplicables.
+  const withEmotion = trades.filter(t => capturedEmotion(t) || t.fomoFlag || t.revengeFlag)
   if (withEmotion.length < 12) return null
   const NEG = new Set(["anxious", "fearful", "frustrated", "overconfident"])
-  const neg = trades.filter(t => (t.emotionBefore && NEG.has(t.emotionBefore)) || t.fomoFlag || t.revengeFlag)
-  const calm = trades.filter(t => t.emotionBefore === "calm")
+  const neg = trades.filter(t => { const e = capturedEmotion(t); return (e && NEG.has(e)) || t.fomoFlag || t.revengeFlag })
+  const calm = trades.filter(t => capturedEmotion(t) === "calm")
   if (neg.length < 6 || calm.length < 6) return null
   const negPnl  = neg.reduce((s, t) => s + t.pnl, 0) / neg.length
   const calmPnl = calm.reduce((s, t) => s + t.pnl, 0) / calm.length

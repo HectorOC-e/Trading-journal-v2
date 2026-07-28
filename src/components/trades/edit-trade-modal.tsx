@@ -10,6 +10,7 @@ import { FieldError } from "@/components/ui/field"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { tradeEditSchema, type TradeEditValues } from "@/domains/trading/schemas/trade-form-schema"
 import { EMOTION_OPTIONS, type EmotionBefore } from "@/domains/trading/emotions"
+import { isWithinEmotionWindow } from "@/domains/trading/services/emotion-provenance"
 
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
@@ -28,6 +29,8 @@ interface EditTradeModalProps {
   onOpenChange: (v: boolean) => void
   trade: {
     id: string
+    /** "YYYY-MM-DD". Ancla de la ventana de 7 días para editar la emoción. */
+    date: string
     symbol: string
     direction: string
     entry: number
@@ -431,31 +434,44 @@ export function EditTradeModal({
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-[var(--ink-3)] font-medium">Estado emocional</label>
               <div className="flex gap-1 flex-wrap">
-                <button
-                  onClick={() => setEmotionBefore(null)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
-                    !emotionBefore
-                      ? "bg-[var(--accent)] text-white"
-                      : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                  )}
-                >
-                  —
-                </button>
-                {EMOTION_OPTIONS.map(({ value, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setEmotionBefore(value)}
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
-                      emotionBefore === value
-                        ? "bg-[var(--accent)] text-white"
-                        : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+                {/* Sin esta guarda la ventana es decorativa: bastaría abrir el
+                    modal de edición para anotar un trade de abril. El botón "—"
+                    (limpiar) también queda fuera de plazo, y es deliberado:
+                    borrar una emoción registrada en el momento es tan
+                    irreversible como inventarla. */}
+                {isWithinEmotionWindow(new Date(trade.date), new Date()) ? (
+                  <>
+                    <button
+                      onClick={() => setEmotionBefore(null)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                        !emotionBefore
+                          ? "bg-[var(--accent)] text-white"
+                          : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                      )}
+                    >
+                      —
+                    </button>
+                    {EMOTION_OPTIONS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setEmotionBefore(value)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-full text-[11px] font-semibold transition-colors",
+                          emotionBefore === value
+                            ? "bg-[var(--accent)] text-white"
+                            : "bg-[var(--chip)] text-[var(--ink-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-[11px] text-[var(--ink-3)]">
+                    La ventana para registrar la emoción se cerró (7 días desde la fecha del trade).
+                  </p>
+                )}
               </div>
             </div>
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { CountUp } from "@/components/ui/count-up"
+import { EmotionCapture } from "@/components/trades/emotion-capture"
 import { Card, Eyebrow, Delta, pnlColor } from "./primitives"
 import type { ReviewReportVM, NarrativeVM } from "./view-model"
 
@@ -223,17 +224,48 @@ export function MarketsBreakdown({ markets, money }: { markets: Analytics["marke
 }
 
 /** Emotion → P&L: where the edge appears or disappears. */
-export function PsychologyPanel({ byEmotion, money }: { byEmotion: Analytics["byEmotion"]; money: Money }) {
+export function PsychologyPanel({ byEmotion, money, pendingEmotion }: {
+  byEmotion: Analytics["byEmotion"]
+  money: Money
+  pendingEmotion: { id: string; symbol: string; date: string }[]
+}) {
   return (
     <Card>
       <Eyebrow>Psicología · emoción vs P&amp;L</Eyebrow>
       {byEmotion.length === 0 ? (
-        <p className="text-sm text-[var(--ink-3)] mt-1">Registra tu estado emocional en los trades para ver este análisis.</p>
+        // Este panel PEDÍA el gesto con una frase que no llevaba a ninguna
+        // parte: para cuando el trader la leía, los trades de la semana ya
+        // estaban cerrados y el nudge del cierre había desaparecido. La semana
+        // de la review ES la ventana, así que aquí el gesto sí se puede hacer.
+        pendingEmotion.length > 0 ? (
+          <div className="mt-2 flex flex-col gap-3">
+            <p className="text-sm text-[var(--ink-3)]">
+              Aún puedes registrar cómo entraste a estos trades de la semana:
+            </p>
+            {pendingEmotion.map((t) => (
+              <div key={t.id} className="flex flex-col gap-1.5">
+                <span className="text-[12.5px] text-[var(--ink-2)]">{t.symbol} <span className="text-[var(--ink-3)]">· {t.date}</span></span>
+                <EmotionCapture tradeId={t.id} current={null} withinWindow />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--ink-3)] mt-1">
+            No registraste tu estado emocional en los trades de esta semana, y la ventana de 7 días ya se cerró.
+          </p>
+        )
       ) : (
         <div className="mt-2 flex flex-col gap-1.5">
           {byEmotion.map((e) => (
             <div key={e.emotion} className="flex items-center justify-between text-[12.5px]">
-              <span className="text-[var(--ink-2)] capitalize">{e.emotion} <span className="text-[var(--ink-3)]">· {e.trades} · WR {e.winRate}%</span></span>
+              <span className="text-[var(--ink-2)] capitalize">
+                {e.emotion}{" "}
+                <span className="text-[var(--ink-3)]">
+                  · {e.trades}
+                  {e.reconstructed > 0 && ` · ${e.reconstructed} reconstruidas`}
+                  {" "}· WR {e.winRate}%
+                </span>
+              </span>
               <span className="num font-semibold" style={{ color: pnlColor(e.avgPnl) }}>{money(e.avgPnl)}<span className="text-[var(--ink-3)] font-normal">/trade</span></span>
             </div>
           ))}

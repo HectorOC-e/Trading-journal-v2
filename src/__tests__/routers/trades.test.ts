@@ -234,6 +234,12 @@ describe("trades.update — psychology fields", () => {
 
   beforeEach(() => {
     mockPrisma = makeMockPrisma()
+    // Escribir emoción pasa por la ventana de 7 días desde `Trade.date`
+    // (emotion-provenance). `BASE_TRADE` está fechado en 2025-01-06, así que sin
+    // esto la guarda rechaza y estos tests dejarían de afirmar lo suyo — que el
+    // router ACEPTA los campos de psicología, no que se pueda anotar un trade de
+    // hace año y medio. La ventana tiene sus propios tests.
+    mockPrisma.trade.findUniqueOrThrow.mockResolvedValue({ ...BASE_TRADE, date: new Date(), account: BASE_ACCOUNT, setup: null, events: [] })
     caller = appRouter.createCaller({
       prisma: mockPrisma as never,
       supabase: {} as never,

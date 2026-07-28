@@ -15,6 +15,10 @@ function trade(o: Partial<AnalyticsTrade> & { id: string; date: string; pnl: num
     pnl: o.pnl, rMultiple: o.rMultiple ?? (o.pnl >= 0 ? 1 : -1), tags: o.tags ?? [],
     date: o.date, setupId: null, entry: 1, stop: 0.99, target: 1.02, size: 1,
     emotionBefore: o.emotionBefore ?? null, fomoFlag: o.fomoFlag, revengeFlag: o.revengeFlag,
+    // Estos fixtures nacieron antes de que existiera la procedencia, y todos
+    // asumían emoción registrada EN EL MOMENTO — que es lo único que funda una
+    // correlación. Se declara explícitamente en vez de relajar el contrato.
+    emotionSource: o.emotionSource ?? (o.emotionBefore != null ? "captured" : null),
     confidenceRating: o.confidenceRating ?? null,
   }
 }
