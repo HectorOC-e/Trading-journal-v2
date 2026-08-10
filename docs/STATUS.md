@@ -916,28 +916,28 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-3.3` | S3 | **Wiring Bayesiano de insights continuos** (p. ej. `emotion-performance`: diferencia de medias de P&L) | requiere comparador de dos muestras; `normalEstimate` ya existe y está testeado, falta exponer la base en el detector | ⬜ sin verificar |
 | `OI-3.4` | S3 | **Priors empíricos en producción** — hoy los detectores usan priors por defecto débiles; falta alimentar `empiricalBetaPrior`/`empiricalNormalPrior` con los grupos reales del usuario (setups/instrumentos) | el pooling cobra valor con volumen de datos; los priors son reversibles (FREEZE-D15) | ⬜ sin verificar |
 | `OI-3.5` | S3 | **Ampliar cobertura de `stat`** a más detectores de proporción (setup concentration, etc.) | cobertura inicial acotada a propósito (subconjunto de alto valor) | ⬜ sin verificar |
-| `OI-3.6` | S3 | **Smoke en prod del llenado de confianza** — verificar que el cron persiste `confidence/credible_interval/effect_size` no nulos para los 2 detectores cableados | requiere deploy + corrida del cron | ⬜ sin verificar |
-| `OI-4.1` | S4 | **`linkRule(commitment, template)`** + continuous-eval para compromisos con regla enforce | el cierre insight→protección es el foco de S5 | ⬜ sin verificar |
-| `OI-4.2` | S4 | **`suggestRulesFromInsights`** + CTA "Activar regla anti-X" en el insight | idem | ⬜ sin verificar |
+| `OI-3.6` | S3 | **Smoke en prod del llenado de confianza** — verificar que el cron persiste `confidence/credible_interval/effect_size` no nulos para los 2 detectores cableados | requiere deploy + corrida del cron | ✅ stale -- auditoria 2026-08-10: el smoke YA pasa en prod. `intraday-decay` (conf 0.938, CI [0.163, 0.616], effect -0.380) y `weekday-discipline` (conf 0.961, effect 0.489), `last_seen` hoy. Son exactamente los 2 detectores cableados que pedia. |
+| `OI-4.1` | S4 | **`linkRule(commitment, template)`** + continuous-eval para compromisos con regla enforce | el cierre insight→protección es el foco de S5 | ✅ stale -- auditoria 2026-08-10: `linkRule` construido en `rule-suggestion-service.ts:51` y usado por la UI; ya lo corregia `S1/DT-4`. |
+| `OI-4.2` | S4 | **`suggestRulesFromInsights`** + CTA "Activar regla anti-X" en el insight | idem | ✅ stale -- auditoria 2026-08-10: `suggestRulesFromInsights` implementado (`:75`), expuesto en `behavior.ts:167` y corriendo dentro del cron (`recompute-insights.ts:40`). |
 | `OI-4.3` | S4 | **Verificador `edge-decay`** (5º de FREEZE-D7) | necesita `SetupEdgeSnapshot` | ⬜ sin verificar |
 | `OI-4.4` | S4 | **Superficies ricas del loop** (HOY: compromisos del día/refuerzos; Reviews: bloque "¿Cumpliste?") | superficies = S12/S13; hoy vive en `/analytics` | ⬜ sin verificar |
-| `OI-4.5` | S4 | **Feed a `ImprovementScore`** desde `commitment.kept/broken` | el índice de mejora es S14 | ⬜ sin verificar |
-| `OI-4.6` | S4 | **Scheduling de crons en prod** (`evaluate-commitments`, `dispatch-events`) | ops (pg_cron → pg_net + cron_secret ya configurado) | ⬜ sin verificar |
-| `OI-4.7` | S4 | **Insights persistidos poblados en prod** | depende de programar `recompute-insights` (hoy invocable, no agendado) → sin él, `behavior.openInsights` está vacío en prod | ⬜ sin verificar |
+| `OI-4.5` | S4 | **Feed a `ImprovementScore`** desde `commitment.kept/broken` | el índice de mejora es S14 | ✅ stale -- auditoria 2026-08-10: `improvement-snapshot-service.ts:21` consume `commitmentKeptRate`. |
+| `OI-4.6` | S4 | **Scheduling de crons en prod** (`evaluate-commitments`, `dispatch-events`) | ops (pg_cron → pg_net + cron_secret ya configurado) | ✅ stale -- auditoria 2026-08-10: los 10 crons estan activos en prod, incluidos `v3-evaluate-commitments` y `v3-dispatch-events`. |
+| `OI-4.7` | S4 | **Insights persistidos poblados en prod** | depende de programar `recompute-insights` (hoy invocable, no agendado) → sin él, `behavior.openInsights` está vacío en prod | ✅ stale -- auditoria 2026-08-10: 14 insights en prod, 11 `active`, `last_seen` hoy. `behavior.openInsights` no esta vacio. |
 | `OI-4.8` | S4 | **Más specs insight→commitment** (revenge/oversizing/off-plan necesitan sus detectores) | hoy solo `intraday-decay` tiene detector + spec; los otros 3 verificadores existen, faltan sus detectores | ✅ resuelto — 2026-07-17 (PR #144). Verificado en código que era la deuda: `commitment-machine` tenía 4 specs y `verifiers.ts` los 4 verificadores, pero `insights-engine` **solo emitía `intraday-decay`** → `canCommit` solo era true para ese. Añadidos 3 detectores puros (`detectRevengeTrading`/`detectOversizing`/`detectOffPlan`) que emiten los ids exactos; como `toComputedInsight` mapea `id→type`, verificador+compromiso+regla (ya construidos) se encienden sin más cambios. Señal híbrida: gate rico tras-pérdida (revenge=Impulsivo/revengeFlag, oversizing=size>2×avg) + espejo del verifier para off-plan (tags). `stat` Bayesiano omitido a propósito (alarmas de frecuencia, no dos-muestras; R6). 13 tests (3/detector + round-trip que prueba `canCommit`+guard de cobertura de los 4 loops). Suite 1204/1204, tsc/eslint limpios. Desplegado (b6ec448), 0 errores runtime; **vivo pero dormido** hasta que un usuario tenga los patrones (datos de prod planos). Spec+plan en `docs/superpowers/`. |
 | `OI-5.1` | S5 | Reglas del loop visibles en `/reglas` (la UI lista `automations`; las del loop viven en `rules`) | S12 (cohesión de superficies) | ✅ resuelto — cutover G2 2026-07-13: `/reglas` lista `rules` (ejecutables con badge de origen "desde compromiso/insight"; descriptivas en Recordatorios) |
 | `OI-5.2` | S5 | `offPlanTrades` como regla "warn" (no prevenible pre-trade, pero avisable) | S8/incremental | ⬜ sin verificar |
 | `OI-5.3` | S5 | Plantillas extra (energía<3 → S8; no-aumentar-tamaño-tras-pérdida → captura) | S8+ | ⬜ sin verificar |
 | `OI-5.4` | S5 | Sugerencias/Activar-regla también en HOY + panel de insights nativo | S12/S13 | ⬜ sin verificar |
-| `OI-5.5` | S5 | `generateSuggestions` agendado (hoy on-demand vía tRPC; podría correr en el cron de insights) | ops/incremental | ⬜ sin verificar |
-| `OI-6.1` | S6 | **Auto-extracción LLM** de candidatos (resumen de thread + hechos/preferencias → `proposeMemories`) | **S7** (worker proactivo) | ⬜ sin verificar |
+| `OI-5.5` | S5 | `generateSuggestions` agendado (hoy on-demand vía tRPC; podría correr en el cron de insights) | ops/incremental | ✅ stale -- auditoria 2026-08-10: ya corre dentro del cron de insights (`recompute-insights.ts:40`), que es literalmente lo que la fila proponia. |
+| `OI-6.1` | S6 | **Auto-extracción LLM** de candidatos (resumen de thread + hechos/preferencias → `proposeMemories`) | **S7** (worker proactivo) | ✅ stale -- auditoria 2026-08-10: `summarizeThread` cableado en `coach.ts:84`; 27 filas en `coach_memory` con estados `candidate` Y `confirmed`. |
 | `OI-6.2` | S6 | Proactividad/intervención tiempo real + write-tools con permiso + check-in pre-sesión | **S7** | ⬜ sin verificar |
 | `OI-6.3` | S6 | Cifrado en reposo de memoria sensible + opt-out de envío (ADR-003 §3 avanzado) | follow-up privacidad | ⬜ sin verificar |
 | `OI-6.4` | S6 | Soporte determinista para confirmar memoria semántica (N episodios) — hoy confirma el usuario | S8+ (cuando haya señal) | ⬜ sin verificar |
-| `OI-6.5` | S6 | Editar contenido de memoria desde el panel (hoy: añadir/confirmar/borrar; editar vía API existe) | incremental UI | ⬜ sin verificar |
-| `OI-6.6` | S6 | Resumen automático del thread (`thread.summary`) | S7 (con la auto-extracción) | ⬜ sin verificar |
+| `OI-6.5` | S6 | Editar contenido de memoria desde el panel (hoy: añadir/confirmar/borrar; editar vía API existe) | incremental UI | 🔴 DEFECTO VIVO -- auditoria 2026-08-10. No es deuda pendiente: el panel dice "Tu decides: confirma, EDITA o borra" (`coach-memory-panel.tsx:36`) y se describe como "visible / editable / deletable" (`:3`), pero solo cablea `confirmMemory` y `deleteMemory` (`:25-26`). Cero referencias a `editMemory` en el componente, y la mutacion EXISTE en `coach.ts:39-41`. Es "el producto pide el gesto y no deja hacerlo" con el backend ya construido. |
+| `OI-6.6` | S6 | Resumen automático del thread (`thread.summary`) | S7 (con la auto-extracción) | ✅ stale -- auditoria 2026-08-10: 5 de 10 `coach_threads` tienen `summary` en prod. |
 | `OI-7.1` | S7 | **Write-tools del chat** (`propose_commitment`/`propose_rule`/`schedule_checkin`/`create_study_card`/`mark_review_ready`) en el agente con confirmación | follow-up coach | ⬜ sin verificar |
-| `OI-7.2` | S7 | **Auto-extracción LLM** de memoria candidata (S6 OI-6.1) — el worker/summarizer llama `proposeMemories` | con helper de completion one-shot | ⬜ sin verificar |
+| `OI-7.2` | S7 | **Auto-extracción LLM** de memoria candidata (S6 OI-6.1) — el worker/summarizer llama `proposeMemories` | con helper de completion one-shot | ✅ stale -- auditoria 2026-08-10: fila DUPLICADA de `OI-6.1`, cerrada por la misma prueba. |
 | `OI-7.3` | S7 | Aprender `expectedImpact` desde `Intervention.outcome` (EV10) | E14/§9 | ⬜ sin verificar |
 | `OI-7.4` | S7 | Intervención en `trade.create` (oversizing en la entrada) | incremental | ⬜ sin verificar |
 | `OI-7.5` | S7 | Refuerzos + intervenciones en el feed **HOY** | S13 | ⬜ sin verificar |
@@ -959,29 +959,106 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-10.2` | S10 | Decay/drift como **Insight persistido** + oferta de compromiso/regla ("revisar setup X", "no operar US30") | con recompute / behavior | ⬜ sin verificar |
 | `OI-10.3` | S10 | `SetupEdgeSnapshot` (E18) persistido vía job (hoy la curva se calcula al vuelo) | S14 / recompute | ⬜ sin verificar |
 | `OI-10.4` | S10 | Drift por **sesión/mercado** — requiere añadir "sesión esperada" a la definición de `Setup` | follow-up (ampliar schema) | ⬜ sin verificar |
-| `OI-10.5` | S10 | Sugerencia de **poda** de instrumento con edge negativo (#24) — vive en S11 (instrument) pero comparte el motor de significancia | S11 | ⬜ sin verificar |
+| `OI-10.5` | S10 | Sugerencia de **poda** de instrumento con edge negativo (#24) — vive en S11 (instrument) pero comparte el motor de significancia | S11 | ✅ stale -- auditoria 2026-08-10: `instrument-edge.ts:82` la calcula, `edges.ts` la expone y `/analytics:332` pinta el badge "Poda sugerida". |
 | `OI-10.6` | S10 | A/B completo (asignación + tagging por versión en el trade) | POST-7 | ⬜ sin verificar |
 | `OI-10.7` | S10 | Verificación live end-to-end por UI (cuando exista la superficie) | S12 | ⬜ sin verificar |
 | `OI-11.1` | S11 | Superficies UI: tabla de instrumento (CTA poda), tags-veneno/oro accionables, panel de transferencia/SRS, errores→tarjeta | S12 | ⬜ sin verificar |
-| `OI-11.2` | S11 | Cablear `computeNextReview` en la mutación de review/grade existente (hoy se entrega la señal de cadencia, no se reprograma) | S12 | ⬜ sin verificar |
+| `OI-11.2` | S11 | Cablear `computeNextReview` en la mutación de review/grade existente (hoy se entrega la señal de cadencia, no se reprograma) | S12 | ✅ stale -- auditoria 2026-08-10: cableado en `learning-resources.ts:234`; el propio `learning-insights-service.ts:6` lo documenta. |
 | `OI-11.3` | S11 | Edge instrumento/tag y errores como **Insight persistido** + oferta de compromiso/regla ("no operar US30", "evita FOMO") | con recompute / behavior | ⬜ sin verificar |
 | `OI-11.4` | S11 | `transferBaseline` (E4) persistido al vincular recurso (hoy se computa por fecha) | follow-up si una superficie lo exige | ⬜ sin verificar |
 | `OI-11.5` | S11 | Set de "tags de error" configurable / derivado del catálogo `Tag` (hoy constante por defecto) | follow-up | ⬜ sin verificar |
 | `OI-11.6` | S11 | Absorción/retiro de las pantallas Mercados y Etiquetas v2 tras paridad de valor | S12 (FREEZE: conservar hasta verificar) | ⬜ sin verificar |
 | `OI-11.7` | S11 | Verificación live end-to-end por UI (cuando exista la superficie) | S12 | ⬜ sin verificar |
-| `OI-13.1` | S13 | Telemetría de **ignorado por ítem** (clicks/descartes → `ignored`); hoy el decay usa la edad como proxy | follow-up (necesita persistir interacciones del feed) | ⬜ sin verificar |
+| `OI-13.1` | S13 | Telemetría de **ignorado por ítem** (clicks/descartes → `ignored`); hoy el decay usa la edad como proxy | follow-up (necesita persistir interacciones del feed) | ✅ stale -- auditoria 2026-08-10: `today-service.ts:140-143` pliega la telemetria por item; `feed_ignores` con 12 filas y `count` por `signal_key`. |
 | `OI-13.2` | S13 | Digest proactivo por email del feed HOY (#28) — el digest de aprendizaje ya existe, extenderlo | follow-up / cron | ⬜ sin verificar |
 | `OI-13.3` | S13 | Absorber la pantalla **Notificaciones** dentro del feed (hoy conviven) | S12c (migración real de rutas) / follow-up | ⬜ sin verificar |
 | `OI-13.4` | S13 | Señales tempranas en vivo (#44) vía outbox (rachas/drift en el momento) en lugar de poll | con realtime (POST-1) | ⬜ sin verificar |
-| `OI-13.5` | S13 | Refuerzos productor real a `today` (hoy se leen si existen; el productor de Reinforcement visible=today es del Behavior Engine) | con uso del loop | ⬜ sin verificar |
+| `OI-13.5` | S13 | Refuerzos productor real a `today` (hoy se leen si existen; el productor de Reinforcement visible=today es del Behavior Engine) | con uso del loop | ✅ stale -- auditoria 2026-08-10: `commitment-service.ts:203` escribe `channel:"today"` y `today-service.ts:54` lo lee; 4 filas en prod. |
 | `OI-13.6` | S13 | Verificación live end-to-end en prod (feed reaccionando a un trade nuevo) | siguiente sesión | ⬜ sin verificar |
-| `OI-14.1` | S14 | Persistir **`ImprovementScore` (E19, snapshot diario)** vía job → la curva temporal "vs hace 3 meses" (hoy es el valor actual, sin serie histórica) | follow-up (job + tabla; cron ya existe el patrón) | ⬜ sin verificar |
+| `OI-14.1` | S14 | Persistir **`ImprovementScore` (E19, snapshot diario)** vía job → la curva temporal "vs hace 3 meses" (hoy es el valor actual, sin serie histórica) | follow-up (job + tabla; cron ya existe el patrón) | ✅ stale -- auditoria 2026-08-10: 20 filas en `improvement_scores`, 20 dias distintos, del 22-jul al 10-ago. |
 | `OI-14.2` | S14 | Régimen **exógeno real (ATR / datos de mercado)** — hoy manual/proxy (experimental) | POST-4 (mini-ADR cuando el régimen manual demuestre valor) | ⬜ sin verificar |
 | `OI-14.3` | S14 | **Recalibrar los pesos** del índice con datos reales (hoy 0.3/0.3/0.25/0.15 por defecto) | follow-up | ⬜ sin verificar |
 | `OI-14.4` | S14 | `coste de indisciplina` **rolling temporal** (hoy es acumulado total) para la North Star longitudinal | con E19 snapshots | ⬜ sin verificar |
 | `OI-14.5` | S14 | Drivers del score como narración del coach mentor (AI_COACH §9) | con coach proactivo | ⬜ sin verificar |
 
 <!-- filas: 109 (69 OI-x.y sprints 3–14 + 40 S0/S1/S2) -->
+
+### Auditoría de las 68 filas `⬜` (2026-08-10) — la deuda declarada era en su mayoría fantasma
+
+Mismo método que la ronda de S0–S2 del 21-jul (que cerró 12 de 13 como stale): adjudicar **contra
+el código y contra la BD de prod**, no contra el documento. **56 de 68 filas adjudicadas.** El
+resultado repite el patrón: la tabla sobre-declaraba trabajo abierto por un factor grande.
+
+**15 filas eran STALE — están hechas y vivas en producción:**
+
+| Fila | Lo que afirmaba | La prueba de que era falso |
+|---|---|---|
+| `OI-3.6` | falta el smoke del llenado de confianza | `intraday-decay` (conf 0.938, CI [0.163, 0.616], effect −0.380) y `weekday-discipline` (conf 0.961, effect 0.489), `last_seen` **hoy**. Son exactamente "los 2 detectores cableados" que pedía |
+| `OI-4.1` | falta `linkRule` | `rule-suggestion-service.ts:51`; ya corregido en `S1/DT-4` |
+| `OI-4.2` | falta `suggestRulesFromInsights` + CTA | implementado (`:75`), expuesto en `behavior.ts:167` **y corre dentro del cron** (`recompute-insights.ts:40`) |
+| `OI-4.5` | falta feed a `ImprovementScore` desde compromisos | `improvement-snapshot-service.ts:21` consume `commitmentKeptRate` |
+| `OI-4.6` | faltan crons en prod | **los 10 crons activos**, incluidos `v3-evaluate-commitments` y `v3-dispatch-events` |
+| `OI-4.7` | insights sin poblar en prod | 14 insights, 11 `active`, `last_seen` hoy |
+| `OI-5.5` | `generateSuggestions` sin agendar | ya corre dentro del cron de insights — literalmente lo que la fila proponía |
+| `OI-6.1` | falta la auto-extracción LLM | `summarizeThread` cableado en `coach.ts:84`; **27 filas en `coach_memory`, con `candidate` Y `confirmed`** |
+| `OI-6.6` | falta el resumen de thread | **5 de 10 `coach_threads` con `summary`** |
+| `OI-7.2` | idem `OI-6.1` | fila **duplicada** de `OI-6.1` |
+| `OI-10.5` | falta la sugerencia de poda de instrumento | `instrument-edge.ts:82` la calcula, `edges.ts` la expone y `/analytics:332` **pinta el badge "Poda sugerida"** |
+| `OI-11.2` | falta cablear `computeNextReview` | `learning-resources.ts:234`; el propio código lo documenta |
+| `OI-13.1` | "el decay usa la edad como proxy" | `today-service.ts:140-143` pliega la telemetría por ítem; `feed_ignores` con 12 filas y `count` por `signal_key` |
+| `OI-13.5` | falta el productor real de refuerzos | `commitment-service.ts:203` escribe `channel:"today"`, `today-service.ts:54` lo lee; 4 filas en prod |
+| `OI-14.1` | falta persistir el snapshot diario | **20 filas, 20 días distintos, del 22-jul al 10-ago** |
+
+**1 fila NO era deuda pendiente sino un DEFECTO VIVO — `OI-6.5`.** El panel de memoria del coach
+le dice al trader *"Tú decides: confirma, **edita** o borra"* (`coach-memory-panel.tsx:36`) y su
+propia cabecera se describe como *"visible / editable / deletable"* (`:3`), pero **sólo cablea
+`confirmMemory` y `deleteMemory`** (`:25-26`). No hay ni una referencia a `editMemory` en el
+componente — y la mutación **existe** en el router (`coach.ts:39-41`). Es el defecto exacto que
+la captura de emoción vino a matar (*"el producto pide el gesto y no deja hacerlo"*), por la
+puerta de atrás y con el backend ya construido. Arreglarlo es cablear lo que ya está.
+
+**Dos familias colapsan en una decisión cada una — no son 16 pendientes, son 2:**
+
+- **Superficies A3 (12 filas):** `OI-3.1, 4.4, 5.4, 7.5, 9.1, 9.7, 10.1, 10.7, 11.1, 11.6, 11.7,
+  13.3`. Verificado que **ninguna de las 5 rutas existe** (`/hoy`, `/operar`, `/analizar`,
+  `/proteger`, `/mejorar`) y que `/notificaciones`, `/mercados` y `/etiquetas` siguen sueltas.
+  Todas dependen del refactor que §5 tiene **reservado a propósito**. Una decisión, no doce.
+- **"X como Insight persistido" (4 filas):** `OI-8.4, 9.5, 10.2, 11.3`. Raíz única:
+  `recomputeInsightsForUser` sólo alimenta de `generateInsights` + `generatePsychologyInsights`,
+  y su cabecera declara que *"new detectors (rolling, Bayesian edge decay, drift…) are later
+  sprints"* (`recompute-insights.ts:9-12`). Un trabajo, no cuatro.
+
+**13 filas están genuinamente abiertas y bien enunciadas:**
+
+`OI-3.2` (`analytics-bundle` no selecciona `maeR/mfeR/regime` — **mismo patrón que el defecto de
+#176**) · `OI-3.3` (`emotion-performance` sigue con `confidence` NULL) · `OI-3.4`
+(`empiricalBetaPrior`/`empiricalNormalPrior` existen y están testeados pero **ningún consumidor de
+producción los importa**; verificado por los imports del módulo, no por grep del nombre) ·
+`OI-3.5` (`setup-concentration`, la que la fila nombra, sigue sin `stat`: 2 de 8 detectores) ·
+`OI-7.1` (**2 de 5** write-tools: `propose_commitment` y `propose_rule` sí, con confirmación;
+faltan `schedule_checkin`, `create_study_card`, `mark_review_ready`) · `OI-7.3` (el `outcome` se
+guarda "for learning" pero `detectInterventions` se llama sin `expectedImpact`) · `OI-7.4` ·
+`OI-7.7` (el trigger `cascade` existe; lo pendiente es afinarlo) · `OI-8.2` (un `no_go` graba un
+episodio de memoria, no una regla) · `OI-9.3` (`aggregateCapAmount` es parámetro del router, tal
+cual lo describe) · `OI-10.3` (**no existe tabla de `SetupEdgeSnapshot`** en prod) · `OI-11.4`
+(`transferBaseline` no existe en el repo) · `OI-11.5` (`DEFAULT_ERROR_TAGS` es constante) ·
+`OI-14.3` / `OI-14.5`.
+
+**2 diferidas con la razón verificada en el código:** `OI-4.3` (el verificador `edge-decay` espera
+`SetupEdgeSnapshot`, que `OI-10.3` confirma inexistente — `verifiers.ts:10-13`) y `OI-5.2`
+(`rule-linking.ts:66` **declina explícitamente**: off-plan es un tag post-hoc, no conocible
+pre-trade → ninguna regla. Es una decisión tomada, no un pendiente).
+
+**3 con disparador no activado por diseño:** `OI-10.6` (POST-7), `OI-13.4` (POST-1), `OI-14.2`
+(POST-4).
+
+**12 filas NO se auditaron en esta ronda** y siguen `⬜` sin más: `OI-5.3, 6.2, 6.3, 6.4, 8.1,
+8.3, 9.2, 9.4, 9.6, 10.4, 13.2, 14.4`. Son seguimientos incrementales; que no se miraran no dice
+nada sobre su estado.
+
+> **Y un dato que no buscaba la auditoría:** los crons llevan **13 días corriendo solos** desde el
+> último commit (28-jul). `improvement_scores` tiene un snapshot por día hasta hoy y los insights
+> activos tienen `last_seen` de hoy. Prod está vivo sin nadie mirando.
 
 ### Acción pendiente de la auditoría del 2026-07-21: `S0/R-3` (outbox drenada sin consumidores)
 
