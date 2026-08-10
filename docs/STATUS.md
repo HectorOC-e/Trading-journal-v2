@@ -1028,6 +1028,21 @@ construido, así que arreglarlo fue cablear lo que ya estaba.
 > sanos. Ese quinto fue el único que pasó en el rojo inicial, lo que probó que el fallo de los
 > otros cuatro era el defecto y no un mock mal puesto.
 
+**Verificado en PROD, no supuesto (2026-08-10).** Con Playwright sobre `www.tjournalx.com`: el
+panel carga **26 filas con 26 botones "Editar"** —el gesto que no existía—, pulsar uno precarga el
+valor actual, y al guardar el texto nuevo sustituye al viejo y el input se cierra. Adjudicado
+contra la BD: la misma fila `43a01142…` pasó a `contenido EDITADO` con `source = user` y
+`updated_at > created_at`. El dato sintético (`sim:2026-08-10-verify-edit`) se **borró** después y
+`coach_memory` volvió a sus 27 filas de partida.
+
+> **Dos trampas de instrumentación, ninguna del producto.** (1) `CoachIdentityEditor` tiene su
+> propio botón *"Guardar"* en el MISMO drawer, así que `get_by_role("button", name="Guardar")`
+> rompe por strict mode — hay que acotar por `title`. (2) Contar filas justo tras abrir el panel
+> da **1** (la del editor de identidad) porque la query de memoria aún no resolvió: esperar al
+> input de "Añadir" **NO basta**, hay que esperar a las filas. Costó dos pasadas aceptar que el
+> fallo era del arnés y no del arreglo — el recordatorio de siempre: reintenta y mira el DOM real
+> antes de diagnosticar.
+
 **Dos familias colapsan en una decisión cada una — no son 16 pendientes, son 2:**
 
 - **Superficies A3 (12 filas):** `OI-3.1, 4.4, 5.4, 7.5, 9.1, 9.7, 10.1, 10.7, 11.1, 11.6, 11.7,
@@ -1568,7 +1583,11 @@ UN trabajo). El resto tiene disparador propio no activado, por diseño.
  · **El panel de memoria del coach ya deja editar (PR #178, 2026-08-10).** Salió de esa
    auditoría como **defecto vivo, no como deuda**: prometía *"confirma, edita o borra"* y sólo
    cableaba dos de los tres, con `editMemory` existiendo en el router desde S6. Cableado, con 5
-   tests que afirman sobre el GESTO.
+   tests que afirman sobre el GESTO, y **verificado en prod con Playwright + adjudicación en BD**
+   (26 botones "Editar"; la fila editada quedó con `source = user` y `updated_at > created_at`).
+   ⚠️ Si vuelves a instrumentar ese drawer: `CoachIdentityEditor` tiene SU propio "Guardar"
+   (acota por `title`), y la lista de memoria tarda en resolver — esperar al input de "Añadir"
+   NO prueba que las filas estén.
 
 ═══ NO RE-DESCUBRAS ESTO (no son olvidos) ═══
  · TD-037: diferido a conciencia.
