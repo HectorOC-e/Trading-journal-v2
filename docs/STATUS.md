@@ -1,7 +1,8 @@
 # Status — Trading Journal v3.2
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-08-10 (§6, el prompt de retoma; el resto es del 2026-07-28).
+> Última actualización: 2026-08-10 — auditoría de las 68 filas pendientes (§1), `OI-6.5`
+> arreglado (PR #178) y prompt de retoma reescrito (§6). El resto es del 2026-07-28.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
 
 ## Captura de emoción: IMPLEMENTADA y verificada en prod (2026-07-28, PRs #175 + #176)
@@ -1490,7 +1491,7 @@ y el 10-ago). Si no está, dilo en vez de improvisar.
 de BD.
 
 ✅ **NO hay trabajo suelto. main está limpio** (verificado el 2026-08-10): `main == origin/main`
-en `b2215c8`, árbol limpio, CERO ramas aparte de main, CERO PRs abiertos. Arrancas desde main.
+en `29492d9`, árbol limpio, CERO ramas aparte de main, CERO PRs abiertos. Arrancas desde main.
 
 Lee primero, en este orden:
   1) docs/STATUS.md        — las secciones de cabecera con fecha 2026-07-28 PREVALECEN sobre
@@ -1504,13 +1505,19 @@ La última pieza (captura de emoción) se cerró y se verificó en prod. **Ning�
 designa la siguiente.** No te auto-asignes una: preséntale al usuario los candidatos reales y
 que elija. Los que hay hoy, con su estado honesto:
 
- A) **Verificación live de lo ya construido.** `OI-8.5` (check-in/calibración de punta a
-    punta) y `OI-13.6` (el feed HOY reaccionando a un trade nuevo) son las DOS únicas filas de
-    §1 marcadas literalmente "siguiente sesión". Playwright contra prod + adjudicación por
-    Supabase. Verifica en vez de construir.
- B) **Auditoría de las 69 filas `OI-x.y` sin verificar.** Barrerlas contra el código real
-    (graphify + BD) para separar lo stale de lo abierto. Precedente: el 21-jul se hizo con
-    S0–S2 y **12 de 13 resultaron stale**. Es probable que la mayoría también lo sea.
+ A) **Verificación live de lo ya construido.** `OI-8.5` (check-in/calibración) y `OI-13.6` (el
+    feed reaccionando a un trade nuevo). ⚠️ **NO es verificación pura: le falta INSUMO y hay
+    que fabricarlo en aria.** Adjudicado contra la BD el 10-ago: `confidence_rating` está a
+    **0 en los 69 trades**, así que la calibración está muda por falta de datos y un panel
+    vacío **NO probaría un defecto**; y hay **0 trades en 7 días** (el último es del 28-jul),
+    así que "el feed reacciona a un trade nuevo" exige crear uno. La mitad buena: el camino de
+    escritura del check-in ya está PROBADO — 1 fila en prod del 22-jul
+    (`mood 4 / energy 2 / sleep 3 → score 3.0 → caution`), recalculada contra la función pura
+    y coincide. Y **el feed se renderiza en `/dashboard:136`, no en una ruta propia.**
+ B) **Las 12 filas `OI` que la auditoría del 10-ago NO miró** (`OI-5.3, 6.2, 6.3, 6.4, 8.1,
+    8.3, 9.2, 9.4, 9.6, 10.4, 13.2, 14.4`). Mismo método: contra el código y contra la BD. La
+    ronda anterior salió 15 stale contra 13 abiertas, así que esperar fantasmas es razonable,
+    pero **NO extrapoles ese resultado a estas doce** — nadie las ha mirado.
  C) **Calidad de redacción del Coach (palanca B), INTACTA y aparcada** por decisión del
     usuario (etapa de pruebas, sin modelos de pago). La auditoría del 27-jul acotó la
     decisión: la selección de herramientas YA NO es el cuello de botella, así que si el Coach
@@ -1518,8 +1525,10 @@ que elija. Los que hay hoy, con su estado honesto:
     busques trabajo en la mecánica de IA: está agotada, y con evidencia, no por cansancio.
     Reabrirlo implica gasto o un cambio de la decisión de etapa del usuario.
 
-Las 69 filas `OI` restantes NO son una cola de trabajo: casi todas tienen disparador propio no
-activado, por diseño. Lo mismo el roadmap reservado de §5.
+**Las 52 filas `OI` que siguen `⬜` NO son una cola de trabajo.** Tras la auditoría del 10-ago
+(§1) lo accionable de verdad son **13 filas abiertas + 2 decisiones colapsadas**: las superficies
+A3 (12 filas que son UNA decisión, reservada en §5) y "X como Insight persistido" (4 filas que son
+UN trabajo). El resto tiene disparador propio no activado, por diseño.
 
 ═══ QUÉ SE CERRÓ Y NO DEBES REHACER ═══
 
@@ -1551,6 +1560,15 @@ activado, por diseño. Lo mismo el roadmap reservado de §5.
    El enunciado que motivó la pieza ("52 históricos con CERO emoción" como prueba de conducta)
    era **FALSO** y la BD lo desmintió: fue una carga masiva (47 en una sola hora el 06-11, con
    0 notas / 0 confianza / 0 calidad A LA VEZ, `import_ticket` NULL). **No vuelvas a citarlo.**
+ · **AUDITORÍA DE LAS 68 FILAS `⬜` (2026-08-10).** 56 adjudicadas contra código y BD. **15 eran
+   stale** (los 10 crons activos, 14 insights vistos hoy, el smoke de confianza que ya pasaba,
+   27 filas de `coach_memory` que prueban la auto-extracción LLM, 20 snapshots diarios…), 13
+   están genuinamente abiertas, 16 colapsan en DOS decisiones, y 12 no se miraron y se dicen por
+   nombre. El detalle con su prueba está en §1 — **no la repitas, continúala.**
+ · **El panel de memoria del coach ya deja editar (PR #178, 2026-08-10).** Salió de esa
+   auditoría como **defecto vivo, no como deuda**: prometía *"confirma, edita o borra"* y sólo
+   cableaba dos de los tres, con `editMemory` existiendo en el router desde S6. Cableado, con 5
+   tests que afirman sobre el GESTO.
 
 ═══ NO RE-DESCUBRAS ESTO (no son olvidos) ═══
  · TD-037: diferido a conciencia.
@@ -1622,6 +1640,15 @@ activado, por diseño. Lo mismo el roadmap reservado de §5.
  · **Verificar de verdad destapa lo que leer el código no.** De #175 salieron TRES defectos que
    el plan declaraba resueltos, y ninguno se veía leyendo. Ir a la BD y a la UI real no es
    ceremonia: es donde aparece la mitad que no funciona.
+ · **Cuando la UI PROMETE un gesto, aférralo sobre el GESTO, nunca sobre el texto** (#178). El
+   panel de memoria decía *"Tú decides: confirma, edita o borra"* y no cableaba editar. Un test
+   de esa frase habría pasado **en verde sobre el panel roto**, porque la frase estaba ahí: lo
+   que faltaba era el botón. Afirma que existe el control, que llama a la mutación con el valor
+   nuevo, y que cancelar no escribe. Corolario para auditar: **grepea la UI por las mutaciones
+   que el backend expone y NO tienen llamante** — ahí viven las promesas incumplidas.
+ · **Deja un test de CONTROL que debe pasar en el rojo.** En #178, 4 de 5 fallaron por "no existe
+   el botón Editar" y el 5º (confirmar/borrar siguen sanos) pasó. Ese quinto es lo que prueba que
+   el rojo de los otros era el defecto y no un mock mal puesto.
 
 ═══ REGLAS DE TRABAJO (estables) ═══
  · Una rama por pieza DESDE MAIN (hoy no hay ninguna en curso); PR + CI verde + MERGEA TÚ
@@ -1638,7 +1665,7 @@ activado, por diseño. Lo mismo el roadmap reservado de §5.
  · Migraciones DUALES (SQL + prisma) con `npx prisma generate`; RLS per-usuario en tablas
    nuevas. EXCEPCIÓN: columnas `vector` (pgvector) van SÓLO en SQL, NO en schema.prisma.
    Índices vectoriales: HNSW, no ivfflat.
- · Corre la suite vitest COMPLETA antes de cada push (tras #177: **1452**). No un subconjunto.
+ · Corre la suite vitest COMPLETA antes de cada push (tras #178: **1457**). No un subconjunto.
  · Re-verifica vs CÓDIGO antes de construir. El doc miente más seguido que el código.
  · Tras cada pieza, resume en 3 ejes: backend / observable-en-UI / razón de ser.
 
