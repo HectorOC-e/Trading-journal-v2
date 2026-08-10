@@ -1,5 +1,60 @@
 # Status — Trading Journal v3.2
 
+## Reset del banco de simulación de aria (2026-08-10)
+
+Los 69 trades de `ariaoc89` se sustituyeron por **55 construidos a propósito**, porque los
+anteriores no permitían probar nada: `confidence_rating` estaba a **0 en los 69** (calibración
+muda) y el último trade era del 28-jul (feed sin material fresco). Todos marcados
+`sim:2026-08-10-reset`.
+
+> **Respaldo antes de borrar, fuera del repo:**
+> `../aria-trades-backup-2026-08-10.sql` (69 `INSERT` con los ids originales) y
+> `../aria-trade-dependents-backup-2026-08-10.json` (22 `trade_events` + 16 checklists).
+> No llevan los vectores: se regeneran con "Indexar ahora".
+
+### El landmine que casi rompe CI, y cómo se evitó
+
+**Borrar los trades baja el saldo disponible de las cuentas**, porque
+`availableBalance = initialBalance + P&L − retiros` (`withdrawals.ts:49`). El E2E autenticado
+retira **$500 de "FTMO Funded"**, cuya disponibilidad venía **entera del P&L de sus trades**
+(`0 + 7.680 − 6.000 = 1.680`). Sin ellos habría quedado en **−6.000** y ese test empezaría a
+fallar. El generador por tanto **reproduce el P&L neto de cada cuenta al céntimo** — verificado
+después: FTMO Funded sigue en `1.680`. La memoria decía "no tocar usuario/cuentas/setups"; hay
+que añadir **los trades**, porque el saldo depende de ellos.
+
+### Qué se construyó, y por qué así
+
+| Invariante | Por qué |
+|---|---|
+| P&L neto por cuenta **idéntico** | mantiene verde el E2E de retiros |
+| 38 trades con confianza (14 altos / 12 bajos) | `calibration.ts` exige ≥10, y ≥5 por grupo, o el veredicto es `insufficient` |
+| Grupo alto gana **35.7%** vs media **55.3%** | fuerza un veredicto NO trivial (`overconfident`) en vez de un "calibrado" vacío |
+| 8 cerrados **sin emoción** dentro de 7 días | la captura de emoción necesita algo que ofrecer *dentro de la ventana del servidor* |
+| 17 trades en los últimos 10 días | el feed necesita material fresco |
+| Magnitudes derivadas del objetivo por cuenta | el primer intento cuadró el P&L volcando el ajuste en un trade y salieron **outliers de −6.056** entre operaciones de 400; se reparte proporcional, con tope, y una aserción `< 2000` lo impide |
+
+El generador **se exige los invariantes con `assert` antes de emitir SQL**: si el P&L no cuadra o
+aparece un outlier, no produce nada. Fue lo que cazó las dos versiones malas.
+
+### Verificado contra la BD y contra prod
+
+- **10 insights activos** tras disparar `recompute-insights` (HTTP 200, `created:4 touched:6
+  resolved:4 failures:0`). Entre ellos **`overconfidence-bias` con `confidence 0.918` y
+  `effect −0.344`** — el detector que el patrón buscaba encender.
+- **`revenge-trading` dispara por primera vez.** No contradice la nota de que es "estructural":
+  las tres capas de protección impiden esa conducta **por UI**, y estas filas entraron por SQL.
+  El banco ahora puede ejercitar el detector; el producto sigue impidiendo el patrón.
+- **Calibración viva en `/psicologia`**: veredicto **"Sobreconfiado"** — *"Cuando dices estar muy
+  seguro (4–5) ganas 38% — por debajo de tu media (55%)"*. El 38% es la posterior bayesiana, no
+  el 35.7% crudo. **Es la mitad de `OI-8.5` que antes no se podía verificar.**
+- **55/55 notas indexadas** tras "Indexar ahora" en `/perfil`.
+
+> **Lo que el reset se llevó por delante, dicho a las claras:** `trade_events` pasó de 22 a **0**
+> y `trade_checklist_results` de 16 a **0** (CASCADE). El corpus semántico de eventos queda
+> vacío hasta que se generen eventos nuevos. Estaba previsto y respaldado, pero es una pérdida
+> real, no un detalle.
+
+
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
 > Última actualización: 2026-08-10 — auditoría de las 68 filas pendientes (§1), `OI-6.5`
 > arreglado (PR #178) y prompt de retoma reescrito (§6). El resto es del 2026-07-28.
@@ -1520,15 +1575,14 @@ La última pieza (captura de emoción) se cerró y se verificó en prod. **Ning�
 designa la siguiente.** No te auto-asignes una: preséntale al usuario los candidatos reales y
 que elija. Los que hay hoy, con su estado honesto:
 
- A) **Verificación live de lo ya construido.** `OI-8.5` (check-in/calibración) y `OI-13.6` (el
-    feed reaccionando a un trade nuevo). ⚠️ **NO es verificación pura: le falta INSUMO y hay
-    que fabricarlo en aria.** Adjudicado contra la BD el 10-ago: `confidence_rating` está a
-    **0 en los 69 trades**, así que la calibración está muda por falta de datos y un panel
-    vacío **NO probaría un defecto**; y hay **0 trades en 7 días** (el último es del 28-jul),
-    así que "el feed reacciona a un trade nuevo" exige crear uno. La mitad buena: el camino de
-    escritura del check-in ya está PROBADO — 1 fila en prod del 22-jul
-    (`mood 4 / energy 2 / sleep 3 → score 3.0 → caution`), recalculada contra la función pura
-    y coincide. Y **el feed se renderiza en `/dashboard:136`, no en una ruta propia.**
+ A) **Verificación live de lo ya construido.** ✅ **El insumo YA está**: el banco de aria se
+    reseteó el 10-ago (ver la sección de cabecera) y con él **la calibración quedó verificada
+    en prod** — `/psicologia` emite "Sobreconfiado", que era la mitad muda de `OI-8.5`. Lo que
+    queda de A es **el check-in por UI de punta a punta** (su camino de escritura ya estaba
+    probado: 1 fila del 22-jul recalculada contra la función pura, coincide) y **`OI-13.6`**,
+    el feed reaccionando a un trade nuevo — hay 17 trades de los últimos 10 días, así que sólo
+    falta observar la reacción. ⚠️ **El feed se renderiza en `/dashboard:136`, no en una ruta
+    propia.**
  B) **Las 12 filas `OI` que la auditoría del 10-ago NO miró** (`OI-5.3, 6.2, 6.3, 6.4, 8.1,
     8.3, 9.2, 9.4, 9.6, 10.4, 13.2, 14.4`). Mismo método: contra el código y contra la BD. La
     ronda anterior salió 15 stale contra 13 abiertas, así que esperar fantasmas es razonable,
