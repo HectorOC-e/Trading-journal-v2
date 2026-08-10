@@ -934,7 +934,7 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-6.2` | S6 | Proactividad/intervención tiempo real + write-tools con permiso + check-in pre-sesión | **S7** | ⬜ sin verificar |
 | `OI-6.3` | S6 | Cifrado en reposo de memoria sensible + opt-out de envío (ADR-003 §3 avanzado) | follow-up privacidad | ⬜ sin verificar |
 | `OI-6.4` | S6 | Soporte determinista para confirmar memoria semántica (N episodios) — hoy confirma el usuario | S8+ (cuando haya señal) | ⬜ sin verificar |
-| `OI-6.5` | S6 | Editar contenido de memoria desde el panel (hoy: añadir/confirmar/borrar; editar vía API existe) | incremental UI | 🔴 DEFECTO VIVO -- auditoria 2026-08-10. No es deuda pendiente: el panel dice "Tu decides: confirma, EDITA o borra" (`coach-memory-panel.tsx:36`) y se describe como "visible / editable / deletable" (`:3`), pero solo cablea `confirmMemory` y `deleteMemory` (`:25-26`). Cero referencias a `editMemory` en el componente, y la mutacion EXISTE en `coach.ts:39-41`. Es "el producto pide el gesto y no deja hacerlo" con el backend ya construido. |
+| `OI-6.5` | S6 | Editar contenido de memoria desde el panel (hoy: añadir/confirmar/borrar; editar vía API existe) | incremental UI | ✅ resuelto — 2026-08-10 (PR #178). **La auditoría lo encontró como DEFECTO VIVO, no como deuda:** el panel decía *"Tú decides: confirma, EDITA o borra"* (`coach-memory-panel.tsx:36`) y se describía como *"visible / editable / deletable"* (`:3`), pero sólo cableaba `confirmMemory` y `deleteMemory` — cero referencias a `editMemory`, cuya mutación existía en `coach.ts:39-41` desde S6. Era *"el producto pide el gesto y no deja hacerlo"*, el mismo defecto que la captura de emoción, con el backend ya construido. Ahora la fila alterna a edición inline (lápiz → input con Guardar/Cancelar, Enter guarda, Escape cancela), y se guarda contra el vacío porque el servidor exige `min(1)` y habría devuelto un 400 mudo. 5 tests que afirman sobre el GESTO, no sobre el texto de la cabecera; el rojo previo era "no existe el botón Editar" en 4 de 5, con el 5º pasando como control de que confirmar/borrar seguían sanos. |
 | `OI-6.6` | S6 | Resumen automático del thread (`thread.summary`) | S7 (con la auto-extracción) | ✅ stale -- auditoria 2026-08-10: 5 de 10 `coach_threads` tienen `summary` en prod. |
 | `OI-7.1` | S7 | **Write-tools del chat** (`propose_commitment`/`propose_rule`/`schedule_checkin`/`create_study_card`/`mark_review_ready`) en el agente con confirmación | follow-up coach | ⬜ sin verificar |
 | `OI-7.2` | S7 | **Auto-extracción LLM** de memoria candidata (S6 OI-6.1) — el worker/summarizer llama `proposeMemories` | con helper de completion one-shot | ✅ stale -- auditoria 2026-08-10: fila DUPLICADA de `OI-6.1`, cerrada por la misma prueba. |
@@ -1009,13 +1009,23 @@ resultado repite el patrón: la tabla sobre-declaraba trabajo abierto por un fac
 | `OI-13.5` | falta el productor real de refuerzos | `commitment-service.ts:203` escribe `channel:"today"`, `today-service.ts:54` lo lee; 4 filas en prod |
 | `OI-14.1` | falta persistir el snapshot diario | **20 filas, 20 días distintos, del 22-jul al 10-ago** |
 
-**1 fila NO era deuda pendiente sino un DEFECTO VIVO — `OI-6.5`.** El panel de memoria del coach
-le dice al trader *"Tú decides: confirma, **edita** o borra"* (`coach-memory-panel.tsx:36`) y su
-propia cabecera se describe como *"visible / editable / deletable"* (`:3`), pero **sólo cablea
-`confirmMemory` y `deleteMemory`** (`:25-26`). No hay ni una referencia a `editMemory` en el
-componente — y la mutación **existe** en el router (`coach.ts:39-41`). Es el defecto exacto que
-la captura de emoción vino a matar (*"el producto pide el gesto y no deja hacerlo"*), por la
-puerta de atrás y con el backend ya construido. Arreglarlo es cablear lo que ya está.
+**1 fila NO era deuda pendiente sino un DEFECTO VIVO — `OI-6.5`, y se arregló el mismo día
+(PR #178).** El panel de memoria del coach le decía al trader *"Tú decides: confirma, **edita** o
+borra"* (`coach-memory-panel.tsx:36`) y su propia cabecera se describía como *"visible / editable
+/ deletable"* (`:3`), pero **sólo cableaba `confirmMemory` y `deleteMemory`** (`:25-26`). No había
+ni una referencia a `editMemory` en el componente — y la mutación **existía** en el router
+(`coach.ts:39-41`) desde S6. Era el defecto exacto que la captura de emoción vino a matar (*"el
+producto pide el gesto y no deja hacerlo"*), por la puerta de atrás y con el backend ya
+construido, así que arreglarlo fue cablear lo que ya estaba.
+
+> **Por qué la suite no lo cazaba, y qué se hizo al respecto.** `coach-memory-panel` no tenía
+> **ningún** test — el mismo patrón que dejó pasar los bugs de `createTrade`, `buildContext` y
+> `streamCoachAgent`. Y un test del TEXTO de la cabecera habría pasado en verde sobre el panel
+> roto, porque la frase estaba ahí; lo que faltaba era el gesto. Los 5 tests nuevos afirman sobre
+> el GESTO: que el botón existe por fila, que guardar llama a la mutación con el contenido nuevo,
+> que cancelar no escribe, que no se envía vacío, y —de control— que confirmar y borrar siguen
+> sanos. Ese quinto fue el único que pasó en el rojo inicial, lo que probó que el fallo de los
+> otros cuatro era el defecto y no un mock mal puesto.
 
 **Dos familias colapsan en una decisión cada una — no son 16 pendientes, son 2:**
 
