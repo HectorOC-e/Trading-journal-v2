@@ -515,8 +515,8 @@
     "semantic_hash": ""
   },
   "src/components/ai-coach/coach-memory-panel.tsx": {
-    "mtime": 1782772988.574852,
-    "ast_hash": "c64cb3f4d973672e402881fb8f09ba57",
+    "mtime": 1786379856.6193242,
+    "ast_hash": "9e32815e6d39ac0dac5629a58eac15c1",
     "semantic_hash": ""
   },
   "src/components/analytics/equity-drawdown-chart.tsx": {
@@ -2635,8 +2635,8 @@
     "semantic_hash": ""
   },
   "docs/STATUS.md": {
-    "mtime": 1785258897.566682,
-    "ast_hash": "77daa980891a123fcab8edc21d10e870",
+    "mtime": 1786379998.97104,
+    "ast_hash": "f4c2613be5d2524902e63f4d14e5510d",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/prop-firm-preset-picker.tsx": {
