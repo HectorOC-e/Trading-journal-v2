@@ -56,9 +56,55 @@ aparece un outlier, no produce nada. Fue lo que cazó las dos versiones malas.
 
 
 > Estado vivo del proyecto. Qué funciona, qué falta verificar, qué falta construir.
-> Última actualización: 2026-08-10 — auditoría de las 68 filas pendientes (§1), `OI-6.5`
-> arreglado (PR #178) y prompt de retoma reescrito (§6). El resto es del 2026-07-28.
+> Última actualización: 2026-08-13 — jugada A (verificación live) y arranque de B (auditoría de
+> las 12 `OI` restantes) de la sesión anterior, ambas cerradas. El resto es del 2026-08-10.
 > Arquitectura canónica: `ARCHITECTURE.md` · Qué es el producto: `PROJECT_GUIDE.md`
+
+## Jugada A cerrada + las 12 `OI` restantes auditadas (2026-08-13)
+
+Sin código nuevo: sesión de verificación pura contra prod, sobre `ariaoc89`. Las dos piezas que
+`OI-8.5`/`OI-13.6` dejaban pendientes, y las 12 filas que la auditoría del 10-ago no había mirado.
+
+### `OI-8.5` — check-in pre-sesión, punta a punta, DOS de dos mitades verificadas
+
+La calibración ya estaba verificada (cabecera del 10-ago). Faltaba el check-in. Vía Playwright
+contra prod: mood=energía=descanso=2/5 en `/psicologia` → **"Mejor no operes hoy"** con los tres
+motivos listados — coincide al dígito con `checkinVerdict()` (`score<=2` → `no_go`). Adjudicado
+contra BD: fila en `pre_session_checkins` (`2026-08-13`, `verdict:no_go`) **y** episodio
+`checkin_red` en `memory_episodes` con `sourceId` apuntando a esa fila. `OI-8.5` queda cerrada.
+
+### `OI-13.6` — el feed reacciona a un trade nuevo, con antes/después real
+
+En vez de asumir que los 17 trades recientes bastaban, se generó una reacción observable: trade
+TSLA en `Cuenta Sana` (la cuenta `primaryAccountId` real, confirmada interceptando la respuesta
+tRPC de `today.feed`, no supuesta por orden de array) abierto con riesgo planeado mínimo (para no
+chocar con `BUDGET_EXCEEDED`, la protección de presupuesto diario funcionando como debía) y
+cerrado con pérdida de **-$1,000**. El feed de `/dashboard` pasó, en la misma sesión, de sin señal
+de anomalía a mostrar **"La pérdida de hoy supera tu peor 10% de días. Considera parar."** con CTA
+a `/psicologia` — el mensaje exacto de `detectDailyAnomaly` (rama `outsizedLoss`). De paso,
+NET P&L, racha de días limpios, adherencia al plan y distribución de R se recalcularon en vivo,
+coherentes con el trade nuevo. Trade marcado `sim:2026-08-13-verify-feed` en `planNotes` para
+trazabilidad. `OI-13.6` queda cerrada.
+
+### Las 12 `OI` sin mirar: 1 stale, 2 parciales, 9 genuinamente abiertas
+
+A diferencia de la ronda del 10-ago (15 stale / 13 abiertas), **esta vez la mayoría seguía
+abierta de verdad** — el aviso de §6 de no extrapolar el resultado anterior se cumplió.
+
+| ID | Veredicto | Nota |
+|---|---|---|
+| `OI-5.3` | abierta, con matiz | Las 2 plantillas gated (`available:false`) siguen sin activar, pero la razón declarada de `no-trade-low-energy` ("falta el campo de energía del check-in") **ya no es cierta** — el campo existe y está verificado (`OI-8.5`). Queda lista para activar. |
+| `OI-6.2` | ✅ sustancialmente resuelta | Check-in ✅, write-tools con permiso ✅ (`propose_commitment`/`propose_rule`, gate de confirmación real), intervención en tiempo real ✅ (fast-path de `trades.close`, overlay). Residual: sólo 2/5 write-tools previstos. |
+| `OI-6.3` | abierta | Cero cifrado en reposo ni opt-out en el dominio de memoria. |
+| `OI-6.4` | ✅ stale | `detectPatterns` confirma `MemoryPattern` determinísticamente desde ≥3 episodios (P6/D9), corriendo en el cron diario. Verificado en BD: `commitment_broken` de `ariaoc89` está `confirmed` con 4 episodios. |
+| `OI-8.1` | abierta | Cero rastro de disposition effect o anclaje en todo `src/`. |
+| `OI-8.3` | abierta | Sólo existe el detector grueso `intraday-decay`; no hay correlación check-in→resultado del día. |
+| `OI-9.2` | ⚠️ parcialmente stale | El bloqueo duro **por cuenta** (`daily-loss-stop`/`weekly-loss-limit`, `enforce`+`BLOCK`) ya está activo en prod. El freeze **agregado** cross-cuenta sigue siendo sólo señal, inerte sin `aggregateCapAmount` (mismo hueco que `OI-9.3`). |
+| `OI-9.4` | abierta | `MAX_SESSIONS = 60` sigue hardcodeado. |
+| `OI-9.6` | abierta | Confirmado LITERALMENTE por el comentario del propio código: reporta distancia al floor inicial, no al pico, para TRAILING. |
+| `OI-10.4` | abierta | `Setup` no tiene campo de sesión esperada. |
+| `OI-13.2` | abierta, con pariente cercano | No hay digest por EMAIL del feed HOY. Pero `v3-cognitive-digest` (activo, semanal) sí manda un resumen cognitivo — como notificación in-app, no email, y no del feed HOY sino de `ImprovementScore`. No confundir los dos. |
+| `OI-14.4` | abierta | `getImprovement` sigue sin filtro de fecha: acumulado total, no rolling. |
 
 ## Captura de emoción: IMPLEMENTADA y verificada en prod (2026-07-28, PRs #175 + #176)
 
@@ -983,13 +1029,13 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-4.8` | S4 | **Más specs insight→commitment** (revenge/oversizing/off-plan necesitan sus detectores) | hoy solo `intraday-decay` tiene detector + spec; los otros 3 verificadores existen, faltan sus detectores | ✅ resuelto — 2026-07-17 (PR #144). Verificado en código que era la deuda: `commitment-machine` tenía 4 specs y `verifiers.ts` los 4 verificadores, pero `insights-engine` **solo emitía `intraday-decay`** → `canCommit` solo era true para ese. Añadidos 3 detectores puros (`detectRevengeTrading`/`detectOversizing`/`detectOffPlan`) que emiten los ids exactos; como `toComputedInsight` mapea `id→type`, verificador+compromiso+regla (ya construidos) se encienden sin más cambios. Señal híbrida: gate rico tras-pérdida (revenge=Impulsivo/revengeFlag, oversizing=size>2×avg) + espejo del verifier para off-plan (tags). `stat` Bayesiano omitido a propósito (alarmas de frecuencia, no dos-muestras; R6). 13 tests (3/detector + round-trip que prueba `canCommit`+guard de cobertura de los 4 loops). Suite 1204/1204, tsc/eslint limpios. Desplegado (b6ec448), 0 errores runtime; **vivo pero dormido** hasta que un usuario tenga los patrones (datos de prod planos). Spec+plan en `docs/superpowers/`. |
 | `OI-5.1` | S5 | Reglas del loop visibles en `/reglas` (la UI lista `automations`; las del loop viven en `rules`) | S12 (cohesión de superficies) | ✅ resuelto — cutover G2 2026-07-13: `/reglas` lista `rules` (ejecutables con badge de origen "desde compromiso/insight"; descriptivas en Recordatorios) |
 | `OI-5.2` | S5 | `offPlanTrades` como regla "warn" (no prevenible pre-trade, pero avisable) | S8/incremental | ⬜ sin verificar |
-| `OI-5.3` | S5 | Plantillas extra (energía<3 → S8; no-aumentar-tamaño-tras-pérdida → captura) | S8+ | ⬜ sin verificar |
+| `OI-5.3` | S5 | Plantillas extra (energía<3 → S8; no-aumentar-tamaño-tras-pérdida → captura) | S8+ | ⬜ **sigue abierta — auditoría 2026-08-13.** Las dos plantillas siguen `available: false` en `protection-templates.ts:82,91`. Pero su justificación quedó **desactualizada**: `no-trade-low-energy` dice "requires: Campo de energía del check-in pre-sesión (Sprint 8)" — y ese campo **ya existe y está verificado en prod** (`PreSessionCheckin.energy`, verificado end-to-end esta misma sesión, ver `OI-8.5`). El bloqueo original desapareció; sólo falta flip `available:true` + registrar el campo `energy` en el motor de reglas. `no-size-increase-after-loss` sigue genuinamente bloqueada (no existe contexto del trade anterior en el motor). |
 | `OI-5.4` | S5 | Sugerencias/Activar-regla también en HOY + panel de insights nativo | S12/S13 | ⬜ sin verificar |
 | `OI-5.5` | S5 | `generateSuggestions` agendado (hoy on-demand vía tRPC; podría correr en el cron de insights) | ops/incremental | ✅ stale -- auditoria 2026-08-10: ya corre dentro del cron de insights (`recompute-insights.ts:40`), que es literalmente lo que la fila proponia. |
 | `OI-6.1` | S6 | **Auto-extracción LLM** de candidatos (resumen de thread + hechos/preferencias → `proposeMemories`) | **S7** (worker proactivo) | ✅ stale -- auditoria 2026-08-10: `summarizeThread` cableado en `coach.ts:84`; 27 filas en `coach_memory` con estados `candidate` Y `confirmed`. |
-| `OI-6.2` | S6 | Proactividad/intervención tiempo real + write-tools con permiso + check-in pre-sesión | **S7** | ⬜ sin verificar |
-| `OI-6.3` | S6 | Cifrado en reposo de memoria sensible + opt-out de envío (ADR-003 §3 avanzado) | follow-up privacidad | ⬜ sin verificar |
-| `OI-6.4` | S6 | Soporte determinista para confirmar memoria semántica (N episodios) — hoy confirma el usuario | S8+ (cuando haya señal) | ⬜ sin verificar |
+| `OI-6.2` | S6 | Proactividad/intervención tiempo real + write-tools con permiso + check-in pre-sesión | **S7** | ✅ **sustancialmente resuelta — auditoría 2026-08-13.** Las tres partes existen: check-in pre-sesión verificado end-to-end en prod esta sesión (`OI-8.5`); write-tools con permiso — `propose_commitment`/`propose_rule` en `coach-tools.ts:121,133`, ambas explícitamente "PROPONE, no activa: el trader debe ACEPTAR" (gate de confirmación real, no auto-ejecución); intervención en tiempo real — `Intervention` se dispara desde el fast-path de `trades.close` (`trade-write-service.ts:375`, ≤2s) y se muestra como overlay vía `intervention.active`. Residual honesto: sólo 2 de los 5 write-tools originalmente previstos (`schedule_checkin`/`create_study_card`/`mark_review_ready` no existen, ver `OI-7.1`), y la intervención es reactiva al cierre, no continua durante la posición abierta. |
+| `OI-6.3` | S6 | Cifrado en reposo de memoria sensible + opt-out de envío (ADR-003 §3 avanzado) | follow-up privacidad | ⬜ **sigue abierta — auditoría 2026-08-13.** Cero rastro: `MemoryEpisode`/`MemoryPattern` no tienen columna de cifrado ni de opt-out en `schema.prisma`, y no hay ningún módulo de cifrado en el dominio de memoria (el único `key-encryption.ts` del repo cifra claves de API de IA, no contenido de memoria). |
+| `OI-6.4` | S6 | Soporte determinista para confirmar memoria semántica (N episodios) — hoy confirma el usuario | S8+ (cuando haya señal) | ✅ **stale — auditoría 2026-08-13.** Ya existe y corre en prod: `detectPatterns` (`pattern-detection.ts:36`) confirma un `MemoryPattern` determinísticamente cuando ≥3 episodios lo sostienen (`status: ids.length >= minSupport ? "confirmed" : "candidate"` — nunca lo afirma el LLM, P6/FREEZE-D9), vía `recomputeMemoryPatterns` dentro del cron diario `recompute-insights`. **Verificado contra BD:** `ariaoc89` tiene `commitment_broken` en `status='confirmed'` con 4 episodios de soporte (≥3). El "hoy confirma el usuario" de la fila ya no es cierto. |
 | `OI-6.5` | S6 | Editar contenido de memoria desde el panel (hoy: añadir/confirmar/borrar; editar vía API existe) | incremental UI | ✅ resuelto — 2026-08-10 (PR #178). **La auditoría lo encontró como DEFECTO VIVO, no como deuda:** el panel decía *"Tú decides: confirma, EDITA o borra"* (`coach-memory-panel.tsx:36`) y se describía como *"visible / editable / deletable"* (`:3`), pero sólo cableaba `confirmMemory` y `deleteMemory` — cero referencias a `editMemory`, cuya mutación existía en `coach.ts:39-41` desde S6. Era *"el producto pide el gesto y no deja hacerlo"*, el mismo defecto que la captura de emoción, con el backend ya construido. Ahora la fila alterna a edición inline (lápiz → input con Guardar/Cancelar, Enter guarda, Escape cancela), y se guarda contra el vacío porque el servidor exige `min(1)` y habría devuelto un 400 mudo. 5 tests que afirman sobre el GESTO, no sobre el texto de la cabecera; el rojo previo era "no existe el botón Editar" en 4 de 5, con el 5º pasando como control de que confirmar/borrar seguían sanos. |
 | `OI-6.6` | S6 | Resumen automático del thread (`thread.summary`) | S7 (con la auto-extracción) | ✅ stale -- auditoria 2026-08-10: 5 de 10 `coach_threads` tienen `summary` en prod. |
 | `OI-7.1` | S7 | **Write-tools del chat** (`propose_commitment`/`propose_rule`/`schedule_checkin`/`create_study_card`/`mark_review_ready`) en el agente con confirmación | follow-up coach | ⬜ sin verificar |
@@ -999,22 +1045,22 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-7.5` | S7 | Refuerzos + intervenciones en el feed **HOY** | S13 | ⬜ sin verificar |
 | `OI-7.6` | S7 | θ adaptativo desde MemoryIdentity (hoy θ fijo) | S8+/§9 | ⬜ sin verificar |
 | `OI-7.7` | S7 | Cascada/tilt intradía más fina (psicología v3) | S8 | ⬜ sin verificar |
-| `OI-8.1` | S8 | Sesgos cognitivos extra (#40: disposition effect, anclaje, etc.) | incremental sobre psychology-insights | ⬜ sin verificar |
+| `OI-8.1` | S8 | Sesgos cognitivos extra (#40: disposition effect, anclaje, etc.) | incremental sobre psychology-insights | ⬜ **sigue abierta — auditoría 2026-08-13.** Cero coincidencias en todo `src/` para "disposition", "anchoring" ni "anclaje". No hay detector para ninguno de los dos. |
 | `OI-8.2` | S8 | Check-in `no_go` que crea una regla "stop por hoy" (hoy solo recomienda) | follow-up | ⬜ sin verificar |
-| `OI-8.3` | S8 | Tilt intradía fino + correlación check-in→resultado del día | S9+ | ⬜ sin verificar |
+| `OI-8.3` | S8 | Tilt intradía fino + correlación check-in→resultado del día | S9+ | ⬜ **sigue abierta — auditoría 2026-08-13.** Sigue existiendo sólo el detector grueso `intraday-decay` (visible en `/dashboard` como regla activa). No hay ningún código que correlacione el verdicto/score del check-in pre-sesión con el resultado (P&L, disciplina) del día — `checkin.ts` es puro scoring, sin consumidor que lo cruce con trades. |
 | `OI-8.4` | S8 | Calibración como Insight persistido (historización Bayesiana) | con recompute | ⬜ sin verificar |
 | `OI-8.5` | S8 | Verificación live end-to-end del check-in/calibración | siguiente sesión | ⬜ sin verificar |
 | `OI-9.1` | S9 | Superficie UI del cuadrante de riesgo (ruina/proyección/budget) + `RiskBudgetMeter` | S12/S13 | ⬜ sin verificar |
-| `OI-9.2` | S9 | Bloqueo duro pre-trade por budget diario + freeze agregado (hoy solo señal/warn) | S13 (reusa rules/account-lock) | ⬜ sin verificar |
+| `OI-9.2` | S9 | Bloqueo duro pre-trade por budget diario + freeze agregado (hoy solo señal/warn) | S13 (reusa rules/account-lock) | ⚠️ **parcialmente stale — auditoría 2026-08-13.** El bloqueo duro **por cuenta** ya existe y corre: `daily-loss-stop`/`weekly-loss-limit` en `protection-templates.ts:38,51` son `available:true`, `mode:"enforce"`, trigger `TRADE_PRE_CREATE` + acción `BLOCK` — visible en prod como regla CRÍTICA activa ("Pérdida diaria sobre límite"), verificado en el dashboard de `ariaoc89` esta sesión. Lo que **sigue abierto** es el freeze **agregado** cross-cuenta: `aggregateFreezeSignal` (`correlation.ts:96`) sólo emite señal `warn`/`freeze` de lectura, inerte sin `aggregateCapAmount` configurado (mismo hueco que `OI-9.3`), y ningún consumidor lo convierte en un `BLOCK` real. |
 | `OI-9.3` | S9 | `aggregateCapAmount` como setting por usuario (hoy parámetro del router, inerte si null) | S13 + ajustes PROTEGER | ⬜ sin verificar |
-| `OI-9.4` | S9 | Horizonte de fase desde el ritmo real / deadline de la firma (hoy 60 sesiones por defecto) | S13 | ⬜ sin verificar |
+| `OI-9.4` | S9 | Horizonte de fase desde el ritmo real / deadline de la firma (hoy 60 sesiones por defecto) | S13 | ⬜ **sigue abierta — auditoría 2026-08-13.** `MAX_SESSIONS = 60` sigue siendo una constante fija en `risk-service.ts:23`, sin derivarse del ritmo real de trading ni de un deadline de la firma. |
 | `OI-9.5` | S9 | Proyección/ruina como Insight persistido (historización + alertas al deteriorarse) | con recompute (#18) | ⬜ sin verificar |
-| `OI-9.6` | S9 | Política de retiros para TRAILING con floor que sigue al pico (hoy reporta distancia al floor desde inicial) | follow-up | ⬜ sin verificar |
+| `OI-9.6` | S9 | Política de retiros para TRAILING con floor que sigue al pico (hoy reporta distancia al floor desde inicial) | follow-up | ⬜ **sigue abierta — auditoría 2026-08-13, confirmado literalmente por el propio código.** `withdrawal-policy.ts:55-57`: "For TRAILING the floor tracks the peak; conservatively we report distance to the initial-based floor." La aproximación conservadora sigue en pie, sin cambios. |
 | `OI-9.7` | S9 | Verificación live end-to-end por UI (cuando exista la superficie, S12/S13) | S12/S13 | ⬜ sin verificar |
 | `OI-10.1` | S10 | Superficie UI: `EdgeEvolutionChart`, badges de drift, banner de decay | S12 | ⬜ sin verificar |
 | `OI-10.2` | S10 | Decay/drift como **Insight persistido** + oferta de compromiso/regla ("revisar setup X", "no operar US30") | con recompute / behavior | ⬜ sin verificar |
 | `OI-10.3` | S10 | `SetupEdgeSnapshot` (E18) persistido vía job (hoy la curva se calcula al vuelo) | S14 / recompute | ⬜ sin verificar |
-| `OI-10.4` | S10 | Drift por **sesión/mercado** — requiere añadir "sesión esperada" a la definición de `Setup` | follow-up (ampliar schema) | ⬜ sin verificar |
+| `OI-10.4` | S10 | Drift por **sesión/mercado** — requiere añadir "sesión esperada" a la definición de `Setup` | follow-up (ampliar schema) | ⬜ **sigue abierta — auditoría 2026-08-13.** `Setup` en `schema.prisma` no tiene ningún campo de sesión esperada; el prerrequisito de schema declarado en la fila sigue sin cumplirse. |
 | `OI-10.5` | S10 | Sugerencia de **poda** de instrumento con edge negativo (#24) — vive en S11 (instrument) pero comparte el motor de significancia | S11 | ✅ stale -- auditoria 2026-08-10: `instrument-edge.ts:82` la calcula, `edges.ts` la expone y `/analytics:332` pinta el badge "Poda sugerida". |
 | `OI-10.6` | S10 | A/B completo (asignación + tagging por versión en el trade) | POST-7 | ⬜ sin verificar |
 | `OI-10.7` | S10 | Verificación live end-to-end por UI (cuando exista la superficie) | S12 | ⬜ sin verificar |
@@ -1026,7 +1072,7 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-11.6` | S11 | Absorción/retiro de las pantallas Mercados y Etiquetas v2 tras paridad de valor | S12 (FREEZE: conservar hasta verificar) | ⬜ sin verificar |
 | `OI-11.7` | S11 | Verificación live end-to-end por UI (cuando exista la superficie) | S12 | ⬜ sin verificar |
 | `OI-13.1` | S13 | Telemetría de **ignorado por ítem** (clicks/descartes → `ignored`); hoy el decay usa la edad como proxy | follow-up (necesita persistir interacciones del feed) | ✅ stale -- auditoria 2026-08-10: `today-service.ts:140-143` pliega la telemetria por item; `feed_ignores` con 12 filas y `count` por `signal_key`. |
-| `OI-13.2` | S13 | Digest proactivo por email del feed HOY (#28) — el digest de aprendizaje ya existe, extenderlo | follow-up / cron | ⬜ sin verificar |
+| `OI-13.2` | S13 | Digest proactivo por email del feed HOY (#28) — el digest de aprendizaje ya existe, extenderlo | follow-up / cron | ⬜ **sigue abierta tal cual está escrita — auditoría 2026-08-13**, pero con un pariente cercano ya en prod que conviene no confundir: el cron `v3-cognitive-digest` (activo, lunes 06:00 UTC, mismo issue **#28** citado en su comentario) emite un resumen semanal (delta de mejora, compromisos, patrón top) — pero como **notificación in-app** (`emitNotification`, `cognitive-digest-service.ts:39`), no por email, y no deriva del feed HOY (`today-service.ts`) sino de `ImprovementScore`. El envío por EMAIL sigue existiendo sólo para `learning-digest` (vía Resend, `send-learning-digest.ts`). Extender ESE a incluir contenido del feed HOY sigue sin hacerse. |
 | `OI-13.3` | S13 | Absorber la pantalla **Notificaciones** dentro del feed (hoy conviven) | S12c (migración real de rutas) / follow-up | ⬜ sin verificar |
 | `OI-13.4` | S13 | Señales tempranas en vivo (#44) vía outbox (rachas/drift en el momento) en lugar de poll | con realtime (POST-1) | ⬜ sin verificar |
 | `OI-13.5` | S13 | Refuerzos productor real a `today` (hoy se leen si existen; el productor de Reinforcement visible=today es del Behavior Engine) | con uso del loop | ✅ stale -- auditoria 2026-08-10: `commitment-service.ts:203` escribe `channel:"today"` y `today-service.ts:54` lo lee; 4 filas en prod. |
@@ -1034,7 +1080,7 @@ captura, el sistema responde**: tres detectores nuevos con 15 trades.
 | `OI-14.1` | S14 | Persistir **`ImprovementScore` (E19, snapshot diario)** vía job → la curva temporal "vs hace 3 meses" (hoy es el valor actual, sin serie histórica) | follow-up (job + tabla; cron ya existe el patrón) | ✅ stale -- auditoria 2026-08-10: 20 filas en `improvement_scores`, 20 dias distintos, del 22-jul al 10-ago. |
 | `OI-14.2` | S14 | Régimen **exógeno real (ATR / datos de mercado)** — hoy manual/proxy (experimental) | POST-4 (mini-ADR cuando el régimen manual demuestre valor) | ⬜ sin verificar |
 | `OI-14.3` | S14 | **Recalibrar los pesos** del índice con datos reales (hoy 0.3/0.3/0.25/0.15 por defecto) | follow-up | ⬜ sin verificar |
-| `OI-14.4` | S14 | `coste de indisciplina` **rolling temporal** (hoy es acumulado total) para la North Star longitudinal | con E19 snapshots | ⬜ sin verificar |
+| `OI-14.4` | S14 | `coste de indisciplina` **rolling temporal** (hoy es acumulado total) para la North Star longitudinal | con E19 snapshots | ⬜ **sigue abierta — auditoría 2026-08-13.** `getImprovement` (`improvement-service.ts:34-37`) sigue consultando **todos** los trades `CLOSED` del usuario sin filtro de fecha — confirmado por el propio label de la UI, "P&L acumulado off-plan" (`/dashboard`). Los 20 snapshots diarios de `OI-14.1` son una serie temporal del valor acumulado-a-la-fecha, no una ventana rolling; no cierran esta fila. |
 | `OI-14.5` | S14 | Drivers del score como narración del coach mentor (AI_COACH §9) | con coach proactivo | ⬜ sin verificar |
 
 <!-- filas: 109 (69 OI-x.y sprints 3–14 + 40 S0/S1/S2) -->
@@ -1560,44 +1606,47 @@ y el 10-ago). Si no está, dilo en vez de improvisar.
 `.env` NO existe en esta máquina — sólo `.env.example`; Supabase MCP lo sustituye para todo lo
 de BD.
 
-✅ **NO hay trabajo suelto. main está limpio** (verificado el 2026-08-10): `main == origin/main`
-en `29492d9`, árbol limpio, CERO ramas aparte de main, CERO PRs abiertos. Arrancas desde main.
+✅ **NO hay trabajo suelto de código.** Esta sesión (2026-08-13) fue verificación pura contra
+prod — cero PRs, cero ramas — más la actualización de este documento. Confirma `git status`/`git
+log` al arrancar antes de asumir que sigue así.
 
 Lee primero, en este orden:
-  1) docs/STATUS.md        — las secciones de cabecera con fecha 2026-07-28 PREVALECEN sobre
-                             todo lo anterior y sobre las 109 filas de la tabla de §1.
+  1) docs/STATUS.md        — las secciones de cabecera con fecha 2026-08-13 PREVALECEN sobre
+                             todo lo anterior y sobre las filas de la tabla de §1.
   2) docs/PROJECT_GUIDE.md — qué es el producto
   3) docs/ARCHITECTURE.md  — principios y entidades congelados
 
 ═══ NO HAY JUGADA DESIGNADA: ELÍGELA CON EL USUARIO ═══
 
-La última pieza (captura de emoción) se cerró y se verificó en prod. **Ningún documento
-designa la siguiente.** No te auto-asignes una: preséntale al usuario los candidatos reales y
-que elija. Los que hay hoy, con su estado honesto:
+Las jugadas A y B del prompt anterior **se cerraron esta sesión** (ver cabecera 2026-08-13):
+`OI-8.5` y `OI-13.6` verificadas end-to-end en prod; las 12 filas `OI` restantes, adjudicadas
+(1 stale, 2 parciales, 9 genuinamente abiertas — detalle en §1 y en la cabecera). **Ningún
+documento designa la siguiente jugada.** No te auto-asignes una: preséntale al usuario los
+candidatos reales y que elija. Los que hay hoy, con su estado honesto:
 
- A) **Verificación live de lo ya construido.** ✅ **El insumo YA está**: el banco de aria se
-    reseteó el 10-ago (ver la sección de cabecera) y con él **la calibración quedó verificada
-    en prod** — `/psicologia` emite "Sobreconfiado", que era la mitad muda de `OI-8.5`. Lo que
-    queda de A es **el check-in por UI de punta a punta** (su camino de escritura ya estaba
-    probado: 1 fila del 22-jul recalculada contra la función pura, coincide) y **`OI-13.6`**,
-    el feed reaccionando a un trade nuevo — hay 17 trades de los últimos 10 días, así que sólo
-    falta observar la reacción. ⚠️ **El feed se renderiza en `/dashboard:136`, no en una ruta
-    propia.**
- B) **Las 12 filas `OI` que la auditoría del 10-ago NO miró** (`OI-5.3, 6.2, 6.3, 6.4, 8.1,
-    8.3, 9.2, 9.4, 9.6, 10.4, 13.2, 14.4`). Mismo método: contra el código y contra la BD. La
-    ronda anterior salió 15 stale contra 13 abiertas, así que esperar fantasmas es razonable,
-    pero **NO extrapoles ese resultado a estas doce** — nadie las ha mirado.
- C) **Calidad de redacción del Coach (palanca B), INTACTA y aparcada** por decisión del
+ D) **Activar la plantilla `no-trade-low-energy`.** Encontrado en la auditoría de hoy: su único
+    bloqueo declarado ("falta el campo de energía del check-in pre-sesión") **ya no es cierto** —
+    el check-in existe y está verificado en prod. Queda: `available:true` en
+    `protection-templates.ts:86-92` + registrar `energy` como campo evaluable en el motor de
+    reglas (`fields.ts`). Pieza pequeña, acotada, con el bloqueo real ya resuelto.
+ E) **Cualquiera de las 9 filas `OI` genuinamente abiertas** de la auditoría de hoy (`OI-6.3,
+    8.1, 8.3, 9.4, 9.6, 10.4, 13.2, 14.4`, más la mitad no-gated de `OI-5.3`) o el residual de
+    `OI-9.2` (freeze agregado cross-cuenta, hoy sólo señal). Cada una con su hueco preciso
+    documentado en §1 — no hace falta re-auditar, sólo elegir y construir.
+ F) **Calidad de redacción del Coach (palanca B), INTACTA y aparcada** por decisión del
     usuario (etapa de pruebas, sin modelos de pago). La auditoría del 27-jul acotó la
     decisión: la selección de herramientas YA NO es el cuello de botella, así que si el Coach
     sabe a poco, ahora sí es la prosa — y **eso se compra con modelo, no se programa**. No
     busques trabajo en la mecánica de IA: está agotada, y con evidencia, no por cansancio.
     Reabrirlo implica gasto o un cambio de la decisión de etapa del usuario.
+ G) **Las 24 filas `OI-3.x`/`OI-4.3`/`OI-4.4`/`OI-11.x` etc. que siguen sin auditar** desde
+    antes del 10-ago (nunca tocadas por ninguna de las dos rondas de auditoría). Mismo método.
 
-**Las 52 filas `OI` que siguen `⬜` NO son una cola de trabajo.** Tras la auditoría del 10-ago
-(§1) lo accionable de verdad son **13 filas abiertas + 2 decisiones colapsadas**: las superficies
-A3 (12 filas que son UNA decisión, reservada en §5) y "X como Insight persistido" (4 filas que son
-UN trabajo). El resto tiene disparador propio no activado, por diseño.
+**Las filas `OI` que siguen `⬜` NO son una cola de trabajo homogénea.** Entre las dos rondas de
+auditoría (10-ago + 13-ago) lo accionable de verdad son las filas listadas en E/G + las 2
+decisiones colapsadas: las superficies A3 (12 filas que son UNA decisión, reservada en §5) y "X
+como Insight persistido" (4 filas que son UN trabajo). El resto tiene disparador propio no
+activado, por diseño.
 
 ═══ QUÉ SE CERRÓ Y NO DEBES REHACER ═══
 
@@ -1642,6 +1691,18 @@ UN trabajo). El resto tiene disparador propio no activado, por diseño.
    ⚠️ Si vuelves a instrumentar ese drawer: `CoachIdentityEditor` tiene SU propio "Guardar"
    (acota por `title`), y la lista de memoria tarda en resolver — esperar al input de "Añadir"
    NO prueba que las filas estén.
+ · **`OI-8.5` y `OI-13.6` — verificación live end-to-end, CERRADAS (2026-08-13).** Check-in
+   pre-sesión: gesto por UI → verdict correcto → fila en `pre_session_checkins` → episodio
+   `checkin_red` en `memory_episodes`, las cuatro capas adjudicadas. Feed reaccionando a un
+   trade nuevo: trade real abierto+cerrado con pérdida en la cuenta primaria (confirmada por
+   red, no supuesta), y `/dashboard` pasó de sin señal a mostrar el mensaje exacto de
+   `detectDailyAnomaly` en la misma sesión. Detalle completo en la cabecera de este documento.
+   **No las re-verifiques**: ya tienen prueba de antes/después contra prod y BD.
+ · **Auditoría de las 12 filas `OI` restantes (2026-08-13).** `OI-6.4` era stale (memoria
+   semántica ya se confirma determinísticamente por soporte de episodios, sin el usuario).
+   `OI-6.2` sustancialmente resuelta y `OI-9.2` parcialmente stale (bloqueo duro por cuenta ya
+   activo; sólo el freeze agregado cross-cuenta sigue abierto). Las otras 9 siguen genuinamente
+   abiertas, cada una con su hueco preciso en §1 — **no la repitas, usa lo que ya dice §1.**
 
 ═══ NO RE-DESCUBRAS ESTO (no son olvidos) ═══
  · TD-037: diferido a conciencia.
