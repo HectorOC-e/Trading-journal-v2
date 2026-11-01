@@ -2010,9 +2010,9 @@
     "semantic_hash": ""
   },
   "src/lib/prisma.ts": {
-    "mtime": 1793537926.1678224,
-    "seen": 1793538422.7145371,
-    "ast_hash": "dbe03aecadb1592592c3465df45e2a0e",
+    "mtime": 1793544785.8943958,
+    "seen": 1793544841.774778,
+    "ast_hash": "fab7e691bf8466d143d91e0ccbac2f1e",
     "semantic_hash": ""
   },
   "src/lib/quick-actions-store.ts": {
@@ -3624,9 +3624,27 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-01-learning-timezone-streak-clock.md": {
-    "mtime": 1793538089.2903934,
-    "seen": 1793538422.714665,
-    "ast_hash": "024edfe641f33adecd89169994b07201",
+    "mtime": 1793538524.0354502,
+    "seen": 1793544732.5901005,
+    "ast_hash": "493a7b12ee9a2440f7ba8114c202cb66",
+    "semantic_hash": ""
+  },
+  "src/lib/db-connection.ts": {
+    "mtime": 1793544716.343348,
+    "seen": 1793544732.5898507,
+    "ast_hash": "e95fe88bd03103ad2844ac5d0a598c7c",
+    "semantic_hash": ""
+  },
+  "docs/QA_WORKFLOW.md": {
+    "mtime": 1793544327.756771,
+    "seen": 1793544732.5900836,
+    "ast_hash": "dea9b295720925f6b42b0de96ab03f62",
+    "semantic_hash": ""
+  },
+  "docs/learning-time-audit.md": {
+    "mtime": 1793544759.4707568,
+    "seen": 1793544841.77508,
+    "ast_hash": "f02c1f4a7cc0fb8e32e19ecde8c0a9dd",
     "semantic_hash": ""
   },
   "src/package-lock.json": {

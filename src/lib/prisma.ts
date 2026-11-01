@@ -1,15 +1,16 @@
 import { PrismaClient } from "./generated/prisma/client"
 import { PrismaPg }     from "@prisma/adapter-pg"
+import { serverlessDatabaseUrl } from "./db-connection"
 
 function createPrisma() {
   // Serverless connection hygiene: each warm instance keeps ONE small pool.
   // Without `max`, node-postgres opens up to 10 connections per instance, and
   // with many concurrent serverless instances that exhausts the Supabase pooler
   // (EMAXCONNSESSION). Keep the per-instance pool tiny and release idle conns fast.
-  // NOTE: DATABASE_URL should point to the TRANSACTION pooler (port 6543,
-  // ?pgbouncer=true) for serverless — not session mode (5432).
+  // Supavisor runtime URLs use TRANSACTION mode (6543) on Vercel. PrismaPg
+  // uses unnamed statements by default; no Prisma-engine URL flag is needed.
   const adapter = new PrismaPg({
-    connectionString:      process.env.DATABASE_URL!,
+    connectionString:      serverlessDatabaseUrl(process.env.DATABASE_URL!, process.env.VERCEL === "1"),
     max:                   Number(process.env.DB_POOL_MAX ?? 3),
     idleTimeoutMillis:     10_000,
     connectionTimeoutMillis: 10_000,

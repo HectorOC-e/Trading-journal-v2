@@ -26,9 +26,22 @@ Se agregó un reloj HH:mm:ss con la zona del perfil visible, aislado para no ren
 - La suite completa inicial ejecutó 1470 pruebas: 1465 pasaron, una fue omitida y cuatro de `__tests__/lib/sentry-wiring.test.ts` fallaron por `listen EPERM` del sandbox. Se rechazó automáticamente repetir con red por posible telemetría externa; el resto pasó sin ese archivo: **1466 pruebas correctas y una omitida**.
 - Revisión independiente del cambio completada, sin regresiones bloqueantes encontradas.
 
+## Aceptación en Vercel (2026-11-01)
+
+Con una cuenta exclusiva de QA y Chromium configurado en Los Ángeles se verificó el preview del código:
+
+- 90 días consecutivos de estudio, 210 minutos en la semana local de Tegucigalpa y coincidencia entre ambos indicadores visibles.
+- Reloj en vivo HH:mm:ss y cambio de zona desde el perfil a Tokio y de vuelta, sin cerrar sesión.
+- 61 segundos de estudio real: pausa, recarga, contador conservado en 01:01 y persistencia de un minuto.
+- Plan de 25 minutos para el día siguiente completado hoy: Supabase confirma `started_at` y `ended_at` de hoy, duración 25 y progreso acumulado 2726. La UI suma 236 minutos (3.9h).
+
+Al abrir otro preview se reprodujo un bloqueo de infraestructura: `EMAXCONNSESSION`, límite de 15 clientes del pool en modo sesión. El runtime de Vercel ahora adapta exclusivamente URLs Postgres de `*.pooler.supabase.com:5432` al endpoint de transacciones `6543`, conservando usuario, contraseña y opciones. Los endpoints directos y los procesos fuera de Vercel conservan su configuración. PrismaPg utiliza sentencias sin nombre por defecto.
+
+Referencia: [Supabase: métodos de conexión y modo transacción para serverless](https://supabase.com/docs/guides/database/connecting-to-postgres).
+
 ## Hallazgos pendientes
 
 - El contador «Reviews urgentes» aún proviene de `learningResources.stats` y usa el día del servidor; puede diferir de la cola local cerca de medianoche. La racha de repasos y los deltas heredados siguen disponibles en ese endpoint, aunque ya no alimentan los indicadores visibles de estudio.
 - Finalizar simultáneamente **sesiones distintas del mismo recurso** puede perder un incremento de progreso por escribir un total absoluto. La protección nueva cubre reintentos de una misma sesión; la concurrencia entre sesiones ya existía.
 - El reloj presupone una zona IANA válida, como exige la validación del perfil; valores inválidos introducidos directamente en la base de datos necesitan saneamiento.
-- No se corrigieron datos históricos de sesiones planificadas completadas ni se verificó producción con una cuenta real. No se ejecutaron migraciones ni despliegues.
+- Los datos históricos de sesiones planificadas completadas se conservan. Los datos preparados y modificados para aceptación pertenecen exclusivamente a la cuenta de QA. Los resultados finales de despliegue y aceptación quedan también en el PR #179.
