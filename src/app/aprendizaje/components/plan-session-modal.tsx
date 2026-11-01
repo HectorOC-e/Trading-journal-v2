@@ -3,17 +3,18 @@
 import { useMemo, useState } from "react"
 import { CalendarClock } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
+import { localDateISO } from "@/lib/datetime/local"
 import { toast } from "@/lib/use-toast"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
-function todayISO() { return new Date().toISOString().slice(0, 10) }
-
 export function PlanSessionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { data: profile } = trpc.profile.get.useQuery()
+  const today = localDateISO(new Date(), profile?.timezone || "UTC")
   const { data: resources = [] } = trpc.learningResources.list.useQuery(undefined, { enabled: open })
   const utils = trpc.useUtils()
   const [resourceId, setResourceId] = useState("")
-  const [date, setDate] = useState(todayISO())
+  const [date, setDate] = useState("")
   const [min, setMin] = useState(30)
 
   const options = useMemo(() => resources.filter(r => r.status !== "ABANDONED" && r.status !== "MASTERED"), [resources])
@@ -22,7 +23,7 @@ export function PlanSessionModal({ open, onClose }: { open: boolean; onClose: ()
     onSuccess: () => { utils.studySessions.invalidate(); toast.success("Sesión planificada"); reset(); onClose() },
     onError: () => toast.error("No se pudo planificar"),
   })
-  function reset() { setResourceId(""); setDate(todayISO()); setMin(30) }
+  function reset() { setResourceId(""); setDate(""); setMin(30) }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose() } }}>
@@ -42,7 +43,7 @@ export function PlanSessionModal({ open, onClose }: { open: boolean; onClose: ()
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1">
               <span className="input-label">Día</span>
-              <input type="date" value={date} min={todayISO()} onChange={e => setDate(e.target.value)}
+              <input type="date" value={date || today} min={today} onChange={e => setDate(e.target.value)}
                 className="h-9 px-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[13px] text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]" />
             </label>
             <label className="flex flex-col gap-1">
@@ -55,7 +56,7 @@ export function PlanSessionModal({ open, onClose }: { open: boolean; onClose: ()
         <DialogFooter>
           <Button variant="ghost" onClick={() => { reset(); onClose() }}>Cancelar</Button>
           <Button variant="primary" disabled={!resourceId || plan.isPending}
-            onClick={() => plan.mutate({ resourceId, date, plannedMin: min })}>
+            onClick={() => plan.mutate({ resourceId, date: date || today, plannedMin: min })}>
             {plan.isPending ? "Planificando…" : "Planificar"}
           </Button>
         </DialogFooter>

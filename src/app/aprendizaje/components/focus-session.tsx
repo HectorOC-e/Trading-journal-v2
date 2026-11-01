@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { useStudySessionStore } from "@/lib/study-session-store"
+import { elapsedStudySeconds, restoreStudyTimer, toggleStudyPause, type StudyTimer } from "@/lib/study-timer"
+import { localDateISO } from "@/lib/datetime/local"
 import type { ResourceType } from "@/types"
 
 function fmt(totalSec: number): string {
@@ -36,55 +38,63 @@ export function FocusSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
-  // Timer: accumulated (committed) seconds + current run start. Pause freezes it.
-  const [runStartMs, setRunStartMs] = useState<number>(0)
-  const [accumSec, setAccumSec] = useState(0)
-  const [paused, setPaused] = useState(false)
+  // Persist pause transitions, not ticks. A running timer derives time from the
+  // timestamp; a paused timer restores exactly the accumulated study seconds.
+  const [timer, setTimer] = useState<StudyTimer | null>(null)
   const [note, setNote] = useState("")
   const [markReview, setMarkReview] = useState(false)
-  const [now, setNow] = useState(0) // ms; set in the tick effect (kept out of render to stay pure)
+  const [now, setNow] = useState(0)
   const initedFor = useRef<string | null>(null)
+  const paused = timer?.paused ?? false
+  const storageKey = session ? `tj-study-timer:${session.id}` : null
 
-  // (Re)initialise local timer state whenever the active session changes.
   useEffect(() => {
     if (session && initedFor.current !== session.id) {
       initedFor.current = session.id
-      setRunStartMs(session.startedAtMs)
-      setAccumSec(0); setPaused(false); setNote(""); setMarkReview(false)
+      let saved: string | null = null
+      try { saved = sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      setTimer(restoreStudyTimer(saved, session.id, session.startedAtMs))
+      setNote(""); setMarkReview(false)
     }
-    if (!session) initedFor.current = null
+    if (!session) { initedFor.current = null; setTimer(null) }
   }, [session])
 
   useEffect(() => {
     if (!session || paused) return
     setNow(Date.now())
-    const i = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(i)
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
   }, [session, paused])
 
-  const elapsedSec = session ? accumSec + (paused ? 0 : Math.max(0, Math.floor((now - runStartMs) / 1000))) : 0
+  const elapsedSec = session && timer?.sessionId === session.id ? elapsedStudySeconds(timer, now) : 0
+  function clearTimerStorage() {
+    try { if (storageKey) sessionStorage.removeItem(storageKey) } catch { /* optional */ }
+  }
 
   const startMut = trpc.studySessions.start.useMutation({
     onSuccess: (s) => setSession({ id: s.id, resourceId: s.resourceId, resourceTitle: s.resourceTitle, resourceType: s.resourceType, startedAtMs: Date.parse(s.startedAt) }),
     onError: () => toast.error("No se pudo iniciar la sesión"),
   })
   const finishMut = trpc.studySessions.finish.useMutation({
-    onSuccess: () => {
+    onSuccess: (_, input) => {
       utils.studySessions.invalidate(); utils.learningResources.invalidate()
-      toast.success(`Sesión guardada · ${Math.max(1, Math.round(elapsedSec / 60))} min`)
+      clearTimerStorage()
+      toast.success(`Sesión guardada · ${input.durationMin} min`)
       setSession(null)
     },
     onError: () => toast.error("No se pudo guardar la sesión"),
   })
-  const cancelMut = trpc.studySessions.cancel.useMutation({ onSuccess: () => setSession(null) })
+  const cancelMut = trpc.studySessions.cancel.useMutation({ onSuccess: () => { clearTimerStorage(); setSession(null) } })
 
   function togglePause() {
-    if (paused) { setRunStartMs(Date.now()); setPaused(false) }
-    else { setAccumSec(elapsedSec); setPaused(true) }
+    if (!timer) return
+    const next = toggleStudyPause(timer, Date.now())
+    setTimer(next)
+    try { if (storageKey) sessionStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
   }
   function finish() {
-    if (!session) return
-    finishMut.mutate({ id: session.id, durationMin: Math.max(1, Math.round(elapsedSec / 60)), note, markForReview: markReview })
+    if (!session || !timer || finishMut.isPending) return
+    finishMut.mutate({ id: session.id, durationMin: Math.max(1, Math.round(elapsedStudySeconds(timer, Date.now()) / 60)), note, markForReview: markReview })
   }
   function discard() {
     if (!session) return
@@ -176,14 +186,15 @@ export function FocusSession() {
 function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onClose: () => void }) {
   const { data: resources = [], isLoading } = trpc.learningResources.list.useQuery()
   const [q, setQ] = useState("")
-  const today = new Date().toISOString().slice(0, 10)
+  const { data: profile } = trpc.profile.get.useQuery()
+  const today = localDateISO(new Date(), profile?.timezone || "UTC")
   const { due, rest } = useMemo(() => {
     let active = resources.filter(r => r.status !== "ABANDONED" && r.status !== "MASTERED")
     if (q.trim()) {
       const s = q.toLowerCase()
       active = active.filter(r => r.title.toLowerCase().includes(s) || r.author.toLowerCase().includes(s))
     }
-    const isDue = (r: typeof active[number]) => r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt <= today)
+    const isDue = (r: typeof active[number]) => r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt.slice(0, 10) <= today)
     return { due: active.filter(isDue), rest: active.filter(r => !isDue(r)) }
   }, [resources, q, today])
 
@@ -192,7 +203,7 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
       className="flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-sm)] text-left hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)] transition-colors">
       <CategoryChip type={r.type as ResourceType} />
       <span className="flex-1 min-w-0 text-[13px] text-[var(--ink)] truncate">{r.title}</span>
-      {(r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt <= today)) && (
+      {(r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt.slice(0, 10) <= today)) && (
         <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">vence</span>
       )}
     </button>

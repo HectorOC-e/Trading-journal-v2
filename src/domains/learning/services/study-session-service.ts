@@ -1,6 +1,7 @@
 // Aprendizaje SP1 — pure helpers for study-session side-effects.
 // Kept free of Prisma so they're trivially testable; the tRPC layer wires the DB.
 import { computeProgressPct, computeResourceStatus } from "./review-scheduler"
+import { addDaysISO, localDateISO, weekStartISO } from "@/lib/datetime/local"
 
 export interface ResourceProgressLite {
   progressType: string | null
@@ -38,32 +39,28 @@ export function applyStudyFinish(
   }
 }
 
-function utcDayKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`
-}
-
 /**
  * Study-day streak: consecutive days (ending today, or yesterday if today has no
  * session yet) that contain at least one study session. Today without a session
  * does NOT break the streak — it just hasn't been extended yet.
  */
-export function studyStreak(sessionDates: Date[], now: Date): number {
-  const days = new Set(sessionDates.map(utcDayKey))
-  const cursor = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
-  if (!days.has(utcDayKey(cursor))) cursor.setUTCDate(cursor.getUTCDate() - 1)
+export function studyStreak(sessionDates: Date[], now: Date, timezone = "UTC"): number {
+  const days = new Set(sessionDates.filter(d => d <= now).map(d => localDateISO(d, timezone)))
+  let cursor = localDateISO(now, timezone)
+  if (!days.has(cursor)) cursor = addDaysISO(cursor, -1)
   let streak = 0
-  while (days.has(utcDayKey(cursor))) {
+  while (days.has(cursor)) {
     streak++
-    cursor.setUTCDate(cursor.getUTCDate() - 1)
+    cursor = addDaysISO(cursor, -1)
   }
   return streak
 }
 
-/** Minutes studied within the current calendar week (Mon–Sun, UTC). */
-export function minutesThisWeek(sessions: { startedAt: Date; durationMin: number | null }[], now: Date): number {
-  const start = startOfWeekUTC(now)
+/** Minutes studied this local calendar week (Mon–Sun), excluding future entries. */
+export function minutesThisWeek(sessions: { startedAt: Date; durationMin: number | null }[], now: Date, timezone = "UTC"): number {
+  const start = weekStartISO(localDateISO(now, timezone))
   return sessions
-    .filter(s => s.startedAt >= start && (s.durationMin ?? 0) > 0)
+    .filter(s => s.startedAt <= now && localDateISO(s.startedAt, timezone) >= start && (s.durationMin ?? 0) > 0)
     .reduce((sum, s) => sum + (s.durationMin ?? 0), 0)
 }
 
