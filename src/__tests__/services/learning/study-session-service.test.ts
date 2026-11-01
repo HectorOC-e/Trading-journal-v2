@@ -49,9 +49,38 @@ describe("studyStreak", () => {
   it("no sessions → 0", () => {
     expect(studyStreak([], now)).toBe(0)
   })
+
+  it("counts local study days across UTC midnight", () => {
+    expect(studyStreak([
+      new Date("2026-06-16T05:30:00Z"), // Mon 23:30
+      new Date("2026-06-16T06:30:00Z"), // Tue 00:30 (same UTC day)
+    ], new Date("2026-06-17T07:00:00Z"), "America/Tegucigalpa")).toBe(2)
+  })
+
+  it("keeps consecutive days across a DST change", () => {
+    expect(studyStreak([
+      new Date("2026-03-08T04:30:00Z"), // Mar 7, 23:30 EST
+      new Date("2026-03-09T03:30:00Z"), // Mar 8, 23:30 EDT
+    ], new Date("2026-03-10T02:00:00Z"), "America/New_York")).toBe(2)
+  })
 })
 
 describe("minutesThisWeek", () => {
+  it("uses the local Monday and excludes future sessions", () => {
+    const total = minutesThisWeek([
+      { startedAt: new Date("2026-06-15T05:30:00Z"), durationMin: 60 }, // local Sunday
+      { startedAt: new Date("2026-06-15T06:30:00Z"), durationMin: 25 }, // local Monday
+      { startedAt: new Date("2026-06-23T08:00:00Z"), durationMin: 90 }, // future
+    ], new Date("2026-06-17T12:00:00Z"), "America/Tegucigalpa")
+    expect(total).toBe(25)
+  })
+
+  it("includes local Monday before UTC Monday in UTC+14", () => {
+    expect(minutesThisWeek([
+      { startedAt: new Date("2026-06-14T11:00:00Z"), durationMin: 40 },
+    ], new Date("2026-06-15T00:00:00Z"), "Pacific/Kiritimati")).toBe(40)
+  })
+
   it("sums durationMin within the current ISO week", () => {
     const now = new Date("2026-06-17T10:00:00Z") // Wednesday
     const monday = startOfWeekUTC(now)

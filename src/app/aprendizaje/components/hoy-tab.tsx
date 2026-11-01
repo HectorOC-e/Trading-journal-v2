@@ -64,7 +64,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
   }
 
   const { weekDays, due, inProgress, week, agenda, suggestion } = data
-  const goalH = (week.goalMin / 60).toFixed(0)
+  const goalH = (week.goalMin / 60).toFixed(1)
   const doneH = (week.hoursMin / 60)
   const pct = week.goalMin > 0 ? Math.min(100, Math.round((week.hoursMin / week.goalMin) * 100)) : 0
   const fmtDay = (iso: string) => new Date(iso + "T12:00:00Z").getUTCDate()
@@ -191,7 +191,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
             <div className="flex flex-col">
               {agenda.map((a, i) => (
                 <div key={i} className="flex items-center gap-2.5 py-2 border-b border-[var(--line)] last:border-0">
-                  <span className="text-[11px] font-semibold text-[var(--ink-3)] w-12 shrink-0">{new Date(a.date + "T12:00:00Z").toLocaleDateString("es-ES", { weekday: "short", day: "numeric" })}</span>
+                  <span className="text-[11px] font-semibold text-[var(--ink-3)] w-12 shrink-0">{new Date(a.date + "T12:00:00Z").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", timeZone: "UTC" })}</span>
                   <CategoryChip type={a.type as ResourceType} />
                   <span className="flex-1 min-w-0 text-[12.5px] text-[var(--ink)] truncate">{a.title}</span>
                   {a.kind === "review"

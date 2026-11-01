@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest"
 import { masteryLevel, masteryStageIndex, isMastered, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
 
 describe("mastery", () => {
+  it("compares date-only reviews with the profile's local day", () => {
+    expect(isReviewDue("2026-06-16", "2026-06-15")).toBe(false)
+    expect(isReviewDue("2026-06-15", "2026-06-15")).toBe(true)
+  })
   it("maps status to a 0–5 level; MASTERED is max", () => {
     expect(masteryLevel("PENDING")).toBe(0)
     expect(masteryLevel("IN_PROGRESS")).toBe(1)

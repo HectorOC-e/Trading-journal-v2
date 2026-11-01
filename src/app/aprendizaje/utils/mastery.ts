@@ -3,6 +3,7 @@
 // "Dominado" = última etapa.
 
 import type { ResourceStatus } from "@/types"
+import { localDateISO } from "@/lib/datetime/local"
 
 export const MASTERY_STAGES = ["Nuevo", "En curso", "Completado", "En repaso", "Dominado"] as const
 export type MasteryStage = (typeof MASTERY_STAGES)[number]
@@ -53,9 +54,8 @@ export function isMastered(status: ResourceStatus): boolean {
 }
 
 /** ¿El repaso vence hoy o ya venció? (CTA "Repasar hoy"). */
-export function isReviewDue(nextReviewAt: string | null | undefined): boolean {
+export function isReviewDue(nextReviewAt: string | null | undefined, todayISO?: string): boolean {
   if (!nextReviewAt) return false
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const r = new Date(nextReviewAt); r.setHours(0, 0, 0, 0)
-  return r.getTime() <= today.getTime()
+  const today = todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+  return nextReviewAt.slice(0, 10) <= today
 }

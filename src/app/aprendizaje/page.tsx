@@ -18,11 +18,15 @@ import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
 import { ProgresoSections } from "./components/progreso-sections"
 import { HoyTab } from "./components/hoy-tab"
+import { ProfileClock } from "./components/profile-clock"
+import { useLearningCalendar } from "./hooks/use-learning-calendar"
 import { useResourceActions } from "./hooks/use-resource-actions"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
 
 export default function AprendizajePage() {
+  const { timezone, today } = useLearningCalendar()
+  const { data: studyHome } = trpc.studySessions.home.useQuery()
   const {
     modalOpen, setModalOpen,
     editTarget, setEditTarget,
@@ -117,9 +121,9 @@ export default function AprendizajePage() {
   // Repaso queue: due (SRS) or manually marked, excluding archived. Due first.
   const dueResources  = useMemo(
     () => resources
-      .filter((r) => r.status !== "ABANDONED" && (isReviewDue(r.nextReviewAt) || r.markedForReview))
+      .filter((r) => r.status !== "ABANDONED" && (isReviewDue(r.nextReviewAt, today ?? undefined) || r.markedForReview))
       .sort((a, b) => (a.nextReviewAt ?? "9999").localeCompare(b.nextReviewAt ?? "9999")),
-    [resources],
+    [resources, today],
   )
 
   const gridProps = {
@@ -139,9 +143,9 @@ export default function AprendizajePage() {
   const strip = [
     { label: "Recursos",        value: stats?.totalResources ?? resources.length },
     { label: "Completados mes", value: stats?.completedThisMonth ?? completed.length },
-    { label: "Horas semana",    value: stats ? `${stats.estimatedHoursThisWeek}h` : "—" },
+    { label: "Horas semana",    value: studyHome ? `${(studyHome.week.hoursMin / 60).toFixed(1)}h` : "—" },
     { label: "Reviews urgentes",value: stats?.pendingReviewsCount ?? 0, alert: (stats?.pendingReviewsCount ?? 0) > 0 },
-    { label: "Racha",           value: `${stats?.currentStreak ?? 0}d` },
+    { label: "Racha",           value: `${studyHome?.week.streak ?? 0}d` },
   ]
 
   return (
@@ -153,6 +157,8 @@ export default function AprendizajePage() {
           { label: "Añadir recurso", variant: "primary", icon: <Plus size={14} />, onClick: handleOpen },
         ]}
       />
+
+      <ProfileClock timezone={timezone} />
 
       {/* Stats strip — quick glance, always visible, responsive */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
