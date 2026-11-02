@@ -7,6 +7,7 @@ import { CategoryChip } from "@/components/ui/category-chip"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -41,6 +42,8 @@ export function RevisarRecursoModal({
     return (localStorage.getItem("review-mode") as "quick" | "deep") ?? "quick"
   })
   const utils = trpc.useUtils()
+  const { data: profile } = trpc.profile.get.useQuery()
+  const todayISO = localDateISO(new Date(), safeTimeZone(profile?.timezone))
 
   function switchMode(mode: "quick" | "deep") {
     setReviewMode(mode)
@@ -241,7 +244,7 @@ export function RevisarRecursoModal({
               ))}
             </div>
             <p className="text-[10px] text-[var(--ink-3)] mt-1">
-              {MASTERY_LABELS[form.masteryLevel]} · Próximo review: {calcPreviewNextReview(resource.reviewInterval, form.masteryLevel)}
+              {MASTERY_LABELS[form.masteryLevel]} · Próximo review: {calcPreviewNextReview(resource.reviewInterval, form.masteryLevel, todayISO)}
             </p>
           </div>
 

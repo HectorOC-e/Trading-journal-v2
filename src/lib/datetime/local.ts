@@ -44,3 +44,20 @@ export function addDaysISO(todayISO: string, deltaDays: number): string {
   d.setUTCDate(d.getUTCDate() + deltaDays)
   return d.toISOString().slice(0, 10)
 }
+
+/** Preserve a supported profile zone; legacy invalid values use UTC. */
+export function safeTimeZone(tz: string | null | undefined): string {
+  if (!tz) return "UTC"
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: tz })
+    return tz
+  } catch {
+    return "UTC"
+  }
+}
+
+/** Render an ISO calendar date, including serialized @db.Date values, without shifting days. */
+export function formatCalendarDate(isoDate: string, options?: Intl.DateTimeFormatOptions): string {
+  return new Intl.DateTimeFormat("es-ES", { ...options, timeZone: "UTC" })
+    .format(new Date(`${isoDate.slice(0, 10)}T00:00:00Z`))
+}

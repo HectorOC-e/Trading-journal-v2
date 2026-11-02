@@ -2,13 +2,15 @@ import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import {
-  applyStudyFinish,
+  effectiveStudyStartedAt,
   studyStreak,
   minutesThisWeek,
   pickStudySuggestion,
 } from "@/domains/learning/services/study-session-service"
 
-import { addDaysISO, localDateISO, weekStartISO } from "@/lib/datetime/local"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { applyStudySessionProgress } from "@/server/services/learning/study-progress"
+import { addDaysISO, localDateISO, safeTimeZone, weekStartISO } from "@/lib/datetime/local"
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null)
 const dayKey = (d: Date) => d.toISOString().slice(0, 10)
@@ -34,7 +36,7 @@ function serializeSession(s: SessionWithResource) {
     resourceType: s.resource.type,
     status: s.status,
     source: s.source,
-    startedAt: s.startedAt.toISOString(),
+    startedAt: effectiveStudyStartedAt(s).toISOString(),
     endedAt: iso(s.endedAt),
     durationMin: s.durationMin,
     plannedMin: s.plannedMin,
@@ -65,6 +67,11 @@ export const studySessionsRouter = router({
       })
       if (existing) return serializeSession(existing)
 
+      const resource = await ctx.prisma.learningResource.findFirst({
+        where: { id: input.resourceId, userId: ctx.userId }, select: { id: true },
+      })
+      if (!resource) throw new TRPCError({ code: "NOT_FOUND" })
+
       const created = await ctx.prisma.studySession.create({
         data: { userId: ctx.userId, resourceId: input.resourceId, status: "active", source: "focus" },
         include: sessionInclude,
@@ -79,7 +86,7 @@ export const studySessionsRouter = router({
       await ctx.prisma.$transaction(async tx => {
         const session = await tx.studySession.findFirst({
           where: { id: input.id, userId: ctx.userId },
-          include: { resource: { select: { id: true, title: true, type: true, progressType: true, currentUnits: true, totalUnits: true, status: true } } },
+
         })
         if (!session) throw new TRPCError({ code: "NOT_FOUND" })
 
@@ -89,14 +96,7 @@ export const studySessionsRouter = router({
         })
         if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
 
-        const update = applyStudyFinish(session.resource, input.durationMin)
-        const resourceData: Record<string, unknown> = update
-          ? { currentUnits: update.currentUnits, progressPct: update.progressPct, status: update.status }
-          // pages/manual/null: at least move PENDING → IN_PROGRESS since they studied it
-          : (session.resource.status === "PENDING" ? { status: "IN_PROGRESS" } : {})
-        if (input.markForReview) resourceData.markedForReview = true
-
-        await tx.learningResource.update({ where: { id: session.resourceId }, data: resourceData })
+        await applyStudySessionProgress(tx, ctx.userId, session.resourceId, input.durationMin, input.markForReview)
       })
       return { ok: true }
     }),
@@ -113,6 +113,11 @@ export const studySessionsRouter = router({
   plan: protectedProcedure
     .input(z.object({ resourceId: z.string().uuid(), date: z.string().date(), plannedMin: z.number().int().min(5).max(480) }))
     .mutation(async ({ ctx, input }) => {
+      const resource = await ctx.prisma.learningResource.findFirst({
+        where: { id: input.resourceId, userId: ctx.userId }, select: { id: true },
+      })
+      if (!resource) throw new TRPCError({ code: "NOT_FOUND" })
+
       const created = await ctx.prisma.studySession.create({
         data: {
           userId: ctx.userId, resourceId: input.resourceId,
@@ -131,7 +136,7 @@ export const studySessionsRouter = router({
       await ctx.prisma.$transaction(async tx => {
         const session = await tx.studySession.findFirst({
           where: { id: input.id, userId: ctx.userId, status: "planned" },
-          include: { resource: { select: { id: true, progressType: true, currentUnits: true, totalUnits: true, status: true } } },
+
         })
         if (!session) throw new TRPCError({ code: "NOT_FOUND" })
         const min = session.plannedMin ?? 0
@@ -141,13 +146,7 @@ export const studySessionsRouter = router({
           data: { status: "completed", source: "manual", startedAt: now, endedAt: now, durationMin: min },
         })
         if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
-        const update = applyStudyFinish(session.resource, min)
-        await tx.learningResource.update({
-          where: { id: session.resourceId },
-          data: update
-            ? { currentUnits: update.currentUnits, progressPct: update.progressPct, status: update.status }
-            : (session.resource.status === "PENDING" ? { status: "IN_PROGRESS" } : {}),
-        })
+        await applyStudySessionProgress(tx, ctx.userId, session.resourceId, min)
       })
       return { ok: true }
     }),
@@ -158,7 +157,7 @@ export const studySessionsRouter = router({
     .query(async ({ ctx, input }) => {
       const rows = await ctx.prisma.studySession.findMany({
         where: { userId: ctx.userId, status: "completed" },
-        orderBy: { startedAt: "desc" },
+        orderBy: [{ endedAt: { sort: "desc", nulls: "last" } }, { startedAt: "desc" }],
         take: input?.limit ?? 10,
         include: sessionInclude,
       })
@@ -169,7 +168,7 @@ export const studySessionsRouter = router({
   home: protectedProcedure.query(async ({ ctx }) => {
     const now = new Date()
     const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { weeklyGoalMinutes: true, timezone: true } })
-    const timezone = user.timezone || "UTC"
+    const timezone = safeTimeZone(user.timezone)
     const todayKey = localDateISO(now, timezone)
     const weekStartKey = weekStartISO(todayKey)
     // Fetch a padded UTC window; assign instants to local days below. Planned
@@ -179,18 +178,18 @@ export const studySessionsRouter = router({
     const horizonKey = addDaysISO(todayKey, 7)
     const horizonEnd = new Date(horizonKey + "T00:00:00Z")
 
-    const [resources, weekSessions, streakSessions, plannedUpcoming, setupTrades] = await Promise.all([
+    const [resources, weekSessions, completedRows, plannedUpcoming, setupTrades] = await Promise.all([
       ctx.prisma.learningResource.findMany({
         where: { userId: ctx.userId, status: { not: "ABANDONED" } },
-        select: { id: true, title: true, type: true, status: true, progressPct: true, currentUnits: true, totalUnits: true, progressType: true, nextReviewAt: true, linkedSetups: { select: { id: true, name: true } } },
+        select: { id: true, title: true, type: true, status: true, progressPct: true, currentUnits: true, totalUnits: true, progressType: true, nextReviewAt: true, markedForReview: true, linkedSetups: { select: { id: true, name: true } } },
       }),
       ctx.prisma.studySession.findMany({
-        where: { userId: ctx.userId, status: { in: ["completed", "planned"] }, startedAt: { gte: weekStart, lt: weekEnd } },
+        where: { userId: ctx.userId, status: "planned", startedAt: { gte: weekStart, lt: weekEnd } },
         select: { startedAt: true, status: true, durationMin: true, plannedMin: true, resourceId: true, resource: { select: { title: true, type: true } } },
       }),
       ctx.prisma.studySession.findMany({
-        where: { userId: ctx.userId, status: "completed", durationMin: { gt: 0 }, startedAt: { lte: now } },
-        select: { startedAt: true, durationMin: true },
+        where: { userId: ctx.userId, status: "completed", durationMin: { gt: 0 } },
+        select: { startedAt: true, durationMin: true, endedAt: true, status: true, source: true, plannedMin: true },
       }),
       ctx.prisma.studySession.findMany({
         where: { userId: ctx.userId, status: "planned", startedAt: { gte: new Date(todayKey + "T00:00:00Z"), lt: horizonEnd } },
@@ -203,18 +202,20 @@ export const studySessionsRouter = router({
       }),
     ])
 
+    const streakSessions = completedRows.map(s => ({ ...s, startedAt: effectiveStudyStartedAt(s) }))
+
     // Week strip: 7 days with counts
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const k = addDaysISO(weekStartKey, i)
       const reviews = resources.filter(r => r.nextReviewAt && dayKey(r.nextReviewAt) === k).length
-      const sessions = weekSessions.filter(s => s.status === "completed" && (s.durationMin ?? 0) > 0 && s.startedAt <= now && localDateISO(s.startedAt, timezone) === k).length
+      const sessions = streakSessions.filter(s => s.status === "completed" && (s.durationMin ?? 0) > 0 && s.startedAt <= now && localDateISO(s.startedAt, timezone) === k).length
       const planned = weekSessions.filter(s => s.status === "planned" && dayKey(s.startedAt) === k).length
       return { date: k, isToday: k === todayKey, reviews, sessions, planned }
     })
 
     // Due reviews (≤ today)
     const due = resources
-      .filter(r => r.nextReviewAt && dayKey(r.nextReviewAt) <= todayKey && r.status !== "MASTERED")
+      .filter(r => isResourceReviewDue(r, todayKey))
       .map(r => ({ id: r.id, title: r.title, type: r.type }))
 
     // In-progress resources (what you're studying)

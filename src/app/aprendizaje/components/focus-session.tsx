@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryChip } from "@/components/ui/category-chip"
 import { useStudySessionStore } from "@/lib/study-session-store"
 import { elapsedStudySeconds, restoreStudyTimer, toggleStudyPause, type StudyTimer } from "@/lib/study-timer"
-import { localDateISO } from "@/lib/datetime/local"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import type { ResourceType } from "@/types"
 
 function fmt(totalSec: number): string {
@@ -38,11 +39,11 @@ export function FocusSession() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
-  // Persist pause transitions, not ticks. A running timer derives time from the
-  // timestamp; a paused timer restores exactly the accumulated study seconds.
+  // Keep timer transitions and draft edits in one snapshot; ticks need no writes.
   const [timer, setTimer] = useState<StudyTimer | null>(null)
-  const [note, setNote] = useState("")
-  const [markReview, setMarkReview] = useState(false)
+  const timerRef = useRef<StudyTimer | null>(null)
+  const note = timer?.sessionId === session?.id ? timer?.note ?? "" : ""
+  const markReview = timer?.sessionId === session?.id ? timer?.markForReview ?? false : false
   const [now, setNow] = useState(0)
   const initedFor = useRef<string | null>(null)
   const paused = timer?.paused ?? false
@@ -53,10 +54,10 @@ export function FocusSession() {
       initedFor.current = session.id
       let saved: string | null = null
       try { saved = sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
-      setTimer(restoreStudyTimer(saved, session.id, session.startedAtMs))
-      setNote(""); setMarkReview(false)
+      timerRef.current = restoreStudyTimer(saved, session.id, session.startedAtMs)
+      setTimer(timerRef.current)
     }
-    if (!session) { initedFor.current = null; setTimer(null) }
+    if (!session) { initedFor.current = null; timerRef.current = null; setTimer(null) }
   }, [session])
 
   useEffect(() => {
@@ -86,11 +87,20 @@ export function FocusSession() {
   })
   const cancelMut = trpc.studySessions.cancel.useMutation({ onSuccess: () => { clearTimerStorage(); setSession(null) } })
 
-  function togglePause() {
-    if (!timer) return
-    const next = toggleStudyPause(timer, Date.now())
+  function persistTimer(next: StudyTimer) {
+    timerRef.current = next
     setTimer(next)
     try { if (storageKey) sessionStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
+  }
+  function updateDraft(draft: Partial<Pick<StudyTimer, "note" | "markForReview">>) {
+    const current = timerRef.current
+    if (!current || current.sessionId !== session?.id) return
+    persistTimer({ ...current, ...draft })
+  }
+  function togglePause() {
+    const current = timerRef.current
+    if (!current || current.sessionId !== session?.id) return
+    persistTimer(toggleStudyPause(current, Date.now()))
   }
   function finish() {
     if (!session || !timer || finishMut.isPending) return
@@ -131,13 +141,13 @@ export function FocusSession() {
               {paused && <p className="text-[12px] text-[var(--be)] -mt-3">En pausa</p>}
 
               <textarea
-                value={note} onChange={e => setNote(e.target.value)} rows={2}
+                value={note} onChange={e => updateDraft({ note: e.target.value.slice(0, 2000) })} maxLength={2000} rows={2}
                 placeholder="Nota rápida de la sesión…"
                 className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
               />
 
               <label className="flex items-center gap-2 text-[12px] text-[var(--ink-2)] cursor-pointer select-none">
-                <input type="checkbox" checked={markReview} onChange={e => setMarkReview(e.target.checked)} className="accent-[var(--accent)]" />
+                <input type="checkbox" checked={markReview} onChange={e => updateDraft({ markForReview: e.target.checked })} className="accent-[var(--accent)]" />
                 Marcar para repaso al terminar
               </label>
 
@@ -187,14 +197,14 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
   const { data: resources = [], isLoading } = trpc.learningResources.list.useQuery()
   const [q, setQ] = useState("")
   const { data: profile } = trpc.profile.get.useQuery()
-  const today = localDateISO(new Date(), profile?.timezone || "UTC")
+  const today = localDateISO(new Date(), safeTimeZone(profile?.timezone))
   const { due, rest } = useMemo(() => {
-    let active = resources.filter(r => r.status !== "ABANDONED" && r.status !== "MASTERED")
+    let active = resources.filter(r => r.status !== "ABANDONED" && (r.status !== "MASTERED" || r.markedForReview))
     if (q.trim()) {
       const s = q.toLowerCase()
       active = active.filter(r => r.title.toLowerCase().includes(s) || r.author.toLowerCase().includes(s))
     }
-    const isDue = (r: typeof active[number]) => r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt.slice(0, 10) <= today)
+    const isDue = (r: typeof active[number]) => isResourceReviewDue(r, today)
     return { due: active.filter(isDue), rest: active.filter(r => !isDue(r)) }
   }, [resources, q, today])
 
@@ -203,7 +213,7 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
       className="flex items-center gap-2.5 px-2.5 py-2 rounded-[var(--radius-sm)] text-left hover:bg-[var(--panel-2)] active:bg-[var(--accent-soft)] transition-colors">
       <CategoryChip type={r.type as ResourceType} />
       <span className="flex-1 min-w-0 text-[13px] text-[var(--ink)] truncate">{r.title}</span>
-      {(r.markedForReview || (!!r.nextReviewAt && r.nextReviewAt.slice(0, 10) <= today)) && (
+      {(isResourceReviewDue(r, today)) && (
         <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">vence</span>
       )}
     </button>

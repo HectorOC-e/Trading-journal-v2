@@ -2,6 +2,8 @@ export interface StudyTimer {
   sessionId: string
   runStartMs: number
   accumSec: number
+  note: string
+  markForReview: boolean
   paused: boolean
 }
 
@@ -11,9 +13,13 @@ export function restoreStudyTimer(saved: string | null, sessionId: string, start
     const state = JSON.parse(saved ?? "null") as StudyTimer | null
     if (state?.sessionId === sessionId && typeof state.paused === "boolean" &&
       Number.isFinite(state.runStartMs) && state.runStartMs >= startedAtMs &&
-      Number.isFinite(state.accumSec) && state.accumSec >= 0) return state
+      Number.isFinite(state.accumSec) && state.accumSec >= 0) return {
+        ...state,
+        note: typeof state.note === "string" ? state.note.slice(0, 2000) : "",
+        markForReview: state.markForReview === true,
+      }
   } catch { /* Storage is optional. Resume from the server's start timestamp. */ }
-  return { sessionId, runStartMs: startedAtMs, accumSec: 0, paused: false }
+  return { sessionId, runStartMs: startedAtMs, accumSec: 0, paused: false, note: "", markForReview: false }
 }
 
 export function elapsedStudySeconds(timer: StudyTimer, nowMs: number): number {

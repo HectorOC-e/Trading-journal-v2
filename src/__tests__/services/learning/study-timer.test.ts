@@ -23,3 +23,13 @@ describe("study timer reload", () => {
     }
   })
 })
+
+it("restores legacy snapshots with an empty draft", () => {
+  expect(restoreStudyTimer(JSON.stringify({ sessionId: "s1", runStartMs: 1000, accumSec: 60, paused: true }), "s1", 1000)).toMatchObject({ paused: true, accumSec: 60, note: "", markForReview: false })
+})
+
+it("validates draft data without losing a valid timer", () => {
+  const saved = JSON.stringify({ sessionId: "s1", runStartMs: 1000, accumSec: 60, paused: true, note: "a".repeat(2001), markForReview: "yes" })
+  expect(restoreStudyTimer(saved, "s1", 1000)).toMatchObject({ accumSec: 60, note: "a".repeat(2000), markForReview: false })
+  expect(restoreStudyTimer(saved, "s2", 1000)).toMatchObject({ note: "", markForReview: false })
+})

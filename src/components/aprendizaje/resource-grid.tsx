@@ -6,6 +6,8 @@ import { FilterBar } from "@/components/ui/filter-bar"
 import { ResourceCard } from "@/components/aprendizaje/resource-card"
 import { ResourceListRow } from "@/components/aprendizaje/resource-list-row"
 import { Stagger, StaggerItem } from "@/components/ui/motion"
+import { localDateISO } from "@/lib/datetime/local"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
 import { cn } from "@/lib/utils"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
@@ -51,6 +53,7 @@ function sortResources(resources: LearningResource[], key: SortKey): LearningRes
 }
 
 interface ResourceGridProps {
+  todayISO?:          string
   resources:          LearningResource[]
   className?:         string
   onReview?:          (resource: LearningResource) => void
@@ -67,6 +70,7 @@ interface ResourceGridProps {
 
 export function ResourceGrid({
   resources,
+  todayISO,
   className,
   onReview,
   onEdit,
@@ -144,7 +148,7 @@ export function ResourceGrid({
         r.notes.toLowerCase().includes(q) ||
         r.tags.some((t) => t.toLowerCase().includes(q))
       const matchCategory  = category === "TODOS" || r.type === (category as ResourceType)
-      const matchReview    = !onlyReview || r.markedForReview
+      const matchReview    = !onlyReview || isResourceReviewDue(r, todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone))
       const matchStatus    = statusFilter.length === 0 || statusFilter.includes(r.status as ResourceStatus)
       const matchTag       = tagFilter.length === 0 || tagFilter.every(t => r.tags.includes(t))
       const matchFavorites = !onlyFavorites || r.isFavorite
@@ -378,6 +382,7 @@ export function ResourceGrid({
             <StaggerItem key={r.id}>
               <ResourceCard
                 resource={r}
+                todayISO={todayISO}
                 onReview={onReview}
                 onEdit={onEdit}
                 onDelete={onDelete}

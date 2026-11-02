@@ -4,7 +4,7 @@ import { useMemo, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
-import { isReviewDue } from "./utils/mastery"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
 import { ResourceDrawer } from "@/components/aprendizaje/resource-drawer"
 import { trpc } from "@/lib/trpc/client"
@@ -116,17 +116,18 @@ export default function AprendizajePage() {
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
-  const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview), [resources])
+  const reviewPending = useMemo(() => resources.filter((r) => r.markedForReview && isResourceReviewDue(r, "")), [resources])
   const completed     = useMemo(() => resources.filter((r) => (r.progressPct ?? 0) >= 100), [resources])
   // Repaso queue: due (SRS) or manually marked, excluding archived. Due first.
   const dueResources  = useMemo(
     () => resources
-      .filter((r) => r.status !== "ABANDONED" && (isReviewDue(r.nextReviewAt, today ?? undefined) || r.markedForReview))
+      .filter((r) => isResourceReviewDue(r, today ?? ""))
       .sort((a, b) => (a.nextReviewAt ?? "9999").localeCompare(b.nextReviewAt ?? "9999")),
     [resources, today],
   )
 
   const gridProps = {
+    todayISO: today ?? undefined,
     onReview:       (r: LearningResource) => setRevisarResource(r as unknown as ResourceFromDB),
     onEdit:         (r: LearningResource) => handleEditOpen(r as unknown as ResourceFromDB),
     onDelete:       (id: string) => deleteResource.mutate(id),

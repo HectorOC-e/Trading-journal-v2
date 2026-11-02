@@ -1,5 +1,6 @@
 "use client"
 
+import { formatCalendarDate } from "@/lib/datetime/local"
 import { Play } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
@@ -183,7 +184,7 @@ export function ProgresoSections({
                 <CategoryChip type={stats.focusResource.type as ResourceType} />
                 <p className="text-[12px] font-semibold text-[var(--ink)] leading-snug mt-1.5 line-clamp-2">{stats.focusResource.title}</p>
                 {stats.focusResource.nextReviewAt && (
-                  <p className="text-[10px] text-[#b45309] mt-1">⏰ Review: {new Date(stats.focusResource.nextReviewAt).toLocaleDateString("es-ES", { day: "numeric", month: "short" })}</p>
+                  <p className="text-[10px] text-[#b45309] mt-1">⏰ Review: {formatCalendarDate(stats.focusResource.nextReviewAt, { day: "numeric", month: "short" })}</p>
                 )}
               </div>
             </Card>

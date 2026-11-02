@@ -1,3 +1,4 @@
+import { addDaysISO, formatCalendarDate, localDateISO } from "@/lib/datetime/local"
 import type { ResourceType } from "@/types"
 
 export const TYPE_COLORS: Record<ResourceType, string> = {
@@ -18,7 +19,7 @@ export const MASTERY_LABELS: Record<number, string> = {
   5: "Dominado",
 }
 
-export function calcPreviewNextReview(reviewInterval: number | null | undefined, masteryLevel: number): string {
+export function calcPreviewNextReview(reviewInterval: number | null | undefined, masteryLevel: number, todayISO?: string): string {
   const interval = reviewInterval ?? 7
   let days: number
   if (masteryLevel <= 2) {
@@ -28,9 +29,8 @@ export function calcPreviewNextReview(reviewInterval: number | null | undefined,
   } else {
     days = interval
   }
-  const date = new Date()
-  date.setDate(date.getDate() + days)
-  return date.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" })
+  const today = todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+  return formatCalendarDate(addDaysISO(today, days), { day: "numeric", month: "short", year: "numeric" })
 }
 
 export function fmtRelativeTime(isoDate: string): string {
