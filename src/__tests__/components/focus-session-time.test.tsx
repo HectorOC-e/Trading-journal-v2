@@ -25,7 +25,7 @@ beforeEach(() => {
   mocks.finish.mockClear()
   useStudySessionStore.getState().setSession({ id: "s1", resourceId: "r1", resourceTitle: "Book", resourceType: "LIBRO", startedAtMs: Date.now() })
 })
-afterEach(() => { cleanup(); useStudySessionStore.getState().setSession(null); vi.useRealTimers() })
+afterEach(() => { cleanup(); useStudySessionStore.getState().setSession(null); vi.useRealTimers(); vi.restoreAllMocks() })
 
 it("restores a paused session on reload and saves only study minutes", () => {
   const first = render(<FocusSession />)
@@ -121,3 +121,15 @@ for (const operation of ["finish", "cancel"] as const) {
     expect(localStorage.getItem("tj-study-timer:s2")).not.toBeNull()
   })
 }
+
+it("keeps legacy sessionStorage recovery when shared storage is unavailable", () => {
+  sessionStorage.setItem("tj-study-timer:s1", JSON.stringify({ sessionId: "s1", runStartMs: Date.now(), accumSec: 60, paused: true, note: "Legacy", markForReview: false }))
+  const getItem = Storage.prototype.getItem
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (this: Storage, key: string) {
+    if (this === localStorage) throw new Error("Storage unavailable")
+    return getItem.call(this, key)
+  })
+  render(<FocusSession />)
+  expect(screen.getByText("En pausa")).toBeInTheDocument()
+  expect(screen.getByRole("textbox")).toHaveValue("Legacy")
+})

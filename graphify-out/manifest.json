@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/focus-session.tsx": {
-    "mtime": 1793589197.5399742,
-    "seen": 1793589316.131069,
-    "ast_hash": "fe6e2ab26794b15e9877fb80f79975b6",
+    "mtime": 1793589574.0192306,
+    "seen": 1793589584.6887548,
+    "ast_hash": "ca9dffd86bf03dfb6a908f68f24ed74a",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/hoy-tab.tsx": {

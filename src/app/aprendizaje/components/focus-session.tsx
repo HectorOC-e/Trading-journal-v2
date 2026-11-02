@@ -50,7 +50,10 @@ export function FocusSession() {
     if (session && initedFor.current !== session.id) {
       initedFor.current = session.id
       let saved: string | null = null
-      try { saved = localStorage.getItem(`tj-study-timer:${session.id}`) ?? sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      try { saved = localStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      if (saved === null) {
+        try { saved = sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      }
       timerRef.current = restoreStudyTimer(saved, session.id, session.startedAtMs)
       setTimer(timerRef.current)
       try { localStorage.setItem(`tj-study-timer:${session.id}`, JSON.stringify(timerRef.current)) } catch { /* optional */ }
@@ -91,7 +94,8 @@ export function FocusSession() {
     } else if (active === null && dataUpdatedAt && session) {
       closedSessions.current.add(session.id)
       // A fresh server response reconciles sessions ended outside this tab.
-      try { localStorage.removeItem(`tj-study-timer:${session.id}`); sessionStorage.removeItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      try { localStorage.removeItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      try { sessionStorage.removeItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
       setSession(null)
     }
     // Changes to the local store alone must not reapply an older server snapshot.
@@ -109,7 +113,8 @@ export function FocusSession() {
   function clearTimerStorage(sessionId: string) {
     closedSessions.current.add(sessionId)
     const key = `tj-study-timer:${sessionId}`
-    try { localStorage.removeItem(key); sessionStorage.removeItem(key) } catch { /* optional */ }
+    try { localStorage.removeItem(key) } catch { /* optional */ }
+    try { sessionStorage.removeItem(key) } catch { /* optional */ }
     if (useStudySessionStore.getState().session?.id === sessionId) setSession(null)
   }
 
@@ -136,7 +141,8 @@ export function FocusSession() {
   function persistTimer(next: StudyTimer) {
     timerRef.current = next
     setTimer(next)
-    try { if (storageKey) { localStorage.setItem(storageKey, JSON.stringify(next)); sessionStorage.setItem(storageKey, JSON.stringify(next)) } } catch { /* optional */ }
+    try { if (storageKey) localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
+    try { if (storageKey) sessionStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
   }
   function updateDraft(draft: Partial<Pick<StudyTimer, "note" | "markForReview">>) {
     const current = timerRef.current
