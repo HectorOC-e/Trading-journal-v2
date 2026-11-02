@@ -81,7 +81,7 @@ export function HoyTab({ onGoRepaso, onCreateResource }: { onGoRepaso: () => voi
     <>
     {isError && retryNotice}
     <PlanSessionModal open={planOpen} onClose={() => setPlanOpen(false)} />
-    <SpotlightTour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
+    <SpotlightTour steps={TOUR_STEPS.filter(step => step.anchor !== "coach-suggestion" || suggestion?.kind !== "overdue_review")} open={tourOpen} onClose={closeTour} />
 
     <div className="flex justify-end -mb-1">
       <button onClick={() => setTourOpen(true)} title="Ver tutorial de la página"
@@ -156,7 +156,7 @@ export function HoyTab({ onGoRepaso, onCreateResource }: { onGoRepaso: () => voi
             </div>}
 
             {/* Coach suggestion slot (SP2) — server-side heuristic + deep-link to coach */}
-            <div data-tour="coach-suggestion" className="rounded-[var(--radius-sm)] border border-[var(--line-2)] bg-[var(--accent-soft)]/40 px-3 py-2.5 flex items-start gap-2">
+            {suggestion?.kind !== "overdue_review" && <div data-tour="coach-suggestion" className="rounded-[var(--radius-sm)] border border-[var(--line-2)] bg-[var(--accent-soft)]/40 px-3 py-2.5 flex items-start gap-2">
               <Sparkles size={14} className="text-[var(--accent)] shrink-0 mt-0.5" />
               {suggestion ? (
                 <div className="min-w-0 flex-1">
@@ -170,7 +170,7 @@ export function HoyTab({ onGoRepaso, onCreateResource }: { onGoRepaso: () => voi
               ) : (
                 <p className="text-[11.5px] text-[var(--ink-3)] mt-0.5">Vas al día. El coach sugerirá estudio aquí cuando detecte algo útil en tus trades.</p>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Racha */}

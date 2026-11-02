@@ -120,10 +120,10 @@ export function pickStudySuggestion(input: SuggestionInput): StudySuggestion | n
     const extra = overdueReviews.length - 1
     return {
       kind: "overdue_review",
-      title: extra > 0 ? `${overdueReviews.length} repasos vencidos` : `Repaso pendiente: ${first.title}`,
+      title: extra > 0 ? `${overdueReviews.length} repasos pendientes` : `Repaso pendiente: ${first.title}`,
       reason: extra > 0
         ? `Tienes ${overdueReviews.length} recursos esperando repaso. Empieza por "${first.title}".`
-        : `"${first.title}" vence hoy. Un repaso corto consolida lo aprendido.`,
+        : `"${first.title}" está pendiente de repaso. Un repaso corto consolida lo aprendido.`,
       resourceId: first.id,
       coachPrompt: `¿Cómo debería enfocar el repaso de "${first.title}" hoy?`,
     }
