@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import {
   applyStudyFinish,
+  effectiveStudyStartedAt,
   studyStreak,
   minutesThisWeek,
   startOfWeekUTC,
@@ -128,5 +129,13 @@ describe("pickStudySuggestion", () => {
 
   it("returns null when on track", () => {
     expect(pickStudySuggestion(base)).toBeNull()
+  })
+})
+
+ describe("legacy voided dates", () => {
+  it("retains the actual completion instant after voiding a legacy planned completion", () => {
+    const startedAt = new Date("2026-06-20T12:00:00Z")
+    const endedAt = new Date("2026-06-15T18:00:00Z")
+    expect(effectiveStudyStartedAt({ startedAt, endedAt, source: "manual", plannedMin: 30, status: "voided" })).toEqual(endedAt)
   })
 })

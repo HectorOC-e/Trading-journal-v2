@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { DUR, EASE_OUT } from "@/lib/motion"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
-import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { isResourceReviewDue, reviewReason } from "@/domains/learning/services/review-queue"
 import { effectiveMasteryLevel, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
@@ -443,7 +443,7 @@ export function ResourceCard({
             onClick={() => onReview?.(resource)}
             className="self-start inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] bg-[#f59e0b] text-white hover:opacity-90 transition-opacity"
           >
-            ⏰ Repasar hoy →
+            <span>{reviewReason(resource, todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone))?.label}</span> · Repasar hoy →
           </button>
         ) : resource.status !== "MASTERED" && reviewCountdown(resource.nextReviewAt, todayISO) ? (
           <span className="text-[10px] font-medium" style={{ color: "#b45309" }}>

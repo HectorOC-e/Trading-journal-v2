@@ -1,10 +1,8 @@
 "use client"
 
 import { formatCalendarDate } from "@/lib/datetime/local"
-import { Play } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
-import { useStudySessionStore } from "@/lib/study-session-store"
 import { FadeIn } from "@/components/ui/motion"
 import type { LearningResource, ResourceType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
@@ -37,28 +35,23 @@ const Card = ({ title, children }: { title: React.ReactNode; children: React.Rea
  */
 export function ProgresoSections({
   resources,
-  reviewPending,
-  rawResources,
-  onRevisarResource,
 }: {
   resources:         LearningResource[]
   reviewPending:     LearningResource[]
   rawResources:      ResourceFromDB[]
   onRevisarResource: (r: ResourceFromDB) => void
 }) {
-  const { openPicker } = useStudySessionStore()
   const { data: stats }              = trpc.learningResources.stats.useQuery()
   const { data: dailyInsight }       = trpc.learningResources.dailyInsight.useQuery()
   const { data: impactRanking = [] } = trpc.learningResources.resourceImpactRanking.useQuery()
 
-  const urgent = stats?.urgentReviews ?? []
   const totalResources = resources.length || 1
 
   return (
     <FadeIn>
       <section className="mt-3 flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <p className="text-eyebrow">Progreso</p>
+          <p className="text-eyebrow">Biblioteca e impacto</p>
         </div>
 
         {/* Decay notice */}
@@ -71,54 +64,6 @@ export function ProgresoSections({
         )}
 
         <div className="grid gap-3 lg:grid-cols-2">
-          {/* Reviews vencidas — unified session launcher */}
-          {urgent.length > 0 && (
-            <Card title={
-              <div className="flex items-center justify-between">
-                <p className="text-eyebrow text-[var(--loss)]">⚠️ Reviews vencidas · {urgent.length}</p>
-                <button onClick={openPicker}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] hover:bg-[var(--accent-h)] transition-colors active:scale-95">
-                  <Play size={11} className="fill-current" /> Iniciar sesión
-                </button>
-              </div>
-            }>
-              <div className="flex flex-col">
-                {urgent.map((r) => (
-                  <div key={r.id} className="flex items-center gap-2 py-2 border-b border-[var(--line)] last:border-0">
-                    <CategoryChip type={r.type as ResourceType} className="shrink-0" />
-                    <p className="text-[11px] text-[var(--ink)] leading-snug flex-1 truncate">{r.title}</p>
-                    <button
-                      onClick={() => { const m = rawResources.find((x) => x.id === r.id); if (m) onRevisarResource(m) }}
-                      className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline active:scale-95 transition">
-                      Revisar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Marcados para review */}
-          <Card title="📚 Marcados para review">
-            {reviewPending.length === 0 ? (
-              <p className="text-[11px] text-[var(--ink-3)] py-2">Sin recursos marcados.</p>
-            ) : (
-              <div className="flex flex-col">
-                {reviewPending.map((r) => (
-                  <div key={r.id} className="flex items-center gap-2 py-2 border-b border-[var(--line)] last:border-0">
-                    <CategoryChip type={r.type as ResourceType} className="shrink-0" />
-                    <p className="text-[11px] text-[var(--ink)] leading-snug flex-1 truncate">{r.title}</p>
-                    <button
-                      onClick={() => onRevisarResource(r as unknown as ResourceFromDB)}
-                      className="text-[11px] font-medium text-[var(--accent)] shrink-0 hover:underline active:scale-95 transition">
-                      Revisar
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
           {/* Impacto en trading */}
           {impactRanking.length > 0 && (
             <Card title="Impacto en trading">

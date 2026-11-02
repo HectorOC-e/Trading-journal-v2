@@ -9,6 +9,7 @@ import {
 } from "@/domains/learning/services/study-session-service"
 
 import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { reviseSession } from "@/server/services/learning/session-revisions"
 import { applyStudySessionProgress } from "@/server/services/learning/study-progress"
 import { addDaysISO, localDateISO, safeTimeZone, weekStartISO } from "@/lib/datetime/local"
 
@@ -110,7 +111,8 @@ export const studySessionsRouter = router({
           throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
         }
 
-        await applyStudySessionProgress(tx, ctx.userId, session.resourceId, input.durationMin, input.markForReview)
+        const contribution = await applyStudySessionProgress(tx, ctx.userId, session.resourceId, input.durationMin, input.markForReview)
+        await tx.studySession.update({ where: { id: session.id }, data: contribution })
       })
       return { ok: true }
     }),
@@ -148,6 +150,9 @@ export const studySessionsRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.prisma.$transaction(async tx => {
+        // Lock before reading plannedMin: reschedule/cancel can otherwise change
+        // the plan between the read and its completion claim.
+        await tx.$queryRaw`SELECT id FROM public.study_sessions WHERE id = ${input.id}::uuid AND user_id = ${ctx.userId}::uuid FOR UPDATE`
         const session = await tx.studySession.findFirst({
           where: { id: input.id, userId: ctx.userId, status: "planned" },
 
@@ -160,8 +165,85 @@ export const studySessionsRouter = router({
           data: { status: "completed", source: "manual", startedAt: now, endedAt: now, durationMin: min },
         })
         if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
-        await applyStudySessionProgress(tx, ctx.userId, session.resourceId, min)
+        const contribution = await applyStudySessionProgress(tx, ctx.userId, session.resourceId, min)
+        await tx.studySession.update({ where: { id: session.id }, data: contribution })
       })
+      return { ok: true }
+    }),
+
+  /** All editable plans, including overdue and distant future calendar dates. */
+  plans: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20), cursor: z.string().uuid().optional() }))
+    .query(async ({ ctx, input }) => {
+      if (input.cursor) {
+        const cursor = await ctx.prisma.studySession.findFirst({ where: { id: input.cursor, userId: ctx.userId, status: "planned" } })
+        if (!cursor) throw new TRPCError({ code: "NOT_FOUND" })
+      }
+      const rows = await ctx.prisma.studySession.findMany({
+        where: { userId: ctx.userId, status: "planned" },
+        orderBy: [{ startedAt: "asc" }, { id: "asc" }], take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        include: sessionInclude,
+      })
+      const page = rows.slice(0, input.limit)
+      return { items: page.map(s => ({ id: s.id, resourceId: s.resourceId,
+        resourceTitle: s.resource.title, resourceType: s.resource.type,
+        date: dayKey(s.startedAt), plannedMin: s.plannedMin,
+      })), nextCursor: rows.length > input.limit ? page.at(-1)!.id : null }
+    }),
+
+  history: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20), cursor: z.string().uuid().optional() }))
+    .query(async ({ ctx, input }) => {
+      if (input.cursor) {
+        const cursor = await ctx.prisma.studySession.findFirst({ where: { id: input.cursor, userId: ctx.userId, status: { in: ["completed", "voided"] } } })
+        if (!cursor) throw new TRPCError({ code: "NOT_FOUND" })
+      }
+      const rows = await ctx.prisma.studySession.findMany({
+        where: { userId: ctx.userId, status: { in: ["completed", "voided"] } },
+        orderBy: [{ endedAt: { sort: "desc", nulls: "last" } }, { startedAt: "desc" }, { id: "desc" }], take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+        include: { resource: { select: { title: true, type: true, progressType: true } } },
+      })
+      const hasMore = rows.length > input.limit
+      const page = rows.slice(0, input.limit)
+      return { items: page.map(s => {
+        const supported = ["minutes", "sessions"].includes(s.resource.progressType ?? "")
+        const known = s.progressUnitsApplied != null
+        const canAdjustProgress = supported && (!known || s.progressTypeAtFinish === s.resource.progressType)
+        return { ...serializeSession(s), updatedAt: s.updatedAt.toISOString(),
+          revisionCount: Array.isArray(s.revisionLog) ? s.revisionLog.length : 0,
+          canAdjustProgress, needsProgressConfirmation: !known && canAdjustProgress,
+          progressLabel: !canAdjustProgress ? "Conservar progreso actual" : !known ? "Progreso histórico desconocido" : `${s.progressUnitsApplied} ${s.progressTypeAtFinish === "minutes" ? "minutos" : "sesiones"}`,
+        }
+      }), nextCursor: hasMore ? page.at(-1)!.id : null }
+    }),
+
+  reviseCompleted: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), durationMin: z.number().int().min(0).max(maxDurationMin), note: z.string().max(2000), expectedUpdatedAt: z.string().datetime(), adjustProgress: z.boolean() }))
+    .mutation(({ ctx, input }) => ctx.prisma.$transaction(tx => reviseSession(tx, ctx.userId, input, false))),
+
+  voidCompleted: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), expectedUpdatedAt: z.string().datetime(), adjustProgress: z.boolean() }))
+    .mutation(({ ctx, input }) => ctx.prisma.$transaction(tx => reviseSession(tx, ctx.userId, input, true))),
+
+  reschedule: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), date: z.string().date(), plannedMin: z.number().int().min(5).max(480) }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { timezone: true } })
+      if (input.date < localDateISO(new Date(), safeTimeZone(user.timezone))) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Elige hoy o una fecha futura." })
+      }
+      const result = await ctx.prisma.studySession.updateMany({ where: { id: input.id, userId: ctx.userId, status: "planned" }, data: { startedAt: new Date(input.date + "T12:00:00Z"), plannedMin: input.plannedMin } })
+      if (result.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "El plan ya cambió o no está disponible." })
+      return { ok: true }
+    }),
+
+  cancelPlanned: protectedProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.studySession.updateMany({ where: { id: input.id, userId: ctx.userId, status: "planned" }, data: { status: "cancelled" } })
+      if (result.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "El plan ya cambió o no está disponible." })
       return { ok: true }
     }),
 
@@ -230,7 +312,7 @@ export const studySessionsRouter = router({
     // Due reviews (≤ today)
     const due = resources
       .filter(r => isResourceReviewDue(r, todayKey))
-      .map(r => ({ id: r.id, title: r.title, type: r.type }))
+      .map(r => ({ id: r.id, title: r.title, type: r.type, status: r.status, markedForReview: r.markedForReview, nextReviewAt: r.nextReviewAt ? dayKey(r.nextReviewAt) : null }))
 
     // In-progress resources (what you're studying)
     const inProgress = resources
@@ -283,6 +365,7 @@ export const studySessionsRouter = router({
     })
 
     return {
+      resourceCount: resources.length,
       timezone,
       todayKey,
       weekDays,

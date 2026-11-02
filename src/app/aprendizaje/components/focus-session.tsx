@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { CategoryChip } from "@/components/ui/category-chip"
 import { useStudySessionStore } from "@/lib/study-session-store"
 import { elapsedStudySeconds, restoreStudyTimer, toggleStudyPause, type StudyTimer } from "@/lib/study-timer"
-import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { isResourceReviewDue, reviewReason } from "@/domains/learning/services/review-queue"
 import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import type { ResourceType } from "@/types"
 
@@ -266,7 +266,7 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
       <CategoryChip type={r.type as ResourceType} />
       <span className="flex-1 min-w-0 text-[13px] text-[var(--ink)] truncate">{r.title}</span>
       {(isResourceReviewDue(r, today)) && (
-        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">vence</span>
+        <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]">{reviewReason(r, today)?.label}</span>
       )}
     </button>
   )
@@ -291,7 +291,7 @@ function ResourcePicker({ onPick, onClose }: { onPick: (id: string) => void; onC
             <>
               {due.length > 0 && (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--loss)] px-2.5 pt-1 pb-0.5">Vencidas para repaso · {due.length}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--loss)] px-2.5 pt-1 pb-0.5">Pendientes de repaso · {due.length}</p>
                   {due.map(Row)}
                   {rest.length > 0 && <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--ink-3)] px-2.5 pt-3 pb-0.5">Todos</p>}
                 </>

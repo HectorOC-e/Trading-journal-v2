@@ -35,4 +35,5 @@ export async function applyStudySessionProgress(
       ...(update?.status === "COMPLETED" && !resource.completedAt ? { completedAt: new Date() } : {}),
       ...(markForReview ? { markedForReview: true } : {}) },
   })
+  return { progressTypeAtFinish: resource.progressType, progressUnitsApplied: update ? update.currentUnits - (resource.currentUnits ?? 0) : 0 }
 }

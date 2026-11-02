@@ -4,7 +4,7 @@ import { useMemo, useEffect, useState } from "react"
 import { Plus } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { cn } from "@/lib/utils"
-import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { isResourceReviewDue, compareReviewPriority } from "@/domains/learning/services/review-queue"
 import { ResourceGrid } from "@/components/aprendizaje/resource-grid"
 import { ResourceDrawer } from "@/components/aprendizaje/resource-drawer"
 import { trpc } from "@/lib/trpc/client"
@@ -59,9 +59,11 @@ export default function AprendizajePage() {
     window.history.replaceState(null, "", url.toString())
   }
 
-  const { data: rawResources = [], isLoading } = trpc.learningResources.list.useQuery()
+  const resourcesQuery = trpc.learningResources.list.useQuery()
+  const { data: rawResources = [], isLoading } = resourcesQuery
   const { data: reviews = [] }                 = trpc.weeklyReviews.list.useQuery()
-  const { data: stats }                        = trpc.learningResources.stats.useQuery()
+  const statsQuery = trpc.learningResources.stats.useQuery()
+  const { data: stats } = statsQuery
   const utils = trpc.useUtils()
 
   const processDecay = trpc.learningResources.processDecayTransitions.useMutation({
@@ -122,11 +124,12 @@ export default function AprendizajePage() {
   const dueResources  = useMemo(
     () => resources
       .filter((r) => isResourceReviewDue(r, today ?? ""))
-      .sort((a, b) => (a.nextReviewAt ?? "9999").localeCompare(b.nextReviewAt ?? "9999")),
+      .sort((a, b) => compareReviewPriority(a, b, today ?? "")),
     [resources, today],
   )
 
   const gridProps = {
+    onCreateResource: handleOpen,
     todayISO: today ?? undefined,
     onReview:       (r: LearningResource) => setRevisarResource(r as unknown as ResourceFromDB),
     onEdit:         (r: LearningResource) => handleEditOpen(r as unknown as ResourceFromDB),
@@ -142,10 +145,10 @@ export default function AprendizajePage() {
   }
 
   const strip = [
-    { label: "Recursos",        value: stats?.totalResources ?? resources.length },
-    { label: "Completados mes", value: stats?.completedThisMonth ?? completed.length },
+    { label: "Recursos",        value: stats?.totalResources ?? (resourcesQuery.data ? resources.length : "—") },
+    { label: "Completados mes", value: stats?.completedThisMonth ?? (resourcesQuery.data ? completed.length : "—") },
     { label: "Horas semana",    value: studyHome ? `${(studyHome.week.hoursMin / 60).toFixed(1)}h` : "—" },
-    { label: "Reviews urgentes",value: stats?.pendingReviewsCount ?? 0, alert: (stats?.pendingReviewsCount ?? 0) > 0 },
+    { label: "Reviews urgentes",value: stats?.pendingReviewsCount ?? "—", alert: (stats?.pendingReviewsCount ?? 0) > 0 },
     { label: "Racha",           value: `${studyHome?.week.streak ?? 0}d` },
   ]
 
@@ -153,7 +156,7 @@ export default function AprendizajePage() {
     <div>
       <TopBar
         title="Aprendizaje"
-        subtitle={`${resources.length} recursos · ${reviewPending.length} marcados para review`}
+        subtitle={resourcesQuery.error && !resourcesQuery.data ? "No se pudieron cargar los recursos" : `${resources.length} recursos · ${reviewPending.length} marcados para review`}
         actions={[
           { label: "Añadir recurso", variant: "primary", icon: <Plus size={14} />, onClick: handleOpen },
         ]}
@@ -162,14 +165,23 @@ export default function AprendizajePage() {
       <ProfileClock timezone={timezone} />
 
       {/* Stats strip — quick glance, always visible, responsive */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
+      {tab !== "hoy" && <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
         {strip.map((s) => (
           <div key={s.label} className="rounded-[var(--radius-sm)] bg-[var(--panel)] border border-[var(--line)] px-3 py-2.5">
             <p className="num text-[18px] font-bold leading-none" style={{ color: s.alert ? "var(--loss)" : "var(--ink)" }}>{s.value}</p>
             <p className="text-[10px] text-[var(--ink-3)] mt-1">{s.label}</p>
           </div>
         ))}
-      </div>
+      </div>}
+
+      {resourcesQuery.error && <div role="alert" className="mb-4 text-sm text-[var(--ink-2)]">
+        <p>No se pudieron actualizar los recursos.{resourcesQuery.data ? " Se muestran los últimos datos disponibles." : " Inténtalo de nuevo."}</p>
+        <button onClick={() => void resourcesQuery.refetch()} className="mt-2 text-[var(--accent)] underline">Reintentar recursos</button>
+      </div>}
+      {tab !== "hoy" && statsQuery.error && <div role="alert" className="mb-4 text-sm text-[var(--ink-2)]">
+        <p>No se pudieron actualizar las estadísticas.{stats ? " Se muestran los últimos datos disponibles." : ""}</p>
+        <button onClick={() => void statsQuery.refetch()} className="mt-2 text-[var(--accent)] underline">Reintentar estadísticas</button>
+      </div>}
 
       {/* Tabs */}
       <div role="tablist" aria-label="Secciones de aprendizaje" className="flex gap-1 mb-4 border-b border-[var(--line)]">
@@ -202,15 +214,15 @@ export default function AprendizajePage() {
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>
-      ) : tab === "hoy" ? (
+      ) : resourcesQuery.error && !resourcesQuery.data && tab !== "hoy" ? null : tab === "hoy" ? (
         <>
-          <HoyTab onGoRepaso={() => selectTab("repaso")} />
-          <ProgresoSections
+          <HoyTab onGoRepaso={() => selectTab("repaso")} onCreateResource={handleOpen} />
+          {!(resourcesQuery.error && !resourcesQuery.data) && <ProgresoSections
             resources={resources}
             rawResources={rawResources}
             reviewPending={reviewPending}
             onRevisarResource={(r) => setRevisarResource(r)}
-          />
+          />}
         </>
       ) : tab === "repaso" ? (
         dueResources.length === 0 ? (
@@ -218,7 +230,7 @@ export default function AprendizajePage() {
             Nada que repasar por ahora. El repaso espaciado te avisará cuando toque.
           </div>
         ) : (
-          <ResourceGrid {...gridProps} resources={dueResources} />
+          <ResourceGrid {...gridProps} resources={dueResources} reviewQueue />
         )
       ) : (
         <ResourceGrid {...gridProps} resources={resources} />

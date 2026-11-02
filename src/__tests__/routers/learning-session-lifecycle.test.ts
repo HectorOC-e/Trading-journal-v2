@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server',()=>({createClient:vi.fn()}))
 const id='11111111-1111-4111-8111-111111111111'
 function fixture(status='IN_PROGRESS'){
  const resource={id,title:'QA',type:'CURSO',status,progressType:'minutes',currentUnits:90,totalUnits:100}
- const prisma:any={studySession:{findFirst:vi.fn().mockResolvedValue(null),create:vi.fn().mockImplementation(async({data}:any)=>({...data,id:crypto.randomUUID(),startedAt:new Date(),endedAt:null,plannedMin:null,durationMin:null,note:'',resource})),updateMany:vi.fn().mockResolvedValue({count:1})},learningResource:{findFirst:vi.fn().mockResolvedValue(resource),findUniqueOrThrow:vi.fn().mockResolvedValue(resource),update:vi.fn().mockResolvedValue({})},$queryRaw:vi.fn().mockResolvedValue([{id}]),$transaction:vi.fn()}
+ const prisma:any={studySession:{update:vi.fn().mockResolvedValue({}),findFirst:vi.fn().mockResolvedValue(null),create:vi.fn().mockImplementation(async({data}:any)=>({...data,id:crypto.randomUUID(),startedAt:new Date(),endedAt:null,plannedMin:null,durationMin:null,note:'',resource})),updateMany:vi.fn().mockResolvedValue({count:1})},learningResource:{findFirst:vi.fn().mockResolvedValue(resource),findUniqueOrThrow:vi.fn().mockResolvedValue(resource),update:vi.fn().mockResolvedValue({})},$queryRaw:vi.fn().mockResolvedValue([{id}]),$transaction:vi.fn()}
  prisma.$transaction.mockImplementation(async(fn:any)=>fn(prisma))
  return {prisma,caller:studySessionsRouter.createCaller({prisma,userId:id,supabase:{} as never})}
 }

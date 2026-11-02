@@ -1,9 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Clock, BookOpen, Play, Flame, Sparkles, CheckCircle2, CalendarClock, ArrowRight, HelpCircle } from "lucide-react"
+import { Clock, BookOpen, Play, Flame, Sparkles, CalendarClock, ArrowRight, HelpCircle } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
-import { toast } from "@/lib/use-toast"
 import { cn } from "@/lib/utils"
 import { CountUp } from "@/components/ui/count-up"
 import { CategoryChip } from "@/components/ui/category-chip"
@@ -12,6 +11,9 @@ import { useStudySessionStore } from "@/lib/study-session-store"
 import { askCoach } from "@/lib/coach-bus"
 import { SpotlightTour, type TourStep } from "@/components/onboarding/spotlight-tour"
 import { PlanSessionModal } from "./plan-session-modal"
+import { PlannedSessions } from "./planned-sessions"
+import { SessionHistory } from "./session-history"
+import { reviewReason } from "@/domains/learning/services/review-queue"
 import type { ResourceType } from "@/types"
 
 const DOW = ["L", "M", "X", "J", "V", "S", "D"]
@@ -25,16 +27,16 @@ const TOUR_STEPS: TourStep[] = [
   { anchor: "agenda", title: "Lo que viene", body: "Repasos próximos y sesiones planificadas, ordenados por fecha." },
 ]
 
-export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
+export function HoyTab({ onGoRepaso, onCreateResource }: { onGoRepaso: () => void; onCreateResource?: () => void }) {
   const { openPicker } = useStudySessionStore()
   const [planOpen, setPlanOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
-  const { data, isLoading } = trpc.studySessions.home.useQuery()
+  const { data, isLoading, isError, isFetching, refetch } = trpc.studySessions.home.useQuery()
 
   // Auto-open the guided tour on the first visit, once the data has resolved
   // (so the spotlight lands on real content, not the loading skeleton).
   useEffect(() => {
-    if (isLoading || !data) return
+    if (isLoading || !data || data.resourceCount === 0) return
     let seen = false
     try { seen = localStorage.getItem(TOUR_SEEN_KEY) === "1" } catch { /* noop */ }
     if (!seen) {
@@ -47,11 +49,11 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
     setTourOpen(false)
     try { localStorage.setItem(TOUR_SEEN_KEY, "1") } catch { /* noop */ }
   }
-  const utils = trpc.useUtils()
-  const completePlanned = trpc.studySessions.completePlanned.useMutation({
-    onSuccess: () => { utils.studySessions.invalidate(); utils.learningResources.invalidate(); toast.success("Sesión planificada completada") },
-    onError: () => toast.error("No se pudo completar"),
-  })
+  const retryNotice = <div role="alert" className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] p-3 text-sm">
+    <p>{data ? "No se pudo actualizar. Mostramos los últimos datos disponibles." : "No se pudo cargar tu resumen de aprendizaje."}</p>
+    <button disabled={isFetching} onClick={() => void refetch()} className="text-[var(--accent)] disabled:opacity-50">Reintentar</button>
+  </div>
+  if (!data && isError) return retryNotice
 
   if (isLoading || !data) {
     return (
@@ -64,13 +66,20 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
   }
 
   const { weekDays, due, inProgress, week, agenda, suggestion } = data
+  const reviewAgenda = agenda.filter(item => item.kind === "review")
   const goalH = (week.goalMin / 60).toFixed(1)
   const doneH = (week.hoursMin / 60)
   const pct = week.goalMin > 0 ? Math.min(100, Math.round((week.hoursMin / week.goalMin) * 100)) : 0
+  const reasons = { overdue: 0, today: 0, manual: 0 }
+  for (const resource of due) {
+    const reason = reviewReason(resource, data.todayKey)
+    if (reason) reasons[reason.kind]++
+  }
   const fmtDay = (iso: string) => new Date(iso + "T12:00:00Z").getUTCDate()
 
   return (
     <>
+    {isError && retryNotice}
     <PlanSessionModal open={planOpen} onClose={() => setPlanOpen(false)} />
     <SpotlightTour steps={TOUR_STEPS} open={tourOpen} onClose={closeTour} />
 
@@ -119,7 +128,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
               <Clock size={16} style={{ color: due.length > 0 ? "var(--loss)" : "var(--ink-3)" }} />
               <span className="flex-1 text-[13px]">
                 {due.length > 0
-                  ? <><b style={{ color: "var(--loss)" }}>{due.length} repaso{due.length === 1 ? "" : "s"}</b> {due.length === 1 ? "vence" : "vencen"} hoy</>
+                  ? <><b style={{ color: "var(--loss)" }}>{due.length} repaso{due.length === 1 ? "" : "s"} pendiente{due.length === 1 ? "" : "s"}</b><span className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-[var(--ink-2)]">{reasons.overdue > 0 && <span>{reasons.overdue} vencido{reasons.overdue === 1 ? "" : "s"}</span>}{reasons.today > 0 && <span>{reasons.today} para hoy</span>}{reasons.manual > 0 && <span>{reasons.manual} marcado{reasons.manual === 1 ? "" : "s"} por ti</span>}</span></>
                   : <span className="text-[var(--ink-3)]">Nada que repasar hoy 🎉</span>}
               </span>
               {due.length > 0 && <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--loss)]">Repasar <ArrowRight size={13} /></span>}
@@ -135,7 +144,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {data.resourceCount === 0 && onCreateResource ? <div className="flex flex-col items-start gap-2"><p className="text-[12px] text-[var(--ink-3)]">Añade un libro, vídeo o práctica para empezar a registrar tu aprendizaje.</p><button onClick={onCreateResource} className="rounded-[var(--radius-sm)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-contrast)]">Crear primer recurso</button></div> : <div className="flex flex-wrap items-center gap-2">
               <button data-tour="start-session" onClick={openPicker}
                 className="inline-flex items-center gap-1.5 h-9 px-4 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-[13px] font-medium hover:bg-[var(--accent-h)] transition-colors active:scale-[0.97]">
                 <Play size={14} className="fill-current" /> Iniciar sesión
@@ -144,7 +153,7 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[var(--radius-sm)] border border-[var(--line)] text-[var(--ink-2)] text-[13px] hover:bg-[var(--chip)] transition-colors active:scale-[0.97]">
                 <CalendarClock size={14} /> Planificar
               </button>
-            </div>
+            </div>}
 
             {/* Coach suggestion slot (SP2) — server-side heuristic + deep-link to coach */}
             <div data-tour="coach-suggestion" className="rounded-[var(--radius-sm)] border border-[var(--line-2)] bg-[var(--accent-soft)]/40 px-3 py-2.5 flex items-start gap-2">
@@ -184,22 +193,17 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
       {/* Agenda */}
       <StaggerItem>
         <div data-tour="agenda" className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4">
-          <p className="text-eyebrow mb-2 flex items-center gap-1.5"><CalendarClock size={13} /> ESTA SEMANA</p>
-          {agenda.length === 0 ? (
-            <p className="text-[12.5px] text-[var(--ink-3)] py-2">Sin repasos ni sesiones planificadas próximas. Planifica una desde un recurso.</p>
+          <p className="text-eyebrow mb-2 flex items-center gap-1.5"><CalendarClock size={13} /> PRÓXIMOS REPASOS</p>
+          {reviewAgenda.length === 0 ? (
+            <p className="text-[12.5px] text-[var(--ink-3)] py-2">Tus próximos repasos aparecerán aquí.</p>
           ) : (
             <div className="flex flex-col">
-              {agenda.map((a, i) => (
-                <div key={i} className="flex items-center gap-2.5 py-2 border-b border-[var(--line)] last:border-0">
+              {reviewAgenda.map((a, i) => (
+                <div key={i} className="flex flex-wrap items-center gap-2.5 py-2 border-b border-[var(--line)] last:border-0">
                   <span className="text-[11px] font-semibold text-[var(--ink-3)] w-12 shrink-0">{new Date(a.date + "T12:00:00Z").toLocaleDateString("es-ES", { weekday: "short", day: "numeric", timeZone: "UTC" })}</span>
                   <CategoryChip type={a.type as ResourceType} />
                   <span className="flex-1 min-w-0 text-[12.5px] text-[var(--ink)] truncate">{a.title}</span>
-                  {a.kind === "review"
-                    ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]"><Clock size={9} /> repaso</span>
-                    : <button onClick={() => "plannedSessionId" in a && a.plannedSessionId && completePlanned.mutate({ id: a.plannedSessionId })}
-                        className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] hover:brightness-95 active:scale-95 transition">
-                        <CheckCircle2 size={9} /> {a.plannedMin}m · hecho
-                      </button>}
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--loss-soft)] text-[var(--loss)]"><Clock size={9} /> repaso</span>
                 </div>
               ))}
             </div>
@@ -207,6 +211,8 @@ export function HoyTab({ onGoRepaso }: { onGoRepaso: () => void }) {
         </div>
       </StaggerItem>
     </Stagger>
+    <PlannedSessions />
+    <SessionHistory />
     </>
   )
 }

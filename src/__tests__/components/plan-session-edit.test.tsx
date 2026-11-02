@@ -1,0 +1,9 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
+import { PlanSessionModal } from '@/app/aprendizaje/components/plan-session-modal'
+const m=vi.hoisted(()=>({plan:vi.fn(),reschedule:vi.fn()}))
+vi.mock('@/lib/trpc/client',()=>({trpc:{profile:{get:{useQuery:()=>({data:{timezone:'Pacific/Kiritimati'}})}},learningResources:{list:{useQuery:()=>({data:[{id:'r',title:'Book',status:'IN_PROGRESS'}]})}},studySessions:{plan:{useMutation:()=>({mutate:m.plan,isPending:false})},reschedule:{useMutation:()=>({mutate:m.reschedule,isPending:false})}},useUtils:()=>({studySessions:{invalidate:vi.fn()},learningResources:{invalidate:vi.fn()}})}}))
+afterEach(()=>{cleanup();vi.clearAllMocks();vi.useRealTimers()})
+it('reprograms existing plan rather than creating another session',()=>{render(<PlanSessionModal open onClose={vi.fn()} editPlan={{id:'p',resourceId:'r',title:'Book',date:'2026-12-01',plannedMin:30}}/>);fireEvent.change(screen.getByLabelText('Minutos'),{target:{value:'45'}});fireEvent.click(screen.getByRole('button',{name:'Guardar cambios'}));expect(m.reschedule).toHaveBeenCalledWith({id:'p',date:'2026-12-01',plannedMin:45});expect(m.plan).not.toHaveBeenCalled()})
+it('prevents invalid minutes and past profile-local dates',()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-01T16:00:00Z'));render(<PlanSessionModal open onClose={vi.fn()}/>);fireEvent.change(screen.getByLabelText('Recurso'),{target:{value:'r'}});expect(screen.getByLabelText('Día')).toHaveValue('2026-11-02');fireEvent.change(screen.getByLabelText('Minutos'),{target:{value:'2'}});expect(screen.getByRole('button',{name:'Planificar'})).toBeDisabled();fireEvent.change(screen.getByLabelText('Minutos'),{target:{value:'30'}});fireEvent.change(screen.getByLabelText('Día'),{target:{value:'2026-11-01'}});expect(screen.getByRole('button',{name:'Planificar'})).toBeDisabled()})

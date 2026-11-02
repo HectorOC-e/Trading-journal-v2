@@ -25,7 +25,7 @@ export function effectiveStudyStartedAt(session: {
   plannedMin: number | null
   endedAt: Date | null
 }): Date {
-  return session.status === "completed" && session.source === "manual" && session.plannedMin != null && session.endedAt
+  return (session.status === "completed" || session.status === "voided") && session.source === "manual" && session.plannedMin != null && session.endedAt
     ? session.endedAt
     : session.startedAt
 }
