@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -16,6 +16,16 @@ import {
   type FormState, emptyForm,
 } from "../utils/resource-form"
 
+function resourcePayload(form: FormState) {
+  const showProgress = PROGRESS_TYPES.includes(form.type)
+  return {
+    ...form,
+    tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+    totalUnits: showProgress ? form.totalUnits : null,
+    currentUnits: showProgress ? form.currentUnits : null,
+  }
+}
+
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
 
 export function AddEditResourceModal({
@@ -28,12 +38,22 @@ export function AddEditResourceModal({
   editTarget:   ResourceFromDB | null
 }) {
   const [form, setForm] = useState<FormState>(emptyForm())
+  const [originalForm, setOriginalForm] = useState<FormState | null>(null)
   const [titleError, setTitleError] = useState("")
+  const initializedTarget = useRef<string | null | undefined>(undefined)
   const utils = trpc.useUtils()
 
   useEffect(() => {
+    if (!open) {
+      initializedTarget.current = undefined
+      return
+    }
+    const targetId = editTarget?.id ?? null
+    // Keep the draft and its baseline stable across background resource refreshes.
+    if (initializedTarget.current === targetId) return
+    initializedTarget.current = targetId
     if (editTarget) {
-      setForm({
+      const initialForm: FormState = {
         type:            editTarget.type as FormState["type"],
         title:           editTarget.title,
         author:          editTarget.author,
@@ -45,9 +65,12 @@ export function AddEditResourceModal({
         totalUnits:      editTarget.totalUnits ?? null,
         currentUnits:    editTarget.currentUnits ?? null,
         reviewInterval:  editTarget.reviewInterval ?? 7,
-      })
+      }
+      setForm(initialForm)
+      setOriginalForm(initialForm)
     } else {
       setForm(emptyForm())
+      setOriginalForm(null)
     }
   }, [editTarget, open])
 
@@ -78,21 +101,16 @@ export function AddEditResourceModal({
 
   function handleSave() {
     if (!form.title.trim()) { setTitleError("Ponle un título al recurso"); return }
-    const payload = {
-      title:           form.title,
-      type:            form.type,
-      author:          form.author,
-      source:          form.source,
-      date:            form.date,
-      notes:           form.notes,
-      tags:            form.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      markedForReview: form.markedForReview,
-      totalUnits:      showProgress ? form.totalUnits   : null,
-      currentUnits:    showProgress ? form.currentUnits : null,
-      reviewInterval:  form.reviewInterval,
-    }
+    const payload = resourcePayload(form)
     if (isEditMode) {
-      updateResource.mutate({ id: editTarget.id, ...payload })
+      if (!originalForm) return
+      const originalPayload = resourcePayload(originalForm)
+      const changes = Object.fromEntries(
+        Object.entries(payload).filter(([key, value]) =>
+          JSON.stringify(value) !== JSON.stringify(originalPayload[key as keyof typeof originalPayload])
+        )
+      ) as Partial<typeof payload>
+      updateResource.mutate({ id: editTarget.id, ...changes })
     } else {
       createResource.mutate(payload)
     }

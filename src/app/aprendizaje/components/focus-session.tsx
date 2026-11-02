@@ -29,15 +29,12 @@ function fmt(totalSec: number): string {
 export function FocusSession() {
   const { session, minimized, pickerOpen, setSession, setMinimized, closePicker } = useStudySessionStore()
   const utils = trpc.useUtils()
+  const closedSessions = useRef(new Set<string>())
 
   // Resume an active session on load (e.g. after a reload).
-  const { data: active } = trpc.studySessions.active.useQuery(undefined, { staleTime: Infinity })
-  useEffect(() => {
-    if (active && !session) {
-      setSession({ id: active.id, resourceId: active.resourceId, resourceTitle: active.resourceTitle, resourceType: active.resourceType, startedAtMs: Date.parse(active.startedAt) })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active])
+  const { data: active, dataUpdatedAt } = trpc.studySessions.active.useQuery(undefined, {
+    staleTime: 0, refetchOnWindowFocus: true, refetchInterval: session ? 5000 : false,
+  })
 
   // Keep timer transitions and draft edits in one snapshot; ticks need no writes.
   const [timer, setTimer] = useState<StudyTimer | null>(null)
@@ -53,12 +50,57 @@ export function FocusSession() {
     if (session && initedFor.current !== session.id) {
       initedFor.current = session.id
       let saved: string | null = null
-      try { saved = sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      try { saved = localStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      if (saved === null) {
+        try { saved = sessionStorage.getItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      }
       timerRef.current = restoreStudyTimer(saved, session.id, session.startedAtMs)
       setTimer(timerRef.current)
+      try { localStorage.setItem(`tj-study-timer:${session.id}`, JSON.stringify(timerRef.current)) } catch { /* optional */ }
     }
     if (!session) { initedFor.current = null; timerRef.current = null; setTimer(null) }
   }, [session])
+
+  useEffect(() => {
+    if (!session) return
+    const key = `tj-study-timer:${session.id}`
+    const receive = (event: StorageEvent) => {
+      if (event.key !== key) return
+      if (event.newValue === null) {
+        closedSessions.current.add(session.id)
+        try { sessionStorage.removeItem(key) } catch { /* optional */ }
+        setSession(null)
+        void utils.studySessions.invalidate()
+        void utils.learningResources.invalidate()
+        return
+      }
+      try {
+        const saved = JSON.parse(event.newValue)
+        if (saved?.sessionId !== session.id) return
+        const next = restoreStudyTimer(event.newValue, session.id, session.startedAtMs)
+        timerRef.current = next
+        setTimer(next)
+        setNow(Date.now())
+        sessionStorage.setItem(key, JSON.stringify(next))
+      } catch { /* Ignore malformed or unavailable storage. */ }
+    }
+    window.addEventListener("storage", receive)
+    return () => window.removeEventListener("storage", receive)
+  }, [session, setSession, utils])
+
+  useEffect(() => {
+    if (active && !closedSessions.current.has(active.id) && active.id !== session?.id) {
+      setSession({ id: active.id, resourceId: active.resourceId, resourceTitle: active.resourceTitle, resourceType: active.resourceType, startedAtMs: Date.parse(active.startedAt) })
+    } else if (active === null && dataUpdatedAt && session) {
+      closedSessions.current.add(session.id)
+      // A fresh server response reconciles sessions ended outside this tab.
+      try { localStorage.removeItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      try { sessionStorage.removeItem(`tj-study-timer:${session.id}`) } catch { /* optional */ }
+      setSession(null)
+    }
+    // Changes to the local store alone must not reapply an older server snapshot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, dataUpdatedAt])
 
   useEffect(() => {
     if (!session || paused) return
@@ -68,28 +110,38 @@ export function FocusSession() {
   }, [session, paused])
 
   const elapsedSec = session && timer?.sessionId === session.id ? elapsedStudySeconds(timer, now) : 0
-  function clearTimerStorage() {
-    try { if (storageKey) sessionStorage.removeItem(storageKey) } catch { /* optional */ }
+  function clearTimerStorage(sessionId: string) {
+    closedSessions.current.add(sessionId)
+    const key = `tj-study-timer:${sessionId}`
+    try { localStorage.removeItem(key) } catch { /* optional */ }
+    try { sessionStorage.removeItem(key) } catch { /* optional */ }
+    if (useStudySessionStore.getState().session?.id === sessionId) setSession(null)
   }
 
   const startMut = trpc.studySessions.start.useMutation({
-    onSuccess: (s) => setSession({ id: s.id, resourceId: s.resourceId, resourceTitle: s.resourceTitle, resourceType: s.resourceType, startedAtMs: Date.parse(s.startedAt) }),
+    onSuccess: async (s) => {
+      await utils.studySessions.active.cancel()
+      utils.studySessions.active.setData(undefined, s)
+      setSession({ id: s.id, resourceId: s.resourceId, resourceTitle: s.resourceTitle, resourceType: s.resourceType, startedAtMs: Date.parse(s.startedAt) })
+    },
     onError: () => toast.error("No se pudo iniciar la sesión"),
   })
   const finishMut = trpc.studySessions.finish.useMutation({
+    // A lost acknowledgement can be retried safely: finish is idempotent.
+    retry: (failures, error) => failures < 1 && (!error.data || error.data.code === "INTERNAL_SERVER_ERROR" || error.data.code === "TIMEOUT"),
     onSuccess: (_, input) => {
       utils.studySessions.invalidate(); utils.learningResources.invalidate()
-      clearTimerStorage()
+      clearTimerStorage(input.id)
       toast.success(`Sesión guardada · ${input.durationMin} min`)
-      setSession(null)
     },
     onError: () => toast.error("No se pudo guardar la sesión"),
   })
-  const cancelMut = trpc.studySessions.cancel.useMutation({ onSuccess: () => { clearTimerStorage(); setSession(null) } })
+  const cancelMut = trpc.studySessions.cancel.useMutation({ onSuccess: (_, input) => { clearTimerStorage(input.id); void utils.studySessions.invalidate() } })
 
   function persistTimer(next: StudyTimer) {
     timerRef.current = next
     setTimer(next)
+    try { if (storageKey) localStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
     try { if (storageKey) sessionStorage.setItem(storageKey, JSON.stringify(next)) } catch { /* optional */ }
   }
   function updateDraft(draft: Partial<Pick<StudyTimer, "note" | "markForReview">>) {

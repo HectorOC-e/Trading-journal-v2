@@ -164,26 +164,41 @@ export const learningResourcesRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }).merge(LearningResourceInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(LearningResourceInput.partial().extend({
+      // Zod 4 applies defaults inside optional fields; PATCH must preserve omissions.
+      author: LearningResourceInput.shape.author.removeDefault().optional(),
+      source: LearningResourceInput.shape.source.removeDefault().optional(),
+      notes: LearningResourceInput.shape.notes.removeDefault().optional(),
+      tags: LearningResourceInput.shape.tags.removeDefault().optional(),
+      markedForReview: LearningResourceInput.shape.markedForReview.removeDefault().optional(),
+    })))
     .mutation(async ({ ctx, input }) => {
       const { id, date, type, currentUnits, totalUnits, progressPct, ...rest } = input
       const progressType = type ? (PROGRESS_TYPE_MAP[type] ?? null) : undefined
-      const computedPct =
-        currentUnits != null && totalUnits != null && totalUnits > 0
-          ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
-          : progressPct
-      const updated = await ctx.prisma.learningResource.update({
-        where: { id, userId: ctx.userId },
-        data: {
-          ...rest,
-          ...(type         ? { type }                     : {}),
-          ...(date         ? { date: new Date(date) }     : {}),
-          ...(progressType !== undefined ? { progressType } : {}),
-          ...(totalUnits   !== undefined ? { totalUnits }  : {}),
-          ...(currentUnits !== undefined ? { currentUnits } : {}),
-          ...(computedPct  !== undefined ? { progressPct: computedPct } : {}),
-        },
-      })
+      const data = {
+        ...rest,
+        ...(type         ? { type }                     : {}),
+        ...(date         ? { date: new Date(date) }     : {}),
+        ...(progressType !== undefined ? { progressType } : {}),
+        ...(totalUnits   !== undefined ? { totalUnits }  : {}),
+        ...(currentUnits !== undefined ? { currentUnits } : {}),
+        ...(progressPct  !== undefined ? { progressPct } : {}),
+      }
+      const where = { id, userId: ctx.userId }
+      const updated = currentUnits !== undefined || totalUnits !== undefined
+        ? await ctx.prisma.$transaction(async tx => {
+            // Serialize with study completion before reading the unchanged counterpart.
+            await tx.$queryRaw`SELECT id FROM public.learning_resources WHERE id = ${id}::uuid AND user_id = ${ctx.userId}::uuid FOR UPDATE`
+            const existing = await tx.learningResource.findUniqueOrThrow({
+              where,
+              select: { currentUnits: true, totalUnits: true },
+            })
+            const effectiveCurrent = currentUnits !== undefined ? currentUnits : existing.currentUnits
+            const effectiveTotal = totalUnits !== undefined ? totalUnits : existing.totalUnits
+            data.progressPct = effectiveCurrent == null ? null : computeProgressPct(effectiveCurrent, effectiveTotal)
+            return tx.learningResource.update({ where, data })
+          })
+        : await ctx.prisma.learningResource.update({ where, data })
       // Re-embed when notes were part of this update.
       if (rest.notes !== undefined) scheduleResourceEmbedding(updated.id, updated.notes, ctx.userId, ctx.prisma)
       return updated

@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/focus-session.tsx": {
-    "mtime": 1793583132.2698932,
-    "seen": 1793584714.4410493,
-    "ast_hash": "ffde2f65a17ba5b9daaeae4ef4577895",
+    "mtime": 1793589574.0192306,
+    "seen": 1793589584.6887548,
+    "ast_hash": "ca9dffd86bf03dfb6a908f68f24ed74a",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/hoy-tab.tsx": {
@@ -144,9 +144,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/add-edit-resource-modal.tsx": {
-    "mtime": 1793584657.2450814,
-    "seen": 1793584714.4410613,
-    "ast_hash": "dcf10d1d53b4c0208ade89994a640173",
+    "mtime": 1793588760.8493712,
+    "seen": 1793588771.7477243,
+    "ast_hash": "7b5184b1ab90af23deb40a32428fbd6a",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/impact-modal.tsx": {
@@ -156,20 +156,20 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/link-setup-modal.tsx": {
-    "mtime": 1793584657.245144,
-    "seen": 1793584714.4410634,
+    "mtime": 1793585472.5586603,
+    "seen": 1793588771.7477272,
     "ast_hash": "d97f6eb196be62ab703662a2caa5ec02",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/revisar-recurso-modal.tsx": {
-    "mtime": 1793584657.2448308,
-    "seen": 1793584714.4410646,
+    "mtime": 1793585472.5586603,
+    "seen": 1793588771.747728,
     "ast_hash": "9b7e12fdc831fa88cbb92191e8eab3db",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/page.tsx": {
-    "mtime": 1793584684.925139,
-    "seen": 1793584714.4410655,
+    "mtime": 1793585472.5586603,
+    "seen": 1793588771.747729,
     "ast_hash": "0e188d5ae56215f475e1f129fc21b456",
     "semantic_hash": ""
   },
@@ -2502,9 +2502,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-resources.ts": {
-    "mtime": 1793583132.273893,
-    "seen": 1793584714.441525,
-    "ast_hash": "66eafc55450111e5cd55b682a6e79f3b",
+    "mtime": 1793588998.850176,
+    "seen": 1793589316.1314816,
+    "ast_hash": "92c409ba87d504cf247ac72592c21806",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/markets.ts": {
@@ -2574,9 +2574,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/study-sessions.ts": {
-    "mtime": 1793584684.9254107,
-    "seen": 1793584714.441539,
-    "ast_hash": "00e08af9d7423870b9f467920a98368e",
+    "mtime": 1793588718.8504424,
+    "seen": 1793588771.7481456,
+    "ast_hash": "78bd4bf0930939f8f1f6e9be2b55e2db",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/tags.ts": {
@@ -3654,8 +3654,8 @@
     "semantic_hash": ""
   },
   "src/server/services/learning/study-progress.ts": {
-    "mtime": 1793584964.9457583,
-    "seen": 1793584974.8558843,
+    "mtime": 1793585472.5586603,
+    "seen": 1793588771.7480757,
     "ast_hash": "2d0217edd5dca5b2c1b7a87f511e194e",
     "semantic_hash": ""
   },
@@ -3666,9 +3666,15 @@
     "semantic_hash": ""
   },
   "docs/learning-session-lifecycle.md": {
-    "mtime": 1793584964.9461038,
-    "seen": 1793584974.8560557,
+    "mtime": 1793585472.5386605,
+    "seen": 1793588771.7482462,
     "ast_hash": "8cdfb70fd6c2dd986416c5cc4be21444",
+    "semantic_hash": ""
+  },
+  "docs/learning-edge-recovery.md": {
+    "mtime": 1793589293.5878458,
+    "seen": 1793589316.131617,
+    "ast_hash": "afa5795d93e00c7f2a95fad829b11962",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
