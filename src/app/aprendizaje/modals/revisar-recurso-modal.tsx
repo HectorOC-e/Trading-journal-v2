@@ -58,7 +58,8 @@ export function RevisarRecursoModal({
 
   const createReview = trpc.learningResources.createReview.useMutation({
     onSuccess: () => {
-      utils.learningResources.invalidate()
+      void utils.learningResources.invalidate()
+      void utils.studySessions.home.invalidate()
       onOpenChange(false)
       setForm(emptyRevisarState())
     },

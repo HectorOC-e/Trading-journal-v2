@@ -21,14 +21,18 @@ export async function applyStudySessionProgress(
   if (!rows.length) throw new TRPCError({ code: "NOT_FOUND" })
   const resource = await tx.learningResource.findUniqueOrThrow({
     where: { id: resourceId, userId },
-    select: { progressType: true, currentUnits: true, totalUnits: true, status: true },
+    select: { progressType: true, currentUnits: true, totalUnits: true, status: true, completedAt: true },
   })
   const update = applyStudyFinish(resource, durationMin)
+  const preserveStatus = ["MASTERED", "IN_REVIEW", "ABANDONED"].includes(resource.status)
+  const status = preserveStatus ? resource.status : update?.status ?? resource.status
   const data = update
-    ? { currentUnits: update.currentUnits, progressPct: update.progressPct, status: update.status }
+    ? { currentUnits: update.currentUnits, progressPct: update.progressPct, status }
     : (resource.status === "PENDING" ? { status: "IN_PROGRESS" } : {})
   await tx.learningResource.update({
     where: { id: resourceId, userId },
-    data: { ...data, ...(markForReview ? { markedForReview: true } : {}) },
+    data: { ...data,
+      ...(update?.status === "COMPLETED" && !resource.completedAt ? { completedAt: new Date() } : {}),
+      ...(markForReview ? { markedForReview: true } : {}) },
   })
 }

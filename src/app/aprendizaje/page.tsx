@@ -67,8 +67,8 @@ export default function AprendizajePage() {
   const processDecay = trpc.learningResources.processDecayTransitions.useMutation({
     onSuccess: ({ transitioned }) => {
       if (transitioned > 0) {
-        utils.learningResources.list.invalidate()
-        utils.learningResources.stats.invalidate()
+        void utils.learningResources.invalidate()
+        void utils.studySessions.home.invalidate()
       }
     },
     onError: (err) => console.error("Decay transition failed:", err.message),
@@ -92,27 +92,27 @@ export default function AprendizajePage() {
   }, [deepLinkResource, resources, setDrawerResource])
 
   const deleteResource = trpc.learningResources.delete.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateStatus = trpc.learningResources.updateStatus.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const toggleFavorite = trpc.learningResources.toggleFavorite.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const unlinkSetup = trpc.learningResources.unlinkSetup.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
   const updateProgress = trpc.learningResources.updateProgress.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 

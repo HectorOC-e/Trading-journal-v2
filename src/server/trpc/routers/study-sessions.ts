@@ -61,22 +61,26 @@ export const studySessionsRouter = router({
   start: protectedProcedure
     .input(z.object({ resourceId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const existing = await ctx.prisma.studySession.findFirst({
-        where: { userId: ctx.userId, status: "active" },
-        include: sessionInclude,
-      })
-      if (existing) return serializeSession(existing)
+      return ctx.prisma.$transaction(async tx => {
+        // Serialize the check and creation per user, including different tabs.
+        await tx.$queryRaw`SELECT id FROM public.users WHERE id = ${ctx.userId}::uuid FOR UPDATE`
+        const existing = await tx.studySession.findFirst({
+          where: { userId: ctx.userId, status: "active" },
+          include: sessionInclude,
+        })
+        if (existing) return serializeSession(existing)
 
-      const resource = await ctx.prisma.learningResource.findFirst({
-        where: { id: input.resourceId, userId: ctx.userId }, select: { id: true },
-      })
-      if (!resource) throw new TRPCError({ code: "NOT_FOUND" })
+        const resource = await tx.learningResource.findFirst({
+          where: { id: input.resourceId, userId: ctx.userId }, select: { id: true },
+        })
+        if (!resource) throw new TRPCError({ code: "NOT_FOUND" })
 
-      const created = await ctx.prisma.studySession.create({
-        data: { userId: ctx.userId, resourceId: input.resourceId, status: "active", source: "focus" },
-        include: sessionInclude,
+        const created = await tx.studySession.create({
+          data: { userId: ctx.userId, resourceId: input.resourceId, status: "active", source: "focus" },
+          include: sessionInclude,
+        })
+        return serializeSession(created)
       })
-      return serializeSession(created)
     }),
 
   /** Finish a session: log duration + note, apply progress to the resource. */
