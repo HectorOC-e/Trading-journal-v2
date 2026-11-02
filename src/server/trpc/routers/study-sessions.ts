@@ -44,6 +44,9 @@ function serializeSession(s: SessionWithResource) {
   }
 }
 
+// StudySession.durationMin is stored as a PostgreSQL signed integer.
+const maxDurationMin = 2_147_483_647
+
 const sessionInclude = { resource: { select: { title: true, type: true } } } as const
 
 export const studySessionsRouter = router({
@@ -85,7 +88,7 @@ export const studySessionsRouter = router({
 
   /** Finish a session: log duration + note, apply progress to the resource. */
   finish: protectedProcedure
-    .input(z.object({ id: z.string().uuid(), durationMin: z.number().int().min(0).max(1440), note: z.string().max(2000).default(""), markForReview: z.boolean().default(false) }))
+    .input(z.object({ id: z.string().uuid(), durationMin: z.number().finite().int().min(0).max(maxDurationMin), note: z.string().max(2000).default(""), markForReview: z.boolean().default(false) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.prisma.$transaction(async tx => {
         const session = await tx.studySession.findFirst({
@@ -93,12 +96,19 @@ export const studySessionsRouter = router({
 
         })
         if (!session) throw new TRPCError({ code: "NOT_FOUND" })
+        if (session.status === "completed") return
+        if (session.status !== "active") throw new TRPCError({ code: "CONFLICT", message: "La sesión no está activa" })
 
         const claimed = await tx.studySession.updateMany({
           where: { id: session.id, userId: ctx.userId, status: "active" },
           data: { status: "completed", endedAt: new Date(), durationMin: input.durationMin, note: input.note },
         })
-        if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
+        if (claimed.count !== 1) {
+          // Another request may have committed after our initial read.
+          const current = await tx.studySession.findFirst({ where: { id: session.id, userId: ctx.userId } })
+          if (current?.status === "completed") return
+          throw new TRPCError({ code: "CONFLICT", message: "La sesión ya terminó" })
+        }
 
         await applyStudySessionProgress(tx, ctx.userId, session.resourceId, input.durationMin, input.markForReview)
       })

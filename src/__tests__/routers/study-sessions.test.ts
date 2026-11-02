@@ -69,7 +69,60 @@ describe("study session calendar", () => {
     const { caller, prisma } = setup()
     prisma.studySession.findFirst.mockResolvedValue({ id, resourceId: id, resource, status: "completed" })
     prisma.studySession.updateMany.mockResolvedValue({ count: 0 })
+    await expect(caller.finish({ id, durationMin: 30, note: "retry", markForReview: true })).resolves.toEqual({ ok: true })
+    expect(prisma.studySession.updateMany).not.toHaveBeenCalled()
+    expect(prisma.learningResource.update).not.toHaveBeenCalled()
+  })
+
+  it("recovers a concurrent finish after another request claims the session", async () => {
+    const { caller, prisma } = setup()
+    prisma.studySession.findFirst
+      .mockResolvedValueOnce({ id, resourceId: id, status: "active" })
+      .mockResolvedValueOnce({ id, resourceId: id, status: "completed", durationMin: 20, note: "original" })
+    prisma.studySession.updateMany.mockResolvedValue({ count: 0 })
+    await expect(caller.finish({ id, durationMin: 30, note: "retry", markForReview: true })).resolves.toEqual({ ok: true })
+    expect(prisma.learningResource.update).not.toHaveBeenCalled()
+    expect(prisma.studySession.findFirst).toHaveBeenLastCalledWith({ where: { id, userId: "user-1" } })
+  })
+
+  it.each([1441, 2_147_483_647])("preserves the full duration of a session lasting %s minutes", async durationMin => {
+    const { caller, prisma } = setup()
+    prisma.studySession.findFirst.mockResolvedValue({ id, resourceId: id, status: "active" })
+    await expect(caller.finish({ id, durationMin })).resolves.toEqual({ ok: true })
+    expect(prisma.studySession.updateMany.mock.calls[0][0].data.durationMin).toBe(durationMin)
+    expect(prisma.learningResource.update.mock.calls[0][0].data.currentUnits).toBe(durationMin)
+  })
+
+  it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2_147_483_648])("rejects invalid duration %s before changing a session", async durationMin => {
+    const { caller, prisma } = setup()
+    await expect(caller.finish({ id, durationMin })).rejects.toMatchObject({ code: "BAD_REQUEST" })
+    expect(prisma.studySession.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("retains the first completion when its response is lost and the client retries", async () => {
+    const { caller, prisma } = setup()
+    const session = { id, resourceId: id, status: "active", durationMin: 0, note: "" }
+    prisma.studySession.findFirst.mockImplementation(async () => ({ ...session }))
+    prisma.studySession.updateMany.mockImplementation(async ({ data }) => {
+      Object.assign(session, data)
+      return { count: 1 }
+    })
+    await caller.finish({ id, durationMin: 20, note: "original" })
+    await expect(caller.finish({ id, durationMin: 30, note: "retry", markForReview: true })).resolves.toEqual({ ok: true })
+    expect(session).toMatchObject({ status: "completed", durationMin: 20, note: "original" })
+    expect(prisma.learningResource.update).toHaveBeenCalledTimes(1)
+    expect(prisma.learningResource.update.mock.calls[0][0].data.currentUnits).toBe(20)
+    expect(prisma.studySession.updateMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not finish planned sessions or sessions outside the user's library", async () => {
+    const { caller, prisma } = setup()
+    prisma.studySession.findFirst.mockResolvedValue({ id, resourceId: id, status: "planned" })
+    prisma.studySession.updateMany.mockResolvedValue({ count: 0 })
     await expect(caller.finish({ id, durationMin: 30 })).rejects.toMatchObject({ code: "CONFLICT" })
+    prisma.studySession.findFirst.mockResolvedValue(null)
+    await expect(caller.finish({ id, durationMin: 30 })).rejects.toMatchObject({ code: "NOT_FOUND" })
+    expect(prisma.studySession.findFirst).toHaveBeenLastCalledWith({ where: { id, userId: "user-1" } })
     expect(prisma.learningResource.update).not.toHaveBeenCalled()
   })
 
