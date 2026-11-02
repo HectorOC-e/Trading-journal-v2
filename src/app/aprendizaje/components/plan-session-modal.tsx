@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react"
 import { CalendarClock } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
-import { localDateISO } from "@/lib/datetime/local"
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import { toast } from "@/lib/use-toast"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 export function PlanSessionModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: profile } = trpc.profile.get.useQuery()
-  const today = localDateISO(new Date(), profile?.timezone || "UTC")
+  const today = localDateISO(new Date(), safeTimeZone(profile?.timezone))
   const { data: resources = [] } = trpc.learningResources.list.useQuery(undefined, { enabled: open })
   const utils = trpc.useUtils()
   const [resourceId, setResourceId] = useState("")

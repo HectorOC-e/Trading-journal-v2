@@ -1,4 +1,7 @@
 import { z } from "zod"
+import { addDaysISO, localDateISO, safeTimeZone } from "@/lib/datetime/local"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { effectiveStudyStartedAt, minutesThisWeek as studyMinutesThisWeek, studyStreak } from "@/domains/learning/services/study-session-service"
 import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
 import { computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
@@ -218,6 +221,12 @@ export const learningResourcesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const { resourceId, masteryLevel, rating, learned, howToApply, insights } = input
+      const user = await ctx.prisma.user.findUniqueOrThrow({
+        where: { id: ctx.userId },
+        select: { timezone: true },
+      })
+      const todayISO = localDateISO(new Date(), safeTimeZone(user.timezone))
+      const todayMarker = new Date(`${todayISO}T00:00:00Z`)
 
       // #45 (closure A2): the linked setup's edge bends the SRS cadence — review
       // sooner if the edge is decaying, later if it's improving. Read-only, pre-tx.
@@ -239,8 +248,7 @@ export const learningResourcesRouter = router({
           performance,
         })
         const interval = srs.interval
-        const nextReviewAt = new Date()
-        nextReviewAt.setDate(nextReviewAt.getDate() + interval)
+        const nextReviewAt = new Date(`${addDaysISO(todayISO, interval)}T00:00:00Z`)
 
         const newReview = await tx.resourceReview.create({
           data: {
@@ -274,7 +282,7 @@ export const learningResourcesRouter = router({
         const { newStreak, lastReviewDate: newLastReviewDate } = computeNewStreak(
           u.lastReviewDate,
           u.currentStreak,
-          new Date(),
+          todayMarker,
         )
         await tx.user.update({
           where: { id: ctx.userId },
@@ -490,97 +498,79 @@ export const learningResourcesRouter = router({
       )
     }),
 
-  // Stats for the right panel. Streak counts only days with resource_reviews (P15-E).
+  // Stats share the same local calendar and completed-session metrics as Home.
   stats: protectedProcedure
     .query(async ({ ctx }) => {
       const now = new Date()
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-      const dayOfWeek  = todayStart.getDay()
-      const daysToMon  = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-      const weekStart  = new Date(todayStart)
-      weekStart.setDate(weekStart.getDate() - daysToMon)
-
-      const [resources, urgentReviews, minuteResources, user] = await Promise.all([
+      const user = await ctx.prisma.user.findUniqueOrThrow({
+        where: { id: ctx.userId },
+        select: { timezone: true, weeklyGoalMinutes: true },
+      })
+      const timezone = safeTimeZone(user.timezone)
+      const todayISO = localDateISO(now, timezone)
+      const [allResources, rawSessions] = await Promise.all([
         ctx.prisma.learningResource.findMany({
-          where:  { userId: ctx.userId, status: { not: "ABANDONED" } },
+          where: { userId: ctx.userId, status: { not: "ABANDONED" } },
           select: {
-            id: true, title: true, type: true, status: true,
+            id: true, title: true, type: true, status: true, markedForReview: true,
             progressPct: true, currentUnits: true, progressType: true,
             nextReviewAt: true, completedAt: true, reviewInterval: true,
           },
         }),
-        ctx.prisma.learningResource.findMany({
-          where: {
-            userId:       ctx.userId,
-            nextReviewAt: { lte: todayStart },
-            status:       { notIn: ["ABANDONED", "MASTERED"] },
-          },
-          select:  { id: true, title: true, type: true, nextReviewAt: true },
-          orderBy: { nextReviewAt: "asc" },
-          take:    10,
-        }),
-        ctx.prisma.learningResource.findMany({
-          where:  { userId: ctx.userId, progressType: "minutes" },
-          select: { weekDeltaMinutes: true, weekDeltaResetAt: true },
-        }),
-        ctx.prisma.user.findUniqueOrThrow({
-          where:  { id: ctx.userId },
-          select: { weeklyGoalMinutes: true, currentStreak: true, bestStreak: true },
+        ctx.prisma.studySession.findMany({
+          where: { userId: ctx.userId, status: "completed", durationMin: { gt: 0 } },
+          select: { startedAt: true, durationMin: true, status: true, source: true, plannedMin: true, endedAt: true },
         }),
       ])
-
-      const completedThisMonth = resources.filter(
-        r => r.completedAt !== null && r.completedAt >= monthStart
-      ).length
-
-      const pendingReviewsCount = resources.filter(
-        r => r.nextReviewAt !== null && r.nextReviewAt <= todayStart
-      ).length
-
+      const resources = allResources.filter(r => r.status !== "ABANDONED")
+      const sessions = rawSessions
+        .filter(s => s.status === "completed" && (s.durationMin ?? 0) > 0)
+        .map(s => ({ ...s, startedAt: effectiveStudyStartedAt(s) }))
+      const due = resources.filter(r => isResourceReviewDue(r, todayISO))
+        .sort((a, b) => (a.nextReviewAt?.toISOString() ?? "").localeCompare(b.nextReviewAt?.toISOString() ?? ""))
+      const urgentReviews = due.slice(0, 10)
+      const completedThisMonth = resources.filter(r => r.completedAt !== null &&
+        r.completedAt <= now && localDateISO(r.completedAt, timezone).slice(0, 7) === todayISO.slice(0, 7)).length
       const resourcesByStatus = resources.reduce<Record<string, number>>((acc, r) => {
         acc[r.status] = (acc[r.status] ?? 0) + 1
         return acc
       }, {})
-
-      const minutesThisWeekRaw = minuteResources.reduce((sum, r) => {
-        const stale = !r.weekDeltaResetAt || r.weekDeltaResetAt < weekStart
-        return sum + (stale ? 0 : (r.weekDeltaMinutes ?? 0))
-      }, 0)
-      const estimatedHoursThisWeek = Math.round(minutesThisWeekRaw / 60 * 10) / 10
-
-      // TASK-L030: use materialized streak from User (O(1) instead of O(n) review scan)
-      const currentStreak = user.currentStreak
-      const bestStreak    = user.bestStreak
-
-      // Focus resource: overdue review > highest-progress IN_PROGRESS > oldest PENDING
-      const inProgress = resources
-        .filter(r => r.status === "IN_PROGRESS")
+      const minutesThisWeek = studyMinutesThisWeek(sessions, now, timezone)
+      const sessionDates = sessions.map(s => s.startedAt).filter(d => d <= now)
+      const currentStreak = studyStreak(sessionDates, now, timezone)
+      const days = [...new Set(sessionDates.map(d => localDateISO(d, timezone)))].sort()
+      let bestStreak = 0
+      let run = 0
+      let previousDay = Number.NEGATIVE_INFINITY
+      for (const day of days) {
+        const dayNumber = Date.parse(`${day}T00:00:00Z`) / 86_400_000
+        run = dayNumber === previousDay + 1 ? run + 1 : 1
+        bestStreak = Math.max(bestStreak, run)
+        previousDay = dayNumber
+      }
+      const inProgress = resources.filter(r => r.status === "IN_PROGRESS")
         .sort((a, b) => (b.progressPct ?? 0) - (a.progressPct ?? 0))
       const pending = resources.filter(r => r.status === "PENDING")
       const focusCandidate = urgentReviews[0] ?? inProgress[0] ?? pending[0] ?? null
-
       const serializeStatResource = (r: { id: string; title: string; type: string; nextReviewAt: Date | null }) => ({
-        ...r,
+        id: r.id,
+        title: r.title,
+        type: r.type,
         nextReviewAt: r.nextReviewAt ? r.nextReviewAt.toISOString().slice(0, 10) : null,
       })
-
-      const weeklyGoalMinutes = user.weeklyGoalMinutes ?? 300
-      const minutesThisWeek = minutesThisWeekRaw
-
       return {
-        totalResources:          resources.length,
+        totalResources: resources.length,
         completedThisMonth,
-        pendingReviewsCount,
-        urgentReviews:           urgentReviews.map(serializeStatResource),
+        pendingReviewsCount: due.length,
+        urgentReviews: urgentReviews.map(serializeStatResource),
         resourcesByStatus,
-        estimatedHoursThisWeek,
+        estimatedHoursThisWeek: Math.round(minutesThisWeek / 60 * 10) / 10,
         currentStreak,
         bestStreak,
-        focusResource:           focusCandidate ? serializeStatResource(focusCandidate) : null,
-        weeklyGoalMinutes,
+        focusResource: focusCandidate ? serializeStatResource(focusCandidate) : null,
+        weeklyGoalMinutes: user.weeklyGoalMinutes ?? 300,
         minutesThisWeek,
-        decayedCount:            0,
+        decayedCount: 0,
       }
     }),
 
@@ -589,8 +579,12 @@ export const learningResourcesRouter = router({
   // Call this on page load or tab focus — not on every stats read.
   processDecayTransitions: protectedProcedure
     .mutation(async ({ ctx }) => {
-      const now        = new Date()
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const user = await ctx.prisma.user.findUniqueOrThrow({
+        where: { id: ctx.userId },
+        select: { timezone: true },
+      })
+      const todayISO = localDateISO(new Date(), safeTimeZone(user.timezone))
+      const todayStart = new Date(`${todayISO}T00:00:00Z`)
 
       const resources = await ctx.prisma.learningResource.findMany({
         where:  { userId: ctx.userId, status: { not: "ABANDONED" } },

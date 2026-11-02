@@ -36,3 +36,42 @@ it("restores a paused session on reload and saves only study minutes", () => {
   fireEvent.click(screen.getByRole("button", { name: "Terminar" }))
   expect(mocks.finish).toHaveBeenCalledWith(expect.objectContaining({ id: "s1", durationMin: 1 }))
 })
+
+for (const paused of [false, true]) {
+  it(`restores the note and review draft while ${paused ? "paused" : "running"}`, () => {
+    const first = render(<FocusSession />)
+    fireEvent.change(screen.getByPlaceholderText("Nota rápida de la sesión…"), { target: { value: "Remember this" } })
+    fireEvent.click(screen.getByRole("checkbox"))
+    if (paused) fireEvent.click(screen.getByRole("button", { name: "Pausar" }))
+    first.unmount()
+    render(<FocusSession />)
+    expect(screen.getByRole("textbox")).toHaveValue("Remember this")
+    expect(screen.getByRole("checkbox")).toBeChecked()
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "" } })
+    fireEvent.click(screen.getByRole("checkbox"))
+    cleanup()
+    render(<FocusSession />)
+    expect(screen.getByRole("textbox")).toHaveValue("")
+    expect(screen.getByRole("checkbox")).not.toBeChecked()
+  })
+}
+
+it("does not carry a draft into a different session", () => {
+  const first = render(<FocusSession />)
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Old session" } })
+  fireEvent.click(screen.getByRole("checkbox"))
+  first.unmount()
+  act(() => useStudySessionStore.getState().setSession({ id: "s2", resourceId: "r1", resourceTitle: "Book", resourceType: "LIBRO", startedAtMs: Date.now() }))
+  render(<FocusSession />)
+  expect(screen.getByRole("textbox")).toHaveValue("")
+  expect(screen.getByRole("checkbox")).not.toBeChecked()
+})
+
+it("limits note drafts to the accepted 2000 characters", () => {
+  render(<FocusSession />)
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "n".repeat(2001) } })
+  expect(screen.getByRole("textbox")).toHaveValue("n".repeat(2000))
+  expect(JSON.parse(sessionStorage.getItem("tj-study-timer:s1")!).note).toHaveLength(2000)
+  fireEvent.click(screen.getByRole("button", { name: "Terminar" }))
+  expect(mocks.finish).toHaveBeenCalledWith(expect.objectContaining({ note: "n".repeat(2000) }))
+})

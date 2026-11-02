@@ -3,11 +3,13 @@
 import { useRef, useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { MoreHorizontal, RotateCcw, Pencil, Trash2, Check, Archive, Star, Trophy, CheckCircle2, Link } from "lucide-react"
+import { localDateISO } from "@/lib/datetime/local"
 import { cn } from "@/lib/utils"
 import { DUR, EASE_OUT } from "@/lib/motion"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { Badge } from "@/components/ui/badge"
-import { effectiveMasteryLevel, isReviewDue, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { effectiveMasteryLevel, MASTERY_MAX } from "@/app/aprendizaje/utils/mastery"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
 /** Pequeño anillo de dominio (n/5). */
@@ -90,13 +92,10 @@ function progressLabel(
   return null
 }
 
-function reviewCountdown(nextReviewAt: string | null | undefined): string | null {
+export function reviewCountdown(nextReviewAt: string | null | undefined, todayISO?: string): string | null {
   if (!nextReviewAt) return null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const review = new Date(nextReviewAt)
-  review.setHours(0, 0, 0, 0)
-  const diff = Math.round((review.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const today = todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const diff = Math.round((Date.parse(`${nextReviewAt.slice(0, 10)}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
   if (diff > 3) return null
   if (diff < 0) return "Review vencida"
   if (diff === 0) return "Review hoy"
@@ -126,6 +125,7 @@ function MenuItem({ icon, label, onClick, destructive }: MenuItemProps) {
 }
 
 export interface ResourceCardProps {
+  todayISO?:              string
   resource:               LearningResource
   className?:             string
   onReview?:              (resource: LearningResource) => void
@@ -148,6 +148,7 @@ const ARCHIVE_REASONS = [
 
 export function ResourceCard({
   resource,
+  todayISO,
   className,
   onReview,
   onEdit,
@@ -437,16 +438,16 @@ export function ResourceCard({
         )}
 
         {/* nextReviewAt countdown — CTA cuando vence, texto cuando falta */}
-        {isReviewDue(resource.nextReviewAt) ? (
+        {isResourceReviewDue(resource, todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)) ? (
           <button
             onClick={() => onReview?.(resource)}
             className="self-start inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] bg-[#f59e0b] text-white hover:opacity-90 transition-opacity"
           >
             ⏰ Repasar hoy →
           </button>
-        ) : reviewCountdown(resource.nextReviewAt) ? (
+        ) : resource.status !== "MASTERED" && reviewCountdown(resource.nextReviewAt, todayISO) ? (
           <span className="text-[10px] font-medium" style={{ color: "#b45309" }}>
-            ⏰ {reviewCountdown(resource.nextReviewAt)}
+            ⏰ {reviewCountdown(resource.nextReviewAt, todayISO)}
           </span>
         ) : null}
 

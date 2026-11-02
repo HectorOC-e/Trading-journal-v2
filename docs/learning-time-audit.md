@@ -39,7 +39,9 @@ Al abrir otro preview se reprodujo un bloqueo de infraestructura: `EMAXCONNSESSI
 
 Referencia: [Supabase: métodos de conexión y modo transacción para serverless](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
-## Hallazgos pendientes
+## Hallazgos de la primera entrega
+
+El cierre de estos puntos se documenta en [Cierre de hallazgos de Aprendizaje](learning-remaining-findings.md). La lista siguiente conserva el diagnóstico inicial.
 
 - El contador «Reviews urgentes» aún proviene de `learningResources.stats` y usa el día del servidor; puede diferir de la cola local cerca de medianoche. La racha de repasos y los deltas heredados siguen disponibles en ese endpoint, aunque ya no alimentan los indicadores visibles de estudio.
 - Finalizar simultáneamente **sesiones distintas del mismo recurso** puede perder un incremento de progreso por escribir un total absoluto. La protección nueva cubre reintentos de una misma sesión; la concurrencia entre sesiones ya existía.

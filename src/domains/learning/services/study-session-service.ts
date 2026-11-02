@@ -15,6 +15,21 @@ export interface ResourceProgressUpdate {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED"
 }
 
+/** Legacy planned completions kept the scheduled timestamp. Their end time is
+ * the authoritative study instant; focus sessions continue to use their start.
+ */
+export function effectiveStudyStartedAt(session: {
+  startedAt: Date
+  status: string
+  source: string
+  plannedMin: number | null
+  endedAt: Date | null
+}): Date {
+  return session.status === "completed" && session.source === "manual" && session.plannedMin != null && session.endedAt
+    ? session.endedAt
+    : session.startedAt
+}
+
 /**
  * Progress update after a completed focus session.
  *  · minutes  → add the studied minutes to currentUnits

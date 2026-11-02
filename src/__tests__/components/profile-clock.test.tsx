@@ -15,3 +15,10 @@ it("ticks in 24-hour time, switches profile timezone and handles local midnight"
   expect(screen.getByText("15:00:00")).toBeInTheDocument()
   expect(screen.getByText("Asia/Tokyo")).toBeInTheDocument()
 })
+
+it("uses UTC for invalid legacy timezone formatting and label", () => {
+ render(<ProfileClock timezone="Invalid/Legacy" />)
+ expect(screen.getByText("05:59:59")).toBeInTheDocument()
+ expect(screen.getByText("UTC")).toBeInTheDocument()
+ expect(screen.getByLabelText("Hora actual en UTC")).toBeInTheDocument()
+})

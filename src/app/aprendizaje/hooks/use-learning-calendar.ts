@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { trpc } from "@/lib/trpc/client"
-import { localDateISO } from "@/lib/datetime/local"
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 
 /** Refresh learning data at local midnight and when profile preferences change. */
 export function useLearningCalendar() {
   const { data: profile } = trpc.profile.get.useQuery()
-  const timezone = profile?.timezone || "UTC"
+  const timezone = safeTimeZone(profile?.timezone)
   const [today, setToday] = useState<string | null>(null)
   const utils = trpc.useUtils()
   useEffect(() => {

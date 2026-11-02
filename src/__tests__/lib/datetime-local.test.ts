@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { localDateISO, localHour, monthStartISO, weekStartISO, addDaysISO } from "@/lib/datetime/local"
+import { localDateISO, localHour, monthStartISO, weekStartISO, addDaysISO, safeTimeZone, formatCalendarDate } from "@/lib/datetime/local"
 
 describe("datetime/local", () => {
   describe("localDateISO", () => {
@@ -44,4 +44,13 @@ describe("datetime/local", () => {
       expect(addDaysISO("2026-06-19", 0)).toBe("2026-06-19")
     })
   })
+})
+
+it("validates legacy profile zones", () => {
+ expect(safeTimeZone("America/Tegucigalpa")).toBe("America/Tegucigalpa")
+ for (const zone of [null, undefined, "", "Not/AZone"]) expect(safeTimeZone(zone)).toBe("UTC")
+})
+it("renders calendar dates without timezone shifts", () => {
+ expect(formatCalendarDate("2026-11-01T00:00:00.000Z", { day: "numeric", month: "short", timeZone: "America/Tegucigalpa" })).toBe("1 nov")
+ expect(formatCalendarDate("2026-11-01")).toBe("1/11/2026")
 })
