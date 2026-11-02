@@ -102,27 +102,27 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/focus-session.tsx": {
-    "mtime": 1793589574.0192306,
-    "seen": 1793589584.6887548,
-    "ast_hash": "ca9dffd86bf03dfb6a908f68f24ed74a",
+    "mtime": 1793625203.7109082,
+    "seen": 1793625362.5340385,
+    "ast_hash": "b159249a4445fe73f9a37a199ba766fe",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/hoy-tab.tsx": {
-    "mtime": 1793538249.0325406,
-    "seen": 1793538422.7142398,
-    "ast_hash": "e56e78f898e1f18203f72b5a7a44098c",
+    "mtime": 1793625121.1470816,
+    "seen": 1793625362.5340397,
+    "ast_hash": "39591f8a311d186661bcd5138ea8114b",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/plan-session-modal.tsx": {
-    "mtime": 1793583132.2698932,
-    "seen": 1793584714.441052,
-    "ast_hash": "19631849db9766bda58b60b78e77c435",
+    "mtime": 1793624711.5326889,
+    "seen": 1793625362.534041,
+    "ast_hash": "9a5368f652d1645f34dcff038778ae46",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/progreso-sections.tsx": {
-    "mtime": 1793583132.2698932,
-    "seen": 1793584714.4410548,
-    "ast_hash": "39298411b169ae58fac2e6914e687179",
+    "mtime": 1793624711.5325003,
+    "seen": 1793625362.534047,
+    "ast_hash": "9c849ba7370f8d7814cfda84f6d82732",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/error.tsx": {
@@ -144,8 +144,8 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/add-edit-resource-modal.tsx": {
-    "mtime": 1793588760.8493712,
-    "seen": 1793588771.7477243,
+    "mtime": 1793590073.5136302,
+    "seen": 1793625362.5340545,
     "ast_hash": "7b5184b1ab90af23deb40a32428fbd6a",
     "semantic_hash": ""
   },
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/page.tsx": {
-    "mtime": 1793585472.5586603,
-    "seen": 1793588771.747729,
-    "ast_hash": "0e188d5ae56215f475e1f129fc21b456",
+    "mtime": 1793624317.9564772,
+    "seen": 1793625362.5340583,
+    "ast_hash": "2e0431dbeb5527c76a3f4e90ffe12431",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/utils/mastery.ts": {
@@ -636,9 +636,9 @@
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-card.tsx": {
-    "mtime": 1793583132.2698932,
-    "seen": 1793584714.4411442,
-    "ast_hash": "e65d1921835aeaa63f804c74f3707a6f",
+    "mtime": 1793624254.059818,
+    "seen": 1793625362.534142,
+    "ast_hash": "9c21ee68dc490b8ce1faec148ff1c4ba",
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-drawer.tsx": {
@@ -648,9 +648,9 @@
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-grid.tsx": {
-    "mtime": 1793583132.273893,
-    "seen": 1793584714.4411461,
-    "ast_hash": "339a6d1d42bbac8016196dc32ece444b",
+    "mtime": 1793624332.8342297,
+    "seen": 1793625362.5341442,
+    "ast_hash": "96b067a98fd8da8dcea644b77255fc52",
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-list-row.tsx": {
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "src/domains/learning/services/study-session-service.ts": {
-    "mtime": 1793583132.273893,
-    "seen": 1793584714.4413066,
-    "ast_hash": "7b3045ace1bb97131d8b51572ed540cb",
+    "mtime": 1793625008.7566617,
+    "seen": 1793625362.5343091,
+    "ast_hash": "bd454e58040627eaac1038e22c0a055b",
     "semantic_hash": ""
   },
   "src/domains/learning/srs.ts": {
@@ -2502,8 +2502,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-resources.ts": {
-    "mtime": 1793588998.850176,
-    "seen": 1793589316.1314816,
+    "mtime": 1793590073.5136302,
+    "seen": 1793625362.534554,
     "ast_hash": "92c409ba87d504cf247ac72592c21806",
     "semantic_hash": ""
   },
@@ -2574,9 +2574,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/study-sessions.ts": {
-    "mtime": 1793588718.8504424,
-    "seen": 1793588771.7481456,
-    "ast_hash": "78bd4bf0930939f8f1f6e9be2b55e2db",
+    "mtime": 1793625008.7572381,
+    "seen": 1793625362.5345674,
+    "ast_hash": "ab84607493d00f84a7bead7488560323",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/tags.ts": {
@@ -3648,15 +3648,15 @@
     "semantic_hash": ""
   },
   "src/domains/learning/services/review-queue.ts": {
-    "mtime": 1793583132.273893,
-    "seen": 1793584714.4413033,
-    "ast_hash": "bd681ea1488adb41d409eceb82710d52",
+    "mtime": 1793625588.3623323,
+    "seen": 1793625696.1316495,
+    "ast_hash": "ea5c0e69f7e8a9291d18c56bc210a3bd",
     "semantic_hash": ""
   },
   "src/server/services/learning/study-progress.ts": {
-    "mtime": 1793585472.5586603,
-    "seen": 1793588771.7480757,
-    "ast_hash": "2d0217edd5dca5b2c1b7a87f511e194e",
+    "mtime": 1793624847.1299288,
+    "seen": 1793625362.5344706,
+    "ast_hash": "a265fa505527e1f45e186c499abea12f",
     "semantic_hash": ""
   },
   "docs/learning-remaining-findings.md": {
@@ -3672,9 +3672,57 @@
     "semantic_hash": ""
   },
   "docs/learning-edge-recovery.md": {
-    "mtime": 1793589293.5878458,
-    "seen": 1793589316.131617,
+    "mtime": 1793590073.4896305,
+    "seen": 1793625362.5346746,
     "ast_hash": "afa5795d93e00c7f2a95fad829b11962",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/components/planned-session-actions.tsx": {
+    "mtime": 1793625460.9159853,
+    "seen": 1793625696.1313334,
+    "ast_hash": "fcfb92484d8acee2429849d9a9406a16",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/components/planned-sessions.tsx": {
+    "mtime": 1793625460.9158587,
+    "seen": 1793625696.1313357,
+    "ast_hash": "04ed2662f3643a8c5ead7bdd9ea0fcad",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/components/session-history.tsx": {
+    "mtime": 1793625588.3627713,
+    "seen": 1793625696.1313407,
+    "ast_hash": "abdb84818d37cd407f481946317c09e9",
+    "semantic_hash": ""
+  },
+  "src/server/services/learning/session-revisions.ts": {
+    "mtime": 1793624847.1291604,
+    "seen": 1793625362.5344691,
+    "ast_hash": "b76c1ba47a0193a6e1de2fa2c64eabd3",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261102130101_learning_session_revisions.sql": {
+    "mtime": 1793624497.2516239,
+    "seen": 1793625362.534665,
+    "ast_hash": "ce92061dd839554d652eafa801ddc5b8",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-02-learning-usability.md": {
+    "mtime": 1793625686.6945455,
+    "seen": 1793625696.1319745,
+    "ast_hash": "2034f43cacc54af4b765398290c33ad3",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-02-learning-usability-design.md": {
+    "mtime": 1793594089.2943006,
+    "seen": 1793625362.5347047,
+    "ast_hash": "7f639d237b644cc593da88674b468485",
+    "semantic_hash": ""
+  },
+  "docs/learning-usability.md": {
+    "mtime": 1793625686.6742997,
+    "seen": 1793625696.1319587,
+    "ast_hash": "cb45f54430c99b3c419150c96435d8e0",
     "semantic_hash": ""
   },
   "src/package-lock.json": {

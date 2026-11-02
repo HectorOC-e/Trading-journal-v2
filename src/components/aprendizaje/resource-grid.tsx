@@ -7,7 +7,7 @@ import { ResourceCard } from "@/components/aprendizaje/resource-card"
 import { ResourceListRow } from "@/components/aprendizaje/resource-list-row"
 import { Stagger, StaggerItem } from "@/components/ui/motion"
 import { localDateISO } from "@/lib/datetime/local"
-import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
+import { isResourceReviewDue, compareReviewPriority, reviewReason } from "@/domains/learning/services/review-queue"
 import { cn } from "@/lib/utils"
 import type { LearningResource, ResourceStatus, ResourceType } from "@/types"
 
@@ -53,6 +53,8 @@ function sortResources(resources: LearningResource[], key: SortKey): LearningRes
 }
 
 interface ResourceGridProps {
+  reviewQueue?: boolean
+  onCreateResource?: () => void
   todayISO?:          string
   resources:          LearningResource[]
   className?:         string
@@ -70,6 +72,8 @@ interface ResourceGridProps {
 
 export function ResourceGrid({
   resources,
+  onCreateResource,
+  reviewQueue = false,
   todayISO,
   className,
   onReview,
@@ -134,6 +138,12 @@ export function ResourceGrid({
     setOnlyNoReviews(false)
   }
 
+  function clearFilters() {
+    setSearch(""); setCategory("TODOS"); setOnlyReview(false); setShowArchived(false)
+    setSort("recent"); setAdvancedOpen(false); clearAdvanced()
+  }
+
+  const calendarDay = todayISO ?? localDateISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
   const filtered = sortResources(
     resources.filter((r) => {
       // Archived view: only ABANDONED; normal view: exclude ABANDONED
@@ -158,6 +168,7 @@ export function ResourceGrid({
     }),
     sort
   )
+  if (onlyReview || reviewQueue) filtered.sort((a, b) => compareReviewPriority(a, b, calendarDay))
 
   const isFiltered = category !== "TODOS" || onlyReview || search !== "" || hasAdvancedFilter
 
@@ -354,7 +365,13 @@ export function ResourceGrid({
       {/* Resource display */}
       {filtered.length === 0 ? (
         <div className="py-16 text-center text-sm text-[var(--ink-3)]">
-          No hay recursos con estos filtros.
+          {resources.length === 0 ? (
+            <><p>Guarda un libro, vídeo o nota para empezar a aprender y programar tus repasos.</p>
+              {onCreateResource && <button onClick={onCreateResource} className="mt-3 text-[var(--accent)] underline">Crear primer recurso</button>}</>
+          ) : (
+            <><p>{resources.every(r => r.status === "ABANDONED") && !showArchived ? "Tus recursos están archivados. Puedes consultarlos en Archivados." : "No hay recursos con estos filtros."}</p>
+              <button onClick={clearFilters} className="mt-3 text-[var(--accent)] underline">Limpiar filtros</button></>
+          )}
         </div>
       ) : viewMode === "list" ? (
         /* List view — compact 36px rows (TASK-L032) */
@@ -371,6 +388,7 @@ export function ResourceGrid({
             {filtered.map((r) => (
               <StaggerItem key={r.id}>
                 <ResourceListRow resource={r} onClick={() => onViewDetail?.(r)} />
+                {reviewReason(r, calendarDay) && <p className="px-3 text-[10px] text-[var(--ink-3)]">{reviewReason(r, calendarDay)?.label}</p>}
               </StaggerItem>
             ))}
           </Stagger>
