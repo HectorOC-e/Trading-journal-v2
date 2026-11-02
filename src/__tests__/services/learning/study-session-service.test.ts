@@ -105,6 +105,7 @@ describe("pickStudySuggestion", () => {
   it("prioritises overdue reviews", () => {
     const s = pickStudySuggestion({ ...base, overdueReviews: [{ id: "r1", title: "Wyckoff" }, { id: "r2", title: "ICT" }] })
     expect(s?.kind).toBe("overdue_review")
+    expect(s?.title).toBe("2 repasos pendientes")
     expect(s?.resourceId).toBe("r1")
     expect(s?.title).toContain("2 repasos")
   })
