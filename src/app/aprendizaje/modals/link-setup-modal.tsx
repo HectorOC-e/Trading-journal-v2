@@ -26,11 +26,11 @@ export function LinkSetupModal({
   const { data: setups = [] } = trpc.setups.list.useQuery(undefined, { enabled: open })
 
   const linkSetup = trpc.learningResources.linkSetup.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
   const unlinkSetup = trpc.learningResources.unlinkSetup.useMutation({
-    onSuccess: () => utils.learningResources.list.invalidate(),
+    onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 

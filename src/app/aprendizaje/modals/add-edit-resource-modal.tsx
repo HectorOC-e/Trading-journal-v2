@@ -53,7 +53,8 @@ export function AddEditResourceModal({
 
   const createResource = trpc.learningResources.create.useMutation({
     onSuccess: () => {
-      utils.learningResources.list.invalidate()
+      void utils.learningResources.invalidate()
+      void utils.studySessions.home.invalidate()
       onOpenChange(false)
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
@@ -61,7 +62,8 @@ export function AddEditResourceModal({
 
   const updateResource = trpc.learningResources.update.useMutation({
     onSuccess: () => {
-      utils.learningResources.list.invalidate()
+      void utils.learningResources.invalidate()
+      void utils.studySessions.home.invalidate()
       onOpenChange(false)
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
