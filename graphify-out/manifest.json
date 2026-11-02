@@ -3654,9 +3654,9 @@
     "semantic_hash": ""
   },
   "src/server/services/learning/study-progress.ts": {
-    "mtime": 1793584657.244362,
-    "seen": 1793584714.4414456,
-    "ast_hash": "13a5ac27404ca8228684b15d1600a628",
+    "mtime": 1793584964.9457583,
+    "seen": 1793584974.8558843,
+    "ast_hash": "2d0217edd5dca5b2c1b7a87f511e194e",
     "semantic_hash": ""
   },
   "docs/learning-remaining-findings.md": {
@@ -3666,9 +3666,9 @@
     "semantic_hash": ""
   },
   "docs/learning-session-lifecycle.md": {
-    "mtime": 1793584749.206382,
-    "seen": 1793584779.8252647,
-    "ast_hash": "0183503b49e2e8ceb7b683e96fcaed6c",
+    "mtime": 1793584964.9461038,
+    "seen": 1793584974.8560557,
+    "ast_hash": "8cdfb70fd6c2dd986416c5cc4be21444",
     "semantic_hash": ""
   },
   "src/package-lock.json": {

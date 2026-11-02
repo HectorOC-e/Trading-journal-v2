@@ -32,6 +32,7 @@ describe('audit probes: desired invariants',()=>{
   prisma.studySession.findFirst.mockResolvedValue({id,resourceId:id,status:'active'})
   await caller.finish({id,durationMin:10})
   expect(prisma.learningResource.update.mock.calls[0][0].data.status).toBe(status)
+  expect(prisma.learningResource.update.mock.calls[0][0].data.completedAt).toBeInstanceOf(Date)
  })
  it('preserves the first completion date on subsequent sessions',async()=>{
   const {caller,prisma}=fixture('COMPLETED')

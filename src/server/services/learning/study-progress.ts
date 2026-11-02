@@ -32,7 +32,7 @@ export async function applyStudySessionProgress(
   await tx.learningResource.update({
     where: { id: resourceId, userId },
     data: { ...data,
-      ...(status === "COMPLETED" && !resource.completedAt ? { completedAt: new Date() } : {}),
+      ...(update?.status === "COMPLETED" && !resource.completedAt ? { completedAt: new Date() } : {}),
       ...(markForReview ? { markedForReview: true } : {}) },
   })
 }
