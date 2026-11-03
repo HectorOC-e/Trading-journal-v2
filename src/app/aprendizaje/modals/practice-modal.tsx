@@ -36,6 +36,10 @@ export function PracticeModal({
   const [files, setFiles] = useState<{ id: string; url: string }[]>([]);
   const [suggestion, setSuggestion] = useState("");
   const suggest = trpc.learningPractices.suggestExercise.useMutation();
+  const [pendingUpload, setPendingUpload] = useState<{
+    file: File;
+    uploadId: string;
+  } | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const resources = trpc.learningResources.list.useQuery();
   const utils = trpc.useUtils();
@@ -118,7 +122,7 @@ export function PracticeModal({
       setBusy(false);
     }
   }
-  async function upload(file: File) {
+  async function upload(file: File, uploadId: string) {
     if (!saved) return;
     setBusy(true);
     setError("");
@@ -127,6 +131,7 @@ export function PracticeModal({
       f.set("practiceId", id);
       f.set("expectedVersion", String(saved.version));
       f.set("file", file);
+      f.set("uploadId", uploadId);
       const r = await fetch("/api/upload/practice-image", {
         method: "POST",
         body: f,
@@ -134,6 +139,8 @@ export function PracticeModal({
       const d = await r.json();
       if (!r.ok) throw Error(d.error);
       await refresh();
+      setPendingUpload(null);
+      setNotice("Captura guardada.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo subir.");
     } finally {
@@ -398,15 +405,36 @@ export function PracticeModal({
                       aria-label="Añadir captura"
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
-                      disabled={busy || dirty}
+                      disabled={busy || dirty || !!pendingUpload}
                       className="block text-xs mt-1 max-w-full"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
-                        if (file) void upload(file);
+                        if (file) {
+                          const uploadId = crypto.randomUUID();
+                          setPendingUpload({ file, uploadId });
+                          void upload(file, uploadId);
+                        }
                       }}
                     />
                   </label>
+                )}
+                {pendingUpload && (
+                  <div className="text-xs mt-2">
+                    <p>
+                      Captura pendiente de confirmar. Reintentar conserva la
+                      misma subida.
+                    </p>
+                    <button
+                      disabled={busy}
+                      className="text-[var(--accent)] mt-1"
+                      onClick={() =>
+                        void upload(pendingUpload.file, pendingUpload.uploadId)
+                      }
+                    >
+                      Reintentar captura
+                    </button>
+                  </div>
                 )}
               </section>
               <section className="border-t border-[var(--line)] pt-3">

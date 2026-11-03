@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure } from "../init";
@@ -218,8 +219,8 @@ export const learningPracticesRouter = router({
             message: "La práctica cambió. Actualiza antes de eliminar.",
           });
         if (p.attachments.length) {
-          const { error } = await ctx.supabase.storage
-            .from("practice-images")
+          const { error } = await createAdminClient()
+            .storage.from("practice-images")
             .remove(p.attachments.map((a) => a.path));
           if (error)
             throw new TRPCError({

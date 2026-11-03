@@ -28,4 +28,3 @@ CREATE POLICY attachment_read ON public.practice_attachments FOR SELECT TO authe
 CREATE POLICY feedback_read ON public.practice_feedback FOR SELECT TO authenticated USING (EXISTS(SELECT 1 FROM public.learning_practices p WHERE p.id=practice_id AND p.user_id=(SELECT auth.uid())));
 INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types) VALUES ('practice-images','practice-images',false,5242880,ARRAY['image/png','image/jpeg','image/webp']);
 CREATE POLICY practice_image_read ON storage.objects FOR SELECT TO authenticated USING(bucket_id='practice-images' AND (storage.foldername(name))[1]=(SELECT auth.uid())::text);
-CREATE POLICY practice_image_delete ON storage.objects FOR DELETE TO authenticated USING(bucket_id='practice-images' AND (storage.foldername(name))[1]=(SELECT auth.uid())::text);

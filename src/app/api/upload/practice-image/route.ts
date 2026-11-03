@@ -65,7 +65,8 @@ export async function POST(req: NextRequest) {
       { error: "Formulario inválido." },
       { status: 400 },
     );
-  const parsed = identity.safeParse({
+  const parsed = identity.extend({ uploadId: z.string().uuid() }).safeParse({
+    uploadId: f.get("uploadId"),
     practiceId: f.get("practiceId"),
     expectedVersion: f.get("expectedVersion"),
   });
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
       { error: "Usa una imagen PNG, JPEG o WebP válida." },
       { status: 400 },
     );
-  const path = `${user.id}/${parsed.data.practiceId}/${crypto.randomUUID()}.${mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp"}`;
+  const path = `${user.id}/${parsed.data.practiceId}/${parsed.data.uploadId}.${mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp"}`;
   let uploaded = false;
   const storage = createAdminClient().storage.from("practice-images");
   try {
@@ -99,17 +100,18 @@ export async function POST(req: NextRequest) {
           include: { attachments: true },
         });
         if (!p) throw new Error("NOT_FOUND");
+        if (p.attachments.some((a) => a.id === parsed.data.uploadId)) return p;
         if (p.version !== parsed.data.expectedVersion)
           throw new Error("CONFLICT");
         if (p.attachments.length >= 5) throw new Error("LIMIT");
         const { error } = await storage.upload(path, bytes, {
           contentType: mime,
-          upsert: false,
+          upsert: true,
         });
         if (error) throw new Error("STORAGE");
         uploaded = true;
         await tx.practiceAttachment.create({
-          data: { practiceId: p.id, path, mime },
+          data: { id: parsed.data.uploadId, practiceId: p.id, path, mime },
         });
         return tx.learningPractice.update({
           where: { id: p.id },
@@ -169,8 +171,8 @@ export async function DELETE(req: NextRequest) {
         if (p.version !== expectedVersion) throw new Error("CONFLICT");
         const a = p.attachments.find((a) => a.id === attachmentId);
         if (!a) throw new Error("NOT_FOUND");
-        const { error } = await sb.storage
-          .from("practice-images")
+        const { error } = await createAdminClient()
+          .storage.from("practice-images")
           .remove([a.path]);
         if (error) throw new Error("STORAGE");
         await tx.practiceAttachment.delete({ where: { id: a.id } });

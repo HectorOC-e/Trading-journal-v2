@@ -11,3 +11,5 @@ El asistente utiliza el proveedor/modelo configurado para el Coach. Antes de reg
 Los comentarios conservan la versión evaluada. Editar texto o capturas incrementa la versión y muestra los comentarios anteriores como históricos. Los cambios concurrentes se rechazan; «Actualizar versión sin borrar el borrador» permite al usuario conservar sus cambios y aplicar explícitamente el borrador sobre la nueva versión. Cerrar sin guardar descarta el borrador local.
 
 Las tablas nuevas solo permiten lectura propia mediante RLS desde la Data API. Las mutaciones pasan por endpoints autenticados que verifican propiedad, relación con el recurso, límites y versión. El bucket es privado; las subidas se realizan en servidor con validación de bytes y propiedad. Se reutilizan las credenciales de IA existentes, sin nuevas claves ni dependencias de ejecución.
+
+Las subidas conservan un identificador de operación entre reintentos para no duplicar capturas tras una respuesta perdida. Los clientes no pueden subir ni eliminar objetos directamente en Storage: las mutaciones pasan por el servidor y actualizan la versión.

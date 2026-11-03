@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "src/app/api/upload/practice-image/route.ts": {
-    "mtime": 1793681817.834183,
-    "seen": 1793682085.1297567,
-    "ast_hash": "02fb5e13ec25a36ad92b60bbf7a411c9",
+    "mtime": 1793682272.8125107,
+    "seen": 1793682285.4222193,
+    "ast_hash": "66dd82c71cfabeed0cf113ce8342cc1f",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
@@ -3738,9 +3738,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/practice-modal.tsx": {
-    "mtime": 1793681931.156756,
-    "seen": 1793682085.1297803,
-    "ast_hash": "68f9fb3fce9420bc8359f14ad8de27cd",
+    "mtime": 1793682272.9445093,
+    "seen": 1793682285.4222414,
+    "ast_hash": "6c88c6a1c81f097ed60de714c488ce78",
     "semantic_hash": ""
   },
   "src/server/services/learning/practice-feedback-service.ts": {
@@ -3750,21 +3750,27 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-practices.ts": {
-    "mtime": 1793681930.892759,
-    "seen": 1793682085.1301897,
-    "ast_hash": "52b3a173ca33cca68325114b9d6f5735",
+    "mtime": 1793682272.7445116,
+    "seen": 1793682285.4227042,
+    "ast_hash": "9170e4cac7a99e3e30808abd10cc63d2",
     "semantic_hash": ""
   },
   "supabase/migrations/20261103045330_learning_practices.sql": {
-    "mtime": 1793681639.9043844,
-    "seen": 1793682085.1302965,
-    "ast_hash": "eedf2655f36c7b66d6be3cce21e0e809",
+    "mtime": 1793682236.5210357,
+    "seen": 1793682285.4228086,
+    "ast_hash": "33abd677c162f81068641ebd0585d6e6",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-02-learning-practices.md": {
     "mtime": 1793682077.2483745,
     "seen": 1793682085.1303241,
     "ast_hash": "67bf0315157686bf8a432f4702601612",
+    "semantic_hash": ""
+  },
+  "docs/learning-practices.md": {
+    "mtime": 1793682236.5215275,
+    "seen": 1793682285.4228191,
+    "ast_hash": "4d3554937f85a45f154aabbb02846155",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
