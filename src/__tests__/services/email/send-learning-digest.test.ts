@@ -89,3 +89,10 @@ describe("sendLearningDigestForUser", () => {
     expect(prisma.emailLog.create).not.toHaveBeenCalled()
   })
 })
+
+it("uses the intended local day for a delayed midnight digest and a stable provider idempotency key",async()=>{
+ const prisma=fakePrisma({pref:enabledPref,active:[{id:"r1",title:"Repaso",nextReviewAt:new Date("2026-11-03T00:00:00Z")}]});const send=vi.fn(async()=>({ok:true}));
+ await sendLearningDigestForUser({...deps(prisma,send),now:new Date("2026-11-04T06:02:00Z"),scheduledFor:new Date("2026-11-04T05:59:00Z")},user({timezone:"America/Tegucigalpa"}));
+ expect(prisma.emailLog.findFirst).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({weekKey:"2026-11-03"})}));
+ expect(send).toHaveBeenCalledWith(expect.objectContaining({idempotencyKey:"learning-digest/u1/2026-11-03"}));
+});

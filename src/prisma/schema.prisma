@@ -18,6 +18,7 @@ model User {
   language           String   @default("es")
   weeklyGoalMinutes   Int?     @default(300) @map("weekly_goal_minutes")
   emailNotifications  Boolean  @default(true) @map("email_notifications")
+  learningReminderTime String @default("19:00") @map("learning_reminder_time")
   currentStreak       Int      @default(0) @map("current_streak")
   bestStreak          Int      @default(0) @map("best_streak")
   lastReviewDate      DateTime? @map("last_review_date") @db.Date

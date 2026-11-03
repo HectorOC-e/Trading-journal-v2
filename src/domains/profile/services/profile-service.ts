@@ -14,6 +14,7 @@ export const PROFILE_PUBLIC_FIELDS = {
   language:           true,
   weeklyGoalMinutes:  true,
   emailNotifications: true,
+  learningReminderTime: true,
   currentStreak:      true,
   bestStreak:         true,
   lastReviewDate:     true,
@@ -27,6 +28,7 @@ export interface UpdateProfileInput {
   language?:           "es" | "en"
   weeklyGoalMinutes?:  number
   emailNotifications?: boolean
+  learningReminderTime?: string
   weeklyTradesGoal?:   number | null
   weeklyPnlGoal?:      number | null
   fxRates?:            Record<string, number>

@@ -10,6 +10,7 @@ import { USD_VALUE, SUPPORTED_CURRENCIES } from "@/lib/fx"
 import { Loader2 } from "lucide-react"
 import { AiModelsCard } from "./components/ai-models-card"
 import { PaletteStudio } from "./components/palette-studio"
+import { LearningReminderSettings } from "./components/learning-reminder-settings"
 
 /* ── Inline primitives ─────────────────────────────────────────────── */
 
@@ -763,6 +764,11 @@ export default function PerfilPage() {
             on={emailNotifications && aprendizajeEmailOn}
             disabled={!emailNotifications}
             onChange={setAprendizajeEmail}
+          />
+          <LearningReminderSettings
+            time={profile?.learningReminderTime ?? "19:00"}
+            timezone={profile?.timezone ?? "UTC"}
+            emailEnabled={emailNotifications && aprendizajeEmailOn}
           />
           <ToggleRow
             label="Email · Reviews"
