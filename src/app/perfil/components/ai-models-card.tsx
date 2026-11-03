@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { ProviderModelSelect } from "./provider-model-select"
 import { AI_FEATURES, ACTIVE_AI_FEATURES, type AiFeature } from "@/lib/ai/feature-models"
 
 const PROVIDERS = ["openrouter", "anthropic", "openai"] as const
@@ -32,32 +33,15 @@ const COST_OPTIONS = [
   { id: "cost",    label: "Costo", hint: "El más económico aceptable" },
 ] as const
 
-// Curated models that support tool/function calling — required for the Coach to
-// query your live data (cuentas, setups, trades). Surfaced as autocomplete.
-const TOOL_CAPABLE_MODELS: Record<Provider, string[]> = {
-  anthropic:  ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
-  openrouter: ["anthropic/claude-sonnet-4-6", "anthropic/claude-opus-4-8", "openai/gpt-4o", "openai/gpt-4o-mini", "google/gemini-2.5-pro"],
-  openai:     ["gpt-4o", "gpt-4o-mini", "gpt-4.1"],
-}
-const ALL_TOOL_MODELS = Array.from(new Set(Object.values(TOOL_CAPABLE_MODELS).flat()))
-
-// Heuristic for models that are known NOT to support tools (the Coach would lose
-// live-data access and fall back to a static answer). Advisory only.
-function looksToolIncapable(model: string): boolean {
-  const m = model.trim().toLowerCase()
-  if (!m || m === "auto") return false
-  return /gpt-oss|-base\b|:free|deepseek-r1|-instruct\b/.test(m)
-}
-
 const inputStyle: React.CSSProperties = {
   height: 36, padding: "0 10px", borderRadius: "var(--radius-sm)",
   border: "1px solid var(--line)", background: "var(--panel-2)",
   color: "var(--ink)", fontSize: 13, outline: "none", width: "100%",
 }
 
-function ProviderSelect({ value, onChange }: { value: Provider; onChange: (v: Provider) => void }) {
+function ProviderSelect({ value, onChange, label }: { value: Provider; onChange: (v: Provider) => void; label: string }) {
   return (
-    <select value={value} onChange={e => onChange(e.target.value as Provider)} style={{ ...inputStyle, cursor: "pointer" }}>
+    <select aria-label={label} value={value} onChange={e => onChange(e.target.value as Provider)} style={{ ...inputStyle, cursor: "pointer" }}>
       {PROVIDERS.map(p => <option key={p} value={p}>{PROVIDER_LABEL[p]}</option>)}
     </select>
   )
@@ -141,49 +125,34 @@ export function AiModelsCard() {
   }
 
   return (
-    <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 24, marginTop: 20 }}>
+    <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 24, marginTop: 20, minWidth: 0, overflowWrap: "anywhere" }}>
       <p style={{ fontSize: 15, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>Modelos de IA</p>
       <p style={{ fontSize: 12, color: "var(--ink-3)", marginBottom: 18 }}>
         Modelo global por defecto + fallback. Opcionalmente un modelo distinto por funcionalidad.
-        Escribe <code style={{ background: "var(--panel-2)", padding: "1px 4px", borderRadius: 3 }}>auto</code> en cualquier modelo para que se elija según tu <b>prioridad</b>.
+        Selecciona un modelo del catálogo de cada proveedor. «Automático» elige según tu <b>prioridad</b>. También puedes introducir un ID manual.
       </p>
 
       {/* Global default */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 10, marginBottom: 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr] gap-2.5 mb-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Proveedor por defecto</label>
-          <ProviderSelect value={defaultProvider} onChange={setDefaultProvider} />
+          <ProviderSelect label="Proveedor por defecto" value={defaultProvider} onChange={p => {setDefaultProvider(p);setDefaultModel("auto")}} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Modelo por defecto</label>
-          <input style={inputStyle} list="tool-capable-models" value={defaultModel} onChange={e => setDefaultModel(e.target.value)} placeholder="claude-sonnet-4-6" />
-          {looksToolIncapable(defaultModel) ? (
-            <p style={{ fontSize: 10.5, color: "var(--be, #b45309)", lineHeight: 1.4 }}>
-              ⚠ Este modelo podría no soportar <b>tools</b>. El Coach no podría consultar tus datos en vivo (cuentas, setups, trades) y respondería solo con el resumen. Elige uno tool-capable de la lista.
-            </p>
-          ) : (
-            <p style={{ fontSize: 10.5, color: "var(--ink-3)", lineHeight: 1.4 }}>
-              Para el Coach, usa un modelo con soporte de <b>tools</b> (function calling). Empieza a escribir para ver sugerencias.
-            </p>
-          )}
+          <ProviderModelSelect key={defaultProvider} provider={defaultProvider} label="Modelo por defecto" value={defaultModel} onChange={setDefaultModel} warnTools />
         </div>
       </div>
 
-      {/* Shared autocomplete of tool-capable models for every model field */}
-      <datalist id="tool-capable-models">
-        {(TOOL_CAPABLE_MODELS[defaultProvider] ?? []).map(m => <option key={m} value={m} />)}
-        {ALL_TOOL_MODELS.map(m => <option key={`all-${m}`} value={m} />)}
-      </datalist>
-
       {/* Global fallback */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 10, marginBottom: 16 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1.4fr] gap-2.5 mb-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Proveedor fallback</label>
-          <ProviderSelect value={fallbackProvider} onChange={setFallbackProvider} />
+          <ProviderSelect label="Proveedor fallback" value={fallbackProvider} onChange={p => {setFallbackProvider(p);setFallbackModel("")}} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
           <label style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--ink-3)" }}>Modelo fallback (opcional)</label>
-          <input style={inputStyle} list="tool-capable-models" value={fallbackModel} onChange={e => setFallbackModel(e.target.value)} placeholder="anthropic/claude-haiku-4-5" />
+          <ProviderModelSelect key={fallbackProvider} provider={fallbackProvider} label="Modelo fallback" value={fallbackModel} onChange={setFallbackModel} emptyLabel="Sin fallback" />
         </div>
       </div>
 
@@ -214,11 +183,11 @@ export function AiModelsCard() {
       {showFeatures && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           {ACTIVE_AI_FEATURES.map(f => (
-            <div key={f} style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr 1.4fr", gap: 8, alignItems: "center" }}>
+            <div key={f} className="grid grid-cols-1 sm:grid-cols-[1.1fr_1fr_1.4fr] gap-2 items-center min-w-0">
               <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{FEATURE_LABEL[f]}</span>
-              <ProviderSelect value={features[f]?.provider ?? defaultProvider} onChange={p => setFeature(f, { provider: p })} />
-              <input style={{ ...inputStyle, ...(f === "ai_chat" && looksToolIncapable(features[f]?.model ?? "") ? { borderColor: "var(--be, #b45309)" } : {}) }}
-                list="tool-capable-models" value={features[f]?.model ?? ""} onChange={e => setFeature(f, { model: e.target.value })} placeholder="usar por defecto" />
+              <ProviderSelect label={`Proveedor: ${FEATURE_LABEL[f]}`} value={features[f]?.provider ?? defaultProvider} onChange={p => setFeature(f, { provider: p, model: "" })} />
+              <ProviderModelSelect key={features[f]?.provider ?? defaultProvider} provider={features[f]?.provider ?? defaultProvider} label={`Modelo: ${FEATURE_LABEL[f]}`} value={features[f]?.model ?? ""} onChange={model => setFeature(f, { model })} emptyLabel={f === "embeddings" ? "Automático para embeddings" : "Usar predeterminado"} purpose={f === "embeddings" ? "embeddings" : "chat"} warnTools={f === "ai_chat"}/>
+
             </div>
           ))}
         </div>

@@ -1,9 +1,10 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { encryptApiKey, decryptApiKey, maskApiKey, EncryptionConfigError } from "@/lib/ai/key-encryption"
-import { buildAiDiagnostics, resolveAiCall } from "@/lib/ai/resolve-provider"
+import { buildAiDiagnostics, resolveAiCall, resolveProviderKey } from "@/lib/ai/resolve-provider"
 import { testProviderConnectivity } from "@/lib/ai/health-check"
 import { indexStatus, reindex } from "@/server/services/retrieval/pipeline"
+import { fetchProviderModels } from "@/server/services/ai/provider-model-catalog"
 import { CORPUS_KEYS } from "@/server/services/retrieval/types"
 
 const PROVIDERS = ["anthropic", "openrouter", "openai"] as const
@@ -31,6 +32,14 @@ function validateKeyFormat(provider: Provider, apiKey: string): string | null {
 }
 
 export const aiConfigRouter = router({
+  models: protectedProcedure
+    .input(z.object({ provider: z.enum(PROVIDERS), purpose: z.enum(["chat", "embeddings"]).default("chat") }))
+    .query(async ({ ctx, input }) => {
+      const key = await resolveProviderKey(ctx.prisma, ctx.userId, input.provider)
+      const models = await fetchProviderModels(input.provider, key.apiKey, input.purpose)
+      return { provider: input.provider, scope: key.apiKey ? "account" as const : "public" as const, models }
+    }),
+
   list: protectedProcedure
     .query(async ({ ctx }) => {
       const configs = await ctx.prisma.userAiConfig.findMany({
