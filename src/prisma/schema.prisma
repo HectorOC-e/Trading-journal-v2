@@ -39,6 +39,7 @@ model User {
   learningResources LearningResource[]
   resourceReviews   ResourceReview[]
   studySessions     StudySession[]
+  learningPractices LearningPractice[]
   markets           Market[]
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
@@ -573,6 +574,7 @@ model LearningResource {
   weekDeltaResetAt DateTime? @map("week_delta_reset_at")
   archiveReason   String?   @map("archive_reason") // "irrelevant" | "mastered" | "no_time"
 
+  practices     LearningPractice[]
   user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviews       ResourceReview[]
   studySessions StudySession[]
@@ -1228,4 +1230,46 @@ model FeedIgnore {
   @@unique([userId, signalKey])
   @@index([userId])
   @@map("feed_ignores")
+}
+
+model LearningPractice {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  resourceId String? @map("resource_id") @db.Uuid
+  title String
+  date DateTime @db.Date
+  durationMin Int @map("duration_min")
+  exercise String
+  reflection String @default("")
+  version Int @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  resource LearningResource? @relation(fields:[resourceId], references:[id], onDelete:SetNull)
+  attachments PracticeAttachment[]
+  feedback PracticeFeedback[]
+  @@index([userId, date(sort: Desc), id])
+  @@index([resourceId])
+  @@map("learning_practices")
+}
+model PracticeAttachment {
+  id String @id @default(uuid()) @db.Uuid
+  practiceId String @map("practice_id") @db.Uuid
+  path String @unique
+  mime String
+  createdAt DateTime @default(now()) @map("created_at")
+  practice LearningPractice @relation(fields:[practiceId], references:[id], onDelete:Cascade)
+  @@index([practiceId])
+  @@map("practice_attachments")
+}
+model PracticeFeedback {
+  id String @id @default(uuid()) @db.Uuid
+  practiceId String @map("practice_id") @db.Uuid
+  version Int
+  kind String
+  text String
+  createdAt DateTime @default(now()) @map("created_at")
+  practice LearningPractice @relation(fields:[practiceId], references:[id], onDelete:Cascade)
+  @@index([practiceId, createdAt(sort: Desc)])
+  @@map("practice_feedback")
 }

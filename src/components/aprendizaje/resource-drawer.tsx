@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { X, Star, ChevronDown, ChevronUp, Trophy } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { CategoryChip } from "@/components/ui/category-chip"
+import { ResourcePracticeHistory } from "@/app/aprendizaje/components/practices-tab"
 import { ResourceTransferPanel } from "@/components/aprendizaje/resource-transfer-panel"
 import { cn } from "@/lib/utils"
 import { MASTERY_STAGES, masteryStageIndexFromLevel, effectiveMasteryLevel } from "@/app/aprendizaje/utils/mastery"
@@ -175,6 +176,7 @@ export interface ResourceDrawerProps {
   onClose:   () => void
   onReview:  (resource: LearningResource, mode: "quick" | "deep") => void
   onEdit:    (resource: LearningResource) => void
+  onPractice?: (resource: LearningResource) => void
 }
 
 export function ResourceDrawer({
@@ -183,6 +185,7 @@ export function ResourceDrawer({
   onClose,
   onReview,
   onEdit,
+  onPractice,
 }: ResourceDrawerProps) {
   // Escape key to close
   useEffect(() => {
@@ -355,6 +358,8 @@ export function ResourceDrawer({
               </div>
             </section>
           )}
+
+          {onPractice && <ResourcePracticeHistory resourceId={resource.id} onOpen={() => onPractice(resource)} />}
 
           {/* Accumulated insights */}
           {uniqueInsights.length > 0 && (
