@@ -1,4 +1,5 @@
 "use client";
+import { practiceImageInputError } from "@/domains/learning/practice-evidence";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/server/trpc/root";
@@ -138,8 +139,16 @@ export function PracticeModal({
         method: "POST",
         body: f,
       });
-      const d = await r.json();
-      if (!r.ok) throw Error(d.error);
+      const d = await r.json().catch(() => null);
+      if (!r.ok) {
+        if (r.status === 400 || r.status === 413) setPendingUpload(null);
+        throw Error(
+          d?.error ??
+            (r.status === 413
+              ? "Máximo 4 MB por imagen."
+              : "No se pudo subir la captura. Reintenta."),
+        );
+      }
       await refresh();
       setPendingUpload(null);
       setNotice("Captura guardada.");
@@ -374,7 +383,7 @@ export function PracticeModal({
               <section className="border-t border-[var(--line)] pt-3">
                 <h3 className="font-semibold text-sm">Capturas</h3>
                 <p className="text-xs text-[var(--ink-3)]">
-                  Hasta cinco imágenes privadas. PNG, JPEG o WebP; 5 MB por
+                  Hasta cinco imágenes privadas. PNG, JPEG o WebP; 4 MB por
                   imagen.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
@@ -413,6 +422,11 @@ export function PracticeModal({
                         const file = e.target.files?.[0];
                         e.target.value = "";
                         if (file) {
+                          const invalid = practiceImageInputError(file);
+                          if (invalid) {
+                            setError(invalid);
+                            return;
+                          }
                           const uploadId = crypto.randomUUID();
                           setPendingUpload({ file, uploadId });
                           void upload(file, uploadId);

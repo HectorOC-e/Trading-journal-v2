@@ -22,7 +22,9 @@ vi.mock("@/lib/supabase/server", () => ({
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => {
     if (mocks.adminThrows) throw new Error("supabaseKey is required");
-    return { storage: { from: () => ({ upload: mocks.upload, remove: mocks.remove }) } };
+    return {
+      storage: { from: () => ({ upload: mocks.upload, remove: mocks.remove }) },
+    };
   },
 }));
 vi.mock("@/lib/prisma", () => {
@@ -191,8 +193,37 @@ it("returns a readable error when preview storage credentials are unavailable", 
   f.set("practiceId", id);
   f.set("expectedVersion", "1");
   f.set("uploadId", id);
-  f.set("file", new File([new Uint8Array([137,80,78,71,13,10,26,10])], "a.png", { type: "image/png" }));
-  const response = await POST(new NextRequest("https://app/api/upload/practice-image", { method: "POST", body: f }));
+  f.set(
+    "file",
+    new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], "a.png", {
+      type: "image/png",
+    }),
+  );
+  const response = await POST(
+    new NextRequest("https://app/api/upload/practice-image", {
+      method: "POST",
+      body: f,
+    }),
+  );
   expect(response.status).toBe(503);
   expect((await response.json()).error).not.toContain("supabaseKey");
+});
+
+it("rejects an over-4 MB image before storage or database access", async () => {
+  const bytes = new Uint8Array(4 * 1024 * 1024 + 1);
+  bytes.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  const f = new FormData();
+  f.set("practiceId", id);
+  f.set("expectedVersion", "1");
+  f.set("uploadId", id);
+  f.set("file", new File([bytes], "large.png", { type: "image/png" }));
+  const response = await POST(
+    new NextRequest("https://app/api/upload/practice-image", {
+      method: "POST",
+      body: f,
+    }),
+  );
+  expect(response.status).toBe(400);
+  expect(mocks.find).not.toHaveBeenCalled();
+  expect(mocks.upload).not.toHaveBeenCalled();
 });

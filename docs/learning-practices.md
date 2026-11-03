@@ -4,7 +4,7 @@ En Aprendizaje → Prácticas se registran ejercicios independientes o vinculado
 
 Los minutos y sesiones semanales se muestran por separado del estudio. No se actualizan unidades, dominio, repasos o racha de estudio; tampoco se importan trades ni se genera otra review semanal.
 
-Después de guardar pueden añadirse cinco capturas privadas PNG/JPEG/WebP, hasta 5 MB por imagen. Se amplían y eliminan individualmente. Los enlaces de lectura caducan a los cinco minutos y se renuevan al abrir/actualizar la práctica. La eliminación del registro borra capturas y comentarios.
+Después de guardar pueden añadirse cinco capturas privadas PNG/JPEG/WebP, hasta 4 MB por imagen. Se amplían y eliminan individualmente. Los enlaces de lectura caducan a los cinco minutos y se renuevan al abrir/actualizar la práctica. La eliminación del registro borra capturas y comentarios.
 
 El asistente utiliza el proveedor/modelo configurado para el Coach. Antes de registrar una sesión puede proponer una guía a partir del concepto; «Usar como guía» permite conservarla al guardar. Después de guardar puede sugerir el siguiente ejercicio o comentar las notas y capturas. Solo se llama al proveedor al pulsar la acción. Las capturas se envían al proveedor únicamente al comentar y requieren un modelo con visión. No se certifica dominio ni rentabilidad.
 

@@ -53,7 +53,7 @@
 
 **Files:** nuevo endpoint `src/app/api/upload/practice-image/route.ts`, componente `src/app/aprendizaje/components/practice-attachments.tsx`; ampliar modelo/router/modal de Fase 1 y políticas de Storage en migración propia.
 
-**Interfaces:** adjuntos asociados a una práctica propia, identificados por clave de almacenamiento; lectura autenticada con URL temporal. Límites propuestos para implementación: cinco imágenes por práctica, JPEG/PNG/WebP, máximo 5 MB por imagen, verificación del contenido en servidor.
+**Interfaces:** adjuntos asociados a una práctica propia, identificados por clave de almacenamiento; lectura autenticada con URL temporal. Límites propuestos para implementación: cinco imágenes por práctica, JPEG/PNG/WebP, máximo 4 MB por imagen, verificación del contenido en servidor.
 
 - [ ] Probar acceso cruzado, formato/tamaño inválido, límite, subida interrumpida y borrado de práctica con adjuntos.
 - [ ] Implementar almacenamiento privado, validación de propiedad, subida, visualización ampliada y eliminación; no aceptar URLs arbitrarias como adjuntos propios.

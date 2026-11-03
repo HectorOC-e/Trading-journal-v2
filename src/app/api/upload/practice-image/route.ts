@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { prisma } from "@/lib/prisma";
 import { imageMime } from "@/server/services/learning/practice-feedback-service";
+import { MAX_PRACTICE_IMAGE_BYTES } from "@/domains/learning/practice-evidence";
 import { z } from "zod";
 const identity = z.object({
   practiceId: z.string().uuid(),
@@ -54,9 +55,12 @@ export async function POST(req: NextRequest) {
   } = await sb.auth.getUser();
   if (!user)
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
-  if (Number(req.headers.get("content-length")) > 6 * 1024 * 1024)
+  if (
+    Number(req.headers.get("content-length")) >
+    MAX_PRACTICE_IMAGE_BYTES + 65536
+  )
     return NextResponse.json(
-      { error: "Máximo 5 MB por imagen." },
+      { error: "Máximo 4 MB por imagen." },
       { status: 413 },
     );
   const f = await req.formData().catch(() => null);
@@ -75,10 +79,10 @@ export async function POST(req: NextRequest) {
     !parsed.success ||
     !(file instanceof File) ||
     !file.size ||
-    file.size > 5 * 1024 * 1024
+    file.size > MAX_PRACTICE_IMAGE_BYTES
   )
     return NextResponse.json(
-      { error: "Imagen inválida. Máximo 5 MB." },
+      { error: "Imagen inválida. Máximo 4 MB." },
       { status: 400 },
     );
   const bytes = new Uint8Array(await file.arrayBuffer()),
@@ -91,13 +95,20 @@ export async function POST(req: NextRequest) {
   const path = `${user.id}/${parsed.data.practiceId}/${parsed.data.uploadId}.${mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp"}`;
   let uploaded = false;
   const storage = (() => {
-    try { return createAdminClient().storage.from("practice-images"); }
-    catch { return null; }
+    try {
+      return createAdminClient().storage.from("practice-images");
+    } catch {
+      return null;
+    }
   })();
-  if (!storage) return NextResponse.json(
-    { error: "Las capturas no están disponibles en este entorno. Inténtalo más tarde." },
-    { status: 503 },
-  );
+  if (!storage)
+    return NextResponse.json(
+      {
+        error:
+          "Las capturas no están disponibles en este entorno. Inténtalo más tarde.",
+      },
+      { status: 503 },
+    );
   try {
     const p = await prisma.$transaction(
       async (tx) => {
