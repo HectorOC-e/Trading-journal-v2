@@ -33,6 +33,7 @@ function setup() {
     learningResource: { findFirst: vi.fn().mockResolvedValue(null) },
     learningPractice: {
       findFirst: vi.fn().mockResolvedValue(row),
+      findFirstOrThrow: vi.fn().mockResolvedValue(row),
       findMany: vi.fn().mockResolvedValue([row]),
       create: vi.fn().mockResolvedValue(row),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -117,5 +118,41 @@ describe("learning practices", () => {
       minutes: 30,
       sessions: 1,
     });
+  });
+});
+
+it("persists an optional trimmed practice objective and self assessment", async () => {
+  const { c, p } = setup();
+  p.learningPractice.findFirst.mockResolvedValue(null);
+  await c.create({
+    ...input,
+    objective: "  Justificar tres zonas  ",
+    assessment: "partial",
+  });
+  expect(p.learningPractice.create.mock.calls[0][0].data).toMatchObject({
+    objective: "Justificar tres zonas",
+    assessment: "partial",
+  });
+});
+it("rejects unknown assessments and excessive objectives", async () => {
+  const { c } = setup();
+  await expect(
+    c.create({ ...input, assessment: "perfect" } as never),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  await expect(
+    c.create({ ...input, objective: "x".repeat(1001) }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+});
+it("can clear an existing objective and assessment", async () => {
+  const { c, p } = setup();
+  await c.update({
+    ...input,
+    expectedVersion: 1,
+    objective: "",
+    assessment: null,
+  });
+  expect(p.learningPractice.updateMany.mock.calls[0][0].data).toMatchObject({
+    objective: "",
+    assessment: null,
   });
 });

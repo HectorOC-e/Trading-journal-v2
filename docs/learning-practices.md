@@ -13,3 +13,7 @@ Los comentarios conservan la versión evaluada. Editar texto o capturas incremen
 Las tablas nuevas solo permiten lectura propia mediante RLS desde la Data API. Las mutaciones pasan por endpoints autenticados que verifican propiedad, relación con el recurso, límites y versión. El bucket es privado; las subidas se realizan en servidor con validación de bytes y propiedad. Se reutilizan las credenciales de IA existentes, sin nuevas claves ni dependencias de ejecución.
 
 Las subidas conservan un identificador de operación entre reintentos para no duplicar capturas tras una respuesta perdida. Los clientes no pueden subir ni eliminar objetos directamente en Storage: las mutaciones pasan por el servidor y actualizan la versión.
+
+Cada práctica admite un objetivo opcional de hasta 1000 caracteres y una autoevaluación personal: «Lo logré», «Parcialmente» o «Necesito repetir». Puede dejarse sin evaluar o quitarse después; el historial muestra la valoración sin inferir dominio.
+
+«Volver a practicar» abre un intento nuevo con el título, recurso, objetivo y ejercicio guardados, usando el día del perfil. Los minutos quedan vacíos y no se copian reflexión, autoevaluación, capturas ni comentarios. No suma sesiones ni minutos hasta guardar. Si hay un borrador modificado, se pide confirmación para descartarlo antes de repetir.

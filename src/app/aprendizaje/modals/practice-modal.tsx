@@ -23,6 +23,8 @@ export type PracticeRecord =
   RouterOutputs["learningPractices"]["list"]["items"][number];
 export function PracticeModal({
   record,
+  repeatFrom,
+  onRepeat,
   resourceId,
   today,
   timezone = "UTC",
@@ -30,6 +32,8 @@ export function PracticeModal({
   onChanged,
 }: {
   record: PracticeRecord | null;
+  repeatFrom?: PracticeRecord;
+  onRepeat?: (record: PracticeRecord) => void;
   resourceId?: string;
   today?: string;
   timezone?: string;
@@ -38,14 +42,23 @@ export function PracticeModal({
 }) {
   const [saved, setSaved] = useState(record);
   const [id] = useState(() => record?.id ?? crypto.randomUUID());
-  const [title, setTitle] = useState(record?.title ?? "");
+  const [title, setTitle] = useState(record?.title ?? repeatFrom?.title ?? "");
   const [date, setDate] = useState(record?.date.slice(0, 10) ?? today ?? "");
-  const [minutes, setMinutes] = useState(String(record?.durationMin ?? 30));
-  const [exercise, setExercise] = useState(record?.exercise ?? "");
+  const [minutes, setMinutes] = useState(
+    record ? String(record.durationMin) : repeatFrom ? "" : "30",
+  );
+  const [exercise, setExercise] = useState(
+    record?.exercise ?? repeatFrom?.exercise ?? "",
+  );
   const [reflection, setReflection] = useState(record?.reflection ?? "");
   const [resource, setResource] = useState(
-    record?.resourceId ?? resourceId ?? "",
+    record?.resourceId ?? repeatFrom?.resourceId ?? resourceId ?? "",
   );
+  const [objective, setObjective] = useState(
+    record?.objective ?? repeatFrom?.objective ?? "",
+  );
+  const [assessment, setAssessment] = useState(record?.assessment ?? "");
+  const [repeatRequested, setRepeatRequested] = useState(false);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [confirm, setConfirm] = useState(false);
@@ -83,6 +96,12 @@ export function PracticeModal({
     durationMin: Number(minutes),
     exercise,
     reflection,
+    objective,
+    assessment: (assessment || null) as
+      | "achieved"
+      | "partial"
+      | "repeat"
+      | null,
     resourceId: resource || null,
   };
   const dirty =
@@ -94,6 +113,8 @@ export function PracticeModal({
         durationMin: saved.durationMin,
         exercise: saved.exercise,
         reflection: saved.reflection,
+        objective: saved.objective ?? "",
+        assessment: saved.assessment ?? null,
         resourceId: saved.resourceId,
       });
   const [initialInput] = useState(input);
@@ -104,6 +125,7 @@ export function PracticeModal({
         !!suggestion) || !!pendingUpload;
   function requestClose() {
     if (busy) return;
+    setRepeatRequested(false);
     if (hasUnsavedChanges) setDiscardOpen(true);
     else onClose();
   }
@@ -160,6 +182,8 @@ export function PracticeModal({
       setTitle(p.title);
       setExercise(p.exercise);
       setReflection(p.reflection);
+      setObjective(p.objective ?? "");
+      setAssessment(p.assessment ?? "");
       onChanged();
       setNotice(
         "Práctica guardada. Puedes añadir capturas o pedir ayuda al asistente.",
@@ -385,6 +409,19 @@ export function PracticeModal({
                   </select>
                 </Field>
                 <Field
+                  label="Objetivo de esta práctica (opcional)"
+                  htmlFor={controlId("objective")}
+                >
+                  <Textarea
+                    id={controlId("objective")}
+                    maxLength={1000}
+                    rows={2}
+                    placeholder="Por ejemplo: identificar tres soportes y explicar su validación."
+                    value={objective}
+                    onChange={(e) => setObjective(e.target.value)}
+                  />
+                </Field>
+                <Field
                   label="Qué hiciste"
                   htmlFor={controlId("exercise")}
                   required
@@ -410,9 +447,38 @@ export function PracticeModal({
                     onChange={(e) => setReflection(e.target.value)}
                   />
                 </Field>
+                <Field
+                  label="Autoevaluación (opcional)"
+                  htmlFor={controlId("assessment")}
+                >
+                  <select
+                    id={controlId("assessment")}
+                    className={selectClass}
+                    value={assessment}
+                    onChange={(e) => setAssessment(e.target.value)}
+                    aria-describedby={controlId("assessment-help")}
+                  >
+                    <option value="">Sin evaluar</option>
+                    <option value="achieved">Lo logré</option>
+                    <option value="partial">Parcialmente</option>
+                    <option value="repeat">Necesito repetir</option>
+                  </select>
+                  <p
+                    id={controlId("assessment-help")}
+                    className="text-[12px] text-[var(--ink-3)]"
+                  >
+                    Tu valoración personal del objetivo después de practicar.
+                  </p>
+                </Field>
               </fieldset>
             </form>
           </section>
+          {repeatFrom && !saved && (
+            <p className="text-[12px] text-[var(--ink-3)]">
+              Nuevo intento: registra los minutos y lo que hiciste al terminar.
+              Las capturas y la autoevaluación anteriores no se copian.
+            </p>
+          )}
           {notice && (
             <p role="status" className="text-[12px] text-[var(--ink-2)]">
               {notice}
@@ -708,7 +774,24 @@ export function PracticeModal({
               Eliminar práctica
             </Button>
           )}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex flex-wrap justify-end items-center gap-2">
+            {saved && onRepeat && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  if (hasUnsavedChanges) {
+                    setRepeatRequested(true);
+                    setDiscardOpen(true);
+                  } else onRepeat(saved);
+                }}
+              >
+                Volver a practicar
+              </Button>
+            )}
+
             <Button
               type="button"
               variant="ghost"
@@ -763,7 +846,8 @@ export function PracticeModal({
         cancelLabel="Seguir editando"
         onConfirm={() => {
           setDiscardOpen(false);
-          onClose();
+          if (repeatRequested && saved && onRepeat) onRepeat(saved);
+          else onClose();
         }}
       />
       <ConfirmDialog

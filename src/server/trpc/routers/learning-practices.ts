@@ -23,6 +23,8 @@ const day = z
   );
 const fields = z.object({
   title: z.string().trim().min(1).max(160),
+  objective: z.string().trim().max(1000).optional(),
+  assessment: z.enum(["achieved", "partial", "repeat"]).nullable().optional(),
   date: day,
   durationMin: z.number().int().min(1).max(1440),
   exercise: z.string().trim().min(1).max(5000),

@@ -3732,15 +3732,15 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
-    "mtime": 1793725248.851009,
-    "seen": 1793725258.5203633,
-    "ast_hash": "517f44d2bc0aba9b5c6f7e6724f6f570",
+    "mtime": 1793742170.0246024,
+    "seen": 1793742180.0878885,
+    "ast_hash": "585664f84a5354bd4a0a2e87a918b333",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/practice-modal.tsx": {
-    "mtime": 1793725487.5408938,
-    "seen": 1793725567.2110648,
-    "ast_hash": "83fd45c5a5b085ea6b8e642c81f8d5e2",
+    "mtime": 1793742015.2946846,
+    "seen": 1793742078.836893,
+    "ast_hash": "6bd41b83de52618ae7ae3c222df24908",
     "semantic_hash": ""
   },
   "src/server/services/learning/practice-feedback-service.ts": {
@@ -3750,9 +3750,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-practices.ts": {
-    "mtime": 1793718162.402989,
-    "seen": 1793725258.5208328,
-    "ast_hash": "de119dd25c5be67d11dc6e24d6b40bd4",
+    "mtime": 1793741856.3156881,
+    "seen": 1793742078.8378093,
+    "ast_hash": "eae05d3811894e43daa45ad7cbdcdb81",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-02-learning-practices.md": {
@@ -3762,9 +3762,9 @@
     "semantic_hash": ""
   },
   "docs/learning-practices.md": {
-    "mtime": 1793718162.3829892,
-    "seen": 1793725258.52095,
-    "ast_hash": "d84195c184794b49159e2bef87521cad",
+    "mtime": 1793742273.611569,
+    "seen": 1793742292.1030848,
+    "ast_hash": "97592a7e4d7aa3e0ae624ad5f514db4c",
     "semantic_hash": ""
   },
   "supabase/migrations/20261103050551_learning_practices.sql": {
@@ -3780,9 +3780,27 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-03-practices-modal-consistency.md": {
-    "mtime": 1793724704.6277437,
-    "seen": 1793725258.5209718,
-    "ast_hash": "c0bb4481f4395b23ce4c563347660895",
+    "mtime": 1793726192.2706857,
+    "seen": 1793742078.8381178,
+    "ast_hash": "fe25a4b148dcf0f186746a8382007471",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-03-practice-repeat-assessment.md": {
+    "mtime": 1793742284.2511983,
+    "seen": 1793742292.1031072,
+    "ast_hash": "4f86d110fcea1e63c0789c64b0e476da",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-03-practice-repeat-assessment-design.md": {
+    "mtime": 1793741813.1594863,
+    "seen": 1793742078.8381395,
+    "ast_hash": "c1db071223132d2d4aa9e9c938fcd809",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261103214052_practice_objective_assessment.sql": {
+    "mtime": 1793742014.6734633,
+    "seen": 1793742180.0884101,
+    "ast_hash": "10e82eada00d46f2c24c6d2652b9b748",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
