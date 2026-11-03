@@ -56,7 +56,7 @@ it("does not reopen a registration form when returning through the Practices tab
   render(<Page />);
   fireEvent.click(screen.getByRole("button", {name: "Registrar práctica"}));
   expect(screen.getByText("Practice form open")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", {name: "Hoy", exact: true}));
-  fireEvent.click(screen.getByRole("tab", {name: "Prácticas", exact: true}));
+  fireEvent.click(screen.getByRole("tab", {name: /^Hoy$/}));
+  fireEvent.click(screen.getByRole("tab", {name: /^Prácticas$/}));
   expect(screen.getByText("Practice list")).toBeInTheDocument();
 });

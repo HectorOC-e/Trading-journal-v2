@@ -1,7 +1,7 @@
 # Graph Report - Trading-journal-v2  (2026-11-03)
 
 ## Corpus Check
-- 629 files · ~422,965 words
+- 629 files · ~423,011 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b243a0b2`
+- Built from commit: `ea243ab3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -518,6 +518,7 @@
 - Dual-write automations→rules
 - Fase 1 — Flip (ops, sin código)
 - Fase 2 — Retiro de automations
+- 20261103050551_learning_practices.sql
 - memory-pattern-service.ts
 - Gate OI-1 — informe de no-mapeo con datos reales
 - emotion-feedback.ts
@@ -526,7 +527,6 @@
 - analytics.ts
 - Riesgo residual — divergencia semántica sutil de runRules
 - Rollback fase 1 — quitar RULES_SOURCE (instantáneo)
-- 20261103045330_learning_practices.sql
 - RULES_SOURCE env var
 - S1/DT-5 — badge de modo lee rule.mode
 - Fase 1 ejecutada y verificada en prod (Playwright + SQL, RULE_BLOCKED)
@@ -1327,6 +1327,10 @@ Nodes (7): checklistColor(), getWeekKey(), HEALTH_CONFIG, LifecycleSuggestions()
 Cohesion: 0.31
 Nodes (4): num(), parsePaletteConfig(), parsePaletteConfigJson(), PaletteConfig
 
+### Community 583 - "20261103050551_learning_practices.sql"
+Cohesion: 0.46
+Nodes (7): learning_practices_resource_id_idx, learning_practices_user_id_date_id_idx, practice_attachments_practice_id_idx, practice_feedback_practice_id_created_at_idx, public.learning_practices, public.practice_attachments, public.practice_feedback
+
 ### Community 584 - "memory-pattern-service.ts"
 Cohesion: 0.31
 Nodes (7): DetectedPattern, detectPatterns(), EpisodeForPattern, PATTERN_TEXT, PatternStatus, recomputeMemoryPatterns(), recomputeMemoryPatternsForAll()
@@ -1338,10 +1342,6 @@ Nodes (7): EmotionFeedback, EmotionStat, EmotionTrade, feedbackForEmotion(), rou
 ### Community 590 - "analytics.ts"
 Cohesion: 0.38
 Nodes (6): summarizeInstitutional(), analyticsRouter, Period, PeriodInput, PERIODS, resolveWindow()
-
-### Community 593 - "20261103045330_learning_practices.sql"
-Cohesion: 0.46
-Nodes (7): learning_practices_resource_id_idx, learning_practices_user_id_date_id_idx, practice_attachments_practice_id_idx, practice_feedback_practice_id_created_at_idx, public.learning_practices, public.practice_attachments, public.practice_feedback
 
 ### Community 603 - "Review Focus"
 Cohesion: 0.22
@@ -1404,7 +1404,7 @@ Nodes (3): La palanca A estaba mal enunciada, y la BD lo desmintió (2026-07-27,
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `lucide-react` to `emit.ts`, `perfil/page.tsx`, `trades-table.tsx`, `review-summary.tsx`, `reglas/page.tsx`, `dependencies`, `lib/utils.ts`, `ai-coach-drawer.tsx`, `data-table.tsx`, `etiquetas/page.tsx`, `page.tsx`, `analytics/page.tsx`, `motion.ts`, `tab-portfolio.tsx`, `types/index.ts`, `File Structure`, `send-learning-digest.ts`, `lib/utils.ts`, `add-edit-resource-modal.tsx`, `resource-card.tsx`, `simple-table.tsx`, `tab-playbook.tsx`, `markdown.tsx`, `cuentas/page.tsx`, `next`, `theme-provider.tsx`, `package.json`, `palette-studio.tsx`, `account-card.tsx`, `reviews-rail.tsx`, `monthly-letter.tsx`, `trajectory-panel.tsx`, `reviews-digest/route.ts`, `mercados/page.tsx`, `command-palette.tsx`?**
-  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+  _High betweenness centrality (0.062) - this node is a cross-community bridge._
 - **What connects `ADR-0001`, `ADR-0003`, `ADR-0003` to the rest of the system?**
   _423 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `theme/engine.ts` be split into smaller, more focused modules?**

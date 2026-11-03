@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/page.tsx": {
-    "mtime": 1793681727.7552068,
-    "seen": 1793682085.1297822,
-    "ast_hash": "dfd79b79ca6ba7b958f01ad9bf63df18",
+    "mtime": 1793713872.8450747,
+    "seen": 1793713905.7971914,
+    "ast_hash": "70cf11cb6201b875b760534e36d26eaf",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/utils/mastery.ts": {
@@ -3726,9 +3726,9 @@
     "semantic_hash": ""
   },
   "src/app/api/upload/practice-image/route.ts": {
-    "mtime": 1793682272.8125107,
-    "seen": 1793682285.4222193,
-    "ast_hash": "66dd82c71cfabeed0cf113ce8342cc1f",
+    "mtime": 1793713872.8450747,
+    "seen": 1793713905.7971666,
+    "ast_hash": "f9766e0ef141f365fa505210caeae781",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
@@ -3755,12 +3755,6 @@
     "ast_hash": "9170e4cac7a99e3e30808abd10cc63d2",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261103045330_learning_practices.sql": {
-    "mtime": 1793682236.5210357,
-    "seen": 1793682285.4228086,
-    "ast_hash": "33abd677c162f81068641ebd0585d6e6",
-    "semantic_hash": ""
-  },
   "docs/superpowers/plans/2026-11-02-learning-practices.md": {
     "mtime": 1793682077.2483745,
     "seen": 1793682085.1303241,
@@ -3771,6 +3765,12 @@
     "mtime": 1793682236.5215275,
     "seen": 1793682285.4228191,
     "ast_hash": "4d3554937f85a45f154aabbb02846155",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261103050551_learning_practices.sql": {
+    "mtime": 1793682236.5210357,
+    "seen": 1793713905.7977319,
+    "ast_hash": "33abd677c162f81068641ebd0585d6e6",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
