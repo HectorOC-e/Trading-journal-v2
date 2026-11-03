@@ -1,4 +1,6 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCalendarDate } from "@/lib/datetime/local";
@@ -23,13 +25,20 @@ export function PracticeWeekSummary({ onOpen }: { onOpen: () => void }) {
           {q.error && (
             <p role="alert">
               No se pudo cargar.{" "}
-              <button onClick={() => void q.refetch()}>Reintentar</button>
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                onClick={() => void q.refetch()}
+              >
+                Reintentar
+              </Button>
             </p>
           )}
         </div>
-        <button className="text-sm text-[var(--accent)]" onClick={onOpen}>
+        <Button type="button" variant="ghost" size="sm" onClick={onOpen}>
           Registrar práctica
-        </button>
+        </Button>
       </div>
     </section>
   );
@@ -46,7 +55,14 @@ export function ResourcePracticeHistory({
     <section className="mt-4 border-t border-[var(--line)] pt-4">
       <h3 className="text-sm font-semibold">Prácticas de este recurso</h3>
       {q.error ? (
-        <button onClick={() => void q.refetch()}>Reintentar prácticas</button>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          onClick={() => void q.refetch()}
+        >
+          Reintentar prácticas
+        </Button>
       ) : q.isLoading ? (
         <p>Cargando…</p>
       ) : q.data?.items.length ? (
@@ -62,9 +78,15 @@ export function ResourcePracticeHistory({
           Todavía no has registrado prácticas.
         </p>
       )}
-      <button onClick={onOpen} className="text-sm text-[var(--accent)] mt-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="mt-2"
+        onClick={onOpen}
+      >
         Practicar este contenido
-      </button>
+      </Button>
     </section>
   );
 }
@@ -99,7 +121,7 @@ export function PracticesTab({
     void utils.learningPractices.invalidate();
   };
   const field =
-    "rounded-lg border border-[var(--line)] bg-[var(--panel)] p-2 text-sm min-w-0";
+    "h-8 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] min-w-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]";
   return (
     <section aria-label="Prácticas de aprendizaje">
       <div className="flex flex-wrap justify-between gap-3 mb-4">
@@ -115,17 +137,25 @@ export function PracticesTab({
             </p>
           )}
           {summary.error && (
-            <button onClick={() => void summary.refetch()}>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={() => void summary.refetch()}
+            >
               Reintentar resumen
-            </button>
+            </Button>
           )}
         </div>
-        <button
-          className="rounded-lg bg-[var(--accent)] text-white px-3 py-2 text-sm self-start"
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          className="self-start"
           onClick={() => setEditing(null)}
         >
           Registrar práctica
-        </button>
+        </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <label className="text-xs">
@@ -146,28 +176,31 @@ export function PracticesTab({
         </label>
         <label className="text-xs">
           Desde
-          <input
+          <Input
             aria-label="Desde"
             type="date"
-            className={`${field} block w-full`}
+            className="block w-full"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
           />
         </label>
         <label className="text-xs">
           Hasta
-          <input
+          <Input
             aria-label="Hasta"
             type="date"
-            className={`${field} block w-full`}
+            className="block w-full"
             value={to}
             onChange={(e) => setTo(e.target.value)}
           />
         </label>
       </div>
       {filtered && (
-        <button
-          className="text-sm text-[var(--accent)] mb-3"
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="mb-3"
           onClick={() => {
             setResourceId("");
             setFrom("");
@@ -175,12 +208,19 @@ export function PracticesTab({
           }}
         >
           Limpiar filtros
-        </button>
+        </Button>
       )}
       {q.error && (
         <p role="alert" className="text-sm mb-3">
           No se pudieron cargar las prácticas.{" "}
-          <button onClick={() => void q.refetch()}>Reintentar</button>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => void q.refetch()}
+          >
+            Reintentar
+          </Button>
         </p>
       )}
       {q.isLoading ? (
@@ -196,7 +236,8 @@ export function PracticesTab({
           {items.map((p) => (
             <li key={p.id}>
               <button
-                className="w-full text-left rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 hover:border-[var(--accent)]"
+                type="button"
+                className="w-full text-left rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
                 onClick={() => setEditing(p)}
               >
                 <span className="block font-semibold">{p.title}</span>
@@ -215,13 +256,16 @@ export function PracticesTab({
         </ul>
       )}
       {q.hasNextPage && (
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           disabled={q.isFetchingNextPage}
           onClick={() => void q.fetchNextPage()}
           className="text-sm mt-4"
         >
           {q.isFetchingNextPage ? "Cargando…" : "Cargar más prácticas"}
-        </button>
+        </Button>
       )}
       {editing !== undefined && (
         <PracticeModal
