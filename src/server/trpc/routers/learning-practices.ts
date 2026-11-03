@@ -257,6 +257,7 @@ export const learningPracticesRouter = router({
       start,
       end: addDaysISO(start, 6),
       today,
+      timezone: safeTimeZone(user.timezone),
       minutes: a._sum.durationMin ?? 0,
       sessions: a._count.id,
     };

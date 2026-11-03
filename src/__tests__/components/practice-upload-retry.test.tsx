@@ -76,3 +76,40 @@ it("retries the same upload operation after saved image refresh fails", async ()
     posts[1][1].body.get("uploadId"),
   );
 });
+
+it("shows assistant comment time in the profile timezone", () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(new Response(JSON.stringify({ files: [] }))),
+  );
+  const row = {
+    id: "11111111-1111-4111-8111-111111111111",
+    title: "Zonas",
+    date: "2026-11-02",
+    durationMin: 30,
+    exercise: "Cinco zonas",
+    reflection: "",
+    resourceId: null,
+    version: 1,
+    attachments: [],
+    feedback: [
+      {
+        id: "f",
+        kind: "feedback",
+        version: 1,
+        text: "Observaciones",
+        createdAt: "2026-11-03T01:30:00Z",
+      },
+    ],
+  };
+  render(
+    <PracticeModal
+      record={row as never}
+      today="2026-11-03"
+      timezone="America/Tegucigalpa"
+      onClose={() => {}}
+      onChanged={() => {}}
+    />,
+  );
+  expect(screen.getByText(/2\/11\/2026.*19:30/)).toBeInTheDocument();
+});

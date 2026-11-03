@@ -10,12 +10,14 @@ export function PracticeModal({
   record,
   resourceId,
   today,
+  timezone = "UTC",
   onClose,
   onChanged,
 }: {
   record: PracticeRecord | null;
   resourceId?: string;
   today?: string;
+  timezone?: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
@@ -473,7 +475,11 @@ export function PracticeModal({
                       {f.kind === "exercise"
                         ? "Ejercicio sugerido"
                         : "Comentarios"}{" "}
-                      · {new Date(f.createdAt).toLocaleString("es")} ·{" "}
+                      ·{" "}
+                      {new Date(f.createdAt).toLocaleString("es", {
+                        timeZone: timezone,
+                      })}{" "}
+                      ·{" "}
                       {f.version === saved.version
                         ? "Versión actual"
                         : "Sobre una versión anterior"}

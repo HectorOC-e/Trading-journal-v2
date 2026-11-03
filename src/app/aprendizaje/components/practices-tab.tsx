@@ -228,6 +228,7 @@ export function PracticesTab({
           record={editing}
           resourceId={resourceId || undefined}
           today={summary.data?.today}
+          timezone={summary.data?.timezone}
           onClose={() => setEditing(undefined)}
           onChanged={changed}
         />
