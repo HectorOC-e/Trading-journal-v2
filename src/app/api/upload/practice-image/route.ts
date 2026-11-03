@@ -90,7 +90,14 @@ export async function POST(req: NextRequest) {
     );
   const path = `${user.id}/${parsed.data.practiceId}/${parsed.data.uploadId}.${mime === "image/png" ? "png" : mime === "image/jpeg" ? "jpg" : "webp"}`;
   let uploaded = false;
-  const storage = createAdminClient().storage.from("practice-images");
+  const storage = (() => {
+    try { return createAdminClient().storage.from("practice-images"); }
+    catch { return null; }
+  })();
+  if (!storage) return NextResponse.json(
+    { error: "Las capturas no están disponibles en este entorno. Inténtalo más tarde." },
+    { status: 503 },
+  );
   try {
     const p = await prisma.$transaction(
       async (tx) => {

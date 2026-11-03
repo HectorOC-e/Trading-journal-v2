@@ -2,6 +2,7 @@ import { beforeEach, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, POST, DELETE } from "@/app/api/upload/practice-image/route";
 const mocks = vi.hoisted(() => ({
+  adminThrows: false,
   user: { id: "11111111-1111-4111-8111-111111111111" } as { id: string } | null,
   find: vi.fn(),
   signed: vi.fn(),
@@ -19,9 +20,10 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
-  createAdminClient: () => ({
-    storage: { from: () => ({ upload: mocks.upload, remove: mocks.remove }) },
-  }),
+  createAdminClient: () => {
+    if (mocks.adminThrows) throw new Error("supabaseKey is required");
+    return { storage: { from: () => ({ upload: mocks.upload, remove: mocks.remove }) } };
+  },
 }));
 vi.mock("@/lib/prisma", () => {
   const p = {
@@ -36,6 +38,7 @@ vi.mock("@/lib/prisma", () => {
 const id = "22222222-2222-4222-8222-222222222222";
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.adminThrows = false;
   mocks.user = { id: "11111111-1111-4111-8111-111111111111" };
   mocks.find.mockResolvedValue(null);
 });
@@ -179,4 +182,17 @@ it("returns existing upload on retry even after practice version changed", async
   expect(mocks.upload).not.toHaveBeenCalled();
   expect(mocks.create).not.toHaveBeenCalled();
   expect(mocks.update).not.toHaveBeenCalled();
+});
+
+it("returns a readable error when preview storage credentials are unavailable", async () => {
+  mocks.adminThrows = true;
+  mocks.find.mockResolvedValue({ id, version: 1, attachments: [] });
+  const f = new FormData();
+  f.set("practiceId", id);
+  f.set("expectedVersion", "1");
+  f.set("uploadId", id);
+  f.set("file", new File([new Uint8Array([137,80,78,71,13,10,26,10])], "a.png", { type: "image/png" }));
+  const response = await POST(new NextRequest("https://app/api/upload/practice-image", { method: "POST", body: f }));
+  expect(response.status).toBe(503);
+  expect((await response.json()).error).not.toContain("supabaseKey");
 });

@@ -198,7 +198,13 @@ export default function AprendizajePage() {
             key={t.id}
             role="tab"
             aria-selected={tab === t.id}
-            onClick={() => selectTab(t.id)}
+            onClick={() => {
+              if (t.id === "practicas") {
+                setPracticeRegister(false);
+                setPracticeResource(undefined);
+              }
+              selectTab(t.id);
+            }}
             className={cn(
               "inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors",
               tab === t.id

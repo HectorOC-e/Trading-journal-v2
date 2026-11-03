@@ -20,6 +20,10 @@ vi.mock("@/app/aprendizaje/modals/add-edit-resource-modal",()=>({AddEditResource
 vi.mock("@/app/aprendizaje/components/progreso-sections",()=>({ProgresoSections:()=>null}))
 vi.mock("@/app/aprendizaje/components/hoy-tab",()=>({HoyTab:()=> <div>Today content</div>}))
 vi.mock("@/app/aprendizaje/components/profile-clock",()=>({ProfileClock:()=>null}))
+vi.mock("@/app/aprendizaje/components/practices-tab", () => ({
+  PracticeWeekSummary: ({onOpen}: {onOpen: () => void}) => <button onClick={onOpen}>Registrar práctica</button>,
+  PracticesTab: ({registerOnOpen}: {registerOnOpen: boolean}) => <div>{registerOnOpen ? "Practice form open" : "Practice list"}</div>,
+}));
 import Page from "@/app/aprendizaje/page"
 afterEach(()=>{cleanup();state.data=undefined;state.retry.mockClear()})
 it("shows retry instead of a fake empty library after initial query failure",()=>{
@@ -46,3 +50,13 @@ it("retries failed statistics and hides the duplicate strip on Hoy",()=>{
  fireEvent.click(screen.getByRole("button",{name:"Reintentar estadísticas"}))
  expect(state.retry).toHaveBeenCalledOnce()
 })
+
+it("does not reopen a registration form when returning through the Practices tab", () => {
+  window.history.replaceState(null, "", "/aprendizaje");
+  render(<Page />);
+  fireEvent.click(screen.getByRole("button", {name: "Registrar práctica"}));
+  expect(screen.getByText("Practice form open")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", {name: "Hoy", exact: true}));
+  fireEvent.click(screen.getByRole("tab", {name: "Prácticas", exact: true}));
+  expect(screen.getByText("Practice list")).toBeInTheDocument();
+});
