@@ -1,0 +1,237 @@
+"use client";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc/client";
+import { formatCalendarDate } from "@/lib/datetime/local";
+import { PracticeModal, type PracticeRecord } from "../modals/practice-modal";
+
+export function PracticeWeekSummary({ onOpen }: { onOpen: () => void }) {
+  const q = trpc.learningPractices.summary.useQuery();
+  return (
+    <section
+      aria-label="Práctica esta semana"
+      className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 mb-4"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold">Práctica esta semana</h3>
+          {q.data && (
+            <p className="text-sm text-[var(--ink-2)]">
+              {q.data.minutes} min · {q.data.sessions} sesiones
+            </p>
+          )}
+          {q.isLoading && <p>Cargando práctica…</p>}
+          {q.error && (
+            <p role="alert">
+              No se pudo cargar.{" "}
+              <button onClick={() => void q.refetch()}>Reintentar</button>
+            </p>
+          )}
+        </div>
+        <button className="text-sm text-[var(--accent)]" onClick={onOpen}>
+          Registrar práctica
+        </button>
+      </div>
+    </section>
+  );
+}
+export function ResourcePracticeHistory({
+  resourceId,
+  onOpen,
+}: {
+  resourceId: string;
+  onOpen: () => void;
+}) {
+  const q = trpc.learningPractices.list.useQuery({ resourceId, limit: 3 });
+  return (
+    <section className="mt-4 border-t border-[var(--line)] pt-4">
+      <h3 className="text-sm font-semibold">Prácticas de este recurso</h3>
+      {q.error ? (
+        <button onClick={() => void q.refetch()}>Reintentar prácticas</button>
+      ) : q.isLoading ? (
+        <p>Cargando…</p>
+      ) : q.data?.items.length ? (
+        <ul>
+          {q.data.items.map((p) => (
+            <li key={p.id} className="text-xs py-1">
+              {formatCalendarDate(p.date)} · {p.title} · {p.durationMin} min
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-[var(--ink-3)]">
+          Todavía no has registrado prácticas.
+        </p>
+      )}
+      <button onClick={onOpen} className="text-sm text-[var(--accent)] mt-2">
+        Practicar este contenido
+      </button>
+    </section>
+  );
+}
+export function PracticesTab({
+  initialResourceId,
+  registerOnOpen = false,
+}: {
+  initialResourceId?: string;
+  registerOnOpen?: boolean;
+}) {
+  const [resourceId, setResourceId] = useState(initialResourceId ?? "");
+  const [from, setFrom] = useState(""),
+    [to, setTo] = useState("");
+  const [editing, setEditing] = useState<PracticeRecord | null | undefined>(
+    registerOnOpen ? null : undefined,
+  );
+  const resources = trpc.learningResources.list.useQuery();
+  const q = trpc.learningPractices.list.useInfiniteQuery(
+    {
+      limit: 20,
+      resourceId: resourceId || undefined,
+      from: from || undefined,
+      to: to || undefined,
+    },
+    { getNextPageParam: (p) => p.nextCursor ?? undefined },
+  );
+  const summary = trpc.learningPractices.summary.useQuery();
+  const utils = trpc.useUtils();
+  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const filtered = !!(resourceId || from || to);
+  const changed = () => {
+    void utils.learningPractices.invalidate();
+  };
+  const field =
+    "rounded-lg border border-[var(--line)] bg-[var(--panel)] p-2 text-sm min-w-0";
+  return (
+    <section aria-label="Prácticas de aprendizaje">
+      <div className="flex flex-wrap justify-between gap-3 mb-4">
+        <div>
+          <h2 className="text-lg font-semibold">Prácticas</h2>
+          <p className="text-sm text-[var(--ink-3)]">
+            Aplica lo aprendido y guarda tus observaciones.
+          </p>
+          {summary.data && (
+            <p className="text-sm mt-1">
+              Esta semana: {summary.data.minutes} min · {summary.data.sessions}{" "}
+              sesiones de práctica
+            </p>
+          )}
+          {summary.error && (
+            <button onClick={() => void summary.refetch()}>
+              Reintentar resumen
+            </button>
+          )}
+        </div>
+        <button
+          className="rounded-lg bg-[var(--accent)] text-white px-3 py-2 text-sm self-start"
+          onClick={() => setEditing(null)}
+        >
+          Registrar práctica
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+        <label className="text-xs">
+          Recurso
+          <select
+            aria-label="Filtrar por recurso"
+            className={`${field} block w-full`}
+            value={resourceId}
+            onChange={(e) => setResourceId(e.target.value)}
+          >
+            <option value="">Todos los recursos</option>
+            {resources.data?.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs">
+          Desde
+          <input
+            aria-label="Desde"
+            type="date"
+            className={`${field} block w-full`}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-xs">
+          Hasta
+          <input
+            aria-label="Hasta"
+            type="date"
+            className={`${field} block w-full`}
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+      </div>
+      {filtered && (
+        <button
+          className="text-sm text-[var(--accent)] mb-3"
+          onClick={() => {
+            setResourceId("");
+            setFrom("");
+            setTo("");
+          }}
+        >
+          Limpiar filtros
+        </button>
+      )}
+      {q.error && (
+        <p role="alert" className="text-sm mb-3">
+          No se pudieron cargar las prácticas.{" "}
+          <button onClick={() => void q.refetch()}>Reintentar</button>
+        </p>
+      )}
+      {q.isLoading ? (
+        <p>Cargando prácticas…</p>
+      ) : !items.length && !q.error ? (
+        <p className="rounded-xl border border-[var(--line)] p-6 text-sm">
+          {filtered
+            ? "No hay prácticas con estos filtros."
+            : "Tu primera práctica empieza con un concepto. Registra qué hiciste y qué aprendiste."}
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((p) => (
+            <li key={p.id}>
+              <button
+                className="w-full text-left rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 hover:border-[var(--accent)]"
+                onClick={() => setEditing(p)}
+              >
+                <span className="block font-semibold">{p.title}</span>
+                <span className="text-xs text-[var(--ink-3)]">
+                  {formatCalendarDate(p.date)} · {p.durationMin} min ·{" "}
+                  {p.resource?.title ?? "Práctica independiente"}
+                </span>
+                <p className="text-sm mt-2 line-clamp-2">{p.exercise}</p>
+                <span className="text-xs">
+                  {p.attachments.length} capturas · {p.feedback.length}{" "}
+                  comentarios
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {q.hasNextPage && (
+        <button
+          disabled={q.isFetchingNextPage}
+          onClick={() => void q.fetchNextPage()}
+          className="text-sm mt-4"
+        >
+          {q.isFetchingNextPage ? "Cargando…" : "Cargar más prácticas"}
+        </button>
+      )}
+      {editing !== undefined && (
+        <PracticeModal
+          record={editing}
+          resourceId={resourceId || undefined}
+          today={summary.data?.today}
+          onClose={() => setEditing(undefined)}
+          onChanged={changed}
+        />
+      )}
+    </section>
+  );
+}

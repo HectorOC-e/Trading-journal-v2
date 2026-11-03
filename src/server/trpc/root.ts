@@ -34,7 +34,10 @@ import { riskRouter }               from "./routers/risk"
 import { todayRouter }              from "./routers/today"
 import { propFirmPresetsRouter }    from "./routers/prop-firm-presets"
 
+import { learningPracticesRouter } from "./routers/learning-practices"
+
 export const appRouter = router({
+  learningPractices: learningPracticesRouter,
   trades:           tradesRouter,
   analytics:        analyticsRouter,
   accounts:         accountsRouter,

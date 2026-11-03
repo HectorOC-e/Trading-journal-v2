@@ -18,6 +18,7 @@ import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
 import { ProgresoSections } from "./components/progreso-sections"
 import { HoyTab } from "./components/hoy-tab"
+import { PracticesTab, PracticeWeekSummary } from "./components/practices-tab"
 import { ProfileClock } from "./components/profile-clock"
 import { useLearningCalendar } from "./hooks/use-learning-calendar"
 import { useResourceActions } from "./hooks/use-resource-actions"
@@ -37,12 +38,14 @@ export default function AprendizajePage() {
     handleOpen, handleEditOpen,
   } = useResourceActions()
 
-  type Tab = "hoy" | "biblioteca" | "repaso"
+  type Tab = "hoy" | "biblioteca" | "repaso" | "practicas"
+  const [practiceResource, setPracticeResource] = useState<string | undefined>()
+  const [practiceRegister, setPracticeRegister] = useState(false)
   const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab")
-    if (t === "repaso" || t === "biblioteca") setTab(t)
+    if (t === "repaso" || t === "biblioteca" || t === "practicas") setTab(t)
   }, [])
   // Deep-link via ?resource= (citas del Coach). Sin fetch por id: learningResources.list
   // trae todo sin paginar, así que el recurso citado siempre está en la lista.
@@ -188,6 +191,7 @@ export default function AprendizajePage() {
         {([
           { id: "hoy",        label: "Hoy" },
           { id: "biblioteca", label: "Biblioteca" },
+          { id: "practicas", label: "Prácticas" },
           { id: "repaso",     label: "Repaso", count: dueResources.length },
         ] as const).map((t) => (
           <button
@@ -210,13 +214,14 @@ export default function AprendizajePage() {
         ))}
       </div>
 
-      {isLoading ? (
+      {tab === "practicas" ? <PracticesTab initialResourceId={practiceResource} registerOnOpen={practiceRegister} /> : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>
       ) : resourcesQuery.error && !resourcesQuery.data && tab !== "hoy" ? null : tab === "hoy" ? (
         <>
           <HoyTab onGoRepaso={() => selectTab("repaso")} onCreateResource={handleOpen} />
+          <PracticeWeekSummary onOpen={() => { setPracticeResource(undefined); setPracticeRegister(true); selectTab("practicas") }} />
           {!(resourcesQuery.error && !resourcesQuery.data) && <ProgresoSections
             resources={resources}
             rawResources={rawResources}
@@ -265,6 +270,7 @@ export default function AprendizajePage() {
         resource={drawerResource as unknown as LearningResource | null}
         open={drawerResource !== null}
         onClose={() => setDrawerResource(null)}
+        onPractice={(r) => { setPracticeResource(r.id); setPracticeRegister(true); setDrawerResource(null); selectTab("practicas") }}
         onReview={(r) => {
           setDrawerResource(null)
           setRevisarResource(r as unknown as ResourceFromDB)
