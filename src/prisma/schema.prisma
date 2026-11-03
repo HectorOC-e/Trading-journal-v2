@@ -1241,6 +1241,8 @@ model LearningPractice {
   durationMin Int @map("duration_min")
   exercise String
   reflection String @default("")
+  objective String @default("")
+  assessment String?
   version Int @default(1)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

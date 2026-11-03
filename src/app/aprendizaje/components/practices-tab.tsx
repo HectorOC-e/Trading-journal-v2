@@ -103,6 +103,8 @@ export function PracticesTab({
   const [editing, setEditing] = useState<PracticeRecord | null | undefined>(
     registerOnOpen ? null : undefined,
   );
+  const [repeatFrom, setRepeatFrom] = useState<PracticeRecord | undefined>();
+  const [modalKey, setModalKey] = useState(0);
   const resources = trpc.learningResources.list.useQuery();
   const q = trpc.learningPractices.list.useInfiniteQuery(
     {
@@ -152,7 +154,11 @@ export function PracticesTab({
           variant="primary"
           size="sm"
           className="self-start"
-          onClick={() => setEditing(null)}
+          onClick={() => {
+            setRepeatFrom(undefined);
+            setEditing(null);
+            setModalKey((k) => k + 1);
+          }}
         >
           Registrar práctica
         </Button>
@@ -246,6 +252,23 @@ export function PracticesTab({
                   {p.resource?.title ?? "Práctica independiente"}
                 </span>
                 <p className="text-sm mt-2 line-clamp-2">{p.exercise}</p>
+                {p.objective && (
+                  <p className="text-xs mt-1 line-clamp-2">
+                    Objetivo: {p.objective}
+                  </p>
+                )}
+                {p.assessment && (
+                  <span className="block text-xs mt-1 text-[var(--ink-2)]">
+                    Autoevaluación:{" "}
+                    {(
+                      {
+                        achieved: "Lo logré",
+                        partial: "Parcialmente",
+                        repeat: "Necesito repetir",
+                      } as Record<string, string>
+                    )[p.assessment] ?? "Sin evaluar"}
+                  </span>
+                )}
                 <span className="text-xs">
                   {p.attachments.length} capturas · {p.feedback.length}{" "}
                   comentarios
@@ -267,13 +290,30 @@ export function PracticesTab({
           {q.isFetchingNextPage ? "Cargando…" : "Cargar más prácticas"}
         </Button>
       )}
-      {editing !== undefined && (
+      {editing === null && !summary.data && (
+        <p role="status" className="text-sm">
+          {summary.error
+            ? "No se pudo obtener la fecha del perfil. Reintenta el resumen para registrar la práctica."
+            : "Cargando la fecha de tu perfil…"}
+        </p>
+      )}
+      {editing !== undefined && (editing !== null || summary.data) && (
         <PracticeModal
+          key={modalKey}
           record={editing}
+          repeatFrom={repeatFrom}
+          onRepeat={(record) => {
+            setRepeatFrom(record);
+            setEditing(null);
+            setModalKey((k) => k + 1);
+          }}
           resourceId={resourceId || undefined}
           today={summary.data?.today}
           timezone={summary.data?.timezone}
-          onClose={() => setEditing(undefined)}
+          onClose={() => {
+            setEditing(undefined);
+            setRepeatFrom(undefined);
+          }}
           onChanged={changed}
         />
       )}

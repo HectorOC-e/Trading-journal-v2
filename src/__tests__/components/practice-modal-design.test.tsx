@@ -278,3 +278,92 @@ it("closing image preview with Escape preserves the edited parent practice", asy
   ).toBeNull();
   expect(close).not.toHaveBeenCalled();
 });
+
+it("saves objective and personal assessment using shared fields", async () => {
+  setup();
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: "Objetivo de esta práctica (opcional)",
+    }),
+    { target: { value: "Justificar tres zonas" } },
+  );
+  fireEvent.change(
+    screen.getByRole("combobox", { name: "Autoevaluación (opcional)" }),
+    { target: { value: "partial" } },
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+  await waitFor(() =>
+    expect(m.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        objective: "Justificar tres zonas",
+        assessment: "partial",
+      }),
+    ),
+  );
+});
+it("repeating opens a clean draft with the profile date and no inherited outcome or minutes", () => {
+  render(
+    <PracticeModal
+      record={null}
+      repeatFrom={
+        {
+          ...record,
+          objective: "Tres zonas",
+          assessment: "achieved",
+        } as PracticeRecord
+      }
+      today="2026-11-03"
+      onClose={vi.fn()}
+      onChanged={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole("textbox", { name: "Qué practicaste" })).toHaveValue(
+    record.title,
+  );
+  expect(screen.getByRole("textbox", { name: "Qué hiciste" })).toHaveValue(
+    record.exercise,
+  );
+  expect(
+    screen.getByRole("textbox", {
+      name: "Objetivo de esta práctica (opcional)",
+    }),
+  ).toHaveValue("Tres zonas");
+  expect(
+    screen.getByRole("spinbutton", { name: "Duración (minutos)" }),
+  ).toHaveValue(null);
+  expect(
+    screen.getByRole("combobox", { name: "Autoevaluación (opcional)" }),
+  ).toHaveValue("");
+  expect(
+    screen.getByRole("textbox", {
+      name: "Qué aprendiste o qué te costó (opcional)",
+    }),
+  ).toHaveValue("");
+  expect(
+    screen.queryByRole("button", { name: "Ampliar captura 1" }),
+  ).not.toBeInTheDocument();
+});
+it("repeats a saved record only after confirming discard of a dirty draft", () => {
+  const repeat = vi.fn();
+  render(
+    <PracticeModal
+      record={record}
+      onRepeat={repeat}
+      today="2026-11-03"
+      onClose={vi.fn()}
+      onChanged={vi.fn()}
+    />,
+  );
+  fireEvent.change(screen.getByRole("textbox", { name: "Qué practicaste" }), {
+    target: { value: "Cambios locales" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Volver a practicar" }));
+  expect(repeat).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Seguir editando" }));
+  expect(screen.getByRole("textbox", { name: "Qué practicaste" })).toHaveValue(
+    "Cambios locales",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Volver a practicar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Descartar cambios" }));
+  expect(repeat).toHaveBeenCalledWith(record);
+});
