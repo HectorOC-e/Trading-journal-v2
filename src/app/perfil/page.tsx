@@ -367,6 +367,8 @@ export default function PerfilPage() {
   const upsertAiConfigMut = trpc.aiConfig.upsert.useMutation({
     onSuccess: () => {
       utils.aiConfig.list.invalidate()
+      utils.aiConfig.models.invalidate()
+      utils.aiConfig.diagnostics.invalidate()
       setEditingProvider(null)
       setAiKeyInput("")
       toast.success("API key guardada correctamente")
@@ -376,6 +378,8 @@ export default function PerfilPage() {
   const deleteAiConfigMut = trpc.aiConfig.delete.useMutation({
     onSuccess: () => {
       utils.aiConfig.list.invalidate()
+      utils.aiConfig.models.invalidate()
+      utils.aiConfig.diagnostics.invalidate()
       toast.success("API key eliminada")
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
