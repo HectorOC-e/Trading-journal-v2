@@ -1,9 +1,23 @@
 "use client";
 import { practiceImageInputError } from "@/domains/learning/practice-evidence";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc/client";
 import type { RouterOutputs } from "@/server/trpc/root";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Field } from "@/components/ui/field";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Markdown } from "@/components/ui/markdown";
+import { BookOpen, ImagePlus, Save, Sparkles, Trash2 } from "lucide-react";
 
 export type PracticeRecord =
   RouterOutputs["learningPractices"]["list"]["items"][number];
@@ -34,8 +48,21 @@ export function PracticeModal({
   );
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false),
     [confirm, setConfirm] = useState(false);
+  const [activity, setActivity] = useState<
+    | "save"
+    | "upload"
+    | "deleteImage"
+    | "suggest"
+    | "exercise"
+    | "feedback"
+    | "delete"
+    | null
+  >(null);
+  const busy = activity !== null;
+  const [activeImageId, setActiveImageId] = useState<string | null>(null);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<{ id: string; url: string }[]>([]);
   const [suggestion, setSuggestion] = useState("");
   const suggest = trpc.learningPractices.suggestExercise.useMutation();
@@ -69,6 +96,26 @@ export function PracticeModal({
         reflection: saved.reflection,
         resourceId: saved.resourceId,
       });
+  const [initialInput] = useState(input);
+  const hasUnsavedChanges =
+    (saved
+      ? dirty
+      : JSON.stringify(input) !== JSON.stringify(initialInput) ||
+        !!suggestion) || !!pendingUpload;
+  function requestClose() {
+    if (busy) return;
+    if (hasUnsavedChanges) setDiscardOpen(true);
+    else onClose();
+  }
+  useEffect(() => {
+    if (!hasUnsavedChanges && !busy) return;
+    const guard = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [hasUnsavedChanges, busy]);
   useEffect(() => {
     if (!saved) return;
     let active = true;
@@ -99,7 +146,7 @@ export function PracticeModal({
     e.preventDefault();
     setError("");
     setNotice("");
-    setBusy(true);
+    setActivity("save");
     try {
       const p = saved
         ? await update.mutateAsync({
@@ -122,12 +169,12 @@ export function PracticeModal({
         e instanceof Error ? e.message : "No se pudo completar. Reintenta.",
       );
     } finally {
-      setBusy(false);
+      setActivity(null);
     }
   }
   async function upload(file: File, uploadId: string) {
     if (!saved) return;
-    setBusy(true);
+    setActivity("upload");
     setError("");
     try {
       const f = new FormData();
@@ -155,12 +202,13 @@ export function PracticeModal({
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo subir.");
     } finally {
-      setBusy(false);
+      setActivity(null);
     }
   }
   async function deleteFile(attachmentId: string) {
     if (!saved) return;
-    setBusy(true);
+    setActivity("deleteImage");
+    setActiveImageId(attachmentId);
     setError("");
     try {
       const r = await fetch("/api/upload/practice-image", {
@@ -178,12 +226,13 @@ export function PracticeModal({
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo eliminar.");
     } finally {
-      setBusy(false);
+      setActivity(null);
+      setActiveImageId(null);
     }
   }
   async function ask(kind: "exercise" | "feedback") {
     if (!saved) return;
-    setBusy(true);
+    setActivity(kind);
     setError("");
     try {
       await feedback.mutateAsync({ id, expectedVersion: saved.version, kind });
@@ -193,179 +242,195 @@ export function PracticeModal({
         e instanceof Error ? e.message : "No se pudo completar. Reintenta.",
       );
     } finally {
-      setBusy(false);
+      setActivity(null);
     }
   }
-  const field =
-    "block w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-sm mt-1";
+  async function prepareExercise() {
+    setActivity("suggest");
+    setError("");
+    try {
+      setSuggestion(
+        (await suggest.mutateAsync({ title, resourceId: resource || null }))
+          .text,
+      );
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "No se pudo sugerir un ejercicio.",
+      );
+    } finally {
+      setActivity(null);
+    }
+  }
+  async function deletePractice() {
+    if (!saved) return;
+    setActivity("delete");
+    setError("");
+    try {
+      await remove.mutateAsync({ id, expectedVersion: saved.version });
+      onChanged();
+      onClose();
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "No se pudo eliminar la práctica.",
+      );
+      setConfirm(false);
+    } finally {
+      setActivity(null);
+    }
+  }
+  const formId = `practice-form-${id}`;
+  const controlId = (name: string) => `practice-${id}-${name}`;
+  const selectClass =
+    "h-8 w-full min-w-0 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)] disabled:opacity-40";
   return (
     <Dialog
       open
-      onOpenChange={(v) => {
-        if (!v && !busy) onClose();
+      onOpenChange={(open) => {
+        if (!open) requestClose();
       }}
     >
       <DialogContent
         className="max-w-2xl"
-        aria-describedby="practice-description"
+        aria-describedby={controlId("description")}
       >
-        <div className="overflow-y-auto p-5 space-y-4">
-          <DialogTitle>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BookOpen size={16} aria-hidden="true" />
             {saved ? "Tu práctica" : "Registrar práctica"}
           </DialogTitle>
-          <p id="practice-description" className="text-xs text-[var(--ink-3)]">
-            Registra cómo aplicaste lo aprendido. El tiempo de práctica se
-            cuenta por separado del estudio.
-          </p>
-          {!saved && (
-            <section className="text-sm">
-              <p>
-                ¿Necesitas un ejercicio? Escribe el concepto en «Qué
-                practicaste» y pide una guía. Registra la sesión después de
-                practicar.
-              </p>
-              <button
-                type="button"
-                disabled={busy || !title.trim()}
-                className="text-[var(--accent)] disabled:opacity-50 mt-2"
-                onClick={async () => {
-                  setBusy(true);
-                  setError("");
-                  try {
-                    setSuggestion(
-                      (
-                        await suggest.mutateAsync({
-                          title,
-                          resourceId: resource || null,
-                        })
-                      ).text,
-                    );
-                  } catch (e) {
-                    setError(
-                      e instanceof Error
-                        ? e.message
-                        : "No se pudo sugerir un ejercicio.",
-                    );
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                Ayúdame a preparar un ejercicio
-              </button>
-              {suggestion && (
-                <div className="border border-[var(--line)] rounded-lg p-3 mt-2">
-                  <p className="whitespace-pre-wrap">{suggestion}</p>
-                  <button
-                    type="button"
-                    onClick={() => setExercise(suggestion)}
-                    className="text-[var(--accent)] mt-2"
-                  >
-                    Usar como guía de la práctica
-                  </button>
-                  <p className="text-xs mt-1">
-                    La guía se conserva al guardar el registro de la práctica.
-                  </p>
-                </div>
-              )}
-            </section>
-          )}
-          <form onSubmit={save} className="space-y-3">
-            <label className="block text-sm">
-              Qué practicaste
-              <input
-                required
-                maxLength={160}
-                className={field}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm min-w-0">
-                Fecha
-                <input
-                  required
-                  type="date"
-                  max={today}
-                  className={field}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </label>
-              <label className="text-sm min-w-0">
-                Duración (minutos)
-                <input
-                  required
-                  type="number"
-                  min={1}
-                  max={1440}
-                  step={1}
-                  className={field}
-                  value={minutes}
-                  onChange={(e) => setMinutes(e.target.value)}
-                />
-              </label>
-            </div>
-            <label className="block text-sm">
-              Recurso relacionado (opcional)
-              <select
-                className={field}
-                value={resource}
-                onChange={(e) => setResource(e.target.value)}
-              >
-                <option value="">Práctica independiente</option>
-                {resources.data?.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              Qué hiciste
-              <textarea
-                required
-                maxLength={5000}
-                rows={3}
-                className={field}
-                value={exercise}
-                onChange={(e) => setExercise(e.target.value)}
-              />
-            </label>
-            <label className="block text-sm">
-              Qué aprendiste o qué te costó (opcional)
-              <textarea
-                maxLength={5000}
-                rows={3}
-                className={field}
-                value={reflection}
-                onChange={(e) => setReflection(e.target.value)}
-              />
-            </label>
-            <button
-              disabled={busy || !dirty}
-              className="rounded-lg bg-[var(--accent)] text-white px-4 py-2 text-sm disabled:opacity-50"
+          <DialogDescription>
+            <span id={controlId("description")}>
+              Registra cómo aplicaste lo aprendido. El tiempo de práctica se
+              cuenta por separado del estudio.
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-5">
+          <section aria-labelledby={controlId("registration-title")}>
+            <h3
+              id={controlId("registration-title")}
+              className="mb-3 text-[13px] font-semibold text-[var(--ink)]"
             >
-              {busy
-                ? "Procesando…"
-                : saved
-                  ? "Guardar cambios"
-                  : "Guardar práctica"}
-            </button>
-          </form>
+              Registro de práctica
+            </h3>
+            <form id={formId} onSubmit={save}>
+              <fieldset
+                disabled={busy}
+                className="space-y-4 disabled:opacity-60"
+              >
+                <legend className="sr-only">Datos de la práctica</legend>
+                <Field
+                  label="Qué practicaste"
+                  htmlFor={controlId("title")}
+                  required
+                >
+                  <Input
+                    id={controlId("title")}
+                    required
+                    maxLength={160}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                </Field>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field
+                    label="Fecha"
+                    htmlFor={controlId("date")}
+                    required
+                    className="min-w-0"
+                  >
+                    <Input
+                      id={controlId("date")}
+                      required
+                      type="date"
+                      max={today}
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  </Field>
+                  <Field
+                    label="Duración (minutos)"
+                    htmlFor={controlId("minutes")}
+                    required
+                    className="min-w-0"
+                  >
+                    <Input
+                      id={controlId("minutes")}
+                      required
+                      type="number"
+                      min={1}
+                      max={1440}
+                      step={1}
+                      value={minutes}
+                      onChange={(e) => setMinutes(e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Recurso relacionado (opcional)"
+                  htmlFor={controlId("resource")}
+                >
+                  <select
+                    id={controlId("resource")}
+                    className={selectClass}
+                    value={resource}
+                    onChange={(e) => setResource(e.target.value)}
+                  >
+                    <option value="">Práctica independiente</option>
+                    {resources.data?.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field
+                  label="Qué hiciste"
+                  htmlFor={controlId("exercise")}
+                  required
+                >
+                  <Textarea
+                    id={controlId("exercise")}
+                    required
+                    maxLength={5000}
+                    rows={3}
+                    value={exercise}
+                    onChange={(e) => setExercise(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Qué aprendiste o qué te costó (opcional)"
+                  htmlFor={controlId("reflection")}
+                >
+                  <Textarea
+                    id={controlId("reflection")}
+                    maxLength={5000}
+                    rows={3}
+                    value={reflection}
+                    onChange={(e) => setReflection(e.target.value)}
+                  />
+                </Field>
+              </fieldset>
+            </form>
+          </section>
           {notice && (
-            <p role="status" className="text-sm">
+            <p role="status" className="text-[12px] text-[var(--ink-2)]">
               {notice}
             </p>
           )}
           {error && (
-            <div role="alert" className="text-sm text-red-600">
+            <div
+              role="alert"
+              className="rounded-[var(--radius-sm)] border border-[var(--loss)]/25 bg-[var(--loss-soft)] p-3 text-[12px] text-[var(--loss)]"
+            >
               <p>{error}</p>
               {saved && (
-                <button
-                  className="underline mt-1"
+                <Button
+                  type="button"
+                  variant="link"
+                  size="xs"
                   disabled={busy}
+                  className="mt-2"
                   onClick={() => {
                     setError("");
                     void refresh().catch(() =>
@@ -374,50 +439,132 @@ export function PracticeModal({
                   }}
                 >
                   Actualizar versión sin borrar el borrador
-                </button>
+                </Button>
               )}
             </div>
           )}
+          {!saved && (
+            <section
+              aria-labelledby={controlId("guide-title")}
+              className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-4 space-y-3"
+            >
+              <h3
+                id={controlId("guide-title")}
+                className="flex items-center gap-2 text-[13px] font-semibold"
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                Preparar un ejercicio
+              </h3>
+              <p className="text-[12px] text-[var(--ink-3)]">
+                Escribe el concepto en «Qué practicaste» para recibir una guía.
+                Registra la sesión después de practicar.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={busy || !title.trim()}
+                loading={activity === "suggest"}
+                onClick={() => void prepareExercise()}
+              >
+                Ayúdame a preparar un ejercicio
+              </Button>
+              {suggestion && (
+                <div className="space-y-3">
+                  <Markdown content={suggestion} className="break-words" />
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => setExercise(suggestion)}
+                  >
+                    Usar como guía de la práctica
+                  </Button>
+                  <p className="text-[11px] text-[var(--ink-3)]">
+                    La guía se conserva al usarla en el registro y guardar la
+                    práctica.
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
           {saved && (
             <>
-              <section className="border-t border-[var(--line)] pt-3">
-                <h3 className="font-semibold text-sm">Capturas</h3>
-                <p className="text-xs text-[var(--ink-3)]">
-                  Hasta cinco imágenes privadas. PNG, JPEG o WebP; 4 MB por
-                  imagen.
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+              <section
+                aria-labelledby={controlId("evidence-title")}
+                className="border-t border-[var(--line)] pt-4 space-y-3"
+              >
+                <div>
+                  <h3
+                    id={controlId("evidence-title")}
+                    className="text-[13px] font-semibold"
+                  >
+                    Capturas
+                  </h3>
+                  <p
+                    id={controlId("evidence-help")}
+                    className="mt-1 text-[11px] text-[var(--ink-3)]"
+                  >
+                    Hasta cinco imágenes privadas. PNG, JPEG o WebP; 4 MB por
+                    imagen.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {files.map((f, i) => (
-                    <div key={f.id}>
-                      <button
+                    <div key={f.id} className="space-y-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-auto w-full overflow-hidden p-0"
+                        aria-label={`Ampliar captura ${i + 1}`}
                         onClick={() => setExpanded(f.url)}
-                        className="block w-full"
                       >
                         <img
                           src={f.url}
                           alt={`Captura de práctica ${i + 1}`}
-                          className="h-24 w-full object-cover rounded-lg"
+                          className="h-24 w-full object-cover"
                         />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        aria-label={`Eliminar captura ${i + 1}`}
                         disabled={busy || dirty}
+                        loading={
+                          activity === "deleteImage" && activeImageId === f.id
+                        }
                         onClick={() => void deleteFile(f.id)}
-                        className="text-xs py-1"
                       >
-                        Eliminar captura {i + 1}
-                      </button>
+                        <Trash2 size={12} aria-hidden="true" />
+                        Eliminar
+                      </Button>
                     </div>
                   ))}
                 </div>
                 {saved.attachments.length < 5 && (
-                  <label className="block text-sm mt-2">
-                    Añadir captura
+                  <div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy || dirty || !!pendingUpload}
+                      loading={activity === "upload"}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      <ImagePlus size={14} aria-hidden="true" />
+                      Añadir captura
+                    </Button>
                     <input
+                      ref={fileInput}
                       aria-label="Añadir captura"
+                      aria-describedby={controlId("evidence-help")}
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      tabIndex={-1}
                       disabled={busy || dirty || !!pendingUpload}
-                      className="block text-xs mt-1 max-w-full"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         e.target.value = "";
@@ -433,149 +580,204 @@ export function PracticeModal({
                         }
                       }}
                     />
-                  </label>
+                  </div>
                 )}
                 {pendingUpload && (
-                  <div className="text-xs mt-2">
-                    <p>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-[var(--ink-3)]">
                       Captura pendiente de confirmar. Reintentar conserva la
                       misma subida.
                     </p>
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       disabled={busy}
-                      className="text-[var(--accent)] mt-1"
+                      loading={activity === "upload"}
                       onClick={() =>
                         void upload(pendingUpload.file, pendingUpload.uploadId)
                       }
                     >
                       Reintentar captura
-                    </button>
+                    </Button>
                   </div>
                 )}
               </section>
-              <section className="border-t border-[var(--line)] pt-3">
-                <h3 className="font-semibold text-sm">Asistente de práctica</h3>
-                <p className="text-xs text-[var(--ink-3)]">
-                  Usa tu configuración del Coach. Solo se envían notas y, al
-                  comentar, capturas cuando lo solicitas.
-                </p>
+              <section
+                aria-labelledby={controlId("assistant-title")}
+                className="border-t border-[var(--line)] pt-4 space-y-3"
+              >
+                <div>
+                  <h3
+                    id={controlId("assistant-title")}
+                    className="flex items-center gap-2 text-[13px] font-semibold"
+                  >
+                    <Sparkles size={14} aria-hidden="true" />
+                    Asistente de práctica
+                  </h3>
+                  <p className="mt-1 text-[11px] text-[var(--ink-3)]">
+                    Usa tu configuración del Coach. Solo se envían notas y, al
+                    comentar, capturas cuando lo solicitas.
+                  </p>
+                </div>
                 {dirty && (
-                  <p className="text-xs mt-1">
+                  <p className="text-[11px] text-[var(--ink-3)]">
                     Guarda los cambios para añadir capturas o pedir ayuda.
                   </p>
                 )}
-                <div className="flex flex-wrap gap-3 my-3">
-                  <button
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={busy || dirty}
-                    className="text-sm text-[var(--accent)] disabled:opacity-50"
+                    loading={activity === "exercise"}
                     onClick={() => void ask("exercise")}
                   >
                     Ayúdame a practicar
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={busy || dirty}
-                    className="text-sm text-[var(--accent)] disabled:opacity-50"
+                    loading={activity === "feedback"}
                     onClick={() => void ask("feedback")}
                   >
                     Comentar esta práctica
-                  </button>
+                  </Button>
                 </div>
-                {saved.feedback.map((f) => (
-                  <article
-                    key={f.id}
-                    className="rounded-lg border border-[var(--line)] p-3 my-2"
+                {saved.feedback.length > 0 && (
+                  <div
+                    className="space-y-3"
+                    role="region"
+                    aria-label="Comentarios guardados"
                   >
-                    <p className="text-xs text-[var(--ink-3)]">
-                      {f.kind === "exercise"
-                        ? "Ejercicio sugerido"
-                        : "Comentarios"}{" "}
-                      ·{" "}
-                      {new Date(f.createdAt).toLocaleString("es", {
-                        timeZone: timezone,
-                      })}{" "}
-                      ·{" "}
-                      {f.version === saved.version
-                        ? "Versión actual"
-                        : "Sobre una versión anterior"}
-                    </p>
-                    <p className="whitespace-pre-wrap break-words text-sm mt-2">
-                      {f.text}
-                    </p>
-                  </article>
-                ))}
-              </section>
-              <div className="border-t border-[var(--line)] pt-3">
-                {confirm ? (
-                  <div>
-                    <p className="text-sm">
-                      ¿Eliminar esta práctica, sus capturas y comentarios?
-                    </p>
-                    <div className="flex gap-4 mt-2">
-                      <button
-                        disabled={busy}
-                        className="text-sm text-red-600"
-                        onClick={async () => {
-                          setBusy(true);
-                          setError("");
-                          try {
-                            await remove.mutateAsync({
-                              id,
-                              expectedVersion: saved.version,
-                            });
-                            onChanged();
-                            onClose();
-                          } catch (e) {
-                            setError(
-                              e instanceof Error
-                                ? e.message
-                                : "No se pudo completar. Reintenta.",
-                            );
-                            setConfirm(false);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
+                    {saved.feedback.map((f) => (
+                      <article
+                        key={f.id}
+                        className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 space-y-3"
                       >
-                        Confirmar eliminación
-                      </button>
-                      <button
-                        disabled={busy}
-                        onClick={() => setConfirm(false)}
-                        className="text-sm"
-                      >
-                        Conservar práctica
-                      </button>
-                    </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-[var(--ink-3)]">
+                          <span className="font-medium text-[var(--ink-2)]">
+                            {f.kind === "exercise"
+                              ? "Ejercicio sugerido"
+                              : "Comentarios"}
+                          </span>
+                          <time dateTime={f.createdAt}>
+                            {new Date(f.createdAt).toLocaleString("es", {
+                              timeZone: timezone,
+                            })}
+                          </time>
+                          <span
+                            className={
+                              f.version === saved.version
+                                ? "rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent)]"
+                                : "rounded-full bg-[var(--chip)] px-2 py-0.5 text-[var(--ink-3)]"
+                            }
+                          >
+                            {f.version === saved.version
+                              ? "Versión actual"
+                              : "Sobre una versión anterior"}
+                          </span>
+                        </div>
+                        <Markdown content={f.text} className="break-words" />
+                      </article>
+                    ))}
                   </div>
-                ) : (
-                  <button
-                    disabled={busy}
-                    className="text-sm text-red-600"
-                    onClick={() => setConfirm(true)}
-                  >
-                    Eliminar práctica
-                  </button>
                 )}
-              </div>
+              </section>
             </>
           )}
-          <button disabled={busy} onClick={onClose} className="text-sm">
-            Cerrar
-          </button>
         </div>
+        <DialogFooter
+          role="group"
+          aria-label="Acciones de práctica"
+          className="flex-wrap"
+        >
+          {saved && (
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              disabled={busy}
+              className="mr-auto"
+              onClick={() => setConfirm(true)}
+            >
+              <Trash2 size={13} aria-hidden="true" />
+              Eliminar práctica
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={requestClose}
+            >
+              {saved ? "Cerrar" : "Cancelar"}
+            </Button>
+            <Button
+              type="submit"
+              form={formId}
+              variant="primary"
+              size="sm"
+              disabled={busy || !dirty}
+              loading={activity === "save"}
+            >
+              <Save size={13} aria-hidden="true" />
+              {activity === "save"
+                ? "Guardando…"
+                : saved
+                  ? "Guardar cambios"
+                  : "Guardar práctica"}
+            </Button>
+          </div>
+        </DialogFooter>
         {expanded && (
           <Dialog open onOpenChange={() => setExpanded(null)}>
             <DialogContent className="max-w-4xl" aria-describedby={undefined}>
-              <DialogTitle className="p-3">Captura de práctica</DialogTitle>
+              <DialogHeader>
+                <DialogTitle>Captura de práctica</DialogTitle>
+              </DialogHeader>
               <img
                 src={expanded}
                 alt="Captura de práctica ampliada"
-                className="max-h-[75dvh] object-contain p-3"
+                className="max-h-[75dvh] w-full object-contain"
               />
             </DialogContent>
           </Dialog>
         )}
       </DialogContent>
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="¿Descartar los cambios?"
+        description={
+          pendingUpload
+            ? "Se perderán el borrador y los reintentos de subida pendientes. Las capturas ya guardadas se conservan."
+            : "Perderás los cambios que todavía no guardaste."
+        }
+        confirmLabel="Descartar cambios"
+        cancelLabel="Seguir editando"
+        onConfirm={() => {
+          setDiscardOpen(false);
+          onClose();
+        }}
+      />
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={(open) => {
+          if (!busy) setConfirm(open);
+        }}
+        title="¿Eliminar esta práctica?"
+        description="Se eliminarán la práctica, sus capturas y sus comentarios."
+        confirmLabel="Confirmar eliminación"
+        cancelLabel="Conservar práctica"
+        loading={activity === "delete"}
+        onConfirm={() => void deletePractice()}
+      />
     </Dialog>
   );
 }
