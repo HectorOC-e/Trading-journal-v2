@@ -261,3 +261,19 @@ describe("profile.deleteAccount — deletes Auth + app data, no orphans", () => 
     expect(result).toEqual({ ok: true })
   })
 })
+
+describe("learning reminder time", () => {
+  it("persists a valid 24-hour reminder using only the current user", async () => {
+    const p = makeMockPrisma();p.user.update.mockResolvedValue({ ...BASE_USER, learningReminderTime: "06:45" });
+    const c=appRouter.createCaller({prisma:p as never,supabase:mockSupabase as never,userId:USER_ID});
+    const result=await c.profile.update({ learningReminderTime: "06:45" });
+    expect(p.user.update).toHaveBeenCalledWith(expect.objectContaining({where:{id:USER_ID},data:expect.objectContaining({learningReminderTime:"06:45"}),select:expect.objectContaining({learningReminderTime:true})}));
+    expect(result.learningReminderTime).toBe("06:45");
+  });
+  it.each(["24:00","19:60","7:00","","abc","19:00\n"])("rejects invalid reminder %s",async learningReminderTime=>{
+    const p=makeMockPrisma();p.user.update.mockResolvedValue(BASE_USER);
+    const c=appRouter.createCaller({prisma:p as never,supabase:mockSupabase as never,userId:USER_ID});
+    await expect(c.profile.update({learningReminderTime})).rejects.toMatchObject({code:"BAD_REQUEST"});
+    expect(p.user.update).not.toHaveBeenCalled();
+  });
+});

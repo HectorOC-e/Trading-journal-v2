@@ -77,3 +77,19 @@ describe("POST /api/cron/learning-digest", () => {
     expect(sendLearningDigestForUser).toHaveBeenCalledTimes(2)
   })
 })
+
+it("dispatches only at each user's configured local minute", async () => {
+  vi.clearAllMocks();vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-04T01:27:00Z"));process.env.CRON_SECRET=SECRET;
+  try {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      {id:"due",timezone:"America/Tegucigalpa",learningReminderTime:"19:25"},
+      {id:"later",timezone:"America/Tegucigalpa",learningReminderTime:"19:30"},
+    ] as never);
+    vi.mocked(sendLearningDigestForUser).mockResolvedValue({status:"sent"});
+    const res=await POST(req({authorization:`Bearer ${SECRET}`}));const result=await res.json();
+    expect(result.sent).toBe(1);expect(result.skipped).toBe(1);
+    expect(sendLearningDigestForUser).toHaveBeenCalledTimes(1);
+    expect(sendLearningDigestForUser).toHaveBeenCalledWith(expect.anything(),expect.objectContaining({id:"due"}));
+    expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({select:expect.objectContaining({learningReminderTime:true})}));
+  }finally{vi.useRealTimers()}
+});

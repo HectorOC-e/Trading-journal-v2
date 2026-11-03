@@ -17,3 +17,5 @@ Las subidas conservan un identificador de operación entre reintentos para no du
 Cada práctica admite un objetivo opcional de hasta 1000 caracteres y una autoevaluación personal: «Lo logré», «Parcialmente» o «Necesito repetir». Puede dejarse sin evaluar o quitarse después; el historial muestra la valoración sin inferir dominio.
 
 «Volver a practicar» abre un intento nuevo con el título, recurso, objetivo y ejercicio guardados, usando el día del perfil. Los minutos quedan vacíos y no se copian reflexión, autoevaluación, capturas ni comentarios. No suma sesiones ni minutos hasta guardar. Si hay un borrador modificado, se pide confirmación para descartarlo antes de repetir.
+
+En Perfil → Notificaciones puede elegirse la hora del resumen diario por correo en formato de 24 horas HH:mm (inicialmente 19:00). Usa la zona horaria guardada en el perfil, conserva el horario local al cambiar de zona y respeta los canales habilitados y las horas de silencio. Guardar el horario no activa el correo.

@@ -17,6 +17,7 @@ export interface SendEmailArgs {
   to: string
   subject: string
   html: string
+  idempotencyKey?: string
   attachments?: EmailAttachment[]
 }
 
@@ -44,7 +45,7 @@ export function emailFailureMessage(error?: string): string {
   return short ? `No se pudo enviar el correo: ${short}` : "No se pudo enviar el correo."
 }
 
-export const sendEmail: EmailSender = async ({ to, subject, html, attachments }) => {
+export const sendEmail: EmailSender = async ({ to, subject, html, attachments, idempotencyKey }) => {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.EMAIL_FROM ?? DEFAULT_FROM
 
@@ -56,10 +57,13 @@ export const sendEmail: EmailSender = async ({ to, subject, html, attachments })
 
   try {
     const resend = new Resend(apiKey)
-    const { data, error } = await resend.emails.send({
+    const payload = {
       from, to, subject, html,
       ...(attachments?.length ? { attachments: attachments.map(a => ({ filename: a.filename, content: a.content })) } : {}),
-    })
+    }
+    const { data, error } = idempotencyKey
+      ? await resend.emails.send(payload, { idempotencyKey })
+      : await resend.emails.send(payload)
     if (error) {
       logger.error(`[email] Resend error for ${to}: ${error.message}`)
       return { ok: false, error: error.message }

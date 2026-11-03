@@ -36,6 +36,7 @@ export const profileRouter = router({
       language:           z.enum(["es", "en"]).optional(),
       weeklyGoalMinutes:  z.number().int().min(0).max(10080).optional(),
       emailNotifications: z.boolean().optional(),
+      learningReminderTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Usa el formato de 24 horas HH:mm").optional(),
       // Goal fields (TASK-050a)
       weeklyTradesGoal:   z.number().int().min(1).max(500).nullable().optional(),
       weeklyPnlGoal:      z.number().min(100).max(1_000_000).nullable().optional(),

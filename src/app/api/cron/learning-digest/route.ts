@@ -1,17 +1,16 @@
 // POST /api/cron/learning-digest — daily Aprendizaje email digest runner.
 //
-// Triggered hourly by pg_cron → pg_net (see supabase/migrations/*_schedule_learning_digest.sql).
+// Triggered every minute by pg_cron → pg_net.
 // Auth: `Authorization: Bearer <CRON_SECRET>`. Per user, sends only when the user's
-// local hour == DIGEST_HOUR (unless { force: true } in the body, for manual runs).
+// configured local HH:mm (unless { force: true } in the body, for manual runs).
 
 import crypto from "crypto"
+import { learningReminderInstant } from "@/domains/learning/services/reminder-schedule"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 import {
   sendLearningDigestForUser,
-  localHour,
-  DIGEST_HOUR,
   type DigestStatus,
   type DigestUser,
 } from "@/server/services/email/send-learning-digest"
@@ -36,7 +35,7 @@ export function checkCronAuth(authHeader: string | null, secret: string | undefi
 
 const USER_SELECT = {
   id: true, email: true, name: true, emailNotifications: true, timezone: true,
-  weeklyGoalMinutes: true, currentStreak: true, bestStreak: true, lastReviewDate: true,
+  learningReminderTime: true, weeklyGoalMinutes: true, currentStreak: true, bestStreak: true, lastReviewDate: true,
 } as const
 
 export async function POST(req: NextRequest) {
@@ -58,12 +57,13 @@ export async function POST(req: NextRequest) {
   }
 
   for (const user of users) {
-    if (!force && localHour(now, user.timezone) !== DIGEST_HOUR) {
+    const scheduledFor = force ? null : learningReminderInstant(now, user.timezone, user.learningReminderTime)
+    if (!force && !scheduledFor) {
       tally.skipped++
       continue
     }
     try {
-      const { status } = await sendLearningDigestForUser({ prisma, now }, user)
+      const { status } = await sendLearningDigestForUser({ prisma, now, scheduledFor: scheduledFor ?? undefined }, user)
       tally[status]++
     } catch (err) {
       tally.error++

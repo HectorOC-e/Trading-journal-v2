@@ -17,7 +17,7 @@ import { sendEmail as defaultSendEmail, type EmailSender } from "./resend-client
 
 export const LEARNING_CATEGORY = "Aprendizaje"
 export const EMAIL_TYPE = "learning_digest"
-export const DIGEST_HOUR = 19 // local hour to send (19:00 — catches at-risk before midnight)
+export const DIGEST_HOUR = 19 // Legacy default; the runner uses the profile HH:mm.
 const DEFAULT_GOAL_MIN = 300
 
 export interface DigestUser {
@@ -26,6 +26,7 @@ export interface DigestUser {
   name: string
   emailNotifications: boolean
   timezone: string
+  learningReminderTime?: string
   weeklyGoalMinutes: number | null
   currentStreak: number
   bestStreak: number
@@ -35,6 +36,7 @@ export interface DigestUser {
 export interface DigestDeps {
   prisma: PrismaClient
   now?: Date
+  scheduledFor?: Date
   appUrl?: string
   sendEmail?: EmailSender
 }
@@ -121,7 +123,8 @@ export async function sendLearningDigestForUser(deps: DigestDeps, user: DigestUs
     return { status: "ineligible" }
   }
 
-  const todayISO = localDateISO(now, user.timezone)
+  const digestNow = deps.scheduledFor ?? now
+  const todayISO = localDateISO(digestNow, user.timezone)
 
   const already = await prisma.emailLog.findFirst({
     where: { userId: user.id, emailType: EMAIL_TYPE, weekKey: todayISO },
@@ -129,7 +132,7 @@ export async function sendLearningDigestForUser(deps: DigestDeps, user: DigestUs
   })
   if (already) return { status: "already_sent" }
 
-  const input = await gatherDigestInput(prisma, user, now)
+  const input = await gatherDigestInput(prisma, user, digestNow)
   const model = buildLearningDigest(input)
   if (model.isEmpty) return { status: "empty" }
 
@@ -142,7 +145,7 @@ export async function sendLearningDigestForUser(deps: DigestDeps, user: DigestUs
     ? `🔥 Tu racha de ${model.streak.current} días está en riesgo`
     : `📚 Tu repaso de hoy — ${model.reviewCount} recurso${model.reviewCount === 1 ? "" : "s"}`
 
-  const result = await send({ to: user.email, subject, html })
+  const result = await send({ to: user.email, subject, html, idempotencyKey: `learning-digest/${user.id}/${todayISO}` })
   if (!result.ok) return { status: "send_failed", error: result.error }
 
   try {

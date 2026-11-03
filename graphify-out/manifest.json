@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "src/app/api/cron/learning-digest/route.ts": {
-    "mtime": 1793537926.1387775,
-    "seen": 1793538422.7142313,
-    "ast_hash": "86e0c3d5f1d4a65b8b33299e8ff5b9b6",
+    "mtime": 1793743946.542765,
+    "seen": 1793744022.0997066,
+    "ast_hash": "8a8fee22cbc1acc17d75bae0833e6357",
     "semantic_hash": ""
   },
   "src/app/api/cron/recompute-insights/route.ts": {
@@ -396,9 +396,9 @@
     "semantic_hash": ""
   },
   "src/app/perfil/page.tsx": {
-    "mtime": 1793537926.146449,
-    "seen": 1793538422.7142832,
-    "ast_hash": "93c026293d7d214c1510a374641a9a4a",
+    "mtime": 1793743706.0719838,
+    "seen": 1793744022.0997856,
+    "ast_hash": "769970ac5c53c6c7481c590413f67ab4",
     "semantic_hash": ""
   },
   "src/app/playbook/page.tsx": {
@@ -1512,9 +1512,9 @@
     "semantic_hash": ""
   },
   "src/domains/profile/services/profile-service.ts": {
-    "mtime": 1793537926.1623623,
-    "seen": 1793538422.714438,
-    "ast_hash": "b3d7e53dbd3c96f7fdbe502cbe8f887b",
+    "mtime": 1793743706.0716043,
+    "seen": 1793744022.0999734,
+    "ast_hash": "b9b38cf9f66fb9c52f881140c342e06a",
     "semantic_hash": ""
   },
   "src/domains/rules/actions.ts": {
@@ -2208,15 +2208,15 @@
     "semantic_hash": ""
   },
   "src/server/services/email/resend-client.ts": {
-    "mtime": 1793537926.173556,
-    "seen": 1793538422.7145665,
-    "ast_hash": "36a25368c730678f9c5afe4452b92744",
+    "mtime": 1793743946.5433254,
+    "seen": 1793744022.1000986,
+    "ast_hash": "a6c83c1e3b2df6fb4fd9c3413a6a1e3d",
     "semantic_hash": ""
   },
   "src/server/services/email/send-learning-digest.ts": {
-    "mtime": 1793537926.173556,
-    "seen": 1793538422.7145672,
-    "ast_hash": "77b5d28d38e50e4693d8f17bc6a5449e",
+    "mtime": 1793743946.5430598,
+    "seen": 1793744022.1000996,
+    "ast_hash": "6b8a7517cd7eb79102211d9b80e8e975",
     "semantic_hash": ""
   },
   "src/server/services/email/send-review.ts": {
@@ -2544,9 +2544,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/profile.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.7146297,
-    "ast_hash": "a21903b3193f52a99509b7ec20df12bc",
+    "mtime": 1793743706.071682,
+    "seen": 1793744022.1001735,
+    "ast_hash": "16d2e911f28643fde4f75d90aa671399",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/psychology.ts": {
@@ -3732,14 +3732,14 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
-    "mtime": 1793742170.0246024,
-    "seen": 1793742180.0878885,
+    "mtime": 1793742651.7461271,
+    "seen": 1793744022.0997255,
     "ast_hash": "585664f84a5354bd4a0a2e87a918b333",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/practice-modal.tsx": {
-    "mtime": 1793742015.2946846,
-    "seen": 1793742078.836893,
+    "mtime": 1793742651.7461271,
+    "seen": 1793744022.0997384,
     "ast_hash": "6bd41b83de52618ae7ae3c222df24908",
     "semantic_hash": ""
   },
@@ -3750,8 +3750,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-practices.ts": {
-    "mtime": 1793741856.3156881,
-    "seen": 1793742078.8378093,
+    "mtime": 1793742651.7461271,
+    "seen": 1793744022.1001658,
     "ast_hash": "eae05d3811894e43daa45ad7cbdcdb81",
     "semantic_hash": ""
   },
@@ -3762,9 +3762,9 @@
     "semantic_hash": ""
   },
   "docs/learning-practices.md": {
-    "mtime": 1793742273.611569,
-    "seen": 1793742292.1030848,
-    "ast_hash": "97592a7e4d7aa3e0ae624ad5f514db4c",
+    "mtime": 1793744169.5192118,
+    "seen": 1793744179.0062826,
+    "ast_hash": "cda181ae182cf5d96a49f3f8a667aad1",
     "semantic_hash": ""
   },
   "supabase/migrations/20261103050551_learning_practices.sql": {
@@ -3786,21 +3786,57 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-03-practice-repeat-assessment.md": {
-    "mtime": 1793742284.2511983,
-    "seen": 1793742292.1031072,
+    "mtime": 1793742651.7261274,
+    "seen": 1793744022.100312,
     "ast_hash": "4f86d110fcea1e63c0789c64b0e476da",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-03-practice-repeat-assessment-design.md": {
-    "mtime": 1793741813.1594863,
-    "seen": 1793742078.8381395,
+    "mtime": 1793742651.7261274,
+    "seen": 1793744022.1003256,
     "ast_hash": "c1db071223132d2d4aa9e9c938fcd809",
     "semantic_hash": ""
   },
   "supabase/migrations/20261103214052_practice_objective_assessment.sql": {
-    "mtime": 1793742014.6734633,
-    "seen": 1793742180.0884101,
+    "mtime": 1793742651.7461271,
+    "seen": 1793744022.100277,
     "ast_hash": "10e82eada00d46f2c24c6d2652b9b748",
+    "semantic_hash": ""
+  },
+  "src/app/perfil/components/learning-reminder-settings.tsx": {
+    "mtime": 1793744004.5311644,
+    "seen": 1793744022.0997825,
+    "ast_hash": "793fc4d8e5a7ebecb90d57033adda962",
+    "semantic_hash": ""
+  },
+  "src/domains/learning/services/reminder-schedule.ts": {
+    "mtime": 1793744004.487165,
+    "seen": 1793744022.0999663,
+    "ast_hash": "cb82736ab8f7fe11a88b3b3fa1fad92e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261103220922_learning_reminder_time.sql": {
+    "mtime": 1793743741.7830906,
+    "seen": 1793744022.1002777,
+    "ast_hash": "accc687dd6b0f3c0f8fa46e050ca01f2",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261103221256_learning_reminder_minute_schedule.sql": {
+    "mtime": 1793743976.3147984,
+    "seen": 1793744022.100279,
+    "ast_hash": "b5184a4827ae80ec8bd75ad32f2be704",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-03-learning-reminder-time.md": {
+    "mtime": 1793744169.5190582,
+    "seen": 1793744179.0063047,
+    "ast_hash": "9536a8f0ea363ac5981f4e6dae2a12cb",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-03-learning-reminder-time-design.md": {
+    "mtime": 1793743946.543635,
+    "seen": 1793744022.1003246,
+    "ast_hash": "2454b1c3757b29c6f79de85b2b56e692",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
