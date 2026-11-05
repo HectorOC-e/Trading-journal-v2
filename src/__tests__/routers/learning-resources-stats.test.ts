@@ -8,6 +8,7 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date("2026-06-30T12:
 afterEach(() => vi.useRealTimers())
 it("uses the local day and one review queue, with completed study metrics", async () => {
   const rows = [
+    { id: "reopened", status: "IN_PROGRESS", nextReviewAt: null },
     { id: "today", status: "COMPLETED", nextReviewAt: new Date("2026-07-01T00:00:00Z") },
     { id: "marked", status: "MASTERED", nextReviewAt: null, markedForReview: true },
     { id: "mastered", status: "MASTERED", nextReviewAt: new Date("2026-06-01T00:00:00Z") },

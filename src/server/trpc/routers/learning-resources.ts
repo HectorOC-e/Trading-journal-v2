@@ -4,7 +4,7 @@ import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
 import { effectiveStudyStartedAt, minutesThisWeek as studyMinutesThisWeek, studyStreak } from "@/domains/learning/services/study-session-service"
 import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
-import { computeProgressPct, computeResourceStatus } from "@/domains/learning/services/review-scheduler"
+import { computeProgressPct, resourceProgressLifecycle } from "@/domains/learning/services/review-scheduler"
 import { computeNextReview, type Grade } from "@/domains/learning/srs"
 import { getResourceTransfer } from "@/server/services/learning/learning-insights-service"
 import { computeNewStreak } from "@/domains/learning/services/streak-service"
@@ -191,12 +191,12 @@ export const learningResourcesRouter = router({
             await tx.$queryRaw`SELECT id FROM public.learning_resources WHERE id = ${id}::uuid AND user_id = ${ctx.userId}::uuid FOR UPDATE`
             const existing = await tx.learningResource.findUniqueOrThrow({
               where,
-              select: { currentUnits: true, totalUnits: true },
+              select: { currentUnits: true, totalUnits: true, status: true, completedAt: true },
             })
             const effectiveCurrent = currentUnits !== undefined ? currentUnits : existing.currentUnits
             const effectiveTotal = totalUnits !== undefined ? totalUnits : existing.totalUnits
             data.progressPct = effectiveCurrent == null ? null : computeProgressPct(effectiveCurrent, effectiveTotal)
-            return tx.learningResource.update({ where, data })
+            return tx.learningResource.update({ where, data: { ...data, ...resourceProgressLifecycle(existing, effectiveCurrent, effectiveTotal) } })
           })
         : await ctx.prisma.learningResource.update({ where, data })
       // Re-embed when notes were part of this update.
@@ -325,54 +325,53 @@ export const learningResourcesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, currentUnits, totalUnits, progressType } = input
 
-      const existing = await ctx.prisma.learningResource.findUniqueOrThrow({
-        where: { id, userId: ctx.userId },
-        select: {
-          totalUnits: true, status: true, completedAt: true,
-          currentUnits: true, progressType: true,
-          weekDeltaMinutes: true, weekDeltaResetAt: true,
-        },
-      })
+      const resource = await ctx.prisma.$transaction(async tx => {
+        await tx.$queryRaw`SELECT id FROM public.learning_resources WHERE id = ${id}::uuid AND user_id = ${ctx.userId}::uuid FOR UPDATE`
+        const existing = await tx.learningResource.findUniqueOrThrow({
+          where: { id, userId: ctx.userId },
+          select: {
+            totalUnits: true, status: true, completedAt: true,
+            currentUnits: true, progressType: true,
+            weekDeltaMinutes: true, weekDeltaResetAt: true,
+          },
+        })
 
-      const effectiveTotalUnits = totalUnits ?? existing.totalUnits
-      const progressPct = computeProgressPct(currentUnits, effectiveTotalUnits)
-      const newStatus = computeResourceStatus(currentUnits, effectiveTotalUnits)
-      const isNowCompleted = newStatus === "COMPLETED"
-      const wasAlreadyCompleted = existing.completedAt !== null
+        const effectiveTotalUnits = totalUnits ?? existing.totalUnits
+        const progressPct = computeProgressPct(currentUnits, effectiveTotalUnits)
 
-      // Compute weekly delta for minute-tracked resources
-      const effectiveProgressType = progressType ?? existing.progressType
-      let weekDeltaUpdate: { weekDeltaMinutes: number; weekDeltaResetAt: Date } | undefined
-      if (effectiveProgressType === "minutes") {
-        const now = new Date()
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        const dayOfWeek = todayStart.getDay()
-        const daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1
-        const weekStart = new Date(todayStart)
-        weekStart.setDate(weekStart.getDate() - daysToMon)
+        // Compute weekly delta for minute-tracked resources
+        const effectiveProgressType = progressType ?? existing.progressType
+        let weekDeltaUpdate: { weekDeltaMinutes: number; weekDeltaResetAt: Date } | undefined
+        if (effectiveProgressType === "minutes") {
+          const now = new Date()
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+          const dayOfWeek = todayStart.getDay()
+          const daysToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+          const weekStart = new Date(todayStart)
+          weekStart.setDate(weekStart.getDate() - daysToMon)
 
-        const needsReset =
-          !existing.weekDeltaResetAt || existing.weekDeltaResetAt < weekStart
-        const prevDelta = needsReset ? 0 : (existing.weekDeltaMinutes ?? 0)
-        const prevUnits = existing.currentUnits ?? 0
-        const increment = Math.max(0, currentUnits - prevUnits)
-        weekDeltaUpdate = {
-          weekDeltaMinutes: prevDelta + increment,
-          weekDeltaResetAt: needsReset ? weekStart : (existing.weekDeltaResetAt ?? weekStart),
+          const needsReset =
+            !existing.weekDeltaResetAt || existing.weekDeltaResetAt < weekStart
+          const prevDelta = needsReset ? 0 : (existing.weekDeltaMinutes ?? 0)
+          const prevUnits = existing.currentUnits ?? 0
+          const increment = Math.max(0, currentUnits - prevUnits)
+          weekDeltaUpdate = {
+            weekDeltaMinutes: prevDelta + increment,
+            weekDeltaResetAt: needsReset ? weekStart : (existing.weekDeltaResetAt ?? weekStart),
+          }
         }
-      }
 
-      const resource = await ctx.prisma.learningResource.update({
-        where: { id, userId: ctx.userId },
-        data: {
-          currentUnits,
-          ...(totalUnits !== undefined ? { totalUnits }     : {}),
-          ...(progressType !== undefined ? { progressType } : {}),
-          ...(progressPct !== null ? { progressPct }        : {}),
-          status: newStatus,
-          ...(isNowCompleted && !wasAlreadyCompleted ? { completedAt: new Date() } : {}),
-          ...(weekDeltaUpdate !== undefined ? weekDeltaUpdate : {}),
-        },
+        return tx.learningResource.update({
+          where: { id, userId: ctx.userId },
+          data: {
+            currentUnits,
+            ...(totalUnits !== undefined ? { totalUnits }     : {}),
+            ...(progressType !== undefined ? { progressType } : {}),
+            progressPct,
+            ...resourceProgressLifecycle(existing, currentUnits, effectiveTotalUnits),
+            ...(weekDeltaUpdate !== undefined ? weekDeltaUpdate : {}),
+          },
+        })
       })
 
       return serializeResource(resource)
@@ -544,7 +543,7 @@ export const learningResourcesRouter = router({
       const due = resources.filter(r => isResourceReviewDue(r, todayISO))
         .sort((a, b) => (a.nextReviewAt?.toISOString() ?? "").localeCompare(b.nextReviewAt?.toISOString() ?? ""))
       const urgentReviews = due.slice(0, 10)
-      const completedThisMonth = resources.filter(r => r.completedAt !== null &&
+      const completedThisMonth = resources.filter(r => ["COMPLETED", "IN_REVIEW", "MASTERED"].includes(r.status) && r.completedAt !== null &&
         r.completedAt <= now && localDateISO(r.completedAt, timezone).slice(0, 7) === todayISO.slice(0, 7)).length
       const resourcesByStatus = resources.reduce<Record<string, number>>((acc, r) => {
         acc[r.status] = (acc[r.status] ?? 0) + 1

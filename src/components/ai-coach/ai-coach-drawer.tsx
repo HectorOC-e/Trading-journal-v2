@@ -106,6 +106,7 @@ export function AiCoachDrawer() {
   const [pos,         setPos]         = useState<XY | null>(null)
   const [copiedId,    setCopiedId]    = useState<string | null>(null)
   const [memoryOpen,  setMemoryOpen]  = useState(false)
+  const conversationRef = useRef(0)
   const threadIdRef = useRef<string | null>(null)
   const appendExchange = trpc.coach.appendExchange.useMutation()
 
@@ -181,6 +182,8 @@ export function AiCoachDrawer() {
 
   // ── Streaming core (shared by send + regenerate) ────────────────────────────
   async function streamReply(history: Message[]) {
+    const conversation = conversationRef.current
+    const current = () => conversationRef.current === conversation && !controller.signal.aborted
     setStreaming(true)
     setApiError(null)
 
@@ -205,9 +208,11 @@ export function AiCoachDrawer() {
         signal:  controller.signal,
       })
 
+      if (!current()) return
       const contentType = res.headers.get("content-type") ?? ""
       if (contentType.includes("application/json")) {
         const json = await res.json() as { error?: string }
+        if (!current()) return
         if (json.error === "NO_API_KEY")   { setApiError("NO_API_KEY");   return }
         if (json.error === "UNAUTHORIZED") { setApiError("UNAUTHORIZED"); return }
         setApiError("BAD_REQUEST"); return
@@ -226,6 +231,7 @@ export function AiCoachDrawer() {
       let assistantText = ""
       while (true) {
         const { done, value } = await reader.read()
+        if (!current()) return
         if (done) break
         buf += decoder.decode(value, { stream: true })
 
@@ -269,15 +275,15 @@ export function AiCoachDrawer() {
 
       // S6: persist the exchange so the coach remembers (best-effort, never blocks UI).
       const lastUser = [...history].reverse().find(m => m.role === "user")
-      if (lastUser && assistantText.trim()) {
+      if (current() && lastUser && assistantText.trim()) {
         appendExchange.mutate(
           { threadId: threadIdRef.current, userText: lastUser.content, assistantText },
-          { onSuccess: (r) => { threadIdRef.current = r.threadId } },
+          { onSuccess: (r) => { if (current()) threadIdRef.current = r.threadId } },
         )
       }
     } catch (err) {
       // AbortError = user pressed Stop; keep whatever streamed so far.
-      if ((err as Error)?.name !== "AbortError") {
+      if (current() && (err as Error)?.name !== "AbortError") {
         setApiError(
           streamFailure === undefined ? "INTERRUPTED"
           : streamFailure === 429      ? "RATE_LIMITED"
@@ -287,8 +293,10 @@ export function AiCoachDrawer() {
         )
       }
     } finally {
-      setStreaming(false)
-      abortRef.current = null
+      if (conversationRef.current === conversation) {
+        setStreaming(false)
+        abortRef.current = null
+      }
     }
   }
 
@@ -314,7 +322,11 @@ export function AiCoachDrawer() {
   function stopGenerating() { abortRef.current?.abort() }
 
   function newChat() {
-    if (streaming) abortRef.current?.abort()
+    conversationRef.current++
+    threadIdRef.current = null
+    abortRef.current?.abort()
+    abortRef.current = null
+    setStreaming(false)
     setMessages([WELCOME])
     setInput("")
     setApiError(null)

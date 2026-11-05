@@ -1,3 +1,4 @@
+import { writeReviewText } from "@/server/services/retrieval/review-write"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
@@ -97,11 +98,11 @@ export const monthlyReviewsRouter = router({
     .input(MonthlyReviewInput)
     .mutation(async ({ ctx, input }) => {
       const { year, month, ...data } = input
-      const review = await ctx.prisma.monthlyReview.upsert({
+      const review = await writeReviewText(ctx.prisma, "monthly_reviews", input.summary !== undefined, tx => tx.monthlyReview.upsert({
         where:  { userId_year_month: { userId: ctx.userId, year, month } },
         create: { ...data, year, month, userId: ctx.userId },
         update: data,
-      })
+      }))
       return serializeMonthlyReview(review)
     }),
 
@@ -109,10 +110,10 @@ export const monthlyReviewsRouter = router({
     .input(z.object({ id: z.string().uuid() }).merge(MonthlyReviewInput.partial()))
     .mutation(async ({ ctx, input }) => {
       const { id, year: _y, month: _m, ...data } = input
-      const review = await ctx.prisma.monthlyReview.update({
+      const review = await writeReviewText(ctx.prisma, "monthly_reviews", input.summary !== undefined, tx => tx.monthlyReview.update({
         where: { id, userId: ctx.userId },
         data,
-      })
+      }))
       return serializeMonthlyReview(review)
     }),
 
@@ -158,7 +159,7 @@ export const monthlyReviewsRouter = router({
         return { id: g.id, text: g.text, status: proposal?.status ?? g.status, note: proposal?.note ?? g.note, userConfirmed: false }
       })
 
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pillars, letterTitle, themes, verdict, goals }
+      return { ...report, userId: ctx.userId, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pillars, letterTitle, themes, verdict, goals }
     }),
 
   // Deterministic insight cards for the month (same engine as /analytics).
@@ -179,12 +180,12 @@ export const monthlyReviewsRouter = router({
       const data: { summary?: string; status?: string } = {}
       if (input.notes !== undefined) data.summary = input.notes
       if (input.status) data.status = input.status
-      const row = await ctx.prisma.monthlyReview.upsert({
+      const row = await writeReviewText(ctx.prisma, "monthly_reviews", input.notes !== undefined, tx => tx.monthlyReview.upsert({
         where:  { userId_year_month: { userId: ctx.userId, year: input.year, month: input.month } },
         create: { userId: ctx.userId, year: input.year, month: input.month, summary: input.notes ?? "", status: input.status ?? "draft" },
         update: data,
         select: { id: true, status: true, summary: true },
-      })
+      }))
       if (input.notes !== undefined) {
         scheduleEmbedding(ctx.prisma, ctx.userId, "monthly_reviews", row.id, input.notes)
       }

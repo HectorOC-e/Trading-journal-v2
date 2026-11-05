@@ -75,7 +75,7 @@ export async function search(
     const counts = await adapter.counts(prisma, userId)
     const hits = counts.embedded > 0 ? await adapter.knn(prisma, userId, vec, limit) : []
     const rows = hits.length ? await adapter.hydrate(prisma, userId, hits.map(h => h.id)) : []
-    citations.push(...orderByHits(hits, rows, adapter.rowId, adapter.toCitation))
+    citations.push(...orderByHits(hits, rows, adapter.rowId, adapter.toCitation).filter(citation => citation.snippet.trim()))
     outcomes.push({
       corpus: key,
       state: classify({
@@ -99,8 +99,9 @@ export async function search(
  * acotada reintroduce la misma mentira a menor escala (spec §7).
  *
  * Concurrencia: dos búsquedas simultáneas pueden embeber la misma fila dos veces.
- * `pending` filtra IS NULL y `writeVector` es idempotente, así que el peor caso es
- * gasto duplicado, no corrupción. Asumido a propósito, sin lock.
+ * `writeVector` compara texto original y propietario: una edición concurrente
+ * no puede recuperar significado antiguo. Las reviews además requieren vector
+ * ausente; los otros corpus permiten refrescar un vector tras editar su texto.
  */
 async function repairCorpus(
   prisma: PrismaClient, userId: string, key: CorpusKey, model: string, apiKey: string,
@@ -111,7 +112,7 @@ async function repairCorpus(
     for (const row of pending) {
       const v = await embedWithRetry(row.text, model, apiKey, "retrieval:repair")
       if (!v) continue
-      await adapter.writeVector(prisma, row.id, toVec(v))
+      await adapter.writeVector(prisma, row.id, toVec(v), row.text, userId)
     }
     const after = await adapter.counts(prisma, userId)
     return Math.max(0, after.withText - after.embedded)
@@ -129,7 +130,14 @@ export async function reindex(
   const keys: CorpusKey[] = input?.corpus ? [input.corpus] : [...CORPUS_KEYS]
   const limit = clamp(input?.limit, REPAIR_BATCH, 500)
   const emb = await resolveEmbeddingCall(prisma, userId)
-  if (emb.source === "none") return { embedded: 0, failed: 0, remaining: 0 }
+  if (emb.source === "none") {
+    let remaining = 0
+    for (const key of keys) {
+      const counts = await getAdapter(key).counts(prisma, userId)
+      remaining += Math.max(0, counts.withText - counts.embedded)
+    }
+    return { embedded: 0, failed: 0, remaining }
+  }
 
   let embedded = 0, failed = 0, remaining = 0
   for (const key of keys) {
@@ -138,8 +146,7 @@ export async function reindex(
     for (const row of pending) {
       const v = await embedWithRetry(row.text, emb.model, emb.apiKey, "retrieval:reindex")
       if (!v) { failed++; continue }
-      await adapter.writeVector(prisma, row.id, toVec(v))
-      embedded++
+      embedded += await adapter.writeVector(prisma, row.id, toVec(v), row.text, userId)
     }
     const after = await adapter.counts(prisma, userId)
     remaining += Math.max(0, after.withText - after.embedded)
@@ -149,10 +156,13 @@ export async function reindex(
 
 export async function indexStatus(prisma: PrismaClient, userId: string): Promise<IndexStatus[]> {
   const out: IndexStatus[] = []
+  const availability = await resolveEmbeddingCall(prisma, userId)
   for (const key of CORPUS_KEYS) {
     const adapter = CORPORA[key]
     const counts = await adapter.counts(prisma, userId)
-    out.push({ corpus: key, label: adapter.label, ...counts })
+    out.push({ corpus: key, label: adapter.label, ...counts, checkedAt: new Date().toISOString(),
+      state: availability.source === "none" ? "NO_KEY" : counts.withText === 0 ? "EMPTY_CORPUS" : counts.embedded === 0 ? "NOT_INDEXED" : counts.embedded < counts.withText ? "PARTIAL" : "OK",
+    })
   }
   return out
 }
@@ -168,7 +178,7 @@ export function scheduleEmbedding(
       if (emb.source === "none") return
       const v = await embedWithRetry(text, emb.model, emb.apiKey, "retrieval:schedule")
       if (!v) { logger.warn("retrieval: no se pudo embeber", { corpus, id }); return }
-      await getAdapter(corpus).writeVector(prisma, id, toVec(v))
+      await getAdapter(corpus).writeVector(prisma, id, toVec(v), text, userId)
     } catch (err) {
       logger.warn("retrieval: scheduleEmbedding fallo", { corpus, id, err: String(err) })
     }

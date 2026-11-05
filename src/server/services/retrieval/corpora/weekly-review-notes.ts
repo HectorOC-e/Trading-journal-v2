@@ -23,7 +23,7 @@ export const weeklyReviewNotesAdapter: CorpusAdapter<WeeklyReviewRow> = {
     return prisma.$queryRaw<Hit[]>`
       SELECT id, (1 - (summary_embedding <=> ${vec}::vector)) AS similarity
       FROM weekly_reviews
-      WHERE user_id = ${userId}::uuid AND summary_embedding IS NOT NULL
+      WHERE user_id = ${userId}::uuid AND summary_embedding IS NOT NULL AND BTRIM(executive_summary) <> ''
       ORDER BY summary_embedding <=> ${vec}::vector
       LIMIT ${limit}`
   },
@@ -31,21 +31,22 @@ export const weeklyReviewNotesAdapter: CorpusAdapter<WeeklyReviewRow> = {
   async pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]> {
     return prisma.$queryRaw<PendingRow[]>`
       SELECT id, executive_summary AS text FROM weekly_reviews
-      WHERE user_id = ${userId}::uuid AND executive_summary <> '' AND summary_embedding IS NULL
+      WHERE user_id = ${userId}::uuid AND BTRIM(executive_summary) <> '' AND summary_embedding IS NULL
       ORDER BY week_start DESC
       LIMIT ${limit}`
   },
 
-  async writeVector(prisma: PrismaClient, id: string, vec: string): Promise<void> {
-    await prisma.$executeRaw`
-      UPDATE weekly_reviews SET summary_embedding = ${vec}::vector WHERE id = ${id}::uuid`
+  async writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number> {
+    return prisma.$executeRaw`
+      UPDATE weekly_reviews SET summary_embedding = ${vec}::vector WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+        AND executive_summary = ${sourceText} AND summary_embedding IS NULL`
   },
 
   async counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts> {
     const rows = await prisma.$queryRaw<CorpusCounts[]>`
       SELECT COUNT(*)::int AS total,
-             COUNT(*) FILTER (WHERE executive_summary <> '')::int AS "withText",
-             COUNT(*) FILTER (WHERE summary_embedding IS NOT NULL)::int AS embedded
+             COUNT(*) FILTER (WHERE BTRIM(executive_summary) <> '')::int AS "withText",
+             COUNT(*) FILTER (WHERE summary_embedding IS NOT NULL AND BTRIM(executive_summary) <> '')::int AS embedded
       FROM weekly_reviews WHERE user_id = ${userId}::uuid`
     return rows[0] ?? { total: 0, withText: 0, embedded: 0 }
   },

@@ -186,3 +186,30 @@ describe("accounts router", () => {
     expect(result.locked).toBe(false)
   })
 })
+
+describe("account lock reconciliation timezone", () => {
+  it.each([
+    ["America/Tegucigalpa", "2026-11-06T00:30:00Z", "2026-11-05", true],
+    ["Asia/Tokyo", "2026-11-05T23:30:00Z", "2026-11-05", false],
+    ["invalid/legacy", "2026-11-06T00:30:00Z", "2026-11-05", false],
+    [undefined, "2026-11-06T00:30:00Z", "2026-11-05", false],
+  ])("uses account zone %s at %s", async (timezone, instant, tradingDay, expectedLocked) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(instant))
+    try {
+      const db = makeMockPrisma() as any
+      const account = makeFakeAccount({ timezone, locked: true, lockReason: "DAILY_LOSS_LIMIT", ddDailyPct: 1 })
+      db.account.findMany.mockResolvedValue([account])
+      db.trade.findMany = vi.fn(async ({ where }: any) => {
+        expect(where).toEqual({ accountId: account.id, userId: USER_ID, status: "CLOSED" })
+        return [{ date: new Date(tradingDay), pnl: -200 }]
+      })
+      const caller = appRouter.createCaller({ prisma: db, supabase: {} as any, userId: USER_ID })
+      const result = await caller.accounts.list()
+      expect(result[0].locked).toBe(expectedLocked)
+      expect(db.account.update).toHaveBeenCalledTimes(expectedLocked ? 0 : 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

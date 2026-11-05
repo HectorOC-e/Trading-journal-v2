@@ -1664,7 +1664,7 @@ export default function PerfilPage() {
           </Card>
 
           {/* ── Modelos de IA (config ampliada) ── */}
-          <AiModelsCard onDirtyChange={setModelsDirty} userId={profile.id} />
+          <AiModelsCard onDirtyChange={setModelsDirty} userId={profile.id} timezone={profile.timezone ?? "UTC"} />
         </section>
         <section
           hidden={activeSection !== "Seguridad"}

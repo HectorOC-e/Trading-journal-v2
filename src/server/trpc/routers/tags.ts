@@ -14,8 +14,9 @@ export const tagsRouter = router({
         orderBy: [{ category: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
       }),
       ctx.prisma.$queryRaw<{ tag: string; count: bigint }[]>`
-        SELECT unnest(tags) AS tag, COUNT(*) AS count
-        FROM trades WHERE user_id = ${ctx.userId}::uuid GROUP BY tag
+        SELECT tag, COUNT(*) AS count
+        FROM trades CROSS JOIN LATERAL (SELECT DISTINCT unnest(tags) AS tag) unique_tags
+        WHERE user_id = ${ctx.userId}::uuid GROUP BY tag
       `,
     ])
     const byName = new Map(counts.map((c) => [c.tag, Number(c.count)]))
@@ -91,7 +92,7 @@ export const tagsRouter = router({
       await ctx.prisma.$transaction(async (tx) => {
         await tx.$executeRaw`
           UPDATE trades
-          SET tags = array_remove(array_replace(tags, ${input.dying}, ${input.survivor}), ${input.dying})
+          SET tags = ARRAY(SELECT DISTINCT value FROM unnest(array_replace(tags, ${input.dying}, ${input.survivor})) AS value)
           WHERE user_id = ${ctx.userId}::uuid AND tags @> ARRAY[${input.dying}]::text[]
         `
         if (dyingTag) await tx.tag.delete({ where: { id: dyingTag.id } })

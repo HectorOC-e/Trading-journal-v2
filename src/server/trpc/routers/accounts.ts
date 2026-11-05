@@ -1,3 +1,4 @@
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import type { Prisma } from "@/lib/generated/prisma/client"
@@ -96,10 +97,10 @@ export const accountsRouter = router({
       // Reconcile standing temporal locks on read: clear any daily/weekly/monthly
       // lock whose period has rolled over so the card reflects reality without
       // waiting for the next trade attempt. Permanent locks are left untouched.
-      const today = new Date().toISOString().slice(0, 10)
+      const now = new Date()
       const reconciled = await Promise.all(rows.map(async (a) => {
         if (!a.locked || isPermanentLockReason(a.lockReason)) return a
-        const r = await reconcileTemporalLock(ctx.prisma, ctx.userId, toEnforceable(a), today)
+        const r = await reconcileTemporalLock(ctx.prisma, ctx.userId, toEnforceable(a), localDateISO(now, safeTimeZone(a.timezone)))
         return r.locked === a.locked && r.lockReason === a.lockReason
           ? a
           : { ...a, locked: r.locked, lockReason: r.lockReason, lockedAt: r.locked ? a.lockedAt : null }

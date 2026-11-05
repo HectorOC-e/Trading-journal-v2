@@ -1,3 +1,4 @@
+import { writeReviewText } from "@/server/services/retrieval/review-write"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
@@ -118,7 +119,7 @@ export const weeklyReviewsRouter = router({
       // `pendingEmotion` viaja hasta el VM: la semana de la review ES la ventana
       // de 7 días, así que el panel de Psicología puede ofrecer el gesto en vez
       // de una instrucción sin salida.
-      return { ...report, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pendingEmotion }
+      return { ...report, userId: ctx.userId, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pendingEmotion }
     }),
 
   // Light learning summary for the week (study minutes, streak, repasos).
@@ -205,28 +206,28 @@ export const weeklyReviewsRouter = router({
   create: protectedProcedure
     .input(WeeklyReviewInput)
     .mutation(({ ctx, input }) =>
-      ctx.prisma.weeklyReview.create({
+      writeReviewText(ctx.prisma, "weekly_reviews", input.executiveSummary !== undefined, tx => tx.weeklyReview.create({
         data: {
           ...input,
           weekStart: new Date(input.weekStart),
           weekEnd:   new Date(input.weekEnd),
           userId:    ctx.userId,
         },
-      })
+      }))
     ),
 
   update: protectedProcedure
     .input(z.object({ id: z.string().uuid() }).merge(WeeklyReviewInput.partial()))
     .mutation(({ ctx, input }) => {
       const { id, weekStart, weekEnd, ...rest } = input
-      return ctx.prisma.weeklyReview.update({
+      return writeReviewText(ctx.prisma, "weekly_reviews", input.executiveSummary !== undefined, tx => tx.weeklyReview.update({
         where: { id, userId: ctx.userId },
         data: {
           ...rest,
           ...(weekStart ? { weekStart: new Date(weekStart) } : {}),
           ...(weekEnd   ? { weekEnd:   new Date(weekEnd)   } : {}),
         },
-      })
+      }))
     }),
 
   delete: protectedProcedure
@@ -327,10 +328,10 @@ export const weeklyReviewsRouter = router({
         select: { id: true },
       })
       if (existing) {
-        const row = await ctx.prisma.weeklyReview.update({
+        const row = await writeReviewText(ctx.prisma, "weekly_reviews", input.notes !== undefined, tx => tx.weeklyReview.update({
           where: { id: existing.id }, data,
           select: { id: true, status: true, executiveSummary: true },
-        })
+        }))
         if (input.notes !== undefined) {
           scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes)
         }
@@ -338,13 +339,13 @@ export const weeklyReviewsRouter = router({
       }
       const we = new Date(ws); we.setDate(ws.getDate() + 6)
       const label = `Semana del ${ws.toLocaleDateString("es", { day: "numeric", month: "short" })}`
-      const row = await ctx.prisma.weeklyReview.create({
+      const row = await writeReviewText(ctx.prisma, "weekly_reviews", input.notes !== undefined, tx => tx.weeklyReview.create({
         data: {
           userId: ctx.userId, weekStart: ws, weekEnd: we, weekLabel: label, weekRange: label,
           executiveSummary: input.notes ?? "", status: input.status ?? "draft",
         },
         select: { id: true, status: true, executiveSummary: true },
-      })
+      }))
       scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes ?? "")
       return { status: row.status, notes: row.executiveSummary }
     }),
