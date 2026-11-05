@@ -37,11 +37,18 @@ const m = vi.hoisted(() => ({
   success: undefined as
     | undefined
     | ((data: unknown, variables: Record<string, unknown>) => void),
+  deletionSuccess: undefined as
+    | undefined
+    | ((result: {
+        ok: boolean;
+        status: "completed" | "pending";
+      }) => Promise<void> | void),
+  logout: vi.fn(),
   invalidate: vi.fn(),
   push: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: m.push }) }));
-vi.mock("@/hooks/useLogout", () => ({ useLogout: () => vi.fn() }));
+vi.mock("@/hooks/useLogout", () => ({ useLogout: () => m.logout }));
 vi.mock("@/components/layout/top-bar", () => ({ TopBar: () => null }));
 vi.mock("@/app/perfil/components/ai-models-card", () => ({
   AiModelsCard: () => null,
@@ -86,7 +93,12 @@ vi.mock("@/lib/trpc/client", () => {
           },
         },
         changePassword: mutation(),
-        deleteAccount: mutation(),
+        deleteAccount: {
+          useMutation: (options: { onSuccess: typeof m.deletionSuccess }) => {
+            m.deletionSuccess = options.onSuccess;
+            return { mutate: vi.fn(), isPending: false };
+          },
+        },
       },
       preferences: {
         get: query(() => m.prefs),
@@ -105,10 +117,17 @@ vi.mock("@/lib/trpc/client", () => {
     },
   };
 });
-const timezoneDescriptor = Object.getOwnPropertyDescriptor(Intl, "supportedValuesOf");
+const timezoneDescriptor = Object.getOwnPropertyDescriptor(
+  Intl,
+  "supportedValuesOf",
+);
 beforeEach(() => {
   // Bound browser catalog fixture: these tests exercise state transitions, not Intl itself.
-  Object.defineProperty(Intl, "supportedValuesOf", { configurable: true, writable: true, value: vi.fn(() => ["UTC", "Asia/Tokyo", "Asia/Kathmandu"]) });
+  Object.defineProperty(Intl, "supportedValuesOf", {
+    configurable: true,
+    writable: true,
+    value: vi.fn(() => ["UTC", "Asia/Tokyo", "Asia/Kathmandu"]),
+  });
   sessionStorage.clear();
   vi.clearAllMocks();
   m.profile = {
@@ -121,9 +140,13 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
-  if (timezoneDescriptor) Object.defineProperty(Intl, "supportedValuesOf", timezoneDescriptor);
+  if (timezoneDescriptor)
+    Object.defineProperty(Intl, "supportedValuesOf", timezoneDescriptor);
   else Reflect.deleteProperty(Intl, "supportedValuesOf");
-  Object.defineProperty(window, "navigation", { configurable: true, value: undefined });
+  Object.defineProperty(window, "navigation", {
+    configurable: true,
+    value: undefined,
+  });
 });
 it("keeps FX text until save and removes the duplicate learning goal", () => {
   render(<PerfilPage />);
@@ -262,11 +285,39 @@ it("guards browser Back/Forward through the Navigation API including unsaved sec
 });
 
 it("searches the full browser timezone catalog while retaining a saved legacy value", () => {
- m.profile={...m.profile,timezone:"America/Legacy_Zone"};render(<PerfilPage/> )
- const zone=screen.getByLabelText("Zona horaria")
- expect(zone).toHaveValue("America/Legacy_Zone")
- fireEvent.change(screen.getByLabelText("Buscar zona horaria"),{target:{value:"Kathmandu"}})
- expect(screen.getByRole("option",{name:"Asia/Kathmandu"})).toBeInTheDocument()
- expect(screen.queryByRole("option",{name:"Asia/Tokyo"})).not.toBeInTheDocument()
- expect(zone).toHaveValue("America/Legacy_Zone")
-})
+  m.profile = { ...m.profile, timezone: "America/Legacy_Zone" };
+  render(<PerfilPage />);
+  const zone = screen.getByLabelText("Zona horaria");
+  expect(zone).toHaveValue("America/Legacy_Zone");
+  fireEvent.change(screen.getByLabelText("Buscar zona horaria"), {
+    target: { value: "Kathmandu" },
+  });
+  expect(
+    screen.getByRole("option", { name: "Asia/Kathmandu" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("option", { name: "Asia/Tokyo" }),
+  ).not.toBeInTheDocument();
+  expect(zone).toHaveValue("America/Legacy_Zone");
+});
+
+it.each(["completed", "pending"] as const)(
+  "clears authentication using shared logout after %s account deletion",
+  async (status) => {
+    render(<PerfilPage />);
+    fireEvent.change(screen.getByLabelText("Nombre"), {
+      target: { value: "Discarded" },
+    });
+    expect(sessionStorage.getItem("tj-profile-draft:qa")).toContain(
+      "Discarded",
+    );
+    await act(async () => {
+      await m.deletionSuccess?.({ ok: status === "completed", status });
+    });
+    expect(m.logout).toHaveBeenCalledOnce();
+    expect(sessionStorage.getItem("tj-profile-draft:qa")).toBeNull();
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  },
+);

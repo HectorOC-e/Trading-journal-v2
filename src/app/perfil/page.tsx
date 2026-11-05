@@ -377,7 +377,7 @@ export default function PerfilPage() {
   });
 
   const deleteMut = trpc.profile.deleteAccount.useMutation({
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       discardStoredDraft();
       if (result.status === "completed")
         toast.success("Cuenta y datos eliminados.");
@@ -385,9 +385,9 @@ export default function PerfilPage() {
         toast.info(
           "Eliminación en proceso. Los reintentos continuarán automáticamente; la limpieza aún no ha terminado.",
         );
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 2000);
+      // Auth deletion does not invalidate the JWT cookie immediately. Clear it,
+      // client caches and history through the same logout path as a normal exit.
+      await handleSignOut();
     },
     onError: (err) => toast.error(formatErrorForUser(err)),
   });
