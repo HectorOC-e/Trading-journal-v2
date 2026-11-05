@@ -128,6 +128,7 @@ export function AiModelsCard({
   const { data: settings } = settingsQuery;
   const dirtyRef = useRef(false);
   const restoredKey = useRef<string | null>(null);
+  const appliedSettings = useRef<string | null>(null);
   const [recovered, setRecovered] = useState(false);
   const storageKey = userId ? `tj-profile-models-draft:${userId}` : null;
   const { data: diag } = trpc.aiConfig.diagnostics.useQuery();
@@ -246,6 +247,11 @@ export function AiModelsCard({
 
   useEffect(() => {
     if (!settings || dirtyRef.current) return;
+    // Query adapters/refetches may return a new object with identical values.
+    // Hydrate once per confirmed configuration and user, not per reference.
+    const fingerprint = JSON.stringify([storageKey, snapshot(settings)]);
+    if (appliedSettings.current === fingerprint) return;
+    appliedSettings.current = fingerprint;
     loadSettings(settings);
     if (storageKey && restoredKey.current !== storageKey) {
       restoredKey.current = storageKey;

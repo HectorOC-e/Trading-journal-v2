@@ -13,6 +13,7 @@ import { DEFAULT_AI_SETTINGS } from "@/lib/ai/feature-models";
 const m = vi.hoisted(() => ({
   data: undefined as unknown,
   error: false,
+  freshObjects: false,
   refetch: vi.fn(),
   mutate: vi.fn(),
   invalidate: vi.fn(),
@@ -32,7 +33,7 @@ vi.mock("@/lib/trpc/client", () => ({
     aiSettings: {
       get: {
         useQuery: () => ({
-          data: m.data,
+          data: m.freshObjects && m.data ? structuredClone(m.data) : m.data,
           error: m.error ? new Error("Unavailable") : null,
           isLoading: !m.data && !m.error,
           isFetching: false,
@@ -80,6 +81,7 @@ beforeEach(() => {
   sessionStorage.clear();
   m.data = undefined;
   m.error = false;
+  m.freshObjects = false;
   vi.clearAllMocks();
 });
 afterEach(cleanup);
@@ -198,4 +200,16 @@ it("recovers only model settings scoped to the signed-in user and removes the dr
     screen.getByRole("textbox", { name: "Modelo por defecto" }),
   ).toHaveValue("saved-model");
   expect(sessionStorage.getItem(key)).toBeNull();
+});
+
+it("hydrates equivalent fresh query objects once and still accepts changed server values", async () => {
+  m.freshObjects = true;
+  m.data = { ...DEFAULT_AI_SETTINGS, defaultModel: "initial-confirmed" };
+  const { rerender } = render(<AiModelsCard userId="fresh-object-user" />);
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Modelo por defecto" })).toHaveValue("initial-confirmed"));
+  rerender(<AiModelsCard userId="fresh-object-user" />);
+  expect(screen.getByRole("button", { name: "Guardar modelos" })).toBeDisabled();
+  m.data = { ...DEFAULT_AI_SETTINGS, defaultModel: "new-confirmed" };
+  rerender(<AiModelsCard userId="fresh-object-user" />);
+  await waitFor(() => expect(screen.getByRole("textbox", { name: "Modelo por defecto" })).toHaveValue("new-confirmed"));
 });

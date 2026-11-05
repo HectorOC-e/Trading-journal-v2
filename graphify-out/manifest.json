@@ -384,9 +384,9 @@
     "semantic_hash": ""
   },
   "src/app/perfil/components/ai-models-card.tsx": {
-    "mtime": 1793846945.1942542,
-    "seen": 1793847166.277211,
-    "ast_hash": "ae7aab9866d3af65967a89b7b77b32c7",
+    "mtime": 1793847705.1316185,
+    "seen": 1793847747.5077593,
+    "ast_hash": "b97225111f476bcacdd261528ebfd595",
     "semantic_hash": ""
   },
   "src/app/perfil/components/palette-studio.tsx": {
@@ -3912,9 +3912,9 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-04-profile-reliability.md": {
-    "mtime": 1793800250.79134,
-    "seen": 1793847166.2783754,
-    "ast_hash": "bfbefca0e9bd2502763737f20df7dc89",
+    "mtime": 1793847332.5845718,
+    "seen": 1793847747.508905,
+    "ast_hash": "5f8f2a9ec8351014555df80492347676",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-04-profile-reliability-design.md": {
