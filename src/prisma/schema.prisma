@@ -1276,3 +1276,17 @@ model PracticeFeedback {
   @@index([practiceId, createdAt(sort: Desc)])
   @@map("practice_feedback")
 }
+
+// Deliberately no User relation: this intent must survive identity/data deletion.
+model AccountDeletionJob {
+  userId String @id @map("user_id") @db.Uuid
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  @@index([status, nextAttemptAt])
+  @@map("account_deletion_jobs")
+}
