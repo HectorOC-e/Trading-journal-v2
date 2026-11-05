@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import {
   Plus, X, Star, Circle, CheckCircle2, Pencil, Copy,
   Pause, Play, FlaskConical, Archive, Trash2, BarChart2,
@@ -20,6 +20,8 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { setupFormSchema, type SetupFormValues } from "@/domains/trading/schemas/setup-form-schema"
 import { SetupIntelligencePanel } from "@/components/playbook/setup-intelligence-panel"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { parseEdgeNumber, duplicateSetup, activeSetupPnl } from "@/domains/trading/services/playbook-reliability"
 import { ErrorCardsPanel } from "@/components/playbook/error-cards-panel"
 
 /* ── Types ── */
@@ -716,13 +718,37 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   const isEdit = !!editSetup
   const utils  = trpc.useUtils()
   const {
-    register, handleSubmit, watch, setValue, getValues, reset,
-    formState: { errors },
+    handleSubmit, watch, setValue, getValues, reset,
+    formState: { errors, isDirty },
   } = useZodForm(setupFormSchema, { defaultValues: FORM_INIT })
   const form = watch()
+  const { data: draftOwner } = trpc.profile.get.useQuery(undefined, { enabled: open, staleTime: 60_000 })
+  const draftKey = draftOwner?.id ? `playbook-draft:${draftOwner.id}:${editSetup?.id ?? "new"}` : null
+  const [recovery, setRecovery] = useState<SetupFormValues | null>(null)
+  const loadedDraft = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open) { loadedDraft.current = null; setRecovery(null); return }
+    if (!draftKey || loadedDraft.current === draftKey) return
+    loadedDraft.current = draftKey
+    try {
+      const saved = sessionStorage.getItem(draftKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed && Object.entries(FORM_INIT).every(([key, value]) => Array.isArray(value) ? Array.isArray(parsed[key]) && parsed[key].every((item: unknown) => typeof item === "string") : typeof parsed[key] === "string") && ["LONG", "SHORT", "AMBAS"].includes(parsed.direction) && ["ACTIVO", "EN_PRUEBA", "PAUSADO", "DESCARTADO"].includes(parsed.status)) setRecovery(parsed)
+      }
+    } catch { /* A blocked browser store must not block editing. */ }
+  }, [open, draftKey])
+  useEffect(() => {
+    if (!open || !draftKey || !isDirty) return
+    try { sessionStorage.setItem(draftKey, JSON.stringify(form)) } catch { /* Keep the live draft on storage failure. */ }
+  }, [open, draftKey, form, isDirty])
+  const clearDraft = () => { if (draftKey) { try { sessionStorage.removeItem(draftKey) } catch {} } }
+
   const [tab,         setTab]         = useState<"info" | "checklist" | "edge">("info")
   const [uploading,     setUploading]     = useState(false)
   const [uploadError,   setUploadError]   = useState<string | null>(null)
+  const [confirmClose, setConfirmClose] = useState(false)
+  const busyRef = useRef(false)
 
   /* ── Populate or clear form whenever the modal opens/closes ── */
   useEffect(() => {
@@ -756,16 +782,18 @@ function SetupModal({ open, onOpenChange, editSetup }: {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editSetup?.id])
 
-  const createMut = trpc.setups.create.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
-  const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => toast.error(formatErrorForUser(err)) })
+  const createMut = trpc.setups.create.useMutation({ onSuccess: () => { busyRef.current = false; clearDraft(); utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => { busyRef.current = false; toast.error(formatErrorForUser(err)) } })
+  const updateMut = trpc.setups.update.useMutation({ onSuccess: () => { busyRef.current = false; clearDraft(); utils.setups.list.invalidate(); onOpenChange(false) }, onError: (err) => { busyRef.current = false; toast.error(formatErrorForUser(err)) } })
 
   const set = <K extends keyof SetupFormValues>(key: K, val: SetupFormValues[K]) =>
     setValue(key, val as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
   /* ── Image upload via validated Route Handler ── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (busyRef.current) return
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
+    busyRef.current = true
     setUploading(true)
     setUploadError(null)
     const urls: string[] = []
@@ -790,20 +818,19 @@ function SetupModal({ open, onOpenChange, editSetup }: {
         failed++
       }
     }
-    setValue("images", [...getValues("images"), ...urls])
+    setValue("images", [...getValues("images"), ...urls], { shouldDirty: true })
+    busyRef.current = false
     setUploading(false)
     e.target.value = ""
     if (failed === 0) setUploadError(null)
   }
 
   const removeImage = (idx: number) =>
-    setValue("images", getValues("images").filter((_, i) => i !== idx))
+    setValue("images", getValues("images").filter((_, i) => i !== idx), { shouldDirty: true })
 
   const onValid = (f: SetupFormValues) => {
-    const toNum = (s: string): number | undefined => {
-      const n = parseFloat(s)
-      return isNaN(n) ? undefined : n
-    }
+    if (busyRef.current) return
+    const toNum = parseEdgeNumber
     const payload = {
       name: f.name.trim(), abbreviation: f.abbr.trim().toUpperCase(),
       market: f.market, direction: f.direction, status: f.status,
@@ -816,17 +843,35 @@ function SetupModal({ open, onOpenChange, editSetup }: {
       minR:         toNum(f.minR),
       maxR:         toNum(f.maxR),
     }
+    busyRef.current = true
     if (isEdit && editSetup) updateMut.mutate({ id: editSetup.id, ...payload })
     else createMut.mutate(payload)
   }
   // name + abbr live on the Información tab — jump there to surface errors.
-  const onInvalid = () => setTab("info")
+  const onInvalid = (invalid: { name?: unknown; abbr?: unknown }) => setTab(invalid.name || invalid.abbr ? "info" : "edge")
 
   const isSaving = createMut.isPending || updateMut.isPending || uploading
 
+  const requestClose = (next: boolean) => {
+    if (next) return onOpenChange(true)
+    if (isSaving || busyRef.current) return
+    if (isDirty) setConfirmClose(true)
+    else onOpenChange(false)
+  }
+  useEffect(() => {
+    if (!open) return
+    const preventLoss = (event: BeforeUnloadEvent) => { if (isDirty || isSaving) { event.preventDefault(); event.returnValue = "" } }
+    window.addEventListener("beforeunload", preventLoss)
+    return () => window.removeEventListener("beforeunload", preventLoss)
+  }, [open, isDirty, isSaving])
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <ConfirmDialog open={confirmClose} onOpenChange={setConfirmClose} title="¿Descartar cambios?" description="Los cambios del setup aún no se han guardado." confirmLabel="Descartar cambios" cancelLabel="Seguir editando" onConfirm={() => { setConfirmClose(false); clearDraft(); onOpenChange(false) }} />
+    <Dialog open={open} onOpenChange={requestClose}>
       <DialogContent className="max-w-[620px] max-h-[90vh] overflow-y-auto">
+        <fieldset disabled={isSaving} className="contents">
+        {recovery && <div role="status" className="mb-3 text-sm"><p>Hay un borrador sin guardar de este setup.</p><Button variant="ghost" onClick={() => { reset(recovery, { keepDefaultValues: true }); setRecovery(null) }}>Recuperar borrador</Button><Button variant="ghost" onClick={() => { clearDraft(); setRecovery(null) }}>Descartar borrador</Button></div>}
         <DialogHeader>
           <div className="flex items-center gap-3">
             <span className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center text-sm font-bold text-white"
@@ -1051,21 +1096,23 @@ function SetupModal({ open, onOpenChange, editSetup }: {
               <div>
                 <label className="text-eyebrow block mb-1.5">Win Rate esperado (%)</label>
                 <Input
-                  type="number" min={0} max={100} step={0.1}
+                  inputMode="decimal"
                   placeholder="Ej. 55"
                   value={form.expectedWr}
                   onChange={e => set("expectedWr", e.target.value)}
                 />
+                <FieldError message={errors.expectedWr?.message} />
                 <p className="text-[10px] text-[var(--ink-3)] mt-1">% de trades ganadores esperado.</p>
               </div>
               <div>
                 <label className="text-eyebrow block mb-1.5">Avg R esperado</label>
                 <Input
-                  type="number" step={0.01}
+                  inputMode="decimal"
                   placeholder="Ej. 1.5"
                   value={form.expectedAvgR}
                   onChange={e => set("expectedAvgR", e.target.value)}
                 />
+                <FieldError message={errors.expectedAvgR?.message} />
                 <p className="text-[10px] text-[var(--ink-3)] mt-1">R promedio por trade.</p>
               </div>
             </div>
@@ -1074,20 +1121,22 @@ function SetupModal({ open, onOpenChange, editSetup }: {
               <div>
                 <label className="text-eyebrow block mb-1.5">Mínimo R aceptable</label>
                 <Input
-                  type="number" step={0.01}
+                  inputMode="decimal"
                   placeholder="Ej. 1.0"
                   value={form.minR}
                   onChange={e => set("minR", e.target.value)}
                 />
+                <FieldError message={errors.minR?.message} />
               </div>
               <div>
                 <label className="text-eyebrow block mb-1.5">Máximo R objetivo</label>
                 <Input
-                  type="number" step={0.01}
+                  inputMode="decimal"
                   placeholder="Ej. 3.0"
                   value={form.maxR}
                   onChange={e => set("maxR", e.target.value)}
                 />
+                <FieldError message={errors.maxR?.message} />
               </div>
             </div>
 
@@ -1100,14 +1149,16 @@ function SetupModal({ open, onOpenChange, editSetup }: {
         )}
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="ghost" disabled={isSaving} onClick={() => requestClose(false)}>Cancelar</Button>
           {(tab === "checklist" || tab === "edge") && <Button variant="ghost" onClick={() => setTab("info")}>← Volver</Button>}
-          <Button variant="primary" onClick={handleSubmit(onValid, onInvalid)} disabled={isSaving}>
+          <Button variant="primary" onClick={() => void handleSubmit(onValid, onInvalid)()} disabled={isSaving}>
             {isSaving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear setup"}
           </Button>
         </DialogFooter>
+        </fieldset>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
 
@@ -1156,11 +1207,11 @@ export default function PlaybookPage() {
   const [statusF,       setStatusF]       = useState("TODOS")
   const [showDiscarded, setShowDiscarded] = useState(false)
 
-  const { data: setups = [], isLoading } = trpc.setups.list.useQuery(
+  const { data: setups = [], isLoading, error: setupsError, refetch: retrySetups } = trpc.setups.list.useQuery(
     { includeDiscarded: showDiscarded },
   )
   const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
-  const { data: dashStats }        = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
+  const { data: dashStats, error: statsError, refetch: retryStats } = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
   const { data: perfStats }        = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
 
   // Setup stats from server-side aggregation (all trades, not paginated 50)
@@ -1224,12 +1275,7 @@ export default function PlaybookPage() {
   }
   const handleSetStatus = (s: DbSetup, status: SetupStatus) => setStatusMut.mutate({ id: s.id, status })
   const handleDuplicate = (s: DbSetup) => {
-    createMut.mutate({
-      name: s.name + " (copia)", abbreviation: s.abbreviation,
-      market: s.market, direction: s.direction as Direction,
-      status: "EN_PRUEBA", description: s.description, color: s.color,
-      aplusChecklist: s.aplusChecklist, standardChecklist: s.standardChecklist,
-    })
+    createMut.mutate(duplicateSetup({ ...s, direction: s.direction as Direction }))
     setDrawerSetup(null)
   }
   const handleDelete = (s: DbSetup) => deleteMut.mutate(s.id)
@@ -1247,16 +1293,18 @@ export default function PlaybookPage() {
 
       {/* KPI strip */}
       {(() => {
+        if (statsError) return <div role="alert" className="mb-5"><p>No se pudieron cargar las estadísticas.</p><Button onClick={() => void retryStats()}>Reintentar</Button></div>
         const activeStats = active.map(s => setupStats[s.id]).filter(Boolean) as SetupStats[]
         const totalTrades = Object.values(setupStats).reduce((s, v) => s + v.total, 0)
-        const totalPnl    = Object.values(setupStats).reduce((s, v) => s + v.netPnl, 0)
+        const totalPnl    = activeSetupPnl(setups, setupStats)
+        const activeTrades = activeStats.reduce((sum, stats) => sum + stats.total, 0)
         const avgWinRate  = activeStats.length > 0
           ? Math.round(activeStats.reduce((s, v) => s + (v.total > 0 ? v.wins / v.total * 100 : 0), 0) / activeStats.length)
           : null
         const pnlStr = totalPnl !== 0 ? `${totalPnl >= 0 ? "+" : "-"}$${Math.abs(totalPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "$0"
         return (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-            <KpiBox label="P&L Total (activos)"  value={totalTrades > 0 ? pnlStr : "— sin trades"} sub={`${active.length} setups activos`}                     icon={<TrendingUp size={14} />} />
+            <KpiBox label="P&L Total (activos)"  value={activeTrades > 0 ? pnlStr : "— sin trades"} sub={`${active.length} setups activos`}                     icon={<TrendingUp size={14} />} />
             <KpiBox label="Win Rate promedio"     value={avgWinRate != null ? `${avgWinRate}%` : "—"}            sub="sobre setups activos"                                  icon={<Percent size={14} />} />
             <KpiBox label="Trades totales"        value={String(totalTrades)}            sub="todos los setups"                                      icon={<BarChart2 size={14} />} />
             <KpiBox label="En prueba"             value={String(inTest.length)} sub={inTest.map(s => s.abbreviation).join(", ") || "ninguno"} icon={<FlaskConical size={14} />} />
@@ -1294,6 +1342,8 @@ export default function PlaybookPage() {
       {/* Cards */}
       {isLoading ? (
         <div className="flex items-center justify-center py-20 text-[var(--ink-3)]">Cargando setups…</div>
+      ) : setupsError ? (
+        <div role="alert" className="py-12 text-center"><p>{formatErrorForUser(setupsError)}</p><Button onClick={() => void retrySetups()}>Reintentar</Button></div>
       ) : setups.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
           <p className="text-[var(--ink-2)] font-semibold">Aún no tienes setups</p>

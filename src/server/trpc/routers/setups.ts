@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, dashboardMutation } from "../init"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
@@ -21,10 +22,10 @@ const SetupInput = z.object({
   aplusChecklist:    z.array(z.string()).default([]),
   standardChecklist: z.array(z.string()).default([]),
   // ── Edge definition fields (T-VIII-002) ──────────────────────────────────
-  expectedWr:        z.number().min(0).max(100).optional(),
-  expectedAvgR:      z.number().optional(),
-  minR:              z.number().optional(),
-  maxR:              z.number().optional(),
+  expectedWr:        z.number().finite().min(0).max(100).nullish(),
+  expectedAvgR:      z.number().finite().nullish(),
+  minR:              z.number().finite().nullish(),
+  maxR:              z.number().finite().nullish(),
 })
 
 export const setupsRouter = router({
@@ -51,7 +52,7 @@ export const setupsRouter = router({
     ),
 
   create: dashboardMutation
-    .input(SetupInput)
+    .input(SetupInput.refine(data => data.minR == null || data.maxR == null || data.minR <= data.maxR, { path: ["maxR"], message: "El máximo debe ser mayor o igual al mínimo" }))
     .mutation(async ({ ctx, input }) => {
       const setup = await ctx.prisma.setup.create({
         data: { ...input, userId: ctx.userId },
@@ -61,7 +62,13 @@ export const setupsRouter = router({
     }),
 
   update: dashboardMutation
-    .input(z.object({ id: z.string().uuid() }).merge(SetupInput.partial()))
+    .input(z.object({ id: z.string().uuid(),
+      name: SetupInput.shape.name.optional(), abbreviation: SetupInput.shape.abbreviation.optional(),
+      market: z.string().optional(), direction: z.enum(["LONG", "SHORT", "AMBAS"]).optional(),
+      status: z.enum(SETUP_STATUSES).optional(), description: z.string().optional(), color: z.string().optional(),
+      images: z.array(z.string()).optional(), aplusChecklist: z.array(z.string()).optional(), standardChecklist: z.array(z.string()).optional(),
+      expectedWr: SetupInput.shape.expectedWr, expectedAvgR: SetupInput.shape.expectedAvgR, minR: SetupInput.shape.minR, maxR: SetupInput.shape.maxR,
+    }).refine(data => data.minR == null || data.maxR == null || data.minR <= data.maxR, { path: ["maxR"], message: "El máximo debe ser mayor o igual al mínimo" }))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
 
@@ -69,10 +76,19 @@ export const setupsRouter = router({
       const versionedFields = ["aplusChecklist", "standardChecklist", "direction"] as const
       const shouldVersion = versionedFields.some(f => data[f] !== undefined)
 
-      if (shouldVersion) {
-        const existing = await ctx.prisma.setup.findUniqueOrThrow({
-          where: { id, userId: ctx.userId },
-        })
+      const changesRange = data.minR !== undefined || data.maxR !== undefined
+      const existing = shouldVersion || changesRange
+        ? await ctx.prisma.setup.findUniqueOrThrow({ where: { id, userId: ctx.userId } })
+        : null
+      if (changesRange && existing) {
+        const minR = data.minR !== undefined ? data.minR : existing.minR
+        const maxR = data.maxR !== undefined ? data.maxR : existing.maxR
+        if (minR !== null && maxR !== null && Number(minR) > Number(maxR)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "El máximo debe ser mayor o igual al mínimo" })
+        }
+      }
+
+      if (shouldVersion && existing) {
         const hasChange = versionedFields.some(
           f => data[f] !== undefined && JSON.stringify(data[f]) !== JSON.stringify(existing[f])
         )

@@ -32,7 +32,7 @@ export const monthlyReviewNotesAdapter: CorpusAdapter<MonthlyReviewRow> = {
     return prisma.$queryRaw<Hit[]>`
       SELECT id, (1 - (summary_embedding <=> ${vec}::vector)) AS similarity
       FROM monthly_reviews
-      WHERE user_id = ${userId}::uuid AND summary_embedding IS NOT NULL
+      WHERE user_id = ${userId}::uuid AND summary_embedding IS NOT NULL AND BTRIM(summary) <> ''
       ORDER BY summary_embedding <=> ${vec}::vector
       LIMIT ${limit}`
   },
@@ -40,21 +40,22 @@ export const monthlyReviewNotesAdapter: CorpusAdapter<MonthlyReviewRow> = {
   async pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]> {
     return prisma.$queryRaw<PendingRow[]>`
       SELECT id, summary AS text FROM monthly_reviews
-      WHERE user_id = ${userId}::uuid AND summary <> '' AND summary_embedding IS NULL
+      WHERE user_id = ${userId}::uuid AND BTRIM(summary) <> '' AND summary_embedding IS NULL
       ORDER BY year DESC, month DESC
       LIMIT ${limit}`
   },
 
-  async writeVector(prisma: PrismaClient, id: string, vec: string): Promise<void> {
-    await prisma.$executeRaw`
-      UPDATE monthly_reviews SET summary_embedding = ${vec}::vector WHERE id = ${id}::uuid`
+  async writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number> {
+    return prisma.$executeRaw`
+      UPDATE monthly_reviews SET summary_embedding = ${vec}::vector WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+        AND summary = ${sourceText} AND summary_embedding IS NULL`
   },
 
   async counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts> {
     const rows = await prisma.$queryRaw<CorpusCounts[]>`
       SELECT COUNT(*)::int AS total,
-             COUNT(*) FILTER (WHERE summary <> '')::int AS "withText",
-             COUNT(*) FILTER (WHERE summary_embedding IS NOT NULL)::int AS embedded
+             COUNT(*) FILTER (WHERE BTRIM(summary) <> '')::int AS "withText",
+             COUNT(*) FILTER (WHERE summary_embedding IS NOT NULL AND BTRIM(summary) <> '')::int AS embedded
       FROM monthly_reviews WHERE user_id = ${userId}::uuid`
     return rows[0] ?? { total: 0, withText: 0, embedded: 0 }
   },

@@ -67,6 +67,8 @@ export interface SearchResult {
 }
 
 export interface IndexStatus {
+  checkedAt: string
+  state: "NO_KEY" | "EMPTY_CORPUS" | "NOT_INDEXED" | "PARTIAL" | "OK"
   corpus:   CorpusKey
   /** Rótulo humano, tomado del adaptador: la UI no duplica nombres de corpus. */
   label:    string
@@ -89,7 +91,7 @@ export interface CorpusAdapter<Row = never> {
   label: string
   knn(prisma: PrismaClient, userId: string, vec: string, limit: number): Promise<Hit[]>
   pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]>
-  writeVector(prisma: PrismaClient, id: string, vec: string): Promise<void>
+  writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number>
   counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts>
   hydrate(prisma: PrismaClient, userId: string, ids: string[]): Promise<Row[]>
   rowId(row: Row): string

@@ -32,8 +32,8 @@ export default function MonthlyReportPage() {
       vm={vm}
       letterSlot={<MonthlyLetter data={r} year={year} month={month} monthLabel={monthLabel} />}
       aiSlot={<AiAnalysisCard period={{ kind: "monthly", year, month }} initial={vm.ai} />}
-      actions={<ReviewActions period={{ kind: "monthly", year, month }} initialStatus={vm.status} />}
-      notesSlot={<ReviewNotes period={{ kind: "monthly", year, month }} initialNotes={vm.notes} />}
+      actions={<ReviewActions key={`${year}-${month}`} period={{ kind: "monthly", year, month }} initialStatus={vm.status} />}
+      notesSlot={<ReviewNotes period={{ kind: "monthly", year, month }} initialNotes={vm.notes} userId={r.userId} />}
     />
   )
 }

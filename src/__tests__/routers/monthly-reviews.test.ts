@@ -8,7 +8,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }))
 const USER_ID = "user-monthly-test"
 
 function makeMockPrisma() {
-  return {
+  const db = {
     monthlyReview: {
       findMany:   vi.fn(),
       findFirst:  vi.fn(),
@@ -24,7 +24,9 @@ function makeMockPrisma() {
     account:     { findMany:   vi.fn().mockResolvedValue([]) },
     trade:       { findMany:   vi.fn().mockResolvedValue([]) },
     monthlyGoal: { findMany:   vi.fn().mockResolvedValue([]) },
+    $executeRaw: vi.fn().mockResolvedValue(1),
   }
+  return Object.assign(db, { $transaction: vi.fn(async (run: (tx: typeof db) => Promise<unknown>) => run(db)) })
 }
 
 function makeReview(overrides: Record<string, unknown> = {}) {

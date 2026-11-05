@@ -25,7 +25,7 @@ export const tradeNotesAdapter: CorpusAdapter<TradeRow> = {
     return prisma.$queryRaw<Hit[]>`
       SELECT id, (1 - (notes_embedding <=> ${vec}::vector)) AS similarity
       FROM trades
-      WHERE user_id = ${userId}::uuid AND notes_embedding IS NOT NULL
+      WHERE user_id = ${userId}::uuid AND notes_embedding IS NOT NULL AND BTRIM(notes) <> ''
       ORDER BY notes_embedding <=> ${vec}::vector
       LIMIT ${limit}`
   },
@@ -33,21 +33,22 @@ export const tradeNotesAdapter: CorpusAdapter<TradeRow> = {
   async pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]> {
     return prisma.$queryRaw<PendingRow[]>`
       SELECT id, notes AS text FROM trades
-      WHERE user_id = ${userId}::uuid AND notes <> '' AND notes_embedding IS NULL
+      WHERE user_id = ${userId}::uuid AND BTRIM(notes) <> '' AND notes_embedding IS NULL
       ORDER BY date DESC
       LIMIT ${limit}`
   },
 
-  async writeVector(prisma: PrismaClient, id: string, vec: string): Promise<void> {
-    await prisma.$executeRaw`
-      UPDATE trades SET notes_embedding = ${vec}::vector WHERE id = ${id}::uuid`
+  async writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number> {
+    return prisma.$executeRaw`
+      UPDATE trades SET notes_embedding = ${vec}::vector WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+        AND notes = ${sourceText}`
   },
 
   async counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts> {
     const rows = await prisma.$queryRaw<CorpusCounts[]>`
       SELECT COUNT(*)::int AS total,
-             COUNT(*) FILTER (WHERE notes <> '')::int AS "withText",
-             COUNT(*) FILTER (WHERE notes_embedding IS NOT NULL)::int AS embedded
+             COUNT(*) FILTER (WHERE BTRIM(notes) <> '')::int AS "withText",
+             COUNT(*) FILTER (WHERE notes_embedding IS NOT NULL AND BTRIM(notes) <> '')::int AS embedded
       FROM trades WHERE user_id = ${userId}::uuid`
     return rows[0] ?? { total: 0, withText: 0, embedded: 0 }
   },

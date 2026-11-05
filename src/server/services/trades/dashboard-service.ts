@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard stats service (TD-018) — the dashboardStats orchestration moved out
 // of the trades router. Loads accounts/trades/setups/markets, normalizes (FX,
@@ -96,15 +97,6 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const includePractice = input?.includePractice ?? false
   const financialScope  = (includePractice || singleAccount) ? "all" : "real"
 
-  // ── Cache lookup (feature-flagged) ────────────────────────────────────
-  // Before any read: the key is derived entirely from `input`, so a hit costs
-  // one query rather than one plus whatever we fetched to get here.
-  const cacheKey = `${period}:${input?.accountId ?? "all"}:${financialScope}`
-  if (isCacheEnabled()) {
-    const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
-    if (hit) return hit
-  }
-
   // ── Fetch, round 1: everything that depends on nothing ────────────────
   // Accounts are fetched here rather than after the profile because they never
   // needed it. Only active/paused ones; archived (INACTIVE/LOST) are excluded
@@ -155,6 +147,15 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const fxByAccount = new Map(activeAccounts.map(a => [a.id, fxFactor(a.currency, baseCurrency, fxRates)]))
   const fx = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
+  // Version and request boundaries isolate calculations; profile/account snapshots
+  // also prevent stale FX, timezone, limits or starting-capital results.
+  const dependencyHash = createHash("sha256").update(JSON.stringify({ userRow, activeAccounts })).digest("hex")
+  const cacheKey = `v2:${period}:${input?.accountId ?? "all"}:${financialScope}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
+  if (isCacheEnabled()) {
+    const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
+    if (hit) return hit
+  }
+
   // ── Fetch, round 2: everything that needed round 1 ────────────────────
   const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows, todayRaw] = await Promise.all([
     prisma.trade.findMany({
@@ -163,12 +164,6 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
         status:    "CLOSED",
         accountId: { in: activeAccountIds },
         ...(input?.accountId && { accountId: input.accountId }),
-        ...((queryFrom || queryTo) ? {
-          date: {
-            ...(queryFrom && { gte: new Date(queryFrom) }),
-            ...(queryTo   && { lte: new Date(queryTo)   }),
-          },
-        } : {}),
       },
       select: {
         id: true, accountId: true, symbol: true, direction: true,
@@ -216,7 +211,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   }]))
 
   // ── Normalize trades ──────────────────────────────────────────────────
-  const allTrades: MinimalTrade[] = tradeRows.map(t => ({
+  const history: MinimalTrade[] = tradeRows.map(t => ({
     id:        t.id,
     accountId: t.accountId,
     symbol:    t.symbol,
@@ -236,6 +231,8 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     pointValue: marketBySymbol.get(t.symbol)?.pointValue ?? 1,
   }))
 
+  const allTrades = history.filter(t => (!queryFrom || t.date >= queryFrom) && (!queryTo || t.date <= queryTo))
+
   // ── Practice partition ────────────────────────────────────────────────
   // Financial/performance builders see only real accounts by default;
   // `allTrades` is reserved for behavioural (discipline) metrics, which count
@@ -243,6 +240,10 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const practiceIds = new Set(activeAccounts.filter(a => isPracticeType(a.type)).map(a => a.id))
   const trades   = financialScope === "all" ? allTrades      : allTrades.filter(t => !practiceIds.has(t.accountId))
   const accounts = financialScope === "all" ? activeAccounts : activeAccounts.filter(a => !practiceIds.has(a.id))
+
+  // Current balances and risk stop at the local trading day, even when the
+  // requested performance range includes future-dated journal entries.
+  const lifetimeTrades = history.filter(t => t.date <= today && (financialScope === "all" || !practiceIds.has(t.accountId)))
 
   const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) * fx(a.id) }))
   const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
@@ -273,7 +274,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
 
   // ── Core analytics (service delegation) ──────────────────────────────
   const kpis         = buildKpis(trades, today, monthStart, weekStart)
-  const accountStats = buildAccountStats(trades, acctBalances, today, monthStart, weekStart, limitsById)
+  const accountStats = buildAccountStats(lifetimeTrades, acctBalances, today, monthStart, weekStart, limitsById)
 
   // ── Live leverage exposure from OPEN positions ───────────────────────────
   const balanceById = new Map(accountStats.map(s => [s.accountId, s.balance]))
@@ -307,8 +308,8 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // ── Prop firm status ──────────────────────────────────────────────────
   const propFirmStatus = buildPropFirmStatus(
     acctWithLimits,
-    trades,
-    todayRaw.map(t => ({ accountId: t.accountId, pnl: t.pnl != null ? Number(t.pnl) : null, status: t.status })),
+    lifetimeTrades,
+    todayRaw.map(t => ({ accountId: t.accountId, pnl: t.pnl != null ? Number(t.pnl) * fx(t.accountId) : null, status: t.status })),
   )
 
   // ── Recent trades ─────────────────────────────────────────────────────

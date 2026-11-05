@@ -28,8 +28,8 @@ export default function WeeklyReportPage() {
     <ReviewReportShell
       vm={vm}
       aiSlot={<AiAnalysisCard period={{ kind: "weekly", weekStart }} initial={vm.ai} />}
-      actions={<ReviewActions period={{ kind: "weekly", weekStart }} initialStatus={vm.status} />}
-      notesSlot={<ReviewNotes period={{ kind: "weekly", weekStart }} initialNotes={vm.notes} />}
+      actions={<ReviewActions key={weekStart} period={{ kind: "weekly", weekStart }} initialStatus={vm.status} />}
+      notesSlot={<ReviewNotes period={{ kind: "weekly", weekStart }} initialNotes={vm.notes} userId={r.userId} />}
       learningSlot={<LearningSummary weekStart={weekStart} />}
     />
   )

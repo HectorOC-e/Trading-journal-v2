@@ -25,7 +25,7 @@ export const setupNotesAdapter: CorpusAdapter<SetupRow> = {
     return prisma.$queryRaw<Hit[]>`
       SELECT id, (1 - (description_embedding <=> ${vec}::vector)) AS similarity
       FROM setups
-      WHERE user_id = ${userId}::uuid AND description_embedding IS NOT NULL
+      WHERE user_id = ${userId}::uuid AND description_embedding IS NOT NULL AND BTRIM(description) <> ''
       ORDER BY description_embedding <=> ${vec}::vector
       LIMIT ${limit}`
   },
@@ -33,21 +33,22 @@ export const setupNotesAdapter: CorpusAdapter<SetupRow> = {
   async pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]> {
     return prisma.$queryRaw<PendingRow[]>`
       SELECT id, description AS text FROM setups
-      WHERE user_id = ${userId}::uuid AND description <> '' AND description_embedding IS NULL
+      WHERE user_id = ${userId}::uuid AND BTRIM(description) <> '' AND description_embedding IS NULL
       ORDER BY updated_at DESC
       LIMIT ${limit}`
   },
 
-  async writeVector(prisma: PrismaClient, id: string, vec: string): Promise<void> {
-    await prisma.$executeRaw`
-      UPDATE setups SET description_embedding = ${vec}::vector WHERE id = ${id}::uuid`
+  async writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number> {
+    return prisma.$executeRaw`
+      UPDATE setups SET description_embedding = ${vec}::vector WHERE id = ${id}::uuid AND user_id = ${userId}::uuid
+        AND description = ${sourceText}`
   },
 
   async counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts> {
     const rows = await prisma.$queryRaw<CorpusCounts[]>`
       SELECT COUNT(*)::int AS total,
-             COUNT(*) FILTER (WHERE description <> '')::int AS "withText",
-             COUNT(*) FILTER (WHERE description_embedding IS NOT NULL)::int AS embedded
+             COUNT(*) FILTER (WHERE BTRIM(description) <> '')::int AS "withText",
+             COUNT(*) FILTER (WHERE description_embedding IS NOT NULL AND BTRIM(description) <> '')::int AS embedded
       FROM setups WHERE user_id = ${userId}::uuid`
     return rows[0] ?? { total: 0, withText: 0, embedded: 0 }
   },

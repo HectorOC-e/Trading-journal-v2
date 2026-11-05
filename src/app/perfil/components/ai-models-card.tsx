@@ -122,7 +122,8 @@ const persistedModels = z.object({
 export function AiModelsCard({
   onDirtyChange,
   userId,
-}: { onDirtyChange?: (dirty: boolean) => void; userId?: string } = {}) {
+  timezone = "UTC",
+}: { onDirtyChange?: (dirty: boolean) => void; userId?: string; timezone?: string } = {}) {
   const utils = trpc.useUtils();
   const settingsQuery = trpc.aiSettings.get.useQuery();
   const { data: settings } = settingsQuery;
@@ -163,7 +164,8 @@ export function AiModelsCard({
     onError: (err) => toast.error(formatErrorForUser(err)),
   });
 
-  const { data: indexRows = [] } = trpc.aiConfig.indexStatus.useQuery();
+  const indexQuery = trpc.aiConfig.indexStatus.useQuery();
+  const indexRows = indexQuery.data ?? [];
   const reindexMut = trpc.aiConfig.reindex.useMutation({
     onSuccess: (r) => {
       utils.aiConfig.indexStatus.invalidate();
@@ -850,12 +852,21 @@ export function AiModelsCard({
               opacity: reindexMut.isPending ? 0.6 : 1,
             }}
           >
-            {reindexMut.isPending ? "Indexando…" : "Indexar ahora"}
+            {reindexMut.isPending ? "Indexando…" : reindexMut.error ? "Reintentar indexación" : "Indexar ahora"}
           </Button>
         </div>
         <p style={{ fontSize: 11.5, color: "var(--ink-3)", marginBottom: 10 }}>
           Cuántas de tus notas puede encontrar el Coach por significado.
         </p>
+        <Button type="button" onClick={() => void indexQuery.refetch()} disabled={indexQuery.isFetching}>
+          {indexQuery.isFetching ? "Consultando…" : indexQuery.error ? "Reintentar consulta" : "Actualizar estado"}
+        </Button>
+        {indexQuery.isLoading && <p role="status">Consultando índice…</p>}
+        {indexQuery.error && <p role="alert">No se pudo consultar el índice. {formatErrorForUser(indexQuery.error)}</p>}
+        {indexRows[0]?.checkedAt && <p style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+          Estado comprobado: {new Date(indexRows[0].checkedAt).toLocaleString("es-ES", { timeZone: timezone })} ({timezone})
+        </p>}
+        {reindexMut.error && <p role="alert">{formatErrorForUser(reindexMut.error)}</p>}
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {indexRows.map((row) => {
             const done = row.withText > 0 && row.embedded >= row.withText;
@@ -877,7 +888,7 @@ export function AiModelsCard({
                     color: done ? "var(--win)" : "var(--ink-3)",
                   }}
                 >
-                  {row.embedded}/{row.withText} indexadas
+                  {row.embedded}/{row.withText} indexadas · {row.state === "NO_KEY" ? "Sin clave de embeddings" : row.state === "EMPTY_CORPUS" ? "Sin notas" : row.state === "OK" ? "Actualizado" : "Pendiente"}
                 </span>
               </div>
             );

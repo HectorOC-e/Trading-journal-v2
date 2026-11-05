@@ -12,6 +12,8 @@ import { AiModelsCard } from "@/app/perfil/components/ai-models-card";
 import { DEFAULT_AI_SETTINGS } from "@/lib/ai/feature-models";
 const m = vi.hoisted(() => ({
   data: undefined as unknown,
+  indexError: false,
+  indexRows: [] as unknown[],
   error: false,
   freshObjects: false,
   refetch: vi.fn(),
@@ -52,7 +54,7 @@ vi.mock("@/lib/trpc/client", () => ({
     aiConfig: {
       diagnostics: { useQuery: () => ({}) },
       healthCheck: { useMutation: () => ({ mutate: vi.fn() }) },
-      indexStatus: { useQuery: () => ({ data: [] }) },
+      indexStatus: { useQuery: () => ({ data: m.indexRows, error: m.indexError ? new Error("Index unavailable") : null, refetch: m.refetch }) },
       reindex: { useMutation: () => ({ mutate: vi.fn() }) },
     },
   },
@@ -81,6 +83,8 @@ beforeEach(() => {
   sessionStorage.clear();
   m.data = undefined;
   m.error = false;
+  m.indexError = false;
+  m.indexRows = [];
   m.freshObjects = false;
   vi.clearAllMocks();
 });
@@ -212,4 +216,19 @@ it("hydrates equivalent fresh query objects once and still accepts changed serve
   m.data = { ...DEFAULT_AI_SETTINGS, defaultModel: "new-confirmed" };
   rerender(<AiModelsCard userId="fresh-object-user" />);
   await waitFor(() => expect(screen.getByRole("textbox", { name: "Modelo por defecto" })).toHaveValue("new-confirmed"));
+});
+
+it("shows the actual index check time and a retry when status fails", () => {
+  m.data = DEFAULT_AI_SETTINGS;
+  m.indexRows = [{ corpus: "weekly_reviews", label: "Reviews semanales", total: 2, withText: 2, embedded: 1, state: "PARTIAL", checkedAt: "2026-11-05T12:34:00.000Z" }];
+  const { rerender } = render(<AiModelsCard />);
+  expect(screen.getByText(/1\/2 indexadas · Pendiente/)).toBeInTheDocument();
+  expect(screen.getByText(/Estado comprobado:/)).toHaveTextContent("UTC");
+  fireEvent.click(screen.getByRole("button", { name: "Actualizar estado" }));
+  expect(m.refetch).toHaveBeenCalledTimes(1);
+  m.indexError = true;
+  rerender(<AiModelsCard />);
+  expect(screen.getByText(/No se pudo consultar el índice/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reintentar consulta" }));
+  expect(m.refetch).toHaveBeenCalledTimes(2);
 });

@@ -122,7 +122,7 @@ export async function loadMonthlyReport(prisma: PrismaClient, userId: string, ye
   }))
 
   const avgScore = (rows: { weekStart: Date; disciplineScore: number }[], from: Date, to: Date) => {
-    const s = rows.filter(r => r.weekStart >= from && r.weekStart < to).map(r => r.disciplineScore).filter(n => n > 0)
+    const s = rows.filter(r => r.weekStart >= from && r.weekStart < to).map(r => r.disciplineScore).filter(n => Number.isFinite(n) && n >= 0)
     return s.length ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : null
   }
 
@@ -133,7 +133,7 @@ export async function loadMonthlyReport(prisma: PrismaClient, userId: string, ye
     accountNames: Object.fromEntries(accounts.map(a => [a.id, a.name])),
     setupNames:   Object.fromEntries(setups.map(s => [s.id, s.name])),
     violationTags: VIOLATION_TAGS,
-    monthScore: saved?.overallScore ?? avgScore(weeklies, monthStart, monthEnd),
+    monthScore: avgScore(weeklies, monthStart, monthEnd) ?? saved?.pillarDiscipline ?? null,
     prevScore:  avgScore(weeklies, prevStart, monthStart),
     saved: saved ? { summary: saved.summary, keyThemes: saved.keyThemes, goalsSet: saved.goalsSet, goalsMet: saved.goalsMet, overallScore: saved.overallScore } : null,
   })

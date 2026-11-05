@@ -43,3 +43,31 @@ describe("pipeline.search", () => {
     expect(out.outcomes.every(o => o.state === "NO_KEY")).toBe(true)
   })
 })
+
+import { reindex, scheduleEmbedding } from "@/server/services/retrieval/pipeline"
+import { weeklyReviewNotesAdapter as weekly } from "@/server/services/retrieval/corpora/weekly-review-notes"
+import { afterEach } from "vitest"
+afterEach(() => vi.restoreAllMocks())
+
+it("retries pending notes when the embedding key is restored ", async () => {
+  vi.mocked(resolveEmbeddingCall).mockResolvedValue(noKey as never)
+  vi.spyOn(weekly, "counts").mockResolvedValue({ total: 1, withText: 1, embedded: 0 })
+  expect(await reindex(prisma, "owner", { corpus: "weekly_reviews" })).toEqual({ embedded: 0, failed: 0, remaining: 1 })
+  vi.mocked(resolveEmbeddingCall).mockResolvedValue(withKey as never)
+  vi.mocked(embedText).mockResolvedValue([1])
+  vi.spyOn(weekly, "pending").mockResolvedValue([{ id: "review", text: "Actual" }])
+  const write = vi.spyOn(weekly, "writeVector").mockResolvedValue(1)
+  expect(await reindex(prisma, "owner", { corpus: "weekly_reviews" })).toEqual({ embedded: 1, failed: 0, remaining: 1 })
+  expect(write).toHaveBeenCalledWith(prisma, "review", "[1]", "Actual", "owner")
+})
+
+it("carries the original source into a delayed background write so changed notes cannot be overwritten", async () => {
+  vi.mocked(resolveEmbeddingCall).mockResolvedValue(withKey as never)
+  let finish!: (value: number[]) => void
+  vi.mocked(embedText).mockImplementation(() => new Promise(resolve => { finish = resolve }))
+  const write = vi.spyOn(weekly, "writeVector").mockResolvedValue(0)
+  scheduleEmbedding(prisma, "owner", "weekly_reviews", "review", "Old source")
+  await vi.waitFor(() => expect(finish).toBeTypeOf("function"))
+  finish([1])
+  await vi.waitFor(() => expect(write).toHaveBeenCalledWith(prisma, "review", "[1]", "Old source", "owner"))
+})

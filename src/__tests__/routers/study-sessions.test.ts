@@ -366,3 +366,13 @@ describe("all planned sessions", () => {
     expect(prisma.studySession.findMany).toHaveBeenCalledWith(expect.objectContaining({ cursor: { id }, skip: 1 }))
   })
 })
+
+it.each(["ABANDONED", "MASTERED", "IN_REVIEW"])("study finish keeps %s and records first observed completion", async status => {
+  const { caller, prisma } = setup()
+  prisma.studySession.findFirst.mockResolvedValue({ id, resourceId: id, status: "active" })
+  prisma.learningResource.findUniqueOrThrow.mockResolvedValue({ ...resource, currentUnits: 90, status, completedAt: null })
+  await caller.finish({ id, durationMin: 10 })
+  const data = prisma.learningResource.update.mock.calls[0][0].data
+  expect(data).toMatchObject({ currentUnits: 100, status })
+  expect(data).toHaveProperty("completedAt", expect.any(Date))
+})

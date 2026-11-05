@@ -11,4 +11,8 @@ Las regresiones reproducían dos sesiones activas distintas, la ausencia de comp
 
 ## Datos anteriores
 
-La inspección de producción encontró tres recursos ajenos a QA con estado COMPLETED y completedAt nulo. Uno incluso tiene progreso actual inferior al total. Sus sesiones no permiten reconstruir de forma inequívoca la primera finalización: no se reescriben ni se inventan fechas históricas. Las nuevas finalizaciones registran el instante observado; también cuando el recurso conserva un estado explícito de repaso, dominio o archivo.
+La inspección de producción encontró tres recursos ajenos a QA con estado COMPLETED y completedAt nulo. Uno incluso tiene progreso actual inferior al total. Sus sesiones no permiten reconstruir de forma inequívoca la primera finalización: no se reescriben ni se inventan fechas históricas. Las nuevas finalizaciones registran el instante observado; también cuando una sesión alcanza el total y el recurso conserva un estado explícito de repaso, dominio o archivo. La edición de unidades conserva esos estados sin completar explícitamente el recurso ni rellenar su fecha histórica.
+
+## Edición de unidades
+
+El editor, el control de progreso y el cierre de sesiones comparten la decisión de ciclo de vida y bloquean la fila del recurso antes de leer sus unidades. Alcanzar el total completa un recurso pendiente o en curso; reducir las unidades de uno COMPLETED lo vuelve a abrir. La primera fecha de finalización se conserva al reabrir y repetir la finalización: es el punto de referencia histórico de setupImpact y resourceImpactRanking, no una indicación del estado actual. El contador mensual exige además un estado COMPLETED, IN_REVIEW o MASTERED, por lo que no incluye un recurso reabierto.

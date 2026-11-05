@@ -55,7 +55,7 @@ describe("reindex — un fallo por fila no aborta el lote", () => {
         if (call === 1) return [{ id: "a", text: "uno" }, { id: "b", text: "dos" }]
         return [{ total: 2, withText: 2, embedded: 1 }]
       }),
-      $executeRaw: vi.fn(),
+      $executeRaw: vi.fn().mockResolvedValue(1),
     } as never
   }
 

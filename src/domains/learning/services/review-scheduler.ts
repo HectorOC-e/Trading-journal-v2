@@ -33,3 +33,22 @@ export function computeResourceStatus(
   if (currentUnits > 0) return "IN_PROGRESS"
   return "PENDING"
 }
+
+/** Unit edits control progress states; explicit review/archive states are preserved.
+ * completedAt is the first completion anchor used by setup-impact analytics.
+ */
+export function resourceProgressLifecycle(
+  existing: { status: string; completedAt: Date | null },
+  currentUnits: number | null,
+  totalUnits: number | null,
+  options: { recordExplicitCompletion?: boolean; now?: Date } = {},
+): { status: string; completedAt?: Date } {
+  const progressStatus = computeResourceStatus(currentUnits ?? 0, totalUnits)
+  const explicitStatus = ["ABANDONED", "MASTERED", "IN_REVIEW"].includes(existing.status)
+  const status = explicitStatus ? existing.status : progressStatus
+  return {
+    status,
+    ...(progressStatus === "COMPLETED" && (!explicitStatus || options.recordExplicitCompletion) && !existing.completedAt
+      ? { completedAt: options.now ?? new Date() } : {}),
+  }
+}

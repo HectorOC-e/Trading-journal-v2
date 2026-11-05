@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server"
 import type { Prisma } from "@/lib/generated/prisma/client"
+import { resourceProgressLifecycle } from "@/domains/learning/services/review-scheduler"
 import { applyStudyFinish } from "@/domains/learning/services/study-session-service"
 
 /** Serialize increments for the same resource, including finishes of different
@@ -24,15 +25,12 @@ export async function applyStudySessionProgress(
     select: { progressType: true, currentUnits: true, totalUnits: true, status: true, completedAt: true },
   })
   const update = applyStudyFinish(resource, durationMin)
-  const preserveStatus = ["MASTERED", "IN_REVIEW", "ABANDONED"].includes(resource.status)
-  const status = preserveStatus ? resource.status : update?.status ?? resource.status
   const data = update
-    ? { currentUnits: update.currentUnits, progressPct: update.progressPct, status }
+    ? { currentUnits: update.currentUnits, progressPct: update.progressPct, ...resourceProgressLifecycle(resource, update.currentUnits, resource.totalUnits, { recordExplicitCompletion: true }) }
     : (resource.status === "PENDING" ? { status: "IN_PROGRESS" } : {})
   await tx.learningResource.update({
     where: { id: resourceId, userId },
     data: { ...data,
-      ...(update?.status === "COMPLETED" && !resource.completedAt ? { completedAt: new Date() } : {}),
       ...(markForReview ? { markedForReview: true } : {}) },
   })
   return { progressTypeAtFinish: resource.progressType, progressUnitsApplied: update ? update.currentUnits - (resource.currentUnits ?? 0) : 0 }
