@@ -6,6 +6,16 @@ import { sendEmail, emailFailureMessage } from "@/server/services/email/resend-c
 const PRIORITIES = ["P0", "P1", "P2", "P3"] as const
 const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
 
+// Tuple cursors retain their boundary even if that notification is deleted.
+const cursorUuid = z.string().uuid()
+const cursorInstant = z.iso.datetime().refine(value => /\.\d{3}(?:\d{3})?Z$/.test(value))
+function decodeNotificationCursor(cursor: string): { createdAt: string; id: string } | null {
+  const parts = cursor.split("|")
+  if (parts.length !== 2 || !cursorInstant.safeParse(parts[0]).success || !cursorUuid.safeParse(parts[1]).success) return null
+  return { createdAt: parts[0], id: parts[1] }
+}
+const notificationCursor = z.string().max(128).refine(value => cursorUuid.safeParse(value).success || decodeNotificationCursor(value) !== null, "Cursor de notificaciones inválido")
+
 /** Minimal self-contained HTML for the delivery-test email (light theme). */
 function testEmailHtml(name: string | null): string {
   const hi = name ? `Hola ${name},` : "Hola,"
@@ -43,8 +53,8 @@ export const notificationsRouter = router({
   list: protectedProcedure
     .input(
       z.object({
-        cursor:    z.string().uuid().nullish(),
-        limit:     z.number().min(1).max(100).default(20),
+        cursor:    notificationCursor.nullish(),
+        limit:     z.number().int().min(1).max(100).default(20),
         unreadOnly: z.boolean().default(false),
         includeArchived: z.boolean().default(false),
         category:  z.enum(CATEGORIES).optional(),
@@ -53,21 +63,44 @@ export const notificationsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const limit = input?.limit ?? 20
-      const rows = await ctx.prisma.notification.findMany({
-        where: {
-          userId: ctx.userId,
-          ...(input?.includeArchived ? {} : { archivedAt: null }),
-          ...(input?.unreadOnly ? { readAt: null } : {}),
-          ...(input?.category ? { category: input.category } : {}),
-          ...(input?.priority ? { priority: input.priority } : {}),
-        },
-        orderBy: { createdAt: "desc" },
-        take: limit + 1,
-        ...(input?.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      let boundary = input?.cursor ? decodeNotificationCursor(input.cursor) : null
+      if (input?.cursor && !boundary) {
+        // Preserve PostgreSQL microseconds when resolving legacy UUID clients too.
+        const anchors = await ctx.prisma.$queryRaw<{ id: string; createdAt: string }[]>`
+          SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "createdAt"
+          FROM notifications WHERE user_id = ${ctx.userId}::uuid AND id = ${input.cursor}::uuid
+        `
+        boundary = anchors[0] ?? null
+        if (!boundary) throw new TRPCError({ code: "BAD_REQUEST", message: "El cursor anterior ya no existe. Actualiza las notificaciones." })
+      }
+      // Prisma Date truncates PostgreSQL microseconds. Keep the boundary as exact
+      // database text and compare in PostgreSQL, never via a JavaScript Date.
+      const page = await ctx.prisma.$queryRaw<{ id: string; createdAt: string }[]>`
+        SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "createdAt"
+        FROM notifications
+        WHERE user_id = ${ctx.userId}::uuid
+          AND (${input?.includeArchived ?? false}::boolean OR archived_at IS NULL)
+          AND (${!(input?.unreadOnly ?? false)}::boolean OR read_at IS NULL)
+          AND (${input?.category ?? null}::text IS NULL OR category = ${input?.category ?? null}::text)
+          AND (${input?.priority ?? null}::text IS NULL OR priority = ${input?.priority ?? null}::text)
+          AND (${boundary?.createdAt ?? null}::timestamptz IS NULL
+            OR (created_at, id) < (${boundary?.createdAt ?? null}::timestamptz, ${boundary?.id ?? null}::uuid))
+        ORDER BY created_at DESC, id DESC
+        LIMIT ${limit + 1}
+      `
+      const hasMore = page.length > limit
+      const selected = page.slice(0, limit)
+      const rows = selected.length ? await ctx.prisma.notification.findMany({
+        where: { userId: ctx.userId, id: { in: selected.map(row => row.id) } },
+      }) : []
+      const byId = new Map(rows.map(row => [row.id, row]))
+      const items = selected.flatMap(key => {
+        const row = byId.get(key.id)
+        return row ? [{ ...row, params: row.params as unknown, actions: row.actions as unknown }] : []
       })
-      const hasMore = rows.length > limit
-      const items = hasMore ? rows.slice(0, limit) : rows
-      return { items, nextCursor: hasMore ? items[items.length - 1].id : null }
+      const last = selected.at(-1)
+      return { items, nextCursor: hasMore && last ? `${last.createdAt}|${last.id}` : null }
+
     }),
 
   unreadCount: protectedProcedure.query(({ ctx }) =>

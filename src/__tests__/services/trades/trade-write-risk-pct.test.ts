@@ -57,6 +57,8 @@ function mockPrisma(opts: { initialBalance: number; closedPnl: number; pointValu
     session: null, setupId: null, size: 0.02, entry: 21450, stop: 21380,
     status: "OPEN", tags: [] as string[], pnl: null, rMultiple: null }
   return {
+    user: { findUniqueOrThrow: vi.fn().mockResolvedValue({fxRates:null}) },
+    withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
     account: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({
         type: "PERSONAL", locked: false, lockReason: "", ddDailyPct: null,
@@ -67,6 +69,7 @@ function mockPrisma(opts: { initialBalance: number; closedPnl: number; pointValu
     },
     setup: { findUnique: vi.fn() },
     trade: {
+      findMany: vi.fn().mockResolvedValue([]),
       aggregate: vi.fn().mockResolvedValue({ _sum: { pnl: opts.closedPnl } }),
       create: vi.fn().mockResolvedValue(created),
       update: vi.fn().mockResolvedValue(created),
@@ -130,3 +133,18 @@ describe("createTrade — riskPct fallback", () => {
     expect(riskPctPassedTo(prisma)).toBeNull()
   })
 })
+
+
+describe("daily money budget", () => {
+  it.each([{day:100,risk:160,blocked:true},{day:100,risk:150,blocked:false},{day:-20,risk:30,blocked:false},{day:-20,risk:30.01,blocked:true}])("day $day risk $risk blocked $blocked", async ({day,risk,blocked}) => {
+    const prisma = mockPrisma({initialBalance:1000,closedPnl:day})
+    vi.mocked(prisma.account.findUniqueOrThrow).mockResolvedValue({type:"PERSONAL",locked:false,lockReason:"",ddDailyPct:5,initialBalance:1000,allowedSymbols:[]} as never)
+    vi.mocked(prisma.trade.aggregate).mockResolvedValue({_sum:{pnl:day}} as never)
+    vi.mocked(prisma.trade.findMany).mockResolvedValue([{accountId:ACCOUNT,pnl:day,date:new Date(INPUT.date),status:"CLOSED",events:[]}] as never)
+    const result=createTrade(prisma,USER,{...INPUT,entry:100,stop:90,size:risk/10} as never)
+    if(blocked) await expect(result).rejects.toThrow()
+    else await expect(result).resolves.toBeDefined()
+  })
+})
+
+it("rejects arbitrary OPEN P&L on create",async()=>{const db=mockPrisma({initialBalance:1000,closedPnl:0});await expect(createTrade(db,USER,{...INPUT,pnl:100} as never)).rejects.toThrow("OPEN_PNL_NOT_REALIZED");expect(db.trade.create).not.toHaveBeenCalled()})

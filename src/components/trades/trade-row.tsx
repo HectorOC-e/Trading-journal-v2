@@ -33,7 +33,7 @@ function shortAccount(name: string) {
 }
 
 function getResult(trade: Trade): "WIN" | "LOSS" | "BE" | "OPEN" {
-  if (trade.status !== "CLOSED" && trade.pnl == null) return "OPEN"
+  if (trade.status ? trade.status === "OPEN" : trade.pnl == null) return "OPEN"
   const pnl = trade.pnl ?? 0
   if (pnl > 0) return "WIN"
   if (pnl < 0) return "LOSS"

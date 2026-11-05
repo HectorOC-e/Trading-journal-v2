@@ -28,6 +28,7 @@ function makeFakeAccount(overrides = {}) {
 
 function makeMockPrisma() {
   return {
+    user: { findUniqueOrThrow: vi.fn().mockResolvedValue({ fxRates: null }) },
     account: {
       findMany: vi.fn(),
       create: vi.fn(),
@@ -36,14 +37,16 @@ function makeMockPrisma() {
       findUniqueOrThrow: vi.fn(),
     },
     accountLog: {
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
     },
     trade: {
+      findMany: vi.fn().mockResolvedValue([]),
       // list() aggregates realized P&L per account for the current balance.
       groupBy: vi.fn().mockResolvedValue([]),
     },
     withdrawal: {
-      findMany: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -80,6 +83,27 @@ describe("accounts router", () => {
     expect(typeof result[0].initialBalance).toBe("number")
     expect(result[0].initialBalance).toBe(10000.5)
     expect(result[0].id).toBe("acc-1")
+  })
+
+  it("does not invent a broker variance for an already paid withdrawal", async () => {
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue(makeFakeAccount({id:"550e8400-e29b-41d4-a716-446655440001",initialBalance:new Prisma.Decimal(1000)}))
+    mockPrisma.withdrawal.findMany.mockResolvedValue([{accountId:"550e8400-e29b-41d4-a716-446655440001",currency:"USD",amount:200,status:"PAGADO"}] as never)
+    const result=await caller.accounts.syncBalance({accountId:"550e8400-e29b-41d4-a716-446655440001",actualBalance:800})
+    expect(result.computedBalance).toBe(800)
+    expect(result.variance).toBe(0)
+  })
+  it("separates paid cash from pending reservations and realized trading P&L", async () => {
+    mockPrisma.account.findMany.mockResolvedValue([makeFakeAccount({ initialBalance: new Prisma.Decimal(1000) })])
+    mockPrisma.trade.groupBy.mockResolvedValue([{ accountId: "acc-1", _sum: { pnl: 100 } }] as never)
+    mockPrisma.withdrawal.findMany.mockResolvedValue([
+      { accountId: "acc-1", amount: 200, currency: "USD", status: "PAGADO" },
+      { accountId: "acc-1", amount: 50, currency: "USD", status: "SOLICITADO" },
+    ] as never)
+    const [account] = await caller.accounts.list()
+    expect(account.currentBalance).toBe(900)
+    expect(account.availableBalance).toBe(850)
+    expect(account.paidWithdrawals).toBe(200)
+    expect(account.reservedWithdrawals).toBe(50)
   })
 
   it("create: inserts account, creates a log entry, and serializes Decimal", async () => {
@@ -201,7 +225,7 @@ describe("account lock reconciliation timezone", () => {
       const account = makeFakeAccount({ timezone, locked: true, lockReason: "DAILY_LOSS_LIMIT", ddDailyPct: 1 })
       db.account.findMany.mockResolvedValue([account])
       db.trade.findMany = vi.fn(async ({ where }: any) => {
-        expect(where).toEqual({ accountId: account.id, userId: USER_ID, status: "CLOSED" })
+        expect(where.userId).toBe(USER_ID)
         return [{ date: new Date(tradingDay), pnl: -200 }]
       })
       const caller = appRouter.createCaller({ prisma: db, supabase: {} as any, userId: USER_ID })

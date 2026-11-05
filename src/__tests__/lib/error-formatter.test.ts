@@ -13,6 +13,20 @@ function makeError(message: string, code?: string): TRPCClientError<AppRouter> {
 }
 
 describe("formatErrorForUser", () => {
+  it.each([
+    ["OPEN_PNL_NOT_REALIZED", "El resultado de una operación abierta se calcula con sus cierres. Registra un cierre parcial o cierra la operación para actualizarlo."],
+    ["PARTIAL_HISTORY_REQUIRES_REVIEW", "El historial de cierres parciales necesita revisión. Revisa los precios y cantidades históricos antes de registrar otro movimiento."],
+    ["PARTIAL_ACCOUNTING_EDIT", "Esta operación ya tiene cierres parciales. Revisa sus movimientos para corregir los importes; no se pueden editar directamente."],
+    ["TRADE_NOT_OPEN", "Esta operación ya no está abierta. Actualiza la página y selecciona una operación abierta para registrar el movimiento."],
+    ["INVALID_PARTIAL_SIZE", "La cantidad del cierre parcial supera la posición disponible. Introduce una cantidad positiva que no supere la posición restante."],
+    ["INVALID_TRADE_EVENT_VALUE", "El precio y la cantidad del movimiento deben ser números mayores que cero. Revisa los campos e intenta de nuevo."],
+    ["INVALID_EVENT_TIMESTAMP", "La fecha u hora del movimiento no es válida. Selecciona una fecha y hora válidas e intenta de nuevo."],
+    ["INVALID_COMMISSION", "La comisión debe ser un número igual o mayor que cero. Corrige el importe e intenta de nuevo."],
+  ])("translates trading domain message %s with a next action", (code, message) => {
+    expect(formatErrorForUser(makeError(code, "BAD_REQUEST"))).toBe(message)
+    expect(formatErrorForUser(makeError(code))).toBe(message)
+  })
+
   it("returns server message when user-friendly (short, no jargon)", () => {
     expect(formatErrorForUser(makeError("El nombre no puede estar vacío")))
       .toBe("El nombre no puede estar vacío")

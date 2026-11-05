@@ -6,11 +6,15 @@
 // trade-service math, rules engine). Errors (TRPCError/AppError) are thrown
 // exactly as the router did — same codes, same messages.
 // ─────────────────────────────────────────────────────────────────────────────
+import { parseFxRates } from "@/lib/fx"
+import { localDateISO } from "@/lib/datetime/local"
 import { TRPCError } from "@trpc/server"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { checkTradeCountLimit, checkSymbolAllowlist } from "@/domains/trading/services/prop-firm-guard"
 import { assertTradeable, evaluateAndLock, type EnforceableAccount } from "@/domains/trading/services/risk-enforcement"
 import { evaluateBudgetGuard } from "@/domains/analytics/risk/budget-guard"
+import { loadRealizedPnlHistory } from "@/domains/trading/services/realized-history"
+import { loadAccountCashAdjustments } from "@/server/services/accounts/cash-adjustments"
 import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
 import { runRules } from "@/domains/rules/engine"
 import { buildContext } from "@/domains/rules/context"
@@ -18,7 +22,7 @@ import { ensureTagRows } from "@/server/services/tags/seed"
 import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 import { AppError } from "@/lib/errors/app-error"
-import { computeClosedTradePnl, computeRMultiple, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
+import { computeClosedTradePnl, computeScaleInAvgEntry, parsePointValue } from "@/domains/trading/services/trade-service"
 import { evaluateChecklist } from "@/domains/trading/services/capture-rules"
 import { runIntervention } from "@/server/services/intervention/intervention-service"
 import { serializeTrade, type SerializedTrade } from "./serializers"
@@ -69,10 +73,12 @@ export type CreateTradeInput = {
 }
 
 export async function createTrade(prisma: PrismaClient, userId: string, input: CreateTradeInput): Promise<SerializedTrade> {
+  if (input.status === "OPEN" && input.pnl != null && input.pnl !== 0) throw new TRPCError({ code: "BAD_REQUEST", message: "OPEN_PNL_NOT_REALIZED" })
   // ── Account + risk-limit enforcement (HALLAZGO 1B) ─────────────────────
   const account = await prisma.account.findUniqueOrThrow({
     where: { id: input.accountId, userId },
     select: {
+      currency:        true,
       type:            true,
       locked:          true,
       lockReason:      true,
@@ -90,10 +96,12 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
 
   // Account equity = initial balance + realised P&L. Resolved at most once, and
   // only when something actually needs it (today: the riskPct fallback below).
+  const profile = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fxRates: true } })
+  const paid = (await loadAccountCashAdjustments(prisma, userId, [{ id: input.accountId, currency: account.currency }], parseFxRates(profile.fxRates))).get(input.accountId)?.paid ?? 0
   let equity: Promise<number> | null = null
   const accountEquity = () => (equity ??= prisma.trade
-    .aggregate({ where: { accountId: input.accountId, userId, status: "CLOSED" }, _sum: { pnl: true } })
-    .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0)))
+    .aggregate({ where: { accountId: input.accountId, userId, status: { in: ["OPEN", "CLOSED"] } }, _sum: { pnl: true } })
+    .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0) - paid))
 
   // Dollar value of one point for this instrument. Risk in money is meaningless
   // without it — the same lookup the close path already does for P&L. Resolved
@@ -153,17 +161,14 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   //      would cross the room left to today's daily-loss floor.
   if (account.ddDailyPct != null) {
     const tradeDate = new Date(input.date)
-    const [allAgg, todayAgg] = await Promise.all([
-      prisma.trade.aggregate({ where: { accountId: input.accountId, userId, status: "CLOSED" }, _sum: { pnl: true } }),
-      prisma.trade.aggregate({ where: { accountId: input.accountId, userId, status: "CLOSED", date: tradeDate }, _sum: { pnl: true } }),
-    ])
+    const history = await loadRealizedPnlHistory(prisma, userId, [input.accountId])
     const initialBalance = Number(account.initialBalance)
-    const totalPnl = Number(allAgg._sum.pnl ?? 0)
-    const dayPnl = Number(todayAgg._sum.pnl ?? 0)
-    const dayBase = initialBalance + (totalPnl - dayPnl)
+    const priorPnl = history.filter(row => row.date < tradeDate).reduce((sum, row) => sum + row.pnl, 0)
+    const dayPnl = history.filter(row => row.date.toISOString().slice(0,10) === input.date).reduce((sum, row) => sum + row.pnl, 0)
+    const dayBase = initialBalance + priorPnl
     if (dayBase > 0) {
       const remainingPct = Number(account.ddDailyPct) / 100 + dayPnl / dayBase
-      const tradeRiskPct = (deriveRiskPct({ entry: input.entry, stop: input.stop, size: input.size, pointValue: await pointValue(), balance: initialBalance + totalPnl }) ?? 0) / 100
+      const tradeRiskPct = Math.abs(input.entry - input.stop) * input.size * await pointValue() / dayBase
       const guard = evaluateBudgetGuard({ remainingPct, tradeRiskPct, exhausted: remainingPct <= 0 })
       if (guard.block) throw new AppError("BUDGET_EXCEEDED", { detail: guard.message ?? "" })
     }
@@ -202,6 +207,8 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   const trade = await prisma.trade.create({
     data: {
       ...input, riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date),
+      realizedPnl: 0, originalSize: input.size,
+      originalRiskMoney: Math.abs(input.entry - input.stop) * input.size * await pointValue(),
       // Procedencia posicional: el alta es EL momento; si viene emoción, es capturada.
       emotionSource: input.emotionBefore != null ? "captured" : null,
     },
@@ -299,10 +306,10 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     assertEmotionWindowOpen(current.date, new Date())
   }
 
-  const trade = await prisma.trade.update({
+  const write = async (db: Pick<PrismaClient, "trade">, snapshots: { originalRiskMoney?: number; originalSize?: number; realizedPnl?: number } = {}) => db.trade.update({
     where: { id, userId },
     data: {
-      ...data,
+      ...data, ...snapshots,
       // Toda escritura posterior al momento es reconstrucción — incluida la
       // corrección de una emoción ya registrada: no hay forma de distinguir
       // "me equivoqué de chip" de un recuerdo revisado a la luz del resultado.
@@ -312,6 +319,26 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     },
     include: { account: true, setup: true, events: true },
   })
+  const monetaryEdit = input.pnl !== undefined || input.rMultiple !== undefined || input.entry !== undefined || input.stop !== undefined || input.size !== undefined
+  const trade = monetaryEdit ? await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM accounts WHERE id = (SELECT account_id FROM trades WHERE id = ${id}::uuid AND user_id = ${userId}::uuid) AND user_id = ${userId}::uuid FOR UPDATE`
+    await tx.$queryRaw`SELECT id FROM trades WHERE id = ${id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
+    const current = await tx.trade.findUniqueOrThrow({ where: { id, userId }, include: { events: true } })
+    if (current.events.some(e => e.type === "PARTIAL_CLOSE" || e.type === "SCALE_IN")) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "PARTIAL_ACCOUNTING_EDIT" })
+    }
+    if (current.status === "OPEN" && input.pnl !== undefined) throw new TRPCError({ code: "BAD_REQUEST", message: "OPEN_PNL_NOT_REALIZED" })
+    if (current.status === "OPEN") assertKnownHistory(current)
+    const snapshots: { originalRiskMoney?: number; originalSize?: number; realizedPnl?: number } = {}
+    if (current.originalRiskMoney == null) {
+      const market = await tx.market.findFirst({ where: { userId, symbol: current.symbol }, select: { pointValue: true } })
+      snapshots.originalRiskMoney = Math.abs(Number(current.entry) - Number(current.stop)) * Number(current.size) * parsePointValue(market?.pointValue)
+      snapshots.originalSize = Number(current.size)
+      snapshots.realizedPnl = 0
+    }
+    return write(tx, snapshots)
+  }) : await write(prisma)
+
   if (input.tags?.length) await ensureTagRows(prisma, userId, input.tags)
 
   // User automations — post-update (best-effort; never break the write).
@@ -373,26 +400,38 @@ export type CloseTradeInput = {
 }
 
 export async function closeTrade(prisma: PrismaClient, userId: string, input: CloseTradeInput) {
-  const trade = await prisma.trade.findUniqueOrThrow({
-    where: { id: input.id, userId },
-  })
+  const { trade, updated } = await prisma.$transaction(async (tx) => {
+  await tx.$queryRaw`SELECT id FROM accounts WHERE id = (SELECT account_id FROM trades WHERE id = ${input.id}::uuid AND user_id = ${userId}::uuid) AND user_id = ${userId}::uuid FOR UPDATE`
+  await tx.$queryRaw`SELECT id FROM trades WHERE id = ${input.id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
+  const trade = await tx.trade.findUniqueOrThrow({ where: { id: input.id, userId }, include: { events: true } })
+  assertOpenTrade(trade.status)
+  assertPositive(input.closePrice)
+  if (!Number.isFinite(input.commission) || input.commission < 0) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_COMMISSION" })
+  assertKnownHistory(trade)
   const entry               = Number(trade.entry)
   const size                = Number(trade.size)
   // Dollar P&L needs the instrument's point value (e.g. NQ = $20/pt); without
   // it, futures/FX P&L is wrong by that factor. Look it up from the user's
   // market catalog by symbol; default to 1 when no market is registered.
-  const market              = await prisma.market.findFirst({
+  const market              = await tx.market.findFirst({
     where:  { userId, symbol: trade.symbol },
     select: { pointValue: true },
   })
   const pointValue          = parsePointValue(market?.pointValue)
-  const { rawPnl, netPnl } = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission, pointValue)
-  const rMultiple           = computeRMultiple(rawPnl, entry, Number(trade.stop), size, pointValue)
+  const portion = computeClosedTradePnl(trade.direction as "LONG" | "SHORT", entry, input.closePrice, size, input.commission, pointValue)
+  const rawPnl = Number(trade.realizedPnl ?? 0) + portion.rawPnl
+  // Zero is also the existing close-form default: retain an already booked charge.
+  // A positive close commission supplies the cumulative trade total.
+  const commission = input.commission > 0 ? input.commission : Number(trade.commission ?? 0)
+  const netPnl = rawPnl - commission
+  const risk = trade.originalRiskMoney != null ? Number(trade.originalRiskMoney) : Math.abs(entry - Number(trade.stop)) * size * pointValue
+  const rMultiple = risk > 0 ? rawPnl / risk : null
 
-  const updated = await prisma.trade.update({
+  const updated = await tx.trade.update({
     where:   { id: input.id, userId },
     data:    {
-      status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission: input.commission, pnl: netPnl, rMultiple,
+      realizedPnl: rawPnl, originalRiskMoney: risk, originalSize: trade.originalSize ?? size,
+      status: "CLOSED", closePrice: input.closePrice, closeTime: input.closeTime, commission, pnl: netPnl, rMultiple,
       // Capture v3 (S2): persist excursions/regime only when provided (don't clobber with null).
       ...(input.maeR != null ? { maeR: input.maeR } : {}),
       ...(input.mfeR != null ? { mfeR: input.mfeR } : {}),
@@ -406,6 +445,9 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
         : {}),
     },
     include: { account: true, setup: true, events: true },
+  })
+
+  return { trade, updated }
   })
 
   // ── Post-trade risk evaluation (all account types) ────────────────────
@@ -453,47 +495,72 @@ export type AddTradeEventInput = {
   timestamp?: string
 }
 
+function assertOpenTrade(status: string) {
+  if (status !== "OPEN") throw new TRPCError({ code: "BAD_REQUEST", message: "TRADE_NOT_OPEN" })
+}
+function assertPositive(value: number | undefined) {
+  if (value == null || !Number.isFinite(value) || value <= 0) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_TRADE_EVENT_VALUE" })
+}
+function assertKnownHistory(trade: { realizedPnl: unknown; pnl?: unknown; events?: { type: string }[] }) {
+  if (trade.realizedPnl == null && (Number(trade.pnl ?? 0) !== 0 || trade.events?.some(e => e.type === "PARTIAL_CLOSE" || e.type === "SCALE_IN"))) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "PARTIAL_HISTORY_REQUIRES_REVIEW" })
+  }
+}
+
 export async function addTradeEvent(prisma: PrismaClient, userId: string, input: AddTradeEventInput) {
-  const trade = await prisma.trade.findUniqueOrThrow({
-    where:   { id: input.tradeId, userId },
-    include: { account: true },
+  const { event, trade, realized } = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM accounts WHERE id = (SELECT account_id FROM trades WHERE id = ${input.tradeId}::uuid AND user_id = ${userId}::uuid) AND user_id = ${userId}::uuid FOR UPDATE`
+  await tx.$queryRaw`SELECT id FROM trades WHERE id = ${input.tradeId}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
+    const trade = await tx.trade.findUniqueOrThrow({ where: { id: input.tradeId, userId }, include: { account: true, events: true } })
+    if (input.type !== "NOTE") assertOpenTrade(trade.status)
+    const data: Record<string, unknown> = {}
+    let realizedPnl: number | undefined
+    const financial = input.type === "PARTIAL_CLOSE" || input.type === "SCALE_IN"
+    if (input.type !== "NOTE") {
+      assertPositive(input.price)
+      assertKnownHistory(trade)
+      const market = await tx.market.findFirst({ where: { userId, symbol: trade.symbol }, select: { pointValue: true } })
+      const pv = parsePointValue(market?.pointValue)
+      const risk = trade.originalRiskMoney != null ? Number(trade.originalRiskMoney) : Math.abs(Number(trade.entry) - Number(trade.stop)) * Number(trade.size) * pv
+      data.originalRiskMoney = risk
+      data.originalSize = trade.originalSize ?? Number(trade.size)
+      data.realizedPnl = Number(trade.realizedPnl ?? 0)
+      if (financial) assertPositive(input.contracts)
+      if (input.type === "STOP_MOVE" || input.type === "TRAIL_STOP") data.stop = input.price
+      if (input.type === "TAKE_PROFIT_MOVE") data.target = input.price
+      if (input.type === "SCALE_IN") {
+        data.entry = computeScaleInAvgEntry(Number(trade.entry), Number(trade.size), input.price!, input.contracts!)
+        data.size = Number(trade.size) + input.contracts!
+        // Added exposure adds risk at its entry; subsequent stop moves cannot rewrite prior risk.
+        data.originalRiskMoney = risk + Math.abs(input.price! - Number(trade.stop)) * input.contracts! * pv
+        data.originalSize = Number(data.originalSize) + input.contracts!
+      }
+      if (input.type === "PARTIAL_CLOSE") {
+        if (input.contracts! > Number(trade.size)) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_PARTIAL_SIZE" })
+        const gross = Number(trade.realizedPnl ?? 0) + computeClosedTradePnl(trade.direction as "LONG" | "SHORT", Number(trade.entry), input.price!, input.contracts!, 0, pv).rawPnl
+        data.size = Number(trade.size) - input.contracts!
+        data.realizedPnl = gross
+        // commission is the cumulative trade charge, deducted once from cumulative gross.
+        data.pnl = gross - Number(trade.commission ?? 0)
+        realizedPnl = Number(data.pnl) - Number(trade.pnl ?? 0)
+        data.rMultiple = risk > 0 ? gross / risk : null
+        if (data.size === 0) { data.status = "CLOSED"; data.closePrice = input.price }
+      }
+    }
+    const timestamp = input.timestamp ? new Date(input.timestamp) : new Date()
+    if (!Number.isFinite(timestamp.getTime())) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_EVENT_TIMESTAMP" })
+    if (Object.keys(data).length) await tx.trade.update({ where: { id: input.tradeId, userId }, data })
+    const event = await tx.tradeEvent.create({ data: { userId, tradeId: input.tradeId, type: input.type, price: input.price, contracts: input.contracts, notes: input.notes, timestamp, realizedPnl } })
+    return { event, trade, realized: input.type === "PARTIAL_CLOSE" }
   })
-
-  const tradeUpdate: Record<string, unknown> = {}
-
-  if ((input.type === "STOP_MOVE" || input.type === "TRAIL_STOP") && input.price != null) {
-    tradeUpdate.stop = input.price
+  if (realized) {
+    const a = trade.account
+    if (a) await evaluateAndLock(prisma, userId, { id: trade.accountId, type: a.type, ddModel: a.ddModel, initialBalance: Number(a.initialBalance), locked: a.locked, lockReason: a.lockReason,
+      ddDailyPct: a.ddDailyPct == null ? null : Number(a.ddDailyPct), ddWeeklyPct: a.ddWeeklyPct == null ? null : Number(a.ddWeeklyPct), ddMonthlyPct: a.ddMonthlyPct == null ? null : Number(a.ddMonthlyPct), ddTotalPct: a.ddTotalPct == null ? null : Number(a.ddTotalPct) }, localDateISO(event.timestamp, a.timezone ?? "UTC"))
+    if (isCacheEnabled()) await invalidateCache(prisma, userId)
+    await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
+    await runIntervention(prisma, userId, trade.accountId, trade.date.toISOString().slice(0,10)).catch(() => {})
   }
-  if (input.type === "TAKE_PROFIT_MOVE" && input.price != null) {
-    tradeUpdate.target = input.price
-  }
-  if (input.type === "SCALE_IN" && input.price != null && input.contracts != null) {
-    const oldSize = Number(trade.size)
-    tradeUpdate.entry = computeScaleInAvgEntry(Number(trade.entry), oldSize, input.price, input.contracts)
-    tradeUpdate.size  = oldSize + input.contracts
-  }
-  if (input.type === "PARTIAL_CLOSE" && input.contracts != null) {
-    tradeUpdate.size = Math.max(0, Number(trade.size) - input.contracts)
-  }
-
-  if (Object.keys(tradeUpdate).length > 0) {
-    await prisma.trade.update({
-      where: { id: input.tradeId, userId },
-      data:  tradeUpdate,
-    })
-  }
-
-  const event = await prisma.tradeEvent.create({
-    data: {
-      userId,
-      tradeId:   input.tradeId,
-      type:      input.type,
-      price:     input.price,
-      contracts: input.contracts,
-      notes:     input.notes,
-      timestamp: input.timestamp ? new Date(input.timestamp) : new Date(),
-    },
-  })
   scheduleEmbedding(prisma, userId, "trade_events", event.id, input.notes ?? "")
   return event
 }

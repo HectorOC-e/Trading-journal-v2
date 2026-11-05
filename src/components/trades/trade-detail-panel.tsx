@@ -63,6 +63,8 @@ interface TradeDetailPanelProps {
     status?: string
     closePrice?: number | null
     closeTime?: string | null
+    realizedPnl?: number | null
+    originalRiskMoney?: number | null
     commission?: number | null
     emotionBefore?: string | null
   }
@@ -118,30 +120,31 @@ export function TradeDetailPanel({
   const hasScreenshots = (trade.screenshotUrls?.length ?? 0) > 0
 
   const tradeStatus = (trade as { status?: string }).status ?? (trade.pnl != null ? "CLOSED" : "OPEN")
-  const isOpen = tradeStatus === "OPEN" && trade.pnl == null
+  const isOpen = tradeStatus === "OPEN"
 
   // Compute RR from prices
   const riskPts    = Math.abs(trade.entry - trade.stop)
   const rewardPts  = Math.abs(trade.target - trade.entry)
   const rrComputed = riskPts > 0 ? (rewardPts / riskPts).toFixed(2) : "—"
 
-  // Live P&L preview for close form
-  const previewPnl = (() => {
+  // Gross realized portions and the remaining position share one cumulative fee.
+  const previewGrossPnl = (() => {
     const cp = parseFloat(closePrice)
-    const comm = parseFloat(commission)
-    if (isNaN(cp)) return null
-    const commVal = isNaN(comm) ? 0 : comm
-    const rawPnl = (trade.direction === "LONG"
+    if (!Number.isFinite(cp)) return null
+    const remaining = (trade.direction === "LONG"
       ? (cp - trade.entry) * trade.size
       : (trade.entry - cp) * trade.size) * pointValue
-    return rawPnl - commVal
+    return Number(trade.realizedPnl ?? 0) + remaining
   })()
+  const enteredCommission = parseFloat(commission)
+  const cumulativeCommission = enteredCommission > 0 ? enteredCommission : Number(trade.commission ?? 0)
+  const previewPnl = previewGrossPnl == null ? null : previewGrossPnl - cumulativeCommission
 
   const handleCloseTrade = () => {
     const cp = parseFloat(closePrice)
     const comm = parseFloat(commission)
-    // Commission is optional: empty means $0. Only block on non-empty garbage.
-    if (commission.trim() !== "" && isNaN(comm)) {
+    // Empty or zero retains the cumulative charge already booked.
+    if (commission.trim() !== "" && (!Number.isFinite(comm) || comm < 0)) {
       setCommissionError(true)
       return
     }
@@ -152,7 +155,7 @@ export function TradeDetailPanel({
     onCloseTrade?.({
       closePrice: cp,
       closeTime,
-      commission: isNaN(comm) ? 0 : comm,
+      commission: cumulativeCommission,
       maeR: isNaN(mae) ? null : mae,
       mfeR: isNaN(mfe) ? null : mfe,
       regime,
@@ -204,7 +207,7 @@ export function TradeDetailPanel({
 
       {/* ── Result hero ── */}
       {(() => {
-        const closed = tradeStatus === "CLOSED" || trade.pnl != null
+        const closed = tradeStatus === "CLOSED"
         const isWin  = closed && (trade.pnl ?? 0) > 0
         const isLoss = closed && (trade.pnl ?? 0) < 0
         const isBE   = closed && (trade.pnl ?? 0) === 0
@@ -313,8 +316,9 @@ export function TradeDetailPanel({
                       </div>
                       {/* R múltiplo preview */}
                       {previewPnl != null && (() => {
-                        const risk = Math.abs(trade.entry - trade.stop) * trade.size * pointValue
-                        const r = risk > 0 ? previewPnl / risk : null
+                        const risk = trade.originalRiskMoney ?? Math.abs(trade.entry - trade.stop) * trade.size * pointValue
+                        const numerator = trade.originalRiskMoney != null ? previewGrossPnl! : previewPnl
+                        const r = risk > 0 ? numerator / risk : null
                         return r != null ? (
                           <span className={cn("text-xs font-bold font-mono", r >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
                             {r >= 0 ? "+" : ""}{r.toFixed(2)}R
@@ -390,13 +394,14 @@ export function TradeDetailPanel({
                   </div>
                   {/* Commission */}
                   <div>
-                    <label className={cn(
+                    <label htmlFor="close-commission" className={cn(
                       "text-[10px] font-medium block mb-1",
                       commissionError ? "text-[var(--loss)]" : "text-[var(--ink-3)]"
                     )}>
-                      Comisión $
+                      Comisión total $
                     </label>
                     <input
+                      id="close-commission"
                       type="number"
                       min="0"
                       inputMode="decimal"
@@ -411,7 +416,7 @@ export function TradeDetailPanel({
                       onChange={e => { setCommission(e.target.value); setCommissionError(false) }}
                     />
                     {commissionError && (
-                      <p className="text-[9px] text-[var(--loss)] mt-0.5">Valor inválido — déjalo vacío para $0</p>
+                      <p className="text-[9px] text-[var(--loss)] mt-0.5">Introduce una comisión igual o mayor que cero</p>
                     )}
                   </div>
                 </div>

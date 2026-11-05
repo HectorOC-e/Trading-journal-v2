@@ -38,6 +38,9 @@ export function serializeTrade(t: RawTrade) {
     stop:       Number(t.stop),
     target:     Number(t.target),
     size:       Number(t.size),
+    realizedPnl: t.realizedPnl != null ? Number(t.realizedPnl) : null,
+    originalSize: t.originalSize != null ? Number(t.originalSize) : null,
+    originalRiskMoney: t.originalRiskMoney != null ? Number(t.originalRiskMoney) : null,
     pnl:        t.pnl        != null ? Number(t.pnl)        : null,
     rMultiple:  t.rMultiple  != null ? Number(t.rMultiple)  : null,
     closePrice: t.closePrice != null ? Number(t.closePrice) : null,
@@ -59,6 +62,7 @@ export function serializeTrade(t: RawTrade) {
       : null,
     events: t.events?.map(e => ({
       ...e,
+      realizedPnl: e.realizedPnl != null ? Number(e.realizedPnl) : null,
       price:     e.price     != null ? Number(e.price)     : null,
       contracts: e.contracts != null ? Number(e.contracts) : null,
       timestamp: e.timestamp.toISOString(),

@@ -1,3 +1,5 @@
+import { loadAccountCashAdjustments } from "@/server/services/accounts/cash-adjustments"
+import { realizedRows } from "@/domains/trading/services/realized-history"
 import { createHash } from "node:crypto"
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard stats service (TD-018) — the dashboardStats orchestration moved out
@@ -109,7 +111,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     prisma.account.findMany({
       where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
       select: {
-        id: true, name: true, type: true, status: true, currency: true,
+        id: true, name: true, type: true, status: true, currency: true, timezone: true,
         initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
         ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
         maxLeverage: true, targetLeverage: true,
@@ -157,7 +159,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   }
 
   // ── Fetch, round 2: everything that needed round 1 ────────────────────
-  const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows, todayRaw] = await Promise.all([
+  const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows, todayRaw, cashAdjustments] = await Promise.all([
     prisma.trade.findMany({
       where: {
         userId,
@@ -166,10 +168,11 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
         ...(input?.accountId && { accountId: input.accountId }),
       },
       select: {
-        id: true, accountId: true, symbol: true, direction: true,
+        id: true, accountId: true, symbol: true, direction: true, status: true,
+        events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } },
         session: true, openTime: true, closeTime: true,
         pnl: true, rMultiple: true, tags: true, date: true,
-        setupId: true, entry: true, stop: true, target: true, size: true,
+        setupId: true, entry: true, stop: true, target: true, size: true, originalSize: true, originalRiskMoney: true,
       },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
     }),
@@ -185,7 +188,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     // above never see open trades).
     prisma.trade.findMany({
       where:  { userId, status: "OPEN", accountId: { in: activeAccountIds } },
-      select: { accountId: true, symbol: true, entry: true, size: true },
+      select: { accountId: true, symbol: true, entry: true, size: true, status: true, pnl: true, date: true, events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } } },
     }),
     prisma.market.findMany({
       where:  { userId },
@@ -198,6 +201,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
       where:  { userId, date: new Date(today) },
       select: { accountId: true, pnl: true, status: true },
     }),
+    loadAccountCashAdjustments(prisma, userId, activeAccounts, parseFxRates(userRow.fxRates)),
   ])
 
   const setupMap      = new Map(setupRows.map(s => [s.id, s]))
@@ -227,8 +231,9 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     entry:     Number(t.entry),
     stop:      Number(t.stop),
     target:    Number(t.target),
-    size:      Number(t.size),
-    pointValue: marketBySymbol.get(t.symbol)?.pointValue ?? 1,
+    size:      Number(t.originalSize ?? t.size),
+    originalRiskMoney: t.originalRiskMoney != null ? Number(t.originalRiskMoney) * fx(t.accountId) : undefined,
+    pointValue: (marketBySymbol.get(t.symbol)?.pointValue ?? 1) * fx(t.accountId),
   }))
 
   const allTrades = history.filter(t => (!queryFrom || t.date >= queryFrom) && (!queryTo || t.date <= queryTo))
@@ -275,6 +280,25 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // ── Core analytics (service delegation) ──────────────────────────────
   const kpis         = buildKpis(trades, today, monthStart, weekStart)
   const accountStats = buildAccountStats(lifetimeTrades, acctBalances, today, monthStart, weekStart, limitsById)
+  // Realized partial portions affect cash/risk when executed; counts and win rate
+  // still describe complete trades. Cash withdrawals never become trading losses.
+  const realizationRows = realizedRows([...tradeRows, ...openTradeRows], new Map(activeAccounts.map(a => [a.id, a.timezone]))).sort((a,b) => a.date.getTime() - b.date.getTime())
+  const realizations: MinimalTrade[] = realizationRows.map((r, i) => ({
+    id: `realization-${i}`, accountId: r.accountId, pnl: r.pnl * fx(r.accountId),
+    date: r.date.toISOString().slice(0,10), symbol: '', direction: 'LONG',
+    session: null, openTime: null, closeTime: null, rMultiple: null, tags: [], setupId: null, entry: 0, stop: 0, target: 0, size: 0,
+  })).filter(t => t.date <= today && (financialScope === 'all' || !practiceIds.has(t.accountId)))
+  const realizedStats = new Map(buildAccountStats(realizations, acctBalances, today, monthStart, weekStart, limitsById).map(s => [s.accountId, s]))
+  for (const stat of accountStats) {
+    const realized = realizedStats.get(stat.accountId)!
+    stat.balance = Math.round((realized.balance - (cashAdjustments.get(stat.accountId)?.paid ?? 0) * fx(stat.accountId)) * 100) / 100
+    stat.netPnl = realized.netPnl
+    stat.pnlToday = realized.pnlToday
+    stat.pnlWeek = realized.pnlWeek
+    stat.pnlMonth = realized.pnlMonth
+    stat.risk = realized.risk
+    stat.drawdownPct = realized.drawdownPct
+  }
 
   // ── Live leverage exposure from OPEN positions ───────────────────────────
   const balanceById = new Map(accountStats.map(s => [s.accountId, s.balance]))
@@ -310,6 +334,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     acctWithLimits,
     lifetimeTrades,
     todayRaw.map(t => ({ accountId: t.accountId, pnl: t.pnl != null ? Number(t.pnl) * fx(t.accountId) : null, status: t.status })),
+    { history: realizations, todayISO: today },
   )
 
   // ── Recent trades ─────────────────────────────────────────────────────

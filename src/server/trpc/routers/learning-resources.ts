@@ -1,7 +1,7 @@
 import { z } from "zod"
 import { addDaysISO, localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
-import { effectiveStudyStartedAt, minutesThisWeek as studyMinutesThisWeek, studyStreak } from "@/domains/learning/services/study-session-service"
+import { completedStudyStats } from "@/domains/learning/services/study-session-service"
 import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
 import { computeProgressPct, resourceProgressLifecycle } from "@/domains/learning/services/review-scheduler"
@@ -147,6 +147,8 @@ export const learningResourcesRouter = router({
         currentUnits != null && totalUnits != null && totalUnits > 0
           ? Math.min(100, Math.round((currentUnits / totalUnits) * 100))
           : (progressPct ?? null)
+      // Measurable units define progress; otherwise an explicit percentage is authoritative.
+      const usePercentageLifecycle = computedPct != null && (currentUnits == null || totalUnits == null)
       const created = await ctx.prisma.learningResource.create({
         data: {
           ...rest,
@@ -157,6 +159,11 @@ export const learningResourcesRouter = router({
           totalUnits:   totalUnits ?? null,
           currentUnits: currentUnits ?? null,
           progressPct:  computedPct,
+          ...resourceProgressLifecycle(
+            { status: "PENDING", completedAt: null },
+            usePercentageLifecycle ? computedPct : currentUnits ?? null,
+            usePercentageLifecycle ? 100 : totalUnits ?? null,
+          ),
         },
       })
       scheduleResourceEmbedding(created.id, created.notes, ctx.userId, ctx.prisma)
@@ -537,9 +544,6 @@ export const learningResourcesRouter = router({
         }),
       ])
       const resources = allResources.filter(r => r.status !== "ABANDONED")
-      const sessions = rawSessions
-        .filter(s => s.status === "completed" && (s.durationMin ?? 0) > 0)
-        .map(s => ({ ...s, startedAt: effectiveStudyStartedAt(s) }))
       const due = resources.filter(r => isResourceReviewDue(r, todayISO))
         .sort((a, b) => (a.nextReviewAt?.toISOString() ?? "").localeCompare(b.nextReviewAt?.toISOString() ?? ""))
       const urgentReviews = due.slice(0, 10)
@@ -549,19 +553,7 @@ export const learningResourcesRouter = router({
         acc[r.status] = (acc[r.status] ?? 0) + 1
         return acc
       }, {})
-      const minutesThisWeek = studyMinutesThisWeek(sessions, now, timezone)
-      const sessionDates = sessions.map(s => s.startedAt).filter(d => d <= now)
-      const currentStreak = studyStreak(sessionDates, now, timezone)
-      const days = [...new Set(sessionDates.map(d => localDateISO(d, timezone)))].sort()
-      let bestStreak = 0
-      let run = 0
-      let previousDay = Number.NEGATIVE_INFINITY
-      for (const day of days) {
-        const dayNumber = Date.parse(`${day}T00:00:00Z`) / 86_400_000
-        run = dayNumber === previousDay + 1 ? run + 1 : 1
-        bestStreak = Math.max(bestStreak, run)
-        previousDay = dayNumber
-      }
+      const { minutesThisWeek, currentStreak, bestStreak } = completedStudyStats(rawSessions, now, timezone)
       const inProgress = resources.filter(r => r.status === "IN_PROGRESS")
         .sort((a, b) => (b.progressPct ?? 0) - (a.progressPct ?? 0))
       const pending = resources.filter(r => r.status === "PENDING")

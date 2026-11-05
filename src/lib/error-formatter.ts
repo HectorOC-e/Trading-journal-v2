@@ -15,6 +15,18 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
   METHOD_NOT_SUPPORTED:  "Operación no soportada",
 }
 
+// Stable trading domain codes remain on the server; translate them only for display.
+const DOMAIN_MESSAGE_TRANSLATIONS: Record<string, string> = {
+  OPEN_PNL_NOT_REALIZED: "El resultado de una operación abierta se calcula con sus cierres. Registra un cierre parcial o cierra la operación para actualizarlo.",
+  PARTIAL_HISTORY_REQUIRES_REVIEW: "El historial de cierres parciales necesita revisión. Revisa los precios y cantidades históricos antes de registrar otro movimiento.",
+  PARTIAL_ACCOUNTING_EDIT: "Esta operación ya tiene cierres parciales. Revisa sus movimientos para corregir los importes; no se pueden editar directamente.",
+  TRADE_NOT_OPEN: "Esta operación ya no está abierta. Actualiza la página y selecciona una operación abierta para registrar el movimiento.",
+  INVALID_PARTIAL_SIZE: "La cantidad del cierre parcial supera la posición disponible. Introduce una cantidad positiva que no supere la posición restante.",
+  INVALID_TRADE_EVENT_VALUE: "El precio y la cantidad del movimiento deben ser números mayores que cero. Revisa los campos e intenta de nuevo.",
+  INVALID_EVENT_TIMESTAMP: "La fecha u hora del movimiento no es válida. Selecciona una fecha y hora válidas e intenta de nuevo.",
+  INVALID_COMMISSION: "La comisión debe ser un número igual o mayor que cero. Corrige el importe e intenta de nuevo.",
+}
+
 // Patterns that indicate a raw technical error message (not user-facing)
 const TECHNICAL_PATTERNS = [
   "prisma",
@@ -50,6 +62,10 @@ function isGenericTrpcMessage(msg: string): boolean {
 export function formatErrorForUser(error: TRPCClientErrorLike<any>): string {
   const msg = error.message ?? ""
   const code = (error.data as { code?: string } | undefined)?.code
+
+  if (Object.prototype.hasOwnProperty.call(DOMAIN_MESSAGE_TRANSLATIONS, msg)) {
+    return DOMAIN_MESSAGE_TRANSLATIONS[msg]
+  }
 
   // Skip generic TRPC auto-generated messages (replace with Spanish translation)
   const isCustomMessage = msg.length > 0 && !isGenericTrpcMessage(msg) && !isTechnicalMessage(msg) && msg.length < 200

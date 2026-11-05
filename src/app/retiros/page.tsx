@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { FieldError } from "@/components/ui/field"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { z } from "zod"
-import { cn } from "@/lib/utils"
+import { parseWithdrawalAmount, isCalendarDate, formatWithdrawalDate } from "@/lib/withdrawal-input"
 import { trpc } from "@/lib/trpc/client"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -42,21 +42,6 @@ function fmtMoney(amount: number, currency: string): string {
     // Unknown currency code → fall back to plain number + code suffix
     return `${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`
   }
-}
-
-/* ── StatusBadge ── */
-function StatusBadge({ status }: { status: WithdrawalStatus }) {
-  const m = STATUS_META[status]
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "3px 8px", borderRadius: 999,
-      background: m.bg, color: m.color,
-      fontSize: 11, fontWeight: 600,
-    }}>
-      {m.icon} {m.label}
-    </span>
-  )
 }
 
 /* ── KPI box ── */
@@ -130,7 +115,7 @@ function StatusSelect({ current, onSelect, loading }: {
           {STATUS_ORDER.map(s => {
             const sm = STATUS_META[s]
             return (
-              <button key={s} role="menuitem" onClick={() => { onSelect(s); setOpen(false) }}
+              <button key={s} role="menuitem" disabled={loading} onClick={() => { if (loading) return; onSelect(s); setOpen(false) }}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
                   width: "100%", padding: "7px 10px", borderRadius: 7,
@@ -149,7 +134,7 @@ function StatusSelect({ current, onSelect, loading }: {
 }
 
 /* ── Retiros DataTable ── */
-function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPending, deletePending, onStatusChange, onDelete }: {
+function RetirosTable({ withdrawals, isLoading, statusPending, deletePending, onStatusChange, onDelete }: {
   withdrawals: WithdrawalItem[]
   isLoading: boolean
   updatingId: string | null
@@ -165,7 +150,7 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       accessorFn: (w) => new Date(w.date).getTime(),
       meta: { width: "minmax(110px, 1.2fr)", headerLabel: "Fecha" },
       header: () => <span>Fecha</span>,
-      cell: ({ row }) => <span className="text-[13px] font-semibold text-[var(--ink)]">{new Date(row.original.date).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span>,
+      cell: ({ row }) => <span className="text-[13px] font-semibold text-[var(--ink)]">{formatWithdrawalDate(row.original.date)}</span>,
     },
     {
       id: "account",
@@ -214,7 +199,7 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       header: () => <span>Estado</span>,
       cell: ({ row }) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <StatusSelect current={row.original.status as WithdrawalStatus} onSelect={(s) => onStatusChange(row.original.id, s)} loading={updatingId === row.original.id && statusPending} />
+          <StatusSelect current={row.original.status as WithdrawalStatus} onSelect={(s) => onStatusChange(row.original.id, s)} loading={statusPending || deletePending} />
         </div>
       ),
     },
@@ -225,10 +210,10 @@ function RetirosTable({ withdrawals, isLoading, updatingId, deletingId, statusPe
       meta: { width: "60px", align: "right" },
       header: () => null,
       cell: ({ row }) => (
-        <DeleteCell w={row.original} onDelete={onDelete} deleting={deletingId === row.original.id && deletePending} />
+        <DeleteCell w={row.original} onDelete={onDelete} deleting={statusPending || deletePending} />
       ),
     },
-  ], [updatingId, deletingId, statusPending, deletePending, onStatusChange, onDelete])
+  ], [statusPending, deletePending, onStatusChange, onDelete])
 
   const { table, density, setDensity } = useDataTable<WithdrawalItem>({
     data: withdrawals,
@@ -278,7 +263,7 @@ function DeleteCell({ w, onDelete, deleting }: { w: WithdrawalItem; onDelete: (i
           </button>
         </div>
       ) : (
-        <button onClick={() => setConfirming(true)} aria-label={`Eliminar retiro de ${fmtMoney(Number(w.amount), w.currency)}`} className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--ink-3)] hover:text-[var(--loss)] hover:bg-[var(--loss-soft)] transition active:scale-90">
+        <button disabled={deleting} onClick={() => setConfirming(true)} aria-label={`Eliminar retiro de ${fmtMoney(Number(w.amount), w.currency)}`} className="inline-flex items-center justify-center w-7 h-7 rounded-md text-[var(--ink-3)] hover:text-[var(--loss)] hover:bg-[var(--loss-soft)] transition active:scale-90">
           <Trash2 size={13} />
         </button>
       )}
@@ -293,11 +278,10 @@ const withdrawalSchema = z.object({
     .string()
     .min(1, "Requerido")
     .refine((v) => {
-      const n = parseFloat(v.replace(/,/g, ""))
-      return !Number.isNaN(n) && n > 0
-    }, "El monto debe ser mayor a 0"),
+      return parseWithdrawalAmount(v) !== null
+    }, "Usa un monto positivo con máximo 2 decimales, sin separadores de miles"),
   currency: z.string(),
-  date: z.string().min(1, "Indica la fecha"),
+  date: z.string().refine(isCalendarDate, "Indica una fecha válida"),
   note: z.string(),
   reference: z.string(),
 })
@@ -307,39 +291,58 @@ const FORM_INIT: WForm = { accountId: "", amount: "", currency: "USD", date: new
 function NuevoRetiroModal({ open, onOpenChange, accounts }: {
   open: boolean
   onOpenChange: (v: boolean) => void
-  accounts: { id: string; name: string; currency: string }[]
+  accounts: { id: string; name: string; currency: string; availableBalance: number; reservedWithdrawals: number; paidWithdrawals: number }[]
 }) {
   const {
     register, handleSubmit, watch, setValue, reset,
     formState: { errors },
   } = useZodForm(withdrawalSchema, { defaultValues: FORM_INIT })
   const form = watch()
+  const requestId = useRef<string | null>(null)
+  const [pendingPayload, setPendingPayload] = useState<Parameters<ReturnType<typeof trpc.withdrawals.create.useMutation>["mutate"]>[0] | null>(null)
   const utils = trpc.useUtils()
 
   const create = trpc.withdrawals.create.useMutation({
     onSuccess: () => {
       utils.withdrawals.list.invalidate()
+      utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
+      utils.accountLogs.list.invalidate()
+      requestId.current = null
+      setPendingPayload(null)
       onOpenChange(false)
       reset(FORM_INIT)
     },
-    onError: (err) => toast.error(formatErrorForUser(err)),
+    onError: (err) => {
+      if (err.data?.code && !["INTERNAL_SERVER_ERROR", "TIMEOUT"].includes(err.data.code)) {
+        requestId.current = null
+        setPendingPayload(null)
+      }
+      toast.error(formatErrorForUser(err))
+    },
   })
 
   const set = <K extends keyof WForm>(k: K, v: WForm[K]) =>
     setValue(k, v as never, { shouldValidate: true, shouldDirty: true, shouldTouch: true })
 
-  const onValid = (f: WForm) =>
-    create.mutate({
+  const onValid = (f: WForm) => {
+    if (create.isPending) return
+    requestId.current ??= crypto.randomUUID()
+    const payload = pendingPayload ?? {
+      requestId: requestId.current,
       accountId: f.accountId,
-      amount:    parseFloat(f.amount.replace(/,/g, "")),
+      amount:    parseWithdrawalAmount(f.amount)!,
       currency:  f.currency,
       date:      f.date,
       note:      f.note,
       reference: f.reference,
-    })
+    }
+    setPendingPayload(payload)
+    create.mutate(payload)
+  }
 
   return (
-    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(FORM_INIT) }}>
+    <Dialog open={open} onOpenChange={v => { if (create.isPending) return; onOpenChange(v); if (!v && !pendingPayload) reset(FORM_INIT) }}>
       <DialogContent className="max-w-[480px]">
         <DialogHeader>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -361,7 +364,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
               {accounts.length === 0 ? (
                 <p style={{ fontSize: 12, color: "var(--ink-3)" }}>No tienes cuentas. Crea una primero.</p>
               ) : accounts.map(a => (
-                <button key={a.id} type="button" onClick={() => { set("accountId", a.id); set("currency", a.currency) }}
+                <button key={a.id} type="button" disabled={create.isPending || !!pendingPayload} onClick={() => { set("accountId", a.id); set("currency", a.currency) }}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     padding: "10px 14px", borderRadius: 8,
@@ -370,7 +373,7 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
                     cursor: "pointer",
                   }}>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>{a.name}</span>
-                  <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.currency}</span>
+                  <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.currency} · Disponible {fmtMoney(a.availableBalance, a.currency)}</span>
                 </button>
               ))}
             </div>
@@ -380,52 +383,43 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
           {/* Amount + currency */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
             <div>
-              <label className="text-eyebrow block mb-2">Monto <span className="text-[var(--loss)]">*</span></label>
-              <Input placeholder="5,000…" inputMode="decimal" mono error={!!errors.amount} {...register("amount")} />
+              <label htmlFor="withdrawal-amount" className="text-eyebrow block mb-2">Monto <span className="text-[var(--loss)]">*</span></label>
+              <Input id="withdrawal-amount" placeholder="5000,50" disabled={create.isPending || !!pendingPayload} inputMode="decimal" mono error={!!errors.amount} {...register("amount")} />
             </div>
-            <div style={{ display: "flex", gap: 4, paddingBottom: 2 }}>
-              {["USD", "EUR", "MXN"].map(c => (
-                <button key={c} type="button" onClick={() => set("currency", c)}
-                  className={cn("px-2.5 py-1.5 rounded-[var(--radius-sm)] text-[11px] font-semibold transition-colors",
-                    form.currency === c ? "bg-[var(--accent)] text-white" : "bg-[var(--chip)] text-[var(--ink-3)]"
-                  )}>
-                  {c}
-                </button>
-              ))}
-            </div>
+            <span className="text-sm font-semibold">{form.currency}</span>
           </div>
           <FieldError message={errors.amount?.message} />
 
           {/* Fecha */}
           <div>
             <label className="text-eyebrow block mb-2">Fecha del retiro <span className="text-[var(--loss)]">*</span></label>
-            <Input type="date" error={!!errors.date} {...register("date")} />
+            <Input disabled={create.isPending || !!pendingPayload} type="date" error={!!errors.date} {...register("date")} />
             <FieldError message={errors.date?.message} />
           </div>
 
           {/* Nota */}
           <div>
             <label className="text-eyebrow block mb-2">Nota</label>
-            <Input placeholder="Ej. Retiro mensual Phase 2" {...register("note")} />
+            <Input disabled={create.isPending || !!pendingPayload} placeholder="Ej. Retiro mensual Phase 2" {...register("note")} />
           </div>
 
           {/* Referencia */}
           <div>
             <label className="text-eyebrow block mb-2">Referencia / comprobante</label>
-            <Input placeholder="Ej. TXN-12345" mono {...register("reference")} />
+            <Input disabled={create.isPending || !!pendingPayload} placeholder="Ej. TXN-12345" mono {...register("reference")} />
           </div>
 
           {create.error && (
             <div style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 12, color: "#ef4444" }}>
-              {create.error.message}
+              {formatErrorForUser(create.error)}{pendingPayload ? " Reintenta la misma solicitud para confirmar el resultado sin duplicarla." : ""}
             </div>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button variant="primary" onClick={handleSubmit(onValid)} disabled={create.isPending}>
-            {create.isPending ? <><Loader2 size={13} className="animate-spin" /> Registrando…</> : "Registrar retiro"}
+          <Button variant="ghost" disabled={create.isPending} onClick={() => onOpenChange(false)}>{pendingPayload ? "Cerrar y conservar solicitud" : "Cancelar"}</Button>
+          <Button variant="primary" onClick={() => void handleSubmit(onValid)()} disabled={create.isPending}>
+            {create.isPending ? <><Loader2 size={13} className="animate-spin" /> Registrando…</> : pendingPayload ? "Reintentar solicitud" : "Registrar retiro"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -441,17 +435,19 @@ export default function RetirosPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const { data: withdrawals = [], isLoading } = trpc.withdrawals.list.useQuery({})
-  const { data: accounts = [] } = trpc.accounts.list.useQuery()
+  const withdrawalQuery = trpc.withdrawals.list.useQuery({})
+  const { data: withdrawals = [], isLoading } = withdrawalQuery
+  const accountsQuery = trpc.accounts.list.useQuery()
+  const { data: accounts = [] } = accountsQuery
   const utils = trpc.useUtils()
 
   const updateStatus = trpc.withdrawals.updateStatus.useMutation({
-    onSuccess: () => { utils.withdrawals.list.invalidate(); setUpdatingId(null) },
+    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); utils.trades.dashboardStats.invalidate(); utils.accountLogs.list.invalidate(); setUpdatingId(null) },
     onError:   (err) => { setUpdatingId(null); toast.error(formatErrorForUser(err)) },
   })
 
   const deleteWithdrawal = trpc.withdrawals.delete.useMutation({
-    onSuccess: () => { utils.withdrawals.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
+    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); utils.trades.dashboardStats.invalidate(); utils.accountLogs.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
     onError:   (err) => { setDeletingId(null); toast.error(formatErrorForUser(err)) },
   })
 
@@ -473,8 +469,8 @@ export default function RetirosPage() {
   // Group by account for summary
   const byAccount = accounts.map(a => {
     const aw = withdrawals.filter(w => w.accountId === a.id && w.status === "PAGADO")
-    return { ...a, totalPagado: aw.reduce((s, w) => s + Number(w.amount), 0), count: aw.length }
-  }).filter(a => a.count > 0)
+    return { ...a, totalPagado: a.paidWithdrawals, approximate: aw.some(w => w.currency !== a.currency), count: aw.length }
+  })
 
   return (
     <>
@@ -513,10 +509,11 @@ export default function RetirosPage() {
               }}>
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 600, color: "var(--ink)" }}>{a.name}</p>
-                  <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.count} retiros</p>
+                  <p style={{ fontSize: 11, color: "var(--ink-3)" }}>{a.count} retiros{a.approximate ? " · conversión aproximada" : ""}</p>
+                  <p className="text-xs">Disponible: {fmtMoney(a.availableBalance, a.currency)} · Reservado: {fmtMoney(a.reservedWithdrawals, a.currency)}</p>
                 </div>
                 <p style={{ fontSize: 16, fontWeight: 700, fontFamily: "'JetBrains Mono','Cascadia Code',monospace", fontVariantNumeric: "tabular-nums", color: "var(--win)", marginLeft: 8 }}>
-                  {fmtMoney(a.totalPagado, a.currency)}
+                  {a.approximate ? "≈ " : ""}{fmtMoney(a.totalPagado, a.currency)}
                 </p>
               </div>
             ))}
@@ -524,6 +521,9 @@ export default function RetirosPage() {
         </div>
       )}
 
+      {(withdrawalQuery.error || accountsQuery.error) && <div role="alert">{formatErrorForUser((withdrawalQuery.error || accountsQuery.error)!)} <Button variant="ghost" onClick={() => { void withdrawalQuery.refetch(); void accountsQuery.refetch() }}>Reintentar</Button></div>}
+      {updateStatus.error && <div role="alert">{formatErrorForUser(updateStatus.error)} <Button variant="ghost" disabled={updateStatus.isPending || deleteWithdrawal.isPending} onClick={() => { if (updateStatus.variables) updateStatus.mutate(updateStatus.variables) }}>Reintentar cambio</Button></div>}
+      {deleteWithdrawal.error && <div role="alert">{formatErrorForUser(deleteWithdrawal.error)} <Button variant="ghost" disabled={updateStatus.isPending || deleteWithdrawal.isPending} onClick={() => { if (deleteWithdrawal.variables) deleteWithdrawal.mutate(deleteWithdrawal.variables) }}>Reintentar eliminación</Button></div>}
       {/* Table — sortable columns, faceted filters, search */}
       <RetirosTable
         withdrawals={withdrawals}
@@ -532,11 +532,11 @@ export default function RetirosPage() {
         deletingId={deletingId}
         statusPending={updateStatus.isPending}
         deletePending={deleteWithdrawal.isPending}
-        onStatusChange={(id, status) => { setUpdatingId(id); updateStatus.mutate({ id, status }) }}
-        onDelete={(id) => { setDeletingId(id); deleteWithdrawal.mutate(id) }}
+        onStatusChange={(id, status) => { if (updateStatus.isPending || deleteWithdrawal.isPending || !window.confirm(`¿Cambiar el retiro a ${STATUS_META[status].label}?`)) return; setUpdatingId(id); updateStatus.mutate({ id, status }) }}
+        onDelete={(id) => { if (updateStatus.isPending || deleteWithdrawal.isPending) return; setDeletingId(id); deleteWithdrawal.mutate(id) }}
       />
 
-      <NuevoRetiroModal open={modalOpen} onOpenChange={setModalOpen} accounts={accounts.map(a => ({ id: a.id, name: a.name, currency: a.currency }))} />
+      <NuevoRetiroModal open={modalOpen} onOpenChange={setModalOpen} accounts={accounts} />
     </>
   )
 }

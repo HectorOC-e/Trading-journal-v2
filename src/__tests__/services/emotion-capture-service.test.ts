@@ -21,8 +21,9 @@ function prismaWith(tradeDate: string) {
     createdAt: T0, updatedAt: T0,
     account, setup: null, events: [],
   })
-  return {
-    prisma: {
+  const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      $transaction: async (fn: (tx: unknown) => unknown) => fn(prisma),
       trade: {
         findUniqueOrThrow: vi.fn().mockResolvedValue({ date: new Date(tradeDate + "T00:00:00Z") }),
         findMany: vi.fn().mockResolvedValue([]),
@@ -35,9 +36,8 @@ function prismaWith(tradeDate: string) {
         update:            vi.fn().mockResolvedValue(account),
       },
       market: { findFirst: vi.fn().mockResolvedValue(null) },
-    },
-    update,
-  }
+    }
+  return { prisma, update }
 }
 
 const DENTRO = "2026-07-24"   // 3 días
@@ -80,7 +80,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
     const { prisma, update } = prismaWith(DENTRO)
     prisma.trade.findUniqueOrThrow = vi.fn().mockResolvedValue({
       id: "t1", date: new Date(DENTRO + "T00:00:00Z"), direction: "LONG",
-      entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1",
+      entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1", status: "OPEN", events: [],
       emotionBefore: "calm",   // ya la registró al abrir
     })
     await closeTrade(prisma as never, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })
@@ -93,7 +93,7 @@ describe("procedencia y ventana en el servicio de escritura", () => {
     const { prisma, update } = prismaWith(DENTRO)
     prisma.trade.findUniqueOrThrow = vi.fn().mockResolvedValue({
       id: "t1", date: new Date(DENTRO + "T00:00:00Z"), direction: "LONG",
-      entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1",
+      entry: 1, stop: 0.99, size: 1, symbol: "NQ", accountId: "a1", status: "OPEN", events: [],
       emotionBefore: null,   // el nudge del cierre es la primera vez que se pregunta
     })
     await closeTrade(prisma as never, "u1", { id: "t1", closePrice: 1.02, commission: 0, emotionBefore: "anxious" })

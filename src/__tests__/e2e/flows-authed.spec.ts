@@ -46,7 +46,7 @@ test("retiros: create a USD withdrawal → per-currency KPI", async ({ page }) =
   // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
   // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
   await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
-  await page.getByPlaceholder("5,000…").fill("500")
+  await page.getByRole("dialog").getByLabel(/Monto/).fill("500")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   // Redesigned retiros UI shows one KPI card per currency ("Pagado · <cur>" with
   // a "<amount> pendiente" sub) — there is no "Pendiente · <cur>" text anymore.
@@ -59,7 +59,9 @@ test("retiros: change status to Pagado", async ({ page }) => {
   await page.goto("/retiros")
   await page.waitForLoadState("networkidle")
   await page.getByRole("button", { name: /Cambiar estado/i }).first().click()
+  page.once("dialog", dialog => dialog.accept())
   await page.getByRole("menuitem", { name: "Pagado" }).click()
+  await expect(page.getByRole("button", { name: /Cambiar estado.*Pagado/i }).first()).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText(/Pagado ·/).first()).toBeVisible({ timeout: 15_000 })
   await page.screenshot({ path: `${SHOTS}/04-retiros-paid.png`, fullPage: true })
 })
@@ -86,7 +88,7 @@ test("retiros: D-02 over-withdrawal is rejected", async ({ page }) => {
   // ("FTMO 100K — Phase 1 USD" and "FTMO Funded USD"); only the funded one has a
   // withdrawable balance, and its name is unique (avoids the /FTMO/i clash).
   await page.getByRole("dialog").getByRole("button", { name: /FTMO Funded/i }).click()
-  await page.getByPlaceholder("5,000…").fill("99999999")
+  await page.getByRole("dialog").getByLabel(/Monto/).fill("99999999")
   await page.getByRole("button", { name: /registrar retiro/i }).click()
   await expect(page.getByText(/saldo disponible/i).first()).toBeVisible({ timeout: 15_000 })
   await page.screenshot({ path: `${SHOTS}/05-retiros-d02-reject.png`, fullPage: true })

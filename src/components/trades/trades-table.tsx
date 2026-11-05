@@ -39,7 +39,7 @@ const RESULT_LABELS: Record<string, string> = { WIN: "Win", LOSS: "Loss", BE: "B
 const QUALITY_TAGS: TradeTag[] = ["A+", "A", "Plan", "Off-plan", "Impulsivo", "BE"] as TradeTag[]
 
 function getResult(t: Trade): "WIN" | "LOSS" | "BE" | "OPEN" {
-  if (t.status !== "CLOSED" && t.pnl == null) return "OPEN"
+  if (t.status ? t.status === "OPEN" : t.pnl == null) return "OPEN"
   const pnl = t.pnl ?? 0
   return pnl > 0 ? "WIN" : pnl < 0 ? "LOSS" : "BE"
 }

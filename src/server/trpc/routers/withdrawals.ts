@@ -1,7 +1,6 @@
 import { z } from "zod"
-import { TRPCError } from "@trpc/server"
-import { router, protectedProcedure } from "../init"
-import type { AccountLogPayload } from "@/types"
+import { router, protectedProcedure, dashboardMutation } from "../init"
+import { createWithdrawal, changeWithdrawalStatus, deleteWithdrawal } from "@/server/services/accounts/withdrawal-service"
 
 const WithdrawalStatus = z.enum(["SOLICITADO", "EN_PROCESO", "PAGADO", "RECHAZADO"])
 
@@ -19,87 +18,21 @@ export const withdrawalsRouter = router({
       })
     ),
 
-  create: protectedProcedure
+  create: dashboardMutation
     .input(z.object({
+      requestId: z.string().uuid().optional(),
       accountId: z.string().uuid(),
-      amount:    z.number().positive(),
-      currency:  z.string().default("USD"),
-      date:      z.string(), // ISO date string
-      note:      z.string().default(""),
-      reference: z.string().default(""),
+      amount: z.number().positive().max(9999999999.99).refine(n => Math.abs(n * 100 - Math.round(n * 100)) < 1e-5, 'El monto admite hasta dos decimales'),
+      currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).default('USD'),
+      date: z.string().date(),
+      note: z.string().max(5000).default(''),
+      reference: z.string().max(500).default(''),
     }))
-    .mutation(async ({ ctx, input }) => {
-      // Validate amount does not exceed *available* balance (QA-020 + D-02).
-      // Available = initialBalance + closed P&L − retiros previos no rechazados.
-      // Excluir RECHAZADO; PAGADO/EN_PROCESO/SOLICITADO sí reservan saldo.
-      const account = await ctx.prisma.account.findUniqueOrThrow({
-        where: { id: input.accountId, userId: ctx.userId },
-        select: { initialBalance: true },
-      })
-      const closedTrades = await ctx.prisma.trade.findMany({
-        where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
-        select: { pnl: true },
-      })
-      const priorWithdrawals = await ctx.prisma.withdrawal.findMany({
-        where: { accountId: input.accountId, userId: ctx.userId, status: { not: "RECHAZADO" } },
-        select: { amount: true },
-      })
-      const totalPnl       = closedTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
-      const withdrawnTotal = priorWithdrawals.reduce((s, w) => s + Number(w.amount), 0)
-      const availableBalance = Number(account.initialBalance) + totalPnl - withdrawnTotal
-      if (input.amount > availableBalance) {
-        throw new TRPCError({
-          code:    "BAD_REQUEST",
-          message: `El monto del retiro ($${input.amount}) supera el saldo disponible ($${availableBalance.toFixed(2)}), ya descontados los retiros previos ($${withdrawnTotal.toFixed(2)}).`,
-        })
-      }
-
-      const withdrawal = await ctx.prisma.withdrawal.create({
-        data: {
-          userId:    ctx.userId,
-          accountId: input.accountId,
-          amount:    input.amount,
-          currency:  input.currency,
-          date:      new Date(input.date),
-          note:      input.note,
-          reference: input.reference,
-          status:    "SOLICITADO",
-        },
-      })
-      const withdrawalPayload: AccountLogPayload = {
-        event: "WITHDRAWAL", amount: input.amount, currency: input.currency,
-        status: "SOLICITADO", withdrawalId: withdrawal.id, reference: input.reference || undefined,
-      }
-      await ctx.prisma.accountLog.create({
-        data: { userId: ctx.userId, accountId: input.accountId, event: "WITHDRAWAL", payload: withdrawalPayload },
-      })
-      return withdrawal
-    }),
-
-  updateStatus: protectedProcedure
-    .input(z.object({
-      id:        z.string().uuid(),
-      status:    WithdrawalStatus,
-      reference: z.string().optional(),
-    }))
-    .mutation(async ({ ctx, input }) => {
-      const withdrawal = await ctx.prisma.withdrawal.update({
-        where: { id: input.id, userId: ctx.userId },
-        data:  { status: input.status, reference: input.reference ?? undefined },
-      })
-      const withdrawalStatusPayload: AccountLogPayload = {
-        event: "WITHDRAWAL_STATUS", withdrawalId: input.id, status: input.status,
-        reference: input.reference,
-      }
-      await ctx.prisma.accountLog.create({
-        data: { userId: ctx.userId, accountId: withdrawal.accountId, event: "WITHDRAWAL_STATUS", payload: withdrawalStatusPayload },
-      })
-      return withdrawal
-    }),
-
-  delete: protectedProcedure
+    .mutation(({ctx,input}) => createWithdrawal(ctx.prisma, ctx.userId, input)),
+  updateStatus: dashboardMutation
+    .input(z.object({id: z.string().uuid(), status: WithdrawalStatus, reference: z.string().max(500).optional()}))
+    .mutation(({ctx,input}) => changeWithdrawalStatus(ctx.prisma, ctx.userId, input)),
+  delete: dashboardMutation
     .input(z.string().uuid())
-    .mutation(({ ctx, input }) =>
-      ctx.prisma.withdrawal.delete({ where: { id: input, userId: ctx.userId } })
-    ),
+    .mutation(({ctx,input}) => deleteWithdrawal(ctx.prisma, ctx.userId, input)),
 })

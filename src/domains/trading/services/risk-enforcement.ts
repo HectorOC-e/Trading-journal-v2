@@ -12,6 +12,7 @@
 //   • The total max-drawdown limit is permanent: it requires a manual unlock.
 //   • Manual locks (lockReason "MANUAL" / custom) are always permanent.
 
+import { loadRealizedPnlHistory } from "./realized-history"
 import { TRPCError } from "@trpc/server"
 import type { AccountLogPayload } from "@/types"
 import { computeAccountRisk, accountDrawdown, isPermanentLockReason, type AccountRisk } from "./risk-engine"
@@ -109,11 +110,7 @@ async function loadEquityCurve(
   accountId: string,
   initialBalance: number,
 ): Promise<{ currentEquity: number; peakEquity: number }> {
-  const closed = await prisma.trade.findMany({
-    where:   { accountId, userId, status: "CLOSED" },
-    select:  { pnl: true },
-    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-  })
+  const closed = await loadRealizedPnlHistory(prisma, userId, [accountId])
   let equity = initialBalance
   let peak   = initialBalance
   for (const t of closed) {
@@ -144,12 +141,7 @@ export async function loadAccountRisk(
   referenceDate: string,
 ): Promise<AccountRisk> {
   const bounds = periodBounds(referenceDate)
-  const closed = await prisma.trade.findMany({
-    where:   { accountId: account.id, userId, status: "CLOSED" },
-    select:  { pnl: true, date: true },
-    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-  })
-  const rows = closed.map(t => ({ pnl: Number(t.pnl ?? 0), date: t.date as Date }))
+  const rows = await loadRealizedPnlHistory(prisma, userId, [account.id])
   const sumFrom   = (from: Date) => rows.filter(r => r.date >= from).reduce((s, r) => s + r.pnl, 0)
   // Equity at the start of each window = initial + P&L realized before it opened.
   // Loss limits use this moving base; total drawdown stays on the initial balance.
