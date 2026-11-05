@@ -37,6 +37,8 @@ interface EditTradeModalProps {
     stop: number
     target: number
     size: number
+    realizedPnl?: number | null
+    events?: { type: string }[]
     session: string
     notes: string
     planNotes?: string | null
@@ -74,6 +76,7 @@ type Tab = "precios" | "detalles" | "psicologia"
 export function EditTradeModal({
   open, onOpenChange, trade, setups = [], onSave, saving
 }: EditTradeModalProps) {
+  const monetaryLocked = (trade.events ?? []).some(event => event.type === "PARTIAL_CLOSE" || event.type === "SCALE_IN") || (trade.realizedPnl != null && trade.realizedPnl !== 0)
   const [tab, setTab] = useState<Tab>("precios")
 
   // Prices are validated via RHF + zod; the rest of the form stays local state.
@@ -149,20 +152,20 @@ export function EditTradeModal({
     }
 
     onSave?.({
-      entry:   parseFloat(prices.entry),
-      stop:    parseFloat(prices.stop),
-      target:  parseFloat(prices.target),
-      size:    parseFloat(prices.size),
+      ...(!monetaryLocked && parseFloat(prices.entry) !== trade.entry ? { entry: parseFloat(prices.entry) } : {}),
+      ...(!monetaryLocked && parseFloat(prices.stop) !== trade.stop ? { stop: parseFloat(prices.stop) } : {}),
+      ...(!monetaryLocked && parseFloat(prices.target) !== trade.target ? { target: parseFloat(prices.target) } : {}),
+      ...(!monetaryLocked && parseFloat(prices.size) !== trade.size ? { size: parseFloat(prices.size) } : {}),
       session,
       notes,
       planNotes: planNotes || null,
       tags:    finalTags,
       setupId: setupId || undefined,
-      emotionBefore:    emotionBefore,
-      confidenceRating,
-      executionQuality,
-      fomoFlag,
-      revengeFlag,
+      ...(emotionBefore !== (trade.emotionBefore ?? null) ? { emotionBefore } : {}),
+      ...(confidenceRating !== (trade.confidenceRating ?? null) ? { confidenceRating } : {}),
+      ...(executionQuality !== (trade.executionQuality ?? null) ? { executionQuality } : {}),
+      ...(fomoFlag !== (trade.fomoFlag ?? false) ? { fomoFlag } : {}),
+      ...(revengeFlag !== (trade.revengeFlag ?? false) ? { revengeFlag } : {}),
       maeR:   maeR.trim() === "" || Number.isNaN(parseFloat(maeR)) ? null : parseFloat(maeR),
       mfeR:   mfeR.trim() === "" || Number.isNaN(parseFloat(mfeR)) ? null : parseFloat(mfeR),
       regime,
@@ -199,6 +202,7 @@ export function EditTradeModal({
 
         {tab === "precios" && (
           <div className="flex flex-col gap-3">
+            {monetaryLocked && <p className="text-xs text-[var(--ink-3)]">Precios y tamaño de solo lectura por los movimientos de la posición. Puedes editar sus notas y detalles.</p>}
             {([
               ["entry",  "Entry"],
               ["stop",   "Stop"],
@@ -209,6 +213,7 @@ export function EditTradeModal({
                 <label className="text-[10px] text-[var(--ink-3)] font-medium">{label}</label>
                 <input
                   type="number"
+                  readOnly={monetaryLocked}
                   inputMode="decimal"
                   step="any"
                   aria-invalid={!!errors[name] || undefined}
@@ -548,7 +553,13 @@ export function EditTradeModal({
           <Button
             size="md"
             className="bg-[var(--accent)] text-white hover:opacity-90"
-            onClick={handleSubmit(onValid, onInvalid)}
+            onClick={() => {
+              if (monetaryLocked) {
+                // Remaining size may be zero after a full partial close; metadata
+                // edits do not submit or revalidate immutable financial fields.
+                onValid({ entry: String(trade.entry), stop: String(trade.stop), target: String(trade.target), size: String(trade.size) })
+              } else void handleSubmit(onValid, onInvalid)()
+            }}
             disabled={saving}
           >
             {saving ? "Guardando…" : "Guardar"}

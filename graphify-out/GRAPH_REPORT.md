@@ -1,7 +1,7 @@
 # Graph Report - Trading-journal-v2  (2026-11-05)
 
 ## Corpus Check
-- 666 files · ~438,846 words
+- 666 files · ~439,078 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `de92e20b`
+- Built from commit: `71cf6d75`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

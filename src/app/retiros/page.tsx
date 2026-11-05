@@ -306,6 +306,8 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
     onSuccess: () => {
       utils.withdrawals.list.invalidate()
       utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
+      utils.accountLogs.list.invalidate()
       requestId.current = null
       setPendingPayload(null)
       onOpenChange(false)
@@ -440,12 +442,12 @@ export default function RetirosPage() {
   const utils = trpc.useUtils()
 
   const updateStatus = trpc.withdrawals.updateStatus.useMutation({
-    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); setUpdatingId(null) },
+    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); utils.trades.dashboardStats.invalidate(); utils.accountLogs.list.invalidate(); setUpdatingId(null) },
     onError:   (err) => { setUpdatingId(null); toast.error(formatErrorForUser(err)) },
   })
 
   const deleteWithdrawal = trpc.withdrawals.delete.useMutation({
-    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
+    onSuccess: () => { utils.withdrawals.list.invalidate(); utils.accounts.list.invalidate(); utils.trades.dashboardStats.invalidate(); utils.accountLogs.list.invalidate(); setDeletingId(null); toast.success("Retiro eliminado") },
     onError:   (err) => { setDeletingId(null); toast.error(formatErrorForUser(err)) },
   })
 

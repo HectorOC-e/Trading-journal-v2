@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "src/app/retiros/page.tsx": {
-    "mtime": 1793909953.5237179,
-    "seen": 1793911028.198734,
-    "ast_hash": "7cfdf9a3c2fff889bb1c4b642ff8aadf",
+    "mtime": 1793912154.314479,
+    "seen": 1793912171.8514256,
+    "ast_hash": "15a8f3c2716d0ca6abd3c4f70af162ab",
     "semantic_hash": ""
   },
   "src/app/reviews/components/card-equity-chart.tsx": {
@@ -852,9 +852,9 @@
     "semantic_hash": ""
   },
   "src/components/trades/edit-trade-modal.tsx": {
-    "mtime": 1793537926.1532698,
-    "seen": 1793538422.714346,
-    "ast_hash": "31ccad24ae2294e551d2699dcbf61c70",
+    "mtime": 1793911896.638718,
+    "seen": 1793912080.26724,
+    "ast_hash": "77bb1364feb8b05ca05f124095663d11",
     "semantic_hash": ""
   },
   "src/components/trades/emotion-insight.tsx": {
@@ -888,21 +888,21 @@
     "semantic_hash": ""
   },
   "src/components/trades/trade-detail-panel.tsx": {
-    "mtime": 1793537926.1542304,
-    "seen": 1793538422.7143521,
-    "ast_hash": "9a127bcfe15267cc5b41b2ed24174d50",
+    "mtime": 1793911914.5120873,
+    "seen": 1793912080.267247,
+    "ast_hash": "7b5fb7d4e4a6ba410139bab5d148b60d",
     "semantic_hash": ""
   },
   "src/components/trades/trade-row.tsx": {
-    "mtime": 1793537926.1542304,
-    "seen": 1793538422.7143526,
-    "ast_hash": "7daea60b09c5775c896ab6bc97f4f5e0",
+    "mtime": 1793911896.6384919,
+    "seen": 1793912080.2672477,
+    "ast_hash": "eddc0fda37c17091ef15eb63fbb30aa9",
     "semantic_hash": ""
   },
   "src/components/trades/trades-table.tsx": {
-    "mtime": 1793537926.1542304,
-    "seen": 1793538422.7143533,
-    "ast_hash": "030bb58319de4ad3777cc40a6b3978be",
+    "mtime": 1793911896.6385777,
+    "seen": 1793912080.2672486,
+    "ast_hash": "1f6c2f548b7068c235b9f249ed6189ef",
     "semantic_hash": ""
   },
   "src/components/ui/animated-list.tsx": {
