@@ -383,8 +383,8 @@ function NuevoRetiroModal({ open, onOpenChange, accounts }: {
           {/* Amount + currency */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end" }}>
             <div>
-              <label className="text-eyebrow block mb-2">Monto <span className="text-[var(--loss)]">*</span></label>
-              <Input placeholder="5000,50" disabled={create.isPending || !!pendingPayload} inputMode="decimal" mono error={!!errors.amount} {...register("amount")} />
+              <label htmlFor="withdrawal-amount" className="text-eyebrow block mb-2">Monto <span className="text-[var(--loss)]">*</span></label>
+              <Input id="withdrawal-amount" placeholder="5000,50" disabled={create.isPending || !!pendingPayload} inputMode="decimal" mono error={!!errors.amount} {...register("amount")} />
             </div>
             <span className="text-sm font-semibold">{form.currency}</span>
           </div>
