@@ -16,6 +16,16 @@ export async function GET(req: NextRequest) {
   } = await sb.auth.getUser();
   if (!user)
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
+  if (
+    await prisma.accountDeletionJob.findUnique({
+      where: { userId: user.id },
+      select: { userId: true },
+    })
+  )
+    return NextResponse.json(
+      { error: "La cuenta está en proceso de eliminación." },
+      { status: 403 },
+    );
   const id = z
     .string()
     .uuid()
@@ -55,6 +65,16 @@ export async function POST(req: NextRequest) {
   } = await sb.auth.getUser();
   if (!user)
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
+  if (
+    await prisma.accountDeletionJob.findUnique({
+      where: { userId: user.id },
+      select: { userId: true },
+    })
+  )
+    return NextResponse.json(
+      { error: "La cuenta está en proceso de eliminación." },
+      { status: 403 },
+    );
   if (
     Number(req.headers.get("content-length")) >
     MAX_PRACTICE_IMAGE_BYTES + 65536
@@ -171,6 +191,16 @@ export async function DELETE(req: NextRequest) {
   } = await sb.auth.getUser();
   if (!user)
     return NextResponse.json({ error: "Inicia sesión." }, { status: 401 });
+  if (
+    await prisma.accountDeletionJob.findUnique({
+      where: { userId: user.id },
+      select: { userId: true },
+    })
+  )
+    return NextResponse.json(
+      { error: "La cuenta está en proceso de eliminación." },
+      { status: 403 },
+    );
   const parsed = identity
     .extend({ attachmentId: z.string().uuid() })
     .safeParse(await req.json().catch(() => null));

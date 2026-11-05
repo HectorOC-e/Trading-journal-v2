@@ -1,4 +1,5 @@
 import { TRPCError } from "@trpc/server";
+import { testProviderConnectivity } from "@/lib/ai/health-check";
 import type { AiProvider } from "@/lib/ai/config";
 
 export type ModelPurpose = "chat" | "embeddings";
@@ -82,6 +83,22 @@ export async function fetchProviderModels(
       message:
         "Configura la clave de este proveedor para consultar su catálogo.",
     });
+  const signal = AbortSignal.timeout(10000);
+  if (provider === "openrouter" && apiKey) {
+    const authentication = await testProviderConnectivity(
+      provider,
+      apiKey,
+      signal,
+    );
+    if (!authentication.valid)
+      throw new TRPCError({
+        code:
+          authentication.failure === "credentials"
+            ? "PRECONDITION_FAILED"
+            : "BAD_GATEWAY",
+        message: authentication.error,
+      });
+  }
   const url = new URL(
     provider === "openrouter"
       ? `https://openrouter.ai/api/v1/models${apiKey ? "/user" : ""}`
@@ -102,7 +119,6 @@ export async function fetchProviderModels(
   } else if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
   const models = new Map<string, ProviderModel>();
   const cursors = new Set<string>();
-  const signal = AbortSignal.timeout(10000);
   for (let page = 0; page < 10; page++) {
     let response: Response;
     try {

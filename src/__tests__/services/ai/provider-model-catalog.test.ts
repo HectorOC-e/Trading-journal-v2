@@ -24,7 +24,7 @@ it("uses the account OpenRouter catalog and exposes only safe model metadata", a
   );
   vi.stubGlobal("fetch", fetcher);
   const models = await fetchProviderModels("openrouter", "test-secret", "chat");
-  expect(String(fetcher.mock.calls[0][0])).toBe(
+  expect(String(fetcher.mock.calls[1][0])).toBe(
     "https://openrouter.ai/api/v1/models/user?output_modalities=text",
   );
   expect(fetcher.mock.calls[0][1].headers.Authorization).toBe(
@@ -161,6 +161,9 @@ it("fetches later OpenRouter pages without following upstream URLs carrying the 
   const f = vi
     .fn()
     .mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { label: "test" } })),
+    )
+    .mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           data: [{ id: "vendor/one", name: "One" }],
@@ -184,7 +187,18 @@ it("fetches later OpenRouter pages without following upstream URLs carrying the 
       (m) => m.id,
     ),
   ).toEqual(["vendor/one", "vendor/two"]);
-  expect(String(f.mock.calls[1][0])).toBe(
+  expect(String(f.mock.calls[2][0])).toBe(
     "https://openrouter.ai/api/v1/models/user?output_modalities=text&offset=1",
   );
+});
+it("rejects invalid account keys before reading a publicly accessible OpenRouter catalog", async () => {
+  const f = vi.fn(async (url: string) =>
+    String(url).endsWith("/auth/key")
+      ? new Response("{}", { status: 401 })
+      : new Response(JSON.stringify({ data: [{ id: "public-model" }] })),
+  );
+  vi.stubGlobal("fetch", f);
+  await expect(
+    fetchProviderModels("openrouter", "fake-key", "chat"),
+  ).rejects.toThrow(/clave|credenciales/i);
 });
