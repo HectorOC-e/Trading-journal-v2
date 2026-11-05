@@ -5,6 +5,8 @@ import { CheckCheck, BellOff, Search } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
 import { trpc } from "@/lib/trpc/client"
 import { groupByTime, type AppNotification } from "@/lib/notifications"
+import { Button } from "@/components/ui/button"
+import { formatErrorForUser } from "@/lib/error-formatter"
 import { NotificationItem } from "@/components/notifications/notification-item"
 
 const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
@@ -15,11 +17,10 @@ export default function NotificacionesPage() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [includeArchived, setIncludeArchived] = useState(false)
   const [search, setSearch] = useState("")
-  const [limit, setLimit] = useState(30)
 
-  const query = trpc.notifications.list.useQuery(
-    { limit, unreadOnly, includeArchived, ...(category ? { category: category as typeof CATEGORIES[number] } : {}) },
-    { staleTime: 30_000 },
+  const query = trpc.notifications.list.useInfiniteQuery(
+    { limit: 30, unreadOnly, includeArchived, ...(category ? { category: category as typeof CATEGORIES[number] } : {}) },
+    { staleTime: 30_000, getNextPageParam: (page) => page.nextCursor ?? undefined },
   )
   const { data: unread = 0 } = trpc.notifications.unreadCount.useQuery(undefined, { staleTime: 30_000 })
 
@@ -28,8 +29,8 @@ export default function NotificacionesPage() {
   const markAllRead = trpc.notifications.markAllRead.useMutation({ onSuccess: invalidate })
   const archive     = trpc.notifications.archive.useMutation({ onSuccess: invalidate })
 
-  const items = useMemo<AppNotification[]>(() => (query.data?.items ?? []) as AppNotification[], [query.data])
-  const hasMore = !!query.data?.nextCursor
+  const items = useMemo<AppNotification[]>(() => (query.data?.pages.flatMap(page => page.items) ?? []) as AppNotification[], [query.data])
+  const hasMore = query.hasNextPage
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return items
@@ -39,6 +40,7 @@ export default function NotificacionesPage() {
 
   const chip = (active: boolean, label: string, onClick: () => void) => (
     <button
+      key={label}
       onClick={onClick}
       className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[12px] transition-colors ${
         active ? "bg-[var(--ink)] text-[var(--panel)]" : "border border-[var(--line)] text-[var(--ink-3)] hover:text-[var(--ink)]"
@@ -74,7 +76,9 @@ export default function NotificacionesPage() {
         </div>
       </div>
 
-      {groups.length === 0 ? (
+      {query.error && <div role="alert" className="mb-4 text-[var(--loss)]">{formatErrorForUser(query.error)} <Button variant="ghost" disabled={query.isFetching} onClick={() => query.isFetchNextPageError ? void query.fetchNextPage() : void query.refetch()}>Reintentar</Button></div>}
+      {(markRead.error || markAllRead.error || archive.error) && <p role="alert">{formatErrorForUser((markRead.error || markAllRead.error || archive.error)!)}</p>}
+      {groups.length === 0 && !query.error ? (
         <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--win-soft)]">
             <BellOff size={22} className="text-[var(--win)]" />
@@ -84,7 +88,7 @@ export default function NotificacionesPage() {
             Aquí verás cuentas bloqueadas, reglas disparadas, reviews vencidas, importaciones y avisos del sistema.
           </p>
         </div>
-      ) : (
+      ) : groups.length > 0 ? (
         <div className="max-w-[760px] overflow-hidden rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)]">
           {groups.map((g) => (
             <div key={g.bucket}>
@@ -95,12 +99,12 @@ export default function NotificacionesPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
 
       {hasMore && (
         <div className="mt-4 flex max-w-[760px] justify-center">
           <button
-            onClick={() => setLimit((l) => l + 30)}
+            onClick={() => void query.fetchNextPage()}
             disabled={query.isFetching}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] px-4 py-2 text-[12px] font-medium text-[var(--ink-2)] transition-colors hover:bg-[var(--chip)] disabled:opacity-50"
           >

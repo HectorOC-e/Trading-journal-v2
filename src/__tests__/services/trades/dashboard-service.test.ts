@@ -46,6 +46,7 @@ function mockPrisma() {
         .mockResolvedValueOnce([])                                          // open
         .mockResolvedValueOnce([]),                                         // today
     },
+    withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
     setup: { findMany: vi.fn().mockResolvedValue([]) },
     tradeChecklistResult: { findMany: vi.fn().mockResolvedValue([]) },
     market: { findMany: vi.fn().mockResolvedValue([]) },
@@ -89,6 +90,42 @@ describe("dashboard financial reliability", () => {
     db.fixtureRows = rows
     return db
   }
+  it("keeps original planned risk and size after a full partial close and normalizes FX", async () => {
+    const db = fixture()
+    db.fixtureRows.splice(0,db.fixtureRows.length,{...tradeRow(REAL,20),status:"CLOSED",date:new Date("2020-01-01"),entry:100,stop:100,target:130,size:0,originalSize:2,originalRiskMoney:20})
+    const result = await getDashboardStats(db,USER,{period:"ALL"})
+    expect(result.executionStats.avgPlannedRisk).toBe(1.16)
+    expect(result.executionStats.avgPlannedReward).toBe(3.48)
+  })
+  it("sorts partial realization dates before computing drawdown", async () => {
+    const db = fixture()
+    db.account.findMany.mockResolvedValue([{...acct(REAL,"PERSONAL"),ddTotalPct:20}])
+    db.fixtureRows.splice(0,db.fixtureRows.length,
+      {...tradeRow(REAL,0),status:"CLOSED",date:new Date("2020-01-01"),events:[{realizedPnl:100,timestamp:new Date("2020-01-05T12:00:00Z")}]},
+      {...tradeRow(REAL,-100),status:"CLOSED",date:new Date("2020-01-02")})
+    const result = await getDashboardStats(db,USER,{period:"ALL"})
+    expect(result.accountStats[0].drawdownPct).toBe(2)
+  })
+  it("includes open partial realization in live balance and risk without counting an extra closed trade", async () => {
+    const db = fixture()
+    const today = new Date().toISOString().slice(0,10)
+    db.fixtureRows.push({ ...tradeRow(REAL, -50), status: "OPEN", date: new Date("2020-01-01"), events: [{realizedPnl:-50,timestamp:new Date(today+"T12:00:00Z")}] })
+    const result = await getDashboardStats(db, USER, { period: "ALL" })
+    expect(result.accountStats[0].balance).toBeCloseTo(10945 * .058, 2)
+    expect(result.accountStats[0].pnlToday).toBeCloseTo(-55 * .058, 2)
+    expect(result.accountStats[0].tradesTotal).toBe(2)
+    expect(result.propFirmStatus[0].dailyLossPct).toBe(55)
+  })
+  it("paid cash reduces live balance but never trading performance or drawdown", async () => {
+    const db = fixture()
+    const before = await getDashboardStats(db, USER, { period: "ALL" })
+    db.withdrawal.findMany.mockResolvedValue([{accountId:REAL,amount:1000,currency:"MXN",status:"PAGADO"}])
+    const after = await getDashboardStats(db, USER, { period: "ALL" })
+    expect(after.accountStats[0].balance).toBeCloseTo(before.accountStats[0].balance - 1000 * .058, 2)
+    expect(after.accountStats[0].netPnl).toBe(before.accountStats[0].netPnl)
+    expect(after.accountStats[0].risk).toEqual(before.accountStats[0].risk)
+    expect(after.kpis).toEqual(before.kpis)
+  })
   it("keeps lifetime balance/risk independent of period and converts daily loss once", async () => {
     const db = fixture()
     const all = await getDashboardStats(db, USER, { period: "ALL" })

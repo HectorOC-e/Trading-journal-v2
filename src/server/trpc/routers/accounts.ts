@@ -1,4 +1,6 @@
 import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
+import { loadAccountCashAdjustments } from "@/server/services/accounts/cash-adjustments"
+import { parseFxRates } from "@/lib/fx"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import type { Prisma } from "@/lib/generated/prisma/client"
@@ -56,7 +58,7 @@ const AccountInput = z.object({
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
-function serializeAccount(a: RawAccount, closedPnl = 0) {
+function serializeAccount(a: RawAccount, closedPnl = 0, cash = { paid: 0, reserved: 0 }) {
   const initialBalance = Number(a.initialBalance)
   return {
     ...a,
@@ -65,7 +67,10 @@ function serializeAccount(a: RawAccount, closedPnl = 0) {
     // is what the rest of the app shows as "Balance actual" and what the trade
     // modal sizes positions off (so a 0 initial balance no longer reads as $0
     // and the contract calculator can run).
-    currentBalance: initialBalance + closedPnl,
+    currentBalance: initialBalance + closedPnl - cash.paid,
+    paidWithdrawals: cash.paid,
+    reservedWithdrawals: cash.reserved,
+    availableBalance: initialBalance + closedPnl - cash.paid - cash.reserved,
     ddDailyPct:    a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
     ddWeeklyPct:   a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
     ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
@@ -109,12 +114,14 @@ export const accountsRouter = router({
       // Realized P&L per account → current balance (equity) in serializeAccount.
       const pnlByAccount = await ctx.prisma.trade.groupBy({
         by: ["accountId"],
-        where: { userId: ctx.userId, status: "CLOSED" },
+        where: { userId: ctx.userId, status: { in: ["OPEN", "CLOSED"] }, pnl: { not: null } },
         _sum: { pnl: true },
       })
       const pnlMap = new Map(pnlByAccount.map((r) => [r.accountId, Number(r._sum.pnl ?? 0)]))
 
-      return reconciled.map((a) => serializeAccount(a, pnlMap.get(a.id) ?? 0))
+      const profile = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { fxRates: true } })
+      const cash = await loadAccountCashAdjustments(ctx.prisma, ctx.userId, rows, parseFxRates(profile.fxRates))
+      return reconciled.map((a) => serializeAccount(a, pnlMap.get(a.id) ?? 0, cash.get(a.id)))
     }),
 
   create: dashboardMutation
@@ -307,11 +314,11 @@ export const accountsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const account = await ctx.prisma.account.findUniqueOrThrow({
         where: { id: input.accountId, userId: ctx.userId },
-        select: { id: true, initialBalance: true },
+        select: { id: true, initialBalance: true, currency: true },
       })
 
       const trades = await ctx.prisma.trade.findMany({
-        where: { accountId: input.accountId, userId: ctx.userId, status: "CLOSED" },
+        where: { accountId: input.accountId, userId: ctx.userId, status: { in: ["OPEN", "CLOSED"] } },
         select: { pnl: true, date: true },
         orderBy: { date: "asc" },
       })
@@ -337,7 +344,9 @@ export const accountsRouter = router({
         return sum + (typeof p.variance === "number" ? p.variance : 0)
       }, 0)
 
-      const currentEquity = tradeEquity + priorAdjustments
+      const profile = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { fxRates: true } })
+      const cash = (await loadAccountCashAdjustments(ctx.prisma, ctx.userId, [account], parseFxRates(profile.fxRates))).get(account.id)!
+      const currentEquity = tradeEquity + priorAdjustments - cash.paid
       // Incremental adjustment needed to make displayed equity match the broker.
       const variance = input.actualBalance - currentEquity
 

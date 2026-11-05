@@ -95,7 +95,11 @@ const BASE_ACCOUNT = {
 function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
   const trade = { ...BASE_TRADE }
   const account = { ...BASE_ACCOUNT, ...accountOverrides }
-  return {
+  const db = {
+    user: { findUniqueOrThrow: vi.fn().mockResolvedValue({fxRates:null}) },
+    withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
+    $queryRaw: vi.fn().mockResolvedValue([]),
+    $transaction: async (fn: (tx: unknown) => unknown) => fn(db),
     account: {
       findUniqueOrThrow: vi.fn().mockResolvedValue(account),
       findUnique:        vi.fn().mockResolvedValue(account),
@@ -135,6 +139,7 @@ function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
     },
     tradeChecklistResult: {},
   }
+  return db
 }
 
 const BASE_CREATE_INPUT = {

@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/app/notificaciones/page.tsx": {
-    "mtime": 1793537926.1460361,
-    "seen": 1793538422.7142801,
-    "ast_hash": "088ae3c21e580d13f9bacf342e751b09",
+    "mtime": 1793909953.5238605,
+    "seen": 1793911028.1987143,
+    "ast_hash": "48f9cfaef87a053924a10f32d4372f8a",
     "semantic_hash": ""
   },
   "src/app/page.tsx": {
@@ -384,8 +384,8 @@
     "semantic_hash": ""
   },
   "src/app/perfil/components/ai-models-card.tsx": {
-    "mtime": 1793902152.211763,
-    "seen": 1793902439.639094,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1987188,
     "ast_hash": "7a8af7e911e993218d4cf5892013215c",
     "semantic_hash": ""
   },
@@ -396,14 +396,14 @@
     "semantic_hash": ""
   },
   "src/app/perfil/page.tsx": {
-    "mtime": 1793902152.212424,
-    "seen": 1793902439.6391013,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1987264,
     "ast_hash": "95c9ca401f6d46a9ff27216e7362cd8d",
     "semantic_hash": ""
   },
   "src/app/playbook/page.tsx": {
-    "mtime": 1793902014.2000637,
-    "seen": 1793902439.6391032,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.198728,
     "ast_hash": "6d9b9019bcaa9081f67e2858a46826e1",
     "semantic_hash": ""
   },
@@ -420,9 +420,9 @@
     "semantic_hash": ""
   },
   "src/app/retiros/page.tsx": {
-    "mtime": 1793537926.146449,
-    "seen": 1793538422.7142866,
-    "ast_hash": "b75b2514725ea313cfc0212089977b56",
+    "mtime": 1793909953.5237179,
+    "seen": 1793911028.198734,
+    "ast_hash": "7cfdf9a3c2fff889bb1c4b642ff8aadf",
     "semantic_hash": ""
   },
   "src/app/reviews/components/card-equity-chart.tsx": {
@@ -492,8 +492,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-lifecycle.tsx": {
-    "mtime": 1793902006.3052256,
-    "seen": 1793902439.6391344,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1987603,
     "ast_hash": "6ee41d77e6e924057306d69c703502cf",
     "semantic_hash": ""
   },
@@ -558,8 +558,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/mensual/[yearMonth]/page.tsx": {
-    "mtime": 1793902032.4481332,
-    "seen": 1793902439.639155,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.198782,
     "ast_hash": "c9690786549ddb4a24cb70860de32127",
     "semantic_hash": ""
   },
@@ -570,8 +570,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/semanal/[weekStart]/page.tsx": {
-    "mtime": 1793902032.447682,
-    "seen": 1793902439.6391585,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.198786,
     "ast_hash": "ce1a9de857a63d558cd9b9161eb3f31c",
     "semantic_hash": ""
   },
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "src/components/ai-coach/ai-coach-drawer.tsx": {
-    "mtime": 1793901823.3318882,
-    "seen": 1793902439.6391673,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1987963,
     "ast_hash": "1740f624dd08bf2f8aadd5073d8ec381",
     "semantic_hash": ""
   },
@@ -1308,9 +1308,9 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/dashboard-analytics.ts": {
-    "mtime": 1793537926.1594818,
-    "seen": 1793538422.7144058,
-    "ast_hash": "7e06f9fa947e4100a2ad796fc8d61235",
+    "mtime": 1793911076.5772238,
+    "seen": 1793911118.351495,
+    "ast_hash": "b107077f261e7d0cd7ca46a983abbde0",
     "semantic_hash": ""
   },
   "src/domains/analytics/services/discipline-service.ts": {
@@ -1482,8 +1482,8 @@
     "semantic_hash": ""
   },
   "src/domains/learning/services/review-scheduler.ts": {
-    "mtime": 1793902341.8539793,
-    "seen": 1793902439.6394439,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.199077,
     "ast_hash": "a4f1590e7fa5cc136bc50c80345f5b50",
     "semantic_hash": ""
   },
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "src/domains/learning/services/study-session-service.ts": {
-    "mtime": 1793628100.5405648,
-    "seen": 1793682085.1300013,
-    "ast_hash": "2b73228c9cd4254de331b747aae90de1",
+    "mtime": 1793909774.1882524,
+    "seen": 1793911028.1990807,
+    "ast_hash": "93c4dab6ffde5a470e75dcc53edf363f",
     "semantic_hash": ""
   },
   "src/domains/learning/srs.ts": {
@@ -1584,8 +1584,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/schemas/setup-form-schema.ts": {
-    "mtime": 1793901828.4712524,
-    "seen": 1793902439.639483,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.199123,
     "ast_hash": "1406453dc96b6c420e22cb376027084b",
     "semantic_hash": ""
   },
@@ -1644,9 +1644,9 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/risk-enforcement.ts": {
-    "mtime": 1793537926.1637616,
-    "seen": 1793538422.7144601,
-    "ast_hash": "b90ee1372136f1ca720880fe3de20b18",
+    "mtime": 1793910017.8613024,
+    "seen": 1793911028.1991513,
+    "ast_hash": "3dc5af7cebf3d0e24f059fe923901b73",
     "semantic_hash": ""
   },
   "src/domains/trading/services/risk-engine.ts": {
@@ -1872,9 +1872,9 @@
     "semantic_hash": ""
   },
   "src/lib/error-formatter.ts": {
-    "mtime": 1793537926.165525,
-    "seen": 1793538422.7144954,
-    "ast_hash": "d2a70766d247074ee6c5c103ee7ed873",
+    "mtime": 1793911430.467952,
+    "seen": 1793911471.613162,
+    "ast_hash": "b8f8a0806417163eee49eda642e4dd92",
     "semantic_hash": ""
   },
   "src/lib/errors/app-error.ts": {
@@ -2214,9 +2214,9 @@
     "semantic_hash": ""
   },
   "src/server/services/email/send-learning-digest.ts": {
-    "mtime": 1793744567.163567,
-    "seen": 1793746365.0892649,
-    "ast_hash": "6b8a7517cd7eb79102211d9b80e8e975",
+    "mtime": 1793909774.1891372,
+    "seen": 1793911028.1993465,
+    "ast_hash": "dfde1e755df33bd422c5b840af2a599e",
     "semantic_hash": ""
   },
   "src/server/services/email/send-review.ts": {
@@ -2352,8 +2352,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/report-data.ts": {
-    "mtime": 1793901993.0495863,
-    "seen": 1793902439.6398199,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1994195,
     "ast_hash": "7e44688e8c428f8d62b5649179941631",
     "semantic_hash": ""
   },
@@ -2430,9 +2430,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/accounts.ts": {
-    "mtime": 1793901814.5591674,
-    "seen": 1793902439.639852,
-    "ast_hash": "5c28a7722b15da1fc73da9aca16945d2",
+    "mtime": 1793911260.6572063,
+    "seen": 1793911318.0135484,
+    "ast_hash": "fc168e71184c8801f1335806b7d513f0",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/ai-config.ts": {
@@ -2502,9 +2502,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-resources.ts": {
-    "mtime": 1793901902.0583825,
-    "seen": 1793902439.6398776,
-    "ast_hash": "0cf5276132a2c7cc2bc80e359b42dfe8",
+    "mtime": 1793910375.6771863,
+    "seen": 1793911028.1994755,
+    "ast_hash": "502e50b2cecee274a77024597fc67e8e",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/markets.ts": {
@@ -2520,15 +2520,15 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-reviews.ts": {
-    "mtime": 1793901840.9550674,
-    "seen": 1793902439.6398828,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.199481,
     "ast_hash": "26b81221cf15a5d57fa03f4426ce0e25",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/notifications.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.714627,
-    "ast_hash": "6cd646b018d920661c9a33e6ec8c7da9",
+    "mtime": 1793911260.6573906,
+    "seen": 1793911318.0135815,
+    "ast_hash": "37ff61fb969466e1c92628a1880056b9",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/playbook.ts": {
@@ -2568,8 +2568,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/setups.ts": {
-    "mtime": 1793902226.4520576,
-    "seen": 1793902439.6398995,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1994967,
     "ast_hash": "4e2f140e1e3737a5b33885b6cec0a26a",
     "semantic_hash": ""
   },
@@ -2580,8 +2580,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/tags.ts": {
-    "mtime": 1793901828.4969256,
-    "seen": 1793902439.6399033,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1996338,
     "ast_hash": "73d7aee5e8c5a30c19c993fe1fd6bcb2",
     "semantic_hash": ""
   },
@@ -2604,15 +2604,15 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1793901840.9548163,
-    "seen": 1793902439.6399102,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1996453,
     "ast_hash": "72a37e448e881a390ef6af62c7d0c8d7",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.71464,
-    "ast_hash": "d7606520fa37b8615606d545e1bc1baa",
+    "mtime": 1793909893.7865827,
+    "seen": 1793911028.199647,
+    "ast_hash": "d70b15fa1a43495e7cf9ce6c0875acb9",
     "semantic_hash": ""
   },
   "src/tsconfig.json": {
@@ -2622,9 +2622,9 @@
     "semantic_hash": ""
   },
   "src/types/index.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.7146416,
-    "ast_hash": "e7d6b21e1ce003118def7f28a19055af",
+    "mtime": 1793910059.0757217,
+    "seen": 1793911028.1996508,
+    "ast_hash": "d5df795c900f0572ca56a63a106fcec0",
     "semantic_hash": ""
   },
   "src/vercel.json": {
@@ -3234,15 +3234,15 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/dashboard-service.ts": {
-    "mtime": 1793902104.4342346,
-    "seen": 1793902439.6398387,
-    "ast_hash": "07e38e3824313b1a80ac11b0c53a2f45",
+    "mtime": 1793911076.5762415,
+    "seen": 1793911118.3519394,
+    "ast_hash": "4b101cc0d83be15f706a4c5861f0c149",
     "semantic_hash": ""
   },
   "src/server/services/trades/serializers.ts": {
-    "mtime": 1793537926.1766376,
-    "seen": 1793538422.714608,
-    "ast_hash": "6eef63b9d96e808a818804a5d8f68d79",
+    "mtime": 1793909945.1398926,
+    "seen": 1793911028.199439,
+    "ast_hash": "ec1b1bef7384c6394f6e380226fa75f9",
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-read-service.ts": {
@@ -3252,9 +3252,9 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1793537926.1766376,
-    "seen": 1793538422.7146096,
-    "ast_hash": "49a4c99cfa3628cb3fb34ad40b6ec570",
+    "mtime": 1793911543.1073399,
+    "seen": 1793911581.8037179,
+    "ast_hash": "b32fe9f9d6ee007d3b1dba346861c36d",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
@@ -3312,20 +3312,20 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/resource-notes.ts": {
-    "mtime": 1793902293.9639006,
-    "seen": 1793902439.63978,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1993778,
     "ast_hash": "5eef16b9492b8a22bf5698a0e5b1543d",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-notes.ts": {
-    "mtime": 1793902293.9627419,
-    "seen": 1793902439.639786,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993835,
     "ast_hash": "1d9329f408725309878d03f8ad809f95",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/pipeline.ts": {
-    "mtime": 1793902293.964542,
-    "seen": 1793902439.6397913,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993885,
     "ast_hash": "032330db90ee13dbf865d5af6a28811e",
     "semantic_hash": ""
   },
@@ -3342,8 +3342,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/types.ts": {
-    "mtime": 1793901918.5140429,
-    "seen": 1793902439.639799,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993954,
     "ast_hash": "a9ea17546e58135ae36c0f6dd7eb25b0",
     "semantic_hash": ""
   },
@@ -3420,26 +3420,26 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/setup-notes.ts": {
-    "mtime": 1793902293.9640465,
-    "seen": 1793902439.639782,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1993794,
     "ast_hash": "942a27af860b8bf8ba9c3f4fa24e6223",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-event-notes.ts": {
-    "mtime": 1793902293.9632285,
-    "seen": 1793902439.639784,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993816,
     "ast_hash": "74c0849fd0f17dd36523571651797ecf",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-plans.ts": {
-    "mtime": 1793902293.9636,
-    "seen": 1793902439.6397882,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993852,
     "ast_hash": "a7522f692d037a7e989fec46aea2a755",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/weekly-review-notes.ts": {
-    "mtime": 1793901918.513647,
-    "seen": 1793902439.6397896,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993866,
     "ast_hash": "2de70220cb436a9bfc1fc5227cfb06e6",
     "semantic_hash": ""
   },
@@ -3468,8 +3468,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/monthly-review-notes.ts": {
-    "mtime": 1793901918.5139,
-    "seen": 1793902439.6397784,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.199376,
     "ast_hash": "40397b2e3bc2e1b6fb2b1cd2f0b2fe90",
     "semantic_hash": ""
   },
@@ -3654,8 +3654,8 @@
     "semantic_hash": ""
   },
   "src/server/services/learning/study-progress.ts": {
-    "mtime": 1793902341.8541024,
-    "seen": 1793902439.6397629,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1993608,
     "ast_hash": "50a68f14f8539796ae90d74d7f7bf523",
     "semantic_hash": ""
   },
@@ -3666,8 +3666,8 @@
     "semantic_hash": ""
   },
   "docs/learning-session-lifecycle.md": {
-    "mtime": 1793902341.8544493,
-    "seen": 1793902439.6401079,
+    "mtime": 1793906865.101314,
+    "seen": 1793911028.1998658,
     "ast_hash": "7dded73a2b90b06e74c08898ee720da9",
     "semantic_hash": ""
   },
@@ -3924,33 +3924,75 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/notes-draft.ts": {
-    "mtime": 1793901958.232498,
-    "seen": 1793902439.63913,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1987565,
     "ast_hash": "4dd878987271d9b2e3e2f42f45205b3b",
     "semantic_hash": ""
   },
   "src/domains/trading/services/playbook-reliability.ts": {
-    "mtime": 1793901828.4537625,
-    "seen": 1793902439.6395016,
+    "mtime": 1793906865.1253138,
+    "seen": 1793911028.1991425,
     "ast_hash": "1260b927675bfc07269181533dfb0104",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/review-write.ts": {
-    "mtime": 1793901840.9187381,
-    "seen": 1793902439.6397948,
+    "mtime": 1793906865.1293137,
+    "seen": 1793911028.1993918,
     "ast_hash": "ac8b05aa33c957037ed1ce9485a7bf32",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-05-general-reliability.md": {
-    "mtime": 1793902607.7492924,
-    "seen": 1793902617.767959,
+    "mtime": 1793906865.101314,
+    "seen": 1793911028.1999164,
     "ast_hash": "f3f8f13f08920ef1f6d6be22f3879ef3",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-05-general-reliability-design.md": {
-    "mtime": 1793901715.3468115,
-    "seen": 1793902439.6401844,
+    "mtime": 1793906865.101314,
+    "seen": 1793911028.1999483,
     "ast_hash": "e3c890fba79bb59f7f4a2b52dca750a5",
+    "semantic_hash": ""
+  },
+  "src/domains/trading/services/realized-history.ts": {
+    "mtime": 1793910411.495961,
+    "seen": 1793911028.199149,
+    "ast_hash": "ffbcf099002200b8a0a9cf9a2216ae56",
+    "semantic_hash": ""
+  },
+  "src/lib/withdrawal-input.ts": {
+    "mtime": 1793909778.460605,
+    "seen": 1793911028.1993155,
+    "ast_hash": "4387660c998063d5f1cf76ec7088c1c3",
+    "semantic_hash": ""
+  },
+  "src/server/services/accounts/cash-adjustments.ts": {
+    "mtime": 1793910248.0482779,
+    "seen": 1793911028.1993258,
+    "ast_hash": "49c6eda9349634912618a9f19cde9eb9",
+    "semantic_hash": ""
+  },
+  "src/server/services/accounts/withdrawal-service.ts": {
+    "mtime": 1793910248.0488453,
+    "seen": 1793911028.1993275,
+    "ast_hash": "4f221e672b5a20684ee713505a8d80aa",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261105203614_trade_partial_realization.sql": {
+    "mtime": 1793910116.6183896,
+    "seen": 1793911028.1998415,
+    "ast_hash": "09b725ba651af810309552ef1d55f423",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-05-full-audit.md": {
+    "mtime": 1793911431.2072775,
+    "seen": 1793911471.6135736,
+    "ast_hash": "12ae2fe48426d5c7f47f4553c15b7c93",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-05-full-audit-design.md": {
+    "mtime": 1793909624.0127952,
+    "seen": 1793911028.1999462,
+    "ast_hash": "d4ae364bbfbdbd5e4dc48c36faecdf04",
     "semantic_hash": ""
   },
   "src/package-lock.json": {

@@ -79,6 +79,22 @@ export function minutesThisWeek(sessions: { startedAt: Date; durationMin: number
     .reduce((sum, s) => sum + (s.durationMin ?? 0), 0)
 }
 
+/** Shared UI/email metrics, using the actual completion instant of legacy plans. */
+export function completedStudyStats(rawSessions: (Parameters<typeof effectiveStudyStartedAt>[0] & { durationMin: number | null })[], now: Date, timezone = "UTC") {
+  const sessions = rawSessions.filter(s => s.status === "completed" && (s.durationMin ?? 0) > 0)
+    .map(s => ({ ...s, startedAt: effectiveStudyStartedAt(s), durationMin: s.durationMin ?? null }))
+  const sessionDates = sessions.map(s => s.startedAt).filter(d => d <= now)
+  const days = [...new Set(sessionDates.map(d => localDateISO(d, timezone)))].sort()
+  let bestStreak = 0, run = 0, previousDay = Number.NEGATIVE_INFINITY
+  for (const day of days) {
+    const dayNumber = Date.parse(`${day}T00:00:00Z`) / 86_400_000
+    run = dayNumber === previousDay + 1 ? run + 1 : 1
+    bestStreak = Math.max(bestStreak, run)
+    previousDay = dayNumber
+  }
+  return { minutesThisWeek: minutesThisWeek(sessions, now, timezone), currentStreak: studyStreak(sessionDates, now, timezone), bestStreak, lastStudyDay: days.at(-1) ?? null }
+}
+
 export function startOfWeekUTC(now: Date): Date {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
   const dow = (d.getUTCDay() + 6) % 7 // Mon=0 … Sun=6

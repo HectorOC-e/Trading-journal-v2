@@ -92,3 +92,40 @@ it("reopened resources retain their historical setup-impact baseline", async () 
   expect(row.status).toBe("IN_PROGRESS")
   expect(trade.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "u", setupId: "setup", date: { gte: completedAt }, status: "CLOSED" } }))
 })
+
+it("create at 100/100 records completion and retains its anchor through reopening",async()=>{
+ const {prisma,row}=setup()
+ const create=vi.fn(async({data})=>Object.assign(row,{completedAt:null},data))
+ const caller=learningResourcesRouter.createCaller({prisma:{...prisma,learningResource:{...prisma.learningResource,create}} as never,userId:"u",supabase:{} as never})
+ await caller.create({title:"Complete",type:"LIBRO",date:"2026-11-05",currentUnits:100,totalUnits:100,notes:"notes"})
+ expect(row).toMatchObject({status:"COMPLETED",completedAt:expect.any(Date)})
+ const anchor=(row as typeof row & {completedAt:Date}).completedAt
+ await caller.update({id,currentUnits:50})
+ await caller.update({id,currentUnits:100})
+ expect(row).toMatchObject({status:"COMPLETED",completedAt:anchor})
+ await expect(caller.create({title:"Invalid",type:"LIBRO",date:"2026-11-05",currentUnits:-1})).rejects.toThrow()
+ expect(create).toHaveBeenCalledTimes(1)
+})
+
+it("percentage-only creation shares completion lifecycle",async()=>{
+ const {prisma}=setup()
+ const create=vi.fn(async({data})=>data)
+ const caller=learningResourcesRouter.createCaller({prisma:{...prisma,learningResource:{...prisma.learningResource,create}} as never,userId:"u",supabase:{} as never})
+ expect(await caller.create({title:"Done",type:"NOTA",date:"2026-11-05",progressPct:100,notes:"notes"})).toMatchObject({status:"COMPLETED",completedAt:expect.any(Date)})
+ expect(await caller.create({title:"Started",type:"NOTA",date:"2026-11-05",progressPct:50,notes:"notes"})).toMatchObject({status:"IN_PROGRESS"})
+})
+
+it.each([
+ [{currentUnits:0,totalUnits:null,progressPct:100},{status:"COMPLETED",progressPct:100}],
+ [{currentUnits:5,progressPct:100},{status:"COMPLETED",progressPct:100}],
+ [{currentUnits:0,totalUnits:100,progressPct:100},{status:"PENDING",progressPct:0}],
+ [{currentUnits:5},{status:"IN_PROGRESS",progressPct:null}],
+])("creation resolves mixed percentage/unit progress canonically %j",async(progress,expected)=>{
+ const {prisma}=setup()
+ const create=vi.fn(async({data})=>data)
+ const caller=learningResourcesRouter.createCaller({prisma:{...prisma,learningResource:{...prisma.learningResource,create}} as never,userId:"u",supabase:{} as never})
+ const result=await caller.create({title:"Mixed progress",type:"LIBRO",date:"2026-11-05",notes:"notes",...progress})
+ expect(result).toMatchObject(expected)
+ if(expected.status==="COMPLETED")expect(result.completedAt).toBeInstanceOf(Date)
+ else expect(result.completedAt).toBeUndefined()
+})

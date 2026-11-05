@@ -57,7 +57,8 @@ export type SetupStatus = "ACTIVO" | "PAUSADO" | "EN_PRUEBA" | "DESCARTADO"
 
 // Backwards-compat aliases — the RouterOutputs-derived types above are the source of truth
 export type Trade   = SerializedTrade
-export type Account = SerializedAccount
+export type Account = Omit<SerializedAccount, "paidWithdrawals" | "reservedWithdrawals" | "availableBalance"> &
+  Partial<Pick<SerializedAccount, "paidWithdrawals" | "reservedWithdrawals" | "availableBalance">>
 export type Setup   = SerializedSetup
 
 export type ResourceStatus =

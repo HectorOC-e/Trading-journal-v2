@@ -8,7 +8,8 @@ import React from "react"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { localDateISO, localHour } from "@/lib/datetime/local"
 import { logger } from "@/lib/logger"
-import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
+import { completedStudyStats } from "@/domains/learning/services/study-session-service"
+import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
 import { buildLearningDigest, type DigestInput } from "@/domains/learning/services/digest-builder"
 import { LearningDigest } from "@/emails/templates/learning-digest"
 import { resolveEmailThemeFor } from "./email-theme"
@@ -46,65 +47,42 @@ export type DigestStatus = "sent" | "empty" | "ineligible" | "already_sent" | "s
 // Re-exported from the shared util so existing importers keep working.
 export { localDateISO, localHour }
 
-function weekStartUTC(todayISO: string): Date {
-  const d = new Date(`${todayISO}T00:00:00Z`)
-  const dow = (d.getUTCDay() + 6) % 7 // Monday = 0
-  d.setUTCDate(d.getUTCDate() - dow)
-  return d
-}
-
 /** Fetch everything the pure builder needs for one user (the only IO step). */
 export async function gatherDigestInput(prisma: PrismaClient, user: DigestUser, now: Date): Promise<DigestInput> {
   const todayISO = localDateISO(now, user.timezone)
   const todayDate = new Date(`${todayISO}T00:00:00Z`)
-  const tomorrow = new Date(todayDate)
-  tomorrow.setUTCDate(todayDate.getUTCDate() + 1)
-
-  const [activeReviews, mastered, minuteRows, planned] = await Promise.all([
+  const [resources, sessions, plannedRows] = await Promise.all([
     prisma.learningResource.findMany({
-      where: { userId: user.id, nextReviewAt: { not: null, lte: todayDate }, status: { notIn: ["ABANDONED", "MASTERED"] } },
-      select: { id: true, title: true, nextReviewAt: true },
-      orderBy: { nextReviewAt: "asc" },
+      where: { userId: user.id, status: { notIn: ["ABANDONED", "ARCHIVED"] } },
+      select: { id: true, title: true, status: true, markedForReview: true, nextReviewAt: true },
+      orderBy: [{ nextReviewAt: "asc" }, { id: "asc" }],
     }),
-    prisma.learningResource.findMany({
-      where: { userId: user.id, status: "MASTERED", nextReviewAt: { not: null } },
-      select: { id: true, title: true, nextReviewAt: true, reviewInterval: true },
+    prisma.studySession.findMany({
+      where: { userId: user.id, status: "completed", durationMin: { gt: 0 } },
+      select: { startedAt: true, durationMin: true, status: true, source: true, plannedMin: true, endedAt: true },
     }),
-    prisma.learningResource.findMany({
-      where: { userId: user.id, progressType: "minutes" },
-      select: { weekDeltaMinutes: true, weekDeltaResetAt: true },
-    }),
-    prisma.studySession.findFirst({
-      where: { userId: user.id, status: "planned", startedAt: { gte: todayDate, lt: tomorrow } },
-      select: { resource: { select: { title: true } } },
+    prisma.studySession.findMany({
+      where: { userId: user.id, status: "planned", startedAt: { gte: new Date(todayDate.getTime() - 86_400_000), lt: new Date(todayDate.getTime() + 2 * 86_400_000) } },
+      select: { startedAt: true, resource: { select: { title: true } } },
+      orderBy: [{ startedAt: "asc" }, { id: "asc" }],
     }),
   ])
-
-  const decayedIds = new Set(
-    detectDecayedResources(
-      mastered.map(m => ({ id: m.id, status: "MASTERED", nextReviewAt: m.nextReviewAt, reviewInterval: m.reviewInterval })),
-      now,
-    ),
-  )
-
-  const needsReview: DigestInput["needsReview"] = [
-    ...activeReviews.map(r => ({ id: r.id, title: r.title, nextReviewAt: r.nextReviewAt!, isDecay: false })),
-    ...mastered.filter(m => decayedIds.has(m.id)).map(m => ({ id: m.id, title: m.title, nextReviewAt: m.nextReviewAt!, isDecay: true })),
-  ]
-
-  const weekStart = weekStartUTC(todayISO)
-  const minutesThisWeek = minuteRows.reduce((s, r) => {
-    const stale = !r.weekDeltaResetAt || r.weekDeltaResetAt < weekStart
-    return s + (stale ? 0 : (r.weekDeltaMinutes ?? 0))
-  }, 0)
+  // Broad instant window plus local calendar comparison handles 23/25-hour DST days.
+  const planned = plannedRows.find(s => localDateISO(s.startedAt, user.timezone) === todayISO)
+  const stats = completedStudyStats(sessions, now, user.timezone)
+  const needsReview = resources.filter(r => isResourceReviewDue(r, todayISO)).map(r => ({
+    id: r.id, title: r.title,
+    nextReviewAt: r.nextReviewAt && r.nextReviewAt <= todayDate ? r.nextReviewAt : todayDate,
+    isDecay: false,
+  }))
 
   return {
     name: user.name ?? "",
     todayLocalISO: todayISO,
-    streak: { current: user.currentStreak, best: user.bestStreak, lastReviewDate: user.lastReviewDate },
+    streak: { current: stats.currentStreak, best: stats.bestStreak, lastReviewDate: stats.lastStudyDay ? new Date(`${stats.lastStudyDay}T00:00:00Z`) : null },
     needsReview,
-    progress: { minutesThisWeek, goalMinutes: user.weeklyGoalMinutes ?? DEFAULT_GOAL_MIN },
-    plannedSession: planned?.resource ? { title: planned.resource.title } : null,
+    progress: { minutesThisWeek: stats.minutesThisWeek, goalMinutes: user.weeklyGoalMinutes ?? DEFAULT_GOAL_MIN },
+    plannedSession: planned ? { title: planned.resource?.title ?? "Sesión de estudio" } : null,
   }
 }
 

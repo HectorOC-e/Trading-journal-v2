@@ -27,6 +27,7 @@ export type MinimalTrade = {
    * multiplicador. Opcional y con defecto 1 para instrumentos donde 1 unidad
    * = $1, la misma convención que `computeClosedTradePnl`.
    */
+  originalRiskMoney?: number
   pointValue?: number
 }
 
@@ -430,11 +431,12 @@ export function buildPropFirmStatus(
   accounts:     AccountWithLimits[],
   closedTrades: MinimalTrade[],
   todayTrades:  TodayTrade[],
+  realized?: { history: MinimalTrade[]; todayISO: string },
 ): PropFirmStatus[] {
   return accounts
     .filter(a => a.type === "PROP_FIRM" || a.type === "DEMO_PROP")
     .map(a => {
-      const at      = closedTrades.filter(t => t.accountId === a.id)
+      const at      = (realized?.history ?? closedTrades).filter(t => t.accountId === a.id)
       const initBal = a.initialBalance
 
       // Prop firms: FIXED model → loss from initial; TRAILING → peak-to-trough.
@@ -443,7 +445,7 @@ export function buildPropFirmStatus(
       const ddActualPct  = initBal > 0 ? (maxDd / initBal) * 100 : 0
       const ddPctUsed    = ddTotalLimit > 0 ? ddActualPct / ddTotalLimit * 100 : 0
 
-      const todayAt      = todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
+      const todayAt      = realized ? realized.history.filter(t => t.accountId === a.id && t.date === realized.todayISO) : todayTrades.filter(t => t.accountId === a.id && t.status === "CLOSED")
       const todayLoss    = Math.abs(Math.min(0, todayAt.reduce((s, t) => s + Number(t.pnl ?? 0), 0)))
       const ddDailyLim   = Number(a.ddDailyPct ?? 1)
       const dailyActualPct = initBal > 0 ? (todayLoss / initBal) * 100 : 0
@@ -523,7 +525,7 @@ export function buildExecutionStats(trades: MinimalTrade[]): ExecutionStats {
     // igual que el P&L. `riskRewardRatio`, más abajo, es inmune — al ser un
     // cociente el factor se cancela, y por eso era correcto sin esto.
     const pv     = t.pointValue ?? 1
-    const risk   = Math.abs(t.entry - t.stop)   * t.size * pv
+    const risk   = t.originalRiskMoney ?? Math.abs(t.entry - t.stop) * t.size * pv
     const reward = Math.abs(t.target - t.entry) * t.size * pv
     if (risk   > 0) risks.push(risk)
     if (reward > 0) rewards.push(reward)

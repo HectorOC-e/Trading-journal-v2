@@ -33,7 +33,7 @@ function fakePrisma(data: FakeData) {
         return []
       }),
     },
-    studySession: { findFirst: vi.fn(async () => null) },
+    studySession: { findMany: vi.fn(async ({ where }) => where.status === "completed" ? Array.from({length: 12}, (_, i) => ({ startedAt: new Date(Date.UTC(2026, 5, 18 - i, 12)), durationMin: 30, status: "completed", source: "focus", plannedMin: null, endedAt: null })) : []) },
   }
 }
 
@@ -63,6 +63,7 @@ describe("sendLearningDigestForUser", () => {
 
   it("empty (no send) when nothing to act on and streak not at risk", async () => {
     const prisma = fakePrisma({ pref: enabledPref })
+    prisma.studySession.findMany.mockResolvedValue([])
     const r = await sendLearningDigestForUser(deps(prisma, send), user({ currentStreak: 0, lastReviewDate: null }))
     expect(r.status).toBe("empty")
     expect(send).not.toHaveBeenCalled()
