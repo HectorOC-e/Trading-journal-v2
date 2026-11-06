@@ -39,6 +39,7 @@ vi.mock("@/domains/analytics/services/analytics-cache", () => ({
 vi.mock("@/server/services/trades/serializers", () => ({ serializeTrade: (t: unknown) => t }))
 vi.mock("@/server/services/retrieval/pipeline", () => ({ scheduleEmbedding: vi.fn() }))
 
+import { assertTradeable, evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
 import { createTrade } from "@/server/services/trades/trade-write-service"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
@@ -151,3 +152,28 @@ describe("daily money budget", () => {
 it("rejects arbitrary OPEN P&L on create",async()=>{const db=mockPrisma({initialBalance:1000,closedPnl:0});await expect(createTrade(db,USER,{...INPUT,pnl:100} as never)).rejects.toThrow("OPEN_PNL_NOT_REALIZED");expect(db.trade.create).not.toHaveBeenCalled()})
 
 it('uses native balance corrections when sizing new trade risk',async()=>{const db=mockPrisma({initialBalance:1000,closedPnl:0});vi.mocked(db.accountLog.findMany).mockResolvedValue([{accountId:ACCOUNT,payload:{variance:-500}}] as never);await createTrade(db,USER,{...INPUT} as never);expect(riskPctPassedTo(db)).toBe(.28)})
+
+it('future CLOSED loss does not lock the current account or prevent a trade today',async()=>{
+ vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-06T00:30:00Z'))
+ const actual=await vi.importActual<typeof import('@/domains/trading/services/risk-enforcement')>('@/domains/trading/services/risk-enforcement')
+ vi.mocked(assertTradeable).mockImplementation(actual.assertTradeable);vi.mocked(evaluateAndLock).mockImplementation(actual.evaluateAndLock)
+ try{
+  const db=mockPrisma({initialBalance:1000,closedPnl:0})
+  const account={type:'PERSONAL',timezone:'America/Tegucigalpa',initialBalance:1000,locked:false,lockReason:'',ddDailyPct:null,ddWeeklyPct:null,ddMonthlyPct:null,ddTotalPct:5,ddModel:'FIXED',allowedSymbols:[]}
+  vi.mocked(db.account.findUniqueOrThrow).mockImplementation((async()=>account) as unknown as typeof db.account.findUniqueOrThrow)
+  Object.assign(db.account,{update:vi.fn(async({data}:any)=>Object.assign(account,data,{name:'A'}))})
+  Object.assign(db.accountLog,{create:vi.fn()})
+  const rows:any[]=[]
+  vi.mocked(db.trade.findMany).mockImplementation((async()=>rows) as unknown as typeof db.trade.findMany)
+  vi.mocked(db.trade.create).mockImplementation((async({data}:any)=>{const row={id:'t-'+rows.length,...data};rows.push(row);return row}) as unknown as typeof db.trade.create)
+  vi.mocked(db.trade.findUniqueOrThrow).mockImplementation((async()=>rows.at(-1)) as unknown as typeof db.trade.findUniqueOrThrow)
+  await createTrade(db,USER,{...INPUT,date:'2026-11-06',status:'CLOSED',pnl:-100} as never)
+  expect(account.locked).toBe(false)
+  await expect(createTrade(db,USER,{...INPUT,date:'2026-11-05'} as never)).resolves.toBeDefined()
+  expect(db.account.update).not.toHaveBeenCalled()
+  Object.assign(account,{ddTotalPct:null,ddDailyPct:5,locked:true,lockReason:'DAILY_LOSS_LIMIT'})
+  rows.push({accountId:ACCOUNT,status:'CLOSED',pnl:-100,date:new Date('2026-11-05'),events:[]})
+  await expect(createTrade(db,USER,{...INPUT,date:'2026-11-10'} as never)).rejects.toThrow('ACCOUNT_LOCKED:DAILY_LOSS_LIMIT')
+  expect(rows).toHaveLength(3)
+ }finally{vi.mocked(assertTradeable).mockReset();vi.mocked(evaluateAndLock).mockReset();vi.useRealTimers()}
+})

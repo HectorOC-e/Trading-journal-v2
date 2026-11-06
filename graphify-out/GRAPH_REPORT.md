@@ -1,17 +1,17 @@
 # Graph Report - Trading-journal-v2  (2026-11-06)
 
 ## Corpus Check
-- 667 files · ~440,259 words
+- 667 files · ~440,274 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
 ## Summary
-- 4808 nodes · 11052 edges · 660 communities (208 shown, 452 thin omitted)
+- 4808 nodes · 11055 edges · 660 communities (208 shown, 452 thin omitted)
 - Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 502 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `98bbce81`
+- Built from commit: `2f115763`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -594,7 +594,7 @@
 7. `DialogContent()` - 47 edges
 8. `DialogHeader()` - 46 edges
 9. `DialogTitle()` - 46 edges
-10. `Dialog` - 45 edges
+10. `localDateISO()` - 46 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `runRules()` --semantically_similar_to--> `runAutomations() (retirado en G2)`  [INFERRED] [semantically similar]

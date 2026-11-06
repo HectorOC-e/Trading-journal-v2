@@ -5,7 +5,7 @@ vi.mock('@/server/services/behavior/commitment-service',()=>({evaluateRuledCommi
 vi.mock('@/server/services/intervention/intervention-service',()=>({runIntervention:vi.fn().mockResolvedValue(null)}))
 vi.mock('@/server/services/retrieval/pipeline',()=>({scheduleEmbedding:vi.fn()}))
 vi.mock('@/server/services/trades/serializers',()=>({serializeTrade:(t:unknown)=>t}))
-import {assertTradeable} from '@/domains/trading/services/risk-enforcement'
+import {assertTradeable,evaluateAndLock} from '@/domains/trading/services/risk-enforcement'
 import {addTradeEvent,closeTrade,updateTrade} from '@/server/services/trades/trade-write-service'
 function store(overrides={}) {
  let trade={id:'t',accountId:'a',userId:'u',symbol:'X',direction:'LONG',entry:100,stop:90,size:2,status:'OPEN',date:new Date('2026-11-05'),pnl:null as number|null,realizedPnl:0 as number|null,originalRiskMoney:20 as number|null,commission:0,account:{initialBalance:1000},...overrides}
@@ -47,4 +47,21 @@ it('uses the current account-local day for scale-in despite caller event date',a
   await expect(addTradeEvent(s.db,'u',{tradeId:'t',type:'SCALE_IN',price:100,contracts:1,notes:'',timestamp:'2026-11-07T12:00:00Z'})).rejects.toThrow('ACCOUNT_LOCKED:DAILY_LOSS_LIMIT')
   expect(s.trade().size).toBe(2);expect(s.events).toHaveLength(0)
  }finally{vi.useRealTimers()}
+})
+
+it.each(['update','close','partial'])('does not let future %s metadata lock the account today',async(kind)=>{
+ vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-06T00:30:00Z'))
+ const actual=await vi.importActual<typeof import('@/domains/trading/services/risk-enforcement')>('@/domains/trading/services/risk-enforcement')
+ vi.mocked(evaluateAndLock).mockImplementation(actual.evaluateAndLock)
+ try{
+  const account={id:'a',type:'PERSONAL',timezone:'America/Tegucigalpa',initialBalance:1000,locked:false,lockReason:'',ddDailyPct:null,ddWeeklyPct:null,ddMonthlyPct:null,ddTotalPct:5,ddModel:'FIXED'}
+  const s=store({account,date:new Date('2026-11-06'),status:kind==='update'?'CLOSED':'OPEN'})
+  const writes=vi.fn(async({data}:any)=>Object.assign(account,data,{name:'A'}))
+  Object.assign(s.db,{account:{findUnique:async()=>account,update:writes},accountLog:{create:vi.fn()}})
+  Object.assign((s.db as any).trade,{findMany:async()=>[{...s.trade(),events:s.events}]})
+  if(kind==='update')await updateTrade(s.db,'u',{id:'t',pnl:-100})
+  if(kind==='close')await closeTrade(s.db,'u',{id:'t',closePrice:50,commission:0})
+  if(kind==='partial')await addTradeEvent(s.db,'u',{...partial(2,50),timestamp:'2026-11-06T12:00:00Z'})
+  expect(account.locked).toBe(false);expect(writes).not.toHaveBeenCalled()
+ }finally{vi.mocked(evaluateAndLock).mockReset();vi.useRealTimers()}
 })

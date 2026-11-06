@@ -79,6 +79,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     where: { id: input.accountId, userId },
     select: {
       currency:        true,
+      timezone:        true,
       type:            true,
       locked:          true,
       lockReason:      true,
@@ -126,7 +127,8 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     lockReason:     account.lockReason,
     enforceMode:    account.enforceMode,
   }
-  await assertTradeable(prisma, userId, enforceAccount, input.date)
+  const riskDate = localDateISO(new Date(), account.timezone ?? "UTC")
+  await assertTradeable(prisma, userId, enforceAccount, riskDate)
 
   // 2) Setup must be selectable (HALLAZGO 2 — backend guard)
   if (input.setupId) {
@@ -255,7 +257,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   // Post-trade: a trade registered already-closed can itself breach a limit
   // → auto-lock immediately (locked was just cleared/false by assertTradeable).
   if (input.status === "CLOSED" && input.pnl != null) {
-    await evaluateAndLock(prisma, userId, { ...enforceAccount, locked: false, lockReason: "" }, input.date)
+    await evaluateAndLock(prisma, userId, { ...enforceAccount, locked: false, lockReason: "" }, riskDate)
   }
 
   const full = await prisma.trade.findUniqueOrThrow({
@@ -382,7 +384,7 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
       initialBalance: Number(a.initialBalance),
       locked:         a.locked,
       lockReason:     a.lockReason,
-    }, (trade.date as Date).toISOString().slice(0, 10))
+    }, localDateISO(new Date(), a.timezone ?? "UTC"))
     if (isCacheEnabled()) await invalidateCache(prisma, userId)
   }
   if (input.notes !== undefined) scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
@@ -458,7 +460,7 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
   const acct = await prisma.account.findUnique({
     where:  { id: trade.accountId },
     select: {
-      type: true, ddModel: true,
+      type: true, ddModel: true, timezone: true,
       ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
       initialBalance: true, locked: true, lockReason: true,
     },
@@ -476,7 +478,7 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
       initialBalance: Number(acct.initialBalance),
       locked:         acct.locked,
       lockReason:     acct.lockReason,
-    }, (trade.date as Date).toISOString().slice(0, 10))
+    }, localDateISO(new Date(), acct.timezone ?? "UTC"))
   }
 
   if (isCacheEnabled()) await invalidateCache(prisma, userId)
@@ -580,7 +582,7 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
   if (realized) {
     const a = trade.account
     if (a) await evaluateAndLock(prisma, userId, { id: trade.accountId, type: a.type, ddModel: a.ddModel, initialBalance: Number(a.initialBalance), locked: a.locked, lockReason: a.lockReason,
-      ddDailyPct: a.ddDailyPct == null ? null : Number(a.ddDailyPct), ddWeeklyPct: a.ddWeeklyPct == null ? null : Number(a.ddWeeklyPct), ddMonthlyPct: a.ddMonthlyPct == null ? null : Number(a.ddMonthlyPct), ddTotalPct: a.ddTotalPct == null ? null : Number(a.ddTotalPct) }, localDateISO(event.timestamp, a.timezone ?? "UTC"))
+      ddDailyPct: a.ddDailyPct == null ? null : Number(a.ddDailyPct), ddWeeklyPct: a.ddWeeklyPct == null ? null : Number(a.ddWeeklyPct), ddMonthlyPct: a.ddMonthlyPct == null ? null : Number(a.ddMonthlyPct), ddTotalPct: a.ddTotalPct == null ? null : Number(a.ddTotalPct) }, localDateISO(new Date(), a.timezone ?? "UTC"))
     if (isCacheEnabled()) await invalidateCache(prisma, userId)
     await evaluateRuledCommitmentsOnTrade(prisma, userId).catch(() => {})
     await runIntervention(prisma, userId, trade.accountId, trade.date.toISOString().slice(0,10)).catch(() => {})
