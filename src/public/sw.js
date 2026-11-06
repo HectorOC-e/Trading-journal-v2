@@ -1,12 +1,17 @@
-// Trading Journal Service Worker — v3
+// Trading Journal Service Worker — v4
 // Offline navigation shows a public shell. Never persist authenticated HTML.
-const CACHE_NAME = "tj-v3"
+const CACHE_NAME = "tj-v4"
 const STATIC_ASSETS = ["/offline.html", "/manifest.json"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(STATIC_ASSETS.map((url) => cache.add(url)))
+      Promise.all(STATIC_ASSETS.map(async (url) => {
+        // A redirect here could persist login HTML as the public offline shell.
+        const response = await fetch(url, { redirect: "error", cache: "reload" })
+        if (!response.ok || response.redirected) throw new Error(`Invalid offline asset: ${url}`)
+        await cache.put(url, response)
+      }))
     )
   )
   self.skipWaiting()

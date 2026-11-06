@@ -9,6 +9,7 @@
  * lacks a session — often the exact traffic you added it for.
  */
 import { describe, it, expect } from "vitest"
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server"
 import { config } from "@/proxy"
 
 const matcher = new RegExp(config.matcher[0].replace(/^\//, "^/"))
@@ -40,5 +41,15 @@ describe("proxy matcher — what the auth gate intercepts", () => {
     expect(gated("/icons/icon-192.png")).toBe(false)
     expect(gated("/_next/static/chunk.js")).toBe(false)
     expect(gated("/favicon.ico")).toBe(false)
+  })
+})
+
+// Exercise Next's actual matcher compiler, including exact-path boundaries.
+describe("offline shell public route", () => {
+  it.each(["/offline.html", "/offline.html?offlineQA=1"])("serves %s without the auth proxy", (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(false)
+  })
+  it.each(["/offline.html/private", "/offline.htmlx", "/", "/dashboard"])("keeps %s behind the existing auth gate", (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url })).toBe(true)
   })
 })

@@ -49,7 +49,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Exclude framework internals, public PWA assets (sw.js, manifest, icons)
+    // Exclude framework internals, public PWA assets (sw.js, offline shell, manifest, icons)
     // and unauthenticated endpoints so they are served directly instead of
     // being redirected to /login.
     //
@@ -58,6 +58,6 @@ export const config = {
     // errors from logged-out users, including failures on the login screen
     // itself, would vanish. Authenticated traffic would still work, which is
     // what makes it worth excluding explicitly: it would look fine.
-    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|api/cron|monitoring|sw\\.js|manifest\\.json|icons/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/health|api/trpc|api/cron|monitoring|sw\\.js|manifest\\.json|icons/|offline\\.html$).*)",
   ],
 }
