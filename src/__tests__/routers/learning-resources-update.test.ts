@@ -129,3 +129,15 @@ it.each([
  if(expected.status==="COMPLETED")expect(result.completedAt).toBeInstanceOf(Date)
  else expect(result.completedAt).toBeUndefined()
 })
+
+it("percentage-only patches complete, reopen and retain the first completion anchor", async () => {
+  const { caller, row } = setup()
+  Object.assign(row, { currentUnits: null, totalUnits: null, status: "PENDING", completedAt: null })
+  await caller.update({ id, progressPct: 100 })
+  expect(row).toMatchObject({ progressPct: 100, status: "COMPLETED", completedAt: expect.any(Date) })
+  const anchor = (row as typeof row & { completedAt: Date }).completedAt
+  await caller.update({ id, progressPct: 30 })
+  expect(row).toMatchObject({ progressPct: 30, status: "IN_PROGRESS", completedAt: anchor })
+  await caller.update({ id, progressPct: 0 })
+  expect(row).toMatchObject({ progressPct: 0, status: "PENDING", completedAt: anchor })
+})

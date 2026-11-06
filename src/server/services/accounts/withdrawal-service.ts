@@ -15,7 +15,7 @@ async function availableCash(tx: Prisma.TransactionClient, userId: string, accou
     tx.trade.findMany({ where: { userId, accountId: account.id, status: { in: ['OPEN', 'CLOSED'] }, pnl: { not: null } }, select: { pnl: true } }),
   ])
   const cash = (await loadAccountCashAdjustments(tx, userId, [account], parseFxRates(user.fxRates))).get(account.id)!
-  return Number(account.initialBalance) + trades.reduce((sum, t) => sum + Number(t.pnl ?? 0), 0) - cash.paid - cash.reserved
+  return Number(account.initialBalance) + trades.reduce((sum, t) => sum + Number(t.pnl ?? 0), 0) + cash.correction - cash.paid - cash.reserved
 }
 function assertAvailable(amount: number, available: number, currency: string) {
   if (amount > available + 1e-8) throw new TRPCError({ code: 'BAD_REQUEST', message: `El retiro supera el saldo disponible (${available.toFixed(2)} ${currency}), descontados pagos y reservas.` })

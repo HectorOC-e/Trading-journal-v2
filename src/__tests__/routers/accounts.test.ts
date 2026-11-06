@@ -69,6 +69,24 @@ describe("accounts router", () => {
     })
   })
 
+  it("editing account name preserves capital, currency and permitted symbols", async () => {
+    mockPrisma.account.update.mockImplementation(async ({ data }: any) => makeFakeAccount(data))
+    await caller.accounts.update({ id: "550e8400-e29b-41d4-a716-446655440001", name: "Renamed" })
+    expect(mockPrisma.account.update).toHaveBeenCalledWith({
+      where: { id: "550e8400-e29b-41d4-a716-446655440001", userId: USER_ID },
+      data: { name: "Renamed" },
+    })
+  })
+
+  it("lists reconciled cash without treating the correction as trading PnL", async () => {
+    mockPrisma.account.findMany.mockResolvedValue([makeFakeAccount({ initialBalance: new Prisma.Decimal(1000) })])
+    mockPrisma.accountLog.findMany.mockResolvedValue([{ accountId: "acc-1", payload: { variance: -200 } }] as never)
+    const [account] = await caller.accounts.list()
+    expect(account.currentBalance).toBe(800)
+    expect(account.availableBalance).toBe(800)
+    expect(account.balanceCorrection).toBe(-200)
+  })
+
   it("list: serializes Prisma.Decimal initialBalance to number", async () => {
     const fakeAccounts = [makeFakeAccount()]
     mockPrisma.account.findMany.mockResolvedValue(fakeAccounts)

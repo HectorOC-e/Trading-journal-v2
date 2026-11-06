@@ -56,7 +56,15 @@ export const marketsRouter = router({
     }),
 
   update: dashboardMutation
-    .input(z.object({ id: z.string().uuid() }).merge(MarketInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(MarketInput.partial().extend({
+      exchange: z.string().optional(),
+      tickSize: z.string().optional(),
+      pointValue: z.string().optional(),
+      currency: z.string().optional(),
+      sessions: z.array(z.string()).optional(),
+      description: z.string().optional(),
+      isWatchlisted: z.boolean().optional(),
+    })))
     .mutation(({ ctx, input }) => {
       const { id, ...data } = input
       return ctx.prisma.market.update({

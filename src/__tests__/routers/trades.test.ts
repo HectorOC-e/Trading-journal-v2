@@ -132,6 +132,7 @@ function makeMockPrisma(accountOverrides: Record<string, unknown> = {}) {
       updateMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
     accountLog: {
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn().mockResolvedValue({ id: "log-1" }),
     },
     userAiSettings: {
@@ -456,7 +457,7 @@ describe("trades.create — lock & setup guards", () => {
   it("auto-locks the account when a configured loss limit is already breached", async () => {
     // Weekly limit 5% of $10k = $500. Already-realized week loss = -$600 → breach.
     const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
-    prisma.trade.findMany.mockResolvedValue([{ pnl: -600, date: new Date("2025-01-06") }])
+    prisma.trade.findMany.mockResolvedValue([{ pnl: -600, date: new Date() }])
     caller = callerWith(prisma)
 
     await expect(caller.trades.create(BASE_CREATE_INPUT)).rejects.toThrow(/ACCOUNT_LOCKED:WEEKLY_LOSS_LIMIT/)
@@ -472,7 +473,7 @@ describe("trades.create — lock & setup guards", () => {
 
   it("allows a trade when realized loss is below the configured limit", async () => {
     const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
-    prisma.trade.findMany.mockResolvedValue([{ pnl: -100, date: new Date("2025-01-06") }]) // 1% < 5%
+    prisma.trade.findMany.mockResolvedValue([{ pnl: -100, date: new Date() }]) // 1% < 5%
     caller = callerWith(prisma)
     const trade = await caller.trades.create(BASE_CREATE_INPUT)
     expect(trade).toBeDefined()

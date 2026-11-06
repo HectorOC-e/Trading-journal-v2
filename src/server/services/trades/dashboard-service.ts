@@ -28,7 +28,7 @@ import { localDateISO, monthStartISO, weekStartISO, addDaysISO } from "@/lib/dat
 
 export type DashboardOutput = {
   kpis:           KpiSummary
-  accountStats:   AccountStat[]
+  accountStats:   (AccountStat & { currencyToBaseRate: number })[]
   equityCurve:    EquityCurvePoint[]
   pnlByDate:      PnlByDatePoint[]
   pnlBySymbol:    SymbolStat[]
@@ -109,7 +109,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
       select: { timezone: true, baseCurrency: true, fxRates: true },
     }),
     prisma.account.findMany({
-      where: { userId, status: { in: ["ACTIVE", "PAUSED"] } },
+      where: { userId, status: { in: ["ACTIVE", "PAUSED"] }, ...(input?.accountId ? {id: input.accountId} : {}) },
       select: {
         id: true, name: true, type: true, status: true, currency: true, timezone: true,
         initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
@@ -152,7 +152,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // Version and request boundaries isolate calculations; profile/account snapshots
   // also prevent stale FX, timezone, limits or starting-capital results.
   const dependencyHash = createHash("sha256").update(JSON.stringify({ userRow, activeAccounts })).digest("hex")
-  const cacheKey = `v2:${period}:${input?.accountId ?? "all"}:${financialScope}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
+  const cacheKey = `v3:${period}:${input?.accountId ?? "all"}:${financialScope}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
   if (isCacheEnabled()) {
     const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
     if (hit) return hit
@@ -291,7 +291,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const realizedStats = new Map(buildAccountStats(realizations, acctBalances, today, monthStart, weekStart, limitsById).map(s => [s.accountId, s]))
   for (const stat of accountStats) {
     const realized = realizedStats.get(stat.accountId)!
-    stat.balance = Math.round((realized.balance - (cashAdjustments.get(stat.accountId)?.paid ?? 0) * fx(stat.accountId)) * 100) / 100
+    stat.balance = Math.round((realized.balance + ((cashAdjustments.get(stat.accountId)?.correction ?? 0) - (cashAdjustments.get(stat.accountId)?.paid ?? 0)) * fx(stat.accountId)) * 100) / 100
     stat.netPnl = realized.netPnl
     stat.pnlToday = realized.pnlToday
     stat.pnlWeek = realized.pnlWeek
@@ -303,7 +303,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // ── Live leverage exposure from OPEN positions ───────────────────────────
   const balanceById = new Map(accountStats.map(s => [s.accountId, s.balance]))
   const exposureById = buildAccountExposure(
-    openTradeRows.map(t => ({ accountId: t.accountId, symbol: t.symbol, entry: Number(t.entry), size: Number(t.size) })),
+    openTradeRows.map(t => ({ accountId: t.accountId, symbol: t.symbol, entry: Number(t.entry) * fx(t.accountId), size: Number(t.size) })),
     marketBySymbol,
     accounts.map(a => ({
       id: a.id,
@@ -359,7 +359,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
 
   const result: DashboardOutput = {
     kpis,
-    accountStats,
+    accountStats: accountStats.map(stat => ({ ...stat, currencyToBaseRate: fx(stat.accountId) })),
     equityCurve,
     pnlByDate,
     pnlBySymbol,

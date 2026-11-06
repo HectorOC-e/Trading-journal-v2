@@ -1,22 +1,17 @@
-// Trading Journal Service Worker — v2
-// Strategy: network-first for API, cache-first for static assets
-
-const CACHE_NAME = "tj-v2"
-const STATIC_ASSETS = [
-  "/",
-  "/dashboard",
-  "/trades",
-  "/playbook",
-  "/reviews",
-  "/manifest.json",
-]
+// Trading Journal Service Worker — v4
+// Offline navigation shows a public shell. Never persist authenticated HTML.
+const CACHE_NAME = "tj-v4"
+const STATIC_ASSETS = ["/offline.html", "/manifest.json"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      // Cache each asset independently: a protected route that redirects to
-      // /login while logged out must not abort the whole install (addAll would).
-      Promise.allSettled(STATIC_ASSETS.map((url) => cache.add(url)))
+      Promise.all(STATIC_ASSETS.map(async (url) => {
+        // A redirect here could persist login HTML as the public offline shell.
+        const response = await fetch(url, { redirect: "error", cache: "reload" })
+        if (!response.ok || response.redirected) throw new Error(`Invalid offline asset: ${url}`)
+        await cache.put(url, response)
+      }))
     )
   )
   self.skipWaiting()
@@ -26,15 +21,14 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url)
+  if (url.origin !== self.location.origin || event.request.method !== "GET") return
 
-  // Network-first for API and tRPC routes
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/trpc/")) {
     event.respondWith(
       fetch(event.request).catch(() =>
@@ -47,25 +41,32 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  // Cache-first for static assets (JS, CSS, images)
-  if (
-    url.pathname.startsWith("/_next/static/") ||
-    url.pathname.match(/\.(png|jpg|svg|woff2?|ico)$/)
-  ) {
+  if (event.request.mode === "navigate") {
     event.respondWith(
-      caches.match(event.request).then(
-        (cached) => cached ?? fetch(event.request).then((res) => {
-          const clone = res.clone()
-          caches.open(CACHE_NAME).then((c) => c.put(event.request, clone))
-          return res
-        })
-      )
+      fetch(event.request).catch(async () => {
+        const cache = await caches.open(CACHE_NAME)
+        return await cache.match("/offline.html") ?? new Response(
+          "Sin conexión. Vuelve a intentarlo cuando recuperes la conexión.",
+          { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" } }
+        )
+      })
     )
     return
   }
 
-  // Network-first with offline fallback for pages
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  )
+  // Only immutable build assets are eligible for runtime caching. Application
+  // routes (including RSC requests) and user images always go to the network.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(event.request)
+        if (cached) return cached
+        const response = await fetch(event.request)
+        if (response.ok && !response.redirected && !response.headers.get("Content-Type")?.includes("text/html")) {
+          await cache.put(event.request, response.clone())
+        }
+        return response
+      })
+    )
+  }
 })

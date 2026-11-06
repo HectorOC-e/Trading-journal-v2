@@ -13,7 +13,6 @@ import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { formatMoney } from "@/lib/format/money"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
-import { trpc } from "@/lib/trpc/client"
 
 export type RawAccount = RouterOutputs["accounts"]["list"][number]
 
@@ -91,8 +90,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   stats?:         TradeStats
   onSyncBalance?: (e: React.MouseEvent) => void
 }) {
-  const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(rawAccount.id)
-  const variance = varianceData?.totalVariance ?? null
+  const variance = rawAccount.balanceCorrection ?? 0
 
   const type   = rawAccount.type as AccountType
   const tm     = TYPE_META[type] ?? TYPE_META.PERSONAL
@@ -102,10 +100,8 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
   const phase  = (rawAccount.phase as string) ?? "NONE"
 
   const initialBalance = Number(rawAccount.initialBalance)
-  // Current equity = starting capital + realized trade P&L + balance adjustments
-  // (sync corrections). Adjustments move the balance but not trade-derived metrics.
-  const balanceAdjustment = variance ?? 0
-  const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
+  // Server balance is in account currency and already includes cash reconciliation.
+  const currentEquity = rawAccount.currentBalance
   // Read clock once at mount — keeps render pure (Date.now() is impure during render)
   const [now] = useState(() => Date.now())
   const daysActive = Math.max(0, Math.floor((now - new Date(rawAccount.createdAt).getTime()) / 86_400_000))
@@ -199,7 +195,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
             <p className="text-[13px] font-mono" style={{ color: stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
-              {stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"}
+              {stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}${formatMoney(Math.abs(stats.pnlMonth), { currency: rawAccount.currency, decimals: 2 })}` : "— sin trades"}
             </p>
           </div>
           <div className="text-right">
@@ -317,7 +313,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               <span style={{ color: stats.exposure.band ? LEVERAGE_BAND_META[stats.exposure.band].color : "var(--ink-2)" }}>
                 {stats.exposure.effectiveLeverage.toFixed(1)}×
               </span>
-              <span className="text-[var(--ink-3)]">${Math.round(stats.exposure.notional).toLocaleString()}</span>
+              <span className="text-[var(--ink-3)]">{formatMoney(stats.exposure.notional, { currency: rawAccount.currency, decimals: 0 })}</span>
             </span>
           </div>
         )}
@@ -327,7 +323,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
           <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[var(--line)]">
             <span className="text-[var(--ink-3)]">Ajuste de balance</span>
             <span className={`font-mono font-semibold ${variance >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]"}`}>
-              {variance >= 0 ? "+" : ""}${variance.toFixed(2)}
+              {variance >= 0 ? "+" : ""}{formatMoney(variance, { currency: rawAccount.currency, decimals: 2 })}
             </span>
           </div>
         )}

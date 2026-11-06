@@ -192,7 +192,7 @@ export const learningResourcesRouter = router({
         ...(progressPct  !== undefined ? { progressPct } : {}),
       }
       const where = { id, userId: ctx.userId }
-      const updated = currentUnits !== undefined || totalUnits !== undefined
+      const updated = currentUnits !== undefined || totalUnits !== undefined || progressPct !== undefined
         ? await ctx.prisma.$transaction(async tx => {
             // Serialize with study completion before reading the unchanged counterpart.
             await tx.$queryRaw`SELECT id FROM public.learning_resources WHERE id = ${id}::uuid AND user_id = ${ctx.userId}::uuid FOR UPDATE`
@@ -202,8 +202,9 @@ export const learningResourcesRouter = router({
             })
             const effectiveCurrent = currentUnits !== undefined ? currentUnits : existing.currentUnits
             const effectiveTotal = totalUnits !== undefined ? totalUnits : existing.totalUnits
-            data.progressPct = effectiveCurrent == null ? null : computeProgressPct(effectiveCurrent, effectiveTotal)
-            return tx.learningResource.update({ where, data: { ...data, ...resourceProgressLifecycle(existing, effectiveCurrent, effectiveTotal) } })
+            const usePercentageLifecycle = progressPct !== undefined && progressPct !== null && (effectiveCurrent == null || effectiveTotal == null)
+            data.progressPct = usePercentageLifecycle ? progressPct : effectiveCurrent == null ? null : computeProgressPct(effectiveCurrent, effectiveTotal)
+            return tx.learningResource.update({ where, data: { ...data, ...resourceProgressLifecycle(existing, usePercentageLifecycle ? progressPct : effectiveCurrent, usePercentageLifecycle ? 100 : effectiveTotal) } })
           })
         : await ctx.prisma.learningResource.update({ where, data })
       // Re-embed when notes were part of this update.

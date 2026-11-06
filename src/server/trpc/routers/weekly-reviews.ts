@@ -217,7 +217,17 @@ export const weeklyReviewsRouter = router({
     ),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }).merge(WeeklyReviewInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(WeeklyReviewInput.partial().extend({
+      // Zod 4 defaults must apply to creates only; PATCH preserves omitted fields.
+      tradeCount: WeeklyReviewInput.shape.tradeCount.removeDefault().optional(),
+      netPnl: WeeklyReviewInput.shape.netPnl.removeDefault().optional(),
+      winRate: WeeklyReviewInput.shape.winRate.removeDefault().optional(),
+      disciplineScore: WeeklyReviewInput.shape.disciplineScore.removeDefault().optional(),
+      executiveSummary: WeeklyReviewInput.shape.executiveSummary.removeDefault().optional(),
+      whatWorked: WeeklyReviewInput.shape.whatWorked.removeDefault().optional(),
+      toImprove: WeeklyReviewInput.shape.toImprove.removeDefault().optional(),
+      status: WeeklyReviewInput.shape.status.removeDefault().optional(),
+    })))
     .mutation(({ ctx, input }) => {
       const { id, weekStart, weekEnd, ...rest } = input
       return writeReviewText(ctx.prisma, "weekly_reviews", input.executiveSummary !== undefined, tx => tx.weeklyReview.update({

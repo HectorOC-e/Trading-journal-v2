@@ -56,6 +56,7 @@ function buildCreateCaller(planNotes: string | null) {
   const mockPrisma = {
     user: { findUniqueOrThrow: vi.fn().mockResolvedValue({fxRates:null}) },
     withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
+    accountLog: { findMany: vi.fn().mockResolvedValue([]) },
     account:    { findUniqueOrThrow: vi.fn().mockResolvedValue(BASE_ACCOUNT) },
     // `aggregate` backs the riskPct fallback's equity lookup (initial balance +
     // realised P&L); no closed trades here, so equity is the initial balance.

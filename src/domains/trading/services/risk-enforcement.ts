@@ -109,8 +109,9 @@ async function loadEquityCurve(
   userId: string,
   accountId: string,
   initialBalance: number,
+  referenceDate: string,
 ): Promise<{ currentEquity: number; peakEquity: number }> {
-  const closed = await loadRealizedPnlHistory(prisma, userId, [accountId])
+  const closed = (await loadRealizedPnlHistory(prisma, userId, [accountId])).filter(r => r.date.toISOString().slice(0, 10) <= referenceDate)
   let equity = initialBalance
   let peak   = initialBalance
   for (const t of closed) {
@@ -141,7 +142,7 @@ export async function loadAccountRisk(
   referenceDate: string,
 ): Promise<AccountRisk> {
   const bounds = periodBounds(referenceDate)
-  const rows = await loadRealizedPnlHistory(prisma, userId, [account.id])
+  const rows = (await loadRealizedPnlHistory(prisma, userId, [account.id])).filter(r => r.date.toISOString().slice(0, 10) <= referenceDate)
   const sumFrom   = (from: Date) => rows.filter(r => r.date >= from).reduce((s, r) => s + r.pnl, 0)
   // Equity at the start of each window = initial + P&L realized before it opened.
   // Loss limits use this moving base; total drawdown stays on the initial balance.
@@ -195,7 +196,7 @@ export async function assertTradeable(
   // never weakens the loss-limit / MAX_DRAWDOWN locks below; it just applies the
   // more-specific TRAILING_DRAWDOWN reason first when enforcement is on.
   if (account.enforceMode === "ENFORCE" && account.ddModel === "TRAILING" && account.ddTotalPct != null) {
-    const { currentEquity, peakEquity } = await loadEquityCurve(prisma, userId, account.id, account.initialBalance)
+    const { currentEquity, peakEquity } = await loadEquityCurve(prisma, userId, account.id, account.initialBalance, referenceDate)
     const ddViolation = checkTrailingDrawdown(currentEquity, peakEquity, account.initialBalance, account.ddTotalPct, "TRAILING")
     if (ddViolation && "limitPct" in ddViolation) {
       if (!account.locked || account.lockReason !== "TRAILING_DRAWDOWN") {

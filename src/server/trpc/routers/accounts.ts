@@ -58,7 +58,7 @@ const AccountInput = z.object({
 
 const isPropFirmType = (type: string) => type === "PROP_FIRM" || type === "DEMO_PROP"
 
-function serializeAccount(a: RawAccount, closedPnl = 0, cash = { paid: 0, reserved: 0 }) {
+function serializeAccount(a: RawAccount, closedPnl = 0, cash = { paid: 0, reserved: 0, correction: 0 }) {
   const initialBalance = Number(a.initialBalance)
   return {
     ...a,
@@ -67,10 +67,11 @@ function serializeAccount(a: RawAccount, closedPnl = 0, cash = { paid: 0, reserv
     // is what the rest of the app shows as "Balance actual" and what the trade
     // modal sizes positions off (so a 0 initial balance no longer reads as $0
     // and the contract calculator can run).
-    currentBalance: initialBalance + closedPnl - cash.paid,
+    currentBalance: initialBalance + closedPnl + cash.correction - cash.paid,
+    balanceCorrection: cash.correction,
     paidWithdrawals: cash.paid,
     reservedWithdrawals: cash.reserved,
-    availableBalance: initialBalance + closedPnl - cash.paid - cash.reserved,
+    availableBalance: initialBalance + closedPnl + cash.correction - cash.paid - cash.reserved,
     ddDailyPct:    a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
     ddWeeklyPct:   a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
     ddMonthlyPct:  a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,
@@ -148,7 +149,12 @@ export const accountsRouter = router({
     }),
 
   update: dashboardMutation
-    .input(z.object({ id: z.string().uuid() }).merge(AccountInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(AccountInput.partial().extend({
+      initialBalance: z.number().optional(),
+      currency: z.string().optional(),
+      timezone: z.string().optional(),
+      allowedSymbols: z.array(z.string()).optional(),
+    })))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
       const account = await ctx.prisma.account.update({ where: { id, userId: ctx.userId }, data })

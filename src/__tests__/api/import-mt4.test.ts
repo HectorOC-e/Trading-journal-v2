@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 const h = vi.hoisted(() => ({
   getUser: vi.fn(),
+  deletionFindUnique: vi.fn(),
   accountFindUnique: vi.fn(),
   tradeFindMany: vi.fn(),
 }))
@@ -12,6 +13,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }))
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    accountDeletionJob: { findUnique: h.deletionFindUnique },
     account: { findUnique: h.accountFindUnique },
     trade:   { findMany: h.tradeFindMany },
   },
@@ -36,6 +38,7 @@ function makeReq(csv: string, confirm = false): Request {
 
 describe("POST /api/import/mt4 — dedup (dry run)", () => {
   beforeEach(() => {
+    h.deletionFindUnique.mockResolvedValue(null)
     h.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null })
     h.accountFindUnique.mockResolvedValue({ id: ACCOUNT_ID, locked: false, lockReason: null })
     h.tradeFindMany.mockResolvedValue([])
@@ -45,6 +48,17 @@ describe("POST /api/import/mt4 — dedup (dry run)", () => {
     h.getUser.mockResolvedValue({ data: { user: null }, error: null })
     const res = await POST(makeReq([HEADER, ROW_1001].join("\n")) as never)
     expect(res.status).toBe(401)
+  })
+
+  it.each([false, true])("blocks pending deletion before reading multipart data (confirm=%s)", async (confirm) => {
+    h.deletionFindUnique.mockResolvedValue({ userId: USER_ID })
+    const req = makeReq([HEADER, ROW_1001].join("\n"), confirm)
+    const readForm = vi.spyOn(req, "formData")
+    const res = await POST(req as never)
+    expect(res.status).toBe(403)
+    expect(readForm).not.toHaveBeenCalled()
+    expect(h.accountFindUnique).not.toHaveBeenCalled()
+    expect(h.tradeFindMany).not.toHaveBeenCalled()
   })
 
   it("403 when the account is locked", async () => {

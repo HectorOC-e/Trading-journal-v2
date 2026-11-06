@@ -107,7 +107,14 @@ export const monthlyReviewsRouter = router({
     }),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }).merge(MonthlyReviewInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(MonthlyReviewInput.partial().extend({
+      // Zod 4 defaults must apply to creates only; PATCH preserves omitted fields.
+      summary: MonthlyReviewInput.shape.summary.removeDefault().optional(),
+      keyThemes: MonthlyReviewInput.shape.keyThemes.removeDefault().optional(),
+      goalsSet: MonthlyReviewInput.shape.goalsSet.removeDefault().optional(),
+      goalsMet: MonthlyReviewInput.shape.goalsMet.removeDefault().optional(),
+      weeklyIds: MonthlyReviewInput.shape.weeklyIds.removeDefault().optional(),
+    })))
     .mutation(async ({ ctx, input }) => {
       const { id, year: _y, month: _m, ...data } = input
       const review = await writeReviewText(ctx.prisma, "monthly_reviews", input.summary !== undefined, tx => tx.monthlyReview.update({
