@@ -19,6 +19,7 @@ function makeMockPrisma() {
       findUniqueOrThrow: vi.fn().mockResolvedValue({ id: ACCOUNT_ID, currency: "USD", initialBalance: 100000 }),
     },
     accountLog: {
+      findMany: vi.fn().mockResolvedValue([]),
       create: vi.fn(),
     },
     trade: {

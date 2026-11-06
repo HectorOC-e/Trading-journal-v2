@@ -42,6 +42,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const userId = user.id
 
+  // Durable deletion intent blocks still-valid Auth sessions before reading input.
+  if (await prisma.accountDeletionJob.findUnique({
+    where: { userId },
+    select: { userId: true },
+  })) {
+    return NextResponse.json({ error: "ACCOUNT_DELETION_PENDING" }, { status: 403 })
+  }
+
   // 2. Parse multipart form data
   let formData: FormData
   try {

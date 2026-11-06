@@ -14,15 +14,15 @@ export function withdrawalAccountAmount(amount: number, from: string, to: string
   return amount * fxFactor(source, target, rates)
 }
 
-export type CashAdjustment = { paid: number; reserved: number }
+export type CashAdjustment = { paid: number; reserved: number; correction: number }
 /** Cash movements are separate from trading performance; values use account currency. */
 export async function loadAccountCashAdjustments(
-  db: Pick<PrismaClient, 'withdrawal'>,
+  db: Pick<PrismaClient, 'withdrawal' | 'accountLog'>,
   userId: string,
   accounts: { id: string; currency: string }[],
   rates?: Record<string, number>,
 ): Promise<Map<string, CashAdjustment>> {
-  const result = new Map(accounts.map(a => [a.id, { paid: 0, reserved: 0 }]))
+  const result = new Map(accounts.map(a => [a.id, { paid: 0, reserved: 0, correction: 0 }]))
   if (!accounts.length) return result
   const currencies = new Map(accounts.map(a => [a.id, a.currency]))
   const rows = await db.withdrawal.findMany({
@@ -35,6 +35,17 @@ export async function loadAccountCashAdjustments(
     const amount = withdrawalAccountAmount(Number(w.amount), w.currency, currencies.get(w.accountId)!, rates)
     if (w.status === 'PAGADO') adjustment.paid += amount
     else adjustment.reserved += amount
+  }
+  const corrections = await db.accountLog.findMany({
+    where: { userId, accountId: { in: accounts.map(a => a.id) }, event: 'BALANCE_CORRECTION' },
+    select: { accountId: true, payload: true },
+  })
+  for (const log of corrections) {
+    const adjustment = result.get(log.accountId)
+    const payload = log.payload as { variance?: unknown } | null
+    if (adjustment && typeof payload?.variance === 'number' && Number.isFinite(payload.variance)) {
+      adjustment.correction += payload.variance
+    }
   }
   return result
 }

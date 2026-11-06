@@ -1,10 +1,10 @@
 // Coach thread persistence (S6) — the episodic layer of memory: every conversation
 // is saved (CoachThread + CoachMessage) so the coach can refer back to it.
 
-import type { PrismaClient } from "@/lib/generated/prisma/client"
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
 
 /** Resolve a thread for the user: return the owned one, or create a fresh thread. */
-export async function ensureThread(prisma: PrismaClient, userId: string, threadId?: string | null) {
+export async function ensureThread(prisma: PrismaClient | Prisma.TransactionClient, userId: string, threadId?: string | null) {
   if (threadId) {
     const existing = await prisma.coachThread.findFirst({ where: { id: threadId, userId }, select: { id: true } })
     if (existing) return existing
@@ -23,6 +23,21 @@ export async function appendMessage(
     prisma.coachMessage.create({ data: { threadId, userId, role, content } }),
     prisma.coachThread.update({ where: { id: threadId }, data: { lastMessageAt: new Date() } }),
   ])
+}
+
+/** Commit the owned thread and both messages together, so failed attempts are safe to retry. */
+export async function appendExchange(
+  prisma: PrismaClient,
+  userId: string,
+  input: { threadId?: string | null; userText: string; assistantText: string },
+) {
+  return prisma.$transaction(async tx => {
+    const thread = await ensureThread(tx, userId, input.threadId)
+    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "user", content: input.userText } })
+    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "assistant", content: input.assistantText } })
+    await tx.coachThread.update({ where: { id: thread.id }, data: { lastMessageAt: new Date() } })
+    return thread
+  })
 }
 
 export async function getThreads(prisma: PrismaClient, userId: string, limit = 30) {

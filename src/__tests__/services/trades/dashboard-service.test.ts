@@ -46,6 +46,7 @@ function mockPrisma() {
         .mockResolvedValueOnce([])                                          // open
         .mockResolvedValueOnce([]),                                         // today
     },
+    accountLog: { findMany: vi.fn().mockResolvedValue([]) },
     withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
     setup: { findMany: vi.fn().mockResolvedValue([]) },
     tradeChecklistResult: { findMany: vi.fn().mockResolvedValue([]) },
@@ -90,10 +91,30 @@ describe("dashboard financial reliability", () => {
     db.fixtureRows = rows
     return db
   }
+  it("scopes selected accounts and open realizations", async () => {
+    const db = fixture()
+    const accounts = [acct(REAL,"PERSONAL"),acct(DEMO,"PERSONAL")]
+    db.account.findMany.mockImplementation(async ({where}: any) => accounts.filter(a => !where.id || a.id === where.id))
+    db.fixtureRows.push({...tradeRow(DEMO,50),status:"OPEN",events:[{realizedPnl:50,timestamp:new Date()}]})
+    const result = await getDashboardStats(db,USER,{accountId:REAL,period:"ALL"})
+    expect(result.accountStats.map(s=>s.accountId)).toEqual([REAL])
+    expect(db.trade.findMany.mock.calls.find(([q]:any)=>q.where.status === "OPEN")[0].where.accountId).toEqual({in:[REAL]})
+  })
+  it("reports EUR open notional in base USD and keeps leverage currency-consistent", async () => {
+    const db = fixture()
+    db.account.findMany.mockResolvedValue([{...acct(REAL,"PERSONAL"),currency:"EUR",initialBalance:100}])
+    db.user.findUniqueOrThrow.mockResolvedValue({timezone:"UTC",baseCurrency:"USD",fxRates:{EUR:2,USD:1}})
+    db.fixtureRows.splice(0,db.fixtureRows.length,{...tradeRow(REAL,0),status:"OPEN",entry:100,size:1})
+    db.market.findMany.mockResolvedValue([{symbol:"MNQ",category:"STOCK",pointValue:"1"}])
+    const result=await getDashboardStats(db,USER,{period:"ALL"})
+    expect(result.accountStats[0].balance).toBe(200)
+    expect(result.accountStats[0].exposure).toMatchObject({notional:200,effectiveLeverage:1})
+  })
   it("keeps original planned risk and size after a full partial close and normalizes FX", async () => {
     const db = fixture()
     db.fixtureRows.splice(0,db.fixtureRows.length,{...tradeRow(REAL,20),status:"CLOSED",date:new Date("2020-01-01"),entry:100,stop:100,target:130,size:0,originalSize:2,originalRiskMoney:20})
     const result = await getDashboardStats(db,USER,{period:"ALL"})
+    expect(result.accountStats[0]).toHaveProperty("currencyToBaseRate", .058)
     expect(result.executionStats.avgPlannedRisk).toBe(1.16)
     expect(result.executionStats.avgPlannedReward).toBe(3.48)
   })
@@ -115,6 +136,15 @@ describe("dashboard financial reliability", () => {
     expect(result.accountStats[0].pnlToday).toBeCloseTo(-55 * .058, 2)
     expect(result.accountStats[0].tradesTotal).toBe(2)
     expect(result.propFirmStatus[0].dailyLossPct).toBe(55)
+  })
+  it("adds native corrections before FX without changing trading metrics", async () => {
+    const db = fixture()
+    const before = await getDashboardStats(db, USER, {period:"ALL"})
+    db.accountLog.findMany.mockResolvedValue([{accountId:REAL,payload:{variance:-200}}])
+    const after = await getDashboardStats(db, USER, {period:"ALL"})
+    expect(after.accountStats[0].balance).toBeCloseTo(before.accountStats[0].balance - 200 * .058,2)
+    expect(after.accountStats[0].risk).toEqual(before.accountStats[0].risk)
+    expect(after.kpis).toEqual(before.kpis)
   })
   it("paid cash reduces live balance but never trading performance or drawdown", async () => {
     const db = fixture()
@@ -191,7 +221,7 @@ describe("dashboard financial reliability", () => {
     await getDashboardStats(db, USER, { period: "ALL", from: "2026-01-01", to: "2026-01-01" })
     const keys = vi.mocked(cache.getCachedStats).mock.calls.slice(-3).map(call => call[2])
     expect(new Set(keys).size).toBe(3)
-    expect(keys[0]).toContain("v2")
+    expect(keys[0]).toContain("v3")
     vi.mocked(cache.isCacheEnabled).mockReturnValue(false)
   })
 })

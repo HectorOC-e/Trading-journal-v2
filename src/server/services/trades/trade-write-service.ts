@@ -97,11 +97,11 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   // Account equity = initial balance + realised P&L. Resolved at most once, and
   // only when something actually needs it (today: the riskPct fallback below).
   const profile = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { fxRates: true } })
-  const paid = (await loadAccountCashAdjustments(prisma, userId, [{ id: input.accountId, currency: account.currency }], parseFxRates(profile.fxRates))).get(input.accountId)?.paid ?? 0
+  const cash = (await loadAccountCashAdjustments(prisma, userId, [{ id: input.accountId, currency: account.currency }], parseFxRates(profile.fxRates))).get(input.accountId)
   let equity: Promise<number> | null = null
   const accountEquity = () => (equity ??= prisma.trade
     .aggregate({ where: { accountId: input.accountId, userId, status: { in: ["OPEN", "CLOSED"] } }, _sum: { pnl: true } })
-    .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0) - paid))
+    .then((agg) => Number(account.initialBalance) + Number(agg._sum.pnl ?? 0) + (cash?.correction ?? 0) - (cash?.paid ?? 0)))
 
   // Dollar value of one point for this instrument. Risk in money is meaningless
   // without it — the same lookup the close path already does for P&L. Resolved
@@ -330,10 +330,12 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     if (current.status === "OPEN" && input.pnl !== undefined) throw new TRPCError({ code: "BAD_REQUEST", message: "OPEN_PNL_NOT_REALIZED" })
     if (current.status === "OPEN") assertKnownHistory(current)
     const snapshots: { originalRiskMoney?: number; originalSize?: number; realizedPnl?: number } = {}
-    if (current.originalRiskMoney == null) {
+    const basisEdit = input.entry !== undefined || input.stop !== undefined || input.size !== undefined
+    const managed = current.events.some(e => e.type === "STOP_MOVE" || e.type === "TRAIL_STOP")
+    if (current.originalRiskMoney == null || (basisEdit && !managed)) {
       const market = await tx.market.findFirst({ where: { userId, symbol: current.symbol }, select: { pointValue: true } })
-      snapshots.originalRiskMoney = Math.abs(Number(current.entry) - Number(current.stop)) * Number(current.size) * parsePointValue(market?.pointValue)
-      snapshots.originalSize = Number(current.size)
+      snapshots.originalRiskMoney = Math.abs(Number(input.entry ?? current.entry) - Number(input.stop ?? current.stop)) * Number(input.size ?? current.size) * parsePointValue(market?.pointValue)
+      snapshots.originalSize = Number(input.size ?? current.size)
       snapshots.realizedPnl = 0
     }
     return write(tx, snapshots)
@@ -513,6 +515,8 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
   await tx.$queryRaw`SELECT id FROM trades WHERE id = ${input.tradeId}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
     const trade = await tx.trade.findUniqueOrThrow({ where: { id: input.tradeId, userId }, include: { account: true, events: true } })
     if (input.type !== "NOTE") assertOpenTrade(trade.status)
+    const timestamp = input.timestamp ? new Date(input.timestamp) : new Date()
+    if (!Number.isFinite(timestamp.getTime())) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_EVENT_TIMESTAMP" })
     const data: Record<string, unknown> = {}
     let realizedPnl: number | undefined
     const financial = input.type === "PARTIAL_CLOSE" || input.type === "SCALE_IN"
@@ -529,6 +533,28 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
       if (input.type === "STOP_MOVE" || input.type === "TRAIL_STOP") data.stop = input.price
       if (input.type === "TAKE_PROFIT_MOVE") data.target = input.price
       if (input.type === "SCALE_IN") {
+        const a = trade.account
+        // Live exposure checks cannot be shifted by a journal event timestamp.
+        const date = localDateISO(new Date(), a.timezone ?? "UTC")
+        await assertTradeable(tx as PrismaClient, userId, {
+          id: trade.accountId, type: a.type, ddModel: a.ddModel,
+          initialBalance: Number(a.initialBalance), locked: a.locked, lockReason: a.lockReason, enforceMode: a.enforceMode,
+          ddDailyPct: a.ddDailyPct == null ? null : Number(a.ddDailyPct),
+          ddWeeklyPct: a.ddWeeklyPct == null ? null : Number(a.ddWeeklyPct),
+          ddMonthlyPct: a.ddMonthlyPct == null ? null : Number(a.ddMonthlyPct),
+          ddTotalPct: a.ddTotalPct == null ? null : Number(a.ddTotalPct),
+        }, date)
+        if (a.ddDailyPct != null) {
+          const history = await loadRealizedPnlHistory(tx, userId, [trade.accountId])
+          const dayBase = Number(a.initialBalance) + history.filter(r => r.date.toISOString().slice(0,10) < date).reduce((sum,r) => sum + r.pnl,0)
+          const dayPnl = history.filter(r => r.date.toISOString().slice(0,10) === date).reduce((sum,r) => sum + r.pnl,0)
+          if (dayBase > 0) {
+            const remainingPct = Number(a.ddDailyPct) / 100 + dayPnl / dayBase
+            const tradeRiskPct = Math.abs(input.price! - Number(trade.stop)) * input.contracts! * pv / dayBase
+            const guard = evaluateBudgetGuard({remainingPct, tradeRiskPct, exhausted: remainingPct <= 0})
+            if (guard.block) throw new AppError("BUDGET_EXCEEDED", { detail: guard.message ?? "" })
+          }
+        }
         data.entry = computeScaleInAvgEntry(Number(trade.entry), Number(trade.size), input.price!, input.contracts!)
         data.size = Number(trade.size) + input.contracts!
         // Added exposure adds risk at its entry; subsequent stop moves cannot rewrite prior risk.
@@ -547,8 +573,6 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
         if (data.size === 0) { data.status = "CLOSED"; data.closePrice = input.price }
       }
     }
-    const timestamp = input.timestamp ? new Date(input.timestamp) : new Date()
-    if (!Number.isFinite(timestamp.getTime())) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_EVENT_TIMESTAMP" })
     if (Object.keys(data).length) await tx.trade.update({ where: { id: input.tradeId, userId }, data })
     const event = await tx.tradeEvent.create({ data: { userId, tradeId: input.tradeId, type: input.type, price: input.price, contracts: input.contracts, notes: input.notes, timestamp, realizedPnl } })
     return { event, trade, realized: input.type === "PARTIAL_CLOSE" }

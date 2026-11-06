@@ -5,6 +5,7 @@ vi.mock('@/server/services/behavior/commitment-service',()=>({evaluateRuledCommi
 vi.mock('@/server/services/intervention/intervention-service',()=>({runIntervention:vi.fn().mockResolvedValue(null)}))
 vi.mock('@/server/services/retrieval/pipeline',()=>({scheduleEmbedding:vi.fn()}))
 vi.mock('@/server/services/trades/serializers',()=>({serializeTrade:(t:unknown)=>t}))
+import {assertTradeable} from '@/domains/trading/services/risk-enforcement'
 import {addTradeEvent,closeTrade,updateTrade} from '@/server/services/trades/trade-write-service'
 function store(overrides={}) {
  let trade={id:'t',accountId:'a',userId:'u',symbol:'X',direction:'LONG',entry:100,stop:90,size:2,status:'OPEN',date:new Date('2026-11-05'),pnl:null as number|null,realizedPnl:0 as number|null,originalRiskMoney:20 as number|null,commission:0,account:{initialBalance:1000},...overrides}
@@ -23,10 +24,27 @@ describe('realized portions',()=>{
 
  it('rejects manual monetary edits after partial realization',async()=>{const s=store();await addTradeEvent(s.db,'u',partial());await expect(updateTrade(s.db,'u',{id:'t',pnl:100})).rejects.toThrow('PARTIAL_ACCOUNTING_EDIT');expect(s.trade().pnl).toBe(10)})
 
- it('snapshots ordinary legacy risk before a stop edit',async()=>{const s=store({realizedPnl:null,originalRiskMoney:null});await updateTrade(s.db,'u',{id:'t',stop:100});await addTradeEvent(s.db,'u',partial());await closeTrade(s.db,'u',{id:'t',closePrice:120,commission:0});expect(s.trade()).toHaveProperty('rMultiple',1.5)})
+ it('snapshots ordinary legacy risk before a stop edit',async()=>{const s=store({realizedPnl:null,originalRiskMoney:null});await addTradeEvent(s.db,'u',{tradeId:'t',type:'STOP_MOVE',price:100,notes:''});await addTradeEvent(s.db,'u',partial());await closeTrade(s.db,'u',{id:'t',closePrice:120,commission:0});expect(s.trade()).toHaveProperty('rMultiple',1.5)})
 
  it('rejects arbitrary OPEN P&L edits before any partial',async()=>{const s=store();await expect(updateTrade(s.db,'u',{id:'t',pnl:100})).rejects.toThrow('OPEN_PNL_NOT_REALIZED');expect(s.trade().pnl).toBeNull()})
  it.each([{entry:110},{stop:95},{size:1},{rMultiple:2}])('refuses snapshot initialization through legacy OPEN monetary edit %j',async(patch)=>{const s=store({pnl:100,realizedPnl:null,originalRiskMoney:null});await expect(updateTrade(s.db,'u',{id:'t',...patch})).rejects.toThrow('PARTIAL_HISTORY_REQUIRES_REVIEW');expect(s.trade().realizedPnl).toBeNull();expect(s.trade().pnl).toBe(100)})
  it('preserves ambiguous legacy OPEN P&L rather than replacing its cash history',async()=>{const s=store({pnl:100,realizedPnl:null,originalRiskMoney:null});await expect(addTradeEvent(s.db,'u',partial())).rejects.toThrow('PARTIAL_HISTORY_REQUIRES_REVIEW');expect(s.trade().pnl).toBe(100);expect(s.events).toHaveLength(0)})
 
+})
+
+it('corrects initial size and risk before management',async()=>{const s=store({size:1,originalSize:1,originalRiskMoney:10});await updateTrade(s.db,'u',{id:'t',size:2});await closeTrade(s.db,'u',{id:'t',closePrice:110,commission:0});expect(s.trade()).toMatchObject({originalSize:2,originalRiskMoney:20,pnl:20,rMultiple:1})})
+it('rejects locked scale-in while allowing reductions',async()=>{const s=store();vi.mocked(assertTradeable).mockRejectedValueOnce(new Error('ACCOUNT_LOCKED:MANUAL'));await expect(addTradeEvent(s.db,'u',{tradeId:'t',type:'SCALE_IN',price:100,contracts:1,notes:''})).rejects.toThrow('ACCOUNT_LOCKED:MANUAL');expect(s.trade().size).toBe(2);expect(s.events).toHaveLength(0);await addTradeEvent(s.db,'u',partial());expect(s.trade().size).toBe(1)})
+it('rejects scale-in exceeding daily risk budget',async()=>{vi.mocked(assertTradeable).mockReset();const s=store({account:{initialBalance:1000,ddDailyPct:5}});Object.assign((s.db as any).trade,{findMany:async()=>[]});await expect(addTradeEvent(s.db,'u',{tradeId:'t',type:'SCALE_IN',price:100,contracts:6,notes:''})).rejects.toThrow();expect(s.trade().size).toBe(2);expect(s.events).toHaveLength(0)})
+
+it('uses the current account-local day for scale-in despite caller event date',async()=>{
+ vi.useFakeTimers();vi.setSystemTime(new Date('2026-11-06T00:30:00Z'))
+ try {
+  const actual=await vi.importActual<typeof import('@/domains/trading/services/risk-enforcement')>('@/domains/trading/services/risk-enforcement')
+  vi.mocked(assertTradeable).mockImplementationOnce(actual.assertTradeable)
+  const s=store({account:{initialBalance:1000,timezone:'America/Tegucigalpa',locked:true,lockReason:'DAILY_LOSS_LIMIT',ddDailyPct:5}})
+  Object.assign((s.db as any).trade,{findMany:async()=>[{accountId:'a',status:'CLOSED',pnl:-100,date:new Date('2026-11-05'),events:[]}]})
+  Object.assign(s.db,{account:{update:async()=>({name:'A'})},accountLog:{create:async()=>({})}})
+  await expect(addTradeEvent(s.db,'u',{tradeId:'t',type:'SCALE_IN',price:100,contracts:1,notes:'',timestamp:'2026-11-07T12:00:00Z'})).rejects.toThrow('ACCOUNT_LOCKED:DAILY_LOSS_LIMIT')
+  expect(s.trade().size).toBe(2);expect(s.events).toHaveLength(0)
+ }finally{vi.useRealTimers()}
 })

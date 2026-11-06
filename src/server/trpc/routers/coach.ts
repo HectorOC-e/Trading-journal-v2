@@ -13,8 +13,7 @@ import {
   summarizeThread,
 } from "@/server/services/coach/coach-memory-service"
 import {
-  ensureThread,
-  appendMessage,
+  appendExchange,
   getThreads,
   getThreadMessages,
 } from "@/server/services/coach/coach-thread-service"
@@ -77,9 +76,7 @@ export const coachRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const thread = await ensureThread(ctx.prisma, ctx.userId, input.threadId)
-      await appendMessage(ctx.prisma, ctx.userId, thread.id, "user", input.userText)
-      await appendMessage(ctx.prisma, ctx.userId, thread.id, "assistant", input.assistantText)
+      const thread = await appendExchange(ctx.prisma, ctx.userId, input)
       // S6 producer: summarize + extract candidate memory (best-effort, cost-gated, no-op without a key).
       void summarizeThread(ctx.prisma, ctx.userId, thread.id).catch(() => {})
       return { threadId: thread.id }

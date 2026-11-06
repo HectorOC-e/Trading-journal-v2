@@ -58,6 +58,7 @@ function mockPrisma(opts: { initialBalance: number; closedPnl: number; pointValu
     status: "OPEN", tags: [] as string[], pnl: null, rMultiple: null }
   return {
     user: { findUniqueOrThrow: vi.fn().mockResolvedValue({fxRates:null}) },
+    accountLog: { findMany: vi.fn().mockResolvedValue([]) },
     withdrawal: { findMany: vi.fn().mockResolvedValue([]) },
     account: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({
@@ -148,3 +149,5 @@ describe("daily money budget", () => {
 })
 
 it("rejects arbitrary OPEN P&L on create",async()=>{const db=mockPrisma({initialBalance:1000,closedPnl:0});await expect(createTrade(db,USER,{...INPUT,pnl:100} as never)).rejects.toThrow("OPEN_PNL_NOT_REALIZED");expect(db.trade.create).not.toHaveBeenCalled()})
+
+it('uses native balance corrections when sizing new trade risk',async()=>{const db=mockPrisma({initialBalance:1000,closedPnl:0});vi.mocked(db.accountLog.findMany).mockResolvedValue([{accountId:ACCOUNT,payload:{variance:-500}}] as never);await createTrade(db,USER,{...INPUT} as never);expect(riskPctPassedTo(db)).toBe(.28)})

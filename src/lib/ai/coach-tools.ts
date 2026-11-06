@@ -398,8 +398,8 @@ async function runCoachTool(
       const back  = new Date(now); back.setDate(now.getDate() - days)
       const [resources, sessions] = await Promise.all([
         prisma.learningResource.findMany({
-          where: { userId, status: { not: "ABANDONED" }, nextReviewAt: { not: null, lte: ahead } },
-          select: { id: true, title: true, type: true, nextReviewAt: true, status: true },
+          where: { userId, status: { notIn: ["ABANDONED", "MASTERED"] }, OR: [{ markedForReview: true }, { nextReviewAt: { not: null, lte: ahead } }] },
+          select: { id: true, title: true, type: true, nextReviewAt: true, status: true, markedForReview: true },
         }),
         prisma.studySession.findMany({
           where: { userId, status: { in: ["completed", "planned"] }, startedAt: { gte: back, lte: ahead } },
@@ -408,8 +408,8 @@ async function runCoachTool(
         }),
       ])
       const dueReviews = resources
-        .filter(r => r.status !== "MASTERED" && r.nextReviewAt)
-        .map(r => ({ date: (r.nextReviewAt as Date).toISOString().slice(0, 10), title: r.title, type: r.type, overdue: (r.nextReviewAt as Date).toISOString().slice(0, 10) <= todayISO }))
+        .filter(r => r.status !== "MASTERED" && (r.markedForReview || r.nextReviewAt))
+        .map(r => ({ date: r.markedForReview ? todayISO : (r.nextReviewAt as Date).toISOString().slice(0, 10), title: r.title, type: r.type, overdue: r.markedForReview || (r.nextReviewAt as Date).toISOString().slice(0, 10) <= todayISO }))
       return JSON.stringify({
         windowDays: days,
         dueReviews,

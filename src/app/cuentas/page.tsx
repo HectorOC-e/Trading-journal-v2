@@ -94,21 +94,24 @@ export default function CuentasPage() {
 
   // Build accountStats from server-side aggregation (all trades, not just paginated)
   const accountStats: Record<string, TradeStats> = Object.fromEntries(
-    (dashStats?.accountStats ?? []).map(s => [s.accountId, {
-      netPnl:      s.netPnl,
-      pnlMonth:    s.pnlMonth,
-      pnlWeek:     s.pnlWeek,
-      pnlToday:    s.pnlToday,
+    (dashStats?.accountStats ?? []).map(s => {
+      const native = (amount: number) => amount / s.currencyToBaseRate
+      return [s.accountId, {
+      netPnl:      native(s.netPnl),
+      pnlMonth:    native(s.pnlMonth),
+      pnlWeek:     native(s.pnlWeek),
+      pnlToday:    native(s.pnlToday),
       winRate:     s.winRate,
       avgR:        s.avgR,
       tradesMonth: s.tradesMonth,
       tradesToday: s.tradesToday,
       tradesTotal: s.tradesTotal,
       drawdownPct: s.drawdownPct,
-      sparkline:   s.sparkline,
+      sparkline:   s.sparkline.map(native),
       risk:        s.risk,
-      exposure:    s.exposure,
-    }]),
+      exposure:    s.exposure ? { ...s.exposure, notional: native(s.exposure.notional) } : undefined,
+    }]
+    }),
   )
 
   // Auto-open the guided tour on the first visit, once accounts have rendered so
