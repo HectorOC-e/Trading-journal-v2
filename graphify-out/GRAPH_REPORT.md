@@ -1,7 +1,7 @@
 # Graph Report - Trading-journal-v2  (2026-11-06)
 
 ## Corpus Check
-- 667 files · ~440,232 words
+- 667 files · ~440,259 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `2f2f8d2e`
+- Built from commit: `98bbce81`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1463,7 +1463,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `theme/engine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.051791629027401385 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `react` to `theme/engine.ts`, `emit.ts`, `perfil/page.tsx`, `trades-table.tsx`, `dependencies`, `retiros/page.tsx`, `review-lifecycle.tsx`, `resource-drawer.tsx`, `lib/utils.ts`, `ai-coach-drawer.tsx`, `page.tsx`, `Insight`, `analytics/page.tsx`, `motion.ts`, `dashboard/page.tsx`, `register-trade-modal.tsx`, `lib/utils.ts`, `reglas/page.tsx`, `review-report-shell.tsx`, `Sidebar.tsx`, `condition-group.tsx`, `resource-card.tsx`, `notification-bell.tsx`, `account-card.tsx`, `markdown.tsx`, `today-feed.tsx`, `reviews-rail.tsx`, `next`, `review-card.tsx`, `package.json`, `create-account-modal.tsx`, `types/index.ts`, `mercados/page.tsx`, `psychology-insights.ts`, `monthly-letter.tsx`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
+  _High betweenness centrality (0.031) - this node is a cross-community bridge._
 - **Should `Global Constraints` be split into smaller, more focused modules?**
   _Cohesion score 0.13333333333333333 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `lib/utils.ts` to `perfil/page.tsx`, `react`, `trades-table.tsx`, `FocusSession`, `resource-drawer.tsx`, `lib/utils.ts`, `ai-coach-drawer.tsx`, `page.tsx`, `analytics/page.tsx`, `motion.ts`, `dashboard/page.tsx`, `register-trade-modal.tsx`, `reglas/page.tsx`, `review-report-shell.tsx`, `Sidebar.tsx`, `resource-card.tsx`, `notification-bell.tsx`, `markdown.tsx`, `reviews-rail.tsx`, `add-edit-resource-modal.tsx`, `types/index.ts`, `create-account-modal.tsx`, `mercados/page.tsx`?**
