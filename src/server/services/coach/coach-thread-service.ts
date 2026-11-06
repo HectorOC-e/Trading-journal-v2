@@ -33,9 +33,12 @@ export async function appendExchange(
 ) {
   return prisma.$transaction(async tx => {
     const thread = await ensureThread(tx, userId, input.threadId)
-    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "user", content: input.userText } })
-    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "assistant", content: input.assistantText } })
-    await tx.coachThread.update({ where: { id: thread.id }, data: { lastMessageAt: new Date() } })
+    // PostgreSQL now() is constant within a transaction; keep chronological reads deterministic.
+    const userAt = new Date()
+    const assistantAt = new Date(userAt.getTime() + 1)
+    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "user", content: input.userText, createdAt: userAt } })
+    await tx.coachMessage.create({ data: { threadId: thread.id, userId, role: "assistant", content: input.assistantText, createdAt: assistantAt } })
+    await tx.coachThread.update({ where: { id: thread.id }, data: { lastMessageAt: assistantAt } })
     return thread
   })
 }
