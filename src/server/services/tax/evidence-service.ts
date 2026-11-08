@@ -180,7 +180,58 @@ export async function uploadEvidence(
       code: "CONFLICT",
       message: "La carga caducó. Selecciona el archivo de nuevo.",
     });
+  const leaseId = randomUUID();
+  let leaseStarted = false;
+  async function completeLease() {
+    await db.taxUploadLease
+      .updateMany({
+        where: { id: leaseId, userId, completedAt: null },
+        data: { completedAt: new Date() },
+      })
+      .catch(() => {
+        console.error("tax_evidence_lease_completion_failed");
+      });
+  }
   try {
+    // Each HTTP attempt gets a separate durable intent, including same-id retries.
+    // Audit's User FK makes this commit visible before deletion can finish.
+    await withTaxWrite(
+      db,
+      userId,
+      {
+        requestId: leaseId,
+        action: "evidence.uploadLease",
+        payload: { evidenceId: evidence.id },
+      },
+      async (tx) => {
+        const pending = await tx.taxEvidence.findFirst({
+          where: { id: evidence.id, userId, status: "PENDING" },
+        });
+        const period = await tx.taxPeriod.findFirst({
+          where: {
+            id: input.periodId,
+            userId,
+            status: "OPEN",
+            revision: input.expectedRevision + 1,
+          },
+        });
+        if (!pending || !period)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "La carga ya no está disponible.",
+          });
+        await tx.taxUploadLease.create({
+          data: {
+            id: leaseId,
+            userId,
+            path: evidence.path,
+            expiresAt: new Date(Date.now() + 10 * 60_000),
+          },
+        });
+        return { started: true };
+      },
+    );
+    leaseStarted = true;
     const uploaded = await storage.upload(evidence.path, bytes, {
       contentType: verified.mime,
       upsert: false,
@@ -201,7 +252,7 @@ export async function uploadEvidence(
           message: "No se pudo almacenar el documento. Inténtalo de nuevo.",
         });
     }
-    return await withTaxWrite(
+    const finalized = await withTaxWrite(
       db,
       userId,
       {
@@ -231,6 +282,8 @@ export async function uploadEvidence(
         });
       },
     );
+    await completeLease();
+    return finalized;
   } catch (error) {
     // Technical compensation cannot change available evidence or financial snapshots.
     const deletionPending = await db.accountDeletionJob
@@ -266,6 +319,7 @@ export async function uploadEvidence(
         const cleanup = await storage.remove([evidence.path]);
         if (cleanup.error)
           console.error("tax_evidence_object_compensation_failed");
+        else if (leaseStarted) await completeLease();
       } catch {
         console.error("tax_evidence_object_compensation_failed");
       }

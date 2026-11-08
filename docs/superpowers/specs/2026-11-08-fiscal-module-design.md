@@ -257,7 +257,7 @@ Reglas de acceso:
 - `protectedProcedure` y comprobación de propietario en todos los servicios; no usar `dashboardMutation`.
 - RLS SELECT por propietario en todas las tablas fiscales de usuario. Primera versión: escritura sólo por API autenticada privilegiada y validada; revocar INSERT/UPDATE/DELETE directos de `anon`/`authenticated`. Así REST no elude auditoría, cierre ni unicidad lógica. El service role nunca llega al cliente.
 - Catálogo de reglas: lectura sólo de versiones publicadas, sin escritura del usuario. Auditoría: lectura propia, sin update/delete del cliente.
-- Bucket privado sin políticas públicas; subida y descargas pasan por autorización fiscal. URLs firmadas sólo tras validar objeto, propietario y estado.
+- Bucket privado sin políticas públicas; subida y descargas pasan por autorización fiscal. Cada intento de carga privilegiada crea un lease operacional que sobrevive al borrado de User; la eliminación no completa hasta que terminen o caduquen las cargas y se repita el barrido. Estas intenciones técnicas no forman parte del libro ni se exponen al cliente. URLs firmadas sólo tras validar objeto, propietario y estado.
 - Sin acceso externo para contadores en primera versión; los datos del contador del formulario no conceden permisos. Compartir un informe requiere acción explícita del usuario.
 - RTN, documentos y descripciones fiscales excluidos de logs, analítica de producto y errores públicos. Auditoría fiscal accesible sólo al propietario, con campos sensibles minimizados.
 - Límites de ficheros, peticiones y paginación; escape de HTML en PDF, neutralización de CSV y pruebas IDOR en consultas y descargas.

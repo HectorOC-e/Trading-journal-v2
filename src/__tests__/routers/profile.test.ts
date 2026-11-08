@@ -46,6 +46,7 @@ const BASE_USER = {
 
 function makeMockPrisma() {
   return {
+    taxUploadLease: { count: vi.fn(async () => 0), deleteMany: vi.fn(async () => ({count:0})) },
     $queryRaw: vi.fn(async () => []),
     accountDeletionJob: {
       upsert: vi.fn(async () => ({})),

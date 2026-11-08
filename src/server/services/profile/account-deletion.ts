@@ -223,6 +223,15 @@ export async function processAccountDeletion(
       await db.user.findUnique({ where: { id: userId }, select: { id: true } })
     )
       throw new Error("db_verification_failed");
+    // A privileged upload may have passed authorization before deletion intent.
+    // Its lease commits with an audit FK to User, so User deletion cannot finish
+    // before that lease becomes visible. Keep the tombstone retryable until all
+    // bounded requests have finished/expired, then sweep again on the next attempt.
+    const activeUploads = await db.taxUploadLease.count({
+      where: { userId, completedAt: null, expiresAt: { gt: deps.now() } },
+    });
+    if (activeUploads) throw new Error("fiscal_uploads_in_flight");
+    await db.taxUploadLease.deleteMany({ where: { userId } });
     const done = await db.accountDeletionJob.updateMany({
       where: { userId, leaseToken: token, status: "processing" },
       data: { status: "completed", leaseToken: null, leaseUntil: null },

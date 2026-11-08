@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient as createStorageClient } from "@supabase/supabase-js";
 import { prisma } from "@/lib/prisma";
 import {
   readFiscalUploadBody,
@@ -12,6 +12,29 @@ import {
   removeEvidence,
 } from "@/server/services/tax/evidence-service";
 export const runtime = "nodejs";
+export const maxDuration = 60;
+function fiscalStorage() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL,
+    key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key)
+    throw new TRPCError({
+      code: "SERVICE_UNAVAILABLE",
+      message: "Los documentos no están disponibles en este entorno.",
+    });
+  return createStorageClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: AbortSignal.any([
+            AbortSignal.timeout(20000),
+            ...(init?.signal ? [init.signal] : []),
+          ]),
+        }),
+    },
+  }).storage.from("tax-evidence");
+}
 const uuid = z.string().uuid();
 const write = z.object({
   periodId: uuid,
@@ -76,12 +99,7 @@ export async function GET(req: Request) {
     const id = url.searchParams.get("id");
     if (id)
       return Response.json(
-        await downloadEvidence(
-          prisma,
-          userId,
-          uuid.parse(id),
-          createAdminClient().storage.from("tax-evidence"),
-        ),
+        await downloadEvidence(prisma, userId, uuid.parse(id), fiscalStorage()),
         { headers },
       );
     const periodId = uuid.parse(url.searchParams.get("periodId")),
@@ -132,7 +150,7 @@ export async function POST(req: Request) {
       userId,
       input,
       new Uint8Array(await file.arrayBuffer()),
-      createAdminClient().storage.from("tax-evidence"),
+      fiscalStorage(),
     );
     return Response.json(result, { headers });
   } catch (error) {
@@ -174,12 +192,7 @@ export async function DELETE(req: Request) {
       .strict()
       .parse(await smallJson(req));
     return Response.json(
-      await removeEvidence(
-        prisma,
-        userId,
-        input,
-        createAdminClient().storage.from("tax-evidence"),
-      ),
+      await removeEvidence(prisma, userId, input, fiscalStorage()),
       { headers },
     );
   } catch (error) {

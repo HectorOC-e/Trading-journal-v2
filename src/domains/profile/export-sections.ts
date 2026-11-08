@@ -134,6 +134,7 @@ export const PROFILE_EXPORT_LABELS: Record<ProfileExportSection, string> = {
 };
 export const PROFILE_EXPORT_EXCLUSIONS = [
   "Credenciales, claves API y configuración cifrada (UserAiConfig).",
+  "Intenciones técnicas de cargas en curso (TaxUploadLease), conservadas sólo para limpieza durable.",
   "Binarios de imágenes y adjuntos; el JSON conserva sus referencias de medios.",
   "Cachés derivados de estadísticas (TradeStatsCache), catálogos globales e identidad/sesiones de autenticación.",
 ] as const;

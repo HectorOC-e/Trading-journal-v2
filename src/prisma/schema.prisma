@@ -1802,3 +1802,16 @@ model TaxRuleSet {
   @@unique([country, regime, year, version])
   @@map("tax_rule_sets")
 }
+
+// Operational intent deliberately survives User/evidence cascades, like the
+// account deletion tombstone. It is never exposed to the Data API.
+model TaxUploadLease {
+  id String @id @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  path String
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  completedAt DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@index([userId,expiresAt])
+  @@map("tax_upload_leases")
+}

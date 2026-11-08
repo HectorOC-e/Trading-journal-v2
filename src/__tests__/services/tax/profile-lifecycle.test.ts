@@ -25,6 +25,10 @@ describe("fiscal data in profile lifecycle", () => {
       Array.from({ length: 131 }, (_, i) => `${userId}/qa-${i}.pdf`),
     );
     const db = {
+      taxUploadLease: {
+        count: async () => 0,
+        deleteMany: async () => ({ count: 0 }),
+      },
       accountDeletionJob: {
         findUnique: async () => ({ status: "pending", attempts: 0 }),
         updateMany: async () => ({ count: 1 }),
@@ -74,5 +78,48 @@ describe("fiscal data in profile lifecycle", () => {
       }),
     ).toEqual({ ok: true, status: "completed" });
     expect(files.size).toBe(0);
+  });
+  it("does not complete deletion while a privileged upload is still in flight", async () => {
+    const db = {
+      accountDeletionJob: {
+        findUnique: async () => ({ status: "pending", attempts: 0 }),
+        updateMany: async () => ({ count: 1 }),
+      },
+      taxUploadLease: {
+        count: async () => 1,
+        deleteMany: async () => ({ count: 0 }),
+      },
+      trade: { findMany: async () => [] },
+      setup: { findMany: async () => [] },
+      practiceAttachment: { findMany: async () => [] },
+      $queryRaw: async () => [],
+      user: {
+        deleteMany: async () => ({ count: 1 }),
+        findUnique: async () => null,
+      },
+    } as any;
+    const admin = {
+      auth: {
+        admin: {
+          deleteUser: async () => ({ error: null }),
+          getUserById: async () => ({
+            data: { user: null },
+            error: { status: 404 },
+          }),
+        },
+      },
+      storage: {
+        from: () => ({
+          list: async () => ({ data: [], error: null }),
+          remove: async () => ({ error: null }),
+        }),
+      },
+    } as any;
+    expect(
+      await processAccountDeletion(db, userId, {
+        createAdmin: () => admin,
+        now: () => new Date(),
+      }),
+    ).toEqual({ ok: false, status: "pending" });
   });
 });
