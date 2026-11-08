@@ -1,7 +1,8 @@
 import { decimal, TaxDecimal } from './decimal';
 import { transactionSchema } from './validation';
 import type { TaxAsset, TaxTransaction } from './types';
-export function assetKey(asset:TaxAsset):string { return asset.kind==='FIAT' ? `FIAT:${asset.code}` : JSON.stringify(['TOKEN',asset.symbol,asset.network,asset.contract]); }
+// Symbol is display metadata; retain contract case because some networks use case-sensitive addresses.
+export function assetKey(asset:TaxAsset):string { return asset.kind==='FIAT' ? `FIAT:${asset.code}` : JSON.stringify(['TOKEN',asset.network,asset.contract]); }
 export function validatePostings(input:unknown):TaxTransaction {
  const event=transactionSchema.parse(input);const q=event.postings.map(p=>decimal(p.quantity));
  const positive=q.some(v=>v.gt(0));const negative=q.some(v=>v.lt(0));
@@ -21,6 +22,6 @@ export function validatePostings(input:unknown):TaxTransaction {
 }
 export function calculateBalances(events:TaxTransaction[]):{accountId:string;asset:TaxAsset;quantity:string}[]{
  const balances=new Map<string,{accountId:string;asset:TaxAsset;quantity:InstanceType<typeof TaxDecimal>}>();
- for(const event of events)for(const p of validatePostings(event).postings){const key=JSON.stringify([p.accountId,assetKey(p.asset)]);const old=balances.get(key);const quantity=(old?.quantity??new TaxDecimal(0)).plus(decimal(p.quantity));if(quantity.lt(0))throw new Error('Insufficient recorded balance');balances.set(key,{accountId:p.accountId,asset:p.asset,quantity});}
+ for(const event of events)for(const p of validatePostings(event).postings){const key=JSON.stringify([p.accountId,assetKey(p.asset)]);const old=balances.get(key);const quantity=(old?.quantity??new TaxDecimal(0)).plus(decimal(p.quantity));if(quantity.lt(0))throw new Error('Insufficient recorded balance');if(quantity.gt(decimal('99999999999999999999.999999999999999999')))throw new Error('Balance exceeds numeric(38,18) precision');balances.set(key,{accountId:p.accountId,asset:p.asset,quantity});}
  return [...balances.values()].map(b=>({...b,quantity:b.quantity.toString()}));
 }
