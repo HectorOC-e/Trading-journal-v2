@@ -17,15 +17,20 @@ import type { Dated, Window } from "@/domains/analytics/longitudinal/rolling-win
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
+export type SetupScope = "REAL" | "DEMO" | "BACKTEST"
+const SCOPE_TYPES: Record<SetupScope, string[]> = { REAL: ["PERSONAL", "PROP_FIRM"], DEMO: ["DEMO_PERSONAL", "DEMO_PROP"], BACKTEST: ["BACKTEST"] }
+
 const RECENT_WINDOW = 20
 const EVOLUTION_WINDOW = 10
 
 export interface SetupPlaybook {
   hasData: boolean
   sampleSize: number
+  scope: SetupScope
+  context: { closedCount: number; usableRCount: number; checklistEvaluated: number; checklistCompliant: number; checklistUnknown: number; complianceRate: number | null }
   decay: EdgeDecayResult
   drift: DriftResult
-  evolution: Window<EvolutionMetrics>[]
+  evolution: Window<Omit<EvolutionMetrics, "netPnl">>[]
   /** Edge before vs after the last redefinition (`edgeUpdatedAt`); null if never redefined or too few trades. */
   redefinition: VariantComparison | null
 }
@@ -34,6 +39,7 @@ export async function getSetupPlaybook(
   prisma: PrismaClient,
   userId: string,
   setupId: string,
+  scope: SetupScope = "REAL",
 ): Promise<SetupPlaybook | null> {
   const setup = await prisma.setup.findFirst({
     where: { id: setupId, userId },
@@ -42,10 +48,18 @@ export async function getSetupPlaybook(
   if (!setup) return null
 
   const trades = await prisma.trade.findMany({
-    where: { userId, setupId, status: "CLOSED" },
+    where: { userId, setupId, status: "CLOSED", account: { userId, type: { in: SCOPE_TYPES[scope] } } },
     orderBy: [{ date: "asc" }, { closeTime: "asc" }, { createdAt: "asc" }],
-    select: { rMultiple: true, pnl: true, direction: true, date: true },
+    select: { id: true, rMultiple: true, pnl: true, direction: true, date: true },
   })
+
+  const checklistRows = trades.length ? await prisma.tradeChecklistResult.findMany({
+    where: { userId, tradeId: { in: trades.map(t => t.id) } },
+    select: { tradeId: true, itemsChecked: true, itemsTotal: true },
+  }) : []
+  const tradeIds = new Set(trades.map(t => t.id))
+  const evaluated = checklistRows.filter(r => tradeIds.has(r.tradeId) && r.itemsTotal > 0)
+  const compliant = evaluated.filter(r => r.itemsChecked.length === r.itemsTotal).length
 
   const rChrono = trades.map((t) => num(t.rMultiple)).filter((n): n is number => n != null)
   const recent = rChrono.slice(-RECENT_WINDOW)
@@ -73,9 +87,11 @@ export async function getSetupPlaybook(
 
   const series: Dated<EvolutionPoint>[] = trades.map((t) => ({
     date: ymd(t.date),
-    value: { rMultiple: num(t.rMultiple), pnl: num(t.pnl) ?? 0 },
+    // Outcome sign preserves WR without combining native currencies.
+    value: { rMultiple: num(t.rMultiple), pnl: Math.sign(num(t.pnl) ?? 0) },
   }))
   const evolution = buildEdgeEvolution(series, { size: { count: EVOLUTION_WINDOW }, step: EVOLUTION_WINDOW })
+    .map(w => ({ ...w, value: { trades: w.value.trades, winRate: w.value.winRate, avgR: w.value.avgR } }))
 
   let redefinition: VariantComparison | null = null
   if (setup.edgeUpdatedAt) {
@@ -88,5 +104,14 @@ export async function getSetupPlaybook(
     )
   }
 
-  return { hasData: trades.length > 0, sampleSize: trades.length, decay, drift, evolution, redefinition }
+  return {
+    hasData: trades.length > 0, sampleSize: trades.length, scope,
+    context: {
+      closedCount: trades.length, usableRCount: rChrono.length,
+      checklistEvaluated: evaluated.length, checklistCompliant: compliant,
+      checklistUnknown: trades.length - evaluated.length,
+      complianceRate: evaluated.length ? compliant / evaluated.length * 100 : null,
+    },
+    decay, drift, evolution, redefinition,
+  }
 }

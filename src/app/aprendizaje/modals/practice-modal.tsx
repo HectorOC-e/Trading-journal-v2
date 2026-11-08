@@ -1,4 +1,6 @@
 "use client";
+import { useRecoverableDraft } from "@/hooks/useRecoverableDraft";
+import { DraftRecovery } from "@/components/ui/draft-recovery";
 import { practiceImageInputError } from "@/domains/learning/practice-evidence";
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc/client";
@@ -21,8 +23,16 @@ import { BookOpen, ImagePlus, Save, Sparkles, Trash2 } from "lucide-react";
 
 export type PracticeRecord =
   RouterOutputs["learningPractices"]["list"]["items"][number];
-export function PracticeModal({
+type PracticeModalProps = Parameters<typeof PracticeEditor>[0];
+export function PracticeModal(props: Omit<PracticeModalProps, "userId">) {
+  const profile = trpc.profile?.get.useQuery();
+  if (profile && !profile.data) return <Dialog open onOpenChange={open => { if (!open) props.onClose() }}><DialogContent><DialogTitle>Registrar práctica</DialogTitle><p role={profile.error ? "alert" : "status"}>{profile.error ? "No se pudo cargar tu perfil." : "Cargando tu perfil…"}</p>{profile.error && <Button onClick={() => void profile.refetch()}>Reintentar perfil</Button>}<Button variant="ghost" onClick={props.onClose}>Cancelar</Button></DialogContent></Dialog>;
+  return <PracticeEditor key={`${profile?.data?.id ?? "unresolved"}:${props.record?.id ?? "new"}`} {...props} userId={profile?.data?.id} />;
+}
+function PracticeEditor({
+  userId,
   record,
+  plannedSession,
   repeatFrom,
   onRepeat,
   resourceId,
@@ -31,7 +41,9 @@ export function PracticeModal({
   onClose,
   onChanged,
 }: {
+  userId?: string;
   record: PracticeRecord | null;
+  plannedSession?: { id: string; resourceId: string; reviewSource: {kind: "weekly"; weekStart: string; conclusion: string} | null };
   repeatFrom?: PracticeRecord;
   onRepeat?: (record: PracticeRecord) => void;
   resourceId?: string;
@@ -41,8 +53,8 @@ export function PracticeModal({
   onChanged: () => void;
 }) {
   const [saved, setSaved] = useState(record);
-  const [id] = useState(() => record?.id ?? crypto.randomUUID());
-  const [title, setTitle] = useState(record?.title ?? repeatFrom?.title ?? "");
+  const [id, setId] = useState(() => record?.id ?? crypto.randomUUID());
+  const [title, setTitle] = useState(record?.title ?? plannedSession?.reviewSource?.conclusion.slice(0, 160) ?? repeatFrom?.title ?? "");
   const [date, setDate] = useState(record?.date.slice(0, 10) ?? today ?? "");
   const [minutes, setMinutes] = useState(
     record ? String(record.durationMin) : repeatFrom ? "" : "30",
@@ -52,10 +64,10 @@ export function PracticeModal({
   );
   const [reflection, setReflection] = useState(record?.reflection ?? "");
   const [resource, setResource] = useState(
-    record?.resourceId ?? repeatFrom?.resourceId ?? resourceId ?? "",
+    record?.resourceId ?? repeatFrom?.resourceId ?? plannedSession?.resourceId ?? resourceId ?? "",
   );
   const [objective, setObjective] = useState(
-    record?.objective ?? repeatFrom?.objective ?? "",
+    record?.objective ?? plannedSession?.reviewSource?.conclusion ?? repeatFrom?.objective ?? "",
   );
   const [assessment, setAssessment] = useState(record?.assessment ?? "");
   const [repeatRequested, setRepeatRequested] = useState(false);
@@ -73,6 +85,7 @@ export function PracticeModal({
     | null
   >(null);
   const busy = activity !== null;
+  const reviewSource = plannedSession?.reviewSource ?? repeatFrom?.reviewSource ?? (record as (PracticeRecord & { reviewSource?: { weekStart: string } | null }) | null)?.reviewSource;
   const [activeImageId, setActiveImageId] = useState<string | null>(null);
   const [discardOpen, setDiscardOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -117,12 +130,30 @@ export function PracticeModal({
         assessment: saved.assessment ?? null,
         resourceId: saved.resourceId,
       });
+  const draftVersion = useRef(record?.version);
+  const draft = useRecoverableDraft(userId, `practice:${saved?.id ?? (plannedSession?.id ? `plan:${plannedSession.id}` : repeatFrom?.id ? `repeat:${repeatFrom.id}` : `new:${resourceId ?? "all"}`)}`, (raw) => {
+    if (!raw || typeof raw !== "object") return null;
+    const v = raw as Record<string, unknown>;
+    if (typeof v.id !== "string" || !/^[0-9a-f-]{36}$/i.test(v.id)) return null;
+    for (const field of ["title", "date", "minutes", "exercise", "reflection", "resource", "objective", "assessment"]) if (typeof v[field] !== "string") return null;
+    if (v.version !== undefined && typeof v.version !== "number") return null;
+    return { id: v.id, version: v.version as number | undefined, title: v.title as string, date: v.date as string, minutes: v.minutes as string, exercise: v.exercise as string, reflection: v.reflection as string, resource: v.resource as string, objective: v.objective as string, assessment: v.assessment as string };
+  });
   const [initialInput] = useState(input);
   const hasUnsavedChanges =
     (saved
       ? dirty
       : JSON.stringify(input) !== JSON.stringify(initialInput) ||
         !!suggestion) || !!pendingUpload;
+  const storeDraft = draft.store;
+  useEffect(() => {
+    if (draft.ready && !draft.recovery && hasUnsavedChanges && !busy) storeDraft({id, version: draftVersion.current, title, date, minutes, exercise, reflection, resource, objective, assessment});
+  }, [storeDraft, draft.ready, draft.recovery, hasUnsavedChanges, busy, id, title, date, minutes, exercise, reflection, resource, objective, assessment]);
+  function restoreDraft() {
+    const v = draft.recovery?.value; if (!v) return;
+    setId(v.id); draftVersion.current = v.version;
+    setTitle(v.title); setDate(v.date); setMinutes(v.minutes); setExercise(v.exercise); setReflection(v.reflection); setResource(plannedSession?.resourceId ?? v.resource); setObjective(v.objective); setAssessment(v.assessment); draft.dismiss();
+  }
   function requestClose() {
     if (busy) return;
     setRepeatRequested(false);
@@ -168,16 +199,19 @@ export function PracticeModal({
     e.preventDefault();
     setError("");
     setNotice("");
+    const draftToken = draft.snapshot();
     setActivity("save");
     try {
       const p = saved
         ? await update.mutateAsync({
             ...input,
             id,
-            expectedVersion: saved.version,
+            expectedVersion: draftVersion.current ?? saved.version,
           })
-        : await create.mutateAsync({ ...input, id });
+        : await create.mutateAsync({ ...input, id, plannedSessionId: plannedSession?.id, repeatFromId: repeatFrom?.id });
       if (!p) throw Error("No se pudo guardar.");
+      draft.clearSaved(draftToken);
+      draftVersion.current = p.version;
       setSaved(p);
       setTitle(p.title);
       setExercise(p.exercise);
@@ -329,6 +363,8 @@ export function PracticeModal({
             </span>
           </DialogDescription>
         </DialogHeader>
+        {reviewSource && <a className="text-sm underline" href={`/reviews/semanal/${reviewSource.weekStart}`}>Ver review de origen</a>}
+        {draft.recovery && <DraftRecovery onRestore={restoreDraft} onDiscard={draft.discard} />}
         <div className="space-y-5">
           <section aria-labelledby={controlId("registration-title")}>
             <h3
@@ -339,7 +375,7 @@ export function PracticeModal({
             </h3>
             <form id={formId} onSubmit={save}>
               <fieldset
-                disabled={busy}
+                disabled={busy || !!draft.recovery}
                 className="space-y-4 disabled:opacity-60"
               >
                 <legend className="sr-only">Datos de la práctica</legend>
@@ -398,6 +434,7 @@ export function PracticeModal({
                     id={controlId("resource")}
                     className={selectClass}
                     value={resource}
+                    disabled={!!plannedSession}
                     onChange={(e) => setResource(e.target.value)}
                   >
                     <option value="">Práctica independiente</option>
@@ -845,6 +882,7 @@ export function PracticeModal({
         confirmLabel="Descartar cambios"
         cancelLabel="Seguir editando"
         onConfirm={() => {
+          draft.discard();
           setDiscardOpen(false);
           if (repeatRequested && saved && onRepeat) onRepeat(saved);
           else onClose();

@@ -5,6 +5,7 @@ import { Check, CheckCircle2 } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { DraftRecovery } from "@/components/ui/draft-recovery"
 import { Button } from "@/components/ui/button"
 import { queueReviewNotes, readReviewDraft, storeReviewDraft, clearReviewDraft, reviewDraftRevision } from "./notes-draft"
 import { Card, Eyebrow } from "./primitives"
@@ -64,6 +65,7 @@ export function ReviewNotes({ period, initialNotes, userId }: { period: Period; 
 
 function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initialNotes: string; draftKey: string }) {
   const [notes, setNotes] = useState(initialNotes)
+  const [recovery, setRecovery] = useState<string | null>(null)
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const latest = useRef(initialNotes)
   const confirmed = useRef(initialNotes)
@@ -97,12 +99,9 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
 
   useEffect(() => {
     active.current = true
-    const recovered = readReviewDraft(draftKey)
+    const recovered = draftKey.startsWith("review-notes::") ? null : readReviewDraft(draftKey)
     if (recovered !== null && recovered !== confirmed.current) {
-      dirty.current = true
-      latest.current = recovered
-      setNotes(recovered)
-      flush.current()
+      setRecovery(recovered)
     }
     const leaving = () => {
       flush.current()
@@ -116,6 +115,7 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
   }, [draftKey])
 
   function change(value: string) {
+    if (draftKey.startsWith("review-notes::")) return
     dirty.current = true
     latest.current = value
     setNotes(value)
@@ -127,6 +127,7 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
 
   return (
     <Card>
+      {recovery !== null && <DraftRecovery onRestore={() => { change(recovery); setRecovery(null) }} onDiscard={() => { clearReviewDraft(draftKey, recovery, reviewDraftRevision(draftKey)); setRecovery(null) }} />}
       <div className="flex items-center justify-between mb-2">
         <Eyebrow>Tus notas</Eyebrow>
         <div className="flex items-center gap-2" role="status" aria-live="polite">
@@ -137,6 +138,7 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
         </div>
       </div>
       <textarea
+        disabled={recovery !== null}
         aria-label="Tus notas"
         value={notes}
         onChange={(e) => change(e.target.value)}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, expect, it, vi } from "vitest"
-const state = vi.hoisted(() => ({ data: undefined as unknown, error: new Error("offline"), retry: vi.fn() }))
+const state = vi.hoisted(() => ({ data: undefined as unknown, error: new Error("offline"), retry: vi.fn(), revisar: vi.fn() }))
 vi.mock("@/lib/trpc/client", () => {
  const query = () => ({data: state.data, error: state.error,isLoading:false,refetch:state.retry})
  const endpoint = {useQuery:query,useMutation:()=>({mutate:vi.fn()})}
@@ -9,7 +9,7 @@ vi.mock("@/lib/trpc/client", () => {
  return {trpc: new Proxy({}, {get:(_,key)=>key === "useUtils" ? ()=>proxy : key === "studySessions" ? {home:{useQuery:()=>({data:undefined})}} : proxy})}
 })
 vi.mock("@/app/aprendizaje/hooks/use-learning-calendar",()=>({useLearningCalendar:()=>({today:"2026-11-02",timezone:"UTC"})}))
-vi.mock("@/app/aprendizaje/hooks/use-resource-actions",()=>({useResourceActions:()=>({handleOpen:vi.fn(),handleEditOpen:vi.fn(),setModalOpen:vi.fn(),setEditTarget:vi.fn(),setRevisarResource:vi.fn(),setLinkSetupTarget:vi.fn(),setImpactTarget:vi.fn(),setDrawerResource:vi.fn()})}))
+vi.mock("@/app/aprendizaje/hooks/use-resource-actions",()=>({useResourceActions:()=>({handleOpen:vi.fn(),handleEditOpen:vi.fn(),setModalOpen:vi.fn(),setEditTarget:vi.fn(),setRevisarResource:state.revisar,setLinkSetupTarget:vi.fn(),setImpactTarget:vi.fn(),setDrawerResource:vi.fn()})}))
 vi.mock("@/components/layout/top-bar",()=>({TopBar:()=>null}))
 vi.mock("@/components/aprendizaje/resource-grid",()=>({ResourceGrid:()=> <div>Library content</div>}))
 vi.mock("@/components/aprendizaje/resource-drawer",()=>({ResourceDrawer:()=>null}))
@@ -22,10 +22,10 @@ vi.mock("@/app/aprendizaje/components/hoy-tab",()=>({HoyTab:()=> <div>Today cont
 vi.mock("@/app/aprendizaje/components/profile-clock",()=>({ProfileClock:()=>null}))
 vi.mock("@/app/aprendizaje/components/practices-tab", () => ({
   PracticeWeekSummary: ({onOpen}: {onOpen: () => void}) => <button onClick={onOpen}>Registrar práctica</button>,
-  PracticesTab: ({registerOnOpen}: {registerOnOpen: boolean}) => <div>{registerOnOpen ? "Practice form open" : "Practice list"}</div>,
+  PracticesTab: ({registerOnOpen,plannedSessionId}: {registerOnOpen: boolean;plannedSessionId?:string}) => <div>{plannedSessionId ? `Planned practice ${plannedSessionId}` : registerOnOpen ? "Practice form open" : "Practice list"}</div>,
 }));
 import Page from "@/app/aprendizaje/page"
-afterEach(()=>{cleanup();state.data=undefined;state.retry.mockClear()})
+afterEach(()=>{cleanup();state.data=undefined;state.retry.mockClear();state.revisar.mockClear()})
 it("shows retry instead of a fake empty library after initial query failure",()=>{
  render(<Page />)
  fireEvent.click(screen.getByRole("tab",{name:"Biblioteca"}))
@@ -60,3 +60,23 @@ it("does not reopen a registration form when returning through the Practices tab
   fireEvent.click(screen.getByRole("tab", {name: /^Prácticas$/}));
   expect(screen.getByText("Practice list")).toBeInTheDocument();
 });
+
+it("opens practice registration from the daily plan URL",()=>{
+ window.history.replaceState(null,"","/aprendizaje?tab=practicas&register=1")
+ render(<Page />)
+ expect(screen.getByText("Practice form open")).toBeInTheDocument()
+})
+it("preserves the owned planned-session deep link for practice registration",()=>{
+ window.history.replaceState(null,"","/aprendizaje?tab=practicas&plannedSessionId=11111111-1111-4111-8111-111111111111")
+ render(<Page />)
+ expect(screen.getByText("Planned practice 11111111-1111-4111-8111-111111111111")).toBeInTheDocument()
+})
+
+it("opens the due resource review action instead of diverting its daily-plan link to the library",()=>{
+ const resource={id:"r",title:"Repaso directo",type:"NOTA",status:"IN_PROGRESS",markedForReview:true,date:"2026-11-02",createdAt:"2026-11-02",updatedAt:"2026-11-02",tags:[]}
+ state.data=[resource]
+ window.history.replaceState(null,"","/aprendizaje?tab=repaso&resource=r")
+ render(<Page />)
+ expect(state.revisar).toHaveBeenCalledWith(resource)
+ expect(screen.getByRole("tab",{name:/Repaso/})).toHaveAttribute("aria-selected","true")
+})

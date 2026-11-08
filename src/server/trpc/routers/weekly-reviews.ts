@@ -1,3 +1,6 @@
+import { createReviewCommitment, planReviewPractice, loadReviewFollowUp } from "@/server/services/reviews/continuity"
+import { reviewSourceSchema } from "@/domains/learning/review-source"
+import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
 import { writeReviewText } from "@/server/services/retrieval/review-write"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
@@ -57,6 +60,13 @@ function serializeReview(r: WeeklyReview): SerializedReview {
 }
 
 export const weeklyReviewsRouter = router({
+  createCommitment: protectedProcedure.input(z.object({ id: z.string().uuid(), source: reviewSourceSchema, insightType: z.enum(["intraday-decay", "revenge-trading", "oversizing", "off-plan"]) })).mutation(({ctx,input}) => createReviewCommitment(ctx.prisma,ctx.userId,input)),
+  planPractice: protectedProcedure.input(z.object({ id: z.string().uuid(), source: reviewSourceSchema, resourceId: z.string().uuid(), date: z.string().date(), plannedMin: z.number().int().min(5).max(480) })).mutation(async ({ctx,input}) => {
+    const user = await ctx.prisma.user.findUniqueOrThrow({where:{id:ctx.userId},select:{timezone:true}})
+    if(input.date < localDateISO(new Date(),safeTimeZone(user.timezone))) throw new TRPCError({code:"BAD_REQUEST",message:"Elige hoy o una fecha futura."})
+    return planReviewPractice(ctx.prisma,ctx.userId,input)
+  }),
+  followUp: protectedProcedure.input(z.object({weekStart:z.string().date()})).query(({ctx,input}) => loadReviewFollowUp(ctx.prisma,ctx.userId,input.weekStart)),
   list: protectedProcedure
     .input(z.object({ accountId: z.string().uuid().optional() }).optional())
     .query(async ({ ctx, input }) => {

@@ -8,6 +8,6 @@ import { getSetupPlaybook } from "@/server/services/setups/playbook-service"
 
 export const playbookRouter = router({
   setup: protectedProcedure
-    .input(z.object({ setupId: z.string().uuid() }))
-    .query(({ ctx, input }) => getSetupPlaybook(ctx.prisma, ctx.userId, input.setupId)),
+    .input(z.object({ setupId: z.string().uuid(), scope: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL") }))
+    .query(({ ctx, input }) => getSetupPlaybook(ctx.prisma, ctx.userId, input.setupId, input.scope)),
 })

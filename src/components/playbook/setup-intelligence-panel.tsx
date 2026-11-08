@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Activity, GitCompareArrows, TrendingUp } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { EdgeEvolutionChart } from "./edge-evolution-chart"
@@ -26,15 +28,25 @@ function driftValue(dim: NonNullable<Drift["topDrift"]>): string {
  *  significance), definition-vs-execution drift, the edge evolution curve, and
  *  the before/after of the last redefinition. Read-only; deterministic (P2). */
 export function SetupIntelligencePanel({ setupId }: { setupId: string }) {
-  const { data, isLoading } = trpc.playbook.setup.useQuery({ setupId }, { staleTime: 30_000 })
+  const [scope, setScope] = useState<"REAL" | "DEMO" | "BACKTEST">("REAL")
+  const { data, isLoading, isError, refetch } = trpc.playbook.setup.useQuery({ setupId, scope }, { staleTime: 30_000 })
+  const selector = (
+    <label className="flex items-center justify-between gap-2 mb-3 text-[11px] text-[var(--ink-3)]">
+      Alcance de evaluación
+      <select aria-label="Alcance de evaluación" value={scope} onChange={e => setScope(e.target.value as typeof scope)} className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-2 py-1.5 text-[var(--ink)]">
+        <option value="REAL">Real</option><option value="DEMO">Demo</option><option value="BACKTEST">Backtesting</option>
+      </select>
+    </label>
+  )
 
-  if (isLoading) return <div className="h-28 rounded-[var(--radius-sm)] animate-pulse" style={{ background: "var(--panel-2)" }} />
+  if (isLoading) return <div>{selector}<div className="h-28 rounded-[var(--radius-sm)] animate-pulse" style={{ background: "var(--panel-2)" }} /></div>
+  if (isError) return <div>{selector}<p role="alert" className="text-[11px] text-[var(--loss)]">No se pudo cargar la evaluación.</p><Button size="sm" variant="ghost" onClick={() => void refetch()}>Reintentar</Button></div>
   if (!data || !data.hasData) {
     return (
-      <div>
+      <div>{selector}
         <div className="flex items-center gap-2 mb-2"><TrendingUp size={11} className="text-[var(--ink-3)]" /><p className="text-eyebrow">Inteligencia del playbook</p></div>
         <p className="text-[11px] text-[var(--ink-3)] bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-3">
-          Registra trades cerrados con este setup para analizar su edge, drift y evolución.
+          Sin trades cerrados en este alcance. Registra cierres con este setup para analizar su edge, drift y evolución.
         </p>
       </div>
     )
@@ -46,8 +58,15 @@ export function SetupIntelligencePanel({ setupId }: { setupId: string }) {
 
   return (
     <div>
+      {selector}
       <div className="flex items-center gap-2 mb-3"><TrendingUp size={11} className="text-[var(--accent)]" /><p className="text-eyebrow">Inteligencia del playbook</p></div>
       <div className="flex flex-col gap-3">
+        <div className="rounded-[var(--radius-sm)] bg-[var(--panel-2)] p-3 text-[11px] text-[var(--ink-3)] space-y-1">
+          <p className="num">{data.context.closedCount} cierres · {data.context.usableRCount} con R válido</p>
+          <p>{data.context.complianceRate == null ? "Sin evaluación de checklist" : `Checklist completo: ${fmt(data.context.complianceRate)}% (${data.context.checklistCompliant}/${data.context.checklistEvaluated} evaluados)`}</p>
+          <p>{data.context.checklistEvaluated} evaluados · {data.context.checklistUnknown} sin evaluación de {data.context.closedCount} cierres</p>
+          {(data.decay.status === "insufficient" || data.drift.status === "insufficient") && <p>Muestra limitada: aún falta evidencia para parte de la evaluación.</p>}
+        </div>
 
         {/* Edge decay verdict */}
         <div className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] px-3 py-2.5" style={{ background: decay.bg }}>

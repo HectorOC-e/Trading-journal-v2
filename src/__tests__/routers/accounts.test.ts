@@ -120,6 +120,7 @@ describe("accounts router", () => {
     const [account] = await caller.accounts.list()
     expect(account.currentBalance).toBe(900)
     expect(account.availableBalance).toBe(850)
+    expect(account.realizedPnl).toBe(100)
     expect(account.paidWithdrawals).toBe(200)
     expect(account.reservedWithdrawals).toBe(50)
   })

@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { trpc } from "@/lib/trpc/client"
 import { safeTimeZone } from "@/lib/datetime/local"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 type HistoryItem = {
-  id: string; resourceTitle: string; resourceType: string; status: string
+  id: string; resourceTitle: string; resourceType: string; status: string; source?: string
   startedAt: string | null; endedAt: string | null; durationMin: number | null
   note: string | null; updatedAt: string; revisionCount: number
   canAdjustProgress: boolean; needsProgressConfirmation: boolean; progressLabel: string | null
@@ -74,7 +75,8 @@ export function SessionHistory() {
               {item.note && <p className="whitespace-pre-wrap break-words text-[var(--ink-3)]">{item.note}</p>}
               {item.revisionCount > 0 && <p className="text-xs text-[var(--ink-3)]">{item.revisionCount} {item.revisionCount === 1 ? "corrección" : "correcciones"}</p>}
             </div>
-            {item.status === "completed" && <div className="flex gap-1"><Button variant="ghost" onClick={() => open(item, "edit")}>Editar</Button><Button variant="ghost" onClick={() => open(item, "void")}>Anular</Button></div>}
+            {item.source === "practice" && <Link className="text-xs text-[var(--accent)] hover:underline" href="/aprendizaje?tab=practicas">Gestionar en Prácticas</Link>}
+            {item.status === "completed" && item.source !== "practice" && <div className="flex gap-1"><Button variant="ghost" onClick={() => open(item, "edit")}>Editar</Button><Button variant="ghost" onClick={() => open(item, "void")}>Anular</Button></div>}
           </li>
         })}
       </ul>

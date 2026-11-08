@@ -1,3 +1,4 @@
+import { readReviewSource } from "@/domains/learning/review-source"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
@@ -17,6 +18,7 @@ const iso = (d: Date | null) => (d ? d.toISOString() : null)
 const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 
 type SessionWithResource = {
+  reviewSource?: unknown
   id: string
   resourceId: string
   status: string
@@ -31,6 +33,7 @@ type SessionWithResource = {
 
 function serializeSession(s: SessionWithResource) {
   return {
+    reviewSource: readReviewSource(s.reviewSource),
     id: s.id,
     resourceId: s.resourceId,
     resourceTitle: s.resource.title,
@@ -51,6 +54,11 @@ const maxDurationMin = 2_147_483_647
 const sessionInclude = { resource: { select: { title: true, type: true } } } as const
 
 export const studySessionsRouter = router({
+  getPlan: protectedProcedure.input(z.object({id:z.string().uuid()})).query(async ({ctx,input}) => {
+    const plan = await ctx.prisma.studySession.findFirst({where:{id:input.id,userId:ctx.userId,status:"planned"},include:sessionInclude})
+    if(!plan) throw new TRPCError({code:"NOT_FOUND"})
+    return serializeSession(plan)
+  }),
   /** Current running session (for resume-on-reload), or null. */
   active: protectedProcedure.query(async ({ ctx }) => {
     const s = await ctx.prisma.studySession.findFirst({
@@ -187,7 +195,7 @@ export const studySessionsRouter = router({
       })
       const page = rows.slice(0, input.limit)
       return { items: page.map(s => ({ id: s.id, resourceId: s.resourceId,
-        resourceTitle: s.resource.title, resourceType: s.resource.type,
+        resourceTitle: s.resource.title, resourceType: s.resource.type, reviewSource: readReviewSource(s.reviewSource),
         date: dayKey(s.startedAt), plannedMin: s.plannedMin,
       })), nextCursor: rows.length > input.limit ? page.at(-1)!.id : null }
     }),
@@ -210,7 +218,7 @@ export const studySessionsRouter = router({
       return { items: page.map(s => {
         const supported = ["minutes", "sessions"].includes(s.resource.progressType ?? "")
         const known = s.progressUnitsApplied != null
-        const canAdjustProgress = supported && (!known || s.progressTypeAtFinish === s.resource.progressType)
+        const canAdjustProgress = s.source !== "practice" && supported && (!known || s.progressTypeAtFinish === s.resource.progressType)
         return { ...serializeSession(s), updatedAt: s.updatedAt.toISOString(),
           revisionCount: Array.isArray(s.revisionLog) ? s.revisionLog.length : 0,
           canAdjustProgress, needsProgressConfirmation: !known && canAdjustProgress,

@@ -1,3 +1,4 @@
+import { readReviewSource } from "@/domains/learning/review-source"
 // Behavior Engine router (S4) — the loop's API surface: surface actionable
 // insights with a "commit" CTA, create commitments, evaluate them, list/archive.
 // Json fields are mapped to plain shapes before returning (avoids the deep-inference
@@ -65,6 +66,7 @@ export const behaviorRouter = router({
           startAt: c.startAt,
           endAt: c.endAt,
           sourceInsightId: c.sourceInsightId,
+          reviewSource: readReviewSource(c.reviewSource),
           ruleId: c.ruleId,
           latestCheck: latest
             ? {

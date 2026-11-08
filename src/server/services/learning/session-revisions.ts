@@ -19,6 +19,7 @@ export async function reviseSession(tx: Prisma.TransactionClient, userId: string
   await tx.$queryRaw`SELECT id FROM public.study_sessions WHERE id = ${input.id}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
   const session = await tx.studySession.findFirst({ where: { id: input.id, userId } })
   if (!session) throw new TRPCError({ code: 'NOT_FOUND' })
+  if (session.source === 'practice') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Gestiona esta sesión vinculada desde Prácticas.' })
   if (session.status !== 'completed' || session.updatedAt.toISOString() !== input.expectedUpdatedAt) {
     throw new TRPCError({ code: 'CONFLICT', message: 'La sesión cambió. Actualiza el historial.' })
   }

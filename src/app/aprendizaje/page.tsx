@@ -41,11 +41,20 @@ export default function AprendizajePage() {
   type Tab = "hoy" | "biblioteca" | "repaso" | "practicas"
   const [practiceResource, setPracticeResource] = useState<string | undefined>()
   const [practiceRegister, setPracticeRegister] = useState(false)
+  const [practicePlanId, setPracticePlanId] = useState<string | undefined>()
   const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get("tab")
+    const params = new URLSearchParams(window.location.search)
+    const t = params.get("tab")
     if (t === "repaso" || t === "biblioteca" || t === "practicas") setTab(t)
+    if (t === "practicas") {
+      setPracticeRegister(params.get("register") === "1")
+      if (params.get("register") === "1") {
+        const url = new URL(window.location.href); url.searchParams.delete("register"); window.history.replaceState(null, "", url)
+      }
+      setPracticePlanId(params.get("plannedSessionId") || undefined)
+    }
   }, [])
   // Deep-link via ?resource= (citas del Coach). Sin fetch por id: learningResources.list
   // trae todo sin paginar, así que el recurso citado siempre está en la lista.
@@ -56,6 +65,7 @@ export default function AprendizajePage() {
 
   function selectTab(t: Tab) {
     setTab(t)
+    if (t !== "practicas") setPracticePlanId(undefined)
     const url = new URL(window.location.href)
     if (t === "hoy") url.searchParams.delete("tab")
     else url.searchParams.set("tab", t)
@@ -90,11 +100,15 @@ export default function AprendizajePage() {
   // Resuelve el ?resource= una vez que la lista ha cargado, y limpia la marca
   // para no reabrir el drawer si el trader lo cierra.
   useEffect(() => {
-    if (!deepLinkResource || !resources.length) return
+    if (!deepLinkResource || !resources.length || !today) return
     const r = resources.find(x => x.id === deepLinkResource)
-    if (r) { setTab("biblioteca"); setDrawerResource(r) }
+    if (r) {
+      if (new URLSearchParams(window.location.search).get("tab") === "repaso" && isResourceReviewDue(r, today)) {
+        setTab("repaso"); setRevisarResource(r)
+      } else { setTab("biblioteca"); setDrawerResource(r) }
+    }
     setDeepLinkResource(null)
-  }, [deepLinkResource, resources, setDrawerResource])
+  }, [deepLinkResource, resources, setDrawerResource, setRevisarResource, today])
 
   const deleteResource = trpc.learningResources.delete.useMutation({
     onSuccess: () => { void utils.learningResources.invalidate(); void utils.studySessions.home.invalidate() },
@@ -220,7 +234,7 @@ export default function AprendizajePage() {
         ))}
       </div>
 
-      {tab === "practicas" ? <PracticesTab initialResourceId={practiceResource} registerOnOpen={practiceRegister} /> : isLoading ? (
+      {tab === "practicas" ? <PracticesTab key={practicePlanId ?? "practice-list"} initialResourceId={practiceResource} registerOnOpen={practiceRegister} plannedSessionId={practicePlanId} /> : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>

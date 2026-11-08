@@ -6,6 +6,7 @@ vi.mock("@/lib/trpc/client", () => ({ trpc: { weeklyReviews: { saveReview: { use
 vi.mock("@/lib/use-toast", () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock("@/lib/error-formatter", () => ({ formatErrorForUser: () => "error" }))
 vi.mock("@/app/reviews/components/report/send-email-button", () => ({ SendReviewEmailButton: () => null }))
+import { readReviewDraft } from "@/app/reviews/components/report/notes-draft"
 import { ReviewNotes } from "@/app/reviews/components/report/review-lifecycle"
 const week = { kind: "weekly" as const, weekStart: "2026-06-08" }
 beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); save.mockReset(); save.mockResolvedValue({ status: "draft", notes: "" }) })
@@ -15,12 +16,12 @@ it("flushes navigation before 800ms and keeps the user/period recovery draft unt
   save.mockImplementationOnce(() => new Promise(r => { resolve = r }))
   const view = render(<ReviewNotes period={week} initialNotes="" userId="u" />)
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "fast note" } })
-  expect(localStorage.getItem("review-notes:u:week:2026-06-08")).toBe("fast note")
+  expect(readReviewDraft("review-notes:u:week:2026-06-08")).toBe("fast note")
   view.unmount()
   await act(async () => { await Promise.resolve() })
   expect(save).toHaveBeenCalledWith({ weekStart: week.weekStart, notes: "fast note" })
   await act(async () => { resolve({ notes: "fast note" }); await Promise.resolve() })
-  expect(localStorage.getItem("review-notes:u:week:2026-06-08")).toBeNull()
+  expect(readReviewDraft("review-notes:u:week:2026-06-08")).toBeNull()
 })
 it("serializes edits including returning to the original text and confirms only the latest save", async () => {
   let resolve!: (value: unknown) => void
@@ -42,7 +43,7 @@ it("recovers a failed draft and exposes retry", async () => {
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "recover me" } })
   await act(async () => { vi.advanceTimersByTime(800) })
   expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy()
-  expect(localStorage.getItem("review-notes:u:week:2026-06-08")).toBe("recover me")
+  expect(readReviewDraft("review-notes:u:week:2026-06-08")).toBe("recover me")
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Reintentar" })) })
   expect(screen.getByText("Guardado ✓")).toBeTruthy()
 })
@@ -59,6 +60,10 @@ it("recovers the current user's period draft without loading another user's note
   localStorage.setItem("review-notes:other:week:2026-06-08", "private")
   const view = render(<ReviewNotes period={week} initialNotes="server" userId="u" />)
   await act(async () => { await Promise.resolve() })
+  expect(screen.getByRole("textbox")).toHaveProperty("value", "server")
+  expect(save).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Restaurar borrador" }))
+  await act(async () => { vi.advanceTimersByTime(800) })
   expect(screen.getByRole("textbox")).toHaveProperty("value", "recovered")
   expect(save).toHaveBeenCalledWith({ weekStart: week.weekStart, notes: "recovered" })
   view.rerender(<ReviewNotes period={week} initialNotes="other server" userId="third" />)
@@ -74,7 +79,7 @@ it("retains the latest draft during an older request and browser unload", async 
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "latest" } })
   window.dispatchEvent(new Event("beforeunload"))
   expect(save).toHaveBeenCalledTimes(1)
-  expect(localStorage.getItem("review-notes:u:week:2026-06-08")).toBe("latest")
+  expect(readReviewDraft("review-notes:u:week:2026-06-08")).toBe("latest")
   await act(async () => { resolve({ notes: "old" }); await Promise.resolve() })
   expect(save).toHaveBeenLastCalledWith({ weekStart: week.weekStart, notes: "latest" })
 })

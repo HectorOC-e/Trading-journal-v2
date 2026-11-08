@@ -1,4 +1,5 @@
 "use client"
+import { ReviewContinuity } from "../../components/report/review-continuity"
 
 import { useParams } from "next/navigation"
 import { trpc } from "@/lib/trpc/client"
@@ -29,7 +30,7 @@ export default function WeeklyReportPage() {
       vm={vm}
       aiSlot={<AiAnalysisCard period={{ kind: "weekly", weekStart }} initial={vm.ai} />}
       actions={<ReviewActions key={weekStart} period={{ kind: "weekly", weekStart }} initialStatus={vm.status} />}
-      notesSlot={<ReviewNotes period={{ kind: "weekly", weekStart }} initialNotes={vm.notes} userId={r.userId} />}
+      notesSlot={<><ReviewNotes period={{ kind: "weekly", weekStart }} initialNotes={vm.notes} userId={r.userId} /><div className="mt-5"><ReviewContinuity key={weekStart} weekStart={weekStart} initialConclusion={vm.notes} /></div></>}
       learningSlot={<LearningSummary weekStart={weekStart} />}
     />
   )

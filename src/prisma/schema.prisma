@@ -592,6 +592,8 @@ model LearningResource {
 // Aprendizaje SP1 — timed study blocks (active while running, completed when
 // finished, or planned for a future date). Distinct from SRS reviews.
 model StudySession {
+  practice LearningPractice?
+  reviewSource Json? @map("review_source")
   id          String    @id @default(uuid()) @db.Uuid
   userId      String    @map("user_id") @db.Uuid
   resourceId  String    @map("resource_id") @db.Uuid
@@ -955,6 +957,7 @@ model Insight {
 // signal without PII. Migration 20260626120000.
 // ─────────────────────────────────────────────
 model Commitment {
+  reviewSource Json? @map("review_source")
   id              String    @id @default(uuid()) @db.Uuid
   userId          String    @map("user_id") @db.Uuid
   sourceInsightId String?   @map("source_insight_id") @db.Uuid
@@ -1238,6 +1241,9 @@ model FeedIgnore {
 }
 
 model LearningPractice {
+  plannedSessionId String? @unique @map("planned_session_id") @db.Uuid
+  plannedSession StudySession? @relation(fields:[plannedSessionId], references:[id], onDelete:SetNull)
+  reviewSource Json? @map("review_source")
   id String @id @default(uuid()) @db.Uuid
   userId String @map("user_id") @db.Uuid
   resourceId String? @map("resource_id") @db.Uuid

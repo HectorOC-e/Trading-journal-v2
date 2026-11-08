@@ -156,3 +156,23 @@ it("can clear an existing objective and assessment", async () => {
     assessment: null,
   });
 });
+it('rejects a planned session not owned by the practice author', async () => {
+ const {c,p}=setup();p.learningPractice.findFirst.mockResolvedValue(null)
+ Object.assign(p,{studySession:{findFirst:vi.fn().mockResolvedValue(null),updateMany:vi.fn()}})
+ await expect(c.create({...input,plannedSessionId:id} as never)).rejects.toMatchObject({code:'NOT_FOUND'})
+ expect(p.learningPractice.create).not.toHaveBeenCalled()
+})
+it('atomically completes an owned plan with actual minutes and preserves review source', async () => {
+ const {c,p}=setup();p.learningPractice.findFirst.mockResolvedValue(null)
+ const reviewSource={kind:'weekly',weekStart:'2025-12-29',conclusion:'Justificar zonas'}
+ const updateMany=vi.fn().mockResolvedValue({count:1})
+ Object.assign(p,{studySession:{findFirst:vi.fn().mockResolvedValue({id,status:'planned',resourceId:id,reviewSource}),updateMany}})
+ p.learningResource.findFirst.mockResolvedValue({id} as never)
+ await c.create({...input,resourceId:id,plannedSessionId:id} as never)
+ expect(p.learningPractice.create.mock.calls[0][0].data).toMatchObject({plannedSessionId:id,reviewSource})
+ expect(updateMany.mock.calls[0][0]).toMatchObject({where:{id,userId:'u',status:'planned'},data:{status:'completed',durationMin:0,startedAt:new Date('2026-01-01T12:00:00Z')}})
+})
+it('reopens the plan when its actual practice is deleted',async()=>{const {c,p}=setup();p.learningPractice.findFirst.mockResolvedValue({...row,plannedSessionId:id} as never);const updateMany=vi.fn().mockResolvedValue({count:1});Object.assign(p,{studySession:{updateMany}});await c.delete({id,expectedVersion:1});expect(updateMany.mock.calls[0][0]).toMatchObject({where:{id,userId:'u',source:'practice',status:'completed'},data:{status:'planned',durationMin:null,endedAt:null}})})
+it('keeps linked completion on the corrected actual practice date without study minutes',async()=>{const {c,p}=setup();p.learningPractice.findFirst.mockResolvedValue({...row,plannedSessionId:id} as never);const updateMany=vi.fn().mockResolvedValue({count:1});Object.assign(p,{studySession:{updateMany}});await c.update({...input,date:'2026-01-02',expectedVersion:1});expect(updateMany.mock.calls[0][0]).toMatchObject({where:{id,userId:'u',source:'practice'},data:{durationMin:0,startedAt:new Date('2026-01-02T12:00:00Z'),endedAt:new Date('2026-01-02T12:00:00Z')}})})
+it('copies the source of an owned repeated practice without completing its old plan',async()=>{const {c,p}=setup();const reviewSource={kind:'weekly',weekStart:'2025-12-29',conclusion:'Zonas'};p.learningPractice.findFirst.mockResolvedValueOnce({...row,reviewSource} as never).mockResolvedValueOnce(null);await c.create({...input,repeatFromId:id} as never);expect(p.learningPractice.create.mock.calls[0][0].data).toMatchObject({reviewSource});expect(p.learningPractice.create.mock.calls[0][0].data).not.toHaveProperty('repeatFromId')})
+it('rejects a foreign repeated practice and ambiguous repeat/plan input',async()=>{const {c,p}=setup();p.learningPractice.findFirst.mockResolvedValue(null);await expect(c.create({...input,repeatFromId:id} as never)).rejects.toMatchObject({code:'NOT_FOUND'});await expect(c.create({...input,repeatFromId:id,plannedSessionId:id} as never)).rejects.toMatchObject({code:'BAD_REQUEST'})})

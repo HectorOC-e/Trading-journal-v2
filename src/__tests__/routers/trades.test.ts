@@ -456,7 +456,7 @@ describe("trades.create — lock & setup guards", () => {
 
   it("auto-locks the account when a configured loss limit is already breached", async () => {
     // Weekly limit 5% of $10k = $500. Already-realized week loss = -$600 → breach.
-    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
+    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000, timezone: "UTC" })
     prisma.trade.findMany.mockResolvedValue([{ pnl: -600, date: new Date() }])
     caller = callerWith(prisma)
 
@@ -472,7 +472,7 @@ describe("trades.create — lock & setup guards", () => {
   })
 
   it("allows a trade when realized loss is below the configured limit", async () => {
-    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000 })
+    const prisma = makeMockPrisma({ ddWeeklyPct: 5, initialBalance: 10000, timezone: "UTC" })
     prisma.trade.findMany.mockResolvedValue([{ pnl: -100, date: new Date() }]) // 1% < 5%
     caller = callerWith(prisma)
     const trade = await caller.trades.create(BASE_CREATE_INPUT)

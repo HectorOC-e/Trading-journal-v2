@@ -11,6 +11,7 @@ import { LEVERAGE_BAND_META } from "@/domains/trading/services/leverage"
 import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { formatMoney } from "@/lib/format/money"
+import { Button } from "@/components/ui/button"
 import type { AccountType } from "@/types"
 import type { RouterOutputs } from "@/server/trpc/root"
 
@@ -191,6 +192,7 @@ export function AccountCard({ rawAccount, selected, onClick, stats, onSyncBalanc
               {formatMoney(currentEquity, { currency: rawAccount.currency, compact: true })}
             </p>
             <p className="text-[11px] text-[var(--ink-3)] mt-1">inicial {formatMoney(initialBalance, { currency: rawAccount.currency })}</p>
+            <Button type="button" variant="link" size="xs" className="mt-1 text-[11px]" onClick={event => { event.stopPropagation(); onClick() }}>Ver cálculo del saldo</Button>
           </div>
           <div className="text-right">
             <p className="text-eyebrow mb-1">P&L mes</p>
