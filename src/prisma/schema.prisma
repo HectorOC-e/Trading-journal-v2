@@ -76,6 +76,27 @@ model User {
   memoryIdentity           MemoryIdentity?
   feedIgnores              FeedIgnore[]
 
+
+
+  taxProfileRecords TaxProfile[]
+  taxPeriodRecords TaxPeriod[]
+  taxAssetAccountRecords TaxAssetAccount[]
+  taxTransactionRecords TaxTransaction[]
+  taxPostingRecords TaxPosting[]
+  taxIncomeRecords TaxIncome[]
+  taxDeductionRecords TaxDeduction[]
+  taxCreditRecords TaxCredit[]
+  taxImportCandidateRecords TaxImportCandidate[]
+  taxReconciliationRecords TaxReconciliation[]
+  taxEvidenceRecords TaxEvidence[]
+  taxReturnRecords TaxReturn[]
+  taxAuditEventRecords TaxAuditEvent[]
+  taxIncomeEvidenceRecords TaxIncomeEvidence[]
+  taxTransactionEvidenceRecords TaxTransactionEvidence[]
+  taxDeductionEvidenceRecords TaxDeductionEvidence[]
+  taxCreditEvidenceRecords TaxCreditEvidence[]
+  taxReturnEvidenceRecords TaxReturnEvidence[]
+
   @@map("users")
 }
 
@@ -1299,4 +1320,480 @@ model AccountDeletionJob {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   @@index([status, nextAttemptAt])
   @@map("account_deletion_jobs")
+}
+
+// Fiscalidad: owned records. No foreign keys to economic trading tables.
+
+model TaxProfile {
+  id                 String            @id @default(uuid()) @db.Uuid
+  userId             String            @map("user_id") @db.Uuid
+  revision           Int               @default(1)
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country            String            @default("HN")
+  regime             String            @default("NATURAL_ORDINARY")
+  name               String            @default("")
+  rtn                String            @default("")
+  domiciled          Boolean           @default(true)
+  individualMerchant Boolean           @default(false) @map("individual_merchant")
+  activity           String            @default("")
+  address            String            @default("")
+  obligations        String[]          @default([])
+  periods            TaxPeriod[]
+  assetAccounts      TaxAssetAccount[]
+
+  @@unique([userId, country])
+  @@unique([userId, id])
+  @@map("tax_profiles")
+}
+
+model TaxPeriod {
+  id                String               @id @default(uuid()) @db.Uuid
+  userId            String               @map("user_id") @db.Uuid
+  revision          Int                  @default(1)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId         String               @map("profile_id") @db.Uuid
+  year              Int
+  regime            String               @default("NATURAL_ORDINARY")
+  currency          String               @default("HNL")
+  timezone          String               @default("America/Tegucigalpa")
+  status            String               @default("OPEN")
+  profileSnapshot   Json                 @map("profile_snapshot")
+  information       Json                 @default("{}")
+  roundingConfirmed Boolean              @default(false) @map("rounding_confirmed")
+  roundingReason    String               @default("") @map("rounding_reason")
+  profile           TaxProfile           @relation(fields: [userId, profileId], references: [userId, id], onDelete: Cascade)
+  transactions      TaxTransaction[]
+  incomes           TaxIncome[]
+  deductions        TaxDeduction[]
+  credits           TaxCredit[]
+  candidates        TaxImportCandidate[]
+  reconciliations   TaxReconciliation[]
+  evidences         TaxEvidence[]
+  returns           TaxReturn[]
+  auditEvents       TaxAuditEvent[]
+
+  @@unique([profileId, year, regime])
+  @@unique([userId, id])
+  @@index([userId, year])
+  @@map("tax_periods")
+}
+
+model TaxAssetAccount {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  revision  Int          @default(1)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId String       @map("profile_id") @db.Uuid
+  name      String
+  kind      String
+  owned     Boolean      @default(true)
+  archived  Boolean      @default(false)
+  profile   TaxProfile   @relation(fields: [userId, profileId], references: [userId, id], onDelete: Cascade)
+  postings  TaxPosting[]
+
+  @@unique([userId, id])
+  @@index([userId, profileId])
+  @@map("tax_asset_accounts")
+}
+
+model TaxTransaction {
+  id              String                   @id @default(uuid()) @db.Uuid
+  userId          String                   @map("user_id") @db.Uuid
+  revision        Int                      @default(1)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId        String                   @map("period_id") @db.Uuid
+  kind            String
+  status          String                   @default("DRAFT")
+  date            DateTime                 @db.Date
+  description     String                   @default("")
+  reference       String                   @default("")
+  reversalOfId    String?                  @map("reversal_of_id") @db.Uuid
+  transferGroup   String?                  @map("transfer_group") @db.Uuid
+  treatment       String                   @default("PENDING")
+  treatmentReason String                   @default("") @map("treatment_reason")
+  period          TaxPeriod                @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  postings        TaxPosting[]
+  reconciliations TaxReconciliation[]
+  evidenceLinks   TaxTransactionEvidence[]
+
+  @@unique([userId, reversalOfId])
+  @@unique([userId, id])
+  @@index([userId, periodId, date, id])
+  @@map("tax_transactions")
+}
+
+model TaxPosting {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @map("user_id") @db.Uuid
+  revision      Int             @default(1)
+  createdAt     DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String          @map("transaction_id") @db.Uuid
+  accountId     String          @map("account_id") @db.Uuid
+  assetKey      String          @map("asset_key")
+  assetKind     String          @map("asset_kind")
+  assetCode     String          @map("asset_code")
+  network       String          @default("")
+  contract      String          @default("")
+  quantity      Decimal         @db.Decimal(38, 18)
+  role          String          @default("PRINCIPAL")
+  amountHnl     Decimal?        @map("amount_hnl") @db.Decimal(20, 2)
+  valuation     Json?
+  transaction   TaxTransaction  @relation(fields: [userId, transactionId], references: [userId, id], onDelete: Cascade)
+  account       TaxAssetAccount @relation(fields: [userId, accountId], references: [userId, id], onDelete: NoAction)
+
+  @@unique([userId, id])
+  @@index([userId, accountId, assetKey])
+  @@index([userId, transactionId])
+  @@map("tax_postings")
+}
+
+model TaxIncome {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @map("user_id") @db.Uuid
+  revision         Int                 @default(1)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId         String              @map("period_id") @db.Uuid
+  category         String
+  payer            String
+  description      String              @default("")
+  recognitionDate  DateTime            @map("recognition_date") @db.Date
+  assetKind String @default("FIAT") @map("asset_kind")
+  assetCode String @default("HNL") @map("asset_code")
+  network String @default("")
+  contract String @default("")
+  assetKey         String              @map("asset_key")
+  grossAmount      Decimal             @map("gross_amount") @db.Decimal(38, 18)
+  feeAmount        Decimal             @default(0) @map("fee_amount") @db.Decimal(38, 18)
+  withheldAmount   Decimal             @default(0) @map("withheld_amount") @db.Decimal(38, 18)
+  netAmount        Decimal             @map("net_amount") @db.Decimal(38, 18)
+  amountHnl        Decimal?            @map("amount_hnl") @db.Decimal(20, 2)
+  valuation        Json?
+  treatment        String              @default("PENDING")
+  treatmentReason  String              @default("") @map("treatment_reason")
+  legalReference   String              @default("") @map("legal_reference")
+  evidenceRequired Boolean             @default(true) @map("evidence_required")
+  period           TaxPeriod           @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  reconciliations  TaxReconciliation[]
+  evidenceLinks    TaxIncomeEvidence[]
+
+  @@unique([userId, id])
+  @@index([userId, periodId, recognitionDate, id])
+  @@map("tax_incomes")
+  recognitionCriterion String @default("") @map("recognition_criterion")
+  recognitionStatus String @default("PENDING") @map("recognition_status")
+}
+
+model TaxDeduction {
+  id              String                 @id @default(uuid()) @db.Uuid
+  userId          String                 @map("user_id") @db.Uuid
+  revision        Int                    @default(1)
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId        String                 @map("period_id") @db.Uuid
+  kind            String
+  category        String
+  description     String                 @default("")
+  date            DateTime               @db.Date
+  amount          Decimal                @db.Decimal(38, 18)
+  assetKind String @default("FIAT") @map("asset_kind")
+  assetCode String @default("HNL") @map("asset_code")
+  network String @default("")
+  contract String @default("")
+  assetKey        String                 @default("FIAT:HNL") @map("asset_key")
+  amountHnl       Decimal?               @map("amount_hnl") @db.Decimal(20, 2)
+  valuation       Json?
+  admittedHnl     Decimal?               @map("admitted_hnl") @db.Decimal(20, 2)
+  componentKey    String                 @map("component_key")
+  treatment       String                 @default("PENDING")
+  treatmentReason String                 @default("") @map("treatment_reason")
+  legalReference  String                 @default("") @map("legal_reference")
+  period          TaxPeriod              @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  evidenceLinks   TaxDeductionEvidence[]
+
+  @@unique([userId, componentKey])
+  @@unique([userId, id])
+  @@index([userId, periodId, date, id])
+  @@map("tax_deductions")
+}
+
+model TaxCredit {
+  id                   String              @id @default(uuid()) @db.Uuid
+  userId               String              @map("user_id") @db.Uuid
+  revision             Int                 @default(1)
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId             String              @map("period_id") @db.Uuid
+  kind                 String
+  payer                String              @default("")
+  date                 DateTime            @db.Date
+  reference            String              @default("")
+  amountHnl            Decimal             @map("amount_hnl") @db.Decimal(20, 2)
+  previouslyAppliedHnl Decimal             @default(0) @map("previously_applied_hnl") @db.Decimal(20, 2)
+  admittedHnl          Decimal?            @map("admitted_hnl") @db.Decimal(20, 2)
+  componentKey         String              @map("component_key")
+  treatment            String              @default("PENDING")
+  treatmentReason      String              @default("") @map("treatment_reason")
+  legalReference       String              @default("") @map("legal_reference")
+  period               TaxPeriod           @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  evidenceLinks        TaxCreditEvidence[]
+
+  @@unique([userId, componentKey])
+  @@unique([userId, id])
+  @@index([userId, periodId, date, id])
+  @@map("tax_credits")
+}
+
+model TaxImportCandidate {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  revision        Int                 @default(1)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId        String              @map("period_id") @db.Uuid
+  sourceType      String              @default("WITHDRAWAL") @map("source_type")
+  sourceId        String              @map("source_id") @db.Uuid
+  sourceSnapshot  Json                @map("source_snapshot")
+  sourceHash      String              @map("source_hash")
+  status          String              @default("PROPOSED")
+  reason          String              @default("")
+  period          TaxPeriod           @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  reconciliations TaxReconciliation[]
+
+  @@unique([userId, sourceType, sourceId])
+  @@unique([userId, id])
+  @@index([userId, periodId, status])
+  @@map("tax_import_candidates")
+}
+
+model TaxReconciliation {
+  id             String              @id @default(uuid()) @db.Uuid
+  userId         String              @map("user_id") @db.Uuid
+  revision       Int                 @default(1)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId       String              @map("period_id") @db.Uuid
+  candidateId    String?             @map("candidate_id") @db.Uuid
+  incomeId       String              @map("income_id") @db.Uuid
+  transactionId  String              @map("transaction_id") @db.Uuid
+  assetKey       String              @map("asset_key")
+  grossAmount    Decimal             @map("gross_amount") @db.Decimal(38, 18)
+  netAmount      Decimal             @map("net_amount") @db.Decimal(38, 18)
+  feeAmount      Decimal             @default(0) @map("fee_amount") @db.Decimal(38, 18)
+  withheldAmount Decimal             @default(0) @map("withheld_amount") @db.Decimal(38, 18)
+  sourceAmount   Decimal?            @map("source_amount") @db.Decimal(38, 18)
+  conversion     Json?
+  reason         String              @default("")
+  period         TaxPeriod           @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  candidate      TaxImportCandidate? @relation(fields: [userId, candidateId], references: [userId, id], onDelete: NoAction)
+  income         TaxIncome           @relation(fields: [userId, incomeId], references: [userId, id], onDelete: NoAction)
+  transaction    TaxTransaction      @relation(fields: [userId, transactionId], references: [userId, id], onDelete: NoAction)
+
+  @@unique([userId, id])
+  @@index([userId, periodId])
+  @@index([userId, incomeId])
+  @@index([userId, transactionId])
+  @@index([userId, candidateId])
+  @@map("tax_reconciliations")
+}
+
+model TaxEvidence {
+  id               String                   @id @default(uuid()) @db.Uuid
+  userId           String                   @map("user_id") @db.Uuid
+  revision         Int                      @default(1)
+  createdAt        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId         String                   @map("period_id") @db.Uuid
+  name             String
+  path             String                   @unique
+  mime             String
+  size             Int
+  sha256           String                   @default("")
+  status           String                   @default("PENDING")
+  documentDate     DateTime?                @map("document_date") @db.Date
+  expiresAt        DateTime                 @map("expires_at")
+  supersedesId     String?                  @map("supersedes_id") @db.Uuid
+  period           TaxPeriod                @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  incomeLinks      TaxIncomeEvidence[]
+  transactionLinks TaxTransactionEvidence[]
+  deductionLinks   TaxDeductionEvidence[]
+  creditLinks      TaxCreditEvidence[]
+  returnLinks      TaxReturnEvidence[]
+
+  @@unique([userId, id])
+  @@index([userId, periodId, status])
+  @@map("tax_evidences")
+}
+
+model TaxReturn {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  revision        Int                 @default(1)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId        String              @map("period_id") @db.Uuid
+  version         Int
+  status          String              @default("DRAFT")
+  periodRevision  Int                 @map("period_revision")
+  snapshot        Json
+  snapshotHash    String              @map("snapshot_hash")
+  ruleVersion     String              @map("rule_version")
+  mappingVersion  String              @map("mapping_version")
+  closedAt        DateTime?           @map("closed_at")
+  reportedFiledAt DateTime?           @map("reported_filed_at")
+  filingReference String              @default("") @map("filing_reference")
+  period          TaxPeriod           @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+  evidenceLinks   TaxReturnEvidence[]
+
+  @@unique([periodId, version])
+  @@unique([userId, id])
+  @@index([userId, periodId, status])
+  @@map("tax_returns")
+}
+
+model TaxAuditEvent {
+  id          String     @id @default(uuid()) @db.Uuid
+  userId      String     @map("user_id") @db.Uuid
+  revision    Int        @default(1)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodId    String?    @map("period_id") @db.Uuid
+  actorId     String     @map("actor_id") @db.Uuid
+  action      String
+  entityType  String     @map("entity_type")
+  entityId    String?    @map("entity_id") @db.Uuid
+  requestId   String?    @map("request_id") @db.Uuid
+  payloadHash String?    @map("payload_hash")
+  result      Json?
+  detail      Json       @default("{}")
+  reason      String     @default("")
+  period      TaxPeriod? @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([userId, requestId])
+  @@unique([userId, id])
+  @@index([userId, periodId, createdAt, id])
+  @@map("tax_audit_events")
+}
+
+model TaxIncomeEvidence {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @map("user_id") @db.Uuid
+  revision   Int         @default(1)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  incomeId   String      @map("income_id") @db.Uuid
+  evidenceId String      @map("evidence_id") @db.Uuid
+  record     TaxIncome   @relation(fields: [userId, incomeId], references: [userId, id], onDelete: Cascade)
+  evidence   TaxEvidence @relation(fields: [userId, evidenceId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([incomeId, evidenceId])
+  @@unique([userId, id])
+  @@index([userId, evidenceId])
+  @@map("tax_income_evidences")
+}
+
+model TaxTransactionEvidence {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  revision      Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactionId String         @map("transaction_id") @db.Uuid
+  evidenceId    String         @map("evidence_id") @db.Uuid
+  record        TaxTransaction @relation(fields: [userId, transactionId], references: [userId, id], onDelete: Cascade)
+  evidence      TaxEvidence    @relation(fields: [userId, evidenceId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([transactionId, evidenceId])
+  @@unique([userId, id])
+  @@index([userId, evidenceId])
+  @@map("tax_transaction_evidences")
+}
+
+model TaxDeductionEvidence {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  revision    Int          @default(1)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deductionId String       @map("deduction_id") @db.Uuid
+  evidenceId  String       @map("evidence_id") @db.Uuid
+  record      TaxDeduction @relation(fields: [userId, deductionId], references: [userId, id], onDelete: Cascade)
+  evidence    TaxEvidence  @relation(fields: [userId, evidenceId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([deductionId, evidenceId])
+  @@unique([userId, id])
+  @@index([userId, evidenceId])
+  @@map("tax_deduction_evidences")
+}
+
+model TaxCreditEvidence {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @map("user_id") @db.Uuid
+  revision   Int         @default(1)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  creditId   String      @map("credit_id") @db.Uuid
+  evidenceId String      @map("evidence_id") @db.Uuid
+  record     TaxCredit   @relation(fields: [userId, creditId], references: [userId, id], onDelete: Cascade)
+  evidence   TaxEvidence @relation(fields: [userId, evidenceId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([creditId, evidenceId])
+  @@unique([userId, id])
+  @@index([userId, evidenceId])
+  @@map("tax_credit_evidences")
+}
+
+model TaxReturnEvidence {
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String      @map("user_id") @db.Uuid
+  revision   Int         @default(1)
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  returnId   String      @map("return_id") @db.Uuid
+  evidenceId String      @map("evidence_id") @db.Uuid
+  record     TaxReturn   @relation(fields: [userId, returnId], references: [userId, id], onDelete: Cascade)
+  evidence   TaxEvidence @relation(fields: [userId, evidenceId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([returnId, evidenceId])
+  @@unique([userId, id])
+  @@index([userId, evidenceId])
+  @@map("tax_return_evidences")
+}
+
+model TaxRuleSet {
+  id        String   @id
+  country   String
+  regime    String
+  year      Int
+  version   String
+  published Boolean  @default(false)
+  payload   Json
+  checksum  String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([country, regime, year, version])
+  @@map("tax_rule_sets")
 }
