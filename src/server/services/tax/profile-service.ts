@@ -4,7 +4,7 @@ import { Prisma, type PrismaClient } from '@/lib/generated/prisma/client';
 import { withTaxWrite } from './context';
 import { serializeTax } from './serializers';
 /** Exact API representation; quantities stay strings in inferred RouterOutputs. */
-export type TaxDto<T> = T extends Prisma.Decimal ? string : T extends Date ? string : T extends (infer I)[] ? TaxDto<I>[] : T extends object ? {
+export type TaxDto<T> = [Prisma.JsonValue] extends [T] ? unknown : T extends Prisma.Decimal ? string : T extends Date ? string : T extends (infer I)[] ? TaxDto<I>[] : T extends object ? {
     [K in keyof T]: TaxDto<T[K]>;
 } : T;
 export function dto<T>(value: T): TaxDto<T> { return serializeTax(value) as TaxDto<T>; }
