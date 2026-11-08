@@ -125,6 +125,7 @@ CREATE TABLE public."tax_incomes" (
     "treatment_reason" TEXT NOT NULL DEFAULT '',
     "legal_reference" TEXT NOT NULL DEFAULT '',
     "evidence_required" BOOLEAN NOT NULL DEFAULT true,
+    "recognition_legal_basis" TEXT NOT NULL DEFAULT '',
     "recognition_criterion" TEXT NOT NULL DEFAULT '',
     "recognition_status" TEXT NOT NULL DEFAULT 'PENDING',
 

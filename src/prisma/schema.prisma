@@ -1493,6 +1493,7 @@ model TaxIncome {
   @@unique([userId, id])
   @@index([userId, periodId, recognitionDate, id])
   @@map("tax_incomes")
+  recognitionLegalBasis String @default("") @map("recognition_legal_basis")
   recognitionCriterion String @default("") @map("recognition_criterion")
   recognitionStatus String @default("PENDING") @map("recognition_status")
 }

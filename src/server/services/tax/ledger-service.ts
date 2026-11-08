@@ -89,7 +89,7 @@ export async function overview(db: PrismaClient, userId: string, input: {
     periodId: string;
 }) {
     await ownedPeriod(db, userId, input.periodId);
-    const reconciliations = await db.taxReconciliation.findMany({ where: { userId, periodId: input.periodId }, include: { income: true, transaction: { include: { reversals: true } } } });
+    const reconciliations = await db.taxReconciliation.findMany({ where: { userId, periodId: input.periodId }, include: { income: true, transaction: { include: { reversals: true, postings: true } } } });
     const byAsset: Record<string, string> = {};
     let hnlTotal = decimal('0');
     let unvalued = false;
@@ -97,11 +97,17 @@ export async function overview(db: PrismaClient, userId: string, input: {
         if (r.transaction.status !== 'POSTED' || r.transaction.reversals.length)
             continue;
         byAsset[r.assetKey] = decimal(byAsset[r.assetKey] ?? '0').plus(decimal(r.netAmount.toFixed())).toString();
-        if (r.income.amountHnl) {
-            hnlTotal = hnlTotal.plus(decimal(r.income.amountHnl.toFixed()).times(decimal(r.netAmount.toFixed())).div(decimal(r.income.grossAmount.toFixed())));
-        }
-        else
+        const postings = r.transaction.postings.filter(p => p.assetKey === r.assetKey && p.quantity.gt(0));
+        const quantity = postings.reduce((sum, p) => sum.plus(decimal(p.quantity.toFixed())), decimal('0'));
+        if (!quantity.gt(0) || postings.some(p => p.amountHnl === null)) {
             unvalued = true;
+            continue;
+        }
+        // Reconciliations allocate proportionally across the receipt's postings.
+        // Recognition FX belongs to the income; receipt FX belongs to cash received.
+        for (const posting of postings) {
+            hnlTotal = hnlTotal.plus(decimal(posting.amountHnl!.toFixed()).times(decimal(r.netAmount.toFixed())).div(quantity));
+        }
     }
     return dto({ reversalReviewIncomeIds: [...new Set(reconciliations.filter(r => r.transaction.status === 'REVERSED' || r.transaction.reversals.length > 0).map(r => r.incomeId))], receivedByAsset: byAsset, receivedHnl: unvalued ? null : money(hnlTotal), valuationComplete: !unvalued, hasReceipts: reconciliations.length > 0, balances: await balances(db, userId), pendingCandidates: await db.taxImportCandidate.count({ where: { userId, periodId: input.periodId, status: 'PROPOSED' } }) });
 }
