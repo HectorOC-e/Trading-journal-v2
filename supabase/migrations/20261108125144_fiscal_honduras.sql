@@ -768,7 +768,7 @@ ALTER TABLE public.tax_incomes ADD CONSTRAINT tax_incomes_values_check CHECK (gr
 ALTER TABLE public.tax_deductions ADD CONSTRAINT tax_deductions_values_check CHECK (amount >= 0 AND (amount_hnl IS NULL OR amount_hnl >= 0) AND (admitted_hnl IS NULL OR (admitted_hnl >= 0 AND amount_hnl IS NOT NULL AND admitted_hnl <= amount_hnl)) AND kind IN ('EXPENSE','DEDUCTION'));
 ALTER TABLE public.tax_credits ADD CONSTRAINT tax_credits_values_check CHECK (amount_hnl >= 0 AND previously_applied_hnl >= 0 AND previously_applied_hnl <= amount_hnl AND (admitted_hnl IS NULL OR (admitted_hnl >= 0 AND admitted_hnl <= amount_hnl - previously_applied_hnl)));
 ALTER TABLE public.tax_reconciliations ADD CONSTRAINT tax_reconciliations_values_check CHECK (gross_amount > 0 AND net_amount >= 0 AND fee_amount >= 0 AND withheld_amount >= 0 AND gross_amount = net_amount + fee_amount + withheld_amount AND (source_amount IS NULL OR source_amount > 0));
-ALTER TABLE public.tax_evidences ADD CONSTRAINT tax_evidences_values_check CHECK (status IN ('PENDING','AVAILABLE','REJECTED','REMOVED') AND size > 0 AND size <= 10485760 AND mime IN ('application/pdf','image/jpeg','image/png') AND (sha256 = '' OR sha256 ~ '^[0-9a-f]{64}$') AND split_part(path,'/',1) = user_id::text);
+ALTER TABLE public.tax_evidences ADD CONSTRAINT tax_evidences_values_check CHECK (status IN ('PENDING','AVAILABLE','REJECTED','REMOVED') AND size > 0 AND size <= 4194304 AND mime IN ('application/pdf','image/jpeg','image/png') AND (sha256 = '' OR sha256 ~ '^[0-9a-f]{64}$') AND split_part(path,'/',1) = user_id::text);
 ALTER TABLE public.tax_returns ADD CONSTRAINT tax_returns_values_check CHECK (version > 0 AND period_revision > 0 AND status IN ('DRAFT','IN_REVIEW','READY'));
 ALTER TABLE public.tax_incomes ADD CONSTRAINT tax_incomes_treatment_check CHECK (treatment IN ('PENDING','ADMITTED','EXEMPT','NOT_APPLICABLE'));
 ALTER TABLE public.tax_deductions ADD CONSTRAINT tax_deductions_treatment_check CHECK (treatment IN ('PENDING','ADMITTED','EXEMPT','NOT_APPLICABLE'));
@@ -777,7 +777,7 @@ ALTER TABLE public.tax_transactions ADD CONSTRAINT tax_transactions_treatment_ch
 
 -- Private by design: no public or direct authenticated object policies.
 INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
-VALUES ('tax-evidence','tax-evidence',false,10485760,ARRAY['application/pdf','image/jpeg','image/png'])
+VALUES ('tax-evidence','tax-evidence',false,4194304,ARRAY['application/pdf','image/jpeg','image/png'])
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tax_rule_sets(id,country,regime,year,version,published,payload,checksum) VALUES ('HN-ISR-2026-v1','HN','NATURAL_ORDINARY',2026,'HN-ISR-2026-v1',true,$rule${"country":"HN","year":2026,"regime":"NATURAL_ORDINARY","version":"HN-ISR-2026-v1","brackets":[{"upper":"228324.32","rate":"0"},{"upper":"348154.10","rate":"0.15"},{"upper":"809660.75","rate":"0.20"},{"upper":null,"rate":"0.25"}],"rounding":{"mode":"HALF_UP","scale":2,"reviewStatus":"PENDING"},"references":[{"id":"HN-ISR-2026","url":"https://www.sar.gob.hn/download/acuerdo-numero-sar-01-2026-publicado-en-fecha-23-de-enero-del-2026-en-la-gaceta-no-37051/"},{"id":"HN-ISR-2026-GACETA","url":"https://www.tsc.gob.hn/web/leyes/Acuerdo-SAR-01-2026.pdf"}],"consultedOn":"2026-11-08"}$rule$::jsonb,'e7bb226b4f1a64f86c2ffff085bd139568410e1b0d82611f7c114b1a99e7bd4a');
 

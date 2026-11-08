@@ -36,6 +36,7 @@ const buckets = [
   "trade-screenshots",
   "setup-images",
   "practice-images",
+  "tax-evidence",
 ] as const;
 
 /** Persist first: failures after this point can be recovered without a user session. */
@@ -112,7 +113,7 @@ export async function processAccountDeletion(
       { bucket_id: string; name: string }[]
     >`
       SELECT bucket_id, name FROM storage.objects
-      WHERE bucket_id IN ('trade-screenshots', 'setup-images', 'practice-images')
+      WHERE bucket_id IN ('trade-screenshots', 'setup-images', 'practice-images', 'tax-evidence')
         AND owner_id = ${userId}
       ORDER BY bucket_id, name LIMIT 1000
     `;
