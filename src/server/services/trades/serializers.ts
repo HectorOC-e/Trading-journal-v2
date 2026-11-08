@@ -19,6 +19,7 @@ export function serializeAccount(a: RawAccount) {
     // aligned with accounts.list (the canonical source for sizing).
     currentBalance: Number(a.initialBalance),
     balanceCorrection: 0,
+    realizedPnl: 0,
     ddDailyPct:     a.ddDailyPct  != null ? Number(a.ddDailyPct)  : null,
     ddWeeklyPct:    a.ddWeeklyPct != null ? Number(a.ddWeeklyPct) : null,
     ddMonthlyPct:   a.ddMonthlyPct!= null ? Number(a.ddMonthlyPct): null,

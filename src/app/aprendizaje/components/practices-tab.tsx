@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCalendarDate } from "@/lib/datetime/local";
 import { PracticeModal, type PracticeRecord } from "../modals/practice-modal";
@@ -93,18 +93,35 @@ export function ResourcePracticeHistory({
 export function PracticesTab({
   initialResourceId,
   registerOnOpen = false,
+  plannedSessionId,
 }: {
   initialResourceId?: string;
   registerOnOpen?: boolean;
+  plannedSessionId?: string;
 }) {
   const [resourceId, setResourceId] = useState(initialResourceId ?? "");
   const [from, setFrom] = useState(""),
     [to, setTo] = useState("");
   const [editing, setEditing] = useState<PracticeRecord | null | undefined>(
-    registerOnOpen ? null : undefined,
+    registerOnOpen && !plannedSessionId ? null : undefined,
   );
   const [repeatFrom, setRepeatFrom] = useState<PracticeRecord | undefined>();
   const [modalKey, setModalKey] = useState(0);
+  const [activePlanId, setActivePlanId] = useState(plannedSessionId);
+  const [openedPlan, setOpenedPlan] = useState<Parameters<typeof PracticeModal>[0]["plannedSession"]>();
+  const plan = trpc.studySessions?.getPlan.useQuery(
+    { id: activePlanId ?? "00000000-0000-4000-8000-000000000000" },
+    { enabled: !!activePlanId },
+  );
+  function clearPlanEntry() {
+    setActivePlanId(undefined);
+    setOpenedPlan(undefined);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("plannedSessionId");
+    url.searchParams.delete("register");
+    window.history.replaceState(window.history.state, "", url);
+  }
+
   const resources = trpc.learningResources.list.useQuery();
   const q = trpc.learningPractices.list.useInfiniteQuery(
     {
@@ -116,16 +133,30 @@ export function PracticesTab({
     { getNextPageParam: (p) => p.nextCursor ?? undefined },
   );
   const summary = trpc.learningPractices.summary.useQuery();
+  useEffect(() => {
+    if (!activePlanId || openedPlan || editing !== undefined || !plan?.data || !summary.data) return;
+    setOpenedPlan(plan.data);
+    setEditing(null);
+    setModalKey(k => k + 1);
+  }, [activePlanId, openedPlan, editing, plan?.data, summary.data]);
   const utils = trpc.useUtils();
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const filtered = !!(resourceId || from || to);
   const changed = () => {
     void utils.learningPractices.invalidate();
+    void utils.studySessions?.home.invalidate();
+    void utils.today?.plan.invalidate();
+    void utils.weeklyReviews?.followUp.invalidate();
   };
   const field =
     "h-8 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] min-w-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]";
   return (
     <section aria-label="Prácticas de aprendizaje">
+      {activePlanId && !openedPlan && <div className="mb-4 text-sm" role={plan?.error ? "alert" : "status"}>
+        <p>{plan?.error ? "La planificación no está disponible. Puede haberse completado o eliminado." : "Cargando la planificación y la fecha de tu perfil…"}</p>
+        {plan?.error && <Button variant="link" size="sm" onClick={() => void plan.refetch()}>Reintentar planificación</Button>}
+        <Button variant="link" size="sm" onClick={clearPlanEntry}>Cancelar planificación</Button>
+      </div>}
       <div className="flex flex-wrap justify-between gap-3 mb-4">
         <div>
           <h2 className="text-lg font-semibold">Prácticas</h2>
@@ -155,6 +186,7 @@ export function PracticesTab({
           size="sm"
           className="self-start"
           onClick={() => {
+            clearPlanEntry();
             setRepeatFrom(undefined);
             setEditing(null);
             setModalKey((k) => k + 1);
@@ -244,7 +276,7 @@ export function PracticesTab({
               <button
                 type="button"
                 className="w-full text-left rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 hover:border-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                onClick={() => setEditing(p)}
+                onClick={() => { clearPlanEntry(); setEditing(p); }}
               >
                 <span className="block font-semibold">{p.title}</span>
                 <span className="text-xs text-[var(--ink-3)]">
@@ -299,10 +331,12 @@ export function PracticesTab({
       )}
       {editing !== undefined && (editing !== null || summary.data) && (
         <PracticeModal
-          key={modalKey}
+          key={openedPlan ? `${openedPlan.id}:${modalKey}` : modalKey}
+          plannedSession={openedPlan}
           record={editing}
           repeatFrom={repeatFrom}
           onRepeat={(record) => {
+            clearPlanEntry();
             setRepeatFrom(record);
             setEditing(null);
             setModalKey((k) => k + 1);
@@ -311,6 +345,7 @@ export function PracticesTab({
           today={summary.data?.today}
           timezone={summary.data?.timezone}
           onClose={() => {
+            clearPlanEntry();
             setEditing(undefined);
             setRepeatFrom(undefined);
           }}

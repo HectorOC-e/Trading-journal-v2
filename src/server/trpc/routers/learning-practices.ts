@@ -1,3 +1,4 @@
+import { readReviewSource } from "@/domains/learning/review-source";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -75,7 +76,7 @@ export const learningPracticesRouter = router({
         include,
       });
       if (!p) throw new TRPCError({ code: "NOT_FOUND" });
-      return p;
+      return { ...p, reviewSource: readReviewSource(p.reviewSource) };
     }),
   list: protectedProcedure
     .input(
@@ -118,7 +119,7 @@ export const learningPracticesRouter = router({
       const items = rows.slice(0, input.limit);
       const last = items.at(-1);
       return {
-        items,
+        items: items.map(p => ({ ...p, reviewSource: readReviewSource(p.reviewSource) })),
         nextCursor:
           more && last
             ? { date: last.date.toISOString().slice(0, 10), id: last.id }
@@ -126,7 +127,7 @@ export const learningPracticesRouter = router({
       };
     }),
   create: protectedProcedure
-    .input(fields.extend({ id: z.string().uuid() }))
+    .input(fields.extend({ id: z.string().uuid(), plannedSessionId: z.string().uuid().optional(), repeatFromId: z.string().uuid().optional() }).refine(x => !(x.plannedSessionId && x.repeatFromId), "Elige un plan o una práctica anterior."))
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findUniqueOrThrow({
         where: { id: ctx.userId },
@@ -147,14 +148,29 @@ export const learningPracticesRouter = router({
           code: "NOT_FOUND",
           message: "Recurso no disponible.",
         });
-      const existing = await ctx.prisma.learningPractice.findFirst({
-        where: { id: input.id, userId: ctx.userId },
-        include,
-      });
-      if (existing) return existing;
-      return ctx.prisma.learningPractice.create({
-        data: { ...input, userId: ctx.userId, date: new Date(input.date) },
-        include,
+      return ctx.prisma.$transaction(async (tx) => {
+        // One creator per user; retries keep the client-generated practice UUID.
+        await tx.$queryRaw`SELECT id FROM public.users WHERE id=${ctx.userId}::uuid FOR UPDATE`;
+        const repeated = input.repeatFromId ? await tx.learningPractice.findFirst({where:{id:input.repeatFromId,userId:ctx.userId}}) : null;
+        if(input.repeatFromId && !repeated) throw new TRPCError({code:"NOT_FOUND"});
+        const existing = await tx.learningPractice.findFirst({ where: { id: input.id, userId: ctx.userId }, include });
+        if (existing) {
+          if ((existing.plannedSessionId ?? undefined) !== input.plannedSessionId || (repeated && JSON.stringify(readReviewSource(existing.reviewSource)) !== JSON.stringify(readReviewSource(repeated.reviewSource)))) throw new TRPCError({code:"CONFLICT",message:"Esta práctica ya se guardó con otro plan."});
+          return { ...existing, reviewSource: readReviewSource(existing.reviewSource) };
+        }
+        const { plannedSessionId } = input;
+        const data = { ...fields.parse(input), id: input.id };
+        const plan = plannedSessionId ? await tx.studySession.findFirst({ where: { id: plannedSessionId, userId: ctx.userId, status: "planned" } }) : null;
+        if (plannedSessionId && !plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plan no disponible." });
+        if (plan && plan.resourceId !== input.resourceId) throw new TRPCError({ code: "BAD_REQUEST", message: "La práctica debe usar el recurso del plan." });
+        const reviewSource = readReviewSource(plan?.reviewSource ?? repeated?.reviewSource);
+        if (plan) {
+          const now = new Date(input.date + "T12:00:00Z");
+          const claimed = await tx.studySession.updateMany({ where: { id: plan.id, userId: ctx.userId, status: "planned" }, data: { status: "completed", source: "practice", durationMin: 0, startedAt: now, endedAt: now } });
+          if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "El plan ya cambió." });
+        }
+        const row = await tx.learningPractice.create({ data: { ...data, userId: ctx.userId, date: new Date(input.date), ...(plannedSessionId ? { plannedSessionId } : {}), ...(reviewSource ? { reviewSource } : {}) }, include });
+        return { ...row, reviewSource: readReviewSource(row.reviewSource) };
       });
     }),
   update: protectedProcedure
@@ -177,11 +193,8 @@ export const learningPracticesRouter = router({
       )
         throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.prisma.$transaction(async (tx) => {
-        if (
-          !(await tx.learningPractice.findFirst({
-            where: { id: input.id, userId: ctx.userId },
-          }))
-        )
+        const current = await tx.learningPractice.findFirst({ where: { id: input.id, userId: ctx.userId } });
+        if (!current)
           throw new TRPCError({ code: "NOT_FOUND" });
         const { id, expectedVersion, ...data } = input;
         const result = await tx.learningPractice.updateMany({
@@ -198,10 +211,18 @@ export const learningPracticesRouter = router({
             message:
               "Esta práctica cambió. Conserva tu borrador y vuelve a abrir la versión actual.",
           });
-        return tx.learningPractice.findFirstOrThrow({
+        if (current.plannedSessionId) {
+          if (current.resourceId !== input.resourceId) throw new TRPCError({code:"BAD_REQUEST",message:"Conserva el recurso del plan vinculado."});
+          if (current.date.toISOString().slice(0, 10) !== input.date) {
+            const actualDay = new Date(input.date + "T12:00:00Z");
+            await tx.studySession.updateMany({where:{id:current.plannedSessionId,userId:ctx.userId,source:"practice"},data:{durationMin:0,startedAt:actualDay,endedAt:actualDay}});
+          }
+        }
+        const row = await tx.learningPractice.findFirstOrThrow({
           where: { id, userId: ctx.userId },
           include,
         });
+        return { ...row, reviewSource: readReviewSource(row.reviewSource) };
       });
     }),
   delete: protectedProcedure
@@ -230,6 +251,7 @@ export const learningPracticesRouter = router({
               message: "No se pudieron eliminar las capturas. Reintenta.",
             });
         }
+        if (p.plannedSessionId) await tx.studySession.updateMany({ where: { id: p.plannedSessionId, userId: ctx.userId, source: "practice", status: "completed" }, data: { status: "planned", source: "planned", durationMin: null, endedAt: null } });
         await tx.learningPractice.deleteMany({
           where: {
             id: p.id,

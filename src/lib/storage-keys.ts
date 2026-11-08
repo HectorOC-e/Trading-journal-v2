@@ -21,6 +21,11 @@ export const SESSION_SCOPED_STORAGE_KEYS: readonly string[] = [
 /** Remove all session-scoped localStorage entries. Safe to call anywhere. */
 export function clearSessionStorageKeys(): void {
   if (typeof window === "undefined") return
+  try {
+    for (const key of Object.keys(window.localStorage)) {
+      if (key.startsWith("tj-draft:v1:") || key.startsWith("review-notes:")) window.localStorage.removeItem(key)
+    }
+  } catch { /* Storage may be unavailable. */ }
   for (const key of SESSION_SCOPED_STORAGE_KEYS) {
     try { window.localStorage.removeItem(key) } catch { /* ignore */ }
   }

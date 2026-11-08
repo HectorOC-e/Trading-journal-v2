@@ -352,7 +352,7 @@ describe("all planned sessions", () => {
       { id, resourceId: id, resource, startedAt: new Date("2025-01-01T12:00:00Z"), plannedMin: 30 },
       { id: "22222222-2222-4222-8222-222222222222", resourceId: id, resource, startedAt: new Date("2027-01-01T12:00:00Z"), plannedMin: 60 },
     ])
-    expect(await caller.plans({ limit: 1 })).toEqual({ items: [{ id, resourceId: id, resourceTitle: "Book", resourceType: "LIBRO", date: "2025-01-01", plannedMin: 30 }], nextCursor: id })
+    expect(await caller.plans({ limit: 1 })).toEqual({ items: [{ id, resourceId: id, resourceTitle: "Book", resourceType: "LIBRO", reviewSource: null, date: "2025-01-01", plannedMin: 30 }], nextCursor: id })
     expect(prisma.studySession.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "user-1", status: "planned" }, orderBy: [{ startedAt: "asc" }, { id: "asc" }], take: 2 }))
     prisma.studySession.findFirst.mockResolvedValue(null)
     await expect(caller.plans({ limit: 20, cursor: id })).rejects.toMatchObject({ code: "NOT_FOUND" })

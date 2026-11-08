@@ -7,6 +7,7 @@ import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
 import { OnboardingWelcome } from "@/components/onboarding/onboarding-welcome"
+import { DailyPlan } from "@/components/today/daily-plan"
 import { TodayFeed } from "@/components/today/today-feed"
 import { useDashboardStats, type Period } from "./hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
@@ -79,6 +80,7 @@ export default function DashboardPage() {
     return (
       <main aria-label="Panel principal" aria-busy="true">
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
+        <DailyPlan />
         <FilterBar options={TABS} value={tab} onChange={(v) => handleTabChange(v as Tab)} className="mb-6" ariaLabel="Secciones del dashboard" />
         <SkeletonKpiStrip />
         <div className="flex items-center justify-center h-40 text-[var(--ink-3)] text-sm" aria-live="polite">
@@ -92,6 +94,7 @@ export default function DashboardPage() {
     return (
       <main aria-label="Panel principal">
         <TopBar title="Dashboard" subtitle="Vista general de tu portfolio" />
+        <DailyPlan />
         <div
           className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] py-16 px-6 text-center"
           role="alert"
@@ -131,6 +134,8 @@ export default function DashboardPage() {
     <main aria-label="Panel principal">
       {/* Day-1 onboarding (S12d) — only for a brand-new trader, dismissible */}
       <OnboardingWelcome tradeCount={stats.kpis.total} />
+
+      <DailyPlan accountStats={stats.accountStats} />
 
       {/* HOY feed (S13) — the prioritized cognitive signals: qué hago hoy */}
       <TodayFeed />

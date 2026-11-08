@@ -11,7 +11,7 @@ import { RuleBar } from "@/components/ui/rule-bar"
 import { MiniSparkline } from "@/components/ui/mini-sparkline"
 import { AccountRiskPanel } from "@/components/risk/account-risk-panel"
 import { formatMoney } from "@/lib/format/money"
-import { trpc } from "@/lib/trpc/client"
+import { AccountCashBreakdown } from "./account-cash-breakdown"
 import { isPermanentLockReason } from "@/domains/trading/services/risk-engine"
 import {
   TYPE_META, ACCOUNT_STATUS_META, isPropFirmLike, formatSyncAgo,
@@ -55,8 +55,6 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
   const initialBalance = Number(account.initialBalance)
   const flatLine     = Array(10).fill(initialBalance)
   // Balance adjustments from sync corrections — baked into current equity.
-  const { data: varianceData } = trpc.accounts.getBalanceVariance.useQuery(account.id)
-  const balanceAdjustment = varianceData?.totalVariance ?? 0
   // Last broker sync (journal-vs-broker comparison).
   const lastSyncedBalance = (account as { lastSyncedBalance?: number | null }).lastSyncedBalance ?? null
   const syncedAgo = formatSyncAgo((account as { lastSyncedAt?: string | null }).lastSyncedAt)
@@ -134,14 +132,14 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           {(() => {
             const sparkData     = stats?.sparkline && stats.sparkline.length > 1 ? stats.sparkline : flatLine
             const sparkPos      = stats ? stats.netPnl >= 0 : true
-            const currentEquity = initialBalance + (stats?.netPnl ?? 0) + balanceAdjustment
+            const currentEquity = account.currentBalance
             return (
               <>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-eyebrow">Equity + Balance</span>
+                  <span className="text-eyebrow">Resultado de operativa</span>
                   <span className="text-[11px] font-mono font-semibold"
                     style={{ color: stats ? (stats.netPnl >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)" }}>
-                    {stats ? `${stats.netPnl >= 0 ? "+" : "-"}$${Math.abs(stats.netPnl).toFixed(2)}` : "— sin trades"}
+                    {stats ? formatMoney(stats.netPnl, { currency: account.currency, decimals: 2, signed: true }) : "— sin trades"}
                   </span>
                 </div>
                 <MiniSparkline data={sparkData} positive={sparkPos} format={(v) => formatMoney(v, { currency: account.currency, decimals: 0 })} />
@@ -155,7 +153,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
                   <div className="flex justify-between mt-1 text-[10px] text-[var(--ink-3)]">
                     <span>Broker{syncedAgo ? ` · ${syncedAgo}` : ""}</span>
                     <span className="font-mono font-semibold text-[var(--ink)]">
-                      ${lastSyncedBalance.toFixed(2)}
+                      {formatMoney(lastSyncedBalance, { currency: account.currency, decimals: 2 })}
                       {Math.abs(lastSyncedBalance - currentEquity) >= 0.01 && (
                         <span className={lastSyncedBalance - currentEquity >= 0 ? "text-[var(--win)] ml-1" : "text-[var(--loss)] ml-1"}>
                           ({lastSyncedBalance - currentEquity >= 0 ? "+" : ""}{(lastSyncedBalance - currentEquity).toFixed(2)})
@@ -169,12 +167,14 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
           })()}
         </div>
 
+        <AccountCashBreakdown account={account} />
+
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-2">
           {(() => {
             const netPnl      = stats?.netPnl ?? 0
-            const currentEq   = initialBalance + netPnl + balanceAdjustment
-            const pnlMesStr   = stats && stats.tradesMonth > 0 ? `${stats.pnlMonth >= 0 ? "+" : "-"}$${Math.abs(stats.pnlMonth).toFixed(2)}` : "— sin trades"
+            const currentEq   = account.currentBalance
+            const pnlMesStr   = stats && stats.tradesMonth > 0 ? formatMoney(stats.pnlMonth, { currency: account.currency, decimals: 2, signed: true }) : "— sin trades"
             const pnlMesColor = stats && stats.tradesMonth > 0 ? (stats.pnlMonth >= 0 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
             const wrStr   = stats?.winRate != null ? `${stats.winRate.toFixed(2)}%` : "—"
             const wrColor = stats?.winRate != null ? (stats.winRate >= 50 ? "var(--win)" : "var(--loss)") : "var(--ink-3)"
@@ -183,7 +183,7 @@ export function AccountDetailPanel({ account, onClose, onDelete, deleting, onEdi
             const ddStr   = stats ? `${stats.drawdownPct.toFixed(2)}%` : "—"
             const ddColor = stats && stats.drawdownPct > 0 ? "var(--loss)" : "var(--ink-3)"
             return [
-              { label: "Balance actual",  value: `$${currentEq.toFixed(2)}`, color: netPnl >= 0 ? "var(--win)" : "var(--loss)" },
+              { label: "Balance actual",  value: formatMoney(currentEq, { currency: account.currency, decimals: 2 }), color: netPnl >= 0 ? "var(--win)" : "var(--loss)" },
               { label: "P&L mes",         value: pnlMesStr,   color: pnlMesColor },
               { label: "Win Rate",        value: wrStr,        color: wrColor },
               { label: "Avg R",           value: avgRStr,      color: avgRColor },

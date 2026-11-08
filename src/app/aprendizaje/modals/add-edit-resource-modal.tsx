@@ -1,5 +1,7 @@
 "use client"
 
+import { useRecoverableDraft } from "@/hooks/useRecoverableDraft"
+import { DraftRecovery } from "@/components/ui/draft-recovery"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,11 +30,19 @@ function resourcePayload(form: FormState) {
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
 
-export function AddEditResourceModal({
+type ResourceEditorProps = Parameters<typeof ResourceEditor>[0]
+export function AddEditResourceModal(props: Omit<ResourceEditorProps, "userId">) {
+  const profile = trpc.profile?.get.useQuery()
+  if (profile && !profile.data) return <Dialog open={props.open} onOpenChange={props.onOpenChange}><DialogContent><DialogTitle>Recurso</DialogTitle><p role={profile.error ? "alert" : "status"}>{profile.error ? "No se pudo cargar tu perfil." : "Cargando tu perfil…"}</p>{profile.error && <Button onClick={() => void profile.refetch()}>Reintentar perfil</Button>}<Button variant="ghost" onClick={() => props.onOpenChange(false)}>Cancelar</Button></DialogContent></Dialog>;
+  return <ResourceEditor key={profile?.data?.id ?? "unresolved"} {...props} userId={profile?.data?.id} />
+}
+function ResourceEditor({
+  userId,
   open,
   onOpenChange,
   editTarget,
 }: {
+  userId?: string
   open:         boolean
   onOpenChange: (v: boolean) => void
   editTarget:   ResourceFromDB | null
@@ -41,6 +51,18 @@ export function AddEditResourceModal({
   const [originalForm, setOriginalForm] = useState<FormState | null>(null)
   const [titleError, setTitleError] = useState("")
   const initializedTarget = useRef<string | null | undefined>(undefined)
+  const draft = useRecoverableDraft(open ? userId : undefined, `resource:${editTarget?.id ?? "new"}`, (raw) => {
+    if (!raw || typeof raw !== "object") return null
+    const v = raw as Record<string, unknown>
+    const value = {} as FormState
+    for (const key of Object.keys(emptyForm()) as (keyof FormState)[]) {
+      const item = v[key], baseline = emptyForm()[key]
+      if (baseline === null ? item !== null && typeof item !== "number" : typeof item !== typeof baseline) return null
+      Object.assign(value, { [key]: item })
+    }
+    return ALL_TYPES.includes(value.type) ? value : null
+  })
+  const saveToken = useRef<string | null>(null)
   const utils = trpc.useUtils()
 
   useEffect(() => {
@@ -76,6 +98,7 @@ export function AddEditResourceModal({
 
   const createResource = trpc.learningResources.create.useMutation({
     onSuccess: () => {
+      draft.clearSaved(saveToken.current)
       void utils.learningResources.invalidate()
       void utils.studySessions.home.invalidate()
       onOpenChange(false)
@@ -85,6 +108,7 @@ export function AddEditResourceModal({
 
   const updateResource = trpc.learningResources.update.useMutation({
     onSuccess: () => {
+      draft.clearSaved(saveToken.current)
       void utils.learningResources.invalidate()
       void utils.studySessions.home.invalidate()
       onOpenChange(false)
@@ -93,7 +117,9 @@ export function AddEditResourceModal({
   })
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }))
+    const next = { ...form, [key]: value }
+    setForm(next)
+    draft.store(next)
   }
 
   const isEditMode   = editTarget !== null
@@ -101,6 +127,7 @@ export function AddEditResourceModal({
 
   function handleSave() {
     if (!form.title.trim()) { setTitleError("Ponle un título al recurso"); return }
+    saveToken.current = draft.snapshot()
     const payload = resourcePayload(form)
     if (isEditMode) {
       if (!originalForm) return
@@ -123,7 +150,8 @@ export function AddEditResourceModal({
           <DialogTitle>{isEditMode ? "Editar recurso" : "Añadir recurso"}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5">
+        {draft.recovery && <DraftRecovery onRestore={() => { if (draft.recovery) setForm(draft.recovery.value); draft.dismiss() }} onDiscard={draft.discard} />}
+        <fieldset disabled={!!draft.recovery} className="flex flex-col gap-5">
           <div>
             <label className="text-[11px] font-semibold text-[var(--ink-3)] uppercase tracking-wide mb-2 block">Tipo</label>
             <div className="grid grid-cols-7 gap-1.5">
@@ -278,7 +306,7 @@ export function AddEditResourceModal({
               )} />
             </button>
           </div>
-        </div>
+        </fieldset>
 
         <DialogFooter>
           <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>Cancelar</Button>
@@ -286,7 +314,7 @@ export function AddEditResourceModal({
             variant="primary"
             size="sm"
             onClick={handleSave}
-            disabled={createResource.isPending || updateResource.isPending}
+            disabled={!!draft.recovery || createResource.isPending || updateResource.isPending}
           >
             {(createResource.isPending || updateResource.isPending)
               ? "Guardando…"

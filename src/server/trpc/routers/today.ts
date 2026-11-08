@@ -4,10 +4,12 @@
 
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
+import { getDailyPlan } from "@/server/services/today/daily-plan-service"
 import { getTodayFeed } from "@/server/services/today/today-service"
 import { recordIgnore } from "@/server/services/today/feed-ignore-service"
 
 export const todayRouter = router({
+  plan: protectedProcedure.query(({ ctx }) => getDailyPlan(ctx.prisma, ctx.userId)),
   feed: protectedProcedure.query(({ ctx }) => getTodayFeed(ctx.prisma, ctx.userId)),
 
   // C3 — the trader dismisses a signal; the feed learns to demote it.

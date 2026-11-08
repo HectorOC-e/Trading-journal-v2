@@ -68,6 +68,7 @@ function serializeAccount(a: RawAccount, closedPnl = 0, cash = { paid: 0, reserv
     // modal sizes positions off (so a 0 initial balance no longer reads as $0
     // and the contract calculator can run).
     currentBalance: initialBalance + closedPnl + cash.correction - cash.paid,
+    realizedPnl: closedPnl,
     balanceCorrection: cash.correction,
     paidWithdrawals: cash.paid,
     reservedWithdrawals: cash.reserved,

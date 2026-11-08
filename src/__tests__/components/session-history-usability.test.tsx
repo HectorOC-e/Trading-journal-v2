@@ -54,3 +54,10 @@ it('preserves the draft when conflict refresh fails', async () => {
   expect((screen.getByLabelText('Nota') as HTMLTextAreaElement).value).toBe('Mi borrador')
   expect(screen.getByRole('alert').textContent).toContain('No se pudo actualizar')
 })
+it('routes practice completion markers to the practice editor without independent edit or void controls',()=>{
+ mock.query.data.pages[0].items=[{...item,source:'practice',durationMin:0}]
+ render(<SessionHistory />)
+ expect(screen.queryByRole('button',{name:'Editar'})).toBeNull()
+ expect(screen.queryByRole('button',{name:'Anular'})).toBeNull()
+ expect(screen.getByRole('link',{name:'Gestionar en Prácticas'})).toHaveAttribute('href','/aprendizaje?tab=practicas')
+})
