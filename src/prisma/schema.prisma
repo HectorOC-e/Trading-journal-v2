@@ -1416,6 +1416,8 @@ model TaxTransaction {
   description     String                   @default("")
   reference       String                   @default("")
   reversalOfId    String?                  @map("reversal_of_id") @db.Uuid
+  reversalOf      TaxTransaction?          @relation("TaxTransactionReversal", fields: [userId, reversalOfId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  reversals       TaxTransaction[]         @relation("TaxTransactionReversal")
   transferGroup   String?                  @map("transfer_group") @db.Uuid
   treatment       String                   @default("PENDING")
   treatmentReason String                   @default("") @map("treatment_reason")
@@ -1629,6 +1631,8 @@ model TaxEvidence {
   documentDate     DateTime?                @map("document_date") @db.Date
   expiresAt        DateTime                 @map("expires_at")
   supersedesId     String?                  @map("supersedes_id") @db.Uuid
+  supersedes       TaxEvidence?             @relation("TaxEvidenceSupersession", fields: [userId, supersedesId], references: [userId, id], onDelete: NoAction, onUpdate: NoAction)
+  supersededBy     TaxEvidence[]            @relation("TaxEvidenceSupersession")
   period           TaxPeriod                @relation(fields: [userId, periodId], references: [userId, id], onDelete: Cascade)
   incomeLinks      TaxIncomeEvidence[]
   transactionLinks TaxTransactionEvidence[]

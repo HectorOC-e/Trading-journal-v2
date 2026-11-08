@@ -33,6 +33,32 @@ describe('fiscal write boundary',()=>{
  it('does not accept another owner exercise',async()=>{
   const {db}=fixture();await expect(withTaxWrite(db,'00000000-0000-4000-8000-000000000099',input,async()=>({saved:true}))).rejects.toMatchObject({code:'NOT_FOUND'});
  });
+ it.each([
+  {periodIds:['00000000-0000-4000-8000-000000000099']},
+  {reason:'Motivo corregido'},
+  {expectedRevisions:{[periodId]:2}},
+  {allowClosed:true},
+  {invalidatePreparation:false},
+ ])('rejects a retry whose effective context changes: %j',async(change)=>{
+  const {db}=fixture();const write=vi.fn(async()=>({saved:true}));
+  await withTaxWrite(db,owner,input,write);
+  await expect(withTaxWrite(db,owner,{...input,...change},write)).rejects.toMatchObject({code:'CONFLICT'});
+  expect(write).toHaveBeenCalledTimes(1);
+ });
+ it('replays semantically identical periods, defaults and revision key order',async()=>{
+  const {db,audits}=fixture();const write=vi.fn(async()=>({saved:true}));
+  await withTaxWrite(db,owner,{...input,periodIds:[periodId,periodId]},write);
+  expect(await withTaxWrite(db,owner,{...input,reason:'',allowClosed:false,invalidatePreparation:true,expectedRevisions:{ignored:99,[periodId]:1}},write)).toEqual({saved:true});
+  expect(write).toHaveBeenCalledTimes(1);expect(audits).toHaveLength(1);
+ });
+ it('normalizes the order of multiple periods and revision keys',async()=>{
+  const {db,tx}=fixture();const second='00000000-0000-4000-8000-000000000004';
+  tx.taxPeriod.findMany.mockResolvedValue([periodId,second].map(id=>({id,status:'OPEN',revision:1})));
+  const write=vi.fn(async()=>({saved:true}));
+  await withTaxWrite(db,owner,{...input,periodIds:[second,periodId,second],expectedRevisions:{[second]:1,[periodId]:1}},write);
+  await expect(withTaxWrite(db,owner,{...input,periodIds:[periodId,second],expectedRevisions:{[periodId]:1,[second]:1}},write)).resolves.toEqual({saved:true});
+  expect(write).toHaveBeenCalledTimes(1);
+ });
  it('keeps decimals and calendar dates exact in JSON',()=>{
   expect(serializeTax({amount:new Prisma.Decimal('99999999999999999999.123456789012345678'),date:new Date('2026-12-31T00:00:00Z'),createdAt:new Date('2026-12-31T19:00:00Z')})).toEqual({amount:'99999999999999999999.123456789012345678',date:'2026-12-31',createdAt:'2026-12-31T19:00:00.000Z'});
  });

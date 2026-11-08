@@ -780,3 +780,7 @@ INSERT INTO storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 VALUES ('tax-evidence','tax-evidence',false,10485760,ARRAY['application/pdf','image/jpeg','image/png'])
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO public.tax_rule_sets(id,country,regime,year,version,published,payload,checksum) VALUES ('HN-ISR-2026-v1','HN','NATURAL_ORDINARY',2026,'HN-ISR-2026-v1',true,$rule${"country":"HN","year":2026,"regime":"NATURAL_ORDINARY","version":"HN-ISR-2026-v1","brackets":[{"upper":"228324.32","rate":"0"},{"upper":"348154.10","rate":"0.15"},{"upper":"809660.75","rate":"0.20"},{"upper":null,"rate":"0.25"}],"rounding":{"mode":"HALF_UP","scale":2,"reviewStatus":"PENDING"},"references":[{"id":"HN-ISR-2026","url":"https://www.sar.gob.hn/download/acuerdo-numero-sar-01-2026-publicado-en-fecha-23-de-enero-del-2026-en-la-gaceta-no-37051/"},{"id":"HN-ISR-2026-GACETA","url":"https://www.tsc.gob.hn/web/leyes/Acuerdo-SAR-01-2026.pdf"}],"consultedOn":"2026-11-08"}$rule$::jsonb,'e7bb226b4f1a64f86c2ffff085bd139568410e1b0d82611f7c114b1a99e7bd4a');
+
+-- Owner-scoped self references; NO ACTION permits the complete User cascade.
+ALTER TABLE public.tax_transactions ADD CONSTRAINT tax_transactions_user_id_reversal_of_id_fkey FOREIGN KEY (user_id, reversal_of_id) REFERENCES public.tax_transactions(user_id, id) ON DELETE NO ACTION ON UPDATE NO ACTION;
+ALTER TABLE public.tax_evidences ADD CONSTRAINT tax_evidences_user_id_supersedes_id_fkey FOREIGN KEY (user_id, supersedes_id) REFERENCES public.tax_evidences(user_id, id) ON DELETE NO ACTION ON UPDATE NO ACTION;
