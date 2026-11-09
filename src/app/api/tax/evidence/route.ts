@@ -134,6 +134,7 @@ export async function POST(req: Request) {
         mime: z.string(),
         documentDate: z.iso.date().optional(),
         supersedesId: uuid.optional(),
+        filingReturnId: uuid.optional(),
       })
       .strict()
       .parse({
@@ -144,6 +145,7 @@ export async function POST(req: Request) {
         mime: file.type,
         documentDate: form.get("documentDate") || undefined,
         supersedesId: form.get("supersedesId") || undefined,
+        filingReturnId: form.get("filingReturnId") || undefined,
       });
     const result = await uploadEvidence(
       prisma,

@@ -32,7 +32,7 @@ export async function createDraft(tx: Prisma.TransactionClient, userId: string, 
     await validateAccounts(tx, userId, event);
     for (const p of event.postings)
         await validateValuationEvidence(tx, userId, input.periodId, p.valuation);
-    return tx.taxTransaction.create({ data: { userId, periodId: input.periodId, date: new Date(input.date), kind: event.type, description: event.reason ?? input.description, reference: input.reference, postings: { create: event.postings.map(p => ({ ...postingData(p), userId })) } }, include: { postings: true } });
+    return tx.taxTransaction.create({ data: { userId, periodId: input.periodId, date: new Date(input.date), kind: event.type, description: event.reason ?? input.description, reference: input.reference, postings: { create: event.postings.map(postingData) } }, include: { postings: true } });
 }
 export async function saveTransaction(db: PrismaClient, userId: string, raw: z.input<typeof transactionInputSchema>) {
     const input = transactionInputSchema.parse(raw);
@@ -48,7 +48,7 @@ export async function saveTransaction(db: PrismaClient, userId: string, raw: z.i
             if (previous!.status !== 'DRAFT' || previous!.reconciliations.length)
                 fail('Sólo puedes editar borradores no conciliados.', 'CONFLICT');
             await tx.taxPosting.deleteMany({ where: { userId, transactionId: input.id } });
-            return tx.taxTransaction.update({ where: { userId_id: { userId, id: input.id } }, data: { date: new Date(input.date), kind: input.event.type, description: input.event.reason ?? input.description, reference: input.reference, revision: { increment: 1 }, postings: { create: input.event.postings.map(p => ({ ...postingData(p), userId })) } }, include: { postings: true } });
+            return tx.taxTransaction.update({ where: { userId_id: { userId, id: input.id } }, data: { date: new Date(input.date), kind: input.event.type, description: input.event.reason ?? input.description, reference: input.reference, revision: { increment: 1 }, postings: { create: input.event.postings.map(postingData) } }, include: { postings: true } });
         }
         return createDraft(tx, userId, input);
     });
@@ -90,7 +90,7 @@ export async function reverseTransaction(db: PrismaClient, userId: string, raw: 
             fail('No se puede revertir este movimiento.', 'CONFLICT');
         if (input.date < original!.date.toISOString().slice(0, 10))
             fail('El reverso debe ser posterior al original.');
-        const result = await tx.taxTransaction.create({ data: { userId, periodId: input.periodId, kind: 'REVERSAL', status: 'POSTED', date: new Date(input.date), description: input.reason, reversalOfId: input.id, postings: { create: original!.postings.map(p => ({ userId, accountId: p.accountId, assetKey: p.assetKey, assetKind: p.assetKind, assetCode: p.assetCode, network: p.network, contract: p.contract, quantity: decimal(p.quantity.toFixed()).negated().toFixed(), role: p.role, amountHnl: p.amountHnl ? money(decimal(p.amountHnl.toFixed()).negated()) : null, ...(p.valuation ? { valuation: p.valuation as Prisma.InputJsonValue } : {}) })) } }, include: { postings: true } });
+        const result = await tx.taxTransaction.create({ data: { userId, periodId: input.periodId, kind: 'REVERSAL', status: 'POSTED', date: new Date(input.date), description: input.reason, reversalOfId: input.id, postings: { create: original!.postings.map(p => ({ accountId: p.accountId, assetKey: p.assetKey, assetKind: p.assetKind, assetCode: p.assetCode, network: p.network, contract: p.contract, quantity: decimal(p.quantity.toFixed()).negated().toFixed(), role: p.role, amountHnl: p.amountHnl ? money(decimal(p.amountHnl.toFixed()).negated()) : null, ...(p.valuation ? { valuation: p.valuation as Prisma.InputJsonValue } : {}) })) } }, include: { postings: true } });
         await tx.taxTransaction.update({ where: { userId_id: { userId, id: input.id } }, data: { status: 'REVERSED', revision: { increment: 1 } } });
         await balances(tx, userId);
         return result;

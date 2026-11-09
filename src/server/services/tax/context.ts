@@ -23,7 +23,7 @@ export async function withTaxWrite(db:PrismaClient,userId:string,input:TaxWriteR
    if(previous.payloadHash!==payloadHash||previous.action!==input.action)throw new TRPCError({code:'CONFLICT',message:'La solicitud ya existe con otros datos fiscales.'});
    return previous.result as FiscalJson;
   }
-  if(input.allowClosed&&!['return.reopen','return.reportFiled'].includes(input.action))throw new TRPCError({code:'BAD_REQUEST',message:'Acción fiscal no permitida sobre un ejercicio cerrado.'});
+  if(input.allowClosed&&!['return.reopen','return.reportFiled','evidence.filingReceiptUpload','evidence.filingReceiptFinalize'].includes(input.action))throw new TRPCError({code:'BAD_REQUEST',message:'Acción fiscal no permitida sobre un ejercicio cerrado.'});
   if(ids.length){
    const periods=await tx.taxPeriod.findMany({where:{userId,id:{in:ids}},select:{id:true,status:true,revision:true}});
    if(periods.length!==ids.length)throw new TRPCError({code:'NOT_FOUND',message:'No se encontró el ejercicio fiscal.'});

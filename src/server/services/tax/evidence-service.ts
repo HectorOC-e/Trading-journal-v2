@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import type { PrismaClient } from "@/lib/generated/prisma/client";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 import { withTaxWrite } from "./context";
 import { serializeTax } from "./serializers";
 export const MAX_FISCAL_FILE_BYTES = 4 * 1024 * 1024;
@@ -109,10 +109,21 @@ export async function uploadEvidence(
     mime: string;
     documentDate?: string;
     supersedesId?: string;
+    filingReturnId?: string;
   },
   bytes: Uint8Array,
   storage: FiscalStorage,
 ) {
+  const filingReceipt = !!input.filingReturnId;
+  if (filingReceipt && input.supersedesId)
+    throw new TRPCError({ code: "BAD_REQUEST", message: "El acuse debe ser un documento nuevo." });
+  async function validateFilingReturn(tx: Prisma.TransactionClient) {
+    if (!filingReceipt) return;
+    const target = await tx.taxReturn.findFirst({ where: {
+      id: input.filingReturnId, userId, periodId: input.periodId, closedAt: { not: null },
+    }});
+    if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "Borrador cerrado no disponible." });
+  }
   const verified = validateFiscalFile(bytes, input.mime);
   const payload = { ...input, ...verified };
   const started = await withTaxWrite(
@@ -120,12 +131,15 @@ export async function uploadEvidence(
     userId,
     {
       requestId: input.requestId,
-      action: "evidence.upload",
+      action: filingReceipt ? "evidence.filingReceiptUpload" : "evidence.upload",
+      allowClosed: filingReceipt,
+      invalidatePreparation: !filingReceipt,
       payload,
       periodIds: [input.periodId],
       expectedRevisions: { [input.periodId]: input.expectedRevision },
     },
     async (tx) => {
+      await validateFilingReturn(tx);
       if (input.supersedesId) {
         const prior = await tx.taxEvidence.findFirst({
           where: {
@@ -195,7 +209,7 @@ export async function uploadEvidence(
   try {
     // Each HTTP attempt gets a separate durable intent, including same-id retries.
     // Audit's User FK makes this commit visible before deletion can finish.
-    await withTaxWrite(
+    const lease = await withTaxWrite(
       db,
       userId,
       {
@@ -204,18 +218,23 @@ export async function uploadEvidence(
         payload: { evidenceId: evidence.id },
       },
       async (tx) => {
-        const pending = await tx.taxEvidence.findFirst({
-          where: { id: evidence.id, userId, status: "PENDING" },
+        await validateFilingReturn(tx);
+        const current = await tx.taxEvidence.findFirst({
+          where: { id: evidence.id, userId },
         });
+        // The first attempt can finalize after this retry's outer PENDING read.
+        // Recheck under the owner/deletion guard before creating any upload lease.
+        if (current?.status === "AVAILABLE")
+          return { availableEvidence: current };
         const period = await tx.taxPeriod.findFirst({
           where: {
             id: input.periodId,
             userId,
-            status: "OPEN",
+            ...(filingReceipt ? {} : { status: "OPEN" }),
             revision: input.expectedRevision + 1,
           },
         });
-        if (!pending || !period)
+        if (current?.status !== "PENDING" || !period)
           throw new TRPCError({
             code: "CONFLICT",
             message: "La carga ya no está disponible.",
@@ -231,6 +250,13 @@ export async function uploadEvidence(
         return { started: true };
       },
     );
+    if (
+      lease &&
+      typeof lease === "object" &&
+      !Array.isArray(lease) &&
+      "availableEvidence" in lease
+    )
+      return lease.availableEvidence;
     leaseStarted = true;
     const uploaded = await storage.upload(evidence.path, bytes, {
       contentType: verified.mime,
@@ -257,12 +283,15 @@ export async function uploadEvidence(
       userId,
       {
         requestId: phaseId(input.requestId, "finalize"),
-        action: "evidence.finalize",
+        action: filingReceipt ? "evidence.filingReceiptFinalize" : "evidence.finalize",
+        allowClosed: filingReceipt,
+        invalidatePreparation: !filingReceipt,
         payload: { id: evidence.id, sha256: verified.sha256 },
         periodIds: [input.periodId],
         expectedRevisions: { [input.periodId]: input.expectedRevision + 1 },
       },
       async (tx) => {
+        await validateFilingReturn(tx);
         const current = await tx.taxEvidence.findFirst({
           where: {
             id: evidence.id,

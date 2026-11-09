@@ -49,8 +49,8 @@ export async function reconcile(db: PrismaClient, userId: string, raw: z.input<t
         const net = input.allocations.reduce((a, r) => a.plus(decimal(r.netAmount)), decimal('0'));
         const fee = input.allocations.reduce((a, r) => a.plus(decimal(r.feeAmount)), decimal('0'));
         const withheld = input.allocations.reduce((a, r) => a.plus(decimal(r.withheldAmount)), decimal('0'));
-        assertAllocation(income.grossAmount.toFixed(), incomeUsed.reduce((a, r) => a.plus(decimal(r.grossAmount.toFixed())), decimal('0')).toString(), gross.toString());
-        assertAllocation(receiptAmount.toString(), receiptUsed.reduce((a, r) => a.plus(decimal(r.netAmount.toFixed())), decimal('0')).toString(), net.toString());
+        assertAllocation(income.grossAmount.toFixed(), incomeUsed.reduce((a, r) => a.plus(decimal(r.grossAmount.toFixed())), decimal('0')).toFixed(), gross.toFixed());
+        assertAllocation(receiptAmount.toFixed(), receiptUsed.reduce((a, r) => a.plus(decimal(r.netAmount.toFixed())), decimal('0')).toFixed(), net.toFixed());
         for (const [field, total] of [['feeAmount', fee], ['withheldAmount', withheld], ['netAmount', net]] as const) {
             const used = incomeUsed.reduce((a, r) => a.plus(decimal(r[field].toFixed())), decimal('0'));
             if (used.plus(total).gt(decimal(income[field].toFixed())))
@@ -95,7 +95,7 @@ export async function reconcile(db: PrismaClient, userId: string, raw: z.input<t
             const existing = await tx.taxReconciliation.findMany({ where: { userId, candidateId: candidate.id, transaction: { status: 'POSTED', reversals: { none: {} } } } });
             if (existing.some(r => r.incomeId === income.id && r.transactionId === receipt!.id))
                 fail('La asignación ya existe.', 'CONFLICT');
-            assertAllocation(source.row.amount.toFixed(), existing.reduce((a, r) => a.plus(decimal(r.sourceAmount?.toFixed() ?? '0')), decimal('0')).toString(), allocation.sourceAmount!);
+            assertAllocation(source.row.amount.toFixed(), existing.reduce((a, r) => a.plus(decimal(r.sourceAmount?.toFixed() ?? '0')), decimal('0')).toFixed(), allocation.sourceAmount!);
             results.push(await tx.taxReconciliation.create({ data: { userId, periodId: input.periodId, candidateId: candidate.id, incomeId: income.id, transactionId: receipt.id, assetKey: income.assetKey, grossAmount: allocation.grossAmount, netAmount: allocation.netAmount, feeAmount: allocation.feeAmount, withheldAmount: allocation.withheldAmount, sourceAmount: allocation.sourceAmount, reason: JSON.stringify({ reason: input.reason, receivedDate: input.receivedDate, receiptConfirmed: true, evidenceReference: input.evidenceReference }), ...(allocation.conversion ? { conversion: allocation.conversion as Prisma.InputJsonValue } : {}) } }));
             if (candidate.periodId === input.periodId)
                 await tx.taxImportCandidate.update({ where: { userId_id: { userId, id: candidate.id } }, data: { status: existing.reduce((a,r)=>a.plus(decimal(r.sourceAmount?.toFixed()??'0')),decimal('0')).plus(decimal(allocation.sourceAmount!)).eq(decimal(source.row.amount.toFixed()))?'RECONCILED':'PROPOSED', revision: { increment: 1 } } });
