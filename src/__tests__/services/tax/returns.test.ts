@@ -1,25 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildPreparation, informationSchema, previewCalculation } from '@/server/services/tax/calculation-service';
 import { HN_ISR_2026 } from '@/domains/tax/rules/hn/2026';
-const { checksum: packageChecksum, ...packagePayload } = HN_ISR_2026;
-const doc = {
-    id: '11111111-1111-4111-8111-111111111111', userId: 'u', periodId: 'p', status: 'AVAILABLE', name: 'proof', sha256: 'a'.repeat(64), size: 1, mime: 'application/pdf'
-};
-function fixture() { return {
-    period: {
-        id: 'p', userId: 'u', year: 2026, regime: 'NATURAL_ORDINARY', profileSnapshot: {
-            rtn: '12345678901234', domiciled: true, individualMerchant: false
-        }, roundingConfirmed: true, roundingReason: 'Revisión documentada', information: {
-            sectionB: {
-                complete: true, nonTaxable: '0', nonDeductible: '0', relatedParties: 'No existen'
-            }, roundingEvidenceId: doc.id, roundingReason: 'Revisión documentada', reviews: []
-        }
-    }, incomes: [{
-            id: 'i', userId: 'u', periodId: 'p', category: 'SALARY', payer: 'Employer', assetCode: 'HNL', amountHnl: '300000.00', grossAmount: '300000', treatment: 'ADMITTED', treatmentReason: 'Salario', legalReference: 'Ley ISR', recognitionStatus: 'REVIEWED', recognitionLegalBasis: 'Art ISR', recognitionCriterion: 'Devengo', recognitionDate: new Date('2026-01-01'), evidenceLinks: [{ evidence: doc }]
-        }], deductions: [], credits: [], evidences: [doc], reversalReviewIncomeIds: [], rule: {
-        published: true, version: HN_ISR_2026.version, checksum: HN_ISR_2026.checksum, payload: packagePayload
-    }
-}; }
+import { fixture, doc, ledgerTransaction } from './return-fixtures';
+import { Prisma } from '@/lib/generated/prisma/client';
 describe('fiscal preparation coverage', () => {
     it('admits a supported documented salary without inventing deductions', () => { const r = buildPreparation(fixture() as never); expect(r.status).toBe('READY'); expect(r.calculation?.admittedIncome).toBe('300000.00'); expect(r.calculation?.deductions).toBe('0.00'); });
     it.each([
@@ -55,10 +38,28 @@ describe('fiscal preparation coverage', () => {
             ...f.incomes[0], id: 'c2', componentKey: 'withheld', date: new Date('2026-01-01'), admittedHnl: '10.00', previouslyAppliedHnl: '0'
         }]; const r = buildPreparation(f as never); expect(r.pending).toContain('DUPLICATE_ECONOMIC_COMPONENT'); expect(r.status).not.toBe('READY'); });
     it('keeps scenarios read only and preserves the recorded gross amount', async () => { const f = fixture(); const db = {
-        taxPeriod: { findFirst: async () => f.period }, taxIncome: { findMany: async () => f.incomes }, taxDeduction: { findMany: async () => [] }, taxCredit: { findMany: async () => [] }, taxEvidence: { findMany: async () => f.evidences }, taxReconciliation: { findMany: async () => [] }, taxImportCandidate: { findMany: async () => [] }, taxRuleSet: { findFirst: async () => f.rule }
+        taxPeriod: { findFirst: async () => f.period }, taxIncome: { findMany: async () => f.incomes }, taxDeduction: { findMany: async () => [] }, taxCredit: { findMany: async () => [] }, taxEvidence: { findMany: async () => f.evidences }, taxReconciliation: { findMany: async () => [] }, taxImportCandidate: { findMany: async () => [] }, taxTransaction:{findMany:async()=>[]},taxRuleSet: { findFirst: async () => f.rule }
     }; const r = await previewCalculation(db as never, 'u', { periodId: '33333333-3333-4333-8333-333333333333', simulation: { additionalIncomeHnl: '1000.00' } }); expect('simulation' in r && r.simulation?.calculation?.admittedIncome).toBe('301000.00'); expect(f.incomes[0].amountHnl).toBe('300000.00'); expect(r.status).toBe('IN_REVIEW'); });
     it('requires a documentary nature review for salary paid in tokens', () => {const f=fixture();(f.incomes[0] as any).assetKind='TOKEN';expect(buildPreparation(f as never).status).not.toBe('READY');});
     it('reports whole-preparation coverage incomplete when identification is missing',()=>{const f=fixture();f.period.profileSnapshot.rtn='';expect((buildPreparation(f as never) as any).coverage.complete).toBe(false);});
     it('requires typed manual B information', () => { expect(informationSchema.safeParse({ sectionB: { complete: true } }).success).toBe(false); });
     it('freezes actual inputs and identifies changed inputs', () => { const f = fixture(); const a = buildPreparation(f as never); f.incomes[0].amountHnl = '400000.00'; const b = buildPreparation(f as never); expect(a.inputHash).not.toBe(b.inputHash); expect(a.sources.incomes[0].amountHnl).toBe('300000.00'); });
+});
+
+describe('ledger preparation coverage and partial fields',()=>{
+    it('blocks an independent crypto conversion without inventing income',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('CONVERSION',{postings:[{userId:'u',assetKind:'TOKEN',assetKey:'TOKEN:ETH:USDC',accountId:'a',quantity:'-10',amountHnl:'-260',account:{owned:true,userId:'u'}},{userId:'u',assetKind:'FIAT',assetKey:'FIAT:HNL',accountId:'a',quantity:'260',amountHnl:'260',account:{owned:true,userId:'u'}}]})];const r=buildPreparation(f as never);expect(r.status).not.toBe('READY');expect(r.pending).toContain('66666666-6666-4666-8666-666666666666:TRANSACTION_TREATMENT_PENDING');expect(r.calculation?.admittedIncome).toBe('300000.00');});
+    it('allows a structurally valid transfer between own accounts without tax guessing',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('OWN_TRANSFER')];expect(buildPreparation(f as never).status).toBe('READY');});
+    it.each(['DRAFT','OPENING_BALANCE','TOKEN_PAYMENT'])('blocks unresolved ledger event %s',kind=>{const f=fixture();(f as any).transactions=[ledgerTransaction(kind==='DRAFT'?'OWN_TRANSFER':kind==='TOKEN_PAYMENT'?'PAYMENT':kind,kind==='DRAFT'?{status:'DRAFT'}:kind==='TOKEN_PAYMENT'?{postings:[{assetKind:'TOKEN',assetKey:'TOKEN:ETH:USDC',accountId:'a',userId:'u',quantity:'-10',amountHnl:'-260',account:{owned:true,userId:'u'}}]}:{})];expect(buildPreparation(f as never).status).not.toBe('READY');});
+    it('freezes independent postings in the input hash',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('OWN_TRANSFER')];const first=buildPreparation(f as never);(f as any).transactions[0].postings[0].accountId='changed';expect(buildPreparation(f as never).inputHash).not.toBe(first.inputHash);});
+    it('marks derived amounts partial when FTMO is excluded and preserves the unmapped amount',()=>{const f=fixture();f.incomes.push({...f.incomes[0],id:'unknown',category:'FTMO',amountHnl:'50000.00',grossAmount:'50000'});const r=buildPreparation(f as never);for(const key of ['netTaxableIncome','isr','credits','balanceDue'])expect(r.form.fields.find(field=>field.key===key)?.partial).toBe(true);expect(r.form.fields.find(field=>field.key==='unmapped:unknown')).toMatchObject({amountHnl:'50000.00',sourceIds:['unknown'],partial:true});});
+    it('does not mark an empty income group complete when mapping is unknown',()=>{const f=fixture();f.incomes[0].category='FTMO';const r=buildPreparation(f as never);expect(r.form.fields.find(field=>field.key==='salary')).toMatchObject({amountHnl:null,partial:true});});
+    it('marks section B fields according to their own declared completeness',()=>{const f=fixture();f.period.information.sectionB.complete=false;const r=buildPreparation(f as never);expect(r.form.fields.find(field=>field.key==='nonTaxable')?.partial).toBe(true);});
+    it('accepts an explicit documented transaction decision without deriving cost basis or income',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('CONVERSION')];(f.period.information.reviews as any).push({recordId:'66666666-6666-4666-8666-666666666666',kind:'transaction',method:'Método y trazabilidad revisados por el contribuyente',mappingLabel:'No gravables',legalBasis:'Fundamento legal documentado',reason:'Tratamiento revisado expresamente',evidenceId:doc.id});const r=buildPreparation(f as never);expect(r.status).toBe('READY');expect(r.calculation?.admittedIncome).toBe('300000.00');expect(r.manifest.map(e=>e.id)).toContain(doc.id);});
+    it('does not allow a treatment review to bypass missing token valuation',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('CONVERSION',{postings:[{userId:'u',assetKind:'TOKEN',assetKey:'TOKEN:ETH:USDC',accountId:'a',quantity:'-10',amountHnl:null,valuation:null,account:{owned:true,userId:'u'}}]})];(f.period.information.reviews as any).push({recordId:'66666666-6666-4666-8666-666666666666',kind:'transaction',method:'Método revisado',mappingLabel:'No gravables',legalBasis:'Fundamento legal',reason:'Revisión humana',evidenceId:doc.id});expect(buildPreparation(f as never).pending).toContain('66666666-6666-4666-8666-666666666666:TRANSACTION_VALUATION_MISSING');});
+    it('requires an existing recognized record for a taxable transaction mapping',()=>{const f=fixture();(f as any).transactions=[ledgerTransaction('CONVERSION')];(f.period.information.reviews as any).push({recordId:'66666666-6666-4666-8666-666666666666',kind:'transaction',method:'Método revisado',mappingLabel:'Otros ingresos gravables',legalBasis:'Fundamento legal',reason:'Revisión humana',evidenceId:doc.id});expect(buildPreparation(f as never).pending).toContain('66666666-6666-4666-8666-666666666666:TRANSACTION_RECOGNIZED_RECORD_REQUIRED');});
+});
+
+describe('ledger coverage precision and structure',()=>{
+ it('accepts a three leg transfer conserved across own accounts',()=>{const f=fixture(); const tx=ledgerTransaction('OWN_TRANSFER'); const first=tx.postings[0]; (f as any).transactions=[{...tx,postings:[first,{...first,id:'b',accountId:'b',quantity:'4',amountHnl:'4'},{...first,id:'c',accountId:'c',quantity:'6',amountHnl:'6'}]}];expect(buildPreparation(f as never).status).toBe('READY');});
+ it('accepts the minimum token quantity in a real Decimal own transfer',()=>{const f=fixture();const tx=ledgerTransaction('OWN_TRANSFER');(f as any).transactions=[{...tx,postings:tx.postings.map((p,index)=>({...p,assetKind:'TOKEN',assetKey:'token',quantity:new Prisma.Decimal(index?'0.000000000000000001':'-0.000000000000000001')}))}];expect(buildPreparation(f as never).status).toBe('READY');});
 });

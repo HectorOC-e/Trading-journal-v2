@@ -45,9 +45,14 @@ export async function updateInformation(db: PrismaClient, userId: string, raw: z
             const where = {
                 id: r.recordId, userId, periodId: input.periodId
             };
-            const found = r.kind === 'income' || r.kind === 'reversal' ? await tx.taxIncome.findFirst({ where }) : r.kind === 'deduction' ? await tx.taxDeduction.findFirst({ where }) : await tx.taxCredit.findFirst({ where });
+            const found = r.kind === 'transaction' ? await tx.taxTransaction.findFirst({where}) : r.kind === 'income' || r.kind === 'reversal' ? await tx.taxIncome.findFirst({ where }) : r.kind === 'deduction' ? await tx.taxDeduction.findFirst({ where }) : await tx.taxCredit.findFirst({ where });
             if (!found)
                 fail('La revisión no pertenece al ejercicio.', 'NOT_FOUND');
+            for(const id of r.relatedRecordIds) {
+                const where={id,userId,periodId:input.periodId};
+                const matches=await Promise.all([tx.taxIncome.findFirst({where}),tx.taxDeduction.findFirst({where}),tx.taxCredit.findFirst({where})]);
+                if(!matches.some(Boolean)) fail('El registro asociado no pertenece al ejercicio.','NOT_FOUND');
+            }
         }
         return tx.taxPeriod.update({ where: { userId_id: { userId, id: input.periodId } }, data: {
                 information: serializeTax(input.information) as Prisma.InputJsonValue, roundingConfirmed: input.roundingConfirmed, roundingReason: input.roundingConfirmed ? input.information.roundingReason : ''

@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { csvCell, exportReturn, renderReturnHtml } from '@/server/services/tax/export-service';
+import { fixture } from './return-fixtures';
+import { buildPreparation } from '@/server/services/tax/calculation-service';
 const record = {
     id: 'r', version: 1, periodId: 'p', snapshotHash: 'hash', ruleVersion: 'v1', mappingVersion: 'labels', snapshot: {
         notice: 'Borrador / no presentado', sources: { incomes: [{ payer: '=HYPERLINK("evil")', amountHnl: '300000.01' }] }, manifest: [{ id: 'e', sha256: 'abc' }], form: { A: { label: '<img src=x onerror=evil()>' } }
@@ -21,4 +23,5 @@ describe('fiscal exports', () => {
     it('exports exact decimal snapshots and hashes without DB writes', async () => { const db = { taxReturn: { findFirst: async () => record } }; const result = await exportReturn(db as never, 'u', 'r', 'json'); const json = JSON.parse(result.body as string); expect(json.snapshot.sources.incomes[0].amountHnl).toBe('300000.01'); expect(json.snapshotHash).toBe('hash'); });
     it('rejects inaccessible returns', async () => { await expect(exportReturn({ taxReturn: { findFirst: async () => null } } as never, 'foreign', 'r', 'json')).rejects.toThrow(); });
     it('returns an explicit retryable PDF engine failure', async () => { await expect(exportReturn({ taxReturn: { findFirst: async () => record } } as never, 'u', 'r', 'pdf', async () => { throw Error('engine missing'); })).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' }); });
+    it('preserves partial derived and unmapped fields in JSON and CSV exports',async()=>{const f=fixture();f.incomes.push({...f.incomes[0],id:'unmapped',category:'FTMO',amountHnl:'50000.00'});const snapshot=buildPreparation(f as never);const db={taxReturn:{findFirst:async()=>({...record,snapshot})}};const json=JSON.parse((await exportReturn(db as never,'u','r','json')).body as string);expect(json.snapshot.form.fields.find((field:any)=>field.key==='isr').partial).toBe(true);expect(json.snapshot.form.fields.find((field:any)=>field.key==='unmapped:unmapped')).toMatchObject({partial:true,amountHnl:'50000.00'});const csv=(await exportReturn(db as never,'u','r','csv')).body as string;expect(csv).toContain('UNMAPPED_SOURCE_AMOUNT');expect(csv).toContain('50000.00');});
 });

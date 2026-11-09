@@ -10,13 +10,14 @@ import { taxHash } from './serializers';
 export const MAPPING_VERSION = 'HN-102-manual-labels-v1';
 const nonnegativeHnlSchema = hnlSchema.refine(value => decimal(value).gte(0), 'El importe debe ser no negativo.');
 const labelSchema = z.enum([
-    'Sueldos', 'Otros ingresos gravables', 'Honorarios', 'Gastos', 'Deducciones', 'Retenciones salariales/art.50', 'Pagos a cuenta', 'Pagos del período', 'Excedente anterior'
+    'Sueldos', 'Otros ingresos gravables', 'Honorarios', 'Gastos', 'Deducciones', 'Retenciones salariales/art.50', 'Pagos a cuenta', 'Pagos del período', 'Excedente anterior', 'No gravables'
 ]);
 const reviewSchema = z.object({
     recordId: z.string().uuid(), kind: z.enum([
-        'income', 'deduction', 'credit', 'reversal'
+        'income', 'deduction', 'credit', 'reversal', 'transaction'
     ]),
     legalBasis: z.string().trim().min(1).max(4000), reason: z.string().trim().min(1).max(4000),
+    method: z.string().trim().min(1).max(4000).optional(), relatedRecordIds: z.array(z.string().uuid()).max(100).default([]),
     evidenceId: z.string().uuid(), mappingLabel: labelSchema.optional(),
     eligibilityConfirmed: z.boolean().default(false), capReviewed: z.boolean().default(false),
 }).strict();
@@ -41,7 +42,9 @@ type Linked = {
         evidence: TaxEvidence;
     }[];
 };
+type LedgerTransaction = Prisma.TaxTransactionGetPayload<{include:{postings:{include:{account:{select:{userId:true;owned:true}}}};evidenceLinks:{include:{evidence:true}}}}>;
 export interface CalculationData {
+    transactions?: LedgerTransaction[];
     period: TaxPeriod;
     incomes: (TaxIncome & Linked)[];
     deductions: (TaxDeduction & Linked)[];
@@ -64,14 +67,14 @@ export interface CalculationData {
     }>[];
 }
 export type TaxSource = {id:string;amountHnl:string|null;[key:string]:unknown};
-type PreparationSources = {incomes:TaxSource[];deductions:TaxSource[];credits:TaxSource[];reversalReviewIncomeIds:string[];candidates:unknown[];reconciliations:unknown[]};
+type PreparationSources = {incomes:TaxSource[];deductions:TaxSource[];credits:TaxSource[];reversalReviewIncomeIds:string[];candidates:unknown[];reconciliations:unknown[];transactions:unknown[]};
 type Reader = PrismaClient | Prisma.TransactionClient;
 export const previewSchema = z.object({ periodId: z.string().uuid(), simulation: z.object({ additionalIncomeHnl: nonnegativeHnlSchema }).strict().optional() }).strict();
 export async function loadCalculationData(db: Reader, userId: string, periodId: string): Promise<CalculationData> {
     const period = await ownedPeriod(db as Prisma.TransactionClient, userId, periodId);
     const where = { userId, periodId };
     const take = 5001;
-    const [incomes, deductions, credits, evidences, reversals, rule, candidates, reconciliations] = await Promise.all([
+    const [incomes, deductions, credits, evidences, reversals, rule, candidates, reconciliations, transactions] = await Promise.all([
         db.taxIncome.findMany({
             where, take, include: { evidenceLinks: { include: { evidence: true } } }, orderBy: { id: 'asc' }
         }),
@@ -100,13 +103,14 @@ export async function loadCalculationData(db: Reader, userId: string, periodId: 
                         id: true, status: true, revision: true, date: true
                     } } }, orderBy: { id: 'asc' }
         }),
+        db.taxTransaction.findMany({where,take,include:{postings:{orderBy:{id:'asc'},include:{account:{select:{userId:true,owned:true}}}},evidenceLinks:{include:{evidence:true}}},orderBy:{id:'asc'}}),
     ]);
     if ([
-        incomes, deductions, credits, evidences, reversals, candidates, reconciliations
+        incomes, deductions, credits, evidences, reversals, candidates, reconciliations, transactions
     ].some(rows => rows.length > 5000))
         fail('El ejercicio supera el límite de preparación de 5000 registros por tipo.');
     return {
-        period, incomes, deductions, credits, evidences, candidates, reconciliations, reversalReviewIncomeIds: [...new Set(reversals.map(r => r.incomeId))].sort(), rule
+        period, incomes, deductions, credits, evidences, candidates, reconciliations, transactions, reversalReviewIncomeIds: [...new Set(reversals.map(r => r.incomeId))].sort(), rule
     };
 }
 function rulePayload() { const { checksum, ...payload } = HN_ISR_2026; void checksum; return payload; }
@@ -121,7 +125,50 @@ function sourceRecord<T extends Linked>(row: T) {
     const { evidenceLinks, ...record } = row;
     return { ...record, evidenceIds: evidenceLinks.map(link => link.evidence.id).sort() };
 }
-function mappedFields(items: TaxItem[], labels: Record<string, string>, calculation: ReturnType<typeof calculateTax> | null, info: PeriodInformation | null) {
+function quantity(value: string | Prisma.Decimal) { return decimal(typeof value === 'string' ? value : value.toFixed()); }
+/** Covers cash events separately from recognized income; never derives tax or cost basis. */
+function ledgerCoverage(data:CalculationData,info:PeriodInformation|null,includeEvidence:(id?:string)=>boolean,items:TaxItem[],labels:Record<string,string>):string[] {
+    const pending:string[]=[];
+    const linkedReceipts=new Set((data.reconciliations??[]).map(row=>row.transactionId));
+    for(const tx of data.transactions??[]) {
+        const mark=(code:string)=>pending.push(`${tx.id}:${code}`);
+        if(tx.userId!==data.period.userId||tx.periodId!==data.period.id) {mark('TRANSACTION_SCOPE_MISMATCH');continue;}
+        if(tx.status==='DISCARDED') continue;
+        if(tx.status==='DRAFT') {mark('TRANSACTION_DRAFT');continue;}
+        if(!['POSTED','REVERSED'].includes(tx.status)) {mark('TRANSACTION_STATUS_PENDING');continue;}
+        if(tx.date.getUTCFullYear()!==data.period.year) mark('TRANSACTION_YEAR_MISMATCH');
+        if(!tx.postings.length||tx.postings.some(p=>p.userId!==data.period.userId||p.account.userId!==data.period.userId||!p.account.owned)) {mark('TRANSACTION_POSTINGS_INVALID');continue;}
+        if(tx.kind==='OWN_TRANSFER') {
+            const accounts = new Set(tx.postings.map(p => p.accountId));
+            const assets = new Set(tx.postings.map(p => p.assetKey));
+            const total = tx.postings.reduce((sum,p) => sum.plus(quantity(p.quantity)),decimal('0'));
+            if(tx.postings.length<2||accounts.size<2||assets.size!==1||!total.eq(0)||tx.postings.some(p=>quantity(p.quantity).eq(0))) mark('OWN_TRANSFER_INVALID');
+            continue;
+        }
+        const docs=tx.evidenceLinks.filter(link=>includeEvidence(link.evidence.id));
+        if(tx.kind==='OPENING_BALANCE') {
+            if(!docs.length) mark('OPENING_EVIDENCE_REQUIRED');
+            if(tx.postings.some(p=>quantity(p.quantity).lt(0))) mark('OPENING_POSTINGS_INVALID');
+        }
+        const tokenDisposal=tx.postings.some(p=>p.assetKind==='TOKEN'&&quantity(p.quantity).lt(0));
+        const needsReview=tx.kind==='CONVERSION'||tokenDisposal||['ADJUSTMENT','REVERSAL'].includes(tx.kind)||(tx.kind==='EXTERNAL_RECEIPT'&&!linkedReceipts.has(tx.id))||!['OPENING_BALANCE','PAYMENT','FEE','EXTERNAL_RECEIPT'].includes(tx.kind);
+        for(const posting of tx.postings) {
+            if(posting.amountHnl===null||(posting.assetKind==='TOKEN'&&!posting.valuation)) mark('TRANSACTION_VALUATION_MISSING');
+            for(const id of valuationEvidenceIds(posting.valuation)) if(!includeEvidence(id)) mark('TRANSACTION_VALUATION_EVIDENCE_UNAVAILABLE');
+        }
+        if(!needsReview) continue;
+        const review=info?.reviews.find(r=>r.kind==='transaction'&&r.recordId===tx.id&&includeEvidence(r.evidenceId));
+        const allowed=['No gravables','Otros ingresos gravables','Honorarios','Sueldos','Gastos','Deducciones'];
+        if(!review?.method||!review.mappingLabel||!allowed.includes(review.mappingLabel)) {mark('TRANSACTION_TREATMENT_PENDING');continue;}
+        if(review.mappingLabel!=='No gravables') {
+            const ids=review.relatedRecordIds;
+            if(!ids.length||ids.some(id=>!items.some(item=>item.id===id&&item.treatment!=='PENDING'&&labels[id]===review.mappingLabel))) mark('TRANSACTION_RECOGNIZED_RECORD_REQUIRED');
+        }
+    }
+    return pending;
+}
+function mappedFields(items: TaxItem[], labels: Record<string, string>, calculation: ReturnType<typeof calculateTax> | null, info: PeriodInformation | null, economicComplete:boolean) {
+    const unmapped=items.filter(item=>!labels[item.id]);
     const groups = [
         [
             'salary', 'Sueldos', 'A', '14–20'
@@ -151,7 +198,7 @@ function mappedFields(items: TaxItem[], labels: Record<string, string>, calculat
         const admitted = sources.filter(item => item.treatment === 'ADMITTED' && item.amountHnl !== undefined);
         const total = admitted.reduce((sum, item) => sum.plus(item.amountHnl!), decimal('0'));
         return {
-            key, label, section, manualVersion: MAPPING_VERSION, pages, aggregation: 'SUM_ADMITTED_SOURCE_AMOUNTS', sourceIds: sources.map(item => item.id), amountHnl: money(total), partial: sources.some(item => item.treatment === 'PENDING')
+            key, label, section, manualVersion: MAPPING_VERSION, pages, aggregation: 'SUM_ADMITTED_SOURCE_AMOUNTS', sourceIds: sources.map(item => item.id), amountHnl: sources.length || economicComplete ? money(total) : null, partial: !economicComplete || sources.some(item => item.treatment === 'PENDING')
         };
     });
     const derived = [
@@ -170,8 +217,8 @@ function mappedFields(items: TaxItem[], labels: Record<string, string>, calculat
         ]
     ];
     return [...fields, ...derived.map(([key, label, section, pages, amountHnl]) => ({
-            key, label, section, pages, manualVersion: MAPPING_VERSION, aggregation: section === 'B' ? 'MANUAL_INFORMATION' : 'CALCULATION_RESULT', sourceIds: [] as string[], amountHnl: amountHnl ?? null, partial: !amountHnl
-        }))];
+            key, label, section, pages, manualVersion: MAPPING_VERSION, aggregation: section === 'B' ? 'MANUAL_INFORMATION' : 'CALCULATION_RESULT', sourceIds: [] as string[], amountHnl: amountHnl ?? null, partial: amountHnl === undefined || (section === 'B' ? !info?.sectionB.complete : !economicComplete)
+        })),...unmapped.map(item=>({key:`unmapped:${item.id}`,label:'Registro pendiente sin etiqueta verificada',section:'PENDING',pages:null,manualVersion:MAPPING_VERSION,aggregation:'UNMAPPED_SOURCE_AMOUNT',sourceIds:[item.id],amountHnl:item.amountHnl??null,partial:true}))];
 }
 /** Only explicit documentary reviews admit amounts; this is not a legal certification. */
 export function buildPreparation(data: CalculationData) {
@@ -192,14 +239,14 @@ export function buildPreparation(data: CalculationData) {
     const valid = (e: TaxEvidence) => e.userId === period.userId && e.periodId === period.id && e.status === 'AVAILABLE' && /^[a-f0-9]{64}$/i.test(e.sha256);
     const evidence = new Map(data.evidences.filter(valid).map(e => [e.id, e]));
     const used = new Set<string>();
-    const use = (id?: string) => { if (!id || !evidence.has(id))
+    const includeEvidence = (id?: string) => { if (!id || !evidence.has(id))
         return false; used.add(id); return true; };
-    const rounding = !!(period.roundingConfirmed && period.roundingReason.trim() && info?.roundingReason === period.roundingReason && use(info.roundingEvidenceId));
+    const rounding = !!(period.roundingConfirmed && period.roundingReason.trim() && info?.roundingReason === period.roundingReason && includeEvidence(info.roundingEvidenceId));
     if (!rounding)
         pending.push('ROUNDING_REVIEW_REQUIRED');
-    if (profile.success && profile.data.individualMerchant && (!info?.accountant || !use(info.priorFinancialEvidenceId)))
+    if (profile.success && profile.data.individualMerchant && (!info?.accountant || !includeEvidence(info.priorFinancialEvidenceId)))
         pending.push('MERCHANT_ACCOUNTANT_OR_PRIOR_FINANCIAL_REQUIRED');
-    const review = (kind: z.infer<typeof reviewSchema>['kind'], id: string) => info?.reviews.find(r => r.kind === kind && r.recordId === id && use(r.evidenceId));
+    const review = (kind: z.infer<typeof reviewSchema>['kind'], id: string) => info?.reviews.find(r => r.kind === kind && r.recordId === id && includeEvidence(r.evidenceId));
     const labels: Record<string, string> = {};
     const supportedIncome: Record<string, z.infer<typeof labelSchema>> = {
         SALARY: 'Sueldos', SUELDOS: 'Sueldos', HONORARIOS: 'Honorarios', OTHER_TAXABLE: 'Otros ingresos gravables'
@@ -213,7 +260,7 @@ export function buildPreparation(data: CalculationData) {
         if (!row.legalReference.trim() || !row.treatmentReason.trim() || !['ADMITTED', 'EXEMPT', 'NOT_APPLICABLE'].includes(row.treatment))
             mark('TREATMENT_PENDING');
         const linkedAvailable = row.evidenceLinks.filter(link => valid(link.evidence));
-        for (const link of linkedAvailable) use(link.evidence.id);
+        for (const link of linkedAvailable) includeEvidence(link.evidence.id);
         if (!linkedAvailable.length)
             mark('EVIDENCE_REQUIRED');
         let amount = row.amountHnl?.toString();
@@ -252,7 +299,7 @@ export function buildPreparation(data: CalculationData) {
             mark('VALUATION_MISSING');
         const valuationIds = valuationEvidenceIds('valuation' in row ? row.valuation : null);
         for (const id of valuationIds)
-            if (!use(id))
+            if (!includeEvidence(id))
                 mark('VALUATION_EVIDENCE_UNAVAILABLE');
         if (kind !== 'income') {
             const proposed = row as TaxDeduction | TaxCredit;
@@ -273,6 +320,8 @@ export function buildPreparation(data: CalculationData) {
     const incomes = data.incomes.map(r => mapItem(r, 'income'));
     const deductions = data.deductions.map(r => mapItem(r, 'deduction'));
     const credits = data.credits.map(r => mapItem(r, 'credit'));
+    const ledgerPending=ledgerCoverage(data,info,includeEvidence,[...incomes,...deductions,...credits],labels);
+    pending.push(...ledgerPending);
     const components = [...incomes, ...deductions, ...credits].map(r => r.componentId);
     const duplicate = new Set(components).size !== components.length;
     if (duplicate)
@@ -289,7 +338,7 @@ export function buildPreparation(data: CalculationData) {
         id: e.id, name: e.name, mime: e.mime, size: e.size, sha256: e.sha256
     }; });
     const sources: PreparationSources = dto({
-        incomes: data.incomes.map(sourceRecord), deductions: data.deductions.map(sourceRecord), credits: data.credits.map(sourceRecord), reversalReviewIncomeIds: data.reversalReviewIncomeIds, candidates: data.candidates ?? [], reconciliations: data.reconciliations ?? []
+        incomes: data.incomes.map(sourceRecord), deductions: data.deductions.map(sourceRecord), credits: data.credits.map(sourceRecord), reversalReviewIncomeIds: data.reversalReviewIncomeIds, candidates: data.candidates ?? [], reconciliations: data.reconciliations ?? [], transactions:(data.transactions??[]).map(sourceRecord)
     });
     // Lifecycle revision/status are deliberately excluded; every economic input is frozen.
     const inputs: unknown = dto({
@@ -298,7 +347,7 @@ export function buildPreparation(data: CalculationData) {
     const issues = [...new Set(pending)];
     return {
         status: issues.length === 0 ? 'READY' as const : calculation ? 'IN_REVIEW' as const : 'DRAFT' as const, inputHash: taxHash(inputs), inputs, sources, calculation, coverage: {complete: issues.length === 0, includedIds: calculation?.coverage.includedIds ?? [], excludedIds: calculation?.coverage.excludedIds ?? [...incomes,...deductions,...credits].map(item=>item.id)}, pending: issues, manifest, ruleVersion: rulesAvailable ? HN_ISR_2026.version : 'UNAVAILABLE', mappingVersion: MAPPING_VERSION, form: {
-            fields: mappedFields([...incomes, ...deductions, ...credits], labels, calculation, info), A: {
+            fields: mappedFields([...incomes, ...deductions, ...credits], labels, calculation, info, !!calculation?.coverage.complete && !issues.some(issue=>!['PROFILE_INCOMPLETE','SECTION_B_INCOMPLETE','MERCHANT_ACCOUNTANT_OR_PRIOR_FINANCIAL_REQUIRED'].includes(issue))), A: {
                 labels, admittedIncome: calculation?.admittedIncome ?? null, deductions: calculation?.deductions ?? null, base: calculation?.base ?? null
             }, B: info?.sectionB ?? null, C: { credits: calculation?.credits ?? null }, D: {
                 tax: calculation?.tax ?? null, balanceDue: calculation?.balanceDue ?? null, excessCredit: calculation?.excessCredit ?? null

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fixture, ledgerTransaction } from './return-fixtures';
 const state = vi.hoisted(() => ({
     profileSnapshot:{rtn:''}, revision: 2, status: 'OPEN', returns: [] as any[], preparation: {
         inputs: { profile: { rtn: '12345678901234' } }, status: 'READY', inputHash: 'stable', manifest: [{ id: '11111111-1111-4111-8111-111111111111' }], ruleVersion: 'HN-ISR-2026-v1', mappingVersion: 'labels', pending: []
@@ -47,4 +48,5 @@ describe('immutable fiscal lifecycle', () => {
     }); await expect(reportFiled(db, 'u', {
         ...base, expectedRevision: 4, returnId: r.id, filingReference: 'RTN manual ref', rtn: '12345678901234', receiptEvidenceId: '11111111-1111-4111-8111-111111111111', reportedFiledAt: '2026-11-08T12:00:00.000Z'
     })).rejects.toThrow(); });
+    it('refuses close for an independently recorded conversion without an income or candidate',async()=>{const actual=await vi.importActual<typeof import('@/server/services/tax/calculation-service')>('@/server/services/tax/calculation-service');const f=fixture();(f as any).transactions=[ledgerTransaction('CONVERSION')];state.preparation=actual.buildPreparation(f as never) as any;const record=await prepareReturn(db,'u',base);expect(record.status).toBe('IN_REVIEW');await expect(closeReturn(db,'u',{...base,expectedRevision:3,returnId:record.id})).rejects.toThrow('no está listo');expect(state.status).toBe('OPEN');});
 });
