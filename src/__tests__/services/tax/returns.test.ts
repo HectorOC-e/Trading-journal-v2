@@ -63,3 +63,7 @@ describe('ledger coverage precision and structure',()=>{
  it('accepts a three leg transfer conserved across own accounts',()=>{const f=fixture(); const tx=ledgerTransaction('OWN_TRANSFER'); const first=tx.postings[0]; (f as any).transactions=[{...tx,postings:[first,{...first,id:'b',accountId:'b',quantity:'4',amountHnl:'4'},{...first,id:'c',accountId:'c',quantity:'6',amountHnl:'6'}]}];expect(buildPreparation(f as never).status).toBe('READY');});
  it('accepts the minimum token quantity in a real Decimal own transfer',()=>{const f=fixture();const tx=ledgerTransaction('OWN_TRANSFER');(f as any).transactions=[{...tx,postings:tx.postings.map((p,index)=>({...p,assetKind:'TOKEN',assetKey:'token',quantity:new Prisma.Decimal(index?'0.000000000000000001':'-0.000000000000000001')}))}];expect(buildPreparation(f as never).status).toBe('READY');});
 });
+
+describe('new year preparation',()=>{
+ it('returns incomplete coverage for untouched database defaults instead of throwing',()=>{const f=fixture(); f.period.roundingConfirmed=false; f.period.roundingReason=''; f.period.information={} as never; f.incomes=[]; f.evidences=[]; const result=buildPreparation(f as never); expect(result.status).toBe('IN_REVIEW'); expect(result.coverage.complete).toBe(false); expect(result.pending).toContain('ROUNDING_REVIEW_REQUIRED'); expect(result.pending).toContain('SECTION_B_INCOMPLETE'); expect(result.form.fields.find(field=>field.key==='isr')?.partial).toBe(true);});
+});

@@ -125,7 +125,8 @@ function sourceRecord<T extends Linked>(row: T) {
     const { evidenceLinks, ...record } = row;
     return { ...record, evidenceIds: evidenceLinks.map(link => link.evidence.id).sort() };
 }
-function quantity(value: string | Prisma.Decimal) { return decimal(typeof value === 'string' ? value : value.toFixed()); }
+function plainDecimal(value: string | Prisma.Decimal) { return typeof value === 'string' ? value : value.toFixed(); }
+function quantity(value: string | Prisma.Decimal) { return decimal(plainDecimal(value)); }
 /** Covers cash events separately from recognized income; never derives tax or cost basis. */
 function ledgerCoverage(data:CalculationData,info:PeriodInformation|null,includeEvidence:(id?:string)=>boolean,items:TaxItem[],labels:Record<string,string>):string[] {
     const pending:string[]=[];
@@ -263,7 +264,7 @@ export function buildPreparation(data: CalculationData) {
         for (const link of linkedAvailable) includeEvidence(link.evidence.id);
         if (!linkedAvailable.length)
             mark('EVIDENCE_REQUIRED');
-        let amount = row.amountHnl?.toString();
+        let amount = row.amountHnl === null ? undefined : plainDecimal(row.amountHnl);
         let label: string | undefined;
         if (kind === 'income') {
             const income = row as TaxIncome & Linked;
@@ -284,7 +285,7 @@ export function buildPreparation(data: CalculationData) {
         }
         else {
             const proposed = row as TaxDeduction | TaxCredit;
-            amount = proposed.admittedHnl?.toString();
+            amount = proposed.admittedHnl === null ? undefined : plainDecimal(proposed.admittedHnl);
             const allowed = kind === 'deduction' ? ['Gastos', 'Deducciones'] : [
                 'Retenciones salariales/art.50', 'Pagos a cuenta', 'Pagos del período', 'Excedente anterior'
             ];
@@ -306,8 +307,8 @@ export function buildPreparation(data: CalculationData) {
             if (proposed.date.getUTCFullYear() !== period.year)
                 mark('APPLICATION_YEAR_MISMATCH');
             if (proposed.admittedHnl !== null && proposed.amountHnl !== null) {
-                const available = kind === 'credit' ? decimal(proposed.amountHnl.toString()).minus((proposed as TaxCredit).previouslyAppliedHnl.toString()) : decimal(proposed.amountHnl.toString());
-                if (decimal(proposed.admittedHnl.toString()).lt(0) || decimal(proposed.admittedHnl.toString()).gt(available))
+                const available = kind === 'credit' ? decimal(plainDecimal(proposed.amountHnl)).minus(plainDecimal((proposed as TaxCredit).previouslyAppliedHnl)) : decimal(plainDecimal(proposed.amountHnl));
+                if (decimal(plainDecimal(proposed.admittedHnl)).lt(0) || decimal(plainDecimal(proposed.admittedHnl)).gt(available))
                     mark('ECONOMIC_CAP_EXCEEDED');
             }
         }
@@ -330,7 +331,7 @@ export function buildPreparation(data: CalculationData) {
     if (!rulesAvailable)
         pending.push('RULES_UNAVAILABLE');
     const calculation = rulesAvailable && !duplicate ? calculateTax({
-        country: 'HN', year: 2026, regime: period.regime, ruleSetVersion: HN_ISR_2026.version, incomes, deductions, credits, roundingConfirmed: rounding, roundingReason: period.roundingReason
+        country: 'HN', year: 2026, regime: period.regime, ruleSetVersion: HN_ISR_2026.version, incomes, deductions, credits, roundingConfirmed: rounding, roundingReason: period.roundingReason.trim() || undefined
     }) : null;
     if (calculation)
         pending.push(...calculation.pending);
