@@ -762,7 +762,7 @@ GRANT SELECT ON public.tax_rule_sets TO authenticated;
 CREATE POLICY tax_rule_sets_read ON public.tax_rule_sets FOR SELECT TO authenticated USING (published);
 ALTER TABLE public.tax_profiles ADD CONSTRAINT tax_profiles_values_check CHECK (country ~ '^[A-Z]{2}$' AND (rtn = '' OR rtn ~ '^[0-9]{14}$'));
 ALTER TABLE public.tax_periods ADD CONSTRAINT tax_periods_values_check CHECK (year BETWEEN 2000 AND 2200 AND status IN ('OPEN','CLOSED'));
-ALTER TABLE public.tax_asset_accounts ADD CONSTRAINT tax_asset_accounts_values_check CHECK (kind IN ('BANK','EXCHANGE','WALLET','TRANSIT','CASH'));
+ALTER TABLE public.tax_asset_accounts ADD CONSTRAINT tax_asset_accounts_values_check CHECK (kind IN ('BANK','EXCHANGE','WALLET','IN_TRANSIT','CASH'));
 ALTER TABLE public.tax_transactions ADD CONSTRAINT tax_transactions_values_check CHECK (status IN ('DRAFT','POSTED','REVERSED') AND kind IN ('OPENING_BALANCE','EXTERNAL_RECEIPT','OWN_TRANSFER','CONVERSION','PAYMENT','FEE','ADJUSTMENT','REVERSAL'));
 ALTER TABLE public.tax_postings ADD CONSTRAINT tax_postings_values_check CHECK (quantity <> 0 AND asset_kind IN ('FIAT','TOKEN') AND (amount_hnl IS NULL OR amount_hnl >= 0));
 ALTER TABLE public.tax_incomes ADD CONSTRAINT tax_incomes_values_check CHECK (gross_amount > 0 AND fee_amount >= 0 AND withheld_amount >= 0 AND net_amount >= 0 AND gross_amount = net_amount + fee_amount + withheld_amount AND (amount_hnl IS NULL OR amount_hnl >= 0));

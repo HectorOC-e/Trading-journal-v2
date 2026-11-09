@@ -23,5 +23,5 @@ export function validatePostings(input:unknown):TaxTransaction {
 export function calculateBalances(events:TaxTransaction[]):{accountId:string;asset:TaxAsset;quantity:string}[]{
  const balances=new Map<string,{accountId:string;asset:TaxAsset;quantity:InstanceType<typeof TaxDecimal>}>();
  for(const event of events)for(const p of validatePostings(event).postings){const key=JSON.stringify([p.accountId,assetKey(p.asset)]);const old=balances.get(key);const quantity=(old?.quantity??new TaxDecimal(0)).plus(decimal(p.quantity));if(quantity.lt(0))throw new Error('Insufficient recorded balance');if(quantity.gt(decimal('99999999999999999999.999999999999999999')))throw new Error('Balance exceeds numeric(38,18) precision');balances.set(key,{accountId:p.accountId,asset:p.asset,quantity});}
- return [...balances.values()].map(b=>({...b,quantity:b.quantity.toString()}));
+ return [...balances.values()].map(b=>({...b,quantity:b.quantity.toFixed()}));
 }
