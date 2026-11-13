@@ -4,6 +4,17 @@ import { HN_ISR_2026 } from '@/domains/tax/rules/hn/2026';
 import { fixture, doc, ledgerTransaction } from './return-fixtures';
 import { Prisma } from '@/lib/generated/prisma/client';
 describe('fiscal preparation coverage', () => {
+    it.each(['income', 'deduction', 'credit'])('keeps a new %s without legal basis pending instead of rejecting preparation', kind => {
+        const f = fixture();
+        const row = { ...f.incomes[0], id: 'unclassified', treatment: 'PENDING', legalReference: '', treatmentReason: '', date: new Date('2026-01-01'), componentKey: 'qa:unclassified', admittedHnl: null, previouslyAppliedHnl: '0', kind: kind === 'deduction' ? 'EXPENSE' : 'WITHHOLDING' };
+        if (kind === 'income') f.incomes = [row] as never;
+        else if (kind === 'deduction') f.deductions = [row] as never;
+        else f.credits = [row] as never;
+        const result = buildPreparation(f as never);
+        expect(result.status).not.toBe('READY');
+        expect(result.pending).toContain('unclassified:TREATMENT_PENDING');
+    });
+
     it('admits a supported documented salary without inventing deductions', () => { const r = buildPreparation(fixture() as never); expect(r.status).toBe('READY'); expect(r.calculation?.admittedIncome).toBe('300000.00'); expect(r.calculation?.deductions).toBe('0.00'); });
     it.each([
         'rtn', 'B', 'rounding', 'recognition', 'valuation', 'evidence', 'merchant', 'FTMO', 'reversal', 'rules'

@@ -315,7 +315,7 @@ export function buildPreparation(data: CalculationData) {
         if (label)
             labels[row.id] = label;
         return {
-            id: row.id, componentId: kind === 'income' ? `income:${row.id}` : (row as TaxDeduction | TaxCredit).componentKey, amountHnl: amount, treatment: complete ? row.treatment as TaxItem['treatment'] : 'PENDING', legalBasis: row.legalReference
+            id: row.id, componentId: kind === 'income' ? `income:${row.id}` : (row as TaxDeduction | TaxCredit).componentKey, amountHnl: amount, treatment: complete ? row.treatment as TaxItem['treatment'] : 'PENDING', legalBasis: row.legalReference.trim() || undefined
         };
     };
     const incomes = data.incomes.map(r => mapItem(r, 'income'));
