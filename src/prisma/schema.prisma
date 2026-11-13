@@ -96,6 +96,7 @@ model User {
   taxDeductionEvidenceRecords TaxDeductionEvidence[]
   taxCreditEvidenceRecords TaxCreditEvidence[]
   taxReturnEvidenceRecords TaxReturnEvidence[]
+  taxRuleDeliveries TaxRuleDelivery[]
 
   @@map("users")
 }
@@ -1798,9 +1799,72 @@ model TaxRuleSet {
   payload   Json
   checksum  String
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updates TaxRuleUpdate[]
 
   @@unique([country, regime, year, version])
   @@map("tax_rule_sets")
+}
+
+// Public normative metadata; raw sources and private user data are never mixed.
+model TaxRuleUpdate {
+  id String @id @default(uuid()) @db.Uuid
+  semanticKey String @unique @map("semantic_key")
+  country String @default("HN")
+  regime String @default("NATURAL_ORDINARY")
+  year Int
+  status String
+  ruleSetId String? @map("rule_set_id")
+  sourceUrl String @map("source_url")
+  agreement String?
+  sourceDigest String @map("source_digest")
+  changes Json @default("[]")
+  reasonCode String? @map("reason_code")
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  fanoutComplete Boolean @default(false) @map("fanout_complete")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ruleSet TaxRuleSet? @relation(fields:[ruleSetId],references:[id],onDelete:Restrict)
+  deliveries TaxRuleDelivery[]
+  @@index([year,publishedAt(sort:Desc)])
+  @@index([status,fanoutComplete,publishedAt])
+  @@map("tax_rule_updates")
+}
+
+// Server-only lease and health record for the daily source check.
+model TaxRuleSyncState {
+  id String @id
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  lastAttemptAt DateTime? @map("last_attempt_at") @db.Timestamptz(6)
+  lastSuccessAt DateTime? @map("last_success_at") @db.Timestamptz(6)
+  nextCheckAt DateTime @default(now()) @map("next_check_at") @db.Timestamptz(6)
+  status String @default("NOT_CHECKED")
+  reasonCode String? @map("reason_code")
+  @@map("tax_rule_sync_state")
+}
+
+model TaxRuleDelivery {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  updateId String @map("update_id") @db.Uuid
+  inAppStatus String @default("PENDING") @map("in_app_status")
+  emailStatus String @default("PENDING") @map("email_status")
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseUntil DateTime? @map("lease_until") @db.Timestamptz(6)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  firstEmailAttemptAt DateTime? @map("first_email_attempt_at") @db.Timestamptz(6)
+  lastEmailAttemptAt DateTime? @map("last_email_attempt_at") @db.Timestamptz(6)
+  emailAttempts Int @default(0) @map("email_attempts")
+  notifiedAt DateTime? @map("notified_at") @db.Timestamptz(6)
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(6)
+  emailProviderId String? @map("email_provider_id")
+  reasonCode String? @map("reason_code")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  update TaxRuleUpdate @relation(fields:[updateId],references:[id],onDelete:Cascade)
+  @@unique([userId,updateId])
+  @@index([inAppStatus,emailStatus,nextAttemptAt])
+  @@map("tax_rule_deliveries")
 }
 
 // Operational intent deliberately survives User/evidence cascades, like the
