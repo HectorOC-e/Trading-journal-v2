@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bd50786f`
+- Built from commit: `d0435c2d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -205,7 +205,7 @@
 - Stack: Next.js 16 + tRPC v11 + Prisma 7 + Supabase
 - CoachMemory (commitments + fulfillment) proposal
 - Notifications P0–P3 with Per-Category Preferences
-- 20261113192933_fiscal_rule_updates.sql
+- 20261113202535_20261113192933_fiscal_rule_updates.sql
 - Tags Catalog (color/icon/category)
 - Next.js Agent Rules (breaking-changes warning)
 - 2026-11-01-learning-timezone-streak-clock.md
@@ -1234,7 +1234,7 @@ Nodes (5): idx_notifications_user_created, idx_notifications_user_read, notifica
 Cohesion: 0.50
 Nodes (3): public.app_setting(), public.app_settings, public.app_setting()
 
-### Community 208 - "20261113192933_fiscal_rule_updates.sql"
+### Community 208 - "20261113202535_20261113192933_fiscal_rule_updates.sql"
 Cohesion: 0.33
 Nodes (8): "tax_rule_deliveries", tax_rule_deliveries_in_app_status_email_status_next_attempt_idx, tax_rule_deliveries_user_id_update_id_key, "tax_rule_sync_state", "tax_rule_updates", tax_rule_updates_semantic_key_key, tax_rule_updates_status_fanout_complete_published_at_idx, tax_rule_updates_year_published_at_idx
 
