@@ -61,16 +61,16 @@ async function fanOut(db: PrismaClient, now: Date) {
         { id: string }[]
       >`SELECT id FROM public.tax_rule_updates WHERE id=${update.id}::uuid AND NOT fanout_complete FOR UPDATE SKIP LOCKED`;
       if (!locked.length) return 0;
-      const profiles = await tx.taxProfile.findMany({
-        where: {
-          country: "HN",
-          createdAt: { lte: update.publishedAt! },
-          user: { taxRuleDeliveries: { none: { updateId: update.id } } },
-        },
-        select: { userId: true },
-        orderBy: { userId: "asc" },
-        take: 100,
-      });
+      // Exclude blocked users before limiting the page. Filtering afterwards
+      // would revisit the same first 100 deletion jobs on every invocation.
+      const profiles = await tx.$queryRaw<{ userId: string }[]>`
+        SELECT p.user_id AS "userId" FROM public.tax_profiles p
+        WHERE p.country='HN' AND p.created_at <= ${update.publishedAt!}
+          AND NOT EXISTS (SELECT 1 FROM public.tax_rule_deliveries d
+            WHERE d.user_id=p.user_id AND d.update_id=${update.id}::uuid)
+          AND NOT EXISTS (SELECT 1 FROM public.account_deletion_jobs j
+            WHERE j.user_id=p.user_id)
+        ORDER BY p.user_id LIMIT 100`;
       if (!profiles.length) {
         await tx.taxRuleUpdate.update({
           where: { id: update.id },
@@ -78,14 +78,8 @@ async function fanOut(db: PrismaClient, now: Date) {
         });
         return 0;
       }
-      const jobs = await tx.accountDeletionJob.findMany({
-        where: { userId: { in: profiles.map((p) => p.userId) } },
-        select: { userId: true },
-      });
-      const blocked = new Set(jobs.map((j) => j.userId));
-      const recipients = profiles.filter((p) => !blocked.has(p.userId));
       const result = await tx.taxRuleDelivery.createMany({
-        data: recipients.map((p) => ({
+        data: profiles.map((p) => ({
           userId: p.userId,
           updateId: update.id,
           nextAttemptAt: now,
@@ -201,7 +195,7 @@ export async function deliverTaxRuleUpdates(
   };
   const pending = await db.taxRuleDelivery.findMany({
     where: due,
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    orderBy: [{ nextAttemptAt: "asc" }, { createdAt: "asc" }, { id: "asc" }],
     select: { id: true },
     take: 30,
   });

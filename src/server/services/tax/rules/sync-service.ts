@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { lockFiscalRulePublication } from "./publication-lock";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma/client";
 import { validateRuleSet, type HnRuleSet } from "@/domains/tax/rules/rule-set";
 import {
@@ -46,7 +47,14 @@ export async function publishSarCandidate(
 ) {
   return db.$transaction(
     async (tx) => {
-      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('HN-ISR-RULE-PUBLICATION'))`;
+      await lockFiscalRulePublication(tx);
+      await tx.taxRuleUpdate.updateMany({
+        where: {
+          semanticKey: "review-" + digest(candidate.sourceUrl),
+          status: "REVIEW_REQUIRED",
+        },
+        data: { status: "UNCHANGED", reasonCode: "RESOLVED_SOURCE_CHECK" },
+      });
       const existing = await tx.taxRuleUpdate.findUnique({
         where: { semanticKey: candidate.semanticKey },
       });
@@ -239,7 +247,7 @@ export async function syncTaxRules(
           error instanceof SarSourceError
             ? error.code
             : "DOCUMENT_REQUIRES_REVIEW";
-        await saveReview(db, url, source.html, code);
+        await saveReview(db, source.url, source.html, code);
         reviewRequired++;
         continue;
       }

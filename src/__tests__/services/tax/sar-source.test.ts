@@ -58,15 +58,26 @@ describe("official SAR annual adjustment parser", () => {
       discoverSarRulePages(index, new Date("2026-11-13T12:00:00Z")),
     ).toEqual([url]);
   });
+  it("prioritizes the newest annual agreements before bounding discovery", () => {
+    const urls = Array.from(
+      { length: 9 },
+      (_, i) => `https://www.sar.gob.hn/download/acuerdo-sar-01-${2026 + i}/`,
+    );
+    const found = discoverSarRulePages(
+      urls.map((u) => `<a href="${u}">SAR</a>`).join(""),
+      new Date("2033-11-13T12:00:00Z"),
+    );
+    expect(found).toHaveLength(8);
+    expect(found[0]).toBe(urls[8]);
+    expect(found).not.toContain(urls[0]);
+  });
   it("rejects a redirect to an unrelated host before making another request", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(null, {
-          status: 302,
-          headers: { location: "https://attacker.test/payload" },
-        }),
-      );
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 302,
+        headers: { location: "https://attacker.test/payload" },
+      }),
+    );
     await expect(fetchSarPage(url, fetcher)).rejects.toThrow();
     expect(fetcher).toHaveBeenCalledTimes(1);
   });

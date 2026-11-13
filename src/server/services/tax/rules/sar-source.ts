@@ -209,7 +209,15 @@ export function discoverSarRulePages(html: string, now: Date): string[] {
       /* Ignore unrelated navigation links. */
     }
   }
-  return [...result].sort().slice(0, 8);
+  const rank = (value: string) => {
+    const m = new URL(value).pathname.match(
+      /sar-(\d{1,4})-(20\d{2})(?:-|\/|$)/i,
+    )!;
+    return Number(m[2]) * 10_000 + Number(m[1]);
+  };
+  return [...result]
+    .sort((a, b) => rank(b) - rank(a) || a.localeCompare(b))
+    .slice(0, 8);
 }
 
 /** No remote HTML execution, arbitrary redirects, unbounded streams or credentials. */

@@ -268,6 +268,76 @@ describe.skipIf(!db)("complete fiscal lifecycle on isolated PostgreSQL", () => {
       .$queryRaw`SELECT jsonb_build_object('accounts',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.id) FROM public.accounts a WHERE a.user_id=${owner}::uuid),'trades',(SELECT jsonb_agg(to_jsonb(t) ORDER BY t.id) FROM public.trades t WHERE t.user_id=${owner}::uuid),'withdrawals',(SELECT jsonb_agg(to_jsonb(w) ORDER BY w.id) FROM public.withdrawals w WHERE w.user_id=${owner}::uuid)) AS snapshot`;
   }
 
+  it("waits for rule publication before validating and closing the return", async () => {
+    await readyYear();
+    const prepared = await prepareReturn(db!, owner, await identity());
+    let unlock!: () => void,
+      locked!: () => void,
+      captured!: (pid: number) => void;
+    const hold = new Promise<void>((resolve) => {
+      unlock = resolve;
+    });
+    const acquired = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
+    const closingPid = new Promise<number>((resolve) => {
+      captured = resolve;
+    });
+    const publication = db!.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('HN-ISR-RULE-PUBLICATION'))`;
+        locked();
+        await hold;
+      },
+      { timeout: 15_000 },
+    );
+    await acquired;
+    const closingDb = new Proxy(db!, {
+      get(target, key) {
+        if (key === "$transaction")
+          return (
+            callback: Parameters<PrismaClient["$transaction"]>[0],
+            options: unknown,
+          ) =>
+            target.$transaction(async (tx) => {
+              const [backend] = await tx.$queryRaw<
+                { pid: number }[]
+              >`SELECT pg_backend_pid() AS pid`;
+              captured(backend.pid);
+              return (callback as (tx: unknown) => Promise<unknown>)(tx);
+            }, options as never);
+        const value = Reflect.get(target, key);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    }) as PrismaClient;
+    const closing = closeReturn(closingDb, owner, {
+      ...(await identity()),
+      returnId: prepared.id,
+    });
+    try {
+      const pid = await closingPid;
+      const blocked = async () => {
+        const until = Date.now() + 4000;
+        while (Date.now() < until) {
+          const [row] = await db!.$queryRaw<
+            { wait_event: string | null }[]
+          >`SELECT wait_event FROM pg_stat_activity WHERE pid=${pid}`;
+          if (row?.wait_event === "advisory") return "publication-wait";
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        return "timeout";
+      };
+      expect(
+        await Promise.race([closing.then(() => "closed"), blocked()]),
+      ).toBe("publication-wait");
+      expect((await getPeriod(db!, owner, { periodId })).status).toBe("OPEN");
+    } finally {
+      unlock();
+      await publication;
+      await closing;
+    }
+  }, 30_000);
+
   it("reconciles actual receipts, freezes a READY return, exports and reopens without changing the archived snapshot or trading rows", async () => {
     const before = await tradingSnapshot();
     await readyYear();
@@ -400,8 +470,12 @@ describe.skipIf(!db)("complete fiscal lifecycle on isolated PostgreSQL", () => {
     });
     expect(saved.snapshot).toEqual(archived.snapshot);
     expect(saved.snapshotHash).toBe(archived.snapshotHash);
-    expect((archived.snapshot as { inputHash: string }).inputHash).toMatch(/^[a-f0-9]{64}$/);
-    expect((saved.snapshot as { inputHash: string }).inputHash).toBe((archived.snapshot as { inputHash: string }).inputHash);
+    expect((archived.snapshot as { inputHash: string }).inputHash).toMatch(
+      /^[a-f0-9]{64}$/,
+    );
+    expect((saved.snapshot as { inputHash: string }).inputHash).toBe(
+      (archived.snapshot as { inputHash: string }).inputHash,
+    );
     expect(saved.closedAt).toEqual(archived.closedAt);
     expect((await getPeriod(db!, owner, { periodId })).status).toBe("CLOSED");
     expect(

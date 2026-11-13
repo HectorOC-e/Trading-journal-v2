@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { PrismaClient } from "@/lib/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/lib/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
   syncTaxRules,
@@ -81,12 +81,116 @@ async function owner(
 async function publish() {
   await syncTaxRules(db!, { now, fetchSource: source });
 }
+async function ownerBatch(count: number) {
+  const ids = Array.from({ length: count }, () => randomUUID()).sort();
+  owners.push(...ids);
+  await db!.$executeRaw(
+    Prisma.sql`INSERT INTO public.users(id,email,email_notifications) VALUES ${Prisma.join(ids.map((id) => Prisma.sql`(${id}::uuid,${`qa-fiscal-rules-${id}@example.invalid`},true)`))}`,
+  );
+  await db!.taxProfile.createMany({
+    data: ids.map((userId) => ({
+      userId,
+      name: "QA fiscal batch",
+      country: "HN",
+    })),
+  });
+  await db!.notificationPreference.createMany({
+    data: ids.map((userId) => ({
+      userId,
+      category: "Fiscalidad",
+      channels: ["in_app", "email"],
+      timezone: "America/Tegucigalpa",
+    })),
+  });
+  return ids;
+}
 async function delivery(userId: string) {
   return db!.taxRuleDelivery.findFirst({ where: { userId } });
 }
 describe.skipIf(!db)(
   "automatic rule publication on isolated PostgreSQL",
   () => {
+    it.each(["baseline", "published"])(
+      "resolves recovered source parsing warnings for %s rules",
+      async (mode) => {
+        const sourceUrl =
+          mode === "baseline" ? HN_ISR_2026.references[0].url : page;
+        const text = mode === "baseline" ? original : future;
+        const instant =
+          mode === "baseline" ? new Date("2026-11-13T15:00:00Z") : now;
+        const fetched = (body: string) => async (u: string) => ({
+          url: u,
+          html: u === sourceUrl ? body : `<a href="${sourceUrl}">SAR</a>`,
+        });
+        if (mode === "published")
+          await syncTaxRules(db!, { now: instant, fetchSource: fetched(text) });
+        await syncTaxRules(db!, {
+          now: new Date(instant.getTime() + 86_400_000),
+          fetchSource: fetched(text.replace("15%", "16%")),
+        });
+        expect(
+          await db!.taxRuleUpdate.count({
+            where: { status: "REVIEW_REQUIRED" },
+          }),
+        ).toBeGreaterThan(0);
+        await syncTaxRules(db!, {
+          now: new Date(instant.getTime() + 172_800_000),
+          fetchSource: fetched(text),
+        });
+        expect(
+          await db!.taxRuleUpdate.count({
+            where: { status: "REVIEW_REQUIRED" },
+          }),
+        ).toBe(0);
+      },
+    );
+    it("continues delivering new in-app notices while old emails remain dry-run pending", async () => {
+      const ids = await ownerBatch(32);
+      await publish();
+      const sendEmail = async () => ({ ok: true, dryRun: true });
+      await deliverTaxRuleUpdates(db!, {
+        now,
+        sendEmail,
+        deadline: Date.now() + 60_000,
+      });
+      expect(
+        await db!.notification.count({
+          where: { userId: { in: ids }, code: "TAX_RULES_UPDATED" },
+        }),
+      ).toBe(30);
+      await deliverTaxRuleUpdates(db!, {
+        now: new Date(now.getTime() + 900_000),
+        sendEmail,
+        deadline: Date.now() + 60_000,
+      });
+      expect(
+        await db!.notification.count({
+          where: { userId: { in: ids }, code: "TAX_RULES_UPDATED" },
+        }),
+      ).toBe(32);
+    }, 30_000);
+    it("skips a full first page of accounts in deletion without starving an eligible recipient", async () => {
+      const ids = await ownerBatch(101),
+        eligible = ids.at(-1)!;
+      await db!.accountDeletionJob.createMany({
+        data: ids.slice(0, 100).map((userId) => ({ userId })),
+      });
+      await publish();
+      await deliverTaxRuleUpdates(db!, {
+        now,
+        sendEmail: async () => ({ ok: true, dryRun: true }),
+      });
+      expect(
+        await db!.notification.count({
+          where: { userId: eligible, code: "TAX_RULES_UPDATED" },
+        }),
+      ).toBe(1);
+      expect(
+        await db!.notification.count({
+          where: { userId: { in: ids.slice(0, 100) } },
+        }),
+      ).toBe(0);
+    }, 30_000);
     beforeEach(async () => {
       await db!.taxRuleDelivery.deleteMany();
       await db!.taxRuleUpdate.deleteMany();
