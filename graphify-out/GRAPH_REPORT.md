@@ -1,7 +1,7 @@
 # Graph Report - Trading-journal-v2  (2026-11-13)
 
 ## Corpus Check
-- 726 files · ~485,544 words
+- 726 files · ~485,576 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `105e0515`
+- Built from commit: `bd50786f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1565,7 +1565,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Global Constraints` be split into smaller, more focused modules?**
   _Cohesion score 0.07671957671957672 - nodes in this community are weakly interconnected._
 - **Why does `zod` connect `root.ts` to `localDateISO`, `perfil/page.tsx`, `react`, `cn`, `custom-palettes.ts`, `sync-service.ts`, `dependencies`, `learning-insights-service.ts`, `fx.ts`, `accounts.ts`, `page.tsx`, `ai-settings.ts`, `learning-resources.ts`, `profile.ts`, `src_lib_generated_prisma_client`, `evidence/route.ts`, `next`, `routers/notifications.ts`, `ledger-service.ts`, `trades.ts`, `record-service.ts`, `seed.ts`, `src_lib_generated_prisma_client`, `psychology-service.ts`, `ledger-service.ts`, `rate-limiter.ts`, `cuentas/page.tsx`, `package.json`, `commitment-service.ts`, `calculation-service.ts`, `coach-memory-service.ts`, `rules.ts`, `trade-form-schema.ts`?**
-  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+  _High betweenness centrality (0.031) - this node is a cross-community bridge._
 - **Should `emit.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.10101010101010101 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `react` to `emit.ts`, `rules/types.ts`, `risk-ratios.ts`, `cn`, `mercados/page.tsx`, `dependencies`, `ai-coach-drawer.tsx`, `page.tsx`, `analytics/page.tsx`, `reviews/page.tsx`, `reglas/page.tsx`, `dashboard/page.tsx`, `lib/utils.ts`, `tab-portfolio.tsx`, `resource-card.tsx`, `review-report-shell.tsx`, `next`, `condition-group.tsx`, `cuentas/page.tsx`, `review-card.tsx`, `package.json`, `today-feed.tsx`, `useLogout.ts`, `types/index.ts`, `register-trade-modal.tsx`, `Insight`, `improvement-panel.tsx`, `tag-chip.tsx`, `hoy-tab.tsx`?**

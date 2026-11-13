@@ -147,6 +147,22 @@ describe.skipIf(!db)(
     it("continues delivering new in-app notices while old emails remain dry-run pending", async () => {
       const ids = await ownerBatch(32);
       await publish();
+      // This case isolates delivery scheduling. Other lifecycle suites may
+      // concurrently own fiscal profiles; fan-out has its own integration cases.
+      const update = await db!.taxRuleUpdate.findFirstOrThrow({
+        where: { year: 2097, status: "PUBLISHED" },
+      });
+      await db!.taxRuleUpdate.update({
+        where: { id: update.id },
+        data: { fanoutComplete: true },
+      });
+      await db!.taxRuleDelivery.createMany({
+        data: ids.map((userId) => ({
+          userId,
+          updateId: update.id,
+          nextAttemptAt: now,
+        })),
+      });
       const sendEmail = async () => ({ ok: true, dryRun: true });
       await deliverTaxRuleUpdates(db!, {
         now,
