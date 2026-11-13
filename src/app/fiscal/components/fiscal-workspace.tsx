@@ -1229,7 +1229,7 @@ function PeriodWorkspace({
                 documento y casilla. Vincula los registros económicos que ya
                 recogen su importe. Una decisión de «No gravables» también
                 requiere respaldo. Los borradores deben contabilizarse o
-                descartarse desde Movimientos. Si un retiro de origen cambia o desaparece, selecciona ese origen y documenta por qué el cobro fiscal sigue siendo válido; la revisión queda vinculada a la huella observada.
+                descartarse desde Movimientos. Si un retiro de origen cambia o desaparece, selecciona ese origen y documenta por qué el cobro fiscal sigue siendo válido; la revisión queda vinculada a la huella observada. Si quedan pagos pendientes al cerrar el año, documenta también el método de reconocimiento y su tratamiento en este ejercicio.
               </p>
               {form(
                 "información del ejercicio",

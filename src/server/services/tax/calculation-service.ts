@@ -239,9 +239,6 @@ function mappedFields(items: TaxItem[], labels: Record<string, string>, calculat
 export function buildPreparation(data: CalculationData) {
     const { period } = data;
     const pending: string[] = [];
-    for (const candidate of data.candidates ?? [])
-        if (candidate.status !== 'DISMISSED' && candidate.status !== 'RECONCILED')
-            pending.push(`${candidate.id}:SOURCE_RECONCILIATION_PENDING`);
     const information = informationSchema.safeParse(period.information);
     const info = information.success ? information.data : null;
     const profile = z.object({
@@ -265,9 +262,13 @@ export function buildPreparation(data: CalculationData) {
     for (const candidate of data.candidates ?? []) {
         if (candidate.status === 'DISMISSED') continue;
         const current = data.candidateSourceStates?.find(source => source.candidateId === candidate.id);
-        if (current?.state === 'UNCHANGED') continue;
         const decision = review('source', candidate.id);
-        if (!decision || decision.reviewedSourceHash !== (current?.currentHash ?? 'UNAVAILABLE'))
+        const matches = decision?.reviewedSourceHash === (current?.currentHash ?? 'UNAVAILABLE');
+        // A source can remain operationally pending across years without inventing income.
+        // Resolving its annual scope requires a documented recognition method and exact revision.
+        if (candidate.status !== 'RECONCILED' && !(matches && decision?.method))
+            pending.push(`${candidate.id}:SOURCE_RECONCILIATION_PENDING`);
+        if (current?.state !== 'UNCHANGED' && !matches)
             pending.push(`${candidate.id}:SOURCE_${current?.state ?? 'UNAVAILABLE'}`);
     }
     const labels: Record<string, string> = {};

@@ -4194,9 +4194,9 @@
     "semantic_hash": ""
   },
   "src/app/fiscal/components/fiscal-workspace.tsx": {
-    "mtime": 1794573164.536327,
-    "seen": 1794573320.6743362,
-    "ast_hash": "b19080674570c3a6dd26147f2190d4eb",
+    "mtime": 1794574651.4031677,
+    "seen": 1794574735.129907,
+    "ast_hash": "16da0cde0d5f56ed6aae31414f1fca1b",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/templates.ts": {
@@ -4224,9 +4224,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/calculation-service.ts": {
-    "mtime": 1794572676.8089385,
-    "seen": 1794573052.9573007,
-    "ast_hash": "86faa497ca8c2db90d8480235270f646",
+    "mtime": 1794574651.4010234,
+    "seen": 1794574735.1313648,
+    "ast_hash": "b0a18770723565390728250c8a4608af",
     "semantic_hash": ""
   },
   "src/server/services/tax/export-service.ts": {

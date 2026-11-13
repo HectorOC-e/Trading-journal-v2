@@ -102,6 +102,19 @@ describe('withdrawal source revisions in preparation', () => {
         f.candidateSourceStates[0].currentHash = 'c'.repeat(64);
         expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_MODIFIED`);
     });
+    it('resolves a pending source for this exercise only with a documented recognition method', () => {
+        const f=sourceFixture('UNCHANGED','a'.repeat(64)); f.candidates[0].status='PROPOSED';
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_RECONCILIATION_PENDING`);
+        const decision:any={kind:'source',recordId:id,reviewedSourceHash:'a'.repeat(64),legalBasis:'Criterio del ejercicio respaldado',reason:'Resto no cobrado en el ejercicio; cobro registrado documentado',evidenceId:doc.id};
+        f.period.information.reviews.push(decision);
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_RECONCILIATION_PENDING`);
+        decision.method='Reconocimiento por cobros efectivamente percibidos en el ejercicio';
+        expect(buildPreparation(f).status).toBe('READY');
+        expect(f.candidates[0].status).toBe('PROPOSED');
+        f.candidateSourceStates[0]={candidateId:id,state:'MODIFIED',currentHash:'c'.repeat(64)};
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_RECONCILIATION_PENDING`);
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_MODIFIED`);
+    });
     it('does not block an unchanged source or accept a review without its document', () => {
         expect(buildPreparation(sourceFixture('UNCHANGED','a'.repeat(64))).status).toBe('READY');
         const f=sourceFixture();f.period.information.reviews.push({kind:'source',recordId:id,reviewedSourceHash:'b'.repeat(64),legalBasis:'Criterio',reason:'Revisión',evidenceId:'99999999-9999-4999-8999-999999999999'});
