@@ -1,6 +1,6 @@
 # Actualizaciones ISR y avisos Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Incorporar ajustes anuales compatibles del SAR automáticamente y notificar publicaciones en la aplicación y por email según preferencias.
 
@@ -32,9 +32,9 @@
 
 **Interfaces:** `HnRuleSet`, `validateRuleSet(payload,checksum)`, `parseSarRulePage(html,url): SarRuleCandidate`; hechos canónicos y comparación de tramos sin números flotantes.
 
-- [ ] Tests RED para tabla real 2026, fila/cabecera falsa, huecos, tasa incompatible, año incoherente, doble tabla y normalización cosmética.
-- [ ] Implementar schema/checksum y extractor limitado sin ejecutar contenido remoto.
-- [ ] Tests GREEN y commit de rutas explícitas.
+- [x] Tests RED para tabla real 2026, fila/cabecera falsa, huecos, tasa incompatible, año incoherente, doble tabla y normalización cosmética.
+- [x] Implementar schema/checksum y extractor limitado sin ejecutar contenido remoto.
+- [x] Tests GREEN y commit de rutas explícitas.
 
 ### Task 2: motor fiscal por paquete
 
@@ -42,9 +42,9 @@
 
 **Interfaces:** `calculateHnIsr(base,rule)`, `calculateTax(input,rule?)`; selección de `TaxRuleSet` publicada por año y régimen. Mantener `calculateHnIsr2026` como compatibilidad.
 
-- [ ] Tests RED: paquete local sintético 2027 calcula con sus tramos, año/checksum equivocado no calcula, simulación usa mismo paquete y cierre desactualizado rechaza.
-- [ ] Parametrizar cálculo y serialización/huella de preparación; no alterar datos fiscales.
-- [ ] Suite fiscal GREEN y commit.
+- [x] Tests RED: paquete local sintético 2027 calcula con sus tramos, año/checksum equivocado no calcula, simulación usa mismo paquete y cierre desactualizado rechaza.
+- [x] Parametrizar cálculo y serialización/huella de preparación; no alterar datos fiscales.
+- [x] Suite fiscal GREEN y commit.
 
 ### Task 3: sincronización y publicación duraderas
 
@@ -52,9 +52,9 @@
 
 **Interfaces:** `syncTaxRules(db,{now,fetchSource?})`, `getTaxRulesStatus(db,year)`; modelos `TaxRuleUpdate`, `TaxRuleSyncState`, `TaxRuleDelivery` de la especificación.
 
-- [ ] Tests RED: bootstrap 2026 sin avisos, publicación compatible atómica, paquete idéntico sin evento, rechazo conserva anterior, lease concurrente y recuperación.
-- [ ] Crear modelos/migración RLS y publicar sólo hechos canónicos completos; estado público acotado a información normativa.
-- [ ] Tests GREEN, Prisma validate e integración local; commit.
+- [x] Tests RED: bootstrap 2026 sin avisos, publicación compatible atómica, paquete idéntico sin evento, rechazo conserva anterior, lease concurrente y recuperación.
+- [x] Crear modelos/migración RLS y publicar sólo hechos canónicos completos; estado público acotado a información normativa.
+- [x] Tests GREEN, Prisma validate e integración local; commit.
 
 ### Task 4: notificaciones, correo y runner
 
@@ -62,9 +62,9 @@
 
 **Interfaces:** `deliverTaxRuleUpdates(db,{now,sendEmail?})`; lotes acotados, delivery único por usuario/update y claves de correo estables.
 
-- [ ] Tests RED para in-app + email habilitado, email opt-out, mute/prioridad/silencio, dos runners, crash ambiguo, dry-run/error y eliminación.
-- [ ] Implementar entrega con lease, estado por canal y resumen normativo sin datos fiscales personales; usar Resend y controles existentes.
-- [ ] Tests GREEN y prueba real de plantilla renderizada sin enviar correos; commit.
+- [x] Tests RED para in-app + email habilitado, email opt-out, mute/prioridad/silencio, dos runners, crash ambiguo, dry-run/error y eliminación.
+- [x] Implementar entrega con lease, estado por canal y resumen normativo sin datos fiscales personales; usar Resend y controles existentes.
+- [x] Tests GREEN y prueba real de plantilla renderizada sin enviar correos; commit.
 
 ### Task 5: estado e historial en Fiscalidad y preferencias
 
@@ -72,9 +72,9 @@
 
 **Interfaces:** `tax.rules.status({year})`; categoría Fiscalidad y toggle `Email · Fiscalidad`; la UI consulta disponibilidad en vez de fijar 2027.
 
-- [ ] Tests RED para estado sin paquete, historial publicado/fuentes, nuevas reglas habilitan simulación y toggle preserva canales actuales.
-- [ ] Reutilizar Panel/Button y formularios/preferencias actuales; quitar afirmaciones fijas sobre publicaciones futuras.
-- [ ] Tests GREEN, tipos y lint; commit.
+- [x] Tests RED para estado sin paquete, historial publicado/fuentes, nuevas reglas habilitan simulación y toggle preserva canales actuales.
+- [x] Reutilizar Panel/Button y formularios/preferencias actuales; quitar afirmaciones fijas sobre publicaciones futuras.
+- [x] Tests GREEN, tipos y lint; commit.
 
 ### Task 6: verificación y publicación
 
