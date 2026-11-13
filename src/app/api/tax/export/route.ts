@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { exportReturn } from '@/server/services/tax/export-service';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 const querySchema = z.object({ returnId: z.string().uuid(), format: z.enum(['json', 'csv', 'pdf']) }).strict();
 const headers = { 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' };
 export async function GET(request: Request) {

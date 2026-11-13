@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   // throws "The input directory …/bin does not exist" at runtime on Vercel. Glob targets the
   // real pnpm path (version-wildcarded), relative to this project dir (src/).
   outputFileTracingIncludes: {
+    "/api/tax/export": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
     "/api/reviews/pdf": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
     "/api/cron/reviews-digest": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
   },

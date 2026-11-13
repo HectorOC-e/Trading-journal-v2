@@ -2136,9 +2136,9 @@
     "semantic_hash": ""
   },
   "src/package.json": {
-    "mtime": 1793537926.1689765,
-    "seen": 1793538422.7145562,
-    "ast_hash": "542ab43738313cdc390da74b01390e65",
+    "mtime": 1794571771.2411458,
+    "seen": 1794572043.4829166,
+    "ast_hash": "00b5bd22c70cb9c72f2c50bf956f696d",
     "semantic_hash": ""
   },
   "src/proxy.ts": {
@@ -4176,9 +4176,9 @@
     "semantic_hash": ""
   },
   "src/app/api/tax/export/route.ts": {
-    "mtime": 1794167340.828813,
-    "seen": 1794167526.7099593,
-    "ast_hash": "f0243b0e0cbf45d3c2a614d7231fdac6",
+    "mtime": 1794571771.242053,
+    "seen": 1794572043.4822738,
+    "ast_hash": "28e492fcc7fc0dd46456c5b46cddd372",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/evidence-panel.tsx": {
@@ -4224,9 +4224,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/calculation-service.ts": {
-    "mtime": 1794186486.1861148,
-    "seen": 1794536508.137743,
-    "ast_hash": "3aeac4e3097c21f704577ef126656808",
+    "mtime": 1794571079.656111,
+    "seen": 1794571150.519424,
+    "ast_hash": "e91d0a4d9f47ec398a3d2e5c2c26d30b",
     "semantic_hash": ""
   },
   "src/server/services/tax/export-service.ts": {
@@ -4269,6 +4269,12 @@
     "mtime": 1794167210.0036688,
     "seen": 1794539030.9214206,
     "ast_hash": "84f00bba7349476c075f0cbd85480e1c",
+    "semantic_hash": ""
+  },
+  "scripts/verify-fiscal-pdf-artifact.mjs": {
+    "mtime": 1794571750.361872,
+    "seen": 1794572043.482246,
+    "ast_hash": "ffd3b0a1e74373266bbfac6a0d690052",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
