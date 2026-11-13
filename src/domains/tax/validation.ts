@@ -1,0 +1,13 @@
+import { z } from 'zod';
+import { decimal, hnl } from './decimal';
+const text = z.string().trim().min(1);
+export const decimalSchema = z.string().refine(v => { try { decimal(v); return true; } catch { return false; } }, 'Invalid numeric(38,18)');
+export const hnlSchema = z.string().refine(v => { try { hnl(v); return true; } catch { return false; } }, 'Invalid numeric(20,2)');
+export const assetSchema = z.discriminatedUnion('kind', [z.object({kind:z.literal('FIAT'),code:z.string().regex(/^[A-Z]{3}$/)}).strict(), z.object({kind:z.literal('TOKEN'),symbol:text,network:text,contract:text}).strict()]);
+export const valuationSchema = z.object({quantity:decimalSchema,base:assetSchema,quote:assetSchema,rate:decimalSchema.refine(v=>decimal(v).gt(0)),referenceAt:z.iso.datetime({offset:true}),source:text,sourceUrl:z.url().optional(),evidenceId:text.optional(),method:text,provider:text,precision:z.number().int().min(0).max(18),status:z.enum(['USER_DECLARED','VERIFIED_SOURCE'])}).strict();
+export const treatmentSchema = z.enum(['PENDING','ADMITTED','EXEMPT','NOT_APPLICABLE']);
+export const recognitionSchema = z.object({recognitionDate:z.iso.date(),receivedDate:z.iso.date().optional(),criterion:text,legalBasis:text.optional(),status:z.enum(['PENDING','REVIEWED'])}).strict();
+export const postingSchema = z.object({accountId:text,asset:assetSchema,quantity:decimalSchema.refine(v=>!decimal(v).isZero()),valuation:valuationSchema.optional()}).strict();
+export const transactionSchema = z.object({type:z.enum(['OPENING_BALANCE','EXTERNAL_RECEIPT','OWN_TRANSFER','CONVERSION','PAYMENT','FEE','ADJUSTMENT','REVERSAL']),postings:z.array(postingSchema).min(1),reason:text.optional(),reversalOf:text.optional(),conversionRate:decimalSchema.optional()}).strict();
+export const taxItemSchema=z.object({id:text,componentId:text,amountHnl:hnlSchema.refine(v=>hnl(v).gte(0)).optional(),treatment:treatmentSchema,legalBasis:text.optional(),category:text.optional()}).strict();
+export const calculationInputSchema=z.object({country:z.literal('HN'),year:z.literal(2026),regime:z.literal('NATURAL_ORDINARY'),ruleSetVersion:text,incomes:z.array(taxItemSchema),deductions:z.array(taxItemSchema),credits:z.array(taxItemSchema),roundingConfirmed:z.boolean().optional(),roundingReason:text.optional()}).strict().refine(v=>!v.roundingConfirmed||!!v.roundingReason,{message:'Documented rounding confirmation required'});

@@ -56,6 +56,7 @@ const NAV = [
     items: [
       { href: "/notificaciones", label: "Notificaciones", icon: Bell },
       { href: "/retiros",    label: "Retiros",   icon: ArrowDownToLine },
+      { href: "/fiscal", label: "Fiscalidad", icon: ClipboardList },
       { href: "/etiquetas",  label: "Etiquetas", icon: Tag },
       { href: "/perfil",     label: "Perfil",    icon: User },
     ],
@@ -93,6 +94,7 @@ const SURFACE_NAV = [
     items: [
       { href: "/cuentas", label: "Cuentas", icon: Wallet },
       { href: "/retiros", label: "Retiros", icon: ArrowDownToLine },
+      { href: "/fiscal", label: "Fiscalidad", icon: ClipboardList },
     ],
   },
   {

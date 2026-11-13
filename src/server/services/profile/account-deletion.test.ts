@@ -17,6 +17,10 @@ function fixture() {
     trade: { findMany: vi.fn(async () => []) },
     setup: { findMany: vi.fn(async () => []) },
     practiceAttachment: { findMany: vi.fn(async () => []) },
+    taxUploadLease: {
+      count: vi.fn(async () => 0),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     user: {
       deleteMany: vi.fn(async () => ({ count: 1 })),
       findUnique: vi.fn(async () => null),

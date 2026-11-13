@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "gen:theme": "node ../scripts/gen-theme-css.mjs",
-    "build": "node ../scripts/gen-theme-css.mjs && prisma generate && next build",
+    "build": "node ../scripts/gen-theme-css.mjs && prisma generate && next build && node ../scripts/verify-fiscal-pdf-artifact.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",

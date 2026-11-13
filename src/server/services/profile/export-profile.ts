@@ -50,6 +50,25 @@ const delegates = {
   memoryPatterns: "memoryPattern",
   memoryIdentity: "memoryIdentity",
   feedIgnores: "feedIgnore",
+  taxProfiles: "taxProfile",
+  taxPeriods: "taxPeriod",
+  taxAssetAccounts: "taxAssetAccount",
+  taxTransactions: "taxTransaction",
+  taxPostings: "taxPosting",
+  taxIncomes: "taxIncome",
+  taxDeductions: "taxDeduction",
+  taxCredits: "taxCredit",
+  taxImportCandidates: "taxImportCandidate",
+  taxReconciliations: "taxReconciliation",
+  taxEvidences: "taxEvidence",
+  taxReturns: "taxReturn",
+  taxAuditEvents: "taxAuditEvent",
+  taxIncomeEvidences: "taxIncomeEvidence",
+  taxTransactionEvidences: "taxTransactionEvidence",
+  taxDeductionEvidences: "taxDeductionEvidence",
+  taxCreditEvidences: "taxCreditEvidence",
+  taxReturnEvidences: "taxReturnEvidence",
+
 } as const satisfies Record<ProfileExportSection, keyof PrismaClient>;
 const userSelect = Object.fromEntries(
   [

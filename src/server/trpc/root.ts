@@ -36,7 +36,10 @@ import { propFirmPresetsRouter }    from "./routers/prop-firm-presets"
 
 import { learningPracticesRouter } from "./routers/learning-practices"
 
+import { taxRouter } from "./routers/tax"
+
 export const appRouter = router({
+  tax: taxRouter,
   learningPractices: learningPracticesRouter,
   trades:           tradesRouter,
   analytics:        analyticsRouter,
