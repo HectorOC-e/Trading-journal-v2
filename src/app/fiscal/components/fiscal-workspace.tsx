@@ -1,6 +1,6 @@
 "use client";
 import { useFiscalConfirmation } from "./confirmation";
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, createContext, useContext, type ComponentProps } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterInputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
@@ -466,10 +466,12 @@ function PeriodWorkspace({
     title: string,
     initial: Fields,
     save: (values: Fields) => Promise<unknown>,
-    extra = {},
-  ) => (
+    extra: Partial<ComponentProps<typeof FiscalForm>> & { key?: string } = {},
+  ) => {
+    const { key, ...props } = extra;
+    return (
     <FiscalForm
-      key={title + tokenAsset + valued}
+      key={key ?? title + tokenAsset + valued}
       title={title}
       userId={userId}
       scope={`${periodId}:${title}:new`}
@@ -480,9 +482,10 @@ function PeriodWorkspace({
         await save(clean(values) as Fields);
         await refresh();
       }}
-      {...extra}
+      {...props}
     />
-  );
+    );
+  };
   return (
     <RecordNavigation.Provider
       value={{

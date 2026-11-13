@@ -497,7 +497,7 @@ it("offers an archived READY return for post-close filing receipt upload", async
   state.data["tax.periods.get"] = { id: "period", year: 2026, status: "CLOSED", revision: 9 };
   state.data["tax.returns.list"] = { items: [{ id: "closed-return", status: "READY", closedAt: "2026-11-08T12:00:00Z", version: 1 }] };
   mount();
-  fireEvent.click(screen.getByRole("button", { name: "Documentos", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Documentos" }));
   expect(await screen.findByRole("option", { name: "Declaración closed-return" })).toBeTruthy();
   expect(screen.getByRole("button", { name: "Subir acuse de presentación" })).toBeTruthy();
 });
@@ -505,7 +505,7 @@ it("offers an archived READY return for post-close filing receipt upload", async
 it("keeps archived returns fileable after reopening and disables their close action", () => {
   state.data["tax.returns.list"] = { items: [{ id: "closed-return", status: "READY", closedAt: "2026-11-08T12:00:00Z", version: 1 }] };
   mount();
-  fireEvent.click(screen.getByRole("button", { name: "ISR y declaración", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "ISR y declaración" }));
   expect(screen.getByRole("button", { name: "Guardar acuse de presentación" }).hasAttribute("disabled")).toBe(false);
-  expect(screen.getByRole("button", { name: "Cerrar ejercicio", exact: true }).hasAttribute("disabled")).toBe(true);
+  expect(screen.getByRole("button", { name: "Cerrar ejercicio" }).hasAttribute("disabled")).toBe(true);
 });
