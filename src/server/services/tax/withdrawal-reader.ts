@@ -9,3 +9,8 @@ export async function readWithdrawal(db: Pick<PrismaClient, 'withdrawal'>, userI
 export function sourceState(hash: string, current: {
     hash: string;
 } | null) { return !current ? 'UNAVAILABLE' : current.hash === hash ? 'UNCHANGED' : 'MODIFIED'; }
+
+/** Sources from this exercise, including receipts linked to an earlier recognized year. */
+export function candidateScope(userId: string, periodId: string): Prisma.TaxImportCandidateWhereInput {
+    return { userId, OR: [{ periodId }, { reconciliations: { some: { userId, OR: [{ periodId }, { income: { userId, periodId } }] } } }] };
+}

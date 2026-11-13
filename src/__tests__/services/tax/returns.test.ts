@@ -78,3 +78,33 @@ describe('ledger coverage precision and structure',()=>{
 describe('new year preparation',()=>{
  it('returns incomplete coverage for untouched database defaults instead of throwing',()=>{const f=fixture(); f.period.roundingConfirmed=false; f.period.roundingReason=''; f.period.information={} as never; f.incomes=[]; f.evidences=[]; const result=buildPreparation(f as never); expect(result.status).toBe('IN_REVIEW'); expect(result.coverage.complete).toBe(false); expect(result.pending).toContain('ROUNDING_REVIEW_REQUIRED'); expect(result.pending).toContain('SECTION_B_INCOMPLETE'); expect(result.form.fields.find(field=>field.key==='isr')?.partial).toBe(true);});
 });
+
+describe('withdrawal source revisions in preparation', () => {
+    const id = '77777777-7777-4777-8777-777777777777';
+    function sourceFixture(state = 'MODIFIED', currentHash = 'b'.repeat(64)) {
+        const f = fixture() as any;
+        f.candidates = [{ id, userId: 'u', periodId: 'p', sourceId: '88888888-8888-4888-8888-888888888888', sourceHash: 'a'.repeat(64), status: 'RECONCILED' }];
+        f.candidateSourceStates = [{ candidateId: id, state, currentHash }];
+        return f;
+    }
+    it.each(['MODIFIED', 'UNAVAILABLE'])('blocks a reconciled source that became %s', state => {
+        const result = buildPreparation(sourceFixture(state, state === 'UNAVAILABLE' ? 'UNAVAILABLE' : 'b'.repeat(64)));
+        expect(result.status).not.toBe('READY');
+        expect(result.pending).toContain(`${id}:SOURCE_${state}`);
+    });
+    it('includes the observed source revision in the immutable input hash', () => {
+        expect(buildPreparation(sourceFixture()).inputHash).not.toBe(buildPreparation(sourceFixture('MODIFIED', 'c'.repeat(64))).inputHash);
+    });
+    it('accepts only a documented review of the exact observed source revision', () => {
+        const f = sourceFixture();
+        f.period.information.reviews.push({kind:'source',recordId:id,reviewedSourceHash:'b'.repeat(64),legalBasis:'Hecho fiscal respaldado por el cobro',reason:'Origen corregido sin alterar el cobro conciliado',evidenceId:doc.id});
+        expect(buildPreparation(f).status).toBe('READY');
+        f.candidateSourceStates[0].currentHash = 'c'.repeat(64);
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_MODIFIED`);
+    });
+    it('does not block an unchanged source or accept a review without its document', () => {
+        expect(buildPreparation(sourceFixture('UNCHANGED','a'.repeat(64))).status).toBe('READY');
+        const f=sourceFixture();f.period.information.reviews.push({kind:'source',recordId:id,reviewedSourceHash:'b'.repeat(64),legalBasis:'Criterio',reason:'Revisión',evidenceId:'99999999-9999-4999-8999-999999999999'});
+        expect(buildPreparation(f).pending).toContain(`${id}:SOURCE_MODIFIED`);
+    });
+});

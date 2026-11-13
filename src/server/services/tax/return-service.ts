@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient, TaxPeriod, TaxReturn } from '@/lib/generated
 import { informationSchema, loadCalculationData, buildPreparation } from './calculation-service';
 import { dto, fail, ownedPeriod, pageArgs, pageResult, periodPageSchema, periodWriteSchema, scope, taxWrite } from './profile-service';
 import { serializeTax, taxHash } from './serializers';
+import { candidateScope } from './withdrawal-reader';
 export type FiscalPeriodDto = Omit<TaxPeriod,'profileSnapshot'|'information'|'createdAt'|'updatedAt'> & {profileSnapshot:unknown;information:unknown;createdAt:string;updatedAt:string};
 export type FiscalReturnDto = Omit<TaxReturn,'snapshot'|'createdAt'|'updatedAt'|'closedAt'|'reportedFiledAt'> & {snapshot:unknown;createdAt:string;updatedAt:string;closedAt:string|null;reportedFiledAt:string|null};
 export const prepareSchema = periodWriteSchema.strict();
@@ -45,7 +46,7 @@ export async function updateInformation(db: PrismaClient, userId: string, raw: z
             const where = {
                 id: r.recordId, userId, periodId: input.periodId
             };
-            const found = r.kind === 'transaction' ? await tx.taxTransaction.findFirst({where}) : r.kind === 'income' || r.kind === 'reversal' ? await tx.taxIncome.findFirst({ where }) : r.kind === 'deduction' ? await tx.taxDeduction.findFirst({ where }) : await tx.taxCredit.findFirst({ where });
+            const found = r.kind === 'source' ? await tx.taxImportCandidate.findFirst({where:{...candidateScope(userId,input.periodId),id:r.recordId}}) : r.kind === 'transaction' ? await tx.taxTransaction.findFirst({where}) : r.kind === 'income' || r.kind === 'reversal' ? await tx.taxIncome.findFirst({ where }) : r.kind === 'deduction' ? await tx.taxDeduction.findFirst({ where }) : await tx.taxCredit.findFirst({ where });
             if (!found)
                 fail('La revisión no pertenece al ejercicio.', 'NOT_FOUND');
             for(const id of r.relatedRecordIds) {

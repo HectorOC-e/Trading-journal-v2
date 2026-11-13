@@ -99,6 +99,7 @@ export const review = {
   capReviewed: false,
   method: "",
   relatedRecordIds: [] as string[],
+  reviewedSourceHash: "",
 };
 export const information: Fields = {
   roundingConfirmed: false,

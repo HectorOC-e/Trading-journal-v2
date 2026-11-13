@@ -7,6 +7,7 @@ import { hnlSchema } from '@/domains/tax/validation';
 import type { TaxItem } from '@/domains/tax/types';
 import { dto, ownedPeriod, fail } from './profile-service';
 import { taxHash } from './serializers';
+import { candidateScope, sourceSelect } from './withdrawal-reader';
 export const MAPPING_VERSION = 'HN-102-manual-labels-v1';
 const nonnegativeHnlSchema = hnlSchema.refine(value => decimal(value).gte(0), 'El importe debe ser no negativo.');
 const labelSchema = z.enum([
@@ -14,13 +15,14 @@ const labelSchema = z.enum([
 ]);
 const reviewSchema = z.object({
     recordId: z.string().uuid(), kind: z.enum([
-        'income', 'deduction', 'credit', 'reversal', 'transaction'
+        'income', 'deduction', 'credit', 'reversal', 'transaction', 'source'
     ]),
     legalBasis: z.string().trim().min(1).max(4000), reason: z.string().trim().min(1).max(4000),
     method: z.string().trim().min(1).max(4000).optional(), relatedRecordIds: z.array(z.string().uuid()).max(100).default([]),
+    reviewedSourceHash: z.union([z.string().regex(/^[a-f0-9]{64}$/), z.literal('UNAVAILABLE')]).optional(),
     evidenceId: z.string().uuid(), mappingLabel: labelSchema.optional(),
     eligibilityConfirmed: z.boolean().default(false), capReviewed: z.boolean().default(false),
-}).strict();
+}).strict().refine(r => r.kind !== 'source' || !!r.reviewedSourceHash, { message: 'La revisión del origen requiere su huella actual.' });
 export const informationSchema = z.object({
     sectionB: z.object({
         complete: z.boolean(), nonTaxable: nonnegativeHnlSchema, nonDeductible: nonnegativeHnlSchema, relatedParties: z.string().trim().min(1).max(4000), otherInformation: z.string().max(8000).default('')
@@ -43,7 +45,9 @@ type Linked = {
     }[];
 };
 type LedgerTransaction = Prisma.TaxTransactionGetPayload<{include:{postings:{include:{account:{select:{userId:true;owned:true}}}};evidenceLinks:{include:{evidence:true}}}}>;
+export type CandidateSourceState = { candidateId: string; state: 'UNCHANGED' | 'MODIFIED' | 'UNAVAILABLE'; currentHash: string };
 export interface CalculationData {
+    candidateSourceStates?: CandidateSourceState[];
     transactions?: LedgerTransaction[];
     period: TaxPeriod;
     incomes: (TaxIncome & Linked)[];
@@ -67,7 +71,7 @@ export interface CalculationData {
     }>[];
 }
 export type TaxSource = {id:string;amountHnl:string|null;[key:string]:unknown};
-type PreparationSources = {incomes:TaxSource[];deductions:TaxSource[];credits:TaxSource[];reversalReviewIncomeIds:string[];candidates:unknown[];reconciliations:unknown[];transactions:unknown[]};
+type PreparationSources = {incomes:TaxSource[];deductions:TaxSource[];credits:TaxSource[];reversalReviewIncomeIds:string[];candidates:unknown[];candidateSourceStates:CandidateSourceState[];reconciliations:unknown[];transactions:unknown[]};
 type Reader = PrismaClient | Prisma.TransactionClient;
 export const previewSchema = z.object({ periodId: z.string().uuid(), simulation: z.object({ additionalIncomeHnl: nonnegativeHnlSchema }).strict().optional() }).strict();
 export async function loadCalculationData(db: Reader, userId: string, periodId: string): Promise<CalculationData> {
@@ -96,7 +100,7 @@ export async function loadCalculationData(db: Reader, userId: string, periodId: 
                 country: 'HN', year: period.year, regime: period.regime, version: HN_ISR_2026.version, published: true
             } }),
         db.taxImportCandidate.findMany({
-            where, take, orderBy: { id: 'asc' }
+            where: candidateScope(userId, periodId), take, orderBy: { id: 'asc' }
         }),
         db.taxReconciliation.findMany({
             where: { userId, OR: [{ periodId }, { income: { periodId, userId } }] }, take, include: { transaction: { select: {
@@ -109,8 +113,18 @@ export async function loadCalculationData(db: Reader, userId: string, periodId: 
         incomes, deductions, credits, evidences, reversals, candidates, reconciliations, transactions
     ].some(rows => rows.length > 5000))
         fail('El ejercicio supera el límite de preparación de 5000 registros por tipo.');
+    const activeCandidates = candidates.filter(candidate => candidate.status !== 'DISMISSED');
+    const rows = activeCandidates.length ? await db.withdrawal.findMany({ where: {
+        userId, id: { in: [...new Set(activeCandidates.map(candidate => candidate.sourceId))] },
+        account: { userId, type: { in: ['PERSONAL', 'PROP_FIRM'] } },
+    }, select: sourceSelect }) : [];
+    const currentSources = new Map(rows.map(row => [row.id, taxHash(row)]));
+    const candidateSourceStates: CandidateSourceState[] = activeCandidates.map(candidate => {
+        const currentHash = currentSources.get(candidate.sourceId);
+        return { candidateId: candidate.id, currentHash: currentHash ?? 'UNAVAILABLE', state: !currentHash ? 'UNAVAILABLE' : candidate.sourceHash === currentHash ? 'UNCHANGED' : 'MODIFIED' };
+    });
     return {
-        period, incomes, deductions, credits, evidences, candidates, reconciliations, transactions, reversalReviewIncomeIds: [...new Set(reversals.map(r => r.incomeId))].sort(), rule
+        period, incomes, deductions, credits, evidences, candidates, candidateSourceStates, reconciliations, transactions, reversalReviewIncomeIds: [...new Set(reversals.map(r => r.incomeId))].sort(), rule
     };
 }
 function rulePayload() { const { checksum, ...payload } = HN_ISR_2026; void checksum; return payload; }
@@ -248,6 +262,14 @@ export function buildPreparation(data: CalculationData) {
     if (profile.success && profile.data.individualMerchant && (!info?.accountant || !includeEvidence(info.priorFinancialEvidenceId)))
         pending.push('MERCHANT_ACCOUNTANT_OR_PRIOR_FINANCIAL_REQUIRED');
     const review = (kind: z.infer<typeof reviewSchema>['kind'], id: string) => info?.reviews.find(r => r.kind === kind && r.recordId === id && includeEvidence(r.evidenceId));
+    for (const candidate of data.candidates ?? []) {
+        if (candidate.status === 'DISMISSED') continue;
+        const current = data.candidateSourceStates?.find(source => source.candidateId === candidate.id);
+        if (current?.state === 'UNCHANGED') continue;
+        const decision = review('source', candidate.id);
+        if (!decision || decision.reviewedSourceHash !== (current?.currentHash ?? 'UNAVAILABLE'))
+            pending.push(`${candidate.id}:SOURCE_${current?.state ?? 'UNAVAILABLE'}`);
+    }
     const labels: Record<string, string> = {};
     const supportedIncome: Record<string, z.infer<typeof labelSchema>> = {
         SALARY: 'Sueldos', SUELDOS: 'Sueldos', HONORARIOS: 'Honorarios', OTHER_TAXABLE: 'Otros ingresos gravables'
@@ -339,7 +361,7 @@ export function buildPreparation(data: CalculationData) {
         id: e.id, name: e.name, mime: e.mime, size: e.size, sha256: e.sha256
     }; });
     const sources: PreparationSources = dto({
-        incomes: data.incomes.map(sourceRecord), deductions: data.deductions.map(sourceRecord), credits: data.credits.map(sourceRecord), reversalReviewIncomeIds: data.reversalReviewIncomeIds, candidates: data.candidates ?? [], reconciliations: data.reconciliations ?? [], transactions:(data.transactions??[]).map(sourceRecord)
+        incomes: data.incomes.map(sourceRecord), deductions: data.deductions.map(sourceRecord), credits: data.credits.map(sourceRecord), reversalReviewIncomeIds: data.reversalReviewIncomeIds, candidates: data.candidates ?? [], candidateSourceStates: data.candidateSourceStates ?? [], reconciliations: data.reconciliations ?? [], transactions:(data.transactions??[]).map(sourceRecord)
     });
     // Lifecycle revision/status are deliberately excluded; every economic input is frozen.
     const inputs: unknown = dto({

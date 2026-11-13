@@ -4152,9 +4152,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/reconciliation-service.ts": {
-    "mtime": 1794186447.8384585,
-    "seen": 1794536508.1377509,
-    "ast_hash": "cacc16998659a6c810b1f793898aa8e3",
+    "mtime": 1794572676.8122847,
+    "seen": 1794573052.9573095,
+    "ast_hash": "b89bc898b01acb89584ad4dbcb688064",
     "semantic_hash": ""
   },
   "src/server/services/tax/record-service.ts": {
@@ -4164,9 +4164,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/withdrawal-reader.ts": {
-    "mtime": 1794144030.8539393,
-    "seen": 1794144304.3080442,
-    "ast_hash": "e306dbc2ffdad205f15ebe935b3c6241",
+    "mtime": 1794572676.8060899,
+    "seen": 1794573052.9573145,
+    "ast_hash": "2415750f2846f36a0b6952f2ef45b856",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/tax.ts": {
@@ -4188,21 +4188,21 @@
     "semantic_hash": ""
   },
   "src/app/fiscal/components/fiscal-form.tsx": {
-    "mtime": 1794186732.8996782,
-    "seen": 1794536508.1371374,
-    "ast_hash": "365dae3a465406c06050a8bf7ea8f12e",
+    "mtime": 1794572828.3877184,
+    "seen": 1794573052.9540591,
+    "ast_hash": "3f5bd4bac56d9ae866c313bd6326427d",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/fiscal-workspace.tsx": {
-    "mtime": 1794536829.895326,
-    "seen": 1794537298.064248,
-    "ast_hash": "d07b8c300d36853ffa6222b41b716057",
+    "mtime": 1794573164.536327,
+    "seen": 1794573320.6743362,
+    "ast_hash": "b19080674570c3a6dd26147f2190d4eb",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/templates.ts": {
-    "mtime": 1794186732.8998413,
-    "seen": 1794536508.137143,
-    "ast_hash": "34182972a939f0b5a67827c64256f371",
+    "mtime": 1794572828.3871105,
+    "seen": 1794573052.954064,
+    "ast_hash": "5ec43aef27c07b4bc080fb36d43fde64",
     "semantic_hash": ""
   },
   "src/app/fiscal/error.tsx": {
@@ -4224,9 +4224,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/calculation-service.ts": {
-    "mtime": 1794571079.656111,
-    "seen": 1794571150.519424,
-    "ast_hash": "e91d0a4d9f47ec398a3d2e5c2c26d30b",
+    "mtime": 1794572676.8089385,
+    "seen": 1794573052.9573007,
+    "ast_hash": "86faa497ca8c2db90d8480235270f646",
     "semantic_hash": ""
   },
   "src/server/services/tax/export-service.ts": {
@@ -4236,9 +4236,9 @@
     "semantic_hash": ""
   },
   "src/server/services/tax/return-service.ts": {
-    "mtime": 1794168379.7167602,
-    "seen": 1794536508.1377532,
-    "ast_hash": "20ce3e41bf5657e0511484a68c82a451",
+    "mtime": 1794572676.8100126,
+    "seen": 1794573052.9573116,
+    "ast_hash": "ca9554956c4be66ff4f2fd37723ec6c5",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/confirmation.tsx": {

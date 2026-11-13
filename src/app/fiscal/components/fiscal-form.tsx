@@ -94,6 +94,7 @@ export const labels: Record<string, string> = {
   allocations: "Asignaciones parciales",
   sourceId: "Retiro propuesto",
   sourceHash: "Huella de la fuente",
+  reviewedSourceHash: "Huella del origen revisado",
   sourceAmount: "Importe asignado de la fuente",
   filingReference: "Referencia de presentación",
   receiptEvidenceId: "Acuse disponible",
@@ -150,6 +151,7 @@ export const enumLabels: Record<string, string> = {
   deduction: "Gasto o deducción",
   credit: "Crédito",
   transaction: "Movimiento",
+  source: "Origen de retiro",
   reversal: "Revisión de reverso",
 };
 Object.assign(labels, {
@@ -448,6 +450,7 @@ export function FieldEditor({
                   value={String(v)}
                   readOnly={
                     key === "sourceHash" ||
+                    key === "reviewedSourceHash" ||
                     key === "incomeRevision" ||
                     key === "transactionRevision"
                   }

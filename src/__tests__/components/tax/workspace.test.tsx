@@ -509,3 +509,12 @@ it("keeps archived returns fileable after reopening and disables their close act
   expect(screen.getByRole("button", { name: "Guardar acuse de presentación" }).hasAttribute("disabled")).toBe(false);
   expect(screen.getByRole("button", { name: "Cerrar ejercicio" }).hasAttribute("disabled")).toBe(true);
 });
+
+it.each([{}, {sectionB:{relatedParties:'Declaración guardada'}}])('keeps all manual information fields available for incomplete stored data: %j', stored => {
+  state.data['tax.periods.get'] = { ...(state.data['tax.periods.get'] as Record<string, unknown>), information: stored };
+  mount();
+  fireEvent.click(screen.getByRole('button', {name:'ISR y declaración'}));
+  expect(screen.getByLabelText('No gravable HNL')).toBeTruthy();
+  expect(screen.getByLabelText('No deducible HNL')).toBeTruthy();
+  expect((screen.getByLabelText('Partes relacionadas (declaración explícita)') as HTMLInputElement).value).toBe((stored as {sectionB?:{relatedParties:string}}).sectionB?.relatedParties ?? '');
+});

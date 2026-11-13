@@ -266,3 +266,12 @@ it("adds an explicit documented valuation to an existing unvalued income", async
   fireEvent.click(screen.getByRole("button", { name: "Guardar ingreso existente" }));
   await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ valuation: expect.objectContaining({ quantity: "100", base: { kind: "FIAT", code: "USD" }, rate: "25.00", evidenceId: "document" }) })));
 });
+
+it('binds a source review to its observed hash and keeps that hash read only', () => {
+  render(<FiscalForm title="revisión de origen" userId="u" scope="source-review:new" initial={{recordId:'',kind:'income',reviewedSourceHash:''}} choices={{recordId:[{value:'source-id',label:'Origen de retiro QA',fields:{kind:'source',reviewedSourceHash:'b'.repeat(64)}}]}} save={vi.fn()} />);
+  const option = screen.getByRole('option', {name:'Origen de retiro QA'});
+  fireEvent.change(option.closest('select')!, {target:{value:'source-id'}});
+  const hash = screen.getByLabelText('Huella del origen revisado') as HTMLInputElement;
+  expect(hash.value).toBe('b'.repeat(64));
+  expect(hash.readOnly).toBe(true);
+});
