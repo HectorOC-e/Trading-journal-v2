@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "src/app/api/import/mt4/route.ts": {
-    "mtime": 1793537926.1396728,
-    "seen": 1793538422.7142346,
-    "ast_hash": "a261a73588a614eebafee0bf17db0990",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6511006,
+    "ast_hash": "60064c77be7cd69b9d1e03b47d91b9dc",
     "semantic_hash": ""
   },
   "src/app/api/psychology-ai/route.ts": {
@@ -144,9 +144,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/add-edit-resource-modal.tsx": {
-    "mtime": 1793590073.5136302,
-    "seen": 1793625362.5340545,
-    "ast_hash": "7b5184b1ab90af23deb40a32428fbd6a",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.388215,
+    "ast_hash": "b2517fbfca0a020a5c69e0c72b33b684",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/impact-modal.tsx": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/page.tsx": {
-    "mtime": 1793718162.402989,
-    "seen": 1793725258.5203779,
-    "ast_hash": "70cf11cb6201b875b760534e36d26eaf",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3882248,
+    "ast_hash": "d8128dc2b85ea0ba537f722ce435d267",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/utils/mastery.ts": {
@@ -192,15 +192,15 @@
     "semantic_hash": ""
   },
   "src/app/cuentas/components/account-card.tsx": {
-    "mtime": 1793537926.141879,
-    "seen": 1793538422.7142546,
-    "ast_hash": "e4147b46f8c9a7f4188a780f8304da22",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3882325,
+    "ast_hash": "497d98dd0550155c345921dd753c359f",
     "semantic_hash": ""
   },
   "src/app/cuentas/components/account-detail-panel.tsx": {
-    "mtime": 1793537926.1421454,
-    "seen": 1793538422.7142556,
-    "ast_hash": "bef224c260eae9f242ae22f7988333a5",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.388236,
+    "ast_hash": "1ee7b6c48924ad1e0afe4e103c551e9b",
     "semantic_hash": ""
   },
   "src/app/cuentas/error.tsx": {
@@ -246,9 +246,9 @@
     "semantic_hash": ""
   },
   "src/app/cuentas/page.tsx": {
-    "mtime": 1793537926.142572,
-    "seen": 1793538422.7142634,
-    "ast_hash": "51274d781a8ac6fa225f342be15f8e4d",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6511497,
+    "ast_hash": "7023db78df7dc3f096eca5bb16d213e6",
     "semantic_hash": ""
   },
   "src/app/dashboard/components/card.tsx": {
@@ -312,9 +312,9 @@
     "semantic_hash": ""
   },
   "src/app/dashboard/page.tsx": {
-    "mtime": 1793537926.1444647,
-    "seen": 1793538422.7142725,
-    "ast_hash": "9cf17e9fb5cdd4bd8d76b4042deeae94",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3882744,
+    "ast_hash": "e7c9ed6da3b14436d51b058ffa39b765",
     "semantic_hash": ""
   },
   "src/app/dashboard/tabs/tab-disciplina.tsx": {
@@ -372,8 +372,8 @@
     "semantic_hash": ""
   },
   "src/app/notificaciones/page.tsx": {
-    "mtime": 1793909953.5238605,
-    "seen": 1793911028.1987143,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9444273,
     "ast_hash": "48f9cfaef87a053924a10f32d4372f8a",
     "semantic_hash": ""
   },
@@ -420,8 +420,8 @@
     "semantic_hash": ""
   },
   "src/app/retiros/page.tsx": {
-    "mtime": 1793912310.9393892,
-    "seen": 1793912327.7031403,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9444451,
     "ast_hash": "aa99d3befee6aba828ebb9d4faf3a1e5",
     "semantic_hash": ""
   },
@@ -492,9 +492,9 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-lifecycle.tsx": {
-    "mtime": 1793906865.1253138,
-    "seen": 1793911028.1987603,
-    "ast_hash": "6ee41d77e6e924057306d69c703502cf",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.388337,
+    "ast_hash": "b7e20442404f703d4cd15a1ceef24878",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-report-shell.tsx": {
@@ -570,9 +570,9 @@
     "semantic_hash": ""
   },
   "src/app/reviews/semanal/[weekStart]/page.tsx": {
-    "mtime": 1793906865.1253138,
-    "seen": 1793911028.198786,
-    "ast_hash": "ce1a9de857a63d558cd9b9161eb3f31c",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3883607,
+    "ast_hash": "8d1ab30ae47dc7ae13d4e4ab642f564e",
     "semantic_hash": ""
   },
   "src/app/trades/components/import-csv-modal.tsx": {
@@ -690,9 +690,9 @@
     "semantic_hash": ""
   },
   "src/components/layout/Sidebar.tsx": {
-    "mtime": 1793537926.1516821,
-    "seen": 1793538422.714325,
-    "ast_hash": "6364f90710bbd338b3c9e65c92d8f319",
+    "mtime": 1794167305.2359233,
+    "seen": 1794167526.7100894,
+    "ast_hash": "bc4f0b5edbbf0ce105058610373efa9d",
     "semantic_hash": ""
   },
   "src/components/layout/mobile-bottom-bar.tsx": {
@@ -780,9 +780,9 @@
     "semantic_hash": ""
   },
   "src/components/playbook/setup-intelligence-panel.tsx": {
-    "mtime": 1793537926.1529908,
-    "seen": 1793538422.7143369,
-    "ast_hash": "56c3c7d171bea2b3391b35f38d7cde26",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3884652,
+    "ast_hash": "0679d18ca6af5aaa367d8167fcda77a7",
     "semantic_hash": ""
   },
   "src/components/psychology/psychology-v3-panel.tsx": {
@@ -852,8 +852,8 @@
     "semantic_hash": ""
   },
   "src/components/trades/edit-trade-modal.tsx": {
-    "mtime": 1793911896.638718,
-    "seen": 1793912080.26724,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9445724,
     "ast_hash": "77bb1364feb8b05ca05f124095663d11",
     "semantic_hash": ""
   },
@@ -888,20 +888,20 @@
     "semantic_hash": ""
   },
   "src/components/trades/trade-detail-panel.tsx": {
-    "mtime": 1793911914.5120873,
-    "seen": 1793912080.267247,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9446218,
     "ast_hash": "7b5fb7d4e4a6ba410139bab5d148b60d",
     "semantic_hash": ""
   },
   "src/components/trades/trade-row.tsx": {
-    "mtime": 1793911896.6384919,
-    "seen": 1793912080.2672477,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9446237,
     "ast_hash": "eddc0fda37c17091ef15eb63fbb30aa9",
     "semantic_hash": ""
   },
   "src/components/trades/trades-table.tsx": {
-    "mtime": 1793911896.6385777,
-    "seen": 1793912080.2672486,
+    "mtime": 1793913127.1832647,
+    "seen": 1793979368.9446251,
     "ast_hash": "1f6c2f548b7068c235b9f249ed6189ef",
     "semantic_hash": ""
   },
@@ -1308,8 +1308,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/dashboard-analytics.ts": {
-    "mtime": 1793911076.5772238,
-    "seen": 1793911118.351495,
+    "mtime": 1793913127.1872647,
+    "seen": 1793979368.9447494,
     "ast_hash": "b107077f261e7d0cd7ca46a983abbde0",
     "semantic_hash": ""
   },
@@ -1494,8 +1494,8 @@
     "semantic_hash": ""
   },
   "src/domains/learning/services/study-session-service.ts": {
-    "mtime": 1793909774.1882524,
-    "seen": 1793911028.1990807,
+    "mtime": 1793913127.1872647,
+    "seen": 1793979368.9448361,
     "ast_hash": "93c4dab6ffde5a470e75dcc53edf363f",
     "semantic_hash": ""
   },
@@ -1644,9 +1644,9 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/risk-enforcement.ts": {
-    "mtime": 1793910017.8613024,
-    "seen": 1793911028.1991513,
-    "ast_hash": "3dc5af7cebf3d0e24f059fe923901b73",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6515996,
+    "ast_hash": "4684a3de7f8215b679889e7f59891084",
     "semantic_hash": ""
   },
   "src/domains/trading/services/risk-engine.ts": {
@@ -1794,9 +1794,9 @@
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
-    "mtime": 1793537926.165525,
-    "seen": 1793538422.714482,
-    "ast_hash": "2682e360d661fb6882d4625df1688129",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6516292,
+    "ast_hash": "3e69650fdf798232afc7f50dc1c7050b",
     "semantic_hash": ""
   },
   "src/lib/ai/complete.ts": {
@@ -1872,8 +1872,8 @@
     "semantic_hash": ""
   },
   "src/lib/error-formatter.ts": {
-    "mtime": 1793911430.467952,
-    "seen": 1793911471.613162,
+    "mtime": 1793913127.1872647,
+    "seen": 1793979368.9449775,
     "ast_hash": "b8f8a0806417163eee49eda642e4dd92",
     "semantic_hash": ""
   },
@@ -2028,9 +2028,9 @@
     "semantic_hash": ""
   },
   "src/lib/storage-keys.ts": {
-    "mtime": 1793537926.1678224,
-    "seen": 1793538422.7145395,
-    "ast_hash": "c2a1ab16802003a093cd979617c6b2c0",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3892634,
+    "ast_hash": "07f215eccf51824d28b0e3953b88480d",
     "semantic_hash": ""
   },
   "src/lib/study-session-store.ts": {
@@ -2142,9 +2142,9 @@
     "semantic_hash": ""
   },
   "src/proxy.ts": {
-    "mtime": 1793537926.1690598,
-    "seen": 1793538422.714557,
-    "ast_hash": "4df63bc2797ff25b794801a6b1ab89ce",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6516936,
+    "ast_hash": "f0681fa7a6803908a009d0dba0d16e2d",
     "semantic_hash": ""
   },
   "src/scripts/gen-icons.mjs": {
@@ -2184,9 +2184,9 @@
     "semantic_hash": ""
   },
   "src/server/services/coach/coach-thread-service.ts": {
-    "mtime": 1793537926.173377,
-    "seen": 1793538422.7145631,
-    "ast_hash": "7f57d281145a0ad80a92a247b12f65f6",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517031,
+    "ast_hash": "f71e9d96806d167f5ee532e2d2510d8c",
     "semantic_hash": ""
   },
   "src/server/services/digest/cognitive-digest-service.ts": {
@@ -2214,8 +2214,8 @@
     "semantic_hash": ""
   },
   "src/server/services/email/send-learning-digest.ts": {
-    "mtime": 1793909774.1891372,
-    "seen": 1793911028.1993465,
+    "mtime": 1793913127.190337,
+    "seen": 1793979368.945086,
     "ast_hash": "dfde1e755df33bd422c5b840af2a599e",
     "semantic_hash": ""
   },
@@ -2388,9 +2388,9 @@
     "semantic_hash": ""
   },
   "src/server/services/setups/playbook-service.ts": {
-    "mtime": 1793537926.1752431,
-    "seen": 1793538422.714603,
-    "ast_hash": "e94b46209b949d1c21cfac5deb7901f1",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3894224,
+    "ast_hash": "1702fd086ba8c053baa9be530c30363b",
     "semantic_hash": ""
   },
   "src/server/services/tags/seed.ts": {
@@ -2418,9 +2418,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/root.ts": {
-    "mtime": 1793718162.402989,
-    "seen": 1793725258.5208197,
-    "ast_hash": "f8093e424491e1e99566e161d879fb71",
+    "mtime": 1794143711.1286302,
+    "seen": 1794144304.3080535,
+    "ast_hash": "4b04d964305f4e81a44d1f3dd967c4ee",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/account-logs.ts": {
@@ -2430,9 +2430,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/accounts.ts": {
-    "mtime": 1793911260.6572063,
-    "seen": 1793911318.0135484,
-    "ast_hash": "fc168e71184c8801f1335806b7d513f0",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3894455,
+    "ast_hash": "7e79c19c3e7664bf5fcd003cd085f04d",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/ai-config.ts": {
@@ -2454,15 +2454,15 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/behavior.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.7146168,
-    "ast_hash": "767e03fca14bd99fba4d07f0438897b4",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389454,
+    "ast_hash": "bdf2e2a1dbfa6e0239df6b6f87f37f77",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/coach.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.714618,
-    "ast_hash": "b6bc472b88df7ad40495416b33066eef",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517713,
+    "ast_hash": "79bb6f19231cd6851a4a87e898a47e73",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/custom-palettes.ts": {
@@ -2502,15 +2502,15 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-resources.ts": {
-    "mtime": 1793910375.6771863,
-    "seen": 1793911028.1994755,
-    "ast_hash": "502e50b2cecee274a77024597fc67e8e",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517787,
+    "ast_hash": "40197879a7d31c6992ca7e2753f70cbd",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/markets.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.7146244,
-    "ast_hash": "e3e6a23492719dbd6ac87860367679c6",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.65178,
+    "ast_hash": "3de36b5deb1f13da51b57fa58d32236c",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-goals.ts": {
@@ -2520,21 +2520,21 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-reviews.ts": {
-    "mtime": 1793906865.1293137,
-    "seen": 1793911028.199481,
-    "ast_hash": "26b81221cf15a5d57fa03f4426ce0e25",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517816,
+    "ast_hash": "3021b9decde8493d72481567f5c8decf",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/notifications.ts": {
-    "mtime": 1793911260.6573906,
-    "seen": 1793911318.0135815,
+    "mtime": 1793913127.190337,
+    "seen": 1793979368.9452207,
     "ast_hash": "37ff61fb969466e1c92628a1880056b9",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/playbook.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.714628,
-    "ast_hash": "d6371b457c14000d2c0c343d1e511f7c",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3894794,
+    "ast_hash": "29e36d35ec53e4fc30b1275ec5759ee3",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/preferences.ts": {
@@ -2574,9 +2574,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/study-sessions.ts": {
-    "mtime": 1793626993.579476,
-    "seen": 1793627532.4760914,
-    "ast_hash": "ab84607493d00f84a7bead7488560323",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389494,
+    "ast_hash": "e2d95f594a19204a1cbaceaeb5bd7897",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/tags.ts": {
@@ -2586,9 +2586,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/today.ts": {
-    "mtime": 1793537926.1771595,
-    "seen": 1793538422.714636,
-    "ast_hash": "e87cbb5350f01ccc070c291543f1f75c",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3895311,
+    "ast_hash": "0d271fa3b45435ddbb5a63ff74125d5a",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trades.ts": {
@@ -2604,14 +2604,14 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1793906865.1293137,
-    "seen": 1793911028.1996453,
-    "ast_hash": "72a37e448e881a390ef6af62c7d0c8d7",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3895361,
+    "ast_hash": "d2698e1da1b5aa9c193cd090cb1ac098",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
-    "mtime": 1793909893.7865827,
-    "seen": 1793911028.199647,
+    "mtime": 1793913127.190337,
+    "seen": 1793979368.945249,
     "ast_hash": "d70b15fa1a43495e7cf9ce6c0875acb9",
     "semantic_hash": ""
   },
@@ -2622,8 +2622,8 @@
     "semantic_hash": ""
   },
   "src/types/index.ts": {
-    "mtime": 1793910059.0757217,
-    "seen": 1793911028.1996508,
+    "mtime": 1793913127.190337,
+    "seen": 1793979368.945253,
     "ast_hash": "d5df795c900f0572ca56a63a106fcec0",
     "semantic_hash": ""
   },
@@ -3090,9 +3090,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1793537926.036237,
-    "seen": 1793538422.7142165,
-    "ast_hash": "3b38df826ce8cca9e8b753da56dbd8dd",
+    "mtime": 1794536206.2176025,
+    "seen": 1794536508.1368926,
+    "ast_hash": "5cf70d51523054cc4fab6a1bbe8fa7ee",
     "semantic_hash": ""
   },
   "README.md": {
@@ -3234,15 +3234,15 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/dashboard-service.ts": {
-    "mtime": 1793911076.5762415,
-    "seen": 1793911118.3519394,
-    "ast_hash": "4b101cc0d83be15f706a4c5861f0c149",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517596,
+    "ast_hash": "6d5444f082cb289cdb88dfb47ea782fc",
     "semantic_hash": ""
   },
   "src/server/services/trades/serializers.ts": {
-    "mtime": 1793909945.1398926,
-    "seen": 1793911028.199439,
-    "ast_hash": "ec1b1bef7384c6394f6e380226fa75f9",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3894343,
+    "ast_hash": "10a004b83d834e88d7f57b5b51b9d1c5",
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-read-service.ts": {
@@ -3252,9 +3252,9 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1793911543.1073399,
-    "seen": 1793911581.8037179,
-    "ast_hash": "b32fe9f9d6ee007d3b1dba346861c36d",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6517627,
+    "ast_hash": "adb1dd7f1292e007150912a9b7f5da13",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
@@ -3690,15 +3690,15 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/session-history.tsx": {
-    "mtime": 1793626993.5754762,
-    "seen": 1793627532.4756393,
-    "ast_hash": "abdb84818d37cd407f481946317c09e9",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3882046,
+    "ast_hash": "ce8d556d76813f97e8303fe5f75cd024",
     "semantic_hash": ""
   },
   "src/server/services/learning/session-revisions.ts": {
-    "mtime": 1793626993.579476,
-    "seen": 1793627532.4760187,
-    "ast_hash": "b76c1ba47a0193a6e1de2fa2c64eabd3",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389343,
+    "ast_hash": "b14008e39877cd048d714c627b4e0ac8",
     "semantic_hash": ""
   },
   "supabase/migrations/20261102130101_learning_session_revisions.sql": {
@@ -3732,15 +3732,15 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
-    "mtime": 1793742651.7461271,
-    "seen": 1793744022.0997255,
-    "ast_hash": "585664f84a5354bd4a0a2e87a918b333",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3881977,
+    "ast_hash": "052f30c0b5f1e09afdb63d5ecaae4c2c",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/practice-modal.tsx": {
-    "mtime": 1793742651.7461271,
-    "seen": 1793744022.0997384,
-    "ast_hash": "6bd41b83de52618ae7ae3c222df24908",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.388221,
+    "ast_hash": "47a3c9c8888364096d6efc32fe047228",
     "semantic_hash": ""
   },
   "src/server/services/learning/practice-feedback-service.ts": {
@@ -3750,9 +3750,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-practices.ts": {
-    "mtime": 1793742651.7461271,
-    "seen": 1793744022.1001658,
-    "ast_hash": "eae05d3811894e43daa45ad7cbdcdb81",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389469,
+    "ast_hash": "01866b4142bf50864b46c4b1a05b50dd",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-02-learning-practices.md": {
@@ -3882,9 +3882,9 @@
     "semantic_hash": ""
   },
   "src/domains/profile/export-sections.ts": {
-    "mtime": 1793848431.5087326,
-    "seen": 1793902439.6394541,
-    "ast_hash": "16d29e56257dcc01143095711945abdc",
+    "mtime": 1794167284.5274072,
+    "seen": 1794167526.7102354,
+    "ast_hash": "437c2ed856dce03a8d4b6c387424f40e",
     "semantic_hash": ""
   },
   "src/domains/profile/profile-form.ts": {
@@ -3894,15 +3894,15 @@
     "semantic_hash": ""
   },
   "src/server/services/profile/account-deletion.ts": {
-    "mtime": 1793848431.5120635,
-    "seen": 1793902439.6397715,
-    "ast_hash": "4579cdfaf69c0b444c3c4a4a554790e1",
+    "mtime": 1794167126.6379983,
+    "seen": 1794167526.7103896,
+    "ast_hash": "8e97b4b21a4c80c7a8b65825000edb3e",
     "semantic_hash": ""
   },
   "src/server/services/profile/export-profile.ts": {
-    "mtime": 1793848431.5120635,
-    "seen": 1793902439.6397731,
-    "ast_hash": "c8fa79aaa012bc3ede49cacbf08da43e",
+    "mtime": 1794143916.2012246,
+    "seen": 1794144304.3079972,
+    "ast_hash": "830758b891679305d5abe61ff1e82f35",
     "semantic_hash": ""
   },
   "supabase/migrations/20261105023500_durable_account_deletions.sql": {
@@ -3924,9 +3924,9 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/notes-draft.ts": {
-    "mtime": 1793906865.1253138,
-    "seen": 1793911028.1987565,
-    "ast_hash": "4dd878987271d9b2e3e2f42f45205b3b",
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3883314,
+    "ast_hash": "2ae1b88e4c1a58560fb211e8b58dbd80",
     "semantic_hash": ""
   },
   "src/domains/trading/services/playbook-reliability.ts": {
@@ -3954,45 +3954,321 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/realized-history.ts": {
-    "mtime": 1793910411.495961,
-    "seen": 1793911028.199149,
+    "mtime": 1793913127.1872647,
+    "seen": 1793979368.9448948,
     "ast_hash": "ffbcf099002200b8a0a9cf9a2216ae56",
     "semantic_hash": ""
   },
   "src/lib/withdrawal-input.ts": {
-    "mtime": 1793909778.460605,
-    "seen": 1793911028.1993155,
+    "mtime": 1793913127.1872647,
+    "seen": 1793979368.945055,
     "ast_hash": "4387660c998063d5f1cf76ec7088c1c3",
     "semantic_hash": ""
   },
   "src/server/services/accounts/cash-adjustments.ts": {
-    "mtime": 1793910248.0482779,
-    "seen": 1793911028.1993258,
-    "ast_hash": "49c6eda9349634912618a9f19cde9eb9",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6516964,
+    "ast_hash": "c1f053fc028975f4fbcf3b236a999d4f",
     "semantic_hash": ""
   },
   "src/server/services/accounts/withdrawal-service.ts": {
-    "mtime": 1793910248.0488453,
-    "seen": 1793911028.1993275,
-    "ast_hash": "4f221e672b5a20684ee713505a8d80aa",
+    "mtime": 1793988842.929225,
+    "seen": 1794099279.6516974,
+    "ast_hash": "f69d783bcb6c137b784662155038fd47",
     "semantic_hash": ""
   },
   "supabase/migrations/20261105203614_trade_partial_realization.sql": {
-    "mtime": 1793910116.6183896,
-    "seen": 1793911028.1998415,
+    "mtime": 1793913127.190337,
+    "seen": 1793979368.9535072,
     "ast_hash": "09b725ba651af810309552ef1d55f423",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-05-full-audit.md": {
-    "mtime": 1793911431.2072775,
-    "seen": 1793911471.6135736,
+    "mtime": 1793913127.163265,
+    "seen": 1793979368.9535773,
     "ast_hash": "12ae2fe48426d5c7f47f4553c15b7c93",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-05-full-audit-design.md": {
-    "mtime": 1793909624.0127952,
-    "seen": 1793911028.1999462,
+    "mtime": 1793913127.163265,
+    "seen": 1793979368.9536486,
     "ast_hash": "d4ae364bbfbdbd5e4dc48c36faecdf04",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-06-audit-corrections.md": {
+    "mtime": 1793988842.9052253,
+    "seen": 1794099279.6522384,
+    "ast_hash": "109893bc058076b4298fbb771a7b1e49",
+    "semantic_hash": ""
+  },
+  "src/app/cuentas/components/account-cash-breakdown.tsx": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3882341,
+    "ast_hash": "11367dd65e481c1f4f7d7e98386776f9",
+    "semantic_hash": ""
+  },
+  "src/app/reviews/components/report/review-continuity.tsx": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3883355,
+    "ast_hash": "f4bf4974ad050e0a77525c98e0fa5d03",
+    "semantic_hash": ""
+  },
+  "src/components/today/daily-plan.tsx": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.388485,
+    "ast_hash": "413dc82d316449c38af9cb9c8ce3a198",
+    "semantic_hash": ""
+  },
+  "src/components/ui/draft-recovery.tsx": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3888798,
+    "ast_hash": "17107b779b8b0ff2f4574ba2cde31e15",
+    "semantic_hash": ""
+  },
+  "src/domains/learning/review-source.ts": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3890383,
+    "ast_hash": "f81ea4ef56b11a4570ffd59f10b09d5a",
+    "semantic_hash": ""
+  },
+  "src/hooks/useRecoverableDraft.ts": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3891666,
+    "ast_hash": "37d6080173f60ca418a7fd5a1368fb4e",
+    "semantic_hash": ""
+  },
+  "src/server/services/reviews/continuity.ts": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389386,
+    "ast_hash": "fb09a5326530e0ba48bab58197e31ccc",
+    "semantic_hash": ""
+  },
+  "src/server/services/today/daily-plan-service.ts": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.3894262,
+    "ast_hash": "8a30c1d84d6f877d253e87cce983575b",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-06-workflow-improvements.md": {
+    "mtime": 1794101193.2175717,
+    "seen": 1794142369.3897994,
+    "ast_hash": "9966c9a4a764dff7b789b001f13b40f2",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-06-workflow-improvements-design.md": {
+    "mtime": 1794101193.2175717,
+    "seen": 1794142369.389831,
+    "ast_hash": "a0124a4151ac787c28df38b5786dc74b",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/calculation.ts": {
+    "mtime": 1794142313.310616,
+    "seen": 1794142369.3890843,
+    "ast_hash": "02c3b7809a336467b4423e3cb22a1f1b",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/decimal.ts": {
+    "mtime": 1794142245.7396154,
+    "seen": 1794142369.3890865,
+    "ast_hash": "3f0190268d476ab15be4a44b8d10b723",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/ledger.ts": {
+    "mtime": 1794186206.1203475,
+    "seen": 1794536508.1375046,
+    "ast_hash": "7b48c019d54d8ecaf8ee55e1b9f1ba74",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/rules/hn/2026.ts": {
+    "mtime": 1794142296.2637093,
+    "seen": 1794142369.38909,
+    "ast_hash": "dbda40dee71ff79d17098dffe32aa07c",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/types.ts": {
+    "mtime": 1794142245.7426615,
+    "seen": 1794142369.3890917,
+    "ast_hash": "3549459a3b3bc823e215380e0516d007",
+    "semantic_hash": ""
+  },
+  "src/domains/tax/validation.ts": {
+    "mtime": 1794142296.263615,
+    "seen": 1794142369.3890934,
+    "ast_hash": "e98411e852bd63d37e57607013ae48f8",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261108010208_review_workflow_provenance.sql": {
+    "mtime": 1794101193.2460697,
+    "seen": 1794142369.389726,
+    "ast_hash": "f30bfb0f71a81e9f7520617fa35bca5e",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261108125144_fiscal_honduras.sql": {
+    "mtime": 1794186567.2231078,
+    "seen": 1794536508.1379473,
+    "ast_hash": "4d258795d46f0fd8a055bbab502ae0ba",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-08-fiscal-module.md": {
+    "mtime": 1794142099.2298813,
+    "seen": 1794142369.3898013,
+    "ast_hash": "c70295cc0e5cb8137076498fe8d49884",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-08-fiscal-module-design.md": {
+    "mtime": 1794167539.619653,
+    "seen": 1794167636.0043104,
+    "ast_hash": "1c6dd8113e0db8d85d0fa704070eb59d",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/context.ts": {
+    "mtime": 1794186661.2219415,
+    "seen": 1794536508.137745,
+    "ast_hash": "e912a1ab6ae9f6142b537fabcab8a214",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/serializers.ts": {
+    "mtime": 1794142600.063963,
+    "seen": 1794143111.3347795,
+    "ast_hash": "f80c05d8025b1ca483021ea06e10a460",
+    "semantic_hash": ""
+  },
+  "src/app/api/tax/evidence/route.ts": {
+    "mtime": 1794186661.222278,
+    "seen": 1794536508.1370146,
+    "ast_hash": "0c950a1db14d46adb39d12db3454ad29",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/evidence-service.ts": {
+    "mtime": 1794186661.2182658,
+    "seen": 1794536508.1377459,
+    "ast_hash": "725eafa22c6075ada2f86f5b2fa13ba0",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/ledger-service.ts": {
+    "mtime": 1794186447.8377333,
+    "seen": 1794536508.1377485,
+    "ast_hash": "e0cc4ebea834d261728994859da97ee4",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/profile-service.ts": {
+    "mtime": 1794167871.7303462,
+    "seen": 1794536508.1377497,
+    "ast_hash": "e6c9c37db5894204de822d4674b60d54",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/reconciliation-service.ts": {
+    "mtime": 1794186447.8384585,
+    "seen": 1794536508.1377509,
+    "ast_hash": "cacc16998659a6c810b1f793898aa8e3",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/record-service.ts": {
+    "mtime": 1794186718.8820581,
+    "seen": 1794536508.1377518,
+    "ast_hash": "99182330b2f4fe0aae5e957e7f34e622",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/withdrawal-reader.ts": {
+    "mtime": 1794144030.8539393,
+    "seen": 1794144304.3080442,
+    "ast_hash": "e306dbc2ffdad205f15ebe935b3c6241",
+    "semantic_hash": ""
+  },
+  "src/server/trpc/routers/tax.ts": {
+    "mtime": 1794186250.756269,
+    "seen": 1794536508.137807,
+    "ast_hash": "8859025029498b213af8e52b53cd934d",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261108131915_fiscal_evidence_deletion_gate.sql": {
+    "mtime": 1794143966.194877,
+    "seen": 1794144304.308193,
+    "ast_hash": "f13ede76661001fcd82baa19d317c887",
+    "semantic_hash": ""
+  },
+  "src/app/api/tax/export/route.ts": {
+    "mtime": 1794167340.828813,
+    "seen": 1794167526.7099593,
+    "ast_hash": "f0243b0e0cbf45d3c2a614d7231fdac6",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/evidence-panel.tsx": {
+    "mtime": 1794536133.314757,
+    "seen": 1794536508.137135,
+    "ast_hash": "783daaaed9a712b2e1c688f7132cc73e",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/fiscal-form.tsx": {
+    "mtime": 1794186732.8996782,
+    "seen": 1794536508.1371374,
+    "ast_hash": "365dae3a465406c06050a8bf7ea8f12e",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/fiscal-workspace.tsx": {
+    "mtime": 1794536237.5510013,
+    "seen": 1794536508.137139,
+    "ast_hash": "63e936051324f7f7f4bcd28faef30b17",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/templates.ts": {
+    "mtime": 1794186732.8998413,
+    "seen": 1794536508.137143,
+    "ast_hash": "34182972a939f0b5a67827c64256f371",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/error.tsx": {
+    "mtime": 1794167556.4577255,
+    "seen": 1794167636.0027084,
+    "ast_hash": "4928217d6dc4b316e8b3e77fe54dddf8",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/loading.tsx": {
+    "mtime": 1794167556.4657254,
+    "seen": 1794167636.00271,
+    "ast_hash": "1957e6d45abe19b93f8b576989a3ffcd",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/page.tsx": {
+    "mtime": 1794167556.4737253,
+    "seen": 1794167636.0027118,
+    "ast_hash": "487fe28a0d8b1913df9266716d3f751d",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/calculation-service.ts": {
+    "mtime": 1794186486.1861148,
+    "seen": 1794536508.137743,
+    "ast_hash": "3aeac4e3097c21f704577ef126656808",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/export-service.ts": {
+    "mtime": 1794167380.661347,
+    "seen": 1794167526.7104316,
+    "ast_hash": "8be29b0ea71532c3b6bb02ea51f29c48",
+    "semantic_hash": ""
+  },
+  "src/server/services/tax/return-service.ts": {
+    "mtime": 1794168379.7167602,
+    "seen": 1794536508.1377532,
+    "ast_hash": "20ce3e41bf5657e0511484a68c82a451",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261108194526_fiscal_upload_leases.sql": {
+    "mtime": 1794167210.0036688,
+    "seen": 1794167526.7107072,
+    "ast_hash": "84f00bba7349476c075f0cbd85480e1c",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/confirmation.tsx": {
+    "mtime": 1794167809.754101,
+    "seen": 1794536508.1371331,
+    "ast_hash": "13dae137836e7bae31dfc5e3fa861ae3",
+    "semantic_hash": ""
+  },
+  "src/app/fiscal/components/record-editor.tsx": {
+    "mtime": 1794186732.9001346,
+    "seen": 1794536508.1371408,
+    "ast_hash": "bf6fb09bbbf9b1b18bcaf4fd4baf6281",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
