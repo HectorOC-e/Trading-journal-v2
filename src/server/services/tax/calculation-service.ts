@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Prisma, PrismaClient, TaxIncome, TaxDeduction, TaxCredit, TaxPeriod, TaxEvidence, TaxRuleSet, TaxImportCandidate } from '@/lib/generated/prisma/client';
 import { calculateTax } from '@/domains/tax/calculation';
-import { HN_ISR_2026 } from '@/domains/tax/rules/hn/2026';
+import {validateRuleSet,type HnRuleSet} from '@/domains/tax/rules/rule-set';
 import { decimal, money } from '@/domains/tax/decimal';
 import { hnlSchema } from '@/domains/tax/validation';
 import type { TaxItem } from '@/domains/tax/types';
@@ -97,8 +97,8 @@ export async function loadCalculationData(db: Reader, userId: string, periodId: 
             }, select: { incomeId: true }, take
         }),
         db.taxRuleSet.findFirst({ where: {
-                country: 'HN', year: period.year, regime: period.regime, version: HN_ISR_2026.version, published: true
-            } }),
+                country: 'HN', year: period.year, regime: period.regime, published: true
+            },orderBy:[{createdAt:'desc'},{id:'desc'}] }),
         db.taxImportCandidate.findMany({
             where: candidateScope(userId, periodId), take, orderBy: { id: 'asc' }
         }),
@@ -127,7 +127,13 @@ export async function loadCalculationData(db: Reader, userId: string, periodId: 
         period, incomes, deductions, credits, evidences, candidates, candidateSourceStates, reconciliations, transactions, reversalReviewIncomeIds: [...new Set(reversals.map(r => r.incomeId))].sort(), rule
     };
 }
-function rulePayload() { const { checksum, ...payload } = HN_ISR_2026; void checksum; return payload; }
+function publishedRule(data:Pick<CalculationData,'rule'|'period'>):HnRuleSet|null {
+ try {
+  if(!data.rule?.published)return null;
+  const rule=validateRuleSet(data.rule.payload,data.rule.checksum);
+  return rule.year===data.period.year&&rule.regime===data.period.regime&&rule.version===data.rule.version?rule:null;
+ }catch{return null;}
+}
 function valuationEvidenceIds(value: unknown): string[] {
     if (Array.isArray(value))
         return value.flatMap(valuationEvidenceIds);
@@ -350,12 +356,13 @@ export function buildPreparation(data: CalculationData) {
     const duplicate = new Set(components).size !== components.length;
     if (duplicate)
         pending.push('DUPLICATE_ECONOMIC_COMPONENT');
-    const rulesAvailable = period.year === 2026 && period.regime === 'NATURAL_ORDINARY' && data.rule?.published === true && data.rule.version === HN_ISR_2026.version && data.rule.checksum === HN_ISR_2026.checksum && taxHash(data.rule.payload) === taxHash(rulePayload());
+    const activeRule=publishedRule(data);
+    const rulesAvailable=activeRule!==null;
     if (!rulesAvailable)
         pending.push('RULES_UNAVAILABLE');
     const calculation = rulesAvailable && !duplicate ? calculateTax({
-        country: 'HN', year: 2026, regime: period.regime, ruleSetVersion: HN_ISR_2026.version, incomes, deductions, credits, roundingConfirmed: rounding, roundingReason: period.roundingReason.trim() || undefined
-    }) : null;
+        country: 'HN', year: period.year, regime: period.regime, ruleSetVersion: activeRule!.version, incomes, deductions, credits, roundingConfirmed: rounding, roundingReason: period.roundingReason.trim() || undefined
+    },activeRule!) : null;
     if (calculation)
         pending.push(...calculation.pending);
     const manifest = [...used].sort().map(id => { const e = evidence.get(id)!; return {
@@ -366,11 +373,11 @@ export function buildPreparation(data: CalculationData) {
     });
     // Lifecycle revision/status are deliberately excluded; every economic input is frozen.
     const inputs: unknown = dto({
-        year: period.year, regime: period.regime, profile: period.profileSnapshot, information: period.information, roundingConfirmed: period.roundingConfirmed, roundingReason: period.roundingReason, sources, manifest, rule: rulesAvailable ? HN_ISR_2026 : null, mappingVersion: MAPPING_VERSION
+        year: period.year, regime: period.regime, profile: period.profileSnapshot, information: period.information, roundingConfirmed: period.roundingConfirmed, roundingReason: period.roundingReason, sources, manifest, rule: activeRule, mappingVersion: MAPPING_VERSION
     });
     const issues = [...new Set(pending)];
     return {
-        status: issues.length === 0 ? 'READY' as const : calculation ? 'IN_REVIEW' as const : 'DRAFT' as const, inputHash: taxHash(inputs), inputs, sources, calculation, coverage: {complete: issues.length === 0, includedIds: calculation?.coverage.includedIds ?? [], excludedIds: calculation?.coverage.excludedIds ?? [...incomes,...deductions,...credits].map(item=>item.id)}, pending: issues, manifest, ruleVersion: rulesAvailable ? HN_ISR_2026.version : 'UNAVAILABLE', mappingVersion: MAPPING_VERSION, form: {
+        status: issues.length === 0 ? 'READY' as const : calculation ? 'IN_REVIEW' as const : 'DRAFT' as const, inputHash: taxHash(inputs), inputs, sources, calculation, coverage: {complete: issues.length === 0, includedIds: calculation?.coverage.includedIds ?? [], excludedIds: calculation?.coverage.excludedIds ?? [...incomes,...deductions,...credits].map(item=>item.id)}, pending: issues, manifest, ruleVersion: activeRule?.version ?? 'UNAVAILABLE', mappingVersion: MAPPING_VERSION, form: {
             fields: mappedFields([...incomes, ...deductions, ...credits], labels, calculation, info, !!calculation?.coverage.complete && !issues.some(issue=>!['PROFILE_INCOMPLETE','SECTION_B_INCOMPLETE','MERCHANT_ACCOUNTANT_OR_PRIOR_FINANCIAL_REQUIRED'].includes(issue))), A: {
                 labels, admittedIncome: calculation?.admittedIncome ?? null, deductions: calculation?.deductions ?? null, base: calculation?.base ?? null
             }, B: info?.sectionB ?? null, C: { credits: calculation?.credits ?? null }, D: {
@@ -387,9 +394,10 @@ export async function previewCalculation(db: PrismaClient, userId: string, raw: 
         return {...preparation,simulation:null};
     // Read-only scenario, isolated from preparation and all persisted records.
     const calculation = preparation.calculation;
+    const activeRule=publishedRule(data);
     return {
-        ...preparation, status: 'IN_REVIEW' as const, coverage: {...preparation.coverage,complete:false}, pending:[...preparation.pending,'SIMULATION_ONLY'], simulation: { additionalIncomeHnl: input.simulation.additionalIncomeHnl, calculation: calculation ? calculateTax({
-                country: 'HN', year: 2026, regime: 'NATURAL_ORDINARY', ruleSetVersion: HN_ISR_2026.version, incomes: [{
+        ...preparation, status: 'IN_REVIEW' as const, coverage: {...preparation.coverage,complete:false}, pending:[...preparation.pending,'SIMULATION_ONLY'], simulation: { additionalIncomeHnl: input.simulation.additionalIncomeHnl, calculation: calculation && activeRule ? calculateTax({
+                country: 'HN', year: data.period.year, regime: 'NATURAL_ORDINARY', ruleSetVersion: activeRule.version, incomes: [{
                         id: 'simulation-base', componentId: 'simulation-base', amountHnl: calculation.admittedIncome, treatment: 'ADMITTED', legalBasis: 'Simulación'
                     }, {
                         id: 'simulation-extra', componentId: 'simulation-extra', amountHnl: input.simulation.additionalIncomeHnl, treatment: 'ADMITTED', legalBasis: 'Simulación'
@@ -398,6 +406,6 @@ export async function previewCalculation(db: PrismaClient, userId: string, raw: 
                     }], credits: [{
                         id: 'simulation-credits', componentId: 'simulation-credits', amountHnl: calculation.credits, treatment: 'ADMITTED', legalBasis: 'Simulación'
                     }], roundingConfirmed: false
-            }) : null }, notice: 'Simulación de solo lectura / no presentada; no modifica ingresos ni demuestra cobertura.'
+            },activeRule) : null }, notice: 'Simulación de solo lectura / no presentada; no modifica ingresos ni demuestra cobertura.'
     };
 }
