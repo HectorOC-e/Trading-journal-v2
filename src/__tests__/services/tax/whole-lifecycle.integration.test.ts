@@ -400,7 +400,8 @@ describe.skipIf(!db)("complete fiscal lifecycle on isolated PostgreSQL", () => {
     });
     expect(saved.snapshot).toEqual(archived.snapshot);
     expect(saved.snapshotHash).toBe(archived.snapshotHash);
-    expect(saved.inputHash).toBe(archived.inputHash);
+    expect((archived.snapshot as { inputHash: string }).inputHash).toMatch(/^[a-f0-9]{64}$/);
+    expect((saved.snapshot as { inputHash: string }).inputHash).toBe((archived.snapshot as { inputHash: string }).inputHash);
     expect(saved.closedAt).toEqual(archived.closedAt);
     expect((await getPeriod(db!, owner, { periodId })).status).toBe("CLOSED");
     expect(
