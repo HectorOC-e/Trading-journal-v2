@@ -46,7 +46,10 @@ async function saveReview(db:PrismaClient,url:string,html:string,code:string){
 /** Daily detection/publication. No user data is sent to or read from SAR. */
 export async function syncTaxRules(db:PrismaClient,options:SyncOptions={}):Promise<SyncResult>{
  const now=options.now??new Date(),token=randomUUID();
- const state=await db.taxRuleSyncState.upsert({where:{id:STATE_ID},create:{id:STATE_ID,nextCheckAt:new Date(0)},update:{}});
+ // An empty-update upsert can be emulated by Prisma as read/create. Keep
+ // first-run initialization atomic even when two cron invocations overlap.
+ await db.taxRuleSyncState.createMany({data:[{id:STATE_ID,nextCheckAt:new Date(0)}],skipDuplicates:true});
+ const state=await db.taxRuleSyncState.findUniqueOrThrow({where:{id:STATE_ID}});
  if(state.nextCheckAt>now)return {status:'not_due',published:0,reviewRequired:0};
  const claimed=await db.taxRuleSyncState.updateMany({where:{id:STATE_ID,nextCheckAt:{lte:now},OR:[{leaseUntil:null},{leaseUntil:{lte:now}}]},data:{leaseToken:token,leaseUntil:new Date(now.getTime()+120_000),lastAttemptAt:now,status:'CHECKING',reasonCode:null}});
  if(!claimed.count)return {status:'busy',published:0,reviewRequired:0};

@@ -5,6 +5,9 @@ import {PrismaPg} from '@prisma/adapter-pg';
 import {syncTaxRules,publishSarCandidate} from '@/server/services/tax/rules/sync-service';
 import {parseSarRulePage} from '@/server/services/tax/rules/sar-source';
 import {HN_ISR_2026} from '@/domains/tax/rules/hn/2026';
+import {randomUUID} from 'node:crypto';
+import {deliverTaxRuleUpdates} from '@/server/services/tax/rules/delivery-service';
+import type {SendEmailArgs,SendEmailResult} from '@/server/services/email/resend-client';
 
 const url=process.env.FISCAL_TEST_DATABASE_URL;
 if(url){const u=new URL(url);if(!['localhost','127.0.0.1'].includes(u.hostname)||!(u.pathname.startsWith('/fiscal_')||(process.env.FISCAL_TEST_SUPABASE_LOCAL==='1'&&u.port==='54322'&&u.pathname==='/postgres')))throw Error('Fiscal rule integration requires an explicitly isolated local database');}
@@ -15,12 +18,23 @@ const future=original.replaceAll('2026','2097').replaceAll('228,324.32','240,000
 const page='https://www.sar.gob.hn/download/acuerdo-sar-01-2097/';
 const now=new Date('2096-11-13T15:00:00Z');
 const source=async(u:string)=>({url:u,html:u===page?future:`<a href="${page}">Acuerdo SAR-01-2097</a>`});
+const owners:string[]=[];
+async function owner(master=true,pref:Record<string,unknown>|null={channels:['in_app','email']}){
+ const id=randomUUID();owners.push(id);
+ await db!.$executeRaw`INSERT INTO public.users(id,email,email_notifications) VALUES(${id}::uuid,${`qa-fiscal-rules-${id}@example.invalid`},${master})`;
+ await db!.taxProfile.create({data:{userId:id,name:'QA fiscal rules',country:'HN'}});
+ if(pref)await db!.notificationPreference.create({data:{userId:id,category:'Fiscalidad',timezone:'America/Tegucigalpa',...pref}});
+ return id;
+}
+async function publish(){await syncTaxRules(db!,{now,fetchSource:source});}
+async function delivery(userId:string){return db!.taxRuleDelivery.findFirst({where:{userId}});}
 describe.skipIf(!db)('automatic rule publication on isolated PostgreSQL',()=>{
  beforeEach(async()=>{
   await db!.taxRuleDelivery.deleteMany();await db!.taxRuleUpdate.deleteMany();await db!.taxRuleSyncState.deleteMany();
   await db!.taxRuleSet.deleteMany({where:{year:2097}});
- });
- afterAll(async()=>{if(db){await db.taxRuleDelivery.deleteMany();await db.taxRuleUpdate.deleteMany();await db.taxRuleSyncState.deleteMany();await db.taxRuleSet.deleteMany({where:{year:2097}});await db.$disconnect();}});
+  await db!.accountDeletionJob.deleteMany({where:{userId:{in:owners}}});await db!.user.deleteMany({where:{id:{in:owners}}});
+ },30_000);
+ afterAll(async()=>{if(db){await db.taxRuleDelivery.deleteMany();await db.taxRuleUpdate.deleteMany();await db.taxRuleSyncState.deleteMany();await db.taxRuleSet.deleteMany({where:{year:2097}});await db.accountDeletionJob.deleteMany({where:{userId:{in:owners}}});await db.user.deleteMany({where:{id:{in:owners}}});await db.$disconnect();}});
  it('commits the verified package and publication event together',async()=>{
   const candidate=parseSarRulePage(future,page,'2096-11-13');
   expect(await publishSarCandidate(db!,candidate,now)).toEqual({published:1,reviewRequired:0});
@@ -46,5 +60,59 @@ describe.skipIf(!db)('automatic rule publication on isolated PostgreSQL',()=>{
   await syncTaxRules(db!,{now,fetchSource:source});
   await syncTaxRules(db!,{now:new Date(now.getTime()+86_400_000),fetchSource:source});
   expect(await db!.taxRuleUpdate.count({where:{year:2097,status:'PUBLISHED'}})).toBe(1);
+ });
+ it('delivers both channels once and does not mark an already-read notice unread again',async()=>{
+  const id=await owner();await publish();const sent:SendEmailArgs[]=[];
+  const sendEmail=async(args:SendEmailArgs)=>{sent.push(args);return {ok:true,id:'provider-qa'};};
+  await deliverTaxRuleUpdates(db!,{now,sendEmail});
+  const notice=await db!.notification.findFirst({where:{userId:id,code:'TAX_RULES_UPDATED'}});expect(notice?.category).toBe('Fiscalidad');
+  expect(sent).toHaveLength(1);expect(sent[0].html).toContain('240,000.00');expect(sent[0].html).not.toContain('RTN');
+  await db!.notification.update({where:{id:notice!.id},data:{readAt:now}});
+  await deliverTaxRuleUpdates(db!,{now:new Date(now.getTime()+900000),sendEmail});
+  expect(sent).toHaveLength(1);expect((await db!.notification.findUnique({where:{id:notice!.id}}))?.readAt).toEqual(now);
+  expect(await delivery(id)).toMatchObject({inAppStatus:'DELIVERED',emailStatus:'DELIVERED'});
+ });
+ it.each(['master_off','no_category_opt_in'])('does not send email for %s but keeps the in-app notice',async mode=>{
+  const id=await owner(mode!=='master_off',mode==='no_category_opt_in'?null:{channels:['in_app','email']});await publish();let calls=0;
+  await deliverTaxRuleUpdates(db!,{now,sendEmail:async()=>{calls++;return {ok:true,id:'unexpected'};}});
+  expect(calls).toBe(0);expect(await delivery(id)).toMatchObject({inAppStatus:'DELIVERED',emailStatus:'SUPPRESSED'});
+ });
+ it('defers both channels during quiet hours and delivers after silence ends',async()=>{
+  const id=await owner(true,{channels:['in_app','email'],quietStart:'08:00',quietEnd:'10:00'});await publish();let calls=0;
+  const sendEmail=async()=>{calls++;return {ok:true,id:'qa-after-silence'};};
+  await deliverTaxRuleUpdates(db!,{now,sendEmail});expect(calls).toBe(0);expect(await delivery(id)).toMatchObject({inAppStatus:'PENDING',emailStatus:'PENDING'});
+  await deliverTaxRuleUpdates(db!,{now:new Date(now.getTime()+7200000),sendEmail});expect(calls).toBe(1);expect(await delivery(id)).toMatchObject({inAppStatus:'DELIVERED',emailStatus:'DELIVERED'});
+ });
+ it.each([{muted:true},{minPriority:'P1'}])('respects permanent category gating %j',async prefs=>{
+  const id=await owner(true,{channels:['in_app','email'],...prefs});await publish();let calls=0;
+  await deliverTaxRuleUpdates(db!,{now,sendEmail:async()=>{calls++;return {ok:true,id:'unexpected'};}});
+  expect(calls).toBe(0);expect(await delivery(id)).toMatchObject({inAppStatus:'SUPPRESSED',emailStatus:'SUPPRESSED'});
+ });
+ it('retries a failed email with the same provider idempotency key',async()=>{
+  const id=await owner();await publish();const calls:SendEmailArgs[]=[];
+  const sendEmail=async(args:SendEmailArgs):Promise<SendEmailResult>=>{calls.push(args);return calls.length===1?{ok:false,error:'simulated uncertainty'}:{ok:true,id:'qa-retry'};};
+  await deliverTaxRuleUpdates(db!,{now,sendEmail});expect(await delivery(id)).toMatchObject({inAppStatus:'DELIVERED',emailStatus:'PENDING'});
+  await deliverTaxRuleUpdates(db!,{now:new Date(now.getTime()+900000),sendEmail});expect(await delivery(id)).toMatchObject({emailStatus:'DELIVERED'});expect(calls).toHaveLength(2);expect(calls[0].idempotencyKey).toBe(calls[1].idempotencyKey);
+ });
+ it('does not mark a dry-run as delivered or consume the real-send retry window',async()=>{
+  const id=await owner();await publish();await deliverTaxRuleUpdates(db!,{now,sendEmail:async()=>({ok:true,dryRun:true})});
+  expect(await delivery(id)).toMatchObject({emailStatus:'PENDING',emailedAt:null,firstEmailAttemptAt:null});
+  await deliverTaxRuleUpdates(db!,{now:new Date(now.getTime()+172800000),sendEmail:async()=>({ok:true,id:'qa-real-later'})});
+  expect(await delivery(id)).toMatchObject({emailStatus:'DELIVERED'});
+ });
+ it('does not blindly resend an uncertain delivery after the provider dedupe window',async()=>{
+  const id=await owner();await publish();let calls=0;const sendEmail=async()=>{calls++;return {ok:false,error:'simulated uncertainty'};};
+  await deliverTaxRuleUpdates(db!,{now,sendEmail});await deliverTaxRuleUpdates(db!,{now:new Date(now.getTime()+86400000),sendEmail});
+  expect(calls).toBe(1);expect(await delivery(id)).toMatchObject({emailStatus:'REVIEW_REQUIRED'});
+ });
+ it('deduplicates overlapping delivery runners',async()=>{
+  const id=await owner();await publish();let calls=0;const sendEmail=async()=>{calls++;return {ok:true,id:'qa-concurrent'};};
+  await Promise.all([deliverTaxRuleUpdates(db!,{now,sendEmail}),deliverTaxRuleUpdates(db!,{now,sendEmail})]);
+  expect(calls).toBe(1);expect(await db!.notification.count({where:{userId:id,code:'TAX_RULES_UPDATED'}})).toBe(1);
+ });
+ it('excludes an account with an active deletion intent',async()=>{
+  const id=await owner();await publish();await db!.accountDeletionJob.create({data:{userId:id}});let calls=0;
+  await deliverTaxRuleUpdates(db!,{now,sendEmail:async()=>{calls++;return {ok:true,id:'unexpected'};}});
+  expect(calls).toBe(0);expect(await db!.notification.count({where:{userId:id,code:'TAX_RULES_UPDATED'}})).toBe(0);
  });
 });
