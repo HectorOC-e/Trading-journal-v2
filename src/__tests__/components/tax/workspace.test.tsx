@@ -116,6 +116,12 @@ it("shows loading and recoverable query error", () => {
   mount();
   expect(screen.getByRole("button", { name: "Reintentar" })).toBeTruthy();
 });
+it('enables simulation for a future year with a published package and removes the hardcoded unavailable claim',()=>{
+ state.data['tax.periods.list']={items:[{id:'period',year:2027,status:'OPEN'}]};state.data['tax.periods.get']={id:'period',year:2027,status:'OPEN',revision:7};
+ state.data['tax.calculations.preview']={status:'DRAFT',ruleVersion:'HN-ISR-2027-QA',pending:[]};
+ mount();fireEvent.click(screen.getByRole('button',{name:'ISR y declaración'}));
+ expect(screen.getByRole('button',{name:'Guardar simulación de solo lectura'})).not.toBeDisabled();expect(screen.queryByText(/las reglas ISR 2027 no están/)).toBeNull();
+});
 it("distinguishes unknown amounts from zero and calls post with current revision", async () => {
   mount();
   expect(screen.getByText("Sin calcular")).toBeTruthy();

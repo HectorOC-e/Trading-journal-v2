@@ -34,6 +34,8 @@ const m = vi.hoisted(() => ({
   mutate: vi.fn(),
   goalMutate: vi.fn(),
   prefsMutate: vi.fn(),
+  notificationMutate: vi.fn(),
+  notificationPrefs: [] as {category:string;channels:string[]}[],
   success: undefined as
     | undefined
     | ((data: unknown, variables: Record<string, unknown>) => void),
@@ -106,7 +108,7 @@ vi.mock("@/lib/trpc/client", () => {
       },
       goals: { get: query(() => m.goals), set: mutation(m.goalMutate) },
       notifications: {
-        preferences: { list: query(() => []), update: mutation() },
+        preferences: { list: query(() => m.notificationPrefs), update: mutation(m.notificationMutate) },
         sendTestEmail: mutation(),
       },
       aiConfig: {
@@ -137,6 +139,16 @@ beforeEach(() => {
     emailNotifications: true,
   };
   m.goals = { ...m.goals, weeklyGoalMinutes: 300 };
+  m.notificationPrefs=[];
+});
+it('opts into fiscal email while preserving the existing in-app channel and profile timezone',()=>{
+  m.notificationPrefs=[{category:'Fiscalidad',channels:['in_app']}];m.profile.timezone='Asia/Tokyo';
+  render(<PerfilPage/>);fireEvent.click(screen.getByRole('button',{name:'Notificaciones'}));fireEvent.click(screen.getByRole('switch',{name:'Email · Fiscalidad'}));
+  expect(m.notificationMutate).toHaveBeenCalledWith({category:'Fiscalidad',channels:['in_app','email'],timezone:'Asia/Tokyo'});
+});
+it('disables fiscal email when the master email switch is off',()=>{
+  m.profile.emailNotifications=false;render(<PerfilPage/>);fireEvent.click(screen.getByRole('button',{name:'Notificaciones'}));
+  expect(screen.getByRole('switch',{name:'Email · Fiscalidad'})).toBeDisabled();
 });
 afterEach(() => {
   cleanup();

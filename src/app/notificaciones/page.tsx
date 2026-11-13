@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { formatErrorForUser } from "@/lib/error-formatter"
 import { NotificationItem } from "@/components/notifications/notification-item"
 
-const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
+const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Fiscalidad", "Trading", "Sistema"] as const
 
 export default function NotificacionesPage() {
   const utils = trpc.useUtils()
