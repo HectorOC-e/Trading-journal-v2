@@ -431,6 +431,18 @@ export default function PerfilPage() {
       : reviewsChans.filter((c) => c !== "email");
     updateNotifPref.mutate({ category: "Reviews", channels });
   };
+  const fiscalPref = notifPrefs?.find((p) => p.category === "Fiscalidad");
+  const fiscalChannels = fiscalPref?.channels ?? ["in_app"];
+  const setFiscalEmail = (on: boolean) => {
+    const channels = on
+      ? Array.from(new Set([...fiscalChannels, "email"]))
+      : fiscalChannels.filter((c) => c !== "email");
+    updateNotifPref.mutate({
+      category: "Fiscalidad",
+      channels,
+      timezone: profile?.timezone ?? "UTC",
+    });
+  };
 
   /* ── Goals ── */
   const goalsQuery = trpc.goals.get.useQuery();
@@ -1445,6 +1457,15 @@ export default function PerfilPage() {
               onChange={setReviewsEmail}
             />
 
+            <ToggleRow
+              label="Email · Fiscalidad"
+              sub="Avisos de nuevas reglas ISR publicadas, con los cambios y su fuente oficial. Requiere un perfil fiscal de Honduras; respeta el horario de silencio de la categoría."
+              on={emailNotifications && fiscalChannels.includes("email")}
+              disabled={
+                !emailNotifications || updateNotifPref.isPending || !notifPrefs
+              }
+              onChange={setFiscalEmail}
+            />
             {/* Delivery test — verifies email actually arrives, independent of the digests. */}
             <div
               style={{
@@ -1664,7 +1685,11 @@ export default function PerfilPage() {
           </Card>
 
           {/* ── Modelos de IA (config ampliada) ── */}
-          <AiModelsCard onDirtyChange={setModelsDirty} userId={profile.id} timezone={profile.timezone ?? "UTC"} />
+          <AiModelsCard
+            onDirtyChange={setModelsDirty}
+            userId={profile.id}
+            timezone={profile.timezone ?? "UTC"}
+          />
         </section>
         <section
           hidden={activeSection !== "Seguridad"}

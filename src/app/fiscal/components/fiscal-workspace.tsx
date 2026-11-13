@@ -1,6 +1,12 @@
 "use client";
 import { useFiscalConfirmation } from "./confirmation";
-import { useState, useEffect, createContext, useContext, type ComponentProps } from "react";
+import {
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+  type ComponentProps,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { inferRouterInputs } from "@trpc/server";
 import type { AppRouter } from "@/server/trpc/root";
@@ -27,17 +33,43 @@ import {
 } from "./templates";
 import { RecordEditor } from "./record-editor";
 import { EvidencePanel } from "./evidence-panel";
+import { RulesPanel } from "./rules-panel";
 const RecordNavigation = createContext<{
   go: (key: string, id: string) => void;
   can: (key: string, id: string) => boolean;
 } | null>(null);
 type Tax = inferRouterInputs<AppRouter>["tax"];
-export function FiscalWorkspace() {
+export function FiscalWorkspace({
+  initialRuleYear,
+}: { initialRuleYear?: number } = {}) {
   const identity = trpc.profile.get.useQuery();
   const profile = trpc.tax.profile.get.useQuery();
   const periods = trpc.tax.periods.list.useQuery({ limit: 100 });
   const [selected, setSelected] = useState("");
   const [tab, setTab] = useState("Resumen");
+  const fiscalYear = Number(
+    new Intl.DateTimeFormat("en", {
+      year: "numeric",
+      timeZone: "America/Tegucigalpa",
+    }).format(new Date()),
+  );
+  const [rulesYear, setRulesYear] = useState<number | null>(
+    initialRuleYear ?? null,
+  );
+  useEffect(() => {
+    if (
+      initialRuleYear &&
+      !identity.isPending &&
+      !profile.isPending &&
+      !periods.isPending
+    )
+      document.getElementById("reglas-fiscales")?.scrollIntoView?.();
+  }, [
+    initialRuleYear,
+    identity.isPending,
+    profile.isPending,
+    periods.isPending,
+  ]);
   const utils = useQueryClient();
   const profileSave = trpc.tax.profile.save.useMutation();
   const create = trpc.tax.periods.create.useMutation();
@@ -84,6 +116,14 @@ export function FiscalWorkspace() {
           presentado. Sin validación oficial SAR.
         </p>
       </header>
+      <RulesPanel
+        year={rulesYear ?? current?.year ?? fiscalYear}
+        years={Array.from(
+          { length: Math.max(1, Math.min(2100, fiscalYear + 1) - 2026 + 1) },
+          (_, i) => 2026 + i,
+        )}
+        onYearChange={setRulesYear}
+      />
       <Panel title="Perfil fiscal">
         <FiscalForm
           key={`${profile.data?.id ?? "new"}:${profile.data?.revision ?? 0}`}
@@ -132,7 +172,15 @@ export function FiscalWorkspace() {
               </select>
             </label>
             <div className="flex flex-wrap gap-2">
-              {[2026, 2027]
+              {Array.from(
+                {
+                  length: Math.max(
+                    1,
+                    Math.min(2100, fiscalYear + 1) - 2026 + 1,
+                  ),
+                },
+                (_, i) => 2026 + i,
+              )
                 .filter((year) => !periodRows?.some((p) => p.year === year))
                 .map((year) => (
                   <Button
@@ -157,8 +205,8 @@ export function FiscalWorkspace() {
             </div>
             {create.error && <p role="alert">{create.error.message}</p>}
             <p className="text-xs mt-2">
-              2027 permite registrar datos; las reglas ISR 2027 no están
-              disponibles.
+              Puedes registrar ejercicios sin tabla disponible. El cálculo
+              requiere reglas validadas del año seleccionado.
             </p>
           </Panel>
           {current && (
@@ -391,8 +439,12 @@ function PeriodWorkspace({
       refreshProfile,
     ].some((m) => m.isPending);
   const disabled = closed || mutationPending;
-  const archivedReturns = (returns.data?.items ?? []).filter((item) => Boolean(item.closedAt));
-  const fileableReturns = archivedReturns.filter((item) => !item.reportedFiledAt);
+  const archivedReturns = (returns.data?.items ?? []).filter((item) =>
+    Boolean(item.closedAt),
+  );
+  const fileableReturns = archivedReturns.filter(
+    (item) => !item.reportedFiledAt,
+  );
   const year = period.data.year;
   const accountRows = accounts.data?.items ?? [];
   const transactionRows = transactions.data?.items ?? [];
@@ -475,20 +527,20 @@ function PeriodWorkspace({
   ) => {
     const { key, ...props } = extra;
     return (
-    <FiscalForm
-      key={key ?? title + tokenAsset + valued}
-      title={title}
-      userId={userId}
-      scope={`${periodId}:${title}:new`}
-      initial={initial}
-      disabled={disabled}
-      choices={choices}
-      save={async (values) => {
-        await save(clean(values) as Fields);
-        await refresh();
-      }}
-      {...props}
-    />
+      <FiscalForm
+        key={key ?? title + tokenAsset + valued}
+        title={title}
+        userId={userId}
+        scope={`${periodId}:${title}:new`}
+        initial={initial}
+        disabled={disabled}
+        choices={choices}
+        save={async (values) => {
+          await save(clean(values) as Fields);
+          await refresh();
+        }}
+        {...props}
+      />
     );
   };
   return (
@@ -1147,7 +1199,10 @@ function PeriodWorkspace({
             disabled={disabled}
             closed={closed}
             uploadBlocked={mutationPending}
-            filingReturns={archivedReturns.map((item) => ({ id: item.id, label: `Declaración ${item.id}` }))}
+            filingReturns={archivedReturns.map((item) => ({
+              id: item.id,
+              label: `Declaración ${item.id}`,
+            }))}
             refresh={refresh}
             records={{
               income: incomes.data?.items ?? [],
@@ -1160,7 +1215,8 @@ function PeriodWorkspace({
         {tab === "ISR y declaración" && (
           <>
             <Panel title="Estimación ISR">
-              {year !== 2026 && (
+              {(!preview.data?.ruleVersion ||
+                preview.data.ruleVersion === "UNAVAILABLE") && (
                 <p>
                   Sin reglas publicadas para este ejercicio. Puedes conservar
                   registros y evidencias; la simulación permanece deshabilitada.
@@ -1192,7 +1248,11 @@ function PeriodWorkspace({
               />
               <FiscalForm
                 title="simulación de solo lectura"
-                disabled={year !== 2026 || busy}
+                disabled={
+                  !preview.data?.ruleVersion ||
+                  preview.data.ruleVersion === "UNAVAILABLE" ||
+                  busy
+                }
                 userId={userId}
                 scope={`${periodId}:simulation`}
                 initial={{ additionalIncomeHnl: "0.00" }}
@@ -1229,7 +1289,12 @@ function PeriodWorkspace({
                 documento y casilla. Vincula los registros económicos que ya
                 recogen su importe. Una decisión de «No gravables» también
                 requiere respaldo. Los borradores deben contabilizarse o
-                descartarse desde Movimientos. Si un retiro de origen cambia o desaparece, selecciona ese origen y documenta por qué el cobro fiscal sigue siendo válido; la revisión queda vinculada a la huella observada. Si quedan pagos pendientes al cerrar el año, documenta también el método de reconocimiento y su tratamiento en este ejercicio.
+                descartarse desde Movimientos. Si un retiro de origen cambia o
+                desaparece, selecciona ese origen y documenta por qué el cobro
+                fiscal sigue siendo válido; la revisión queda vinculada a la
+                huella observada. Si quedan pagos pendientes al cerrar el año,
+                documenta también el método de reconocimiento y su tratamiento
+                en este ejercicio.
               </p>
               {form(
                 "información del ejercicio",
@@ -1242,12 +1307,17 @@ function PeriodWorkspace({
                           ...(information.information as Fields),
                           ...(period.data.information as Fields),
                           sectionB: {
-                            ...((information.information as Fields).sectionB as Fields),
-                            ...((period.data.information as Fields).sectionB as Fields | undefined),
+                            ...((information.information as Fields)
+                              .sectionB as Fields),
+                            ...((period.data.information as Fields).sectionB as
+                              | Fields
+                              | undefined),
                           },
                           accountant: {
-                            ...((information.information as Fields).accountant as Fields),
-                            ...((period.data.information as Fields).accountant as Fields | undefined),
+                            ...((information.information as Fields)
+                              .accountant as Fields),
+                            ...((period.data.information as Fields)
+                              .accountant as Fields | undefined),
                           },
                           reviews: Array.isArray(
                             (period.data.information as Fields).reviews,
@@ -1320,7 +1390,9 @@ function PeriodWorkspace({
                       </a>
                     ))}
                     <Button
-                      disabled={disabled || r.status !== "READY" || Boolean(r.closedAt)}
+                      disabled={
+                        disabled || r.status !== "READY" || Boolean(r.closedAt)
+                      }
                       onClick={async () => {
                         if (
                           await confirm("¿Cerrar ejercicio con este snapshot?")
@@ -1371,7 +1443,10 @@ function PeriodWorkspace({
                 disabled={mutationPending || fileableReturns.length === 0}
                 choices={{
                   ...choices,
-                  returnId: fileableReturns.map((item) => ({ value: item.id, label: `Declaración ${item.id}` })),
+                  returnId: fileableReturns.map((item) => ({
+                    value: item.id,
+                    label: `Declaración ${item.id}`,
+                  })),
                 }}
                 save={async (v) => {
                   await filed.mutateAsync({

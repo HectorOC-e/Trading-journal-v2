@@ -4,7 +4,7 @@ import { router, protectedProcedure } from "../init"
 import { sendEmail, emailFailureMessage } from "@/server/services/email/resend-client"
 
 const PRIORITIES = ["P0", "P1", "P2", "P3"] as const
-const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema"] as const
+const CATEGORIES = ["Cuenta", "Reglas", "Reviews", "Aprendizaje", "Trading", "Sistema", "Fiscalidad"] as const
 
 // Tuple cursors retain their boundary even if that notification is deleted.
 const cursorUuid = z.string().uuid()

@@ -16,6 +16,7 @@ vi.mock('@/server/services/tax/context', () => ({ withTaxWrite: async (_db: any,
                 r.status = 'IN_REVIEW'; return callback(db); } }));
 import { prepareReturn, closeReturn, reopenPeriod, reportFiled, updateInformation, refreshProfileSnapshot } from '@/server/services/tax/return-service';
 const db: any = {
+    $queryRaw: vi.fn(async()=>[{locked:1}]),
     taxPeriod: { findFirst: async () => ({
             id: 'p', revision: state.revision, status: state.status
         }), update: async ({ data }: any) => { if(data.status) state.status = data.status; if(data.profileSnapshot) state.profileSnapshot=data.profileSnapshot; return { status: state.status }; } }, taxReturn: {

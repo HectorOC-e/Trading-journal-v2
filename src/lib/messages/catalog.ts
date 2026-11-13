@@ -12,11 +12,17 @@ export const LABELS: Record<string, { es: string; en?: string }> = {
   VIEW_REPORT:   { es: "Ver reporte",  en: "View report" },
   STUDY_NOW:     { es: "Repasar ahora", en: "Review now" },
   VIEW_PROGRESS: { es: "Ver progreso", en: "View progress" },
+  VIEW_FISCAL_RULES: { es: "Ver actualización fiscal", en: "View tax update" },
   DISMISS:       { es: "Descartar",    en: "Dismiss" },
   RETRY:         { es: "Reintentar",   en: "Retry" },
 }
 
 export const MESSAGES = {
+  TAX_RULES_UPDATED: {
+    type: "INFO", priority: "P2", category: "Fiscalidad", persist: true,
+    es: { title: "Reglas ISR {year} actualizadas", body: "{summary} Fuente: {agreement}." },
+    actions: [{ labelCode: "VIEW_FISCAL_RULES", href: "/fiscal#reglas-fiscales", style: "primary" }],
+  },
   // ── Action feedback (ephemeral toasts) ────────────────────────────────────
   TRADE_SAVED:    { type: "SUCCESS", priority: "P3", persist: false, es: { title: "Trade guardado", body: "{symbol} · {detail}" } },
   TRADE_DELETED:  { type: "SUCCESS", priority: "P3", persist: false, es: { title: "Trade eliminado" } },

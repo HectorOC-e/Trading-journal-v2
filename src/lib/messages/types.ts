@@ -19,6 +19,7 @@ export type NotifCategory =
   | "Aprendizaje"
   | "Trading"
   | "Sistema"
+  | "Fiscalidad"
 
 export type Lang = "es" | "en"
 

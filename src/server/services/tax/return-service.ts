@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { Prisma, PrismaClient, TaxPeriod, TaxReturn } from '@/lib/generated/prisma/client';
 import { informationSchema, loadCalculationData, buildPreparation } from './calculation-service';
+import {lockFiscalRulePublication} from './rules/publication-lock';
 import { dto, fail, ownedPeriod, pageArgs, pageResult, periodPageSchema, periodWriteSchema, scope, taxWrite } from './profile-service';
 import { serializeTax, taxHash } from './serializers';
 import { candidateScope } from './withdrawal-reader';
@@ -93,6 +94,7 @@ export async function closeReturn(db: PrismaClient, userId: string, raw: z.input
             fail('Borrador no disponible.', 'NOT_FOUND');
         if (record.status !== 'READY' || record.closedAt || record.periodRevision !== input.expectedRevision)
             fail('El borrador no está listo o está desactualizado.', 'CONFLICT');
+        await lockFiscalRulePublication(tx);
         const current = buildPreparation(await loadCalculationData(tx, userId, input.periodId));
         const saved = record.snapshot as {
             inputHash?: string;
