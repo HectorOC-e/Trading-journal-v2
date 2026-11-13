@@ -1,7 +1,7 @@
 # Graph Report - Trading-journal-v2  (2026-11-13)
 
 ## Corpus Check
-- 712 files · ~476,423 words
+- 712 files · ~476,444 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 11 file(s) not represented in the graph (top: (none) 4, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `871ed1c9`
+- Built from commit: `b19232d5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -1604,7 +1604,7 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Global Constraints` be split into smaller, more focused modules?**
   _Cohesion score 0.07671957671957672 - nodes in this community are weakly interconnected._
 - **Why does `zod` connect `root.ts` to `localDateISO`, `perfil/page.tsx`, `react`, `dependencies`, `retiros/page.tsx`, `continuity.ts`, `accounts.ts`, `page.tsx`, `learning-resources.ts`, `trade-write-service.ts`, `seed.ts`, `evidence/route.ts`, `create-account-modal.tsx`, `next`, `routers/notifications.ts`, `preferences.ts`, `ledger-service.ts`, `custom-palettes.ts`, `@trpc/server`, `record-service.ts`, `src_lib_generated_prisma_client`, `psychology-service.ts`, `ledger-service.ts`, `dashboard-analytics.ts`, `institutional-summary.ts`, `behavior.ts`, `ai-config.ts`, `package.json`, `calculation-service.ts`, `coach.ts`, `lib/utils.ts`, `rules.ts`, `ai-settings.ts`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+  _High betweenness centrality (0.034) - this node is a cross-community bridge._
 - **Should `emit.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.11336032388663968 - nodes in this community are weakly interconnected._
 - **Why does `cn()` connect `cn` to `perfil/page.tsx`, `react`, `trades-table.tsx`, `localDateISO`, `FocusSession`, `add-edit-resource-modal.tsx`, `ai-coach-drawer.tsx`, `page.tsx`, `resource-drawer.tsx`, `reglas/page.tsx`, `create-account-modal.tsx`, `lib/utils.ts`, `mercados/page.tsx`, `dashboard/page.tsx`, `local.ts`, `review-report-shell.tsx`, `Sidebar.tsx`, `badge.tsx`, `notification-bell.tsx`, `dashboard/page.tsx`, `reviews-rail.tsx`, `AppShell.tsx`, `register-trade-modal.tsx`, `types/index.ts`, `Captura de emoción con procedencia — Plan de implementación`, `lib/utils.ts`, `AprendizajePage`, `tab-playbook.tsx`, `markdown.tsx`, `SimpleTable`?**

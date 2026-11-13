@@ -4206,9 +4206,9 @@
     "semantic_hash": ""
   },
   "src/app/fiscal/components/fiscal-workspace.tsx": {
-    "mtime": 1794536237.5510013,
-    "seen": 1794536508.137139,
-    "ast_hash": "63e936051324f7f7f4bcd28faef30b17",
+    "mtime": 1794536829.895326,
+    "seen": 1794537298.064248,
+    "ast_hash": "d07b8c300d36853ffa6222b41b716057",
     "semantic_hash": ""
   },
   "src/app/fiscal/components/templates.ts": {
