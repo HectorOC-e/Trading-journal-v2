@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b19232d5`
+- Built from commit: `9e7299d7`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -563,23 +563,23 @@
 - docs/STATUS.md (state, pending QA checklist, debt, backlog, roadmap, resume prompt)
 - Status: v3.1 Closed (14/14 sprints · 100% audit · 3 gates) + v3.2 In Progress (cognitive companion, 5 live axes)
 - tj.v3Shell Feature Flag
-- public."tax_evidences"
+- 20261113030108_fiscal_honduras.sql
 - run-rules.test.ts (invariante de no-regresión)
 - ai-settings.ts
 - /api/cron/rules-migration-report (retirado en G2)
 - rulesSourceIsUnified() (retirado en G2)
 - Mejoras del flujo diario, evaluación y recuperación
-- public."tax_return_evidences"
+- public."tax_credit_evidences"
 - rule-sync.ts (dual-write, retirado en G2)
 - OI-4.8 — Cerrar los 3 loops de compromiso colgantes
 - parse.ts
 - automationsRouter (retirado en G2)
 - Provider model catalog Implementation Plan
-- public."tax_credit_evidences"
+- public."tax_evidences"
 - Plan de simulación de trader profesional en aria
 - rules.reorder (primer id = prioridad más alta, mapea 3..0)
 - rules.seedDefaults (descriptivas de bienvenida)
-- 20261108194526_fiscal_upload_leases.sql
+- public."tax_return_evidences"
 - Catálogo de modelos por proveedor
 - improvement-score.ts
 - 1. Checklist de QA pendiente de V3
@@ -588,7 +588,7 @@
 - Resiliencia de IA sobre el free tier (2026-07-24, PR #171)
 - El outbox estrena consumidor: la S4 cierra (2026-07-24, PR #170)
 - Auditoría S3–S14 contra código (2026-07-21) — clasificación en 3 pistas
-- 20261108125144_fiscal_honduras.sql
+- 20261113030125_fiscal_upload_leases.sql
 - seed.ts
 - trade-derivation.ts
 - intelligence-panel.tsx
@@ -1465,9 +1465,9 @@ Nodes (7): checklistColor(), getWeekKey(), HEALTH_CONFIG, LifecycleSuggestions()
 Cohesion: 0.17
 Nodes (11): Estructura de ficheros, Global Constraints, PR 1 — El módulo `retrieval` (sin UI), PR 3 — Citas abribles y deep-link, Recuperación semántica consolidada + citación en el Coach — Plan de implementación, Task 13: Tarjetas de cita en el drawer, Task 14: Deep-link en `/trades` y `/aprendizaje`, Task 15: Verificación contra producción y en vivo (+3 more)
 
-### Community 636 - "public."tax_evidences""
-Cohesion: 0.25
-Nodes (8): public."tax_evidences", public."tax_income_evidences", tax_evidences_path_key, tax_evidences_user_id_id_key, tax_evidences_user_id_period_id_status_idx, tax_income_evidences_income_id_evidence_id_key, tax_income_evidences_user_id_evidence_id_idx, tax_income_evidences_user_id_id_key
+### Community 636 - "20261113030108_fiscal_honduras.sql"
+Cohesion: 0.08
+Nodes (49): public."tax_asset_accounts", public."tax_audit_events", public."tax_deduction_evidences", public."tax_deductions", public."tax_import_candidates", public."tax_incomes", public."tax_periods", public."tax_postings" (+41 more)
 
 ### Community 638 - "ai-settings.ts"
 Cohesion: 0.29
@@ -1477,9 +1477,9 @@ Nodes (7): AI_FEATURES, aiSettingsRouter, COST_PRIORITIES, FeatureModelsInput, M
 Cohesion: 0.33
 Nodes (5): Comportamiento esperado, Decisiones de implementación, Enfoque, Mejoras del flujo diario, evaluación y recuperación, Validación
 
-### Community 644 - "public."tax_return_evidences""
+### Community 644 - "public."tax_credit_evidences""
 Cohesion: 0.25
-Nodes (8): public."tax_return_evidences", public."tax_returns", tax_return_evidences_return_id_evidence_id_key, tax_return_evidences_user_id_evidence_id_idx, tax_return_evidences_user_id_id_key, tax_returns_period_id_version_key, tax_returns_user_id_id_key, tax_returns_user_id_period_id_status_idx
+Nodes (8): public."tax_credit_evidences", public."tax_credits", tax_credit_evidences_credit_id_evidence_id_key, tax_credit_evidences_user_id_evidence_id_idx, tax_credit_evidences_user_id_id_key, tax_credits_user_id_component_key_key, tax_credits_user_id_id_key, tax_credits_user_id_period_id_date_id_idx
 
 ### Community 646 - "OI-4.8 — Cerrar los 3 loops de compromiso colgantes"
 Cohesion: 0.29
@@ -1493,13 +1493,17 @@ Nodes (5): isValidSelection(), num(), parsePaletteConfig(), parsePaletteConfigJs
 Cohesion: 0.29
 Nodes (6): Global Constraints, Provider model catalog Implementation Plan, Review Focus, Task 1: Catálogo, Task 2: Selector e integración, Task 3: Entrega
 
-### Community 650 - "public."tax_credit_evidences""
+### Community 650 - "public."tax_evidences""
 Cohesion: 0.25
-Nodes (8): public."tax_credit_evidences", public."tax_credits", tax_credit_evidences_credit_id_evidence_id_key, tax_credit_evidences_user_id_evidence_id_idx, tax_credit_evidences_user_id_id_key, tax_credits_user_id_component_key_key, tax_credits_user_id_id_key, tax_credits_user_id_period_id_date_id_idx
+Nodes (8): public."tax_evidences", public."tax_income_evidences", tax_evidences_path_key, tax_evidences_user_id_id_key, tax_evidences_user_id_period_id_status_idx, tax_income_evidences_income_id_evidence_id_key, tax_income_evidences_user_id_evidence_id_idx, tax_income_evidences_user_id_id_key
 
 ### Community 651 - "Plan de simulación de trader profesional en aria"
 Cohesion: 0.18
 Nodes (10): 1.2 Cierre, 1.3 Fricción (lo más cercano a la pregunta de producto), Al terminar, Fase 0 — Limpiar el ruido y fijar la línea base, Fase 1 — Validar la captura, a mano (aquí está el valor), Fase 2 — Volumen con patrón, por script, Fase 4 — Las 5 features de IA activas, Fase 5 — Superficies analíticas (+2 more)
+
+### Community 654 - "public."tax_return_evidences""
+Cohesion: 0.25
+Nodes (8): public."tax_return_evidences", public."tax_returns", tax_return_evidences_return_id_evidence_id_key, tax_return_evidences_user_id_evidence_id_idx, tax_return_evidences_user_id_id_key, tax_returns_period_id_version_key, tax_returns_user_id_id_key, tax_returns_user_id_period_id_status_idx
 
 ### Community 656 - "Catálogo de modelos por proveedor"
 Cohesion: 0.50
@@ -1532,10 +1536,6 @@ Nodes (6): El defecto que el spec dio por descartado, El gap era una trampa serv
 ### Community 663 - "Auditoría S3–S14 contra código (2026-07-21) — clasificación en 3 pistas"
 Cohesion: 0.40
 Nodes (5): Auditoría S3–S14 contra código (2026-07-21) — clasificación en 3 pistas, Pista A — Deuda técnica (código que existe y está mal), Pista B — Funcionalidad a medias (construida pero nadie la llama), Pista C — Roadmap / backlog (no construido, por diseño), Pista D — Stale: filas que el código desmiente (cerrar en el doc)
-
-### Community 664 - "20261108125144_fiscal_honduras.sql"
-Cohesion: 0.08
-Nodes (49): public."tax_asset_accounts", public."tax_audit_events", public."tax_deduction_evidences", public."tax_deductions", public."tax_import_candidates", public."tax_incomes", public."tax_periods", public."tax_postings" (+41 more)
 
 ### Community 665 - "seed.ts"
 Cohesion: 0.31

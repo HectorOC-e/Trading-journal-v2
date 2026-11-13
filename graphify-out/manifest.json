@@ -4103,12 +4103,6 @@
     "ast_hash": "f30bfb0f71a81e9f7520617fa35bca5e",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261108125144_fiscal_honduras.sql": {
-    "mtime": 1794186567.2231078,
-    "seen": 1794536508.1379473,
-    "ast_hash": "4d258795d46f0fd8a055bbab502ae0ba",
-    "semantic_hash": ""
-  },
   "docs/superpowers/plans/2026-11-08-fiscal-module.md": {
     "mtime": 1794142099.2298813,
     "seen": 1794142369.3898013,
@@ -4181,12 +4175,6 @@
     "ast_hash": "8859025029498b213af8e52b53cd934d",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261108131915_fiscal_evidence_deletion_gate.sql": {
-    "mtime": 1794143966.194877,
-    "seen": 1794144304.308193,
-    "ast_hash": "f13ede76661001fcd82baa19d317c887",
-    "semantic_hash": ""
-  },
   "src/app/api/tax/export/route.ts": {
     "mtime": 1794167340.828813,
     "seen": 1794167526.7099593,
@@ -4253,12 +4241,6 @@
     "ast_hash": "20ce3e41bf5657e0511484a68c82a451",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261108194526_fiscal_upload_leases.sql": {
-    "mtime": 1794167210.0036688,
-    "seen": 1794167526.7107072,
-    "ast_hash": "84f00bba7349476c075f0cbd85480e1c",
-    "semantic_hash": ""
-  },
   "src/app/fiscal/components/confirmation.tsx": {
     "mtime": 1794167809.754101,
     "seen": 1794536508.1371331,
@@ -4269,6 +4251,24 @@
     "mtime": 1794186732.9001346,
     "seen": 1794536508.1371408,
     "ast_hash": "bf6fb09bbbf9b1b18bcaf4fd4baf6281",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261113030108_fiscal_honduras.sql": {
+    "mtime": 1794186567.2231078,
+    "seen": 1794539030.9214168,
+    "ast_hash": "4d258795d46f0fd8a055bbab502ae0ba",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261113030121_fiscal_evidence_deletion_gate.sql": {
+    "mtime": 1794143966.194877,
+    "seen": 1794539030.921419,
+    "ast_hash": "f13ede76661001fcd82baa19d317c887",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261113030125_fiscal_upload_leases.sql": {
+    "mtime": 1794167210.0036688,
+    "seen": 1794539030.9214206,
+    "ast_hash": "84f00bba7349476c075f0cbd85480e1c",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
