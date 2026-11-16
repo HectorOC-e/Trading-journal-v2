@@ -1,24 +1,10 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// Account "reality" classifier — single source of truth.
-//
-// Demo and backtest accounts (personal or prop-firm) hold unreal money: their
-// P&L, balance and equity are not real and no withdrawals are possible, so they
-// must not contaminate the financial/performance statistics of real accounts.
-// Behaviour, however, IS real on a practice account (you still break your plan,
-// feel FOMO, revenge-trade), so psychology/discipline always counts them.
-//
-// Reality is derived purely from `Account.type` — no schema column, no migration.
-// ─────────────────────────────────────────────────────────────────────────────
+// Compatibility adapter for callers being migrated to operational-mode.
+// Unknown provenance is excluded; behaviour is scoped just like performance.
+import { classifyAccountType } from "./operational-mode"
 
-export type AccountReality = "real" | "practice"
+export type AccountReality = "real" | "practice" | "unclassified"
 
 /** Account types whose money is not real (demo / backtest / internal QA). */
-const PRACTICE_TYPES: ReadonlySet<string> = new Set([
-  "DEMO_PERSONAL",
-  "DEMO_PROP",
-  "BACKTEST",
-  "QA",
-])
 
 /**
  * True when the account type holds unreal money (demo, backtest, QA).
@@ -26,10 +12,12 @@ const PRACTICE_TYPES: ReadonlySet<string> = new Set([
  * consequences and real payouts.
  */
 export function isPracticeType(type?: string | null): boolean {
-  return type != null && PRACTICE_TYPES.has(type)
+  const mode = classifyAccountType(type)
+  return mode === "DEMO" || mode === "BACKTEST" || mode === "INTERNAL"
 }
 
 /** Map an account type to its reality class. */
 export function accountReality(type?: string | null): AccountReality {
-  return isPracticeType(type) ? "practice" : "real"
+  const mode = classifyAccountType(type)
+  return mode === "REAL" ? "real" : mode == null ? "unclassified" : "practice"
 }
