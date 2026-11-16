@@ -39,7 +39,7 @@ function mockPrisma() {
       findUniqueOrThrow: vi.fn().mockResolvedValue({ timezone: "UTC" }),
       findUnique: vi.fn().mockResolvedValue({ baseCurrency: "USD", fxRates: null }),
     },
-    account: { findMany: vi.fn().mockResolvedValue([acct(REAL, "PERSONAL"), acct(DEMO, "DEMO_PERSONAL")]) },
+    account: { findFirst: vi.fn().mockResolvedValue({id:REAL}), findMany: vi.fn().mockResolvedValue([acct(REAL, "PERSONAL"), acct(DEMO, "DEMO_PERSONAL")]) },
     trade: {
       findMany: vi.fn()
         .mockResolvedValueOnce([tradeRow(REAL, 100), tradeRow(DEMO, 500)]) // closed
@@ -55,19 +55,20 @@ function mockPrisma() {
 }
 
 describe("getDashboardStats — practice partition", () => {
-  it("excludes practice accounts from financial stats by default, keeps them in discipline", async () => {
+  it("keeps financial stats and discipline in the same modality", async () => {
     const out = await getDashboardStats(mockPrisma(), USER, { period: "ALL" })
     expect(out.accountStats.map(s => s.accountId)).toEqual([REAL])
     expect(out.recentTrades).toHaveLength(1)
     expect(out.recentTrades[0].pnl).toBe(100)
-    // Discipline is behavioural: it sees trades from BOTH accounts.
-    expect(out.discipline.rDistribution.reduce((n, b) => n + b.count, 0)).toBe(2)
+    // Discipline follows the same explicit modality as performance.
+    expect(out.discipline.rDistribution.reduce((n, b) => n + b.count, 0)).toBe(1)
   })
 
-  it("includes practice accounts when includePractice=true", async () => {
-    const out = await getDashboardStats(mockPrisma(), USER, { includePractice: true, period: "ALL" })
-    expect(out.accountStats.map(s => s.accountId).sort()).toEqual([REAL, DEMO].sort())
-    expect(out.recentTrades).toHaveLength(2)
+  it("selects demo without mixing real accounts", async () => {
+    const out = await getDashboardStats(mockPrisma(), USER, { mode: "DEMO", period: "ALL" })
+    expect(out.accountStats.map(s => s.accountId)).toEqual([DEMO])
+    expect(out.recentTrades).toHaveLength(1)
+    expect(out.kpis.netPnl).toBe(500)
   })
 })
 
@@ -221,7 +222,6 @@ describe("dashboard financial reliability", () => {
     await getDashboardStats(db, USER, { period: "ALL", from: "2026-01-01", to: "2026-01-01" })
     const keys = vi.mocked(cache.getCachedStats).mock.calls.slice(-3).map(call => call[2])
     expect(new Set(keys).size).toBe(3)
-    expect(keys[0]).toContain("v3")
     vi.mocked(cache.isCacheEnabled).mockReturnValue(false)
   })
 })

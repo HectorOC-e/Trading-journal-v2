@@ -1,3 +1,4 @@
+import { operationalModeSchema, legacyPracticeInput } from "@/domains/trading/operational-mode"
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
@@ -12,7 +13,8 @@ const PeriodInput = z.object({
   period: z.enum(PERIODS).default("3M"),
   // Fold demo/backtest accounts into the financial sections. Off by default;
   // psychology always counts them regardless.
-  includePractice: z.boolean().optional().default(false),
+  mode: operationalModeSchema.default("REAL"),
+  includePractice: legacyPracticeInput,
 })
 
 function resolveWindow(period: Period): { from: Date; to: Date } | undefined {
@@ -34,7 +36,7 @@ export const analyticsRouter = router({
   overview: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.mode)
       // strip raw payload (only needed by the insights engine / AI) to keep the wire small
       const { raw: _raw, ...sections } = bundle
       void _raw
@@ -46,7 +48,7 @@ export const analyticsRouter = router({
   institutional: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.mode)
       return summarizeInstitutional(
         bundle.raw.trades.map((t) => ({ rMultiple: t.rMultiple, pnl: t.pnl, date: t.date })),
         // Anchor drawdown % to the real portfolio equity (deposited capital + P&L).
@@ -58,7 +60,7 @@ export const analyticsRouter = router({
   insights: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.includePractice)
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.mode)
       return generateInsights({
         trades:      bundle.raw.trades,
         setups:      bundle.raw.setupsMeta,
@@ -71,7 +73,7 @@ export const analyticsRouter = router({
   psychologyInsights: protectedProcedure
     .input(PeriodInput)
     .query(async ({ ctx, input }) => {
-      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period))
+      const bundle = await buildAnalyticsBundle(ctx.userId, ctx.prisma, resolveWindow(input.period), input.mode)
       // Psychology always counts practice (demo/backtest) accounts: behaviour is real.
       return generatePsychologyInsights(bundle.raw.allTrades)
     }),

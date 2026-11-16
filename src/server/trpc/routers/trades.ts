@@ -1,3 +1,4 @@
+import { operationalModeSchema, legacyPracticeInput } from "@/domains/trading/operational-mode"
 import { z } from "zod"
 import { EMOTION_VALUES } from "@/domains/trading/emotions"
 import { router, protectedProcedure } from "../init"
@@ -12,6 +13,7 @@ export type { SerializedTrade } from "@/server/services/trades/serializers"
 export const tradesRouter = router({
   list: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       accountId: z.string().uuid().optional(),
       setupId:   z.string().uuid().optional(),
       from:      z.string().optional(),
@@ -36,7 +38,8 @@ export const tradesRouter = router({
       // Include demo/backtest ("practice") accounts in the financial/performance
       // aggregates. Off by default so unreal money never inflates real stats.
       // Behavioural metrics (discipline) always count practice regardless.
-      includePractice: z.boolean().optional().default(false),
+      mode: operationalModeSchema.default("REAL"),
+      includePractice: legacyPracticeInput,
     }).optional())
     .query(({ ctx, input }) => getDashboardStats(ctx.prisma, ctx.userId, input)),
 
@@ -149,6 +152,7 @@ export const tradesRouter = router({
 
   ruleViolationStats: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       from: z.string().optional(),
       to:   z.string().optional(),
     }).optional())
@@ -177,12 +181,13 @@ export const tradesRouter = router({
   // pre-trade emotion, so capturing it returns value in the moment. Null below the
   // minimum sample (handled in feedbackForEmotion) — no misleading small-n claim.
   emotionFeedback: protectedProcedure
-    .input(z.object({ emotion: z.string().min(1) }))
-    .query(({ ctx, input }) => getEmotionFeedback(ctx.prisma, ctx.userId, input.emotion)),
+    .input(z.object({ emotion: z.string().min(1), mode:operationalModeSchema.default("REAL") }))
+    .query(({ ctx, input }) => getEmotionFeedback(ctx.prisma, ctx.userId, input.emotion,input.mode)),
 
   // T-VI-002: Behavioral pattern insights
   patternInsights: protectedProcedure
-    .query(({ ctx }) => getPatternInsights(ctx.prisma, ctx.userId)),
+    .input(z.object({mode:operationalModeSchema.default("REAL")}).optional())
+    .query(({ ctx,input }) => getPatternInsights(ctx.prisma, ctx.userId,input?.mode)),
 
   // T-VI-004: búsqueda semántica (pgvector). Se conserva sin consumidor de UI a
   // propósito: las citas del Coach van por la tool, así que esta procedure da una

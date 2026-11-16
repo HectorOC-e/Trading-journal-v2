@@ -43,13 +43,13 @@ function mockPrisma(rows: ReturnType<typeof T>[]) {
 describe("emotion_source sobrevive el camino de la BD a los detectores", () => {
   it("se PIDE en el select de Prisma — lo que no se pide no llega", async () => {
     const { prisma, findMany } = mockPrisma([T()])
-    await buildAnalyticsBundle("u1", prisma, undefined, true)
+    await buildAnalyticsBundle("u1", prisma, undefined, "REAL")
     expect(findMany.mock.calls[0][0].select).toHaveProperty("emotionSource", true)
   })
 
   it("se PROPAGA al AnalyticsTrade — el re-mapeo no lo descarta", async () => {
     const { prisma } = mockPrisma([T(), T({ id: "t2", emotionBefore: "calm", emotionSource: "reconstructed" })])
-    const bundle = await buildAnalyticsBundle("u1", prisma, undefined, true)
+    const bundle = await buildAnalyticsBundle("u1", prisma, undefined, "REAL")
     expect(bundle.raw.allTrades.map(t => t.emotionSource)).toEqual(["captured", "reconstructed"])
   })
 
@@ -59,7 +59,7 @@ describe("emotion_source sobrevive el camino de la BD a los detectores", () => {
       T({ id: "t2", emotionSource: "reconstructed" }),
       T({ id: "t3", emotionSource: "reconstructed" }),
     ])
-    const bundle = await buildAnalyticsBundle("u1", prisma, undefined, true)
+    const bundle = await buildAnalyticsBundle("u1", prisma, undefined, "REAL")
     const calm = bundle.psychology.byEmotion.find(e => e.emotion === "calm")
     expect(calm).toMatchObject({ trades: 3, reconstructed: 2 })
   })

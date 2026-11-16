@@ -29,7 +29,7 @@ export async function loadReviewInsights(prisma: PrismaClient, userId: string, p
  */
 export async function loadInsightsForWindow(prisma: PrismaClient, userId: string, window: { from: Date; to: Date }): Promise<Insight[]> {
   // includePractice=true to match the review report, which counts all closed trades.
-  const bundle = await buildAnalyticsBundle(userId, prisma, window, true)
+  const bundle = await buildAnalyticsBundle(userId, prisma, window, "REAL")
   return generateInsights({
     trades:      bundle.raw.trades,
     setups:      bundle.raw.setupsMeta,
@@ -50,7 +50,7 @@ export interface ReviewAnalytics {
 }
 
 export async function loadReviewAnalytics(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<ReviewAnalytics> {
-  const b = await buildAnalyticsBundle(userId, prisma, windowFor(period), true)
+  const b = await buildAnalyticsBundle(userId, prisma, windowFor(period), "REAL")
   return {
     expectancy:  b.performance.expectancy,
     avgR:        b.performance.avgR,

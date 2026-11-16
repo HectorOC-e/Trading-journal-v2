@@ -1,3 +1,5 @@
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, dashboardMutation } from "../init"
@@ -141,6 +143,7 @@ export const setupsRouter = router({
 
   performanceStats: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       setupId: z.string().uuid().optional(),
       period:  PeriodEnum.optional().default("ALL"),
     }).optional())
@@ -161,7 +164,7 @@ export const setupsRouter = router({
         }),
         ctx.prisma.trade.findMany({
           where: {
-            userId:  ctx.userId,
+            ...await scopedTradeWhere(ctx.prisma,ctx.userId,{mode:input?.mode ?? "REAL",includeArchived:true}),
             status:  "CLOSED",
             setupId: input?.setupId ?? { not: null },
             ...(fromDate ? { date: { gte: fromDate } } : {}),
@@ -261,7 +264,8 @@ export const setupsRouter = router({
 
   // ── T-VIII-003: lifecycle check ─────────────────────────────────────────────
   lifecycleCheck: protectedProcedure
-    .query(async ({ ctx }) => {
+    .input(z.object({mode:operationalModeSchema.default("REAL")}).optional())
+    .query(async ({ ctx,input }) => {
       const sixMonthsAgo = new Date(Date.now() - 180 * 86_400_000)
 
       const [setups, tradeRows] = await Promise.all([
@@ -270,7 +274,7 @@ export const setupsRouter = router({
           select: { id: true, name: true, abbreviation: true, expectedWr: true },
         }),
         ctx.prisma.trade.findMany({
-          where:  { userId: ctx.userId, status: "CLOSED", setupId: { not: null }, date: { gte: sixMonthsAgo } },
+          where:  { ...await scopedTradeWhere(ctx.prisma,ctx.userId,{mode:input?.mode ?? "REAL",includeArchived:true}), status: "CLOSED", setupId: { not: null }, date: { gte: sixMonthsAgo } },
           select: { setupId: true, pnl: true, date: true },
           orderBy: [{ date: "asc" }],
         }),

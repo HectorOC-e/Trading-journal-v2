@@ -1,3 +1,5 @@
+import { scopedTradeWhere } from "./operational-scope"
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 // ─────────────────────────────────────────────────────────────────────────────
 // Trade read service (TD-018) — query orchestration moved out of the trades
 // router: cursor-paginated list, rule-violation aggregates, emotion incentive
@@ -27,14 +29,15 @@ export async function getTradeById(prisma: PrismaClient, userId: string, id: str
 export async function listTrades(
   prisma: PrismaClient,
   userId: string,
-  input?: { accountId?: string; setupId?: string; from?: string; to?: string; limit?: number; cursor?: string },
+  input?: { mode?: OperationalMode; accountId?: string; setupId?: string; from?: string; to?: string; limit?: number; cursor?: string },
 ) {
   const limit = input?.limit ?? 50
+  const scope = await scopedTradeWhere(prisma,userId,{mode:input?.mode ?? "REAL",accountId:input?.accountId,includeArchived:true,from:input?.from,to:input?.to})
 
   let cursorDate: Date | null = null
   if (input?.cursor) {
     const cursorTrade = await prisma.trade.findUnique({
-      where: { id: input.cursor },
+      where: { ...scope, id: input.cursor },
       select: { date: true },
     })
     cursorDate = cursorTrade?.date ?? null
@@ -42,7 +45,7 @@ export async function listTrades(
 
   const trades = await prisma.trade.findMany({
     where: {
-      userId,
+      ...scope,
       ...(input?.accountId && { accountId: input.accountId }),
       ...(input?.setupId   && { setupId:   input.setupId }),
       ...((input?.from || input?.to) ? {
@@ -77,11 +80,11 @@ export async function listTrades(
 export async function getRuleViolationStats(
   prisma: PrismaClient,
   userId: string,
-  input?: { from?: string; to?: string },
+  input?: { mode?: OperationalMode; from?: string; to?: string },
 ) {
   const trades = await prisma.trade.findMany({
     where: {
-      userId,
+      ...await scopedTradeWhere(prisma,userId,{mode:input?.mode ?? "REAL",includeArchived:true,from:input?.from,to:input?.to}),
       tags: { hasSome: [...VIOLATION_TAGS] },
       ...((input?.from || input?.to) ? {
         date: {
@@ -113,9 +116,9 @@ export async function getRuleViolationStats(
 // Emotion incentive (DELTA D10): the trader's historical WR/avgR for a given
 // pre-trade emotion, so capturing it returns value in the moment. Null below the
 // minimum sample (handled in feedbackForEmotion) — no misleading small-n claim.
-export async function getEmotionFeedback(prisma: PrismaClient, userId: string, emotion: string) {
+export async function getEmotionFeedback(prisma: PrismaClient, userId: string, emotion: string, mode: OperationalMode = "REAL") {
   const rows = await prisma.trade.findMany({
-    where:  { userId, status: "CLOSED", emotionBefore: emotion },
+    where:  { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED", emotionBefore: emotion },
     select: { emotionBefore: true, pnl: true, rMultiple: true },
   })
   const mapped = rows.map((t) => ({
@@ -127,9 +130,9 @@ export async function getEmotionFeedback(prisma: PrismaClient, userId: string, e
 }
 
 // T-VI-002: Behavioral pattern insights
-export async function getPatternInsights(prisma: PrismaClient, userId: string) {
+export async function getPatternInsights(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL") {
   const tradeRows = await prisma.trade.findMany({
-    where: { userId, status: "CLOSED" },
+    where: { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED" },
     select: {
       id: true, accountId: true, symbol: true, direction: true,
       session: true, openTime: true, closeTime: true,
@@ -137,7 +140,6 @@ export async function getPatternInsights(prisma: PrismaClient, userId: string) {
       setupId: true, entry: true, stop: true, target: true, size: true,
     },
     orderBy: [{ date: "asc" }],
-    take: 500,
   })
   const trades: MinimalTrade[] = tradeRows.map(t => ({
     id:        t.id,

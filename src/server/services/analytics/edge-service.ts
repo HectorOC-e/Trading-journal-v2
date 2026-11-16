@@ -1,3 +1,5 @@
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 // ─────────────────────────────────────────────────────────────────────────────
 // Edge service (S11) — prisma orchestration over the pure instrument/tag edge
 // analytics (#24/#20). Reads the user's closed trades and computes per-symbol and
@@ -10,9 +12,9 @@ import { computeTagEdges, type TagEdgeResult } from "@/domains/analytics/tags/ta
 
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
 
-export async function getInstrumentEdges(prisma: PrismaClient, userId: string): Promise<InstrumentEdgeResult> {
+export async function getInstrumentEdges(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<InstrumentEdgeResult> {
   const trades = await prisma.trade.findMany({
-    where: { userId, status: "CLOSED" },
+    where: { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED" },
     select: { symbol: true, rMultiple: true, pnl: true },
   })
   return computeInstrumentEdges(
@@ -20,9 +22,9 @@ export async function getInstrumentEdges(prisma: PrismaClient, userId: string): 
   )
 }
 
-export async function getTagEdges(prisma: PrismaClient, userId: string): Promise<TagEdgeResult> {
+export async function getTagEdges(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<TagEdgeResult> {
   const trades = await prisma.trade.findMany({
-    where: { userId, status: "CLOSED" },
+    where: { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED" },
     select: { tags: true, rMultiple: true, pnl: true },
   })
   return computeTagEdges(
