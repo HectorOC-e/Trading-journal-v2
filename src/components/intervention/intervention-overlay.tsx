@@ -7,14 +7,16 @@
 
 import { useEffect, useRef } from "react"
 import { ShieldAlert, ShieldCheck } from "lucide-react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
 
 export function InterventionOverlay() {
+  const mode = useOperationalMode(state => state.mode)
   const utils = trpc.useUtils()
   // Polled so it surfaces on any surface; refetchOnWindowFocus catches tab return.
-  const { data: iv } = trpc.intervention.active.useQuery(undefined, {
+  const { data: iv } = trpc.intervention.active.useQuery({ mode }, {
     staleTime: 5_000,
     refetchOnWindowFocus: true,
     refetchInterval: 45_000,
@@ -76,7 +78,7 @@ export function InterventionOverlay() {
             <button
               ref={acceptRef}
               type="button"
-              onClick={() => respond.mutate({ interventionId: iv.id, response: "accepted" })}
+              onClick={() => respond.mutate({ mode, interventionId: iv.id, response: "accepted" })}
               disabled={respond.isPending}
               className="inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] text-[var(--accent-contrast)] font-semibold py-2.5 hover:opacity-90 disabled:opacity-50"
               style={{ background: accent }}
@@ -87,7 +89,7 @@ export function InterventionOverlay() {
           <button
             ref={exitRef}
             type="button"
-            onClick={() => respond.mutate({ interventionId: iv.id, response: "dismissed" })}
+            onClick={() => respond.mutate({ mode, interventionId: iv.id, response: "dismissed" })}
             disabled={respond.isPending}
             className="rounded-[var(--radius-sm)] border border-[var(--line)] text-[var(--ink-3)] text-sm py-2 hover:text-[var(--ink)] hover:border-[var(--ink-3)] disabled:opacity-50"
           >

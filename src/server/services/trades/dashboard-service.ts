@@ -1,5 +1,6 @@
 import { loadAccountCashAdjustments } from "@/server/services/accounts/cash-adjustments"
 import { realizedRows } from "@/domains/trading/services/realized-history"
+import { periodEquityBalances } from "./historical-equity-service"
 import { createHash } from "node:crypto"
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard stats service (TD-018) — the dashboardStats orchestration moved out
@@ -29,9 +30,9 @@ import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { localDateISO, monthStartISO, weekStartISO, addDaysISO } from "@/lib/datetime/local"
 
 export type DashboardOutput = {
-  scope: { mode: OperationalMode; dateBasis: "TRADE_DATE"; includeArchived: boolean; excludedCurrencies: string[] }
+  scope: { mode: OperationalMode; dateBasis: "TRADE_DATE"; equityDateBasis: "REALIZATION_DATE"; legacyRealizationFallback: boolean; includeArchived: boolean; excludedCurrencies: string[] }
   kpis:           KpiSummary
-  accountStats:   (AccountStat & { currencyToBaseRate: number })[]
+  accountStats:   (AccountStat & { currencyToBaseRate: number; status: string; availableForTrading: boolean; capitalKind: "PERSONAL" | "EVALUATION" | "FUNDED" | "SIMULATED" })[]
   equityCurve:    EquityCurvePoint[]
   pnlByDate:      PnlByDatePoint[]
   pnlBySymbol:    SymbolStat[]
@@ -114,7 +115,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     prisma.account.findMany({
       where: { userId, type: { in: accountTypesForMode(mode) }, ...(!includeArchived ? { status: { in: ["ACTIVE", "PAUSED"] } } : {}), ...(input?.accountId ? {id: input.accountId} : {}) },
       select: {
-        id: true, name: true, type: true, status: true, currency: true, timezone: true,
+        id: true, name: true, type: true, status: true, locked: true, phase: true, currency: true, timezone: true,
         initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
         ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
         maxLeverage: true, targetLeverage: true,
@@ -160,7 +161,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // Version and request boundaries isolate calculations; profile/account snapshots
   // also prevent stale FX, timezone, limits or starting-capital results.
   const dependencyHash = createHash("sha256").update(JSON.stringify({ userRow, activeAccounts })).digest("hex")
-  const cacheKey = `v4:${period}:${input?.accountId ?? "all"}:${mode}:${includeArchived}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
+  const cacheKey = `v5:${period}:${input?.accountId ?? "all"}:${mode}:${includeArchived}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
   if (isCacheEnabled()) {
     const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
     if (hit) return hit
@@ -178,7 +179,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
       select: {
         id: true, accountId: true, symbol: true, direction: true, status: true,
         events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } },
-        session: true, openTime: true, closeTime: true,
+        session: true, openTime: true, closeTime: true, marketClosedAt: true, marketTimeZone: true,
         pnl: true, rMultiple: true, tags: true, date: true,
         setupId: true, entry: true, stop: true, target: true, size: true, originalSize: true, originalRiskMoney: true,
       },
@@ -196,7 +197,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     // above never see open trades).
     prisma.trade.findMany({
       where:  { ...scopeWhere, status: "OPEN", accountId: { in: activeAccountIds } },
-      select: { accountId: true, symbol: true, entry: true, size: true, status: true, pnl: true, date: true, events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } } },
+      select: { accountId: true, symbol: true, entry: true, size: true, status: true, pnl: true, date: true, marketClosedAt: true, marketTimeZone: true, events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } } },
     }),
     prisma.market.findMany({
       where:  { userId },
@@ -314,7 +315,12 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     })),
   )
   for (const s of accountStats) s.exposure = exposureById[s.accountId] ?? null
-  const equityCurve  = buildEquityCurve(trades, acctBalances)
+  const periodBalances = periodEquityBalances(acctBalances, realizations, queryFrom)
+  const periodRealizations = realizations.filter(row => (!queryFrom || row.date >= queryFrom) && (!queryTo || row.date <= queryTo))
+  const equityCurve = [
+    ...(queryFrom ? periodBalances.map(account => ({ accountId: account.id, date: queryFrom, balance: account.initialBalance })) : []),
+    ...buildEquityCurve(periodRealizations, periodBalances),
+  ]
   const pnlByDate    = buildPnlByDate(trades, grain)
   const pnlBySymbol  = buildPnlBySymbol(trades, 10)
   const sessionStats = buildSessionStats(trades)
@@ -359,9 +365,13 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const discipline     = buildDiscipline(trades, trades.length)
 
   const result: DashboardOutput = {
-    scope: { mode, dateBasis: "TRADE_DATE", includeArchived, excludedCurrencies },
+    scope: { mode, dateBasis: "TRADE_DATE", equityDateBasis: "REALIZATION_DATE", legacyRealizationFallback: [...tradeRows, ...openTradeRows].some(trade => !trade.marketClosedAt && Math.round((Number(trade.pnl ?? 0) - (trade.events ?? []).reduce((sum,event) => sum + Number(event.realizedPnl ?? 0),0)) * 100) !== 0), includeArchived, excludedCurrencies },
     kpis,
-    accountStats: accountStats.map(stat => ({ ...stat, currencyToBaseRate: fx(stat.accountId) })),
+    accountStats: accountStats.map(stat => {
+      const account = accounts.find(account => account.id === stat.accountId)!
+      const capitalKind = classifyAccountType(account.type) !== "REAL" ? "SIMULATED" as const : account.type === "PROP_FIRM" ? (account.phase === "FUNDED" ? "FUNDED" as const : "EVALUATION" as const) : "PERSONAL" as const
+      return { ...stat, currencyToBaseRate: fx(stat.accountId), status: account.status, availableForTrading: account.status === "ACTIVE" && !account.locked, capitalKind }
+    }),
     equityCurve,
     pnlByDate,
     pnlBySymbol,

@@ -7,6 +7,7 @@
 // Neither handler swallows errors: a failure bubbles up so planEventTransition
 // decides the retry.
 
+import { operationalModeSchema, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import type { EventHandler } from "../event-bus"
 import { emitNotification } from "@/server/services/notifications/emit"
@@ -17,8 +18,8 @@ import { emitNotification } from "@/server/services/notifications/emit"
  * would match nothing and fail SILENTLY — the notification would outlive the
  * pattern with no error anywhere.
  */
-export function insightDedupeKey(insightId: string): string {
-  return `insight:${insightId}`
+export function insightDedupeKey(insightId: string, mode?: OperationalMode): string {
+  return mode ? `insight:${mode}:${insightId}` : `insight:${insightId}`
 }
 
 /**
@@ -34,16 +35,19 @@ export const insightCreatedHandler: EventHandler = async (prisma: PrismaClient, 
 
   const insight = await prisma.insight.findFirst({
     where: { id: insightId, userId: event.userId },
-    select: { title: true },
+    select: { title: true, operationalMode: true },
   })
   // Deleted between publish and consume → no-op, so the event settles.
   if (!insight) return
+  const parsed = operationalModeSchema.safeParse(insight.operationalMode)
+  if (!parsed.success) return
+  const mode = parsed.data
 
   await emitNotification(prisma, event.userId, "INSIGHT_DETECTED", {
-    params: { title: insight.title },
+    params: { title: insight.title, mode },
     sourceId: insightId,
-    dedupeKey: insightDedupeKey(insightId),
-    href: "/analytics",
+    dedupeKey: insightDedupeKey(insightId, mode),
+    href: `/analytics?mode=${mode}`,
   })
 }
 
@@ -73,7 +77,7 @@ export const insightResolvedHandler: EventHandler = async (prisma: PrismaClient,
   await prisma.notification.updateMany({
     where: {
       userId: event.userId,
-      dedupeKey: insightDedupeKey(insightId),
+      dedupeKey: { in: [insightDedupeKey(insightId), ...["REAL", "DEMO", "BACKTEST"].map(mode => insightDedupeKey(insightId, mode as OperationalMode))] },
       archivedAt: null,
     },
     data: { archivedAt: new Date() },

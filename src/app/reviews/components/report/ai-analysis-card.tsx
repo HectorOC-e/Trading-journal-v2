@@ -9,6 +9,8 @@ import { Markdown } from "@/components/ui/markdown"
 import { InsightCards } from "@/components/ui/insight-cards"
 import { Card, Eyebrow } from "./primitives"
 import type { AiMeta } from "./view-model"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
 
 type Period =
   | { kind: "weekly"; weekStart: string }
@@ -16,6 +18,12 @@ type Period =
 
 /** AI-generated analysis of the report. Generates on demand, persisted server-side. */
 export function AiAnalysisCard({ period, initial }: { period: Period; initial: AiMeta }) {
+  const mode = useOperationalMode(s => s.mode)
+  const key = `${period.kind === "weekly" ? period.weekStart : `${period.year}-${period.month}`}:${mode}`
+  return <ScopedAnalysis key={key} period={period} initial={initial} mode={mode} />
+}
+
+function ScopedAnalysis({ period, initial, mode }: { period: Period; initial: AiMeta; mode: OperationalMode }) {
   const utils = trpc.useUtils()
   const [analysis, setAnalysis] = useState<string | null>(initial.analysis)
   const [at, setAt] = useState<string | null>(initial.at)
@@ -23,9 +31,9 @@ export function AiAnalysisCard({ period, initial }: { period: Period; initial: A
   const onSuccess = (res: { analysis: string; at: string }) => {
     setAnalysis(res.analysis)
     setAt(res.at)
-    if (period.kind === "weekly") utils.weeklyReviews.report.invalidate({ weekStart: period.weekStart })
-    else utils.monthlyReviews.report.invalidate({ year: period.year, month: period.month })
-    toast.success("Análisis generado")
+    if (period.kind === "weekly") utils.weeklyReviews.report.invalidate({ weekStart: period.weekStart, mode })
+    else utils.monthlyReviews.report.invalidate({ year: period.year, month: period.month, mode })
+    toast.success(`Análisis de ${MODE_LABELS[mode]} generado`)
   }
   const onError = (e: unknown) => toast.error(formatErrorForUser(e as Parameters<typeof formatErrorForUser>[0]))
 
@@ -35,18 +43,18 @@ export function AiAnalysisCard({ period, initial }: { period: Period; initial: A
 
   // Deterministic insight cards (same engine as /analytics), scoped to this period.
   const weeklyInsights  = trpc.weeklyReviews.insights.useQuery(
-    period.kind === "weekly" ? { weekStart: period.weekStart } : { weekStart: "" },
+    period.kind === "weekly" ? { weekStart: period.weekStart, mode } : { weekStart: "", mode },
     { enabled: period.kind === "weekly", staleTime: 60_000 },
   )
   const monthlyInsights = trpc.monthlyReviews.insights.useQuery(
-    period.kind === "monthly" ? { year: period.year, month: period.month } : { year: 0, month: 1 },
+    period.kind === "monthly" ? { year: period.year, month: period.month, mode } : { year: 0, month: 1, mode },
     { enabled: period.kind === "monthly", staleTime: 60_000 },
   )
   const insights = (period.kind === "weekly" ? weeklyInsights.data : monthlyInsights.data) ?? []
 
   const generate = () => {
-    if (period.kind === "weekly") weeklyMut.mutate({ weekStart: period.weekStart })
-    else monthlyMut.mutate({ year: period.year, month: period.month })
+    if (period.kind === "weekly") weeklyMut.mutate({ weekStart: period.weekStart, mode })
+    else monthlyMut.mutate({ year: period.year, month: period.month, mode })
   }
 
   return (

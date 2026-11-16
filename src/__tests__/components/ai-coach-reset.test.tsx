@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { AiCoachDrawer } from "@/components/ai-coach/ai-coach-drawer"
 const m = vi.hoisted(() => ({ append: vi.fn() }))
-vi.mock("@/lib/trpc/client", () => ({ trpc: { coach: { appendExchange: { useMutation: () => ({ mutate: m.append }) } } } }))
+vi.mock("@/lib/trpc/client", () => ({ trpc: { profile: { get: { useQuery: () => ({ data: { id: "synthetic" } }) } }, coach: { appendExchange: { useMutation: () => ({ mutate: m.append }) } } } }))
 vi.mock("@/components/ai-coach/coach-memory-panel", () => ({ CoachMemoryPanel: () => null }))
 vi.mock("@/components/ui/markdown", () => ({ Markdown: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
 vi.mock("@/lib/dialog-open-store", () => ({ useAnyDialogOpen: () => false }))

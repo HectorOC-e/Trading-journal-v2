@@ -5,6 +5,26 @@ import { resolveAiCall, usableCandidates } from "@/lib/ai/resolve-provider";
 import { executeAiCall } from "@/lib/ai/execute";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { AiCallError } from "@/lib/ai/ai-error";
+import { createHash } from "node:crypto";
+
+export const practiceFeedbackInclude = {
+  resource: { include: { linkedSetups: { select: { id: true, name: true, description: true, aplusChecklist: true, standardChecklist: true } } } },
+  attachments: { orderBy: { id: "asc" as const } },
+  tradeLinks: { orderBy: { tradeId: "asc" as const }, include: { trade: { include: { account: { select: { id: true, name: true, currency: true } }, setup: { select: { name: true, description: true, aplusChecklist: true, standardChecklist: true } } } } } },
+};
+
+type PracticePromptEvidence = {
+  title: string; exercise: string; reflection: string;
+  objective?: string; assessment?: string | null; date?: Date;
+  operationalMode?: string | null; kind?: string;
+  resource: { title: string; notes?: string; linkedSetups?: unknown[] } | null;
+  attachments?: { id: string; path: string; mime: string }[];
+  tradeLinks?: { role: string; trade: { id: string; symbol: string; operationalMode?: string | null; date: Date; updatedAt?: Date; account?: { id: string; name: string; currency: string }; setup?: unknown; entry?: unknown; stop?: unknown; target?: unknown; pnl?: unknown; rMultiple?: unknown; notes?: string; screenshotUrls?: string[]; marketOpenedAt?: Date | null; marketClosedAt?: Date | null } }[];
+};
+
+export function practiceEvidenceSignature(p: PracticePromptEvidence) {
+  return createHash("sha256").update(JSON.stringify({ prompt: buildPracticePrompt(p, "feedback").text, attachments: p.attachments?.map(a => ({ id:a.id, path:a.path, mime:a.mime })) ?? [] })).digest("hex");
+}
 
 export function imageMime(b: Uint8Array): string | null {
   if (
@@ -23,12 +43,7 @@ export function imageMime(b: Uint8Array): string | null {
   return null;
 }
 export function buildPracticePrompt(
-  p: {
-    title: string;
-    exercise: string;
-    reflection: string;
-    resource: { title: string } | null;
-  },
+  p: PracticePromptEvidence,
   kind: "exercise" | "feedback",
 ) {
   return {
@@ -43,7 +58,23 @@ export function buildPracticePrompt(
         title: p.title,
         exercise: p.exercise,
         reflection: p.reflection,
-        resource: p.resource?.title ?? null,
+        objective: p.objective ?? "",
+        assessment: p.assessment ?? null,
+        operationalMode: p.operationalMode ?? null,
+        kind: p.kind ?? "CONCEPT",
+        practiceDate: p.date ?? null,
+        resource: p.resource ? { title: p.resource.title, notes: p.resource.notes ?? "", rules: p.resource.linkedSetups ?? [] } : null,
+        captures: p.attachments?.map(a => ({ id: a.id, mime: a.mime, source: "practice" })) ?? [],
+        trades: p.tradeLinks?.map(({ role, trade }) => ({
+          id: trade.id, role, symbol: trade.symbol, operationalMode: trade.operationalMode,
+          account: trade.account, currency: trade.account?.currency, marketDate: trade.date,
+          marketOpenedAt: trade.marketOpenedAt, marketClosedAt: trade.marketClosedAt,
+          practiceDate: p.date, updatedAt: trade.updatedAt, rules: trade.setup,
+          entry: trade.entry, stop: trade.stop, target: trade.target,
+          pnl: trade.pnl, rMultiple: trade.rMultiple, notes: trade.notes,
+          captures: trade.screenshotUrls?.map(url => ({ url, source: "trade", tradeId: trade.id, visualContentIncluded: false })),
+        })) ?? [],
+        limits: { selectedTrades: p.tradeLinks?.length ?? 0, maximumTrades: 50, omittedTrades: 0, tradeCaptureContent: "Sólo referencias; no afirmar observaciones visuales sobre ellas." },
       },
     }),
   };
@@ -56,7 +87,7 @@ export async function practiceFeedback(
 ) {
   const p = await prisma.learningPractice.findFirst({
     where: { id: input.id, userId },
-    include: { resource: { select: { title: true } }, attachments: true },
+    include: practiceFeedbackInclude,
   });
   if (!p) throw new TRPCError({ code: "NOT_FOUND" });
   if (p.version !== input.expectedVersion)
@@ -64,6 +95,9 @@ export async function practiceFeedback(
       code: "CONFLICT",
       message: "Actualiza la práctica antes de solicitar comentarios.",
     });
+  const evidenceSignature = practiceEvidenceSignature(p);
+  if ((p.tradeLinks?.length ?? 0) > 50 || buildPracticePrompt(p, input.kind).text.length > 70000)
+    throw new TRPCError({ code: "BAD_REQUEST", message: "La evidencia supera el límite del tutor (50 operaciones o 70.000 caracteres). Divide la práctica; no se ha omitido ninguna operación." });
   const recent = await prisma.practiceFeedback.count({
     where: {
       practiceId: p.id,
@@ -108,10 +142,13 @@ export async function practiceFeedback(
     await tx.$queryRaw`SELECT id FROM learning_practices WHERE id=${p.id}::uuid AND user_id=${userId}::uuid FOR UPDATE`;
     const current = await tx.learningPractice.findFirst({
       where: { id: p.id, userId },
+      include: practiceFeedbackInclude,
     });
     if (!current) throw new TRPCError({ code: "NOT_FOUND" });
+    if (current.version !== p.version || practiceEvidenceSignature(current) !== evidenceSignature)
+      throw new TRPCError({ code: "CONFLICT", message: "La evidencia cambió durante la respuesta. Los comentarios quedaron desactualizados; solicita otros con la versión actual." });
     return tx.practiceFeedback.create({
-      data: { practiceId: p.id, version: p.version, kind: input.kind, text },
+      data: { practiceId: p.id, version: p.version, evidenceSignature, kind: input.kind, text },
     });
   });
 }
@@ -119,12 +156,7 @@ export async function practiceFeedback(
 export async function generatePracticeResponse(
   prisma: PrismaClient,
   userId: string,
-  p: {
-    title: string;
-    exercise: string;
-    reflection: string;
-    resource: { title: string } | null;
-  },
+  p: PracticePromptEvidence,
   kind: "exercise" | "feedback",
   images: { mime: string; data: string }[] = [],
 ) {

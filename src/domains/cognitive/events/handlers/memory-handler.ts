@@ -6,6 +6,7 @@
 // Does NOT swallow errors: a failure bubbles up so `planEventTransition` decides
 // the retry. The only best-effort part is the embedding, inside the service.
 
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import type { EventHandler } from "../event-bus"
 import type { MemoryEventType } from "@/domains/cognitive/memory/salience"
@@ -45,13 +46,16 @@ export const memoryHandler: EventHandler = async (prisma: PrismaClient, event) =
   const { commitmentId } = event.payload as { commitmentId: string }
   const commitment = await prisma.commitment.findFirst({
     where: { id: commitmentId, userId: event.userId },
-    select: { text: true, metricKey: true, comparator: true, target: true, window: true },
+    select: { operationalMode: true, text: true, metricKey: true, comparator: true, target: true, window: true },
   })
   // Deleted between publish and consume → no-op, so the event settles instead of
   // retrying forever against something that no longer exists.
   if (!commitment) return
+  const parsed = operationalModeSchema.safeParse(commitment.operationalMode)
+  if (!parsed.success) return
 
   await recordEpisodeOnce(prisma, event.userId, {
+    operationalMode: parsed.data,
     eventType: mapping.type,
     content: `${mapping.verb}: ${describeCommitment(commitment)}`,
     sourceId: event.id,

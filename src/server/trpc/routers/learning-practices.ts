@@ -13,6 +13,12 @@ import {
   practiceFeedback,
   generatePracticeResponse,
 } from "@/server/services/learning/practice-feedback-service";
+import { replacePracticeTradeLinks, replacePracticeTradeLinksInTransaction, validatePracticeKind } from "@/server/services/learning/practice-trades-service";
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope";
+import type { Prisma } from "@/lib/generated/prisma/client";
+import { practiceFeedbackInclude, practiceEvidenceSignature } from "@/server/services/learning/practice-feedback-service";
+
+const tradeLinks = z.array(z.object({ tradeId: z.string().uuid(), role: z.enum(["EXECUTED", "REVIEWED"]) })).max(50).default([]);
 
 const day = z
   .string()
@@ -31,17 +37,38 @@ const fields = z.object({
   exercise: z.string().trim().min(1).max(5000),
   reflection: z.string().trim().max(5000).default(""),
   resourceId: z.string().uuid().nullable().default(null),
+  kind: z.enum(["CONCEPT", "EXECUTION", "REVIEW"]).default("CONCEPT"),
+  operationalMode: z.enum(["REAL", "DEMO", "BACKTEST"]).nullable().default(null),
+  links: tradeLinks,
 });
 const identity = z.object({
   id: z.string().uuid(),
   expectedVersion: z.number().int().positive(),
 });
 const include = {
-  resource: { select: { id: true, title: true } },
-  attachments: { orderBy: { createdAt: "asc" as const } },
+  ...practiceFeedbackInclude,
   feedback: { orderBy: { createdAt: "desc" as const }, take: 10 },
 };
+function serializePractice(p: Prisma.LearningPracticeGetPayload<{ include: typeof include }>) {
+  const signature = practiceEvidenceSignature(p);
+  return { ...p, reviewSource: readReviewSource(p.reviewSource), feedback: p.feedback.map(f => ({ ...f, isCurrent: f.version === p.version && f.evidenceSignature === signature })) };
+}
 export const learningPracticesRouter = router({
+  tradeCandidates: protectedProcedure
+    .input(z.object({ mode: z.enum(["REAL", "DEMO", "BACKTEST"]), search: z.string().trim().max(100).default(""), cursor: z.string().uuid().optional(), limit: z.number().int().min(1).max(50).default(20), ids: z.array(z.string().uuid()).max(50).optional() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.prisma.trade.findMany({
+        where: { ...await scopedTradeWhere(ctx.prisma, ctx.userId, { mode: input.mode, includeArchived: true }),
+          ...(input.ids ? { id: { in: input.ids } } : {}),
+          ...(input.search ? { OR: [{ symbol: { contains: input.search, mode: "insensitive" } }, { notes: { contains: input.search, mode: "insensitive" } }] } : {}),
+        },
+        select: { id: true, symbol: true, date: true, status: true, operationalMode: true, practiceLinks: { where: { role: "EXECUTED", userId: ctx.userId }, select: { practiceId: true } } },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}), take: input.limit + 1,
+      });
+      const items = rows.slice(0, input.limit);
+      return { items, nextCursor: rows.length > input.limit ? items.at(-1)!.id : null };
+    }),
   suggestExercise: protectedProcedure
     .input(
       z.object({
@@ -76,7 +103,7 @@ export const learningPracticesRouter = router({
         include,
       });
       if (!p) throw new TRPCError({ code: "NOT_FOUND" });
-      return { ...p, reviewSource: readReviewSource(p.reviewSource) };
+      return serializePractice(p);
     }),
   list: protectedProcedure
     .input(
@@ -85,6 +112,7 @@ export const learningPracticesRouter = router({
           limit: z.number().int().min(1).max(50).default(20),
           cursor: z.object({ date: day, id: z.string().uuid() }).optional(),
           resourceId: z.string().uuid().optional(),
+          mode: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL"),
           from: day.optional(),
           to: day.optional(),
         })
@@ -95,6 +123,7 @@ export const learningPracticesRouter = router({
         where: {
           userId: ctx.userId,
           resourceId: input.resourceId,
+          AND: [{ OR: [{ operationalMode: input.mode }, { operationalMode: null, kind: "CONCEPT" }] }],
           date: {
             gte: input.from ? new Date(input.from) : undefined,
             lte: input.to ? new Date(input.to) : undefined,
@@ -119,7 +148,7 @@ export const learningPracticesRouter = router({
       const items = rows.slice(0, input.limit);
       const last = items.at(-1);
       return {
-        items: items.map(p => ({ ...p, reviewSource: readReviewSource(p.reviewSource) })),
+        items: items.map(serializePractice),
         nextCursor:
           more && last
             ? { date: last.date.toISOString().slice(0, 10), id: last.id }
@@ -156,10 +185,12 @@ export const learningPracticesRouter = router({
         const existing = await tx.learningPractice.findFirst({ where: { id: input.id, userId: ctx.userId }, include });
         if (existing) {
           if ((existing.plannedSessionId ?? undefined) !== input.plannedSessionId || (repeated && JSON.stringify(readReviewSource(existing.reviewSource)) !== JSON.stringify(readReviewSource(repeated.reviewSource)))) throw new TRPCError({code:"CONFLICT",message:"Esta práctica ya se guardó con otro plan."});
-          return { ...existing, reviewSource: readReviewSource(existing.reviewSource) };
+          return serializePractice(existing);
         }
         const { plannedSessionId } = input;
-        const data = { ...fields.parse(input), id: input.id };
+        const { links, ...practiceFields } = fields.parse(input);
+        validatePracticeKind(practiceFields.kind, practiceFields.operationalMode, links);
+        const data = { ...practiceFields, id: input.id };
         const plan = plannedSessionId ? await tx.studySession.findFirst({ where: { id: plannedSessionId, userId: ctx.userId, status: "planned" } }) : null;
         if (plannedSessionId && !plan) throw new TRPCError({ code: "NOT_FOUND", message: "Plan no disponible." });
         if (plan && plan.resourceId !== input.resourceId) throw new TRPCError({ code: "BAD_REQUEST", message: "La práctica debe usar el recurso del plan." });
@@ -169,8 +200,10 @@ export const learningPracticesRouter = router({
           const claimed = await tx.studySession.updateMany({ where: { id: plan.id, userId: ctx.userId, status: "planned" }, data: { status: "completed", source: "practice", durationMin: 0, startedAt: now, endedAt: now } });
           if (claimed.count !== 1) throw new TRPCError({ code: "CONFLICT", message: "El plan ya cambió." });
         }
-        const row = await tx.learningPractice.create({ data: { ...data, userId: ctx.userId, date: new Date(input.date), ...(plannedSessionId ? { plannedSessionId } : {}), ...(reviewSource ? { reviewSource } : {}) }, include });
-        return { ...row, reviewSource: readReviewSource(row.reviewSource) };
+        const created = await tx.learningPractice.create({ data: { ...data, userId: ctx.userId, date: new Date(input.date), ...(plannedSessionId ? { plannedSessionId } : {}), ...(reviewSource ? { reviewSource } : {}) } });
+        if (links.length) await replacePracticeTradeLinksInTransaction(tx, ctx.userId, { practiceId: created.id, expectedVersion: created.version, links });
+        const row = await tx.learningPractice.findFirstOrThrow({ where: { id: created.id, userId: ctx.userId }, include });
+        return serializePractice(row);
       });
     }),
   update: protectedProcedure
@@ -193,12 +226,19 @@ export const learningPracticesRouter = router({
       )
         throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.prisma.$transaction(async (tx) => {
-        const current = await tx.learningPractice.findFirst({ where: { id: input.id, userId: ctx.userId } });
+        await tx.$queryRaw`SELECT id FROM public.users WHERE id=${ctx.userId}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM learning_practices WHERE id=${input.id}::uuid AND user_id=${ctx.userId}::uuid FOR UPDATE`;
+        const current = await tx.learningPractice.findFirst({ where: { id: input.id, userId: ctx.userId }, include: { tradeLinks: true } });
         if (!current)
           throw new TRPCError({ code: "NOT_FOUND" });
-        const { id, expectedVersion, ...data } = input;
+        const { id, expectedVersion, links, ...data } = input;
+        validatePracticeKind(data.kind, data.operationalMode, links);
+        if (current.version !== expectedVersion) throw new TRPCError({ code: "CONFLICT", message: "Esta práctica cambió. Conserva tu borrador y vuelve a abrir la versión actual." });
+        const changingContext = current.kind !== data.kind || current.operationalMode !== data.operationalMode;
+        if (changingContext && current.tradeLinks?.length) await tx.practiceTradeLink.deleteMany({ where: { practiceId: id, userId: ctx.userId } });
+        const beforeUpdate = changingContext && current.tradeLinks?.length ? await tx.learningPractice.findFirstOrThrow({ where: { id, userId: ctx.userId } }) : current;
         const result = await tx.learningPractice.updateMany({
-          where: { id, userId: ctx.userId, version: expectedVersion },
+          where: { id, userId: ctx.userId, version: beforeUpdate.version },
           data: {
             ...data,
             date: new Date(data.date),
@@ -211,6 +251,10 @@ export const learningPracticesRouter = router({
             message:
               "Esta práctica cambió. Conserva tu borrador y vuelve a abrir la versión actual.",
           });
+        if (links.length || (!changingContext && current.tradeLinks?.length)) {
+          const updated = await tx.learningPractice.findFirstOrThrow({ where: { id, userId: ctx.userId } });
+          await replacePracticeTradeLinksInTransaction(tx, ctx.userId, { practiceId: id, expectedVersion: updated.version, links });
+        }
         if (current.plannedSessionId) {
           if (current.resourceId !== input.resourceId) throw new TRPCError({code:"BAD_REQUEST",message:"Conserva el recurso del plan vinculado."});
           if (current.date.toISOString().slice(0, 10) !== input.date) {
@@ -222,7 +266,7 @@ export const learningPracticesRouter = router({
           where: { id, userId: ctx.userId },
           include,
         });
-        return { ...row, reviewSource: readReviewSource(row.reviewSource) };
+        return serializePractice(row);
       });
     }),
   delete: protectedProcedure
@@ -262,6 +306,9 @@ export const learningPracticesRouter = router({
         return { ok: true };
       });
     }),
+  replaceTradeLinks: protectedProcedure
+    .input(identity.extend({ links: tradeLinks }))
+    .mutation(({ ctx, input }) => replacePracticeTradeLinks(ctx.prisma, ctx.userId, { practiceId: input.id, expectedVersion: input.expectedVersion, links: input.links })),
   summary: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.prisma.user.findUniqueOrThrow({
       where: { id: ctx.userId },

@@ -8,6 +8,9 @@
 // transaction (FREEZE-D6, EV5/EV6).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { requireDerivedMode } from "@/domains/behavior/operational-scope"
+import { classifyAccountType, OPERATIONAL_MODES, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { publishEvent } from "@/domains/cognitive/events/event-bus"
 import { getVerifier, type WindowTrade } from "@/domains/behavior/verifiers"
@@ -34,6 +37,7 @@ function windowEnd(start: Date, window: CommitmentWindow): Date {
 }
 
 export interface CreateCommitmentOverrides {
+  mode?: OperationalMode
   text?: string
   target?: number
   window?: CommitmentWindow
@@ -52,6 +56,7 @@ export async function createCommitmentFromInsight(
   overrides: CreateCommitmentOverrides = {},
 ) {
   const insight = await prisma.insight.findFirstOrThrow({ where: { id: insightId, userId } })
+  const mode = requireDerivedMode(insight.operationalMode, overrides.mode ?? "REAL")
   const spec = deriveCommitmentSpec(insight.type)
   if (!spec) throw new NoVerifierError(insight.type)
 
@@ -64,6 +69,7 @@ export async function createCommitmentFromInsight(
       data: {
         userId,
         sourceInsightId: insight.id,
+        operationalMode: mode,
         text: overrides.text ?? spec.text,
         metricKey: spec.metricKey,
         target: overrides.target ?? spec.target,
@@ -93,7 +99,7 @@ const KIND_TO_INSIGHT: Record<string, string> = {
   stay_on_plan: "off-plan",
 }
 
-export async function proposeCommitment(prisma: PrismaClient, userId: string, kind: string): Promise<{ id: string; text: string } | null> {
+export async function proposeCommitment(prisma: PrismaClient, userId: string, kind: string, mode: OperationalMode = "REAL"): Promise<{ id: string; text: string } | null> {
   const insightType = KIND_TO_INSIGHT[kind]
   if (!insightType) return null
   const spec = deriveCommitmentSpec(insightType)
@@ -101,7 +107,7 @@ export async function proposeCommitment(prisma: PrismaClient, userId: string, ki
   const startAt = new Date()
   const c = await prisma.commitment.create({
     data: {
-      userId, text: spec.text, metricKey: spec.metricKey, target: spec.target,
+      userId, operationalMode: mode, text: spec.text, metricKey: spec.metricKey, target: spec.target,
       comparator: spec.comparator, window: spec.window, startAt, endAt: windowEnd(startAt, spec.window),
       status: "proposed", createdVia: "coach",
     },
@@ -110,16 +116,16 @@ export async function proposeCommitment(prisma: PrismaClient, userId: string, ki
   return c
 }
 
-export function listProposedCommitments(prisma: PrismaClient, userId: string) {
+export function listProposedCommitments(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL") {
   return prisma.commitment.findMany({
-    where: { userId, status: "proposed", archivedAt: null },
+    where: { userId, operationalMode: mode, status: "proposed", archivedAt: null },
     select: { id: true, text: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   })
 }
 
-export async function acceptProposedCommitment(prisma: PrismaClient, userId: string, id: string): Promise<void> {
-  const c = await prisma.commitment.findFirstOrThrow({ where: { id, userId, status: "proposed" }, select: { window: true } })
+export async function acceptProposedCommitment(prisma: PrismaClient, userId: string, id: string, mode: OperationalMode = "REAL"): Promise<void> {
+  const c = await prisma.commitment.findFirstOrThrow({ where: { id, userId, operationalMode: mode, status: "proposed" }, select: { window: true } })
   const startAt = new Date()
   await prisma.$transaction(async (tx) => {
     await tx.commitment.update({ where: { id }, data: { status: "active", startAt, endAt: windowEnd(startAt, c.window as CommitmentWindow) } })
@@ -127,14 +133,15 @@ export async function acceptProposedCommitment(prisma: PrismaClient, userId: str
   })
 }
 
-export async function dismissProposedCommitment(prisma: PrismaClient, userId: string, id: string): Promise<void> {
-  await prisma.commitment.updateMany({ where: { id, userId, status: "proposed" }, data: { status: "dismissed", archivedAt: new Date() } })
+export async function dismissProposedCommitment(prisma: PrismaClient, userId: string, id: string, mode: OperationalMode = "REAL"): Promise<void> {
+  await prisma.commitment.updateMany({ where: { id, userId, operationalMode: mode, status: "proposed" }, data: { status: "dismissed", archivedAt: new Date() } })
 }
 
 /** Map closed trades in a window to the pure WindowTrade shape the verifiers read. */
-async function loadWindowTrades(prisma: PrismaClient, userId: string, from: Date, to: Date): Promise<WindowTrade[]> {
+async function loadWindowTrades(prisma: PrismaClient, userId: string, from: Date, to: Date, mode: OperationalMode): Promise<WindowTrade[]> {
+  const scope = await scopedTradeWhere(prisma, userId, { mode, includeArchived: true })
   const rows = await prisma.trade.findMany({
-    where: { userId, status: "CLOSED", date: { gte: from, lt: to } },
+    where: { ...scope, status: "CLOSED", date: { gte: from, lt: to } },
     select: {
       id: true, date: true, pnl: true, rMultiple: true, tags: true,
       riskPct: true, revengeFlag: true, fomoFlag: true, openTime: true,
@@ -169,15 +176,16 @@ export async function evaluateCommitment(
   prisma: PrismaClient,
   userId: string,
   commitmentId: string,
-  opts: { early?: boolean } = {},
+  opts: { early?: boolean; mode?: OperationalMode } = {},
 ): Promise<EvaluateResultOut> {
   const c = await prisma.commitment.findFirstOrThrow({ where: { id: commitmentId, userId } })
+  const mode = requireDerivedMode(c.operationalMode, opts.mode)
   if (c.status !== "active" || c.archivedAt) return { status: c.status as EvaluateResultOut["status"], observedValue: null }
 
   const verifier = getVerifier(c.metricKey)
   if (!verifier) return { status: "expired", observedValue: null }
 
-  const trades = await loadWindowTrades(prisma, userId, c.startAt, c.endAt)
+  const trades = await loadWindowTrades(prisma, userId, c.startAt, c.endAt, mode)
   if (trades.length === 0) {
     // Mid-window with no trades yet → still active; only a CLOSED empty window expires.
     if (opts.early) return { status: "active", observedValue: 0 }
@@ -230,7 +238,7 @@ export interface WindowEvalSummary {
  */
 export async function evaluateWindowCommitments(prisma: PrismaClient, userId?: string): Promise<WindowEvalSummary> {
   const due = await prisma.commitment.findMany({
-    where: { status: "active", archivedAt: null, endAt: { lte: new Date() }, ...(userId ? { userId } : {}) },
+    where: { operationalMode: { in: [...OPERATIONAL_MODES] }, status: "active", archivedAt: null, endAt: { lte: new Date() }, ...(userId ? { userId } : {}) },
     select: { id: true, userId: true },
   })
   const sum: WindowEvalSummary = { evaluated: 0, kept: 0, partial: 0, broken: 0, expired: 0 }
@@ -251,14 +259,22 @@ export async function evaluateWindowCommitments(prisma: PrismaClient, userId?: s
  * backed by an enforce rule for an EARLY BREAK (defense-in-depth — the rule should
  * already prevent it). Never terminates as kept early. Best-effort; callers wrap.
  */
-export async function evaluateRuledCommitmentsOnTrade(prisma: PrismaClient, userId: string): Promise<void> {
+export async function evaluateRuledCommitmentsOnTrade(prisma: PrismaClient, userId: string, evidence?: { accountId: string; tradeId?: string }): Promise<void> {
+  if (!evidence) return
+  const account = await prisma.account.findFirst({ where: { id: evidence.accountId, userId }, select: { type: true } })
+  const mode = classifyAccountType(account?.type)
+  if (!mode || mode === "INTERNAL") return
+  if (evidence.tradeId) {
+    const trade = await prisma.trade.findFirst({ where: { id: evidence.tradeId, userId, accountId: evidence.accountId }, select: { operationalMode: true } })
+    if (trade?.operationalMode !== mode) return
+  }
   const ruled = await prisma.commitment.findMany({
-    where: { userId, status: "active", archivedAt: null, ruleId: { not: null } },
+    where: { userId, operationalMode: mode, status: "active", archivedAt: null, ruleId: { not: null } },
     select: { id: true },
   })
   for (const c of ruled) {
     try {
-      await evaluateCommitment(prisma, userId, c.id, { early: true })
+      await evaluateCommitment(prisma, userId, c.id, { early: true, mode })
     } catch {
       /* best-effort: never block the trade write */
     }
@@ -270,11 +286,11 @@ export async function evaluateRuledCommitmentsOnTrade(prisma: PrismaClient, user
  * those whose window closed recently — with their latest check, for the
  * "¿Cumpliste?" block.
  */
-export async function carryOverCommitments(prisma: PrismaClient, userId: string, sinceDays = 14) {
+export async function carryOverCommitments(prisma: PrismaClient, userId: string, sinceDays = 14, mode: OperationalMode = "REAL") {
   const since = new Date()
   since.setUTCDate(since.getUTCDate() - sinceDays)
   return prisma.commitment.findMany({
-    where: { userId, archivedAt: null, OR: [{ status: "active" }, { updatedAt: { gte: since } }] },
+    where: { userId, operationalMode: mode, archivedAt: null, OR: [{ status: "active" }, { updatedAt: { gte: since } }] },
     orderBy: { createdAt: "desc" },
     include: { checks: { orderBy: { evaluatedAt: "desc" }, take: 1 } },
   })

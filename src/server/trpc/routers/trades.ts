@@ -64,6 +64,13 @@ export const tradesRouter = router({
       closeTime:       z.string().optional(),
       commission:      z.number().optional(),
       status:          z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN"),
+      captureContext:  z.enum(["LIVE", "HISTORICAL"]).optional(),
+      marketOpenedAt:  z.string().datetime({ offset: true }).optional(),
+      marketClosedAt:  z.string().datetime({ offset: true }).optional(),
+      marketTimeZone:  z.string().optional(),
+      closeDate:       z.string().optional(),
+      emotionContext:  z.enum(["MARKET", "PRACTICE"]).optional(),
+      emotionReferenceAt: z.string().datetime({ offset: true }).optional(),
       // Psychology fields (TASK-034)
       emotionBefore:   z.enum(EMOTION_VALUES).optional().nullable(),
       confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
@@ -83,6 +90,14 @@ export const tradesRouter = router({
   update: protectedProcedure
     .input(z.object({
       id:               z.string().uuid(),
+      date:             z.string().optional(),
+      openTime:         z.string().optional(),
+      marketOpenedAt:   z.string().datetime({ offset: true }).optional(),
+      marketClosedAt:   z.string().datetime({ offset: true }).optional(),
+      marketTimeZone:   z.string().optional(),
+      eventTimestamps:  z.array(z.object({ id: z.string().uuid(), timestamp: z.string().datetime({ offset: true }) })).max(500).optional(),
+      emotionContext:   z.enum(["MARKET", "PRACTICE"]).optional(),
+      emotionReferenceAt: z.string().datetime({ offset: true }).optional(),
       notes:            z.string().optional(),
       tags:             z.array(z.string().min(1).max(30)).max(20).optional(),
       pnl:              z.number().optional(),
@@ -113,6 +128,9 @@ export const tradesRouter = router({
     .input(z.object({
       id:         z.string().uuid(),
       closePrice: z.number(),
+      captureContext: z.enum(["LIVE", "HISTORICAL"]).optional(),
+      marketClosedAt: z.string().datetime({ offset: true }).optional(),
+      closeDate: z.string().optional(),
       closeTime:  z.string().optional(),
       commission: z.number(),
       // Trade-capture v3 (S2) — excursions known at close + market regime (#35, E5.C6)
@@ -194,6 +212,7 @@ export const tradesRouter = router({
   // vía de verificación INDEPENDIENTE del LLM.
   semanticSearch: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       query:  z.string().min(1).max(500),
       corpus: z.enum(CORPUS_KEYS).optional(),
       limit:  z.number().int().min(1).max(10).default(5),

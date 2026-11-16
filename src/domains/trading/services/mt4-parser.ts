@@ -1,6 +1,7 @@
 // MT4 CSV Statement Parser
 // Columns (0-indexed): Ticket, Open Time, Type, Lots, Symbol, Open Price, S/L, T/P,
 //                      Close Time, Close Price, Commission, Swap, Profit
+import { marketTimestamp, validateMarketSequence } from "@/domains/trading/historical-capture"
 
 export type ParsedTrade = {
   ticket:     string   // idempotency key
@@ -23,17 +24,15 @@ export type ParseResult = {
 }
 
 /** Parse "YYYY.MM.DD HH:MM:SS" → ISO-8601 string */
-function parseMt4Date(raw: string): string {
+function parseMt4Date(raw: string, timeZone: string): string {
   // "2024.03.15 14:30:00" → "2024-03-15T14:30:00.000Z"
   const clean = raw.trim().replace(/\./g, "-").replace(" ", "T")
-  const d = new Date(clean + (clean.includes("Z") ? "" : "Z"))
-  if (isNaN(d.getTime())) throw new Error(`Invalid date: ${raw}`)
-  return d.toISOString()
+  return marketTimestamp(clean.slice(0,10), clean.slice(11,19), timeZone).toISOString()
 }
 
 const SKIP_TYPES = new Set(["balance", "deposit", "withdrawal", "credit"])
 
-export function parseMt4Statement(csv: string): ParseResult {
+export function parseMt4Statement(csv: string, timeZone = "UTC"): ParseResult {
   const rows: ParsedTrade[]  = []
   const warnings: string[]   = []
 
@@ -67,14 +66,14 @@ export function parseMt4Statement(csv: string): ParseResult {
     try {
       const trade: ParsedTrade = {
         ticket:     cols[0].trim(),
-        openTime:   parseMt4Date(cols[1]),
+        openTime:   parseMt4Date(cols[1], timeZone),
         type:       rawType as "buy" | "sell",
         size:       parseFloat(cols[3]),
         symbol:     cols[4].trim(),
         openPrice:  parseFloat(cols[5]),
         sl:         parseFloat(cols[6]) || 0,
         tp:         parseFloat(cols[7]) || 0,
-        closeTime:  parseMt4Date(cols[8]),
+        closeTime:  parseMt4Date(cols[8], timeZone),
         closePrice: parseFloat(cols[9]),
         commission: parseFloat(cols[10]) || 0,
         profit:     parseFloat(cols[12]),
@@ -92,6 +91,7 @@ export function parseMt4Statement(csv: string): ParseResult {
         continue
       }
 
+      validateMarketSequence(new Date(trade.openTime), new Date(trade.closeTime))
       rows.push(trade)
     } catch (err) {
       warnings.push(`Row ${i + 1}: ${err instanceof Error ? err.message : String(err)} — skipped`)

@@ -13,6 +13,7 @@ import { isResourceReviewDue } from "@/domains/learning/services/review-queue"
 import { reviseSession } from "@/server/services/learning/session-revisions"
 import { applyStudySessionProgress } from "@/server/services/learning/study-progress"
 import { addDaysISO, localDateISO, safeTimeZone, weekStartISO } from "@/lib/datetime/local"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null)
 const dayKey = (d: Date) => d.toISOString().slice(0, 10)
@@ -269,7 +270,8 @@ export const studySessionsRouter = router({
     }),
 
   /** Everything the "Hoy" home tab needs in one round-trip. */
-  home: protectedProcedure.query(async ({ ctx }) => {
+  home: protectedProcedure.input(z.object({ mode: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL") }).optional()).query(async ({ ctx, input }) => {
+    const mode = input?.mode ?? "REAL"
     const now = new Date()
     const user = await ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { weeklyGoalMinutes: true, timezone: true } })
     const timezone = safeTimeZone(user.timezone)
@@ -301,7 +303,7 @@ export const studySessionsRouter = router({
         orderBy: { startedAt: "asc" },
       }),
       ctx.prisma.trade.findMany({
-        where: { userId: ctx.userId, status: "CLOSED", setupId: { not: null } },
+        where: { ...await scopedTradeWhere(ctx.prisma, ctx.userId, { mode, includeArchived: true }), status: "CLOSED", setupId: { not: null } },
         select: { setupId: true, pnl: true },
       }),
     ])
@@ -381,7 +383,12 @@ export const studySessionsRouter = router({
       inProgress,
       week: { hoursMin, goalMin, streak },
       agenda,
-      suggestion,
+      suggestion: suggestion?.kind === "weakness" ? {
+        ...suggestion,
+        reason: `${mode}: ${suggestion.reason}`,
+        coachPrompt: `Modalidad ${mode}. ${suggestion.coachPrompt}`,
+      } : suggestion,
+      operationalMode: mode,
     }
   }),
 })

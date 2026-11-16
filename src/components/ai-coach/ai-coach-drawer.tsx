@@ -6,6 +6,8 @@ import { trpc } from "@/lib/trpc/client"
 import { CoachMemoryPanel } from "./coach-memory-panel"
 import { cn } from "@/lib/utils"
 import { Markdown } from "@/components/ui/markdown"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
 import { STORAGE_KEYS } from "@/lib/storage-keys"
 import { useAnyDialogOpen } from "@/lib/dialog-open-store"
 import type { Citation } from "@/server/services/retrieval/types"
@@ -97,9 +99,24 @@ function formatTime(ts?: number): string {
 }
 
 export function AiCoachDrawer() {
-  const [open,        setOpen]        = useState(false)
+  const operationalMode = useOperationalMode(state => state.mode)
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 })
+  const [open, setOpen] = useState(false)
+  return <ScopedAiCoachDrawer key={`${profile?.id ?? "pending"}:${operationalMode}`} userId={profile?.id} operationalMode={operationalMode} open={open} setOpen={setOpen} />
+}
+
+function ScopedAiCoachDrawer({ userId, operationalMode, open, setOpen }: {
+  userId?: string; operationalMode: OperationalMode; open: boolean; setOpen: (open: boolean) => void
+}) {
+  const historyKey = userId ? `${HISTORY_KEY}:v2:${userId}:${operationalMode}` : null
   const [mode,        setMode]        = useState<ViewMode>("panel")
-  const [messages,    setMessages]    = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const raw = historyKey ? localStorage.getItem(historyKey) : null
+      const parsed: unknown = raw ? JSON.parse(raw) : null
+      return Array.isArray(parsed) && parsed.length ? parsed as Message[] : [WELCOME]
+    } catch { return [WELCOME] }
+  })
   const [input,       setInput]       = useState("")
   const [streaming,   setStreaming]   = useState(false)
   const [apiError,    setApiError]    = useState<ApiError>(null)
@@ -118,30 +135,19 @@ export function AiCoachDrawer() {
   const isMobile     = useIsMobile()
   const anyDialogOpen = useAnyDialogOpen()
 
-  // ── Mount: restore positions + conversation history ─────────────────────────
-  useEffect(() => {
-    try {
-      const h = localStorage.getItem(HISTORY_KEY)
-      if (h) {
-        const parsed = JSON.parse(h) as Message[]
-        if (Array.isArray(parsed) && parsed.length) setMessages(parsed)
-      }
-    } catch { /* ignore */ }
+  useEffect(() => () => {
+    conversationRef.current++
+    abortRef.current?.abort()
   }, [])
-
-  // Seed the welcome message only when there's no restored history.
-  useEffect(() => {
-    if (open && messages.length === 0) setMessages([WELCOME])
-  }, [open, messages.length])
 
   // Persist the conversation (skip the bare welcome-only state).
   useEffect(() => {
     try {
       if (messages.length > 1 || (messages[0] && messages[0].id !== "welcome")) {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(messages))
+        if (historyKey) localStorage.setItem(historyKey, JSON.stringify(messages))
       }
     } catch { /* ignore */ }
-  }, [messages])
+  }, [messages, historyKey])
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages, streaming])
   useEffect(() => { if (open && mode !== "minimized") inputRef.current?.focus() }, [open, mode])
@@ -204,7 +210,7 @@ export function AiCoachDrawer() {
       const res = await fetch("/api/ai-coach", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ messages: apiMessages }),
+        body:    JSON.stringify({ messages: apiMessages, mode: operationalMode }),
         signal:  controller.signal,
       })
 
@@ -277,7 +283,7 @@ export function AiCoachDrawer() {
       const lastUser = [...history].reverse().find(m => m.role === "user")
       if (current() && lastUser && assistantText.trim()) {
         appendExchange.mutate(
-          { threadId: threadIdRef.current, userText: lastUser.content, assistantText },
+          { threadId: threadIdRef.current, userText: lastUser.content, assistantText, mode: operationalMode },
           { onSuccess: (r) => { if (current()) threadIdRef.current = r.threadId } },
         )
       }
@@ -302,7 +308,7 @@ export function AiCoachDrawer() {
 
   function sendMessage(textArg?: string) {
     const text = (textArg ?? input).trim()
-    if (!text || streaming) return
+    if (!text || streaming || !userId) return
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text, ts: Date.now() }
     const history = [...messages, userMsg]
     setMessages(history)
@@ -330,7 +336,7 @@ export function AiCoachDrawer() {
     setMessages([WELCOME])
     setInput("")
     setApiError(null)
-    try { localStorage.removeItem(HISTORY_KEY) } catch { /* ignore */ }
+    try { if (historyKey) localStorage.removeItem(historyKey) } catch { /* ignore */ }
     inputRef.current?.focus()
   }
 
@@ -363,7 +369,7 @@ export function AiCoachDrawer() {
       window.removeEventListener("coach:ask", handler)
       window.removeEventListener("coach:open", openHandler)
     }
-  }, [])
+  }, [setOpen])
 
   // While any modal is open, stay out of the way — a fixed FAB/panel would sit
   // on top of the dialog and cover its content and actions (mobile + desktop).
@@ -408,7 +414,7 @@ export function AiCoachDrawer() {
           </div>
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[var(--ink)] leading-tight">AI Coach</p>
-            <p className="text-[10px] text-[var(--ink-3)] leading-tight truncate">Basado en tus datos reales</p>
+            <p className="text-[10px] text-[var(--ink-3)] leading-tight truncate">{MODE_LABELS[operationalMode]} · Conversación independiente</p>
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0" onPointerDown={e => e.stopPropagation()}>
@@ -465,7 +471,7 @@ export function AiCoachDrawer() {
 
       {!minimized && memoryOpen && (
         <div className="flex-1 overflow-hidden flex flex-col">
-          <CoachMemoryPanel />
+          <CoachMemoryPanel mode={operationalMode} />
         </div>
       )}
 

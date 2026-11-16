@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -56,6 +57,7 @@ export function LogSessionPopover({
   open:           boolean
   onOpenChange:   (v: boolean) => void
 }) {
+  const mode = useOperationalMode(state => state.mode)
   const today = new Date().toISOString().slice(0, 10)
 
   const [session,     setSession]     = useState<TradeSession>("New York")
@@ -80,6 +82,7 @@ export function LogSessionPopover({
 
   const handleSave = () => {
     logSession.mutate({
+      mode,
       date:        today,
       session,
       preMood:     preMood     ?? undefined,

@@ -98,6 +98,7 @@ describe("commitment persistido y regla enlazada", () => {
       data: {
         userId,
         sourceInsightId: insightId,
+        operationalMode: "REAL",
         text: spec.text,
         metricKey: spec.metricKey,
         target: spec.target,
@@ -119,6 +120,7 @@ describe("commitment persistido y regla enlazada", () => {
     expect(c.target).toBe(0)
     expect(c.comparator).toBe("<=")
     expect(c.sourceInsightId).toBe(insight.id)
+    expect(c.operationalMode).toBe("REAL")
   })
 
   it("linkRule respalda el commitment con una regla enforce y los enlaza en ambos sentidos", async () => {

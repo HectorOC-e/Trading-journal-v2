@@ -1,13 +1,9 @@
-// Auto-finalization for a weekly review. Run by the Monday cron for the just-finished
-// week: flips the review to "submitted", snapshots the computed discipline score, and
-// populates the ✓worked / ✗toImprove chips from the report when empty. Idempotent and
-// NON-destructive — it never overwrites the user's own notes (executiveSummary) or any
-// chips they already filled.
-
+// A review row is the shared manual-notes envelope. Automatic financial results
+// belong to the mode snapshots refreshed by the report loaders.
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { computeDisciplineScore } from "@/domains/analytics/services/discipline-service"
+import { OPERATIONAL_MODES, type OperationalMode } from "@/domains/trading/operational-mode"
 import { loadWeeklyReport } from "./report-data"
-import { deriveChipsFromReport } from "./verdict"
+import { ensureWeeklyReviewEnvelope } from "./envelopes"
 
 export type FinalizeResult = "finalized" | "skipped"
 
@@ -15,49 +11,16 @@ export async function finalizeWeeklyReview(
   prisma: PrismaClient,
   userId: string,
   weekStart: string,
+  mode?: OperationalMode,
 ): Promise<FinalizeResult> {
-  const { report, saved } = await loadWeeklyReport(prisma, userId, weekStart)
-  if (report.kpis.trades === 0) return "skipped" // nothing traded — don't fabricate a review
+  const bundles = await Promise.all((mode ? [mode] : OPERATIONAL_MODES).map(
+    selected => loadWeeklyReport(prisma, userId, weekStart, selected),
+  ))
+  if (!bundles.some(({ report }) => report.kpis.trades > 0)) return "skipped"
 
-  const ws = new Date(weekStart + "T00:00:00")
-  const we = new Date(ws); we.setDate(ws.getDate() + 7) // exclusive for discipline window
-  const disc = await computeDisciplineScore(prisma, userId, { from: ws, to: we })
-  const score = disc.score ?? 0
-
-  const chips = deriveChipsFromReport(report)
-  const workedText = chips.worked.join("\n")
-  const improveText = chips.toImprove.join("\n")
-
-  if (saved) {
-    const data: Record<string, unknown> = {
-      tradeCount: report.kpis.trades,
-      netPnl: report.kpis.netPnl,
-      winRate: report.kpis.winRate,
-      disciplineScore: score,
-    }
-    if (saved.status !== "submitted") data.status = "submitted"
-    if (!saved.whatWorked?.trim() && workedText) data.whatWorked = workedText
-    if (!saved.toImprove?.trim() && improveText) data.toImprove = improveText
-    await prisma.weeklyReview.update({ where: { id: saved.id }, data })
-    return "finalized"
+  const saved = await ensureWeeklyReviewEnvelope(prisma, userId, weekStart)
+  if (saved.status !== "submitted") {
+    await prisma.weeklyReview.update({ where: { id: saved.id, userId }, data: { status: "submitted" } })
   }
-
-  const weekEnd = new Date(ws); weekEnd.setDate(ws.getDate() + 6)
-  await prisma.weeklyReview.create({
-    data: {
-      userId,
-      weekStart: ws,
-      weekEnd,
-      weekLabel: report.weekLabel,
-      weekRange: report.weekLabel,
-      status: "submitted",
-      tradeCount: report.kpis.trades,
-      netPnl: report.kpis.netPnl,
-      winRate: report.kpis.winRate,
-      disciplineScore: score,
-      whatWorked: workedText,
-      toImprove: improveText,
-    },
-  })
   return "finalized"
 }

@@ -76,7 +76,7 @@ describe("coach tools", () => {
   })
 
   it("search_trades filters and caps the limit", async () => {
-    const findMany = vi.fn().mockResolvedValue([{ date: new Date("2026-06-01"), symbol: "EURUSD", direction: "LONG", pnl: 400, rMultiple: 2, tags: [] }])
+    const findMany = vi.fn().mockResolvedValue([{ id: "t1", accountId: "a1", operationalMode: "REAL", account: { name: "Real", type: "PERSONAL", currency: "USD" }, date: new Date("2026-06-01"), symbol: "EURUSD", direction: "LONG", pnl: 400, rMultiple: 2, tags: [] }])
     const prisma = { trade: { findMany } }
     const out = JSON.parse((await executeCoachTool("search_trades", { symbol: "EUR", limit: 999 }, ctx(prisma))).text)
     expect(out.count).toBe(1)

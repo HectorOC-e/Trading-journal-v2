@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { EASE_OUT } from "@/lib/motion"
 import type { VerdictTone } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { useCurrency } from "@/hooks/useCurrency"
 
 type Overview = RouterOutputs["weeklyReviews"]["overview"]
 type Bead = Overview["beads"][number]
@@ -28,7 +29,6 @@ const STATS = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayCh
 const STAT = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }
 const HOVER = { duration: 0.16, ease: EASE_OUT }
 
-const money = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 const fmtWeek = (ws: string) => new Date(ws + "T00:00:00").toLocaleDateString("es", { day: "numeric", month: "short" })
 
 /** Min–max normalized sparkline geometry over the score series (mirrors the design's spark2). */
@@ -46,7 +46,7 @@ function buildChart(scores: number[]) {
  * drawing a vertical guide + highlighted node and a tooltip with that week's grade,
  * discipline score, P&L and win rate — the per-point detail charts usually expose.
  */
-function TrajectoryChart({ beads, scores, months }: { beads: Bead[]; scores: number[]; months: string[] }) {
+function TrajectoryChart({ beads, scores, months, money }: { beads: Bead[]; scores: number[]; months: string[]; money: (value: number) => string }) {
   const [hover, setHover] = useState<number | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const n = scores.length
@@ -149,9 +149,18 @@ function TipRow({ label, value, color }: { label: string; value: string; color?:
 }
 
 export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoading: boolean }) {
+  const { baseCurrency, formatAmount } = useCurrency()
+  const money = (value: number) => formatAmount(value, { showSign: true, decimals: 0 })
   if (isLoading || !data) {
     return <div className="h-[300px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse mb-7" />
   }
+  // The API's legacy stat strings contain a dollar sign. Rebuild the monetary
+  // stat from the normalized numeric beads, preserving exact amounts and units.
+  const firstMonth = data.beads[0]?.weekStart.slice(0, 7)
+  const lastMonth = data.beads.at(-1)?.weekStart.slice(0, 7)
+  const monthNet = (month: string | undefined) => data.beads.filter(b => b.weekStart.slice(0, 7) === month).reduce((sum, b) => sum + b.net, 0)
+  const firstNet = monthNet(firstMonth), lastNet = monthNet(lastMonth)
+  const stats = data.stats.map(stat => stat.label === "P&L mensual" ? { ...stat, from: money(firstNet), to: money(lastNet), deltaText: `${lastNet >= firstNet ? "▲ " : "▼ "}${money(lastNet - firstNet)}` } : stat)
 
   return (
     <motion.section
@@ -163,6 +172,7 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
       {/* Full-width band — recurring patterns now live in the index rail. */}
       <div className="p-5 sm:p-6">
         <div className="text-[10px] font-bold tracking-[0.13em] text-[var(--ink-3)]">TRAYECTORIA · TU HISTORIAL</div>
+        <p className="text-[10px] text-[var(--ink-3)] mt-1">Importes en {baseCurrency}</p>
           <div className="flex items-baseline gap-3 mt-2 flex-wrap">
             <span className="text-[26px] font-extrabold tracking-[-0.025em] text-[var(--ink)]">{data.headline}</span>
             {data.trendDeltaText && (
@@ -174,7 +184,7 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
           <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--ink-3)]">{data.sub}</p>
 
           {/* Interactive discipline sparkline (hover for per-week detail) */}
-          {data.scores.length > 0 && <TrajectoryChart beads={data.beads} scores={data.scores} months={data.months} />}
+          {data.scores.length > 0 && <TrajectoryChart beads={data.beads} scores={data.scores} months={data.months} money={money} />}
 
           {/* Grade beads */}
           {data.beads.length > 0 && (
@@ -201,7 +211,7 @@ export function TrajectoryPanel({ data, isLoading }: { data?: Overview; isLoadin
           {/* From→to stats */}
           {data.stats.length > 0 && (
             <motion.div className="flex gap-4 mt-[18px] pt-4 border-t border-[var(--line)]" variants={STATS} initial="hidden" animate="show">
-              {data.stats.map(s => (
+              {stats.map(s => (
                 <motion.div key={s.label} variants={STAT} whileHover={{ y: -2 }} transition={HOVER} className="flex-1 min-w-0">
                   <div className="text-[9.5px] uppercase tracking-[0.07em] text-[var(--ink-3)] font-semibold">{s.label}</div>
                   <div className="flex items-baseline gap-1.5 mt-1.5">

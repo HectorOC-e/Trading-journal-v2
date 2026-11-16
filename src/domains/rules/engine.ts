@@ -4,6 +4,8 @@
 // triggers stay cheap when the user has no rules. Descriptive rules have
 // trigger=null and are excluded by the trigger filter.
 
+import type { OperationalMode } from "@/domains/trading/operational-mode"
+import { rulesForMode } from "@/domains/behavior/operational-scope"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { evaluate } from "./conditions"
 import { runAction } from "./actions"
@@ -22,11 +24,12 @@ export async function runRules(
   userId: string,
   trigger: Trigger,
   ctxFn: () => Promise<EvalContext> | EvalContext,
+  mode: OperationalMode = "REAL",
 ): Promise<RunResult> {
   const res: RunResult = { blocked: false, addTags: [], removeTags: [], firedIds: [] }
 
   const rules = await prisma.rule.findMany({
-    where:   { userId, trigger, enabled: true },
+    where:   { userId, trigger, enabled: true, ...rulesForMode(mode) },
     orderBy: { priority: "desc" },
   })
   if (rules.length === 0) return res
@@ -41,7 +44,7 @@ export async function runRules(
 
     for (const action of ((r.actions as unknown as RuleAction[]) ?? [])) {
       try {
-        const out = await runAction(action, ctx, { prisma, userId, automationName: r.name })
+        const out = await runAction(action, ctx, { prisma, userId, automationName: r.name, mode })
         if (out.block) { res.blocked = true; res.blockMessage = out.blockMessage }
         if (out.addTags?.length) res.addTags.push(...out.addTags)
         if (out.removeTags?.length) res.removeTags.push(...out.removeTags)

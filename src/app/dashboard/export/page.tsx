@@ -1,6 +1,9 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS } from "@/domains/trading/operational-mode"
+import type { Period } from "@/app/dashboard/hooks/use-dashboard-stats"
 import { trpc } from "@/lib/trpc/client"
 
 function Kpi({ label, value, color }: { label: string; value: string; color?: string }) {
@@ -21,17 +24,26 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export default function ExportPage() {
-  const { data: stats, isLoading } = trpc.trades.dashboardStats.useQuery({ period: "ALL" })
+  const mode=useOperationalMode(state=>state.mode)
+  const [period,setPeriod]=useState<Period>("ALL")
+  const [ready,setReady]=useState(false)
+  useEffect(()=>{
+    const value=new URLSearchParams(window.location.search).get("period")
+    if(value && ["7d","1M","3M","6M","1Y","ALL"].includes(value))setPeriod(value as Period)
+    setReady(true)
+  },[])
+  const { data: stats, isLoading } = trpc.trades.dashboardStats.useQuery({ period, mode }, {enabled:ready})
   const { data: accounts = []    } = trpc.accounts.list.useQuery()
   const { data: profile          } = trpc.profile.get.useQuery()
 
   useEffect(() => {
-    if (!isLoading && stats) {
-      setTimeout(() => window.print(), 500)
+    if (ready && !isLoading && stats && stats.scope.mode===mode) {
+      const timeout=setTimeout(() => window.print(), 500)
+      return ()=>clearTimeout(timeout)
     }
-  }, [isLoading, stats])
+  }, [ready,isLoading,stats,mode])
 
-  if (isLoading || !stats) {
+  if (!ready || isLoading || !stats) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif", color: "#64748b" }}>
         Preparando reporte…
@@ -49,7 +61,7 @@ export default function ExportPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1e293b", marginBottom: 4 }}>Reporte de Performance</h1>
-          <p style={{ fontSize: 12, color: "#64748b" }}>Generado el {now} · Período: Todo el historial</p>
+          <p style={{ fontSize: 12, color: "#64748b" }}>Generado el {now} · Modalidad: {MODE_LABELS[mode]} · Período: {period === "ALL" ? "Todo el historial" : period}</p>
           {profile && (
             <p style={{ fontSize: 12, color: "#64748b" }}>{profile.name ?? profile.email}</p>
           )}

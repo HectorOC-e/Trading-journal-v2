@@ -1,5 +1,8 @@
 "use client"
 
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
+
 import { useState, useEffect, useMemo, useRef } from "react"
 import {
   Plus, X, Star, Circle, CheckCircle2, Pencil, Copy,
@@ -1193,6 +1196,7 @@ const STATUS_FILTERS = [
 ]
 
 export default function PlaybookPage() {
+  const mode=useOperationalMode(state=>state.mode)
   const utils = trpc.useUtils()
 
   const searchParams = typeof window !== "undefined"
@@ -1211,8 +1215,8 @@ export default function PlaybookPage() {
     { includeDiscarded: showDiscarded },
   )
   const { data: versionCountsMap } = trpc.setups.listVersionCounts.useQuery(undefined, { staleTime: 60_000 })
-  const { data: dashStats, error: statsError, refetch: retryStats } = trpc.trades.dashboardStats.useQuery({ period: "ALL" }, { staleTime: 60_000 })
-  const { data: perfStats }        = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
+  const { data: dashStats, error: statsError, refetch: retryStats } = trpc.trades.dashboardStats.useQuery({ period: "ALL", mode }, { staleTime: 60_000 })
+  const { data: perfStats }        = trpc.setups.performanceStats.useQuery({mode}, { staleTime: 60_000 })
 
   // Setup stats from server-side aggregation (all trades, not paginated 50)
   const setupStats = useMemo<Record<string, SetupStats>>(() => {
@@ -1291,6 +1295,7 @@ export default function PlaybookPage() {
         }]}
       />
 
+      <OperationalModeSelector className="mb-4 flex-wrap" />
       {/* KPI strip */}
       {(() => {
         if (statsError) return <div role="alert" className="mb-5"><p>No se pudieron cargar las estadísticas.</p><Button onClick={() => void retryStats()}>Reintentar</Button></div>

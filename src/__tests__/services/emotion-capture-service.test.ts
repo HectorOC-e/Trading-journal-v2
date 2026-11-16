@@ -54,18 +54,19 @@ describe("procedencia y ventana en el servicio de escritura", () => {
     }))
   })
 
-  it("updateTrade RECHAZA escribir emoción fuera de ventana", async () => {
+  it("updateTrade conserva una corrección histórica como RECONSTRUIDA fuera de ventana", async () => {
     const { prisma, update } = prismaWith(FUERA)
-    await expect(updateTrade(prisma as never, "u1", { id: "t1", emotionBefore: "anxious" }))
-      .rejects.toThrow(/EMOTION_WINDOW_CLOSED/)
-    expect(update).not.toHaveBeenCalled()
+    await updateTrade(prisma as never, "u1", { id: "t1", emotionBefore: "anxious" })
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ emotionBefore: "anxious", emotionSource: "reconstructed" }),
+    }))
   })
 
   it("captureEmotion dentro de ventana escribe marcada como reconstruida", async () => {
     const { prisma, update } = prismaWith(DENTRO)
     await captureEmotion(prisma as never, "u1", { tradeId: "t1", emotion: "anxious" })
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
-      data: { emotionBefore: "anxious", emotionSource: "reconstructed" },
+      data: expect.objectContaining({ emotionBefore: "anxious", emotionSource: "reconstructed" }),
     }))
   })
 

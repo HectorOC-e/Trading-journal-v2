@@ -5,6 +5,7 @@
 // Episodes are EVIDENCE — never edited (distinct from semantic/identity memory).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { operationalModeSchema, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { embedText } from "@/lib/ai/embeddings"
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
@@ -13,6 +14,7 @@ import { initialSalience, decayedSalience, recallScore, type MemoryEventType } f
 const DAY_MS = 86_400_000
 
 export interface RecordEpisodeInput {
+  operationalMode?: OperationalMode | null
   eventType: MemoryEventType
   content: string
   sourceId?: string | null
@@ -24,6 +26,7 @@ async function insertEpisode(prisma: PrismaClient, userId: string, input: Record
   const ep = await prisma.memoryEpisode.create({
     data: {
       userId,
+      operationalMode: input.operationalMode == null ? null : operationalModeSchema.parse(input.operationalMode),
       eventType: input.eventType,
       content: input.content.trim().slice(0, 1000),
       salience: initialSalience(input.eventType),
@@ -62,7 +65,7 @@ export async function recordEpisode(prisma: PrismaClient, userId: string, input:
 export async function recordEpisodeOnce(prisma: PrismaClient, userId: string, input: RecordEpisodeInput): Promise<string | null> {
   if (input.sourceId) {
     const existing = await prisma.memoryEpisode.findFirst({
-      where: { userId, sourceId: input.sourceId },
+      where: { userId, sourceId: input.sourceId, operationalMode: input.operationalMode ?? null },
       select: { id: true },
     })
     if (existing) return existing.id
@@ -71,6 +74,7 @@ export async function recordEpisodeOnce(prisma: PrismaClient, userId: string, in
 }
 
 export interface RecalledEpisode {
+  operationalMode: OperationalMode
   id: string
   content: string
   eventType: string
@@ -82,43 +86,45 @@ export interface RecalledEpisode {
 
 type EpisodeRow = { id: string; content: string; eventType: string; salience: number; occurredAt: Date }
 
-function rankBySalience(rows: EpisodeRow[], limit: number): RecalledEpisode[] {
+function rankBySalience(rows: EpisodeRow[], limit: number, mode: OperationalMode): RecalledEpisode[] {
   const now = Date.now()
   return rows
     .map((r) => {
       const ageDays = (now - new Date(r.occurredAt).getTime()) / DAY_MS
       const sal = decayedSalience(r.salience, ageDays)
-      return { id: r.id, content: r.content, eventType: r.eventType, salience: sal, occurredAt: new Date(r.occurredAt).toISOString(), similarity: 0, score: sal }
+      return { operationalMode: mode, id: r.id, content: r.content, eventType: r.eventType, salience: sal, occurredAt: new Date(r.occurredAt).toISOString(), similarity: 0, score: sal }
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
 }
 
 /** Top salient-recent episodes (no query) — for the coach context block (D10). */
-export async function getSalientEpisodes(prisma: PrismaClient, userId: string, limit = 4): Promise<RecalledEpisode[]> {
+export async function getSalientEpisodes(prisma: PrismaClient, userId: string, limit = 4, mode: OperationalMode = "REAL"): Promise<RecalledEpisode[]> {
+  operationalModeSchema.parse(mode)
   const rows = await prisma.memoryEpisode.findMany({
-    where: { userId },
+    where: { userId, operationalMode: mode },
     orderBy: { occurredAt: "desc" },
     take: 40,
     select: { id: true, content: true, eventType: true, salience: true, occurredAt: true },
   })
-  return rankBySalience(rows, limit)
+  return rankBySalience(rows, limit, mode)
 }
 
 /** Hybrid recall: kNN by embedding × decayed salience. Falls back to most-salient
  *  recent episodes when there is no embedding/key. */
-export async function recallEpisodes(prisma: PrismaClient, userId: string, queryText: string, limit = 5): Promise<RecalledEpisode[]> {
+export async function recallEpisodes(prisma: PrismaClient, userId: string, queryText: string, limit = 5, mode: OperationalMode = "REAL"): Promise<RecalledEpisode[]> {
+  operationalModeSchema.parse(mode)
   const emb = await resolveEmbeddingCall(prisma, userId).catch(() => ({ source: "none" as const, model: "", apiKey: "" }))
   const vector = emb.source !== "none" ? await embedText(queryText, { model: emb.model, apiKey: emb.apiKey }).catch(() => null) : null
 
   if (!vector) {
     const rows = await prisma.memoryEpisode.findMany({
-      where: { userId },
+      where: { userId, operationalMode: mode },
       orderBy: { occurredAt: "desc" },
       take: 40,
       select: { id: true, content: true, eventType: true, salience: true, occurredAt: true },
     })
-    return rankBySalience(rows, limit)
+    return rankBySalience(rows, limit, mode)
   }
 
   const vec = `[${vector.join(",")}]`
@@ -126,7 +132,7 @@ export async function recallEpisodes(prisma: PrismaClient, userId: string, query
     SELECT id, content, event_type AS "eventType", salience, occurred_at AS "occurredAt",
       (1 - (embedding <=> ${vec}::vector)) AS similarity
     FROM memory_episodes
-    WHERE user_id = ${userId}::uuid AND embedding IS NOT NULL
+    WHERE user_id = ${userId}::uuid AND operational_mode = ${mode} AND embedding IS NOT NULL
     ORDER BY embedding <=> ${vec}::vector
     LIMIT 40`
 
@@ -135,7 +141,7 @@ export async function recallEpisodes(prisma: PrismaClient, userId: string, query
     .map((c) => {
       const ageDays = (now - new Date(c.occurredAt).getTime()) / DAY_MS
       const sal = decayedSalience(c.salience, ageDays)
-      return { id: c.id, content: c.content, eventType: c.eventType, salience: sal, occurredAt: new Date(c.occurredAt).toISOString(), similarity: c.similarity, score: recallScore({ salience: sal, similarity: c.similarity }) }
+      return { operationalMode: mode, id: c.id, content: c.content, eventType: c.eventType, salience: sal, occurredAt: new Date(c.occurredAt).toISOString(), similarity: c.similarity, score: recallScore({ salience: sal, similarity: c.similarity }) }
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)

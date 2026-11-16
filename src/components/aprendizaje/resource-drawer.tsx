@@ -1,8 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, Star, ChevronDown, ChevronUp, Trophy } from "lucide-react"
+import { X, Star, ChevronDown, ChevronUp } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { ResourcePracticeHistory } from "@/app/aprendizaje/components/practices-tab"
 import { ResourceTransferPanel } from "@/components/aprendizaje/resource-transfer-panel"
@@ -200,8 +201,9 @@ export function ResourceDrawer({
     { enabled: open && !!resource }
   )
 
+  const mode = useOperationalMode(s => s.mode)
   const { data: impact = [] } = trpc.learningResources.setupImpact.useQuery(
-    resource?.id ?? "",
+    { resourceId: resource?.id ?? "", mode },
     { enabled: open && !!resource && !!resource.completedAt }
   )
 

@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { TRPCError } from "@trpc/server"
 import { appRouter } from "@/server/trpc/root"
+import { loadMonthlyReport } from "@/server/services/reviews/report-data"
 
 vi.mock("@/lib/prisma",        () => ({ prisma: {} }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }))
+vi.mock("@/server/services/reviews/report-data", async importOriginal => ({
+  ...await importOriginal<typeof import("@/server/services/reviews/report-data")>(),
+  loadMonthlyReport: vi.fn(),
+}))
 
 const USER_ID = "user-monthly-test"
 
@@ -52,6 +57,9 @@ describe("monthlyReviews router", () => {
   let caller:     ReturnType<typeof appRouter.createCaller>
 
   beforeEach(() => {
+    vi.mocked(loadMonthlyReport).mockResolvedValue({
+      report: { kpis: { netPnl: 0, winRate: 0, trades: 0, disciplineScore: null } },
+    } as never)
     mockPrisma = makeMockPrisma()
     caller = appRouter.createCaller({
       prisma:   mockPrisma as never,
@@ -138,7 +146,7 @@ describe("monthlyReviews router", () => {
   })
 
   // ── prefill ───────────────────────────────────────────────────────────────
-  it("prefill: returns empty data when no weekly reviews exist", async () => {
+  it("prefill: returns empty data when the selected scope has no trades", async () => {
     mockPrisma.weeklyReview.findMany.mockResolvedValue([])
 
     const result = await caller.monthlyReviews.prefill({ year: 2026, month: 6 })
@@ -148,7 +156,10 @@ describe("monthlyReviews router", () => {
     expect(result.tradeCount).toBe(0)
   })
 
-  it("prefill: aggregates discipline scores and trade counts from weekly reviews", async () => {
+  it("prefill: takes financial metrics from the scoped report, not old weekly aggregates", async () => {
+    vi.mocked(loadMonthlyReport).mockResolvedValue({
+      report: { kpis: { netPnl: 300, winRate: 52.5, trades: 18, disciplineScore: 70 } },
+    } as never)
     mockPrisma.weeklyReview.findMany.mockResolvedValue([
       {
         id:              "wr-1",
@@ -180,7 +191,10 @@ describe("monthlyReviews router", () => {
 
   // ── prefill: discipline score filter (m-01 regression guard) ────────────
 
-  it("prefill: zero disciplineScore is excluded from average (draft/unscored week)", async () => {
+  it("prefill: uses the live scoped discipline instead of stored mixed scores", async () => {
+    vi.mocked(loadMonthlyReport).mockResolvedValue({
+      report: { kpis: { netPnl: 200, winRate: 65, trades: 8, disciplineScore: 80 } },
+    } as never)
     mockPrisma.weeklyReview.findMany.mockResolvedValue([
       {
         id:              "wr-scored",
@@ -204,7 +218,6 @@ describe("monthlyReviews router", () => {
 
     const result = await caller.monthlyReviews.prefill({ year: 2026, month: 6 })
 
-    // With the filter active: avg of [80] = 80, not avg of [80, 0] = 40
     expect(result.overallScore).toBe(80)
   })
 

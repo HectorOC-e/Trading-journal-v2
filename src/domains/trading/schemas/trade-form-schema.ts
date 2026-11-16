@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { marketTimestamp, validateMarketSequence } from "@/domains/trading/historical-capture"
 
 /**
  * Client-side validation schema for the trade forms. Mirrors the server
@@ -55,6 +56,24 @@ export const tradeFormSchema = z
     revengeFlag: z.boolean(),
     // Market regime at entry (manual, v3.0 — FREEZE-D18). Optional; null = sin clasificar.
     regime: z.enum(REGIME_VALUES).nullable(),
+    captureContext: z.enum(["LIVE", "HISTORICAL"]).optional(),
+    marketTimeZone: z.string().optional(),
+    closeDate: z.string().optional(),
+    closeTime: z.string().optional(),
+    pnl: z.string().optional(),
+    emotionContext: z.enum(["MARKET", "PRACTICE"]).optional(),
+    emotionReferenceAt: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.captureContext === "HISTORICAL") {
+      for (const field of ["closeDate", "closeTime", "marketTimeZone"] as const) if (!data[field]) ctx.addIssue({ code: "custom", path: [field], message: "Requerido para el histórico" })
+      if (!data.pnl?.trim() || !Number.isFinite(Number(data.pnl))) ctx.addIssue({ code: "custom", path: ["pnl"], message: "Indica el resultado neto total" })
+      if (data.closeDate && data.closeTime && data.marketTimeZone) {
+        try { validateMarketSequence(marketTimestamp(data.date, data.openTime, data.marketTimeZone), marketTimestamp(data.closeDate, data.closeTime, data.marketTimeZone)) }
+        catch { ctx.addIssue({ code: "custom", path: ["closeTime"], message: "Revisa la zona y el orden de apertura y cierre" }) }
+      }
+    }
+    if (data.emotionBefore && data.emotionContext === "PRACTICE" && !data.emotionReferenceAt) ctx.addIssue({ code: "custom", path: ["emotionReferenceAt"], message: "Indica cuándo practicaste" })
   })
   // Stop equal to entry yields a zero-distance risk → the size calculator can't
   // run and the trade is nonsensical. Flag it on the stop field.

@@ -1,4 +1,5 @@
 "use client"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 
 import { useEffect, useState } from "react"
 import { Clock, BookOpen, Play, Flame, Sparkles, CalendarClock, ArrowRight, HelpCircle } from "lucide-react"
@@ -28,10 +29,11 @@ const TOUR_STEPS: TourStep[] = [
 ]
 
 export function HoyTab({ onGoRepaso, onCreateResource }: { onGoRepaso: () => void; onCreateResource?: () => void }) {
+  const mode = useOperationalMode(s => s.mode)
   const { openPicker } = useStudySessionStore()
   const [planOpen, setPlanOpen] = useState(false)
   const [tourOpen, setTourOpen] = useState(false)
-  const { data, isLoading, isError, isFetching, refetch } = trpc.studySessions.home.useQuery()
+  const { data, isLoading, isError, isFetching, refetch } = trpc.studySessions.home.useQuery({ mode })
 
   // Auto-open the guided tour on the first visit, once the data has resolved
   // (so the spotlight lands on real content, not the loading skeleton).

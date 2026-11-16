@@ -2,6 +2,7 @@
 // T-VII-004
 
 import type { ParseResult, ParsedTrade } from "./mt4-parser"
+import { marketTimestamp, explicitMarketTimestamp, validateMarketSequence } from "@/domains/trading/historical-capture"
 
 export type { ParseResult, ParsedTrade }
 export { parseMt4Statement } from "./mt4-parser"
@@ -12,13 +13,13 @@ export { parseMt4Statement } from "./mt4-parser"
 
 const SKIP_DIRECTIONS = new Set(["deposit", "withdrawal", "balance"])
 
-function parseCtraderDate(raw: string): string {
+function parseCtraderDate(raw: string, timeZone: string): string {
   // cTrader typically exports "2024-03-15 14:30:00" or ISO
   const s = raw.trim()
   // If it already looks like ISO, parse as-is
-  const d = new Date(s.includes("T") ? s : s.replace(" ", "T") + "Z")
-  if (isNaN(d.getTime())) throw new Error(`Invalid date: ${raw}`)
-  return d.toISOString()
+  if (/(?:Z|[+-]\d{2}:\d{2})$/.test(s)) return explicitMarketTimestamp(s).toISOString()
+  const wall = s.replace(" ", "T")
+  return marketTimestamp(wall.slice(0,10), wall.slice(11,19), timeZone).toISOString()
 }
 
 /** Simple CSV splitter shared with MT4 parser */
@@ -55,7 +56,7 @@ const CTRADER_COLS = {
   closeTime:  "close time",
 } as const
 
-export function parseCtraderStatement(csv: string): ParseResult {
+export function parseCtraderStatement(csv: string, timeZone = "UTC"): ParseResult {
   const rows: ParsedTrade[]  = []
   const warnings: string[]   = []
 
@@ -103,14 +104,14 @@ export function parseCtraderStatement(csv: string): ParseResult {
 
       const trade: ParsedTrade = {
         ticket:     cols[colIdx.positionId]?.trim() ?? "",
-        openTime:   parseCtraderDate(cols[colIdx.openTime] ?? ""),
+        openTime:   parseCtraderDate(cols[colIdx.openTime] ?? "", timeZone),
         type,
         size:       parseFloat(cols[colIdx.volume] ?? "0"),
         symbol:     cols[colIdx.symbol]?.trim() ?? "",
         openPrice:  parseFloat(cols[colIdx.entryPrice] ?? "0"),
         sl:         0,
         tp:         0,
-        closeTime:  parseCtraderDate(cols[colIdx.closeTime] ?? ""),
+        closeTime:  parseCtraderDate(cols[colIdx.closeTime] ?? "", timeZone),
         closePrice: parseFloat(cols[colIdx.closePrice] ?? "0"),
         commission: colIdx.commission !== undefined ? parseFloat(cols[colIdx.commission] ?? "0") || 0 : 0,
         profit:     colIdx.grossProfit !== undefined ? parseFloat(cols[colIdx.grossProfit] ?? "0") || 0 : 0,
@@ -127,6 +128,7 @@ export function parseCtraderStatement(csv: string): ParseResult {
         continue
       }
 
+      validateMarketSequence(new Date(trade.openTime), new Date(trade.closeTime))
       rows.push(trade)
     } catch (err) {
       warnings.push(`Row ${i + 1}: ${err instanceof Error ? err.message : String(err)} — skipped`)

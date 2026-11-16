@@ -6,6 +6,9 @@ const h = vi.hoisted(() => ({
   deletionFindUnique: vi.fn(),
   accountFindUnique: vi.fn(),
   tradeFindMany: vi.fn(),
+  tradeCreate: vi.fn(),
+  eventCreate: vi.fn(),
+  historicalAccount: vi.fn(),
 }))
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -16,6 +19,10 @@ vi.mock("@/lib/prisma", () => ({
     accountDeletionJob: { findUnique: h.deletionFindUnique },
     account: { findUnique: h.accountFindUnique },
     trade:   { findMany: h.tradeFindMany },
+    $transaction: async (callback: (tx: unknown) => unknown) => callback({
+      account: { findUniqueOrThrow: h.historicalAccount }, trade: { findMany: h.tradeFindMany, create: h.tradeCreate },
+      tradeEvent: { create: h.eventCreate }, withdrawal: { findMany: async () => [] }, accountLog: { findMany: async () => [] }, market: { findFirst: async () => null },
+    }),
   },
 }))
 
@@ -42,6 +49,9 @@ describe("POST /api/import/mt4 — dedup (dry run)", () => {
     h.getUser.mockResolvedValue({ data: { user: { id: USER_ID } }, error: null })
     h.accountFindUnique.mockResolvedValue({ id: ACCOUNT_ID, locked: false, lockReason: null })
     h.tradeFindMany.mockResolvedValue([])
+    h.historicalAccount.mockResolvedValue({initialBalance:1000,currency:"USD"})
+    h.tradeCreate.mockReset().mockResolvedValue({id:"historical-trade"})
+    h.eventCreate.mockReset().mockResolvedValue({id:"historical-event"})
   })
 
   it("returns 401 when unauthenticated", async () => {
@@ -61,10 +71,11 @@ describe("POST /api/import/mt4 — dedup (dry run)", () => {
     expect(h.tradeFindMany).not.toHaveBeenCalled()
   })
 
-  it("403 when the account is locked", async () => {
+  it("previews closed historical rows even when today's account is locked", async () => {
     h.accountFindUnique.mockResolvedValue({ id: ACCOUNT_ID, locked: true, lockReason: "DAILY_LOSS_LIMIT" })
     const res = await POST(makeReq([HEADER, ROW_1001].join("\n")) as never)
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
+    expect((await res.json()).toCreate).toHaveLength(1)
   })
 
   it("previews all new rows when nothing exists yet", async () => {
@@ -72,6 +83,15 @@ describe("POST /api/import/mt4 — dedup (dry run)", () => {
     const json = await res.json()
     expect(json.toCreate).toHaveLength(2)
     expect(json.skipped).toBe(0)
+  })
+  it("persists explicit market timestamps, original size, and one final realization", async () => {
+    h.accountFindUnique.mockResolvedValue({id:ACCOUNT_ID,type:"DEMO_PERSONAL",timezone:"America/Tegucigalpa",locked:true})
+    const response = await POST(makeReq([HEADER,ROW_1001].join("\n"),true) as never)
+    expect((await response.json()).created).toBe(1)
+    expect(h.tradeCreate.mock.calls[0][0].data).toMatchObject({
+      date:new Date("2024-03-15"),openTime:"14:30",marketOpenedAt:new Date("2024-03-15T20:30Z"),marketClosedAt:new Date("2024-03-15T22:00Z"),captureContext:"HISTORICAL",operationalMode:"DEMO",originalSize:1,
+    })
+    expect(h.eventCreate.mock.calls[1][0].data).toMatchObject({type:"CLOSE",realizedPnl:400,timestamp:new Date("2024-03-15T22:00Z")})
   })
 
   it("skips a row already imported by ticket", async () => {

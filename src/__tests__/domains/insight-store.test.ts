@@ -102,7 +102,7 @@ function mockClient(existing: { id: string; fingerprint: string; status: string 
 describe("persistInsights — un insight vivo refleja la medida de hoy", () => {
   it("refresca el contenido de los insights tocados, no sólo lastSeenAt", async () => {
     const { client, updates } = mockClient([
-      { id: "row-1", fingerprint: "setup-concentration", status: "active" },
+      { id: "row-1", fingerprint: "REAL:setup-concentration", status: "active" },
     ])
     const nuevo = computed("setup-concentration", {
       severity: "warning",
@@ -127,7 +127,7 @@ describe("persistInsights — un insight vivo refleja la medida de hoy", () => {
 
   it("refresca también la estadística bayesiana cuando cambia el n", async () => {
     const { client, updates } = mockClient([
-      { id: "row-2", fingerprint: "intraday-decay", status: "active" },
+      { id: "row-2", fingerprint: "REAL:intraday-decay", status: "active" },
     ])
     await persistInsights("u1", [computed("intraday-decay", {
       sampleSize: 40, confidence: 0.99, credibleIntervalLow: 0.2, credibleIntervalHigh: 0.7,
@@ -141,7 +141,7 @@ describe("persistInsights — un insight vivo refleja la medida de hoy", () => {
 
   it("no toca la identidad ni el estado de la fila", async () => {
     const { client, updates } = mockClient([
-      { id: "row-3", fingerprint: "off-plan", status: "active" },
+      { id: "row-3", fingerprint: "REAL:off-plan", status: "active" },
     ])
     await persistInsights("u1", [computed("off-plan")], client)
 

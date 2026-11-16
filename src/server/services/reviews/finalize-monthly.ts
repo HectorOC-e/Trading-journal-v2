@@ -1,18 +1,9 @@
-// Auto-finalization for a monthly review (the "Carta del Gestor"). Run by the day-1 cron
-// for the just-finished month: computes pillars + editorial title + structured themes,
-// persists them, flips status to submitted, and proposes a status for each unconfirmed
-// goal. Idempotent and non-destructive — never overwrites the user's summary/notes or any
-// goal the user confirmed.
-
+// Submit the shared manual envelope once; all automatic evidence remains scoped
+// in report snapshots and each goal is evaluated only in its declared mode.
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { Prisma } from "@/lib/generated/prisma/client"
+import { OPERATIONAL_MODES, type OperationalMode } from "@/domains/trading/operational-mode"
 import { loadMonthlyReport } from "./report-data"
-import { loadReviewAnalytics } from "./review-insights"
-import { computePillars } from "./pillars"
-import { deriveLetterTitle, deriveStructuredThemes } from "./monthly-letter"
 import { evaluateGoal } from "./goal-eval"
-
-const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 
 export type FinalizeResult = "finalized" | "skipped"
 
@@ -21,47 +12,35 @@ export async function finalizeMonthlyReview(
   userId: string,
   year: number,
   month: number,
+  mode?: OperationalMode,
 ): Promise<FinalizeResult> {
-  const { report } = await loadMonthlyReport(prisma, userId, year, month)
-  if (report.kpis.trades === 0) return "skipped"
-
-  const analytics = await loadReviewAnalytics(prisma, userId, { kind: "monthly", year, month })
-  const pillars = computePillars({
-    trades: report.kpis.trades, winRate: report.kpis.winRate, profitFactor: report.kpis.profitFactor,
-    expectancy: analytics.expectancy, disciplineScore: report.kpis.disciplineScore, byEmotion: analytics.byEmotion,
-  })
-  const letterTitle = deriveLetterTitle(`${MONTHS_ES[month - 1]} ${year}`, {
-    netPnl: report.kpis.netPnl, winRate: report.kpis.winRate, disciplineScore: report.kpis.disciplineScore, trades: report.kpis.trades,
-  })
-  const themes = deriveStructuredThemes(report)
+  const bundles = await Promise.all((mode ? [mode] : OPERATIONAL_MODES).map(async selected => ({
+    mode: selected,
+    ...await loadMonthlyReport(prisma, userId, year, month, selected),
+  })))
+  if (!bundles.some(({ report }) => report.kpis.trades > 0)) return "skipped"
 
   await prisma.monthlyReview.upsert({
-    where:  { userId_year_month: { userId, year, month } },
-    create: {
-      userId, year, month, status: "submitted",
-      letterTitle, keyThemesRich: themes as unknown as Prisma.InputJsonValue,
-      pillarPerformance: pillars.performance, pillarDiscipline: pillars.discipline, pillarPsychology: pillars.psychology,
-      overallScore: pillars.overall,
-    },
-    update: {
-      status: "submitted",
-      letterTitle, keyThemesRich: themes as unknown as Prisma.InputJsonValue,
-      pillarPerformance: pillars.performance, pillarDiscipline: pillars.discipline, pillarPsychology: pillars.psychology,
-      overallScore: pillars.overall,
-    },
+    where: { userId_year_month: { userId, year, month } },
+    create: { userId, year, month, status: "submitted" },
+    update: { status: "submitted" },
   })
 
-  // Propose a status for each unconfirmed goal (never touches user-confirmed ones).
-  const goals = await prisma.monthlyGoal.findMany({ where: { userId, year, month, userConfirmed: false } })
-  if (goals.length > 0) {
+  for (const { mode: selected, report } of bundles) {
+    if (report.kpis.trades === 0) continue
+    const goals = await prisma.monthlyGoal.findMany({
+      where: { userId, year, month, userConfirmed: false, operationalMode: selected },
+    })
     const ctx = { violations: report.discipline.violations, trades: report.kpis.trades, netPnl: report.kpis.netPnl, winRate: report.kpis.winRate }
-    for (const g of goals) {
-      const proposal = evaluateGoal(g.text, ctx)
+    for (const goal of goals) {
+      const proposal = evaluateGoal(goal.text, ctx)
       if (proposal) {
-        await prisma.monthlyGoal.update({ where: { id: g.id }, data: { status: proposal.status, note: proposal.note, source: "ai" } })
+        await prisma.monthlyGoal.update({
+          where: { id: goal.id, userId, operationalMode: selected, userConfirmed: false },
+          data: { status: proposal.status, note: proposal.note, source: "ai" },
+        })
       }
     }
   }
-
   return "finalized"
 }

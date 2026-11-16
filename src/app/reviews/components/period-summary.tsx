@@ -5,10 +5,9 @@
 // window (whole history or the year/month filter). Data from weeklyReviews.overview.
 
 import type { RouterOutputs } from "@/server/trpc/root"
+import { useCurrency } from "@/hooks/useCurrency"
 
 type Summary = RouterOutputs["weeklyReviews"]["overview"]["summary"]
-
-const money = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
 function Row({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -23,11 +22,14 @@ function Row({ label, value, sub, color }: { label: string; value: string; sub?:
 }
 
 export function PeriodSummary({ summary }: { summary: Summary }) {
+  const { baseCurrency, formatAmount } = useCurrency()
+  const money = (value: number) => formatAmount(value, { showSign: true, decimals: 0 })
   if (summary.weeks === 0) return null
 
   return (
     <div className="rounded-[11px] border border-[var(--line)] bg-[var(--panel)] p-3.5 flex flex-col gap-2.5">
       <div className="text-[10px] font-bold tracking-[0.13em] text-[var(--ink-3)]">RESUMEN DEL PERIODO</div>
+      <p className="text-[10px] text-[var(--ink-3)]">Importes en {baseCurrency}</p>
       <Row label="Semanas" value={String(summary.weeks)} />
       <Row label="Racha verde" value={summary.greenStreak > 0 ? `${summary.greenStreak} sem.` : "—"} color={summary.greenStreak > 0 ? "var(--win)" : undefined} />
       {summary.best && (

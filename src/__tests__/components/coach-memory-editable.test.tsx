@@ -61,7 +61,7 @@ describe("CoachMemoryPanel — la promesa de 'edita' tiene que ser alcanzable", 
     fireEvent.change(input, { target: { value: "Opero NQ sólo en la sesión de Londres" } })
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }))
 
-    expect(editMutate).toHaveBeenCalledWith({ id: MEMORY[0].id, content: "Opero NQ sólo en la sesión de Londres" })
+    expect(editMutate).toHaveBeenCalledWith({ id: MEMORY[0].id, content: "Opero NQ sólo en la sesión de Londres", mode: "REAL" })
   })
 
   it("cancelar cierra la edición sin escribir nada", () => {
@@ -87,9 +87,9 @@ describe("CoachMemoryPanel — la promesa de 'edita' tiene que ser alcanzable", 
     render(<CoachMemoryPanel />)
     // Confirmar sólo tiene sentido sobre el candidato.
     fireEvent.click(screen.getByRole("button", { name: "Confirmar" }))
-    expect(confirmMutate).toHaveBeenCalledWith({ id: MEMORY[1].id })
+    expect(confirmMutate).toHaveBeenCalledWith({ id: MEMORY[1].id, mode: "REAL" })
 
     fireEvent.click(screen.getAllByRole("button", { name: "Borrar" })[0])
-    expect(removeMutate).toHaveBeenCalledWith({ id: MEMORY[0].id })
+    expect(removeMutate).toHaveBeenCalledWith({ id: MEMORY[0].id, mode: "REAL" })
   })
 })

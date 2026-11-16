@@ -12,7 +12,7 @@ import {
 function fakePrisma(updated = 1) {
   const updateMany = vi.fn().mockResolvedValue({ count: updated })
   return {
-    prisma: { notification: { updateMany }, insight: { findFirst: vi.fn().mockResolvedValue({ title: "t" }) } } as never,
+    prisma: { notification: { updateMany }, insight: { findFirst: vi.fn().mockResolvedValue({ title: "t", operationalMode: "REAL" }) } } as never,
     updateMany,
   }
 }
@@ -39,8 +39,8 @@ describe("insightDedupeKey — una sola fuente para la clave", () => {
     const claveAlEmitir = emitNotification.mock.calls[0][3].dedupeKey
     const claveAlArchivar = updateMany.mock.calls[0][0].where.dedupeKey
 
-    expect(claveAlEmitir).toBe(claveAlArchivar)
-    expect(claveAlEmitir).toBe(insightDedupeKey("i1"))
+    expect(claveAlArchivar.in).toContain(claveAlEmitir)
+    expect(claveAlEmitir).toBe(insightDedupeKey("i1", "REAL"))
   })
 })
 
@@ -52,7 +52,7 @@ describe("insightResolvedHandler — el patron ya no se cumple", () => {
 
     expect(updateMany).toHaveBeenCalledTimes(1)
     const arg = updateMany.mock.calls[0][0]
-    expect(arg.where).toMatchObject({ userId: "u1", dedupeKey: "insight:i1" })
+    expect(arg.where).toMatchObject({ userId: "u1", dedupeKey: { in: ["insight:i1", "insight:REAL:i1", "insight:DEMO:i1", "insight:BACKTEST:i1"] } })
     expect(arg.data.archivedAt).toBeInstanceOf(Date)
   })
 

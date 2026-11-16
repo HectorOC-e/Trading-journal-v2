@@ -4,6 +4,7 @@ import { readReviewSource } from "@/domains/learning/review-source"
 // Json fields are mapped to plain shapes before returning (avoids the deep-inference
 // TS2589 seen with Prisma Json over tRPC+React Query — see rules.list).
 
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
@@ -31,11 +32,13 @@ interface Evidence {
   note?: string
 }
 
+const modeInput = z.object({ mode: operationalModeSchema.default("REAL") }).optional()
+
 export const behaviorRouter = router({
   /** Active persisted insights with whether each can become a verified commitment. */
-  openInsights: protectedProcedure.query(async ({ ctx }) => {
+  openInsights: protectedProcedure.input(modeInput).query(async ({ ctx, input }) => {
     const rows = await ctx.prisma.insight.findMany({
-      where: { userId: ctx.userId, status: "active" },
+      where: { userId: ctx.userId, operationalMode: input?.mode ?? "REAL", status: "active" },
       orderBy: [{ severity: "asc" }, { lastSeenAt: "desc" }],
       select: {
         id: true, type: true, title: true, detail: true, severity: true, category: true,
@@ -47,9 +50,9 @@ export const behaviorRouter = router({
 
   /** Active + recently-closed commitments with their latest check (review carry-over, #5). */
   commitments: protectedProcedure
-    .input(z.object({ sinceDays: z.number().int().min(1).max(120).optional() }).optional())
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), sinceDays: z.number().int().min(1).max(120).optional() }).optional())
     .query(async ({ ctx, input }) => {
-      const rows = await carryOverCommitments(ctx.prisma, ctx.userId, input?.sinceDays ?? 14)
+      const rows = await carryOverCommitments(ctx.prisma, ctx.userId, input?.sinceDays ?? 14, input?.mode ?? "REAL")
       return rows.map((c) => {
         const latest = c.checks[0]
         const evidence = (latest?.evidence ?? null) as Evidence | null
@@ -85,6 +88,7 @@ export const behaviorRouter = router({
   createFromInsight: protectedProcedure
     .input(
       z.object({
+        mode: operationalModeSchema.default("REAL"),
         insightId: z.string().uuid(),
         text: z.string().min(1).max(280).optional(),
         target: z.number().optional(),
@@ -98,6 +102,7 @@ export const behaviorRouter = router({
           target: input.target,
           window: input.window,
           createdVia: "self",
+          mode: input.mode,
         })
         return { id: c.id, status: c.status, text: c.text, endAt: c.endAt }
       } catch (err) {
@@ -110,28 +115,28 @@ export const behaviorRouter = router({
 
   /** Evaluate a commitment now (manual trigger; the cron does this at window end). */
   evaluate: protectedProcedure
-    .input(z.object({ commitmentId: z.string().uuid() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), commitmentId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      return evaluateCommitment(ctx.prisma, ctx.userId, input.commitmentId)
+      return evaluateCommitment(ctx.prisma, ctx.userId, input.commitmentId, { mode: input.mode })
     }),
 
   // ── Coach-proposed commitments (D1·b) ──────────────────────────────────────
-  proposedCommitments: protectedProcedure.query(({ ctx }) => listProposedCommitments(ctx.prisma, ctx.userId)),
+  proposedCommitments: protectedProcedure.input(modeInput).query(({ ctx, input }) => listProposedCommitments(ctx.prisma, ctx.userId, input?.mode ?? "REAL")),
 
   acceptProposed: protectedProcedure
-    .input(z.object({ commitmentId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => { await acceptProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId); return { ok: true } }),
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), commitmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => { await acceptProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId, input.mode); return { ok: true } }),
 
   dismissProposed: protectedProcedure
-    .input(z.object({ commitmentId: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => { await dismissProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId); return { ok: true } }),
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), commitmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => { await dismissProposedCommitment(ctx.prisma, ctx.userId, input.commitmentId, input.mode); return { ok: true } }),
 
   /** Archive a commitment (privacy/declutter — §8.5). */
   archive: protectedProcedure
-    .input(z.object({ commitmentId: z.string().uuid() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), commitmentId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       await ctx.prisma.commitment.updateMany({
-        where: { id: input.commitmentId, userId: ctx.userId },
+        where: { id: input.commitmentId, userId: ctx.userId, operationalMode: input.mode },
         data: { archivedAt: new Date() },
       })
       return { ok: true }
@@ -139,10 +144,10 @@ export const behaviorRouter = router({
 
   /** Back a commitment with an enforce rule (S5 — breaking it becomes prevented). */
   linkRule: protectedProcedure
-    .input(z.object({ commitmentId: z.string().uuid() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), commitmentId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const rule = await linkRule(ctx.prisma, ctx.userId, input.commitmentId)
+        const rule = await linkRule(ctx.prisma, ctx.userId, input.commitmentId, { mode: input.mode })
         return { ruleId: rule.id, name: rule.name }
       } catch (err) {
         if (err instanceof NotEnforceableError) {
@@ -153,9 +158,9 @@ export const behaviorRouter = router({
     }),
 
   /** Pending rule suggestions for the user's critical insights ("Activar regla anti-X"). */
-  ruleSuggestions: protectedProcedure.query(async ({ ctx }) => {
+  ruleSuggestions: protectedProcedure.input(modeInput).query(async ({ ctx, input }) => {
     const rows = await ctx.prisma.ruleSuggestion.findMany({
-      where: { userId: ctx.userId, status: "pending" },
+      where: { userId: ctx.userId, operationalMode: input?.mode ?? "REAL", status: "pending" },
       orderBy: { createdAt: "desc" },
       select: { id: true, insightId: true, reason: true, proposedRule: true },
     })
@@ -166,22 +171,22 @@ export const behaviorRouter = router({
   }),
 
   /** (Re)generate rule suggestions from current critical insights. */
-  generateSuggestions: protectedProcedure.mutation(async ({ ctx }) => {
-    const created = await suggestRulesFromInsights(ctx.prisma, ctx.userId)
+  generateSuggestions: protectedProcedure.input(modeInput).mutation(async ({ ctx, input }) => {
+    const created = await suggestRulesFromInsights(ctx.prisma, ctx.userId, input?.mode ?? "REAL")
     return { created }
   }),
 
   acceptSuggestion: protectedProcedure
-    .input(z.object({ suggestionId: z.string().uuid() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), suggestionId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const rule = await acceptRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId)
+      const rule = await acceptRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId, input.mode)
       return { ruleId: rule.id, name: rule.name }
     }),
 
   dismissSuggestion: protectedProcedure
-    .input(z.object({ suggestionId: z.string().uuid() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), suggestionId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
-      await dismissRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId)
+      await dismissRuleSuggestion(ctx.prisma, ctx.userId, input.suggestionId, input.mode)
       return { ok: true }
     }),
 })

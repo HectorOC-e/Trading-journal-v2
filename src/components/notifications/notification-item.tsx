@@ -1,5 +1,6 @@
 "use client"
 
+import { MODE_LABELS, operationalModeSchema } from "@/domains/trading/operational-mode"
 import { motion } from "framer-motion"
 import { Archive, Check } from "lucide-react"
 import { TYPE_STYLE } from "@/components/notifications/toast"
@@ -27,13 +28,22 @@ export interface NotificationItemProps {
 }
 
 export function NotificationItem({ n, onMarkRead, onArchive, onNavigate, swipeable = false }: NotificationItemProps) {
+  const parsed = operationalModeSchema.safeParse((n.params as { mode?: unknown } | null)?.mode)
+  const mode = parsed.success ? parsed.data : null
+  const legacyOperational = !mode && (["Cuenta", "Reglas", "Trading"].includes(n.category) || n.code === "INSIGHT_DETECTED")
+  let href = n.href
+  if (mode && href?.startsWith("/") && !href.startsWith("//")) {
+    const linked = new URL(href, "https://journal.invalid")
+    linked.searchParams.set("mode", mode)
+    href = linked.pathname + linked.search + linked.hash
+  }
   const accent = priorityColor(n.priority)
   const { color: typeColor, Icon } = TYPE_STYLE[n.type as NotifType] ?? TYPE_STYLE.INFO
   const unread = !n.readAt
 
   function handleClick() {
     if (unread) onMarkRead(n.id)
-    if (n.href) { onNavigate?.(); window.location.assign(n.href) }
+    if (href) { onNavigate?.(); window.location.assign(href) }
   }
 
   const content = (
@@ -53,6 +63,7 @@ export function NotificationItem({ n, onMarkRead, onArchive, onNavigate, swipeab
           </span>
           <span className="shrink-0 whitespace-nowrap text-[10px] text-[var(--ink-3)]">{formatNotifTime(n.createdAt)}</span>
         </div>
+        {(mode || legacyOperational) && <span className="mt-1 block text-[10px] text-[var(--ink-3)]">{mode ? MODE_LABELS[mode] : "Histórica · modalidad sin verificar"}</span>}
         {n.body && <span className="mt-0.5 block text-[11.5px] leading-snug text-[var(--ink-3)] line-clamp-2">{n.body}</span>}
       </div>
       {unread && <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: "var(--accent)" }} />}

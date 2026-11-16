@@ -18,6 +18,9 @@ const m = vi.hoisted(() => ({
   profileReady: true,
 }));
 const record = {
+  kind: "CONCEPT",
+  operationalMode: null,
+  tradeLinks: [],
   userId: "draft-user",
   plannedSessionId: null,
   reviewSource: null,

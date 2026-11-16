@@ -4,14 +4,15 @@
 // daily by the recompute-insights cron. Read back as a series for the curve.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { OPERATIONAL_MODES, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { getImprovement } from "@/server/services/improvement/improvement-service"
 
 const todayUtc = () => new Date(new Date().toISOString().slice(0, 10))
 
 /** Compute + upsert today's ImprovementScore snapshot for one user (no-op without data). */
-export async function recordImprovementSnapshot(prisma: PrismaClient, userId: string): Promise<boolean> {
-  const ov = await getImprovement(prisma, userId)
+export async function recordImprovementSnapshot(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<boolean> {
+  const ov = await getImprovement(prisma, userId, mode)
   if (!ov.hasData) return false
   const date = todayUtc()
   const data = {
@@ -24,8 +25,8 @@ export async function recordImprovementSnapshot(prisma: PrismaClient, userId: st
     sampleSize: ov.sampleSize,
   }
   await prisma.improvementScore.upsert({
-    where: { userId_date: { userId, date } },
-    create: { userId, date, ...data },
+    where: { userId_date_operationalMode: { userId, date, operationalMode: mode } },
+    create: { userId, date, operationalMode: mode, ...data },
     update: data,
   })
   return true
@@ -36,7 +37,7 @@ export async function recordImprovementSnapshotForAll(prisma: PrismaClient): Pro
   const users = await prisma.trade.findMany({ where: { status: "CLOSED" }, distinct: ["userId"], select: { userId: true } })
   let recorded = 0
   for (const { userId } of users) {
-    try { if (await recordImprovementSnapshot(prisma, userId)) recorded++ } catch { /* per-user best-effort */ }
+    try { for (const mode of OPERATIONAL_MODES) if (await recordImprovementSnapshot(prisma, userId, mode)) recorded++ } catch { /* per-user best-effort */ }
   }
   return { users: users.length, recorded }
 }
@@ -47,11 +48,11 @@ export interface ImprovementPoint {
 }
 
 /** Recent ImprovementScore series (ascending) for the curve. */
-export async function getImprovementSeries(prisma: PrismaClient, userId: string, days = 90): Promise<ImprovementPoint[]> {
+export async function getImprovementSeries(prisma: PrismaClient, userId: string, days = 90, mode: OperationalMode = "REAL"): Promise<ImprovementPoint[]> {
   const from = new Date()
   from.setUTCDate(from.getUTCDate() - days)
   const rows = await prisma.improvementScore.findMany({
-    where: { userId, date: { gte: new Date(from.toISOString().slice(0, 10)) } },
+    where: { userId, operationalMode: mode, date: { gte: new Date(from.toISOString().slice(0, 10)) } },
     orderBy: { date: "asc" },
     select: { date: true, score: true },
   })

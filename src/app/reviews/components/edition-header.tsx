@@ -10,6 +10,7 @@ import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import { DUR, EASE_OUT } from "@/lib/motion"
 import type { VerdictTone } from "@/server/services/reviews/verdict"
+import { useCurrency } from "@/hooks/useCurrency"
 
 const SERIF = '"Newsreader", Georgia, "Times New Roman", serif'
 
@@ -18,8 +19,6 @@ const TONE: Record<VerdictTone, { fg: string; bg: string }> = {
   mid: { fg: "var(--be)", bg: "var(--be-soft)" },
   bad: { fg: "var(--loss)", bg: "var(--loss-soft)" },
 }
-
-const money = (n: number) => `${n < 0 ? "−" : "+"}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
 
 export interface EditionHeaderData {
   monthShort: string
@@ -35,6 +34,8 @@ export interface EditionHeaderData {
 }
 
 export function EditionHeader({ data, onOpen }: { data: EditionHeaderData; onOpen: () => void }) {
+  const { baseCurrency, formatAmount } = useCurrency()
+  const money = (value: number) => formatAmount(value, { showSign: true, decimals: 0 })
   const tone = TONE[data.gradeTone] ?? TONE.mid
   const netColor = data.net >= 0 ? "var(--win)" : "var(--loss)"
   const maxW = Math.max(1, ...data.weekPnls.map(w => Math.abs(w)))
@@ -67,6 +68,7 @@ export function EditionHeader({ data, onOpen }: { data: EditionHeaderData; onOpe
 
         {/* Net + delta */}
         <div className="flex items-baseline gap-2">
+          <span className="text-[10px] text-[var(--ink-3)]">P&amp;L · {baseCurrency}</span>
           <span className="font-mono font-bold text-[19px]" style={{ color: netColor }}>{money(data.net)}</span>
           {data.deltaPnl != null && data.deltaPnl !== 0 && (
             <span className="text-[11px] font-bold" style={{ color: data.deltaPnl > 0 ? "var(--win)" : "var(--loss)" }}>{data.deltaPnl > 0 ? "▲ " : "▼ "}{money(data.deltaPnl)}</span>

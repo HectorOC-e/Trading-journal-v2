@@ -25,11 +25,12 @@ const mockAgent              = streamCoachAgent as ReturnType<typeof vi.fn>
 
 // system is an array of { text, cache } blocks (prompt caching) — flatten for assertions.
 function systemText(): string {
-  const s = mockAgent.mock.calls[0][0].system
+  const s = mockAgent.mock.calls.at(-1)![0].system
   return Array.isArray(s) ? s.map((b: { text: string }) => b.text).join("\n\n") : (s ?? "")
 }
 
 const MOCK_CONTEXT = {
+  scope: { mode: "REAL", sampleSize: 20, sampleLimit: 500, excludedCurrencies: [] },
   performance: {
     totalTrades: 20, winRate: 60, avgR: 1.2, netPnl: 500, pnlMonth: 150,
     sharpeRatio: 1.1, bestSetup: null, worstSetup: null,
@@ -79,9 +80,12 @@ describe("coach-service (TASK-065)", () => {
     mockAgent.mockResolvedValue(MOCK_STREAM)
   })
 
-  it("calls buildTraderContext with the correct userId", async () => {
-    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
-    expect(mockBuildTraderContext).toHaveBeenCalledWith("user-123", mockPrisma)
+  it("propagates the selected mode through context and agent tools", async () => {
+    mockBuildTraderContext.mockResolvedValue({ ...MOCK_CONTEXT, scope: { ...MOCK_CONTEXT.scope, mode: "DEMO" } })
+    await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma, mode: "DEMO" })
+    expect(mockBuildTraderContext).toHaveBeenCalledWith("user-123", mockPrisma, undefined, "DEMO")
+    expect(mockAgent.mock.calls[0][0].mode).toBe("DEMO")
+    expect(systemText()).toContain("Modalidad: DEMO")
   })
 
   it("passes messages and a system prompt to streamChat", async () => {
@@ -140,4 +144,11 @@ describe("coach-service (TASK-065)", () => {
     expect(callArgs.prisma).toBe(mockPrisma) // tools need DB access
     expect(callArgs.userId).toBe("user-123")
   })
+})
+
+it("declares the actual base currency beside monetary performance in the prompt", async () => {
+  mockBuildTraderContext.mockResolvedValue({ ...MOCK_CONTEXT, baseCurrency: "EUR" })
+  mockAgent.mockResolvedValue(MOCK_STREAM)
+  await streamCoachReply({ userId: "user-123", messages: [], prisma: mockPrisma })
+  expect(systemText()).toMatch(/500\.00 EUR|EUR 500\.00/)
 })

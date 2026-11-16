@@ -6,6 +6,7 @@ import { DUR, EASE_OUT } from "@/lib/motion"
 import { CardEquityChart } from "./card-equity-chart"
 import { deriveGrade, deriveVerdict, splitChips, metricChips, type VerdictTone } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { useCurrency } from "@/hooks/useCurrency"
 
 type ReviewFromDB = RouterOutputs["weeklyReviews"]["list"][number]
 
@@ -17,12 +18,6 @@ export function disciplineColor(score: number): string {
 }
 
 const pnlColor = (pnl: number) => (pnl >= 0 ? "var(--win)" : "var(--loss)")
-
-/** "−$7,398" / "+$420" — whole dollars, thousands separator, real minus sign. */
-function fmtMoney(n: number): string {
-  const sign = n < 0 ? "−" : "+"
-  return `${sign}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`
-}
 
 /** Whisper-subtle outcome tint — barely there, just a hint of the result color. */
 function tintFor(color: string): string {
@@ -100,6 +95,11 @@ function Chip({ tone, text }: { tone: "win" | "loss"; text: string }) {
   )
 }
 
+function SharedNotesChips({ worked, toImprove }: { worked: string[]; toImprove: string[] }) {
+  if (!worked.length && !toImprove.length) return null
+  return <section className="mt-3"><p className="text-[10px] text-[var(--ink-3)] mb-1.5">Notas compartidas</p><Chips worked={worked} toImprove={toImprove} /></section>
+}
+
 // ── ReviewCard ────────────────────────────────────────────────────────────────
 export function ReviewCard({ review, onOpen, onDelete, accountName }: {
   review: ReviewFromDB
@@ -107,6 +107,11 @@ export function ReviewCard({ review, onOpen, onDelete, accountName }: {
   onDelete: () => void
   accountName: (id: string | null) => string
 }) {
+  const { baseCurrency, formatAmount } = useCurrency()
+  // Server values are already normalized. Formatting never applies another FX factor.
+  const money = (value: number) => formatAmount(value, { showSign: true, decimals: 0 })
+  const sharedWorked = splitChips(review.whatWorked)
+  const sharedToImprove = splitChips(review.toImprove)
   const isDraft = review.status === "draft"
   const noTrades = review.tradeCount === 0
   const isLoss  = review.netPnl < 0
@@ -130,6 +135,7 @@ export function ReviewCard({ review, onOpen, onDelete, accountName }: {
             <p className="text-[11px]" style={{ color: "var(--ink-3)" }}>{review.weekRange} · sin operaciones</p>
           </div>
         </div>
+        <div className="px-4 pb-4"><SharedNotesChips worked={sharedWorked} toImprove={sharedToImprove} /></div>
       </motion.div>
     )
   }
@@ -146,8 +152,9 @@ export function ReviewCard({ review, onOpen, onDelete, accountName }: {
     netPnl: review.netPnl, winRate: review.winRate, profitFactor: review.profitFactor,
     disciplineScore: review.disciplineScore, trades: review.tradeCount,
   })
-  const worked    = splitChips(review.whatWorked).length ? splitChips(review.whatWorked) : fallback.worked
-  const toImprove = splitChips(review.toImprove).length  ? splitChips(review.toImprove)  : fallback.toImprove
+  const localizePnl = (chip: string) => chip.startsWith("P&L ") ? `P&L ${money(review.netPnl)} ${baseCurrency}` : chip
+  const worked = sharedWorked.length ? [] : fallback.worked.map(localizePnl)
+  const toImprove = sharedToImprove.length ? [] : fallback.toImprove.map(localizePnl)
 
   const tone = GRADE_TONE[grade.tone]
   const showChart = review.spark.length >= 2
@@ -185,18 +192,18 @@ export function ReviewCard({ review, onOpen, onDelete, accountName }: {
           </div>
           {showChart && (
             <div className="hidden sm:block shrink-0">
-              <CardEquityChart dailyPnl={dailyPnl} positive={!isLoss} money={fmtMoney} width={156} height={50} />
+              <CardEquityChart dailyPnl={dailyPnl} positive={!isLoss} money={money} width={156} height={50} />
             </div>
           )}
         </div>
 
         {/* Metrics row */}
         <div className="flex items-center gap-5 sm:gap-7 mb-3.5 flex-wrap">
-          <Metric label="P&L"        value={fmtMoney(review.netPnl)}            color={pnlColor(review.netPnl)} />
+          <Metric label={`P&L · ${baseCurrency}`} value={money(review.netPnl)} color={pnlColor(review.netPnl)} />
           <Metric label="Win Rate"   value={`${review.winRate.toFixed(0)}%`}    color={review.winRate >= 55 ? "var(--win)" : undefined} />
           <Metric label="P. Factor"  value={review.profitFactor ? review.profitFactor.toFixed(2) : "—"} />
           <Metric label="Avg R"      value={review.avgR ? `${review.avgR.toFixed(2)}R` : "—"}           color={review.avgR > 0 ? "var(--win)" : review.avgR < 0 ? "var(--loss)" : undefined} />
-          <Metric label="Disciplina" value={review.disciplineScore.toString()}  color={disciplineColor(review.disciplineScore)} />
+          <Metric label="Disciplina" value={review.disciplineScore?.toString() ?? "—"}  color={review.disciplineScore==null?undefined:disciplineColor(review.disciplineScore)} />
         </div>
 
         {/* AI verdict */}
@@ -204,6 +211,7 @@ export function ReviewCard({ review, onOpen, onDelete, accountName }: {
 
         {/* Worked / improve chips */}
         <Chips worked={worked} toImprove={toImprove} />
+        <SharedNotesChips worked={sharedWorked} toImprove={sharedToImprove} />
       </div>
     </motion.div>
   )

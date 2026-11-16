@@ -139,4 +139,19 @@ describe("practice assistant", () => {
     ).rejects.toMatchObject({ code: "BAD_GATEWAY" });
     expect(p.practiceFeedback.create).not.toHaveBeenCalled();
   });
+  it.each(["edit", "delete"])("rejects evidence %s during a slow response instead of publishing current feedback", async change => {
+    const { p, sb, row } = setup();
+    const trade = { id:"selected", symbol:"EURUSD", operationalMode:"BACKTEST", date:new Date("2024-01-01"), updatedAt:new Date("2026-11-15") };
+    const original = { ...row, tradeLinks: [{ role:"EXECUTED", trade }] };
+    const current = { ...original, tradeLinks: change === "delete" ? [] : [{ role:"EXECUTED", trade:{...trade,updatedAt:new Date("2026-11-16")} }] };
+    p.learningPractice.findFirst.mockResolvedValueOnce(original).mockResolvedValueOnce(current);
+    await expect(practiceFeedback(p as never,sb as never,`race-${change}`,{id:"p",expectedVersion:2,kind:"feedback"})).rejects.toMatchObject({code:"CONFLICT"});
+    expect(p.practiceFeedback.create).not.toHaveBeenCalled();
+  });
+  it("does not silently trim an oversized selection before calling the provider", async()=>{
+    const {p,sb,row}=setup();
+    p.learningPractice.findFirst.mockResolvedValue({...row,tradeLinks:Array.from({length:51},(_,i)=>({role:"REVIEWED",trade:{id:String(i),symbol:"EURUSD",date:new Date("2024-01-01")}}))});
+    await expect(practiceFeedback(p as never,sb as never,"oversized",{id:"p",expectedVersion:2,kind:"feedback"})).rejects.toMatchObject({code:"BAD_REQUEST"});
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

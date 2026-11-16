@@ -7,6 +7,11 @@ import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { makeMoney, Card, Eyebrow } from "./primitives"
 import { deriveGrade, type VerdictTone } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/lib/use-toast"
+import { formatErrorForUser } from "@/lib/error-formatter"
 
 type ReportData = RouterOutputs["monthlyReviews"]["report"]
 type Goal = ReportData["goals"][number]
@@ -43,9 +48,11 @@ function Pillar({ label, value }: { label: string; value: number }) {
 }
 
 // ── Compromisos (goals) editor ────────────────────────────────────────────────
-function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month: number }) {
+function GoalsPanel({ goals, year, month, mode }: { goals: Goal[]; year: number; month: number; mode: OperationalMode }) {
   const utils = trpc.useUtils()
-  const invalidate = () => { utils.monthlyReviews.report.invalidate({ year, month }); utils.monthlyReviews.list.invalidate() }
+  const invalidate = () => { void utils.monthlyReviews.report.invalidate({ year, month, mode }); void utils.monthlyReviews.list.invalidate({ mode }); void utils.monthlyGoals.unclassified.invalidate({ year, month }) }
+  const legacy = trpc.monthlyGoals.unclassified.useQuery({ year, month })
+  const assign = trpc.monthlyGoals.assignMode.useMutation({ onSuccess: invalidate, onError: e => toast.error(formatErrorForUser(e)) })
   const carry  = trpc.monthlyGoals.carryForward.useMutation({ onSuccess: invalidate })
   const add    = trpc.monthlyGoals.add.useMutation({ onSuccess: invalidate })
   const setSt  = trpc.monthlyGoals.setStatus.useMutation({ onSuccess: invalidate })
@@ -54,7 +61,7 @@ function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month
 
   // Seed this month's commitments from the previous month on first visit (once).
   useEffect(() => {
-    if (goals.length === 0) carry.mutate({ year, month })
+    if (goals.length === 0) carry.mutate({ year, month, mode })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -78,7 +85,7 @@ function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month
             <div key={g.id} className="flex items-start gap-2.5 group/goal">
               <button
                 aria-label="Cambiar estado"
-                onClick={() => setSt.mutate({ id: g.id, status: NEXT_STATUS[g.status] ?? "done" })}
+                onClick={() => setSt.mutate({ id: g.id, status: NEXT_STATUS[g.status] ?? "done", mode })}
                 className="mt-0.5 grid place-items-center w-5 h-5 rounded-full text-[12px] font-bold shrink-0 hover:scale-110 transition"
                 style={{ color: st.color, border: `1.5px solid ${st.color}` }}
               >
@@ -88,7 +95,7 @@ function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month
                 <span className="text-[13px] text-[var(--ink-2)]">{g.text}</span>
                 {g.note && <span className="text-[11px] text-[var(--ink-3)] ml-1.5">· {g.note}{!g.userConfirmed && " (IA)"}</span>}
               </div>
-              <button aria-label="Quitar" onClick={() => remove.mutate(g.id)} className="opacity-0 group-hover/goal:opacity-100 text-[var(--ink-3)] hover:text-[var(--loss)] transition shrink-0">
+              <button aria-label="Quitar" onClick={() => remove.mutate({ id: g.id, mode })} className="opacity-0 group-hover/goal:opacity-100 text-[var(--ink-3)] hover:text-[var(--loss)] transition shrink-0">
                 <X size={13} />
               </button>
             </div>
@@ -97,15 +104,21 @@ function GoalsPanel({ goals, year, month }: { goals: Goal[]; year: number; month
       </div>
 
       <form
-        onSubmit={e => { e.preventDefault(); const t = text.trim(); if (t) { add.mutate({ year, month, text: t }); setText("") } }}
+        onSubmit={e => { e.preventDefault(); const t = text.trim(); if (t) { add.mutate({ year, month, text: t, mode }); setText("") } }}
         className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--line)]"
       >
         <input
           value={text} onChange={e => setText(e.target.value)} placeholder="Nuevo compromiso…"
           className="flex-1 h-8 px-2.5 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] text-[12px] text-[var(--ink)] placeholder:text-[var(--ink-3)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
         />
-        <button type="submit" className="grid place-items-center w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white active:scale-95 transition"><Plus size={15} /></button>
+        <button type="submit" aria-label="Añadir compromiso" className="grid place-items-center w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white active:scale-95 transition"><Plus size={15} /></button>
       </form>
+      {legacy.error && <p role="alert" className="mt-3 text-xs">No se pudieron consultar los objetivos históricos. <Button variant="link" size="sm" onClick={() => void legacy.refetch()}>Reintentar</Button></p>}
+      {!!legacy.data?.length && <section className="mt-4 border-t border-[var(--line)] pt-3" aria-label="Objetivos históricos sin modalidad">
+        <h3 className="text-xs font-semibold">Objetivos históricos sin atribución</h3>
+        <p className="text-xs text-[var(--ink-3)] mt-1">Se conservan fuera del progreso hasta que les asignes una modalidad.</p>
+        <ul className="mt-2 space-y-2">{legacy.data.map(goal => <li key={goal.id} className="text-xs"><p>{goal.text}</p><Button variant="link" size="sm" disabled={assign.isPending} onClick={() => assign.mutate({ id: goal.id, mode })}>Asignar a {MODE_LABELS[mode]}</Button></li>)}</ul>
+      </section>}
     </Card>
   )
 }
@@ -150,6 +163,11 @@ export function MonthlyLetter({ data, year, month, monthLabel }: {
   month: number
   monthLabel: string
 }) {
+  const mode = useOperationalMode(s => s.mode)
+  return <ScopedMonthlyLetter key={`${year}-${month}:${mode}`} data={data} year={year} month={month} monthLabel={monthLabel} mode={mode} />
+}
+
+function ScopedMonthlyLetter({ data, year, month, monthLabel, mode }: { data: ReportData; year: number; month: number; monthLabel: string; mode: OperationalMode }) {
   const money = makeMoney(data.baseCurrency)
   const grade = deriveGrade({ disciplineScore: data.kpis.disciplineScore, winRate: data.kpis.winRate, netPnl: data.kpis.netPnl, profitFactor: data.kpis.profitFactor, trades: data.kpis.trades })
   const tone = TONE[grade.tone]
@@ -184,7 +202,7 @@ export function MonthlyLetter({ data, year, month, monthLabel }: {
       <Campaign weeks={data.weekTrend} money={money} />
 
       <div className="grid md:grid-cols-2 gap-5">
-        <GoalsPanel goals={data.goals} year={year} month={month} />
+        <GoalsPanel goals={data.goals} year={year} month={month} mode={mode} />
         <Card>
           <Eyebrow>Temas dominantes</Eyebrow>
           <div className="flex flex-col gap-2.5 mt-2">

@@ -5,7 +5,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid,
 } from "recharts"
-import { TrendingUp, TrendingDown, Target, BarChart2, CheckCircle2, Percent, Activity, Award, Lock } from "lucide-react"
+import { TrendingUp, TrendingDown, BarChart2, CheckCircle2, Award, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
 import { SimpleTable, TrendNumber, type SimpleColumn } from "@/components/ui/data-table"
@@ -15,6 +15,7 @@ import { PropFirmRules } from "../components/prop-firm-rules"
 import { TYPE_META, fmtDate } from "../components/shared"
 import { GoalProgressWidget } from "../components/goal-progress-widget"
 import { currencySymbol } from "@/lib/fx"
+import { CAPITAL_LABELS } from "../capital-summary"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
@@ -30,7 +31,7 @@ const ACCOUNT_COLORS = [
 ]
 
 export function TabPortfolio({
-  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, discipline, accounts, baseCurrency, period, onPeriodChange,
+  kpis, pnlByDate, propFirmStatus, accountStats, equityCurve, discipline, accounts, baseCurrency, scope, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   pnlByDate:      DashboardStats["pnlByDate"]
@@ -40,19 +41,21 @@ export function TabPortfolio({
   discipline:     DashboardStats["discipline"]
   accounts:       AccountMeta[]
   baseCurrency:   string
+  scope:          DashboardStats["scope"]
   period:         Period
   onPeriodChange: (p: Period) => void
 }) {
   const cur = currencySymbol(baseCurrency || "USD")
-  const totalInitial = useMemo(
-    () => accounts.reduce((s, a) => s + Number(a.initialBalance), 0),
-    [accounts],
-  )
-  const donutData = useMemo(() => accounts.map(a => {
-    const meta = TYPE_META[a.type] ?? { color: "#6b7280" }
-    const pct  = totalInitial > 0 ? (Number(a.initialBalance) / totalInitial) * 100 : 0
-    return { name: a.name, value: parseFloat(pct.toFixed(1)), color: meta.color }
-  }), [accounts, totalInitial])
+  const allocationKind = scope.mode === "REAL" ? "PERSONAL" : "SIMULATED"
+  const donutData = useMemo(() => {
+    const available = accountStats.filter(account => account.availableForTrading && account.capitalKind === allocationKind && account.balance > 0)
+    const total = available.reduce((sum,account) => sum + account.balance,0)
+    return available.map(stat => {
+      const account = accounts.find(account => account.id === stat.accountId)
+      const meta = TYPE_META[account?.type ?? ""] ?? { color:"#6b7280" }
+      return {name:account?.name ?? stat.accountId,value:parseFloat((stat.balance / total * 100).toFixed(1)),color:meta.color}
+    })
+  }, [accountStats, accounts, allocationKind])
 
   const barData = useMemo(() => {
     const byDate: Record<string, Record<string, number>> = {}
@@ -79,7 +82,7 @@ export function TabPortfolio({
   const accountsTable = useMemo(() => {
     return accountStats.map(s => {
       const a = accounts.find(acc => acc.id === s.accountId)
-      return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", status: a?.status ?? "ACTIVE", locked: a?.locked ?? false }
+      return { ...s, name: a?.name ?? s.accountId, type: a?.type ?? "PERSONAL", locked: a?.locked ?? false }
     })
   }, [accountStats, accounts])
 
@@ -151,7 +154,7 @@ export function TabPortfolio({
           color={sharpeRatio != null && sharpeRatio >= 1 ? "var(--win)" : sharpeRatio != null && sharpeRatio < 0 ? "var(--loss)" : undefined}
           icon={<BarChart2 size={15} />}
           explain={sharpeRatio != null ? `Mi Sharpe Ratio es ${sharpeRatio.toFixed(2)}. ¿Qué dice de la consistencia de mis retornos ajustados al riesgo?` : undefined} />
-        <KpiCard label="Expectancy $"
+        <KpiCard label={`Expectancy ${baseCurrency}`}
           value={`${expectancyDollar >= 0 ? "+" : "-"}${cur}${Math.abs(expectancyDollar).toFixed(2)}`}
           sub="por trade promedio"
           color={expectancyDollar >= 0 ? "var(--win)" : "var(--loss)"}
@@ -180,7 +183,7 @@ export function TabPortfolio({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card title="Asignación por cuenta" sub="Ponderación por balance inicial">
+        <Card title={allocationKind === "PERSONAL" ? "Asignación personal disponible" : "Asignación simulada disponible"} sub={`Balances disponibles en ${baseCurrency}`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <div style={{ width: 120, flexShrink: 0 }}>
               <ResponsiveContainer width={160} height={160}>
@@ -190,7 +193,7 @@ export function TabPortfolio({
                     dataKey="value" strokeWidth={2} stroke="var(--panel)">
                     {(donutData.length > 0 ? donutData : [{ color: "var(--line)" }]).map((d, i) => <Cell key={i} fill={d.color} />)}
                   </Pie>
-                  <Tooltip content={<ChartTooltip />} />
+                  <Tooltip content={<ChartTooltip unit="%" />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -202,12 +205,12 @@ export function TabPortfolio({
                   <span className="text-[11px] font-mono font-bold text-[var(--ink-2)]">{d.value}%</span>
                 </div>
               ))}
-              {donutData.length === 0 && <p className="text-[11px] text-[var(--ink-3)]">Sin cuentas</p>}
+              {donutData.length === 0 && <p className="text-[11px] text-[var(--ink-3)]">Sin capital disponible en esta categoría</p>}
             </div>
           </div>
         </Card>
 
-        <Card title="P&L diario por cuenta" sub="Últimas 15 sesiones · USD">
+        <Card title="P&L diario por cuenta" sub={`Últimas 15 sesiones · ${baseCurrency}`}>
           {barData.length > 0 ? (
             <>
               <ResponsiveContainer width="100%" height={175}>
@@ -215,7 +218,7 @@ export function TabPortfolio({
                   <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
                     tickFormatter={v => v >= 0 ? `+${cur}${v}` : `-${cur}${Math.abs(v)}`} />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
+                  <Tooltip content={<ChartTooltip currency={baseCurrency} />} cursor={{ fill: "var(--chip)", opacity: 0.5 }} />
                   {barAccountNames.map((name, i) => {
                     const meta = accounts.find(a => a.name === name)
                     const color = meta ? (TYPE_META[meta.type]?.color ?? "var(--accent)") : "var(--accent)"
@@ -263,14 +266,14 @@ export function TabPortfolio({
 
       {/* Multi-account equity curve (TASK-053) */}
       {equityCurveByAccount.length > 1 && accountStats.length > 1 && (
-        <Card title="Curva de equity por cuenta" sub="Balance acumulado en el período seleccionado">
+        <Card title="Curva de equity por cuenta" sub={`${scope.equityDateBasis === "REALIZATION_DATE" ? "Realizaciones con saldo previo al periodo" : "Balance acumulado"} · ${baseCurrency}${scope.legacyRealizationFallback ? " · incluye fechas legadas" : ""}`}>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={equityCurveByAccount} margin={{ top: 4, right: 8, bottom: 0, left: 8 }} syncId="portfolio-time">
               <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 9, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
                 tickFormatter={v => `${cur}${(v as number).toLocaleString()}`} width={60} />
-              <Tooltip content={<ChartTooltip />} cursor={{ stroke: "var(--line)", strokeWidth: 1 }} />
+              <Tooltip content={<ChartTooltip currency={baseCurrency} />} cursor={{ stroke: "var(--line)", strokeWidth: 1 }} />
               {accountStats.map((s, i) => {
                 const acct  = accounts.find(a => a.id === s.accountId)
                 const color = ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
@@ -321,7 +324,7 @@ export function TabPortfolio({
           getRowKey={(a) => a.accountId}
           empty="Sin cuentas registradas"
           columns={[
-            { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <span className="font-medium text-[var(--ink)] text-sm">{a.name}</span> },
+            { key: "name", header: "Cuenta", width: "minmax(120px, 1.6fr)", render: (a) => <div><span className="font-medium text-[var(--ink)] text-sm">{a.name}</span><p className="text-[10px] text-[var(--ink-3)]">{a.capitalKind === "PERSONAL" ? "Capital personal" : CAPITAL_LABELS[a.capitalKind]}</p>{!a.availableForTrading && <p className="text-[10px] text-[var(--ink-3)]">{a.status === "INACTIVE" || a.status === "LOST" ? "Histórico · no disponible" : "No disponible"}</p>}</div> },
             { key: "balance", header: "Balance", align: "right", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{cur}{a.balance.toFixed(2)}</span> },
             { key: "pnlMonth", header: "P&L mes", align: "right", render: (a) => <TrendNumber value={a.pnlMonth} format={(v) => `${cur}${v.toFixed(2)}`} className="text-sm justify-end w-full" /> },
             { key: "winRate", header: "Win %", align: "right", hideBelow: "sm", width: "minmax(70px, 0.8fr)", render: (a) => <span className="font-mono text-sm text-[var(--ink)]">{a.winRate.toFixed(2)}%</span> },

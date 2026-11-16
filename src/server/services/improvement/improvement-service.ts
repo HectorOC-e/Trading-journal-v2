@@ -5,17 +5,20 @@
 // (practice money never inflates the score). Read-only, deterministic (P2).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { fxFactor, hasFxConversion, parseFxRates } from "@/lib/fx"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import {
   computeImprovementScore, costOfIndiscipline, type ImprovementResult,
 } from "@/domains/analytics/improvement/improvement-score"
 import { computeRegimePerformance, type RegimePerformanceResult, type RegimeTrade } from "@/domains/analytics/regime/regime-performance"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import type { OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
 const OFF_PLAN_TAGS = new Set(["Off-plan", "Impulsivo"])
 
 export interface ImprovementOverview {
+  excludedCurrencies: string[]
   hasData: boolean
   sampleSize: number
   improvement: ImprovementResult
@@ -27,19 +30,19 @@ export interface ImprovementOverview {
   inputs: { disciplineRolling: number; expectancyR: number; commitmentKeptRate: number; costOfIndisciplineRatio: number }
 }
 
-export async function getImprovement(prisma: PrismaClient, userId: string): Promise<ImprovementOverview> {
-  const accounts = await prisma.account.findMany({ where: { userId }, select: { id: true, type: true } })
-  const realIds = accounts.filter((a) => !isPracticeType(a.type)).map((a) => a.id)
+export async function getImprovement(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<ImprovementOverview> {
+  const scope = await scopedTradeWhere(prisma, userId, { mode, includeArchived: true })
 
-  const [trades, commitments] = await Promise.all([
+  const [trades, commitments, user] = await Promise.all([
     prisma.trade.findMany({
-      where: { userId, status: "CLOSED", accountId: { in: realIds } },
-      select: { pnl: true, rMultiple: true, tags: true, regime: true, revengeFlag: true, fomoFlag: true },
+      where: { ...scope, status: "CLOSED" },
+      select: { account: { select: { currency: true } }, pnl: true, rMultiple: true, tags: true, regime: true, revengeFlag: true, fomoFlag: true },
     }),
     prisma.commitment.findMany({
-      where: { userId, status: { in: ["kept", "partial", "broken", "expired"] } },
+      where: { userId, operationalMode: mode, status: { in: ["kept", "partial", "broken", "expired"] } },
       select: { status: true },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
   ])
 
   const total = trades.length
@@ -55,7 +58,12 @@ export async function getImprovement(prisma: PrismaClient, userId: string): Prom
   const resolved = commitments.length
   const keptRate = resolved > 0 ? commitments.filter((c) => c.status === "kept").length / resolved : null
 
-  const cost = costOfIndiscipline(trades.map((t) => ({ pnl: num(t.pnl) ?? 0, offPlan: isOffPlan(t) })))
+  const baseCurrency = user?.baseCurrency ?? "USD"
+  const rates = parseFxRates(user?.fxRates)
+  const excludedCurrencies = [...new Set(trades.filter(t => !hasFxConversion(t.account.currency, baseCurrency, rates)).map(t => t.account.currency))].sort()
+  const monetaryTrades = trades.filter(t => hasFxConversion(t.account.currency, baseCurrency, rates))
+  const money = (t: (typeof trades)[number]) => (num(t.pnl) ?? 0) * fxFactor(t.account.currency, baseCurrency, rates)
+  const cost = costOfIndiscipline(monetaryTrades.map((t) => ({ pnl: money(t), offPlan: isOffPlan(t) })))
 
   const improvement = computeImprovementScore({
     disciplineRolling,
@@ -64,10 +72,11 @@ export async function getImprovement(prisma: PrismaClient, userId: string): Prom
     costOfIndisciplineRatio: cost.costRatio,
   })
 
-  const regimeTrades: RegimeTrade[] = trades.map((t) => ({ regime: t.regime, rMultiple: num(t.rMultiple), pnl: num(t.pnl) ?? 0 }))
+  const regimeTrades: RegimeTrade[] = monetaryTrades.map((t) => ({ regime: t.regime, rMultiple: num(t.rMultiple), pnl: money(t) }))
   const regime = computeRegimePerformance(regimeTrades)
 
   return {
+    excludedCurrencies,
     hasData: total > 0,
     sampleSize: total,
     improvement,

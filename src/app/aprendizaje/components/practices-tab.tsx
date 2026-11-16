@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCalendarDate } from "@/lib/datetime/local";
 import { PracticeModal, type PracticeRecord } from "../modals/practice-modal";
+import { useOperationalMode } from "@/lib/operational-mode-store";
 
 export function PracticeWeekSummary({ onOpen }: { onOpen: () => void }) {
   const q = trpc.learningPractices.summary.useQuery();
@@ -50,7 +51,8 @@ export function ResourcePracticeHistory({
   resourceId: string;
   onOpen: () => void;
 }) {
-  const q = trpc.learningPractices.list.useQuery({ resourceId, limit: 3 });
+  const mode = useOperationalMode(s => s.mode);
+  const q = trpc.learningPractices.list.useQuery({ resourceId, limit: 3, mode });
   return (
     <section className="mt-4 border-t border-[var(--line)] pt-4">
       <h3 className="text-sm font-semibold">Prácticas de este recurso</h3>
@@ -94,11 +96,15 @@ export function PracticesTab({
   initialResourceId,
   registerOnOpen = false,
   plannedSessionId,
+  initialTradeIds = [],
 }: {
   initialResourceId?: string;
   registerOnOpen?: boolean;
   plannedSessionId?: string;
+  initialTradeIds?: string[];
 }) {
+  const mode = useOperationalMode(s => s.mode);
+  const [entryTradeIds, setEntryTradeIds] = useState(initialTradeIds);
   const [resourceId, setResourceId] = useState(initialResourceId ?? "");
   const [from, setFrom] = useState(""),
     [to, setTo] = useState("");
@@ -114,11 +120,13 @@ export function PracticesTab({
     { enabled: !!activePlanId },
   );
   function clearPlanEntry() {
+    setEntryTradeIds([]);
     setActivePlanId(undefined);
     setOpenedPlan(undefined);
     const url = new URL(window.location.href);
     url.searchParams.delete("plannedSessionId");
     url.searchParams.delete("register");
+    url.searchParams.delete("tradeIds");
     window.history.replaceState(window.history.state, "", url);
   }
 
@@ -126,6 +134,7 @@ export function PracticesTab({
   const q = trpc.learningPractices.list.useInfiniteQuery(
     {
       limit: 20,
+      mode,
       resourceId: resourceId || undefined,
       from: from || undefined,
       to: to || undefined,
@@ -165,7 +174,7 @@ export function PracticesTab({
           </p>
           {summary.data && (
             <p className="text-sm mt-1">
-              Esta semana: {summary.data.minutes} min · {summary.data.sessions}{" "}
+              Esfuerzo total de la semana: {summary.data.minutes} min · {summary.data.sessions}{" "}
               sesiones de práctica
             </p>
           )}
@@ -279,6 +288,7 @@ export function PracticesTab({
                 onClick={() => { clearPlanEntry(); setEditing(p); }}
               >
                 <span className="block font-semibold">{p.title}</span>
+                <span className="block text-xs">{p.kind === "EXECUTION" ? "Ejecución" : p.kind === "REVIEW" ? "Revisión" : "Conceptual"} · {p.operationalMode ?? "Concepto compartido"} · {p.tradeLinks?.length ?? 0} ejemplos</span>
                 <span className="text-xs text-[var(--ink-3)]">
                   {formatCalendarDate(p.date)} · {p.durationMin} min ·{" "}
                   {p.resource?.title ?? "Práctica independiente"}
@@ -333,6 +343,7 @@ export function PracticesTab({
         <PracticeModal
           key={openedPlan ? `${openedPlan.id}:${modalKey}` : modalKey}
           plannedSession={openedPlan}
+          initialTradeIds={editing === null && !repeatFrom && !openedPlan ? entryTradeIds : undefined}
           record={editing}
           repeatFrom={repeatFrom}
           onRepeat={(record) => {

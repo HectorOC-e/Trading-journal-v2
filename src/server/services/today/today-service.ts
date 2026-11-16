@@ -9,7 +9,7 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { assembleTodayFeed, detectDailyAnomaly, type SignalInput, type TodayItem, type SignalSeverity } from "@/domains/cognitive/today/feed"
 import { getRiskOverview } from "@/server/services/risk/risk-service"
 import type { RiskBudget } from "@/domains/analytics/risk/risk-budget"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import { accountTypesForMode, classifyAccountType, type OperationalMode } from "@/domains/trading/operational-mode"
 import { getIgnoreCounts } from "@/server/services/today/feed-ignore-service"
 
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
@@ -31,34 +31,34 @@ export interface TodayFeedResult {
   primaryAccountId: string | null
 }
 
-export async function getTodayFeed(prisma: PrismaClient, userId: string): Promise<TodayFeedResult> {
+export async function getTodayFeed(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<TodayFeedResult> {
   const [insights, commitments, suggestions, reinforcements, accounts] = await Promise.all([
     prisma.insight.findMany({
-      where: { userId, status: "active" },
+      where: { userId, operationalMode: mode, status: "active" },
       orderBy: { lastSeenAt: "desc" },
       select: { id: true, title: true, detail: true, severity: true, lastSeenAt: true, createdAt: true },
       take: 12,
     }),
     prisma.commitment.findMany({
-      where: { userId, status: "active" },
+      where: { userId, operationalMode: mode, status: "active" },
       orderBy: { createdAt: "desc" },
       select: { id: true, text: true, createdAt: true },
       take: 8,
     }),
     prisma.ruleSuggestion.findMany({
-      where: { userId, status: "pending" },
+      where: { userId, operationalMode: mode, status: "pending" },
       orderBy: { createdAt: "desc" },
       select: { id: true, reason: true, createdAt: true },
       take: 6,
     }),
     prisma.reinforcement.findMany({
-      where: { userId, visible: true, channel: "today" },
+      where: { userId, visible: true, channel: "today", commitment: { userId, operationalMode: mode } },
       orderBy: { createdAt: "desc" },
       select: { id: true, kind: true, createdAt: true },
       take: 4,
     }),
     prisma.account.findMany({
-      where: { userId },
+      where: { userId, type: { in: accountTypesForMode(mode) } },
       select: { id: true, type: true, status: true },
     }),
   ])
@@ -86,14 +86,14 @@ export async function getTodayFeed(prisma: PrismaClient, userId: string): Promis
     signals.push({ id: `reinforcement:${r.id}`, kind: "reinforcement", severity: r.kind === "positive" ? "positive" : "info", title: r.kind === "positive" ? "Vas bien — protégelo." : "Una ventana se cerró: ajusta y sigue.", createdAt: iso(r.createdAt) })
   }
 
-  // Primary real account for anomaly + risk budget.
-  const realActive = accounts.filter((a) => !isPracticeType(a.type) && a.status === "ACTIVE")
-  const primary = realActive[0] ?? null
+  // Primary active account in the selected operational world.
+  const scopedActive = accounts.filter((a) => classifyAccountType(a.type) === mode && a.status === "ACTIVE")
+  const primary = scopedActive[0] ?? null
 
   let budget: RiskBudget | null = null
   if (primary) {
     const trades = await prisma.trade.findMany({
-      where: { userId, accountId: primary.id, status: "CLOSED" },
+      where: { userId, operationalMode: mode, accountId: primary.id, status: "CLOSED" },
       select: { pnl: true, date: true },
     })
     // Anomaly (#44): today vs the historical daily distribution.
@@ -136,6 +136,8 @@ export async function getTodayFeed(prisma: PrismaClient, userId: string): Promis
       })
     }
   }
+
+  for (const signal of signals) signal.id = `${mode}:${signal.id}`
 
   // C3: fold in ignore telemetry so the feed demotes signals the trader keeps dismissing.
   const ignores = await getIgnoreCounts(prisma, userId)

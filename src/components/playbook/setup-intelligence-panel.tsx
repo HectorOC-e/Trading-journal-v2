@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { Button } from "@/components/ui/button"
 import { Activity, GitCompareArrows, TrendingUp } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
@@ -28,7 +28,8 @@ function driftValue(dim: NonNullable<Drift["topDrift"]>): string {
  *  significance), definition-vs-execution drift, the edge evolution curve, and
  *  the before/after of the last redefinition. Read-only; deterministic (P2). */
 export function SetupIntelligencePanel({ setupId }: { setupId: string }) {
-  const [scope, setScope] = useState<"REAL" | "DEMO" | "BACKTEST">("REAL")
+  const scope=useOperationalMode(state=>state.mode)
+  const setScope=useOperationalMode(state=>state.setMode)
   const { data, isLoading, isError, refetch } = trpc.playbook.setup.useQuery({ setupId, scope }, { staleTime: 30_000 })
   const selector = (
     <label className="flex items-center justify-between gap-2 mb-3 text-[11px] text-[var(--ink-3)]">

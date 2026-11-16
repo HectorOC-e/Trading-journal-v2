@@ -3,6 +3,7 @@
 // Epic 3 — Rules hub: Automatizaciones (WHEN/IF/THEN engine) · Reglas del sistema
 // (risk limits, editable) · Recordatorios (legacy discipline reminders, kept).
 
+import { MODE_LABELS } from "@/domains/trading/operational-mode"
 import { useState } from "react"
 import { Plus, Pencil, Trash2, Zap, ShieldAlert, ListChecks, RotateCcw } from "lucide-react"
 import { TopBar } from "@/components/layout/top-bar"
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -21,6 +23,7 @@ type ExecRuleRow = {
   id: string; name: string; description: string; enabled: boolean; priority: number
   trigger: Trigger; conditions: ConditionNode; actions: RuleAction[]; category: string
   mode: "enforce" | "warn"
+  needsModeAssignment: boolean
   sourceCommitmentId: string | null; sourceInsightId: string | null
 }
 type Template = { id: string; name: string; description: string; category: string }
@@ -52,8 +55,9 @@ export default function ReglasPage() {
 
 /* ── Automatizaciones ─────────────────────────────────────────────────────── */
 function AutomationsTab() {
+  const mode = useOperationalMode(state => state.mode)
   const utils = trpc.useUtils()
-  const { data } = trpc.rules.list.useQuery(undefined, { staleTime: 30_000 })
+  const { data } = trpc.rules.list.useQuery({ mode }, { staleTime: 30_000 })
   const { data: templates = [] } = trpc.rules.templates.useQuery(undefined, { staleTime: 300_000 })
   // Ejecutables = filas con trigger (las descriptivas viven en el tab Recordatorios)
   const rows = ((data ?? []) as unknown as (ExecRuleRow & { trigger: Trigger | null })[])
@@ -65,6 +69,7 @@ function AutomationsTab() {
   const update = trpc.rules.updateExecutable.useMutation({ onSuccess: () => { toast.success("Regla actualizada"); inv() }, onError: onErr })
   const fromTpl = trpc.rules.createFromTemplate.useMutation({ onSuccess: () => { toast.success("Creada desde plantilla"); inv() }, onError: onErr })
   const toggle = trpc.rules.toggle.useMutation({ onSuccess: inv, onError: onErr })
+  const assign = trpc.rules.assignMode.useMutation({ onSuccess: inv, onError: (err) => toast.error(formatErrorForUser(err)) })
   const del = trpc.rules.delete.useMutation({ onSuccess: () => { toast.success("Eliminada"); inv() }, onError: onErr })
 
   const [gallery, setGallery] = useState(false)
@@ -74,7 +79,7 @@ function AutomationsTab() {
   const openBlank = () => { setGallery(false); setBuilder(null); setBuilderOpen(true) }
   const openEdit = (r: ExecRuleRow) => { setBuilder({ id: r.id, name: r.name, trigger: r.trigger, conditions: r.conditions, actions: r.actions, priority: r.priority }); setBuilderOpen(true) }
   const onSave = (d: RuleDraft) => {
-    const payload = { name: d.name, trigger: d.trigger, conditions: d.conditions, actions: d.actions, priority: d.priority ?? 0, description: "", category: "", enabled: true }
+    const payload = { operationalMode: mode, name: d.name, trigger: d.trigger, conditions: d.conditions, actions: d.actions, priority: d.priority ?? 0, description: "", category: "", enabled: true }
     if (d.id) update.mutate({ id: d.id, ...payload }); else create.mutate(payload)
     setBuilderOpen(false)
   }
@@ -96,6 +101,7 @@ function AutomationsTab() {
                 <div className="flex items-center gap-2">
                   <span className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</span>
                   <RuleModeBadge mode={r.mode} />
+                  {r.needsModeAssignment && <span className="text-[10px] text-[var(--ink-3)]">Necesita revisar ámbito · inactiva</span>}
                   {(r.sourceCommitmentId || r.sourceInsightId) && (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--commit-soft)", color: "var(--commit)" }}>
                       {r.sourceCommitmentId ? "desde compromiso" : "desde insight"}
@@ -108,7 +114,8 @@ function AutomationsTab() {
                 </div>
               </div>
               <span className="shrink-0 rounded-[5px] border border-[var(--line)] px-1.5 text-[9px] text-[var(--ink-3)]">P{3 - Math.min(3, r.priority)}</span>
-              <Toggle on={r.enabled} onChange={(v) => toggle.mutate({ id: r.id, enabled: v })} />
+              {r.needsModeAssignment && <Button size="sm" onClick={() => assign.mutate({ id: r.id, mode })} disabled={assign.isPending}>Usar en {MODE_LABELS[mode]}</Button>}
+            <Toggle on={r.enabled} onChange={(v) => toggle.mutate({ id: r.id, enabled: v })} />
               <button onClick={() => openEdit(r)} aria-label="Editar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--chip)] hover:text-[var(--ink)]"><Pencil size={13} /></button>
               <button onClick={() => del.mutate(r.id)} aria-label="Eliminar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--loss-soft)] hover:text-[var(--loss)]"><Trash2 size={13} /></button>
             </div>
@@ -126,7 +133,7 @@ function AutomationsTab() {
               <div className="mt-1 text-[11px] text-[var(--ink-3)]">Empieza desde cero</div>
             </button>
             {(templates as Template[]).map((t) => (
-              <button key={t.id} onClick={() => { fromTpl.mutate({ templateId: t.id }); setGallery(false) }} className="rounded-[var(--radius-sm)] border border-[var(--line)] p-3 text-left hover:border-[var(--accent)]">
+              <button key={t.id} onClick={() => { fromTpl.mutate({ operationalMode: mode, templateId: t.id }); setGallery(false) }} className="rounded-[var(--radius-sm)] border border-[var(--line)] p-3 text-left hover:border-[var(--accent)]">
                 <div className="text-[12.5px] font-semibold text-[var(--ink)]">{t.name}</div>
                 <div className="mt-1 text-[11px] text-[var(--ink-3)]">{t.description}</div>
               </button>
@@ -188,13 +195,15 @@ function SystemRulesTab() {
 
 /* ── Recordatorios (disciplina, legacy) ───────────────────────────────────── */
 function RemindersTab() {
+  const mode = useOperationalMode(state => state.mode)
   const utils = trpc.useUtils()
-  const { data } = trpc.rules.list.useQuery(undefined, { staleTime: 60_000 })
-  type R = { id: string; name: string; description: string; severity: string; enabled: boolean; trigger: string | null; sourceCommitmentId: string | null; sourceInsightId: string | null }
+  const { data } = trpc.rules.list.useQuery({ mode }, { staleTime: 60_000 })
+  type R = { needsModeAssignment: boolean; id: string; name: string; description: string; severity: string; enabled: boolean; trigger: string | null; sourceCommitmentId: string | null; sourceInsightId: string | null }
   // Solo descriptivas: las ejecutables (trigger != null) viven en el tab Automatizaciones.
   const rules = ((data ?? []) as R[]).filter((r) => r.trigger == null)
   const inv = () => utils.rules.list.invalidate()
   const toggle = trpc.rules.toggle.useMutation({ onSuccess: inv })
+  const assign = trpc.rules.assignMode.useMutation({ onSuccess: inv, onError: (err) => toast.error(formatErrorForUser(err)) })
   const del = trpc.rules.delete.useMutation({ onSuccess: () => { toast.success("Eliminado"); inv() } })
 
   return (
@@ -207,6 +216,7 @@ function RemindersTab() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-semibold text-[var(--ink)]">{r.name}</span>
+                {r.needsModeAssignment && <span className="text-[10px] text-[var(--ink-3)]">Necesita revisar ámbito · inactiva</span>}
                 {(r.sourceCommitmentId || r.sourceInsightId) && (
                   <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold" style={{ background: "var(--commit-soft)", color: "var(--commit)" }}>
                     {r.sourceCommitmentId ? "desde compromiso" : "desde insight"}
@@ -215,6 +225,7 @@ function RemindersTab() {
               </div>
               {r.description && <div className="mt-0.5 text-[11px] text-[var(--ink-3)]">{r.description}</div>}
             </div>
+            {r.needsModeAssignment && <Button size="sm" onClick={() => assign.mutate({ id: r.id, mode })} disabled={assign.isPending}>Usar en {MODE_LABELS[mode]}</Button>}
             <Toggle on={r.enabled} onChange={(v) => toggle.mutate({ id: r.id, enabled: v })} />
             <button onClick={() => del.mutate(r.id)} aria-label="Eliminar" className="flex h-7 w-7 items-center justify-center rounded text-[var(--ink-3)] hover:bg-[var(--loss-soft)] hover:text-[var(--loss)]"><Trash2 size={13} /></button>
           </div>

@@ -7,6 +7,8 @@
 // intervention.active right after — no push, no response-shape change.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { requireDerivedMode } from "@/domains/behavior/operational-scope"
+import { classifyAccountType, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
 import { isWin } from "@/lib/formulas"
 import { detectInterventions, decideIntervention, type DayState } from "@/domains/cognitive/intervention/engine"
@@ -75,11 +77,14 @@ export async function runIntervention(
   accountId: string,
   dateStr: string,
 ): Promise<string | null> {
+  const account = await prisma.account.findFirst({ where: { id: accountId, userId }, select: { type: true } })
+  const mode = classifyAccountType(account?.type)
+  if (!mode || mode === "INTERNAL") return null
   const [state, activeCount, recent, shownToday] = await Promise.all([
     buildInterventionState(prisma, userId, accountId, dateStr),
-    prisma.intervention.count({ where: { userId, status: "active" } }),
-    prisma.intervention.findFirst({ where: { userId }, orderBy: { shownAt: "desc" }, select: { shownAt: true } }),
-    prisma.intervention.count({ where: { userId, shownAt: { gte: startOfDay() } } }),
+    prisma.intervention.count({ where: { userId, operationalMode: mode, status: "active" } }),
+    prisma.intervention.findFirst({ where: { userId, operationalMode: mode }, orderBy: { shownAt: "desc" }, select: { shownAt: true } }),
+    prisma.intervention.count({ where: { userId, operationalMode: mode, shownAt: { gte: startOfDay() } } }),
   ])
 
   const candidates = detectInterventions(state)
@@ -90,6 +95,7 @@ export async function runIntervention(
   const created = await prisma.intervention.create({
     data: {
       userId,
+      operationalMode: mode,
       accountId,
       trigger: chosen.trigger,
       severity: chosen.severity,
@@ -129,8 +135,10 @@ export async function respondIntervention(
   userId: string,
   interventionId: string,
   response: "accepted" | "dismissed",
+  expectedMode?: OperationalMode,
 ): Promise<{ ruleCreated: boolean }> {
   const iv = await prisma.intervention.findFirstOrThrow({ where: { id: interventionId, userId } })
+  const mode = requireDerivedMode(iv.operationalMode, expectedMode)
   const outcome = response === "accepted" ? "protected" : "overridden"
 
   let ruleCreated = false
@@ -146,6 +154,7 @@ export async function respondIntervention(
         await tx.rule.create({
           data: {
             userId,
+            operationalMode: mode,
             name: r.name,
             description: "Creada desde una intervención del coach.",
             severity: "CRÍTICA",
@@ -165,8 +174,9 @@ export async function respondIntervention(
 
   // E13 (v3.2): record the moment as an episode the coach can recall later.
   void recordEpisode(prisma, userId, {
+    operationalMode: mode,
     eventType: "intervention",
-    content: `Intervención (${iv.trigger}): ${response === "accepted" ? "aceptaste la protección" : "seguiste asumiendo el riesgo"}. ${iv.message}`,
+    content: `[${mode}] Intervención (${iv.trigger}): ${response === "accepted" ? "aceptaste la protección" : "seguiste asumiendo el riesgo"}. ${iv.message}`,
     sourceId: iv.id,
   })
 

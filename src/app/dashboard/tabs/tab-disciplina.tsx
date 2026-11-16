@@ -1,5 +1,6 @@
 "use client"
 
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import {
@@ -7,7 +8,6 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { Shield, CheckCircle2, Award, Target, Brain } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { KpiCard } from "@/components/ui/kpi-card"
 import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
@@ -31,22 +31,23 @@ export function TabDisciplina({ kpis, discipline }: {
   kpis:       DashboardStats["kpis"]
   discipline: DashboardStats["discipline"]
 }) {
+  const mode=useOperationalMode(state=>state.mode)
   const router   = useRouter()
   const today    = new Date()
   const todayISO = today.toISOString().slice(0, 10)
 
   // ── Live rule violation stats (T-V-001) ────────────────────────────────────
-  const { data: violationStats } = trpc.trades.ruleViolationStats.useQuery(undefined, { staleTime: 60_000 })
+  const { data: violationStats } = trpc.trades.ruleViolationStats.useQuery({mode}, { staleTime: 60_000 })
 
   // ── User rules (QA-019) ───────────────────────────────────────────────────
-  const { data: userRules = [] } = trpc.rules.list.useQuery(undefined, { staleTime: 120_000 })
-  const enabledRules = userRules.filter(r => r.enabled)
+  const { data: userRules = [] } = trpc.rules.list.useQuery({ mode }, { staleTime: 120_000 })
+  const enabledRules = userRules.filter(r => r.enabled && !r.needsModeAssignment)
 
   // ── Mood correlation (T-V-004) ────────────────────────────────────────────
-  const { data: moodCorr } = trpc.tradingSessions.moodCorrelation.useQuery(undefined, { staleTime: 60_000 })
+  const { data: moodCorr } = trpc.tradingSessions.moodCorrelation.useQuery({ mode }, { staleTime: 60_000 })
 
   // ── Behavioral pattern insights (T-VI-002) ───────────────────────────────
-  const { data: patterns, isLoading: patternsLoading } = trpc.trades.patternInsights.useQuery(undefined, { staleTime: 120_000 })
+  const { data: patterns, isLoading: patternsLoading } = trpc.trades.patternInsights.useQuery({mode}, { staleTime: 120_000 })
 
   const heatmap = useMemo((): HeatVal[][] => {
     const dateMap: Record<string, HeatVal> = {}

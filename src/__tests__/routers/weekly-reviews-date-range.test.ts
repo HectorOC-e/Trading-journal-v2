@@ -34,6 +34,7 @@ const MOCK_SCORE = {
 
 function makeMockPrisma() {
   return {
+    user:         { findUnique: vi.fn().mockResolvedValue({ baseCurrency: "USD", fxRates: null }) },
     trade:        { findMany: vi.fn().mockResolvedValue([]) },
     weeklyReview: {
       findMany:   vi.fn().mockResolvedValue([]),
@@ -71,6 +72,8 @@ describe("weeklyReviews.computedDisciplineScore — B-001 date-range fix", () =>
         from: new Date("2026-05-26"),
         to:   new Date("2026-06-02"), // +1 day
       },
+      undefined,
+      "REAL",
     )
   })
 
@@ -134,8 +137,8 @@ describe("weeklyReviews.prefill — date-range consistency", () => {
 
   it("prefill returns tradeCount and disciplineScore from service results", async () => {
     mockPrisma.trade.findMany.mockResolvedValue([
-      { pnl: "100", rMultiple: "2", setupId: null, tags: [] },
-      { pnl: "-50", rMultiple: "-1", setupId: null, tags: [] },
+      { pnl: "100", rMultiple: "2", setupId: null, tags: [], account: { currency: "USD" } },
+      { pnl: "-50", rMultiple: "-1", setupId: null, tags: [], account: { currency: "USD" } },
     ])
 
     const result = await caller.weeklyReviews.prefill({

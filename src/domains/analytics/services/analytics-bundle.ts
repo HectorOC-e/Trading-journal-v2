@@ -117,7 +117,7 @@ export async function buildAnalyticsBundle(
       select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true, baseCurrency: true, fxRates: true },
     }),
     prisma.tradingSessionLog.findMany({
-      where: { userId, ...(dateFilter ? { date: dateFilter } : {}) },
+      where: { userId, operationalMode: mode, ...(dateFilter ? { date: dateFilter } : {}) },
       select: { preMood: true, energyLevel: true },
     }),
   ])
@@ -258,7 +258,7 @@ export async function buildAnalyticsBundle(
   const weekStartStr = weekStart.toISOString().slice(0, 10)
   const weekTrades = finTrades.filter((t) => t.date >= weekStartStr)
   const goals = {
-    weeklyPnlGoal: userRow?.weeklyPnlGoal != null ? Number(userRow.weeklyPnlGoal) : null,
+    weeklyPnlGoal: mode === "REAL" && userRow?.weeklyPnlGoal != null ? Number(userRow.weeklyPnlGoal) : null,
     weeklyTradesGoal: userRow?.weeklyTradesGoal ?? null,
     disciplineGoal: userRow?.disciplineGoal ?? null,
     weeklyGoalMinutes: userRow?.weeklyGoalMinutes ?? null,

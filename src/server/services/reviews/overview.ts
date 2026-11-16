@@ -1,3 +1,5 @@
+import type { OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 // Data for the Reviews "Trayectoria" panel (the unified index top card): a per-week
 // grade/score series ("beads" + sparkline), three from→to trend stats, and up to two
 // recurring-pattern cards (reusing the Analytics insights engine). The window is the
@@ -59,7 +61,7 @@ export interface ReviewsOverview {
   summary: OverviewSummary
 }
 
-export interface OverviewFilter { year?: number; month?: number }
+export interface OverviewFilter { year?: number; month?: number; mode?:OperationalMode }
 
 /**
  * Period KPIs for the rail's "Resumen del periodo" card: traded-week count, the
@@ -113,7 +115,7 @@ async function resolveWindow(prisma: PrismaClient, userId: string, filter?: Over
   let from = firstReview?.weekStart ?? null
   if (!from) {
     const firstTrade = await prisma.trade.findFirst({
-      where: { userId, status: "CLOSED" }, orderBy: { date: "asc" }, select: { date: true },
+      where: { ...await scopedTradeWhere(prisma,userId,{mode:filter?.mode ?? "REAL",includeArchived:true}), status: "CLOSED" }, orderBy: { date: "asc" }, select: { date: true },
     })
     from = firstTrade?.date ?? new Date(now.getFullYear(), 0, 1)
   }
@@ -129,8 +131,10 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
     select: { weekStart: true, disciplineScore: true },
   })
   const weekStarts = rows.map(r => r.weekStart.toISOString().slice(0, 10))
-  const discByWeek = new Map(rows.map(r => [r.weekStart.toISOString().slice(0, 10), r.disciplineScore]))
-  const cardStats = await loadWeeklyCardStats(prisma, userId, weekStarts)
+  const mode=filter?.mode ?? "REAL"
+  const snapshots=await prisma.reviewModeSnapshot.findMany({where:{userId,kind:"WEEKLY",mode,periodKey:{in:weekStarts},evidenceHash:{not:""}},select:{periodKey:true,metrics:true}})
+  const discByWeek=new Map(snapshots.map(row=>[row.periodKey,(row.metrics as {disciplineScore?:number}).disciplineScore ?? 0]))
+  const cardStats = await loadWeeklyCardStats(prisma, userId, weekStarts,mode)
 
   interface EnrichedWeek extends OverviewBead { ym: string; net: number; winRate: number }
   const weeks: EnrichedWeek[] = []
@@ -151,7 +155,7 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
     })
   }
 
-  const patterns = await loadPatterns(prisma, userId, { from, to })
+  const patterns = await loadPatterns(prisma, userId, { from, to },mode)
 
   if (weeks.length === 0) {
     return {
@@ -213,8 +217,8 @@ export async function loadReviewsOverview(prisma: PrismaClient, userId: string, 
   }
 }
 
-async function loadPatterns(prisma: PrismaClient, userId: string, window: { from: Date; to: Date }): Promise<OverviewPattern[]> {
-  const insights = await loadInsightsForWindow(prisma, userId, window)
+async function loadPatterns(prisma: PrismaClient, userId: string, window: { from: Date; to: Date },mode:OperationalMode="REAL"): Promise<OverviewPattern[]> {
+  const insights = await loadInsightsForWindow(prisma, userId, window,mode)
   return [...insights]
     .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity])
     .slice(0, 2)

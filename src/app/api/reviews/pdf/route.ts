@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger"
 import { createClient } from "@/lib/supabase/server"
 import { renderReviewPdf } from "@/server/services/reviews/render-pdf"
 import type { ReviewPeriod } from "@/server/services/email/send-review"
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 
 export const runtime = "nodejs"
 export const maxDuration = 120
@@ -20,15 +21,18 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const sp = req.nextUrl.searchParams
   const type = sp.get("type")
   const periodStr = sp.get("period") ?? ""
+  const parsedMode = operationalModeSchema.safeParse(sp.get("mode") ?? "REAL")
+  if (!parsedMode.success) return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 })
+  const mode = parsedMode.data
 
   let period: ReviewPeriod
   if (type === "weekly") {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(periodStr)) return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 })
-    period = { kind: "weekly", weekStart: periodStr }
+    period = { kind: "weekly", weekStart: periodStr, mode }
   } else if (type === "monthly") {
     const m = /^(\d{4})-(\d{2})$/.exec(periodStr)
     if (!m) return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 })
-    period = { kind: "monthly", year: Number(m[1]), month: Number(m[2]) }
+    period = { kind: "monthly", year: Number(m[1]), month: Number(m[2]), mode }
   } else {
     return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 })
   }
@@ -38,7 +42,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="review-${type}-${periodStr}.pdf"`,
+        "Content-Disposition": `attachment; filename="review-${type}-${periodStr}-${mode}.pdf"`,
         "Cache-Control": "no-store",
       },
     })

@@ -2,17 +2,21 @@ import { TRPCError } from '@trpc/server'
 import type { Prisma, PrismaClient } from '@/lib/generated/prisma/client'
 import { parseFxRates } from '@/lib/fx'
 import { loadAccountCashAdjustments, withdrawalAccountAmount } from './cash-adjustments'
+import { classifyAccountType } from '@/domains/trading/operational-mode'
 
 type Status = 'SOLICITADO' | 'EN_PROCESO' | 'PAGADO' | 'RECHAZADO'
 type CreateInput = { requestId?: string; accountId: string; amount: number; currency: string; date: string; note: string; reference: string }
 async function lockAccount(tx: Prisma.TransactionClient, userId: string, accountId: string) {
   await tx.$queryRaw`SELECT id FROM public.accounts WHERE id = ${accountId}::uuid AND user_id = ${userId}::uuid FOR UPDATE`
-  return tx.account.findUniqueOrThrow({ where: { id: accountId, userId }, select: { id: true, initialBalance: true, currency: true } })
+  return tx.account.findUniqueOrThrow({ where: { id: accountId, userId }, select: { id: true, type: true, initialBalance: true, currency: true } })
+}
+function assertRealAccount(type: string) {
+  if (classifyAccountType(type) !== 'REAL') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Los retiros solo están disponibles para cuentas Real.' })
 }
 async function availableCash(tx: Prisma.TransactionClient, userId: string, account: { id: string; initialBalance: unknown; currency: string }) {
   const [user, trades] = await Promise.all([
     tx.user.findUniqueOrThrow({ where: { id: userId }, select: { fxRates: true } }),
-    tx.trade.findMany({ where: { userId, accountId: account.id, status: { in: ['OPEN', 'CLOSED'] }, pnl: { not: null } }, select: { pnl: true } }),
+    tx.trade.findMany({ where: { userId, accountId: account.id, operationalMode: 'REAL', status: { in: ['OPEN', 'CLOSED'] }, pnl: { not: null } }, select: { pnl: true } }),
   ])
   const cash = (await loadAccountCashAdjustments(tx, userId, [account], parseFxRates(user.fxRates))).get(account.id)!
   return Number(account.initialBalance) + trades.reduce((sum, t) => sum + Number(t.pnl ?? 0), 0) + cash.correction - cash.paid - cash.reserved
@@ -23,6 +27,7 @@ function assertAvailable(amount: number, available: number, currency: string) {
 export async function createWithdrawal(db: PrismaClient, userId: string, input: CreateInput) {
   return db.$transaction(async tx => {
     const account = await lockAccount(tx, userId, input.accountId)
+    assertRealAccount(account.type)
     if (input.currency !== account.currency.trim().toUpperCase()) throw new TRPCError({ code: 'BAD_REQUEST', message: 'La moneda del retiro debe coincidir con la moneda de la cuenta.' })
     if (input.requestId) {
       const existing = await tx.withdrawal.findUnique({ where: { id: input.requestId, userId } })
@@ -43,6 +48,7 @@ export async function changeWithdrawalStatus(db: PrismaClient, userId: string, i
   return db.$transaction(async tx => {
     const found = await tx.withdrawal.findUniqueOrThrow({ where: { id: input.id, userId }, select: { accountId: true } })
     const account = await lockAccount(tx, userId, found.accountId)
+    assertRealAccount(account.type)
     const current = await tx.withdrawal.findUniqueOrThrow({ where: { id: input.id, userId } })
     if (current.status === 'RECHAZADO' && input.status !== 'RECHAZADO') {
       const rateUser = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { fxRates: true } })
@@ -58,6 +64,7 @@ export async function changeWithdrawalStatus(db: PrismaClient, userId: string, i
 export async function deleteWithdrawal(db: PrismaClient, userId: string, id: string) {
   return db.$transaction(async tx => {
     const found = await tx.withdrawal.findUniqueOrThrow({ where: { id, userId }, select: { accountId: true } })
+    // Owned legacy practice records remain removable without approving new cash movements.
     await lockAccount(tx, userId, found.accountId)
     return tx.withdrawal.delete({ where: { id, userId } })
   })

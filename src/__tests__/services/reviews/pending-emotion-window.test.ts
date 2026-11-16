@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { loadWeeklyReport } from "@/server/services/reviews/report-data"
 
+vi.mock("@/domains/analytics/services/discipline-service", () => ({
+  computeDisciplineScore: vi.fn().mockResolvedValue({ score: null }),
+}))
+
 /**
  * El plan declaraba que "la semana de la review ES la ventana, así que por
  * construcción todo lo que aparece ahí es rellenable". Es FALSO: una review se
@@ -18,6 +22,10 @@ function mockPrisma(pendingRows: ReturnType<typeof ROW>[]) {
     .mockResolvedValueOnce([])   // weekRows
     .mockResolvedValueOnce([])   // prevRows
     .mockImplementation(pendingFindMany)
+  const snapshot = {
+    id: "snapshot-1", userId: "u1", kind: "WEEKLY", periodKey: "2026-07-20", mode: "REAL",
+    revision: 0, evidenceHash: null, analysisEvidenceHash: null, analysis: null, analysisAt: null,
+  }
   return {
     prisma: {
       user:         { findUnique: vi.fn().mockResolvedValue({ baseCurrency: "USD", fxRates: null }) },
@@ -25,6 +33,11 @@ function mockPrisma(pendingRows: ReturnType<typeof ROW>[]) {
       setup:        { findMany: vi.fn().mockResolvedValue([]) },
       trade:        { findMany },
       weeklyReview: { findFirst: vi.fn().mockResolvedValue(null) },
+      reviewModeSnapshot: {
+        upsert: vi.fn().mockResolvedValue(snapshot),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue(snapshot),
+      },
     } as never,
   }
 }

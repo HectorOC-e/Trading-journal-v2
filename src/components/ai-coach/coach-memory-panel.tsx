@@ -12,12 +12,13 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import { cn } from "@/lib/utils"
 import { CoachIdentityEditor } from "@/components/ai-coach/coach-identity-editor"
 import { CoachMemoryLayers } from "@/components/ai-coach/coach-memory-layers"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
 
 const KIND_LABEL: Record<string, string> = { fact: "Hecho", preference: "Preferencia", identity: "Identidad" }
 
-export function CoachMemoryPanel() {
+export function CoachMemoryPanel({ mode = "REAL" }: { mode?: OperationalMode }) {
   const utils = trpc.useUtils()
-  const { data: memory = [], isLoading } = trpc.coach.memory.useQuery(undefined, { staleTime: 15_000 })
+  const { data: memory = [], isLoading } = trpc.coach.memory.useQuery({ mode }, { staleTime: 15_000 })
   const [draft, setDraft] = useState("")
   // Edición inline: qué fila se está editando y su borrador. `null` = ninguna.
   const [editing, setEditing] = useState<{ id: string; content: string } | null>(null)
@@ -35,18 +36,18 @@ export function CoachMemoryPanel() {
   const saveEdit = () => {
     const content = editing?.content.trim()
     if (!editing || !content) return
-    edit.mutate({ id: editing.id, content })
+    edit.mutate({ id: editing.id, content, mode })
   }
 
   return (
     <div className="flex flex-col gap-3 px-4 py-3 overflow-y-auto">
       <div className="flex items-center gap-2">
         <BrainCircuit size={14} className="text-[var(--accent)]" />
-        <p className="text-sm font-bold text-[var(--ink)]">Memoria del coach</p>
+        <p className="text-sm font-bold text-[var(--ink)]">Memoria del coach · {MODE_LABELS[mode]}</p>
       </div>
       <p className="text-[11px] text-[var(--ink-3)] leading-snug">
         Lo que el coach recuerda de ti. Solo lo <span className="text-[var(--win)]">confirmado</span> se usa en las
-        respuestas. Tú decides: confirma, edita o borra.
+        respuestas de su modalidad. Los hechos manuales históricos siguen visibles sin atribuirlos a una modalidad. Tú decides: confirma, edita o borra.
       </p>
 
       {/* Identity layer (E15) */}
@@ -57,14 +58,14 @@ export function CoachMemoryPanel() {
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) add.mutate({ kind: "fact", content: draft.trim() }) }}
+          onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) add.mutate({ kind: "fact", content: draft.trim(), mode }) }}
           placeholder="Añadir un hecho que el coach deba recordar…"
           maxLength={500}
           className="flex-1 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] px-3 py-2 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--accent)]"
         />
         <button
           type="button"
-          onClick={() => draft.trim() && add.mutate({ kind: "fact", content: draft.trim() })}
+          onClick={() => draft.trim() && add.mutate({ kind: "fact", content: draft.trim(), mode })}
           disabled={add.isPending || !draft.trim()}
           className="shrink-0 inline-flex items-center gap-1 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold px-2.5 py-2 hover:opacity-90 disabled:opacity-40"
         >
@@ -85,7 +86,7 @@ export function CoachMemoryPanel() {
                   <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--ink-3)]">{KIND_LABEL[m.kind] ?? m.kind}</span>
                   <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded-full",
                     m.status === "confirmed" ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--be-soft)] text-[var(--be)]")}>
-                    {m.status === "confirmed" ? "confirmado" : "candidato"}
+                    {m.operationalMode == null && m.kind === "fact" ? "histórico sin modalidad" : m.status === "confirmed" ? "confirmado" : "candidato"}
                   </span>
                 </span>
                 {editing?.id === m.id ? (
@@ -115,14 +116,14 @@ export function CoachMemoryPanel() {
                 ) : (
                   <>
                     {m.status !== "confirmed" && (
-                      <button type="button" title="Confirmar" onClick={() => confirm.mutate({ id: m.id })} className="text-[var(--win)] hover:opacity-80 p-1">
+                      <button type="button" title="Confirmar" onClick={() => confirm.mutate({ id: m.id, mode })} className="text-[var(--win)] hover:opacity-80 p-1">
                         <Check size={13} />
                       </button>
                     )}
                     <button type="button" title="Editar" onClick={() => setEditing({ id: m.id, content: m.content })} className="text-[var(--ink-3)] hover:text-[var(--accent)] p-1">
                       <Pencil size={13} />
                     </button>
-                    <button type="button" title="Borrar" onClick={() => remove.mutate({ id: m.id })} className="text-[var(--ink-3)] hover:text-[var(--loss)] p-1">
+                    <button type="button" title="Borrar" onClick={() => remove.mutate({ id: m.id, mode })} className="text-[var(--ink-3)] hover:text-[var(--loss)] p-1">
                       <Trash2 size={13} />
                     </button>
                   </>
@@ -133,8 +134,9 @@ export function CoachMemoryPanel() {
         </div>
       )}
 
-      {/* Hierarchical memory layers (E13/E14) — read-only, visible */}
-      <CoachMemoryLayers />
+      {/* Only episodes/patterns with persisted provenance are shown here. */}
+      <CoachMemoryLayers mode={mode} />
+      <p className="text-[11px] text-[var(--ink-3)]">Los recuerdos operativos anteriores sin modalidad se conservan como históricos y no se usan en este análisis.</p>
     </div>
   )
 }

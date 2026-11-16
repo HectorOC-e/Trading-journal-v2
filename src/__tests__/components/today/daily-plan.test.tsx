@@ -20,7 +20,7 @@ describe("daily plan card", () => {
     query.data = { today: "2026-11-07", timezone: "UTC", commitments: [], accounts: [], resources: [], sessions: [], practices: { sessions: 0, minutes: 0, href: "/aprendizaje?tab=practicas&register=1" } }
     render(<DailyPlan />)
     expect(screen.getByText("Sin compromisos vigentes.")).toBeInTheDocument()
-    expect(screen.getByText("Sin cuentas reales activas.")).toBeInTheDocument()
+    expect(screen.getByText("Sin cuentas activas en esta modalidad.")).toBeInTheDocument()
     expect(screen.getByText("Sin repasos pendientes.")).toBeInTheDocument()
     expect(screen.getByText("Sin sesiones programadas.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Registrar práctica" })).toHaveAttribute("href", "/aprendizaje?tab=practicas&register=1")

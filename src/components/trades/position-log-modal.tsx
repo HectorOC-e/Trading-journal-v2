@@ -8,6 +8,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { marketTimestamp } from "@/domains/trading/historical-capture"
 
 type EventType = "OPEN" | "STOP_MOVE" | "TRAIL_STOP" | "TAKE_PROFIT_MOVE" | "PARTIAL_CLOSE" | "SCALE_IN" | "NOTE"
 type AddableType = Exclude<EventType, "OPEN">
@@ -70,6 +71,8 @@ interface PositionLogModalProps {
     size: number
     date: string
     openTime: string
+    captureContext?: string | null
+    marketTimeZone?: string | null
   }
   account?: AccountRules | null
   events?: {
@@ -80,7 +83,7 @@ interface PositionLogModalProps {
     notes: string
     timestamp: string
   }[]
-  onAddEvent?: (data: { type: AddableType; price?: number; contracts?: number; notes: string }) => void
+  onAddEvent?: (data: { type: AddableType; price?: number; contracts?: number; notes: string; timestamp?: string }) => void
   adding?: boolean
 }
 
@@ -99,6 +102,9 @@ export function PositionLogModal({
   const [price,     setPrice]     = useState("")
   const [contracts, setContracts] = useState("")
   const [notes,     setNotes]     = useState("")
+  const [eventTime, setEventTime] = useState("")
+  const [timeError, setTimeError] = useState("")
+  const historical = trade.captureContext === "HISTORICAL"
 
   const isLong   = trade.direction === "LONG"
   const stopDist = Math.abs(trade.entry - trade.stop)
@@ -189,15 +195,23 @@ export function PositionLogModal({
   const handleAdd = () => {
     const p = parseFloat(price)
     const c = parseFloat(contracts)
+    let timestamp: string | undefined
+    if (historical && type !== "NOTE") {
+      try { timestamp = marketTimestamp(eventTime.slice(0,10), eventTime.slice(11), trade.marketTimeZone ?? "UTC").toISOString() }
+      catch { setTimeError("Indica la fecha y hora de mercado del parcial."); return }
+    }
     onAddEvent?.({
       type,
       price:     PRICE_TYPES.includes(type) && !isNaN(p) ? p : undefined,
       contracts: CONTRACTS_TYPES.includes(type) && !isNaN(c) ? c : undefined,
       notes,
+      timestamp,
     })
     setPrice("")
     setContracts("")
     setNotes("")
+    setEventTime("")
+    setTimeError("")
   }
 
   const openColor = isLong ? "bg-[var(--win-soft)] text-[var(--win)]" : "bg-[var(--loss-soft)] text-[var(--loss)]"
@@ -271,7 +285,7 @@ export function PositionLogModal({
           <p className="text-[10px] text-[var(--ink-3)] font-semibold uppercase tracking-wide">Agregar evento</p>
 
           <div className="flex gap-1 flex-wrap">
-            {ADDABLE_TYPES.map(t => (
+            {ADDABLE_TYPES.filter(t => !historical || t === "PARTIAL_CLOSE" || t === "NOTE").map(t => (
               <button
                 key={t}
                 onClick={() => setType(t)}
@@ -341,6 +355,7 @@ export function PositionLogModal({
             </div>
           )}
 
+          {historical && type !== "NOTE" && <label className="text-xs flex flex-col gap-1">Fecha y hora de mercado ({trade.marketTimeZone ?? "UTC"})<input type="datetime-local" value={eventTime} onChange={event => setEventTime(event.target.value)} />{timeError && <span role="alert">{timeError}</span>}</label>}
           <div className="flex flex-col gap-1">
             <label className="text-[10px] text-[var(--ink-3)] font-medium">Nota</label>
             <input
@@ -359,7 +374,7 @@ export function PositionLogModal({
               riskWarnings.length > 0 ? "bg-[var(--loss)]" : "bg-[var(--accent)]"
             )}
             onClick={handleAdd}
-            disabled={adding}
+            disabled={adding || (historical && type !== "NOTE" && !eventTime)}
           >
             {adding ? "Agregando…" : riskWarnings.length > 0 ? "Agregar igualmente" : "Agregar evento"}
           </Button>

@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { router, protectedProcedure, dashboardMutation } from "../init"
 import { createWithdrawal, changeWithdrawalStatus, deleteWithdrawal } from "@/server/services/accounts/withdrawal-service"
+import { accountTypesForMode } from "@/domains/trading/operational-mode"
 
 const WithdrawalStatus = z.enum(["SOLICITADO", "EN_PROCESO", "PAGADO", "RECHAZADO"])
 
@@ -12,6 +13,7 @@ export const withdrawalsRouter = router({
         where: {
           userId:    ctx.userId,
           accountId: input?.accountId,
+          account: { userId: ctx.userId, type: { in: accountTypesForMode("REAL") } },
         },
         include: { account: { select: { name: true, currency: true } } },
         orderBy: { date: "desc" },

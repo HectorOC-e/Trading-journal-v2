@@ -364,12 +364,12 @@ function Empty({ msg }: { msg: string }) {
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState<Period>("3M")
   const [section, setSection] = useState("performance")
-  const includePractice = usePracticeScope((s) => s.includePractice)
-  const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period, includePractice }, { staleTime: 30_000 })
-  const institutional = trpc.analytics.institutional.useQuery({ period, includePractice }, { staleTime: 30_000, enabled: section === "institucional" })
-  const improvement = trpc.improvement.overview.useQuery(undefined, { staleTime: 60_000, enabled: section === "mejora" })
-  const instruments = trpc.edges.instruments.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
-  const tagEdges = trpc.edges.tags.useQuery(undefined, { staleTime: 60_000, enabled: section === "edges" })
+  const mode = usePracticeScope((s) => s.mode)
+  const { data, isLoading, isError } = trpc.analytics.overview.useQuery({ period, mode }, { staleTime: 30_000 })
+  const institutional = trpc.analytics.institutional.useQuery({ period, mode }, { staleTime: 30_000, enabled: section === "institucional" })
+  const improvement = trpc.improvement.overview.useQuery({ mode }, { staleTime: 60_000, enabled: section === "mejora" })
+  const instruments = trpc.edges.instruments.useQuery({mode}, { staleTime: 60_000, enabled: section === "edges" })
+  const tagEdges = trpc.edges.tags.useQuery({mode}, { staleTime: 60_000, enabled: section === "edges" })
   const sym = currencySymbol(data?.baseCurrency ?? "USD")
 
   return (
@@ -385,7 +385,7 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="mb-5 flex flex-col gap-4">
-        <AiInsightsPanel period={period} includePractice={includePractice} />
+        <AiInsightsPanel period={period} mode={mode} />
         <BehaviorLoopPanel />
       </div>
 

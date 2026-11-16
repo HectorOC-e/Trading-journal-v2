@@ -2,6 +2,9 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
+import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { classifyAccountType } from "@/domains/trading/operational-mode"
 import { TopBar } from "@/components/layout/top-bar"
 import { KpiStrip } from "@/components/ui/kpi-strip"
 import { SkeletonTableRows } from "@/components/ui/skeleton"
@@ -9,7 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { TradesTable } from "@/components/trades/trades-table"
 import { TradeDetailPanel } from "@/components/trades/trade-detail-panel"
 import { parsePointValue } from "@/domains/trading/services/trade-service"
-import { RegisterTradeModal } from "@/components/trades/register-trade-modal"
+import { RegisterTradeModal, type RegisterTradeFormData } from "@/components/trades/register-trade-modal"
 import { EditTradeModal } from "@/components/trades/edit-trade-modal"
 import { PositionLogModal } from "@/components/trades/position-log-modal"
 import { LogSessionPopover } from "@/components/trades/log-session-popover"
@@ -18,12 +21,13 @@ import { DrawerPanel } from "@/components/ui/drawer-panel"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
-import type { RouterOutputs } from "@/server/trpc/root"
-import type { Trade, Account, Setup } from "@/types"
-
-type MarketItem = RouterOutputs["markets"]["list"][number]
+import type { Trade } from "@/types"
 
 export default function TradesPage() {
+  const mode = useOperationalMode(state=>state.mode)
+  const setMode = useOperationalMode(state=>state.setMode)
+  const { data: allAccounts = [], isLoading: accountsLoading } = trpc.accounts.list.useQuery({includeInactive:true})
+  const accounts = allAccounts.filter(account=>classifyAccountType(account.type)===mode)
   const [selectedId, setSelectedId]  = useState<string | null>(null)
   const [modalOpen, setModalOpen]    = useState(false)
   const [editingTrade, setEditingTrade]         = useState<string | null>(null)
@@ -42,6 +46,7 @@ export default function TradesPage() {
     if (id) { setSelectedId(id); setDeepLinkId(id) }
   }, [])
 
+
   function handleAccountFilter(id: string | null) {
     setFilterAccountId(id)
     setSelectedId(null)
@@ -59,13 +64,11 @@ export default function TradesPage() {
     hasNextPage,
     isFetchingNextPage,
   } = trpc.trades.list.useInfiniteQuery(
-    { limit: 50, ...(filterAccountId ? { accountId: filterAccountId } : {}) },
+    { mode, limit: 50, ...(filterAccountId && accounts.some(account=>account.id===filterAccountId) ? { accountId: filterAccountId } : {}) },
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   )
-  const trades = tradePages?.pages.flatMap(p => p.items) ?? []
+  const trades = useMemo(() => tradePages?.pages.flatMap(p => p.items) ?? [],[tradePages])
 
-  const { data: accounts = [], isLoading: accountsLoading } =
-    trpc.accounts.list.useQuery()
 
   const { data: setups = [], isLoading: setupsLoading } =
     trpc.setups.list.useQuery()
@@ -176,7 +179,11 @@ export default function TradesPage() {
   })
 
   const addEvent = trpc.trades.addEvent.useMutation({
-    onSuccess: () => utils.trades.list.invalidate(),
+    onSuccess: () => {
+      utils.trades.list.invalidate()
+      utils.accounts.list.invalidate()
+      utils.trades.dashboardStats.invalidate()
+    },
     onError:   (err) => toast.error(formatErrorForUser(err)),
   })
 
@@ -189,28 +196,34 @@ export default function TradesPage() {
     { enabled: !!deepLinkId && !deepLinkInList },
   )
 
-  const selected = useMemo(
-    () => trades.find(t => t.id === selectedId)
-      ?? (selectedId && selectedId === deepLinkId ? (deepLinkTrade as Trade | null) ?? null : null),
-    [trades, selectedId, deepLinkId, deepLinkTrade]
-  )
+  const previousMode=useRef(mode)
+  useEffect(()=>{
+    if(previousMode.current!==mode){
+      previousMode.current=mode
+      setFilterAccountId(null)
+      setSelectedId(deepLinkTrade?.operationalMode===mode?deepLinkId:null)
+    }
+  },[mode,deepLinkId,deepLinkTrade])
+  useEffect(()=>{
+    if(!deepLinkTrade||!deepLinkId)return
+    const linkedMode=classifyAccountType(deepLinkTrade.account?.type)
+    if(linkedMode && linkedMode!=="INTERNAL"){
+      setMode(linkedMode)
+      setSelectedId(deepLinkId)
+    }
+  },[deepLinkTrade,deepLinkId,setMode])
 
-  const editTarget = useMemo(
-    () => trades.find(t => t.id === editingTrade) ?? null,
-    [trades, editingTrade]
-  )
-
-  const posLogTarget = useMemo(
-    () => trades.find(t => t.id === positionLogTrade) ?? null,
-    [trades, positionLogTrade]
-  )
+  const selected = trades.find(t => t.id === selectedId)
+    ?? (selectedId && selectedId === deepLinkId && deepLinkTrade?.operationalMode === mode ? (deepLinkTrade as Trade | null) ?? null : null)
+  const editTarget = trades.find(t => t.id === editingTrade) ?? null
+  const posLogTarget = trades.find(t => t.id === positionLogTrade) ?? null
 
   const todayStr = new Date().toISOString().slice(0, 10)
   const tradeCountToday = trades.filter(t => t.date === todayStr).length
 
   // KPIs from server-side aggregation (all trades, not just loaded page)
   const { data: statsData } = trpc.trades.dashboardStats.useQuery(
-    { period: "ALL" },
+    { period: "ALL", mode },
     { staleTime: 60_000 },
   )
   const kpisAll = statsData?.kpis
@@ -264,19 +277,7 @@ export default function TradesPage() {
   ]
 
   // ── Handlers ──────────────────────────────────────────
-  const handleModalSubmit = (form: {
-    accountId: string; setupId: string; direction: "LONG" | "SHORT"
-    symbol: string; entry: string; stop: string; target: string; size: string
-    date: string; openTime: string; session: "London" | "New York" | "Asia" | "London Close"
-    tags: string[]; notes: string; planNotes: string; screenshots: string[]
-    checklistItems: Record<string, boolean>
-    emotionBefore: "calm" | "anxious" | "excited" | "fearful" | "overconfident" | null
-    confidenceRating: number | null
-    executionQuality: number | null
-    fomoFlag: boolean
-    revengeFlag: boolean
-    regime: "trend" | "range" | "volatile" | null
-  }) => {
+  const handleModalSubmit = (form: RegisterTradeFormData) => {
     // Capture checklist before mutation fires
     const setup = setups.find(s => s.id === form.setupId)
     if (setup) {
@@ -303,12 +304,18 @@ export default function TradesPage() {
       size,
       date:             form.date,
       openTime:         form.openTime,
+      captureContext:   form.captureContext ?? "LIVE",
+      marketTimeZone:   form.marketTimeZone,
+      status:           form.captureContext === "HISTORICAL" ? "CLOSED" : "OPEN",
+      ...(form.captureContext === "HISTORICAL" ? { closeDate: form.closeDate, closeTime: form.closeTime, pnl: Number(form.pnl) } : {}),
       session:          form.session,
       tags:             form.tags,
       notes:            form.notes,
       planNotes:        form.planNotes,
       screenshotUrls:   form.screenshots,
       emotionBefore:    form.emotionBefore ?? undefined,
+      emotionContext:   form.emotionContext ?? "MARKET",
+      emotionReferenceAt: form.emotionContext === "PRACTICE" && form.emotionReferenceAt ? form.emotionReferenceAt : undefined,
       confidenceRating: form.confidenceRating,
       executionQuality: form.executionQuality,
       fomoFlag:         form.fomoFlag,
@@ -318,16 +325,19 @@ export default function TradesPage() {
   }
 
   // Lock body scroll when panel is open on mobile
+  const hasSelected = selected != null
   useEffect(() => {
-    if (selected) {
+    if (hasSelected) {
       document.body.style.overflow = "hidden"
     } else {
       document.body.style.overflow = ""
     }
     return () => { document.body.style.overflow = "" }
-  }, [!!selected])
+  }, [hasSelected])
 
   const detailPanel = selected ? (
+    <>
+    <a className="block px-4 py-2 text-sm font-medium text-[var(--accent)] underline" href={`/aprendizaje?tab=practicas&register=1&mode=${mode}&tradeIds=${selected.id}`}>Usar en una práctica</a>
     <TradeDetailPanel
       trade={selected}
       account={selected.account ?? undefined}
@@ -341,6 +351,7 @@ export default function TradesPage() {
       closingTrade={closeTrade.isPending}
       pointValue={parsePointValue(markets.find(m => m.symbol === selected.symbol)?.pointValue)}
     />
+    </>
   ) : null
 
   // ── Render ────────────────────────────────────────────
@@ -391,6 +402,7 @@ export default function TradesPage() {
               },
             ]}
           />
+          <OperationalModeSelector className="mb-4 flex-wrap" />
           <KpiStrip items={kpiItems} className="mb-4" />
 
           {/* Account filter (TD-035) */}

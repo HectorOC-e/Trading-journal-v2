@@ -6,6 +6,7 @@
 // surfaces own this later (S12/S13); this is the first usable home.
 
 import { Target, CheckCircle2, AlertTriangle, Circle, BookOpen, Loader2, ShieldCheck, Shield } from "lucide-react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -20,11 +21,12 @@ const STATUS_META: Record<string, { label: string; color: string; soft: string; 
 }
 
 export function BehaviorLoopPanel() {
+  const mode = useOperationalMode(state => state.mode)
   const utils = trpc.useUtils()
-  const { data: insights = [], isLoading: insLoading } = trpc.behavior.openInsights.useQuery(undefined, { staleTime: 30_000 })
-  const { data: commitments = [], isLoading: comLoading } = trpc.behavior.commitments.useQuery(undefined, { staleTime: 30_000 })
-  const { data: suggestions = [] } = trpc.behavior.ruleSuggestions.useQuery(undefined, { staleTime: 30_000 })
-  const { data: proposals = [] } = trpc.behavior.proposedCommitments.useQuery(undefined, { staleTime: 30_000 })
+  const { data: insights = [], isLoading: insLoading } = trpc.behavior.openInsights.useQuery({ mode }, { staleTime: 30_000 })
+  const { data: commitments = [], isLoading: comLoading } = trpc.behavior.commitments.useQuery({ mode }, { staleTime: 30_000 })
+  const { data: suggestions = [] } = trpc.behavior.ruleSuggestions.useQuery({ mode }, { staleTime: 30_000 })
+  const { data: proposals = [] } = trpc.behavior.proposedCommitments.useQuery({ mode }, { staleTime: 30_000 })
 
   const invalidate = () => {
     utils.behavior.openInsights.invalidate()
@@ -89,11 +91,11 @@ export function BehaviorLoopPanel() {
           {proposals.map((p) => (
             <div key={p.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--coach)] bg-[var(--coach-soft,var(--panel-2))] px-3 py-2">
               <span className="flex-1 text-[12px] text-[var(--ink)]">{p.text}</span>
-              <button onClick={() => acceptCommit.mutate({ commitmentId: p.id })} disabled={acceptCommit.isPending}
+              <button onClick={() => acceptCommit.mutate({ mode, commitmentId: p.id })} disabled={acceptCommit.isPending}
                 className="shrink-0 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-[11px] font-semibold px-2.5 py-1.5 hover:opacity-90 disabled:opacity-40">
                 Aceptar
               </button>
-              <button onClick={() => dismissCommit.mutate({ commitmentId: p.id })} disabled={dismissCommit.isPending}
+              <button onClick={() => dismissCommit.mutate({ mode, commitmentId: p.id })} disabled={dismissCommit.isPending}
                 className="shrink-0 text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] px-1.5 py-1.5">
                 Descartar
               </button>
@@ -132,7 +134,7 @@ export function BehaviorLoopPanel() {
                   {c.status === "active" && !c.ruleId && (
                     <button
                       type="button"
-                      onClick={() => link.mutate({ commitmentId: c.id })}
+                      onClick={() => link.mutate({ mode, commitmentId: c.id })}
                       disabled={link.isPending}
                       className="inline-flex items-center gap-1 text-[var(--accent)] hover:underline disabled:opacity-50"
                     >
@@ -142,14 +144,14 @@ export function BehaviorLoopPanel() {
                   {c.status === "active" && (
                     <button
                       type="button"
-                      onClick={() => evaluate.mutate({ commitmentId: c.id })}
+                      onClick={() => evaluate.mutate({ mode, commitmentId: c.id })}
                       disabled={evaluate.isPending}
                       className="text-[var(--accent)] hover:underline disabled:opacity-50"
                     >
                       Verificar ahora
                     </button>
                   )}
-                  <button type="button" onClick={() => archive.mutate({ commitmentId: c.id })} className="text-[var(--ink-3)] hover:text-[var(--loss)]">
+                  <button type="button" onClick={() => archive.mutate({ mode, commitmentId: c.id })} className="text-[var(--ink-3)] hover:text-[var(--loss)]">
                     Archivar
                   </button>
                 </div>
@@ -175,13 +177,13 @@ export function BehaviorLoopPanel() {
               <span className="shrink-0 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => accept.mutate({ suggestionId: s.id })}
+                  onClick={() => accept.mutate({ mode, suggestionId: s.id })}
                   disabled={accept.isPending}
                   className="rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
                 >
                   Activar
                 </button>
-                <button type="button" onClick={() => dismiss.mutate({ suggestionId: s.id })} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--loss)]">
+                <button type="button" onClick={() => dismiss.mutate({ mode, suggestionId: s.id })} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--loss)]">
                   Descartar
                 </button>
               </span>
@@ -204,7 +206,7 @@ export function BehaviorLoopPanel() {
               </span>
               <button
                 type="button"
-                onClick={() => create.mutate({ insightId: i.id })}
+                onClick={() => create.mutate({ mode, insightId: i.id })}
                 disabled={create.isPending}
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] text-xs font-semibold px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
               >

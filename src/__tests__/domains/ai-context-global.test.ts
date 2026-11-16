@@ -3,7 +3,7 @@ import { buildTraderContext } from "@/domains/analytics/ai-context"
 
 function mkTrade(over: Partial<Record<string, unknown>>) {
   return {
-    id: "t", accountId: "a1", symbol: "EURUSD", direction: "LONG",
+    id: "t", accountId: "a1", operationalMode: "REAL", account: { name: "Cuenta EUR", type: "PERSONAL", currency: "EUR" }, symbol: "EURUSD", direction: "LONG",
     session: "NY", openTime: "9:00", closeTime: "10:00",
     tags: [], setupId: "s1", entry: 1.1, stop: 1.09, target: 1.12, size: 1,
     ...over,
@@ -40,7 +40,7 @@ function makePrisma() {
       { currency: "EUR", status: "SOLICITADO", amount: 500 },
     ]) },
     rule:             { findMany: vi.fn().mockResolvedValue([{ name: "Max 2 trades/día", severity: "CRÍTICA" }]) },
-    tradingSessionLog:{ findMany: vi.fn().mockResolvedValue([{ preMood: 4, energyLevel: 5 }, { preMood: 2, energyLevel: 3 }]) },
+    tradingSessionLog:{ findMany: vi.fn().mockImplementation(({ where }) => Promise.resolve([{ operationalMode: null, preMood: 4, energyLevel: 5 }, { operationalMode: null, preMood: 2, energyLevel: 3 }].filter(row => row.operationalMode === where.operationalMode))) },
     market:           { findMany: vi.fn().mockResolvedValue([{ symbol: "EURUSD", name: "Euro / Dólar" }]) },
     studySession:     { findMany: vi.fn().mockResolvedValue([]) },
   }
@@ -74,7 +74,7 @@ describe("buildTraderContext — global context (Fase 1 IA)", () => {
 
   it("summarizes psychology, rules and markets", async () => {
     const ctx = await buildTraderContext("u1", makePrisma() as never)
-    expect(ctx.psychology).toEqual({ sessions: 2, avgPreMood: 3, avgEnergy: 4 })
+    expect(ctx.psychology).toEqual({ sessions: 0, avgPreMood: null, avgEnergy: null }) // logs without mode remain historical
     expect(ctx.rules[0].name).toBe("Max 2 trades/día")
     expect(ctx.markets[0].symbol).toBe("EURUSD")
   })
@@ -90,7 +90,7 @@ describe("buildTraderContext — global context (Fase 1 IA)", () => {
 
 describe("buildTraderContext — practice (demo/backtest) isolation", () => {
   // 3 real trades on a1 (net 500) + 2 demo trades on a2 (unreal +1000 each).
-  // One demo trade is off-plan, to prove behaviour still counts practice.
+  // One demo trade is off-plan; its behaviour must remain isolated from Real.
   const MIXED = [
     mkTrade({ id: "r1", accountId: "a1", pnl: 400, rMultiple: 2,  date: new Date("2026-06-01") }),
     mkTrade({ id: "r2", accountId: "a1", pnl: -200, rMultiple: -1,date: new Date("2026-06-02") }),
@@ -101,12 +101,14 @@ describe("buildTraderContext — practice (demo/backtest) isolation", () => {
 
   function makeMixedPrisma() {
     const p = makePrisma()
-    p.trade.findMany = vi.fn().mockImplementation(({ where }: { where: { tags?: unknown } }) =>
-      Promise.resolve(where.tags ? [] : MIXED)) as never
-    p.account.findMany = vi.fn().mockResolvedValue([
-      { id: "a1", name: "Real",  type: "PERSONAL",      currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
-      { id: "a2", name: "Demo",  type: "DEMO_PERSONAL", currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
-    ]) as never
+    const scopedAccounts = [
+      { id: "a1", name: "Real", type: "PERSONAL", currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
+      { id: "a2", name: "Demo", type: "DEMO_PERSONAL", currency: "USD", phase: "NONE", status: "ACTIVE", locked: false, lockReason: "", initialBalance: 10000, ddDailyPct: null, ddTotalPct: null, targetPct: null },
+    ]
+    p.trade.findMany = vi.fn().mockImplementation(({ where }: { where: { tags?: unknown; operationalMode: string } }) =>
+      Promise.resolve(MIXED.map(t => ({ ...t, operationalMode: t.accountId === "a2" ? "DEMO" : "REAL", account: scopedAccounts.find(a => a.id === t.accountId) }))
+        .filter(t => t.operationalMode === where.operationalMode && (!where.tags || t.tags.length > 0)))) as never
+    p.account.findMany = vi.fn().mockImplementation(({ where }) => Promise.resolve(scopedAccounts.filter(a => where.type.in.includes(a.type)))) as never
     return p
   }
 
@@ -116,15 +118,15 @@ describe("buildTraderContext — practice (demo/backtest) isolation", () => {
     expect(ctx.performance.netPnl).toBe(500)           // 400-200+300, no unreal +2000
   })
 
-  it("counts practice trades in behavioural metrics (habit is real)", async () => {
+  it("keeps Demo behaviour outside the Real context", async () => {
     const ctx = await buildTraderContext("u1", makeMixedPrisma() as never)
-    // off-plan rate is over ALL 5 trades (1/5 = 20%), even though the off-plan
-    // trade was on a demo account.
-    expect(ctx.behavior.offPlanPct).toBe(20)
+    expect(ctx.behavior.offPlanPct).toBe(0)
+    const demo = await buildTraderContext("u1", makeMixedPrisma() as never, undefined, "DEMO")
+    expect(demo.behavior.offPlanPct).toBe(50)
   })
 
-  it("still lists every account (practice included, labelled by type)", async () => {
+  it("lists only accounts belonging to the selected mode", async () => {
     const ctx = await buildTraderContext("u1", makeMixedPrisma() as never)
-    expect(ctx.accounts.map(a => a.type).sort()).toEqual(["DEMO_PERSONAL", "PERSONAL"])
+    expect(ctx.accounts.map(a => a.type).sort()).toEqual(["PERSONAL"])
   })
 })

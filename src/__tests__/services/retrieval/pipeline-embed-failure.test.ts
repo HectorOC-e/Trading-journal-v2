@@ -27,16 +27,16 @@ describe("search — un embedding que falla NO revienta la busqueda", () => {
     embedText.mockRejectedValue(boom())
     const prisma = {} as never
 
-    const out = await search(prisma, "u1", { query: "impaciencia" })
+    const out = await search(prisma, "u1", { mode: "REAL", query: "impaciencia" })
 
     expect(out.citations).toEqual([])
     expect(out.outcomes.length).toBeGreaterThan(0)
-    expect(out.outcomes.every(o => o.state === "EMBED_FAILED")).toBe(true)
+    expect(out.outcomes.every(o => o.state === ((o.corpus === "weekly_reviews" || o.corpus === "monthly_reviews") ? "UNSCOPED_LEGACY" : "EMBED_FAILED"))).toBe(true)
   })
 
   it("reintenta antes de rendirse — no se rinde al primer hipo", async () => {
     embedText.mockRejectedValue(boom())
-    await search({} as never, "u1", { query: "x" })
+    await search({} as never, "u1", { mode: "REAL", query: "x" })
     // Perfil de fondo: 1 intento + 3 reintentos sobre el unico candidato.
     expect(embedText).toHaveBeenCalledTimes(4)
   })

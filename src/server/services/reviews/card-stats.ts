@@ -1,3 +1,5 @@
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
 // Batched per-week extras (Profit Factor + Avg R) for the reviews list cards.
 // The list page shows many weeks; computing a full analytics bundle per week would
 // be costly, so we fetch every closed trade across the listed weeks' span in ONE
@@ -5,7 +7,7 @@
 // keyed by the review's weekStart (YYYY-MM-DD).
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { fxFactor, parseFxRates } from "@/lib/fx"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 
 export interface WeeklyCardStat {
@@ -29,6 +31,7 @@ export async function loadWeeklyCardStats(
   prisma: PrismaClient,
   userId: string,
   weekStarts: string[],
+  mode:OperationalMode="REAL",
 ): Promise<Map<string, WeeklyCardStat>> {
   const out = new Map<string, WeeklyCardStat>()
   if (weekStarts.length === 0) return out
@@ -41,9 +44,9 @@ export async function loadWeeklyCardStats(
 
   const [user, accounts, trades] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
-    prisma.account.findMany({ where: { userId }, select: { id: true, currency: true } }),
+    prisma.account.findMany({ where: { userId,type:{in:accountTypesForMode(mode)} }, select: { id: true, currency: true } }),
     prisma.trade.findMany({
-      where: { userId, status: "CLOSED", date: { gte: spanStart, lt: spanEnd } },
+      where: { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED", date: { gte: spanStart, lt: spanEnd } },
       select: { accountId: true, pnl: true, rMultiple: true, date: true },
     }),
   ])
@@ -55,6 +58,7 @@ export async function loadWeeklyCardStats(
   type Bucket = { netPnl: number; wins: number; total: number; grossWin: number; grossLoss: number; rSum: number; rCount: number; days: number[] }
   const acc = new Map<string, Bucket>()
   for (const t of trades) {
+    if(!curById.has(t.accountId)||!hasFxConversion(curById.get(t.accountId)!,baseCurrency,fxRates))continue;
     const dayISO = (t.date as Date).toISOString().slice(0, 10)
     const wk = mondayOf(dayISO)
     if (!wanted.has(wk)) continue

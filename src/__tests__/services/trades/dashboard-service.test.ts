@@ -92,6 +92,18 @@ describe("dashboard financial reliability", () => {
     db.fixtureRows = rows
     return db
   }
+  it("starts the selected equity period with prior realized gains", async () => {
+    const db = fixture()
+    db.account.findMany.mockResolvedValue([{ ...acct(REAL,"PERSONAL"), initialBalance: 1000, status: "INACTIVE" }])
+    db.fixtureRows.splice(0,db.fixtureRows.length,
+      {...tradeRow(REAL,9000),status:"CLOSED",date:new Date("2023-12-31"),marketClosedAt:new Date("2023-12-31T12:00Z")},
+      {...tradeRow(REAL,100),status:"CLOSED",date:new Date("2024-01-02"),marketClosedAt:new Date("2024-01-02T12:00Z")})
+    const result = await getDashboardStats(db,USER,{period:"ALL",from:"2024-01-01",to:"2024-01-31"})
+    expect(result.kpis.netPnl).toBe(100)
+    expect(result.equityCurve[0]).toMatchObject({balance:10000})
+    expect(result.equityCurve.at(-1)).toMatchObject({balance:10100})
+    expect(result.accountStats[0]).toMatchObject({status:"INACTIVE",availableForTrading:false,capitalKind:"PERSONAL"})
+  })
   it("scopes selected accounts and open realizations", async () => {
     const db = fixture()
     const accounts = [acct(REAL,"PERSONAL"),acct(DEMO,"PERSONAL")]

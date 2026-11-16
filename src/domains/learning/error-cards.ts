@@ -12,6 +12,7 @@ export interface ErrorTrade {
 }
 
 export interface ErrorCard {
+  currency?: string
   errorTag: string
   occurrences: number
   /** Sum of R across trades carrying the error tag (negative = costly). */
@@ -32,12 +33,18 @@ export interface ErrorCardInput {
 
 export function generateErrorCards(input: ErrorCardInput): ErrorCard[] {
   const minOccurrences = input.minOccurrences ?? 3
-  const errorSet = new Set(input.errorTags)
+  const normalize = (tag: string) => {
+    const value = tag.trim().toLocaleLowerCase("es")
+    return value === "revanche" ? "revancha" : value
+  }
+  const errorSet = new Map<string, string>()
+  for (const tag of input.errorTags) if (!errorSet.has(normalize(tag))) errorSet.set(normalize(tag), tag)
 
   const groups = new Map<string, ErrorTrade[]>()
   for (const t of input.trades) {
-    for (const tag of t.tags) {
-      if (!errorSet.has(tag)) continue
+    for (const key of new Set(t.tags.map(normalize))) {
+      const tag = errorSet.get(key)
+      if (!tag) continue
       const g = groups.get(tag) ?? []
       g.push(t)
       groups.set(tag, g)

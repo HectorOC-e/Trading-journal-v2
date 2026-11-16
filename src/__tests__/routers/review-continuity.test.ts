@@ -14,10 +14,16 @@ it('plans once without claiming completed minutes',async()=>{const {p,rows}=setu
 it('loads historical source and previous week independently of today',async()=>{const {p}=setup();expect(await loadReviewFollowUp(p as never,'u','2026-01-12')).toEqual({commitments:[],plans:[],practices:[],originActions:{commitments:[],plans:[],practices:[]}});expect(p.commitment.findMany.mock.calls[0][0].where.userId).toBe('u');expect(p.commitment.findMany.mock.calls[0][0].include.checks.where.evaluatedAt.lt).toEqual(new Date('2026-01-19T00:00:00Z'))})
 it('rejects idempotency UUID reuse with different conclusion',async()=>{const {p}=setup();await createReviewCommitment(p as never,'u',{id,source,insightType:'revenge-trading'});await expect(createReviewCommitment(p as never,'u',{id,source:{...source,conclusion:'Otro'},insightType:'revenge-trading'})).rejects.toMatchObject({code:'CONFLICT'})})
 it('does not leak a future fulfillment into a historical review',async()=>{const {p}=setup();p.commitment.findMany.mockResolvedValue([{id,text:'Medible',status:'kept',reviewSource:source,target:0,comparator:'<=',endAt:new Date('2026-02-01'),updatedAt:new Date('2026-02-01'),checks:[]}] as never);const r=await loadReviewFollowUp(p as never,'u','2026-01-12');expect(r.commitments[0]).toMatchObject({status:'active',observedValue:null})})
-it('shows a new action created after its source week in current origin actions',async()=>{const {p}=setup();p.commitment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{id,text:'Medible',status:'kept',reviewSource:source,target:0,comparator:'<=',checks:[{result:'kept',observedValue:0}],updatedAt:new Date('2026-02-01')}] as never);const r=await loadReviewFollowUp(p as never,'u','2026-01-05');expect(r.originActions.commitments[0]).toMatchObject({id,status:'kept',observedValue:0});expect(p.commitment.findMany.mock.calls[1][0].where).toEqual({userId:'u',archivedAt:null,reviewSource:{path:['weekStart'],equals:'2026-01-05'}})})
+it('shows a new action created after its source week in current origin actions',async()=>{const {p}=setup();p.commitment.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{id,text:'Medible',status:'kept',reviewSource:source,target:0,comparator:'<=',checks:[{result:'kept',observedValue:0}],updatedAt:new Date('2026-02-01')}] as never);const r=await loadReviewFollowUp(p as never,'u','2026-01-05');expect(r.originActions.commitments[0]).toMatchObject({id,status:'kept',observedValue:0});expect(p.commitment.findMany.mock.calls[1][0].where).toEqual({userId:'u',operationalMode:'REAL',archivedAt:null,reviewSource:{path:['weekStart'],equals:'2026-01-05'}})})
 it('retains a historical completion after a later reflection-only edit',async()=>{
  const {p}=setup()
  p.studySession.findMany.mockResolvedValueOnce([{id,resourceId:id,resource:{title:'Libro'},status:'completed',source:'practice',reviewSource:source,startedAt:new Date('2026-01-13T12:00:00Z'),endedAt:new Date('2026-01-13T12:00:00Z'),updatedAt:new Date('2026-02-02'),plannedMin:30}] as never)
  const result=await loadReviewFollowUp(p as never,'u','2026-01-12')
  expect(result.plans[0].status).toBe('completed')
+})
+it('does not expose an unknown stored practice mode as a valid operational world',async()=>{
+ const {p}=setup()
+ p.learningPractice.findMany.mockResolvedValueOnce([{id,title:'Legado',kind:'REVIEW',operationalMode:'CORRUPT',assessment:null,plannedSessionId:null,reviewSource:source}] as never)
+ const result=await loadReviewFollowUp(p as never,'u','2026-01-12')
+ expect(result.practices[0].operationalMode).toBeNull()
 })

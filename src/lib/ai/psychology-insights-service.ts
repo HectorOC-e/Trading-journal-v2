@@ -1,3 +1,4 @@
+import { type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
 import { generatePsychologyInsights } from "@/domains/analytics/services/psychology-insights"
@@ -6,6 +7,7 @@ import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provid
 import { executeAiCall } from "./execute"
 
 export interface PsychologyAiOptions {
+  mode?: OperationalMode
   userId: string
   prisma: PrismaClient
   period?: "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
@@ -33,7 +35,7 @@ Formato: para saltos de línea usa líneas o listas reales, NUNCA la etiqueta <b
 No inventes datos. Sé directo y empático, como un coach experto.`
 
 export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promise<ReadableStream<Uint8Array>> {
-  const bundle = await buildAnalyticsBundle(opts.userId, opts.prisma, windowFor(opts.period))
+  const bundle = await buildAnalyticsBundle(opts.userId, opts.prisma, windowFor(opts.period), opts.mode ?? "REAL")
   const insights = generatePsychologyInsights(bundle.raw.trades)
   const ps = bundle.psychology
 
@@ -42,7 +44,8 @@ export async function streamPsychologyInsights(opts: PsychologyAiOptions): Promi
   if (candidates.length === 0) throw new NoApiKeyError(resolved.primary.provider)
 
   const ctx = [
-    "=== CONTEXTO PSICOLÓGICO (datos reales) ===",
+    `=== CONTEXTO PSICOLÓGICO · ${bundle.scope.mode} · ${bundle.baseCurrency} ===`,
+    `Periodo: ${bundle.window.from ?? "inicio"} a ${bundle.window.to ?? "actualidad"}; base temporal TRADE_DATE. La disciplina y las emociones pertenecen sólo a esta modalidad.`,
     `Disciplina: ${ps.disciplineScore}/100 · violaciones ${ps.violationRate}% · FOMO ${ps.fomoCount} · revancha ${ps.revengeCount}`,
     `P&L por emoción: ${ps.byEmotion.map(e => `${e.emotion}(${e.trades}t, avgPnl ${e.avgPnl}, WR ${e.winRate}%)`).join("; ")}`,
     `Performance global: ${bundle.performance.totalTrades} trades, WR ${bundle.performance.winRate}%, expectancy ${bundle.performance.expectancy}`,

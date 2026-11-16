@@ -5,6 +5,7 @@
 
 import { useState } from "react"
 import { Brain, ShieldAlert, TrendingUp, TrendingDown, Minus, Check } from "lucide-react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
@@ -44,10 +45,11 @@ function Scale({ value, onChange }: { value: number; onChange: (n: number) => vo
 }
 
 export function PsychologyV3Panel() {
+  const mode = useOperationalMode(state => state.mode)
   const utils = trpc.useUtils()
-  const { data: latest } = trpc.psychology.latestCheckin.useQuery(undefined, { staleTime: 30_000 })
-  const { data: cal } = trpc.psychology.calibration.useQuery(undefined, { staleTime: 60_000 })
-  const { data: mood } = trpc.psychology.moodTrend.useQuery(undefined, { staleTime: 60_000 })
+  const { data: latest } = trpc.psychology.latestCheckin.useQuery({ mode }, { staleTime: 30_000 })
+  const { data: cal } = trpc.psychology.calibration.useQuery({ mode }, { staleTime: 60_000 })
+  const { data: mood } = trpc.psychology.moodTrend.useQuery({ mode }, { staleTime: 60_000 })
 
   const [vals, setVals] = useState({ mood: 3, energy: 3, sleep: 3 })
   const submit = trpc.psychology.submitCheckin.useMutation({
@@ -79,7 +81,7 @@ export function PsychologyV3Panel() {
             {todays.reasons.length > 0 && (
               <p className="text-[11px] text-[var(--ink-3)]">Atención: {todays.reasons.join(", ")}.</p>
             )}
-            <button onClick={() => utils.psychology.latestCheckin.setData(undefined, null)} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] self-start">Volver a registrar</button>
+            <button onClick={() => utils.psychology.latestCheckin.setData({ mode }, null)} className="text-[11px] text-[var(--ink-3)] hover:text-[var(--ink)] self-start">Volver a registrar</button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -91,13 +93,13 @@ export function PsychologyV3Panel() {
             ))}
             <button
               type="button"
-              onClick={() => submit.mutate(vals)}
+              onClick={() => submit.mutate({ ...vals, mode })}
               disabled={submit.isPending}
               className="mt-1 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-contrast)] font-semibold py-2 text-sm hover:opacity-90 disabled:opacity-50"
             >
               Evaluar mi estado
             </button>
-            {submit.data && (
+            {submit.data && submit.variables?.mode === mode && (
               <p className="text-[12px]" style={{ color: VERDICT[submit.data.verdict].color }}>{submit.data.recommendation}</p>
             )}
           </div>

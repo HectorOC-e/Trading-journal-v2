@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import {
-  AreaChart, Area, BarChart, Bar,
+  AreaChart, Area,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts"
 import { cn } from "@/lib/utils"
@@ -10,6 +10,8 @@ import { SimpleTable } from "@/components/ui/data-table"
 import { Card } from "../components/card"
 import { ChartTooltip } from "../components/chart-tooltip"
 import { TYPE_META, fmtDate } from "../components/shared"
+import { CAPITAL_LABELS } from "../capital-summary"
+import { currencySymbol } from "@/lib/fx"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type DashboardStats = RouterOutputs["trades"]["dashboardStats"]
@@ -21,7 +23,7 @@ type Period = "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
 const PERIODS: Period[] = ["7d", "1M", "3M", "6M", "1Y", "ALL"]
 
 export function TabOperador({
-  kpis, accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts, period, onPeriodChange,
+  accountStats, equityCurve, sessionStats, pnlBySymbol, hourStats, recentTrades, executionStats, accounts, baseCurrency, scope, period, onPeriodChange,
 }: {
   kpis:           DashboardStats["kpis"]
   accountStats:   DashboardStats["accountStats"]
@@ -32,11 +34,14 @@ export function TabOperador({
   recentTrades:   DashboardStats["recentTrades"]
   executionStats: DashboardStats["executionStats"]
   accounts:       AccountMeta[]
+  baseCurrency:   string
+  scope:          DashboardStats["scope"]
   period:         Period
   onPeriodChange: (p: Period) => void
 }) {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [tradeFilter, setTradeFilter] = useState("Todos")
+  const cur = currencySymbol(baseCurrency)
 
   const accountCards = useMemo(() => {
     return accountStats.map(s => {
@@ -53,7 +58,6 @@ export function TabOperador({
     })
   }, [accountStats, accounts])
 
-  const totalPortfolio = accountCards.reduce((s, a) => s + a.balance, 0)
   const activeId       = selectedAccountId ?? accountCards[0]?.accountId ?? null
   const activeCard     = accountCards.find(a => a.accountId === activeId) ?? accountCards[0]
 
@@ -99,9 +103,10 @@ export function TabOperador({
         <div className="flex items-start justify-between mb-1">
           <div>
             <p className="text-eyebrow mb-2">Equity · {activeCard?.name ?? "—"}</p>
+            <p className="text-xs text-[var(--ink-3)] mb-2">{scope.equityDateBasis === "REALIZATION_DATE" ? "Realizaciones con saldo previo al periodo" : "Balance acumulado"} · {baseCurrency}</p>
             <div className="flex items-baseline gap-3">
               <p style={{ fontSize: 36, fontWeight: 700, fontFamily: "'JetBrains Mono',monospace", color: "var(--ink)", lineHeight: 1 }}>
-                ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {cur}{equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <span className={cn("flex items-center gap-1 text-sm font-semibold", equityChangePct >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>
                 {equityChangePct >= 0 ? "↑" : "↓"} {equityChangePct >= 0 ? "+" : ""}{equityChangePct.toFixed(2)}%
@@ -121,8 +126,8 @@ export function TabOperador({
                 </defs>
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: "var(--ink-3)" }} axisLine={false} tickLine={false}
-                  tickFormatter={v => `$${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
-                <Tooltip content={<ChartTooltip />} />
+                  tickFormatter={v => `${cur}${(v/1000).toFixed(0)}k`} domain={["auto","auto"]} width={44} />
+                <Tooltip content={<ChartTooltip currency={baseCurrency} />} />
                 <Area type="monotone" dataKey="balance" name="Balance" stroke="var(--accent)" strokeWidth={2.5}
                   fill="url(#gradBal)" dot={false} activeDot={{ r: 5, fill: "var(--accent)", strokeWidth: 0 }} />
               </AreaChart>
@@ -135,7 +140,7 @@ export function TabOperador({
               <span className="w-5 h-px inline-block" style={{ background: "var(--accent)" }} />
               <span className="text-xs text-[var(--ink-3)]">Balance</span>
               <span className="text-xs font-mono font-semibold text-[var(--ink)]">
-                ${equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {cur}{equityEnd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
           </div>
@@ -147,10 +152,7 @@ export function TabOperador({
         <div className="flex items-center justify-between mb-3">
           <p className="text-[13px] font-semibold text-[var(--ink)]">Tus cuentas</p>
           <p className="text-[11px] text-[var(--ink-3)]">
-            {accountCards.length} cuentas · portfolio consolidado{" "}
-            <span className="font-mono font-semibold text-[var(--ink)]">
-              ${totalPortfolio.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+            {accountCards.length} cuentas · saldos en {baseCurrency}
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -171,12 +173,14 @@ export function TabOperador({
                   <span className="text-[9px] font-bold text-[var(--ink-3)] uppercase tracking-wider">{a.typeLabel}</span>
                 </div>
                 <p className="text-[11px] font-semibold text-[var(--ink)] leading-tight mb-1.5">{a.name}</p>
+                <p className="text-[10px] text-[var(--ink-3)] mb-1.5">{a.capitalKind === "PERSONAL" ? "Capital personal" : CAPITAL_LABELS[a.capitalKind]}</p>
+                {!a.availableForTrading && <p className="text-[10px] text-[var(--ink-3)] mb-1.5">{a.status === "INACTIVE" || a.status === "LOST" ? "Histórico · no disponible" : "No disponible"}</p>}
                 <p className="font-mono font-bold text-[var(--ink)] text-[14px] leading-none">
-                  ${a.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {cur}{a.balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
                 <p className={cn("text-[10px] font-semibold mt-1 font-mono",
                   a.pnlToday > 0 ? "text-[var(--win)]" : a.pnlToday < 0 ? "text-[var(--loss)]" : "text-[var(--ink-3)]")}>
-                  {a.pnlToday > 0 ? "+" : ""}{a.pnlToday === 0 ? "0.00" : a.pnlToday.toFixed(2)} USD hoy
+                  {a.pnlToday > 0 ? "+" : ""}{a.pnlToday === 0 ? "0.00" : a.pnlToday.toFixed(2)} {baseCurrency} hoy
                 </p>
               </button>
             )
@@ -219,7 +223,7 @@ export function TabOperador({
               </div>
             ) },
             { key: "r", header: "R", align: "right", width: "minmax(60px, 0.7fr)", render: (t) => <span className={cn("font-mono font-bold text-sm", (t.rMultiple ?? 0) >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{(t.rMultiple ?? 0) >= 0 ? "+" : ""}{(t.rMultiple ?? 0).toFixed(2)}R</span> },
-            { key: "pnl", header: "P&L Neto", align: "right", render: (t) => <span className={cn("font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.pnl >= 0 ? "+" : "-"}${Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
+            { key: "pnl", header: "P&L Neto", align: "right", render: (t) => <span className={cn("font-mono font-bold text-sm", t.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{t.pnl >= 0 ? "+" : "-"}{cur}{Math.abs(t.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> },
             { key: "session", header: "Sesión · Tags", width: "minmax(120px, 1.4fr)", hideBelow: "md", render: (t) => (
               <div>
                 <p className="text-xs text-[var(--ink-2)] mb-1">{t.session ?? "—"}</p>
@@ -259,7 +263,7 @@ export function TabOperador({
               { key: "symbol", header: "Símbolo", width: "minmax(80px, 1.4fr)", render: (s) => <span className="font-mono font-bold text-sm text-[var(--ink)]">{s.symbol}</span> },
               { key: "trades", header: "Trades", align: "right", render: (s) => <span className="font-mono text-sm text-[var(--ink-2)]">{s.trades}</span> },
               { key: "winRate", header: "Win %", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.winRate >= 50 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.winRate.toFixed(2)}%</span> },
-              { key: "pnl", header: "Net P&L", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.pnl >= 0 ? "+" : "-"}${Math.abs(s.pnl).toFixed(2)}</span> },
+              { key: "pnl", header: "Net P&L", align: "right", render: (s) => <span className={cn("font-mono text-sm font-semibold", s.pnl >= 0 ? "text-[var(--win)]" : "text-[var(--loss)]")}>{s.pnl >= 0 ? "+" : "-"}{cur}{Math.abs(s.pnl).toFixed(2)}</span> },
             ]}
           />
         </Card>
@@ -292,8 +296,8 @@ export function TabOperador({
                 : "—",
               sub: "entre openTime y closeTime",
             },
-            { label: "Riesgo Planificado prom.", value: avgPlannedRisk   != null ? `$${avgPlannedRisk.toFixed(2)}`   : "—", sub: "riesgo en $ al abrir el trade"  },
-            { label: "Reward Planificado prom.", value: avgPlannedReward != null ? `$${avgPlannedReward.toFixed(2)}` : "—", sub: "objetivo en $ al abrir el trade" },
+            { label: "Riesgo Planificado prom.", value: avgPlannedRisk   != null ? `${cur}${avgPlannedRisk.toFixed(2)}`   : "—", sub: `riesgo en ${baseCurrency} al abrir el trade`  },
+            { label: "Reward Planificado prom.", value: avgPlannedReward != null ? `${cur}${avgPlannedReward.toFixed(2)}` : "—", sub: `objetivo en ${baseCurrency} al abrir el trade` },
             { label: "Ratio Reward/Riesgo",      value: riskRewardRatio  != null ? riskRewardRatio.toFixed(4)        : "—", sub: "objetivo / riesgo planificado"   },
           ].map(({ label, value, sub }) => (
             <div key={label} className="bg-[var(--panel-2)] rounded-[var(--radius-sm)] p-4">

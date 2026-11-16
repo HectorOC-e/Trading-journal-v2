@@ -15,6 +15,29 @@ function store(overrides={}) {
 }
 const partial=(contracts=1,price=110)=>({tradeId:'t',type:'PARTIAL_CLOSE' as const,contracts,price,notes:''})
 describe('realized portions',()=>{
+ it('requires market time for a historical partial and never books the final total twice',async()=>{
+  const s=store({captureContext:'HISTORICAL',status:'CLOSED',pnl:100,marketOpenedAt:new Date('2024-01-01T07:00Z'),marketClosedAt:new Date('2024-01-03T07:00Z'),size:10})
+  await expect(addTradeEvent(s.db,'u',partial(3,110))).rejects.toThrow('HISTORICAL_EVENT_TIME_REQUIRED')
+  await addTradeEvent(s.db,'u',{...partial(3,110),timestamp:'2024-01-02T07:00:00Z'})
+  expect(s.trade().pnl).toBe(100)
+  expect(s.events[0]).toMatchObject({realizedPnl:30,timestamp:new Date('2024-01-02T07:00Z')})
+ })
+ it('rejects moving an opening beyond its existing partials',async()=>{
+  const s=store({captureContext:'HISTORICAL',status:'CLOSED',pnl:100,openTime:'01:00',marketTimeZone:'America/Tegucigalpa',marketOpenedAt:new Date('2024-01-01T07:00Z'),marketClosedAt:new Date('2024-01-03T07:00Z')})
+  s.events.push({id:'p',type:'PARTIAL_CLOSE',timestamp:new Date('2024-01-02T07:00Z'),realizedPnl:30})
+  await expect(updateTrade(s.db,'u',{id:'t',date:'2024-01-02',openTime:'02:00'} as never)).rejects.toThrow('INVALID_MARKET_SEQUENCE')
+ })
+ it('corrects market dates and affected event timestamps atomically with an audit note',async()=>{
+  const s=store({captureContext:'HISTORICAL',status:'CLOSED',pnl:100,openTime:'01:00',marketTimeZone:'America/Tegucigalpa',marketOpenedAt:new Date('2024-01-01T07:00Z'),marketClosedAt:new Date('2024-01-03T07:00Z')})
+  s.events.push({id:'o',type:'OPEN',timestamp:new Date('2024-01-01T07:00Z')})
+  Object.assign((s.db as any).tradeEvent,{update:async({where,data}:any)=>Object.assign(s.events.find((event:any)=>event.id===where.id) as object,data)})
+  Object.assign(s.db,{account:{findUniqueOrThrow:async()=>({initialBalance:1000,currency:'USD'})},withdrawal:{findMany:async()=>[]},accountLog:{findMany:async()=>[]}})
+  Object.assign((s.db as any).trade,{findMany:async()=>[]})
+  await updateTrade(s.db,'u',{id:'t',date:'2024-01-02',openTime:'01:00'} as never)
+  expect(s.trade()).toMatchObject({date:new Date('2024-01-02'),marketOpenedAt:new Date('2024-01-02T07:00Z')})
+  expect(s.events[0]).toMatchObject({timestamp:new Date('2024-01-02T07:00Z')})
+  expect(s.events[1]).toMatchObject({type:'NOTE',notes:expect.stringContaining('MARKET_TIME_CORRECTION')})
+ })
  it('retains partial and final gross with original R and charges commission once',async()=>{const s=store();await addTradeEvent(s.db,'u',partial());expect(s.trade().pnl).toBe(10);await addTradeEvent(s.db,'u',{tradeId:'t',type:'STOP_MOVE',price:100,notes:''});await closeTrade(s.db,'u',{id:'t',closePrice:120,commission:3});expect(s.trade().pnl).toBe(27);expect(s.trade()).toHaveProperty('rMultiple',1.5)})
  it('keeps partial losses',async()=>{const s=store();await addTradeEvent(s.db,'u',partial(1,90));expect(s.trade().pnl).toBe(-10);await closeTrade(s.db,'u',{id:'t',closePrice:120,commission:0});expect(s.trade().pnl).toBe(10)})
  it('closes a full partial and rejects another close',async()=>{const s=store();await addTradeEvent(s.db,'u',partial(2));expect(s.trade().status).toBe('CLOSED');expect(s.trade().pnl).toBe(20);await expect(closeTrade(s.db,'u',{id:'t',closePrice:120,commission:0})).rejects.toThrow()})
