@@ -7,6 +7,7 @@
 // exactly as the router did — same codes, same messages.
 // ─────────────────────────────────────────────────────────────────────────────
 import { parseFxRates } from "@/lib/fx"
+import { classifyAccountType } from "@/domains/trading/operational-mode"
 import { localDateISO } from "@/lib/datetime/local"
 import { TRPCError } from "@trpc/server"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
@@ -208,7 +209,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
 
   const trade = await prisma.trade.create({
     data: {
-      ...input, riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date),
+      ...input, operationalMode: classifyAccountType(account.type), riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date),
       realizedPnl: 0, originalSize: input.size,
       originalRiskMoney: Math.abs(input.entry - input.stop) * input.size * await pointValue(),
       // Procedencia posicional: el alta es EL momento; si viene emoción, es capturada.

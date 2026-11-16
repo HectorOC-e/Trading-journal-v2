@@ -297,6 +297,7 @@ model Setup {
 
 model Trade {
   id             String   @id @default(uuid()) @db.Uuid
+  operationalMode String? @map("operational_mode")
   userId         String   @map("user_id") @db.Uuid
   accountId      String   @map("account_id") @db.Uuid
   setupId        String?  @map("setup_id") @db.Uuid
@@ -345,6 +346,7 @@ model Trade {
 
   @@index([userId, date(sort: Desc)])
   @@index([userId, status, date(sort: Desc)])
+  @@index([userId, operationalMode, status, date])
   @@index([accountId])
   @@map("trades")
 
