@@ -1361,6 +1361,7 @@ model PracticeTradeLink {
   trade Trade @relation(fields:[userId,tradeId], references:[userId,id], onDelete:Cascade)
   @@unique([practiceId,tradeId])
   @@index([userId,tradeId])
+  @@index([userId,practiceId])
   @@map("practice_trade_links")
 }
 
