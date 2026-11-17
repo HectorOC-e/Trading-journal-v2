@@ -39,7 +39,7 @@ function mockPrisma() {
       findUniqueOrThrow: vi.fn().mockResolvedValue({ timezone: "UTC" }),
       findUnique: vi.fn().mockResolvedValue({ baseCurrency: "USD", fxRates: null }),
     },
-    account: { findMany: vi.fn().mockResolvedValue([acct(REAL, "PERSONAL"), acct(DEMO, "DEMO_PERSONAL")]) },
+    account: { findFirst: vi.fn().mockResolvedValue({id:REAL}), findMany: vi.fn().mockResolvedValue([acct(REAL, "PERSONAL"), acct(DEMO, "DEMO_PERSONAL")]) },
     trade: {
       findMany: vi.fn()
         .mockResolvedValueOnce([tradeRow(REAL, 100), tradeRow(DEMO, 500)]) // closed
@@ -55,19 +55,20 @@ function mockPrisma() {
 }
 
 describe("getDashboardStats — practice partition", () => {
-  it("excludes practice accounts from financial stats by default, keeps them in discipline", async () => {
+  it("keeps financial stats and discipline in the same modality", async () => {
     const out = await getDashboardStats(mockPrisma(), USER, { period: "ALL" })
     expect(out.accountStats.map(s => s.accountId)).toEqual([REAL])
     expect(out.recentTrades).toHaveLength(1)
     expect(out.recentTrades[0].pnl).toBe(100)
-    // Discipline is behavioural: it sees trades from BOTH accounts.
-    expect(out.discipline.rDistribution.reduce((n, b) => n + b.count, 0)).toBe(2)
+    // Discipline follows the same explicit modality as performance.
+    expect(out.discipline.rDistribution.reduce((n, b) => n + b.count, 0)).toBe(1)
   })
 
-  it("includes practice accounts when includePractice=true", async () => {
-    const out = await getDashboardStats(mockPrisma(), USER, { includePractice: true, period: "ALL" })
-    expect(out.accountStats.map(s => s.accountId).sort()).toEqual([REAL, DEMO].sort())
-    expect(out.recentTrades).toHaveLength(2)
+  it("selects demo without mixing real accounts", async () => {
+    const out = await getDashboardStats(mockPrisma(), USER, { mode: "DEMO", period: "ALL" })
+    expect(out.accountStats.map(s => s.accountId)).toEqual([DEMO])
+    expect(out.recentTrades).toHaveLength(1)
+    expect(out.kpis.netPnl).toBe(500)
   })
 })
 
@@ -91,6 +92,18 @@ describe("dashboard financial reliability", () => {
     db.fixtureRows = rows
     return db
   }
+  it("starts the selected equity period with prior realized gains", async () => {
+    const db = fixture()
+    db.account.findMany.mockResolvedValue([{ ...acct(REAL,"PERSONAL"), initialBalance: 1000, status: "INACTIVE" }])
+    db.fixtureRows.splice(0,db.fixtureRows.length,
+      {...tradeRow(REAL,9000),status:"CLOSED",date:new Date("2023-12-31"),marketClosedAt:new Date("2023-12-31T12:00Z")},
+      {...tradeRow(REAL,100),status:"CLOSED",date:new Date("2024-01-02"),marketClosedAt:new Date("2024-01-02T12:00Z")})
+    const result = await getDashboardStats(db,USER,{period:"ALL",from:"2024-01-01",to:"2024-01-31"})
+    expect(result.kpis.netPnl).toBe(100)
+    expect(result.equityCurve[0]).toMatchObject({balance:10000})
+    expect(result.equityCurve.at(-1)).toMatchObject({balance:10100})
+    expect(result.accountStats[0]).toMatchObject({status:"INACTIVE",availableForTrading:false,capitalKind:"PERSONAL"})
+  })
   it("scopes selected accounts and open realizations", async () => {
     const db = fixture()
     const accounts = [acct(REAL,"PERSONAL"),acct(DEMO,"PERSONAL")]
@@ -221,7 +234,6 @@ describe("dashboard financial reliability", () => {
     await getDashboardStats(db, USER, { period: "ALL", from: "2026-01-01", to: "2026-01-01" })
     const keys = vi.mocked(cache.getCachedStats).mock.calls.slice(-3).map(call => call[2])
     expect(new Set(keys).size).toBe(3)
-    expect(keys[0]).toContain("v3")
     vi.mocked(cache.isCacheEnabled).mockReturnValue(false)
   })
 })

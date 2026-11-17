@@ -23,8 +23,9 @@ describe("setup evaluation context", () => {
   ] as const)("constrains the whole evaluation to owned CLOSED %s accounts, excluding QA", async (scope, types) => {
     const f = fixture()
     await getSetupPlaybook(f.prisma as never, owner, setupId, scope)
+    const mode = scope ?? "REAL"
     expect(f.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: setupId, userId: owner } }))
-    expect(f.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: owner, setupId, status: "CLOSED", account: { userId: owner, type: { in: [...types] } } } }))
+    expect(f.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: owner, operationalMode: mode, setupId, status: "CLOSED", account: { userId: owner, type: { in: [...types] } } } }))
   })
   it("distinguishes closed sample, usable R and valid checklist denominator without summing currencies", async () => {
     const f = fixture([

@@ -1,3 +1,4 @@
+import { operationalModeSchema, legacyPracticeInput } from "@/domains/trading/operational-mode"
 import { z } from "zod"
 import { EMOTION_VALUES } from "@/domains/trading/emotions"
 import { router, protectedProcedure } from "../init"
@@ -12,6 +13,7 @@ export type { SerializedTrade } from "@/server/services/trades/serializers"
 export const tradesRouter = router({
   list: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       accountId: z.string().uuid().optional(),
       setupId:   z.string().uuid().optional(),
       from:      z.string().optional(),
@@ -36,7 +38,8 @@ export const tradesRouter = router({
       // Include demo/backtest ("practice") accounts in the financial/performance
       // aggregates. Off by default so unreal money never inflates real stats.
       // Behavioural metrics (discipline) always count practice regardless.
-      includePractice: z.boolean().optional().default(false),
+      mode: operationalModeSchema.default("REAL"),
+      includePractice: legacyPracticeInput,
     }).optional())
     .query(({ ctx, input }) => getDashboardStats(ctx.prisma, ctx.userId, input)),
 
@@ -61,6 +64,13 @@ export const tradesRouter = router({
       closeTime:       z.string().optional(),
       commission:      z.number().optional(),
       status:          z.enum(["OPEN", "CLOSED", "CANCELLED"]).default("OPEN"),
+      captureContext:  z.enum(["LIVE", "HISTORICAL"]).optional(),
+      marketOpenedAt:  z.string().datetime({ offset: true }).optional(),
+      marketClosedAt:  z.string().datetime({ offset: true }).optional(),
+      marketTimeZone:  z.string().optional(),
+      closeDate:       z.string().optional(),
+      emotionContext:  z.enum(["MARKET", "PRACTICE"]).optional(),
+      emotionReferenceAt: z.string().datetime({ offset: true }).optional(),
       // Psychology fields (TASK-034)
       emotionBefore:   z.enum(EMOTION_VALUES).optional().nullable(),
       confidenceRating: z.number().int().min(1).max(5).optional().nullable(),
@@ -80,6 +90,14 @@ export const tradesRouter = router({
   update: protectedProcedure
     .input(z.object({
       id:               z.string().uuid(),
+      date:             z.string().optional(),
+      openTime:         z.string().optional(),
+      marketOpenedAt:   z.string().datetime({ offset: true }).optional(),
+      marketClosedAt:   z.string().datetime({ offset: true }).optional(),
+      marketTimeZone:   z.string().optional(),
+      eventTimestamps:  z.array(z.object({ id: z.string().uuid(), timestamp: z.string().datetime({ offset: true }) })).max(500).optional(),
+      emotionContext:   z.enum(["MARKET", "PRACTICE"]).optional(),
+      emotionReferenceAt: z.string().datetime({ offset: true }).optional(),
       notes:            z.string().optional(),
       tags:             z.array(z.string().min(1).max(30)).max(20).optional(),
       pnl:              z.number().optional(),
@@ -110,6 +128,9 @@ export const tradesRouter = router({
     .input(z.object({
       id:         z.string().uuid(),
       closePrice: z.number(),
+      captureContext: z.enum(["LIVE", "HISTORICAL"]).optional(),
+      marketClosedAt: z.string().datetime({ offset: true }).optional(),
+      closeDate: z.string().optional(),
       closeTime:  z.string().optional(),
       commission: z.number(),
       // Trade-capture v3 (S2) — excursions known at close + market regime (#35, E5.C6)
@@ -149,6 +170,7 @@ export const tradesRouter = router({
 
   ruleViolationStats: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       from: z.string().optional(),
       to:   z.string().optional(),
     }).optional())
@@ -177,18 +199,20 @@ export const tradesRouter = router({
   // pre-trade emotion, so capturing it returns value in the moment. Null below the
   // minimum sample (handled in feedbackForEmotion) — no misleading small-n claim.
   emotionFeedback: protectedProcedure
-    .input(z.object({ emotion: z.string().min(1) }))
-    .query(({ ctx, input }) => getEmotionFeedback(ctx.prisma, ctx.userId, input.emotion)),
+    .input(z.object({ emotion: z.string().min(1), mode:operationalModeSchema.default("REAL") }))
+    .query(({ ctx, input }) => getEmotionFeedback(ctx.prisma, ctx.userId, input.emotion,input.mode)),
 
   // T-VI-002: Behavioral pattern insights
   patternInsights: protectedProcedure
-    .query(({ ctx }) => getPatternInsights(ctx.prisma, ctx.userId)),
+    .input(z.object({mode:operationalModeSchema.default("REAL")}).optional())
+    .query(({ ctx,input }) => getPatternInsights(ctx.prisma, ctx.userId,input?.mode)),
 
   // T-VI-004: búsqueda semántica (pgvector). Se conserva sin consumidor de UI a
   // propósito: las citas del Coach van por la tool, así que esta procedure da una
   // vía de verificación INDEPENDIENTE del LLM.
   semanticSearch: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       query:  z.string().min(1).max(500),
       corpus: z.enum(CORPUS_KEYS).optional(),
       limit:  z.number().int().min(1).max(10).default(5),

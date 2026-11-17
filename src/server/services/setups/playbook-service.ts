@@ -1,3 +1,5 @@
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 // ─────────────────────────────────────────────────────────────────────────────
 // Playbook intelligence service (S10) — prisma orchestration over the pure setup
 // analytics (domains/analytics/setups). For one setup it bundles edge decay (#12),
@@ -17,8 +19,7 @@ import type { Dated, Window } from "@/domains/analytics/longitudinal/rolling-win
 const num = (v: { toString(): string } | null | undefined): number | null => (v == null ? null : Number(v))
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 
-export type SetupScope = "REAL" | "DEMO" | "BACKTEST"
-const SCOPE_TYPES: Record<SetupScope, string[]> = { REAL: ["PERSONAL", "PROP_FIRM"], DEMO: ["DEMO_PERSONAL", "DEMO_PROP"], BACKTEST: ["BACKTEST"] }
+export type SetupScope = OperationalMode
 
 const RECENT_WINDOW = 20
 const EVOLUTION_WINDOW = 10
@@ -48,7 +49,7 @@ export async function getSetupPlaybook(
   if (!setup) return null
 
   const trades = await prisma.trade.findMany({
-    where: { userId, setupId, status: "CLOSED", account: { userId, type: { in: SCOPE_TYPES[scope] } } },
+    where: { ...await scopedTradeWhere(prisma,userId,{mode:scope,includeArchived:true}), setupId, status: "CLOSED" },
     orderBy: [{ date: "asc" }, { closeTime: "asc" }, { createdAt: "asc" }],
     select: { id: true, rMultiple: true, pnl: true, direction: true, date: true },
   })

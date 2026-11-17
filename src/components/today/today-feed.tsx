@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import {
   ShieldAlert, AlertTriangle, ShieldCheck, Lightbulb, Target, TrendingUp, Bell, Gauge, ArrowRight, Sun, X,
 } from "lucide-react"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { RiskBudgetMeter } from "@/components/risk/risk-budget-meter"
 import type { SignalKind, SignalSeverity } from "@/domains/cognitive/today/feed"
@@ -31,9 +32,10 @@ function severityColor(s: SignalSeverity): { color: string; bg: string } {
 /** HOY feed (S13, E11) — the single prioritized list that answers "qué hago hoy".
  *  Critical signals on top (never sink), calm reinforcement at the bottom. */
 export function TodayFeed() {
+  const mode = useOperationalMode(state => state.mode)
   const router = useRouter()
   const utils = trpc.useUtils()
-  const { data, isLoading } = trpc.today.feed.useQuery(undefined, { staleTime: 30_000 })
+  const { data, isLoading } = trpc.today.feed.useQuery({ mode }, { staleTime: 30_000 })
   const dismiss = trpc.today.dismiss.useMutation({ onSuccess: () => utils.today.feed.invalidate() })
 
   if (isLoading) {

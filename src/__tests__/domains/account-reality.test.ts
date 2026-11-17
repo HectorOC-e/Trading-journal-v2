@@ -16,10 +16,10 @@ describe("account-reality classifier", () => {
     }
   })
 
-  it("treats null/undefined/unknown types as real (fail-open to real money)", () => {
-    expect(accountReality(null)).toBe("real")
-    expect(accountReality(undefined)).toBe("real")
-    expect(accountReality("SOMETHING_NEW")).toBe("real")
+  it("keeps null/undefined/unknown types out of real-money classification", () => {
+    expect(accountReality(null)).toBe("unclassified")
+    expect(accountReality(undefined)).toBe("unclassified")
+    expect(accountReality("SOMETHING_NEW")).toBe("unclassified")
     expect(isPracticeType(null)).toBe(false)
   })
 })

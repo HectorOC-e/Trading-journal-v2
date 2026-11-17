@@ -3,6 +3,7 @@
 // que falte (acotado), consulta cada corpus por su adaptador y conforma el
 // resultado. Ningún estado se colapsa: cada corpus reporta el suyo (spec §6).
 // ─────────────────────────────────────────────────────────────────────────────
+import { OPERATIONAL_MODES, accountTypesForMode, operationalModeSchema, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { resolveEmbeddingCall } from "@/lib/ai/resolve-provider"
 import { embedText } from "@/lib/ai/embeddings"
@@ -46,35 +47,42 @@ const toVec = (v: number[]): string => `[${v.join(",")}]`
 const clamp = (n: number | undefined, def: number, max: number) =>
   Math.min(max, Math.max(1, Number(n) || def))
 
-export interface SearchInput { query: string; corpus?: CorpusKey; limit?: number }
+export interface SearchInput { query: string; corpus?: CorpusKey; limit?: number; mode: OperationalMode }
 
 export async function search(
   prisma: PrismaClient, userId: string, input: SearchInput,
 ): Promise<SearchResult> {
-  const keys: CorpusKey[] = input.corpus ? [input.corpus] : [...CORPUS_KEYS]
+  const mode = operationalModeSchema.parse(input.mode)
+  const requested: CorpusKey[] = input.corpus ? [input.corpus] : [...CORPUS_KEYS]
+  // Legacy review narrative may combine modes. It is unavailable until regenerated
+  // from mode snapshots; never silently relabel it as Real.
+  const legacy: CorpusKey[] = requested.filter(key => key === "weekly_reviews" || key === "monthly_reviews")
+  const unavailable: CorpusOutcome[] = legacy.map(corpus => ({ corpus, state: "UNSCOPED_LEGACY", remaining: 0 }))
+  const keys = requested.filter(key => !legacy.includes(key))
+  if (keys.length === 0) return { citations: [], outcomes: unavailable }
   const limit = clamp(input.limit, DEFAULT_LIMIT, MAX_LIMIT)
 
   const emb = await resolveEmbeddingCall(prisma, userId)
   if (emb.source === "none") {
-    return { citations: [], outcomes: keys.map(c => ({ corpus: c, state: "NO_KEY" as const, remaining: 0 })) }
+    return { citations: [], outcomes: [...unavailable, ...keys.map(c => ({ corpus: c, state: "NO_KEY" as const, remaining: 0 }))] }
   }
 
   const vector = await embedWithRetry(input.query, emb.model, emb.apiKey, "retrieval:search")
   if (!vector) {
-    return { citations: [], outcomes: keys.map(c => ({ corpus: c, state: "EMBED_FAILED" as const, remaining: 0 })) }
+    return { citations: [], outcomes: [...unavailable, ...keys.map(c => ({ corpus: c, state: "EMBED_FAILED" as const, remaining: 0 }))] }
   }
   const vec = toVec(vector)
 
   const citations: Citation[] = []
-  const outcomes: CorpusOutcome[] = []
+  const outcomes: CorpusOutcome[] = [...unavailable]
 
   for (const key of keys) {
     const adapter = getAdapter(key)
     // Auto-reparación acotada ANTES de buscar: la feature no puede quedarse muda.
-    const remaining = await repairCorpus(prisma, userId, key, emb.model, emb.apiKey)
-    const counts = await adapter.counts(prisma, userId)
-    const hits = counts.embedded > 0 ? await adapter.knn(prisma, userId, vec, limit) : []
-    const rows = hits.length ? await adapter.hydrate(prisma, userId, hits.map(h => h.id)) : []
+    const remaining = await repairCorpus(prisma, userId, key, emb.model, emb.apiKey, mode)
+    const counts = await adapter.counts(prisma, userId, mode)
+    const hits = counts.embedded > 0 ? await adapter.knn(prisma, userId, vec, limit, mode) : []
+    const rows = hits.length ? await adapter.hydrate(prisma, userId, hits.map(h => h.id), mode) : []
     citations.push(...orderByHits(hits, rows, adapter.rowId, adapter.toCitation).filter(citation => citation.snippet.trim()))
     outcomes.push({
       corpus: key,
@@ -104,17 +112,17 @@ export async function search(
  * ausente; los otros corpus permiten refrescar un vector tras editar su texto.
  */
 async function repairCorpus(
-  prisma: PrismaClient, userId: string, key: CorpusKey, model: string, apiKey: string,
+  prisma: PrismaClient, userId: string, key: CorpusKey, model: string, apiKey: string, mode: OperationalMode,
 ): Promise<number> {
   const adapter = getAdapter(key)
   try {
-    const pending = await adapter.pending(prisma, userId, REPAIR_BATCH)
+    const pending = await adapter.pending(prisma, userId, REPAIR_BATCH, mode)
     for (const row of pending) {
       const v = await embedWithRetry(row.text, model, apiKey, "retrieval:repair")
       if (!v) continue
       await adapter.writeVector(prisma, row.id, toVec(v), row.text, userId)
     }
-    const after = await adapter.counts(prisma, userId)
+    const after = await adapter.counts(prisma, userId, mode)
     return Math.max(0, after.withText - after.embedded)
   } catch (err) {
     // Se reporta, NO se traga. Es la lección de #160 y del `catch {}` mudo de
@@ -124,6 +132,8 @@ async function repairCorpus(
   }
 }
 
+/** Infrastructure maintenance: trade adapters cover all known modes when no
+ * scope is passed; conceptual corpora are indexed once. Search always passes mode. */
 export async function reindex(
   prisma: PrismaClient, userId: string, input?: { corpus?: CorpusKey; limit?: number },
 ): Promise<{ embedded: number; failed: number; remaining: number }> {
@@ -174,6 +184,14 @@ export function scheduleEmbedding(
   if (!text.trim()) return
   void (async () => {
     try {
+      // Background maintenance spans public modes, but internal/unclassified rows
+      // must not be indexed or sent to an embedding provider.
+      const knownTrade = { userId, operationalMode: { in: [...OPERATIONAL_MODES] }, account: { userId, type: { in: OPERATIONAL_MODES.flatMap(accountTypesForMode) } } }
+      if (corpus === "trade_notes" || corpus === "trade_plans") {
+        if (!await prisma.trade.findFirst({ where: { ...knownTrade, id }, select: { id: true } })) return
+      } else if (corpus === "trade_events") {
+        if (!await prisma.tradeEvent.findFirst({ where: { id, userId, trade: knownTrade }, select: { id: true } })) return
+      }
       const emb = await resolveEmbeddingCall(prisma, userId)
       if (emb.source === "none") return
       const v = await embedWithRetry(text, emb.model, emb.apiKey, "retrieval:schedule")

@@ -12,6 +12,7 @@
 // OPEN_ITEMS_SPRINT_0).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { OPERATIONAL_MODES, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
@@ -19,8 +20,8 @@ import { generatePsychologyInsights } from "@/domains/analytics/services/psychol
 import { persistInsights, toComputedInsight, type PersistResult } from "./insight-store"
 import { suggestRulesFromInsights } from "@/server/services/behavior/rule-suggestion-service"
 
-export async function recomputeInsightsForUser(userId: string, prisma: PrismaClient): Promise<PersistResult> {
-  const bundle = await buildAnalyticsBundle(userId, prisma)
+export async function recomputeInsightsForUser(userId: string, prisma: PrismaClient, mode: OperationalMode = "REAL"): Promise<PersistResult> {
+  const bundle = await buildAnalyticsBundle(userId, prisma, undefined, mode)
   const n = bundle.raw.trades.length
 
   const engineInsights = [
@@ -34,10 +35,10 @@ export async function recomputeInsightsForUser(userId: string, prisma: PrismaCli
   ]
 
   const computed = engineInsights.map((i) => toComputedInsight(i, n))
-  const result = await persistInsights(userId, computed, prisma)
+  const result = await persistInsights(userId, computed, prisma, mode)
   // S5: generate rule suggestions from the freshly-persisted critical insights
   // (best-effort — never fail the insight job over a suggestion).
-  await suggestRulesFromInsights(prisma, userId).catch(() => {})
+  await suggestRulesFromInsights(prisma, userId, mode).catch(() => {})
   return result
 }
 
@@ -55,10 +56,12 @@ export async function recomputeInsightsForAll(prisma: PrismaClient): Promise<Rec
 
   for (const u of users) {
     try {
-      const r = await recomputeInsightsForUser(u.id, prisma)
-      totals.created += r.created
-      totals.touched += r.touched
-      totals.resolved += r.resolved
+      for (const mode of OPERATIONAL_MODES) {
+        const r = await recomputeInsightsForUser(u.id, prisma, mode)
+        totals.created += r.created
+        totals.touched += r.touched
+        totals.resolved += r.resolved
+      }
     } catch {
       totals.failures += 1
     }

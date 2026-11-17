@@ -1,3 +1,8 @@
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import { ensureWeeklyReviewEnvelope } from "@/server/services/reviews/envelopes"
+import { saveReviewModeAnalysis } from "@/server/services/reviews/mode-snapshots"
+import { fxFactor,parseFxRates,hasFxConversion } from "@/lib/fx"
 import { createReviewCommitment, planReviewPractice, loadReviewFollowUp } from "@/server/services/reviews/continuity"
 import { reviewSourceSchema } from "@/domains/learning/review-source"
 import { localDateISO, safeTimeZone } from "@/lib/datetime/local"
@@ -60,16 +65,17 @@ function serializeReview(r: WeeklyReview): SerializedReview {
 }
 
 export const weeklyReviewsRouter = router({
-  createCommitment: protectedProcedure.input(z.object({ id: z.string().uuid(), source: reviewSourceSchema, insightType: z.enum(["intraday-decay", "revenge-trading", "oversizing", "off-plan"]) })).mutation(({ctx,input}) => createReviewCommitment(ctx.prisma,ctx.userId,input)),
-  planPractice: protectedProcedure.input(z.object({ id: z.string().uuid(), source: reviewSourceSchema, resourceId: z.string().uuid(), date: z.string().date(), plannedMin: z.number().int().min(5).max(480) })).mutation(async ({ctx,input}) => {
+  createCommitment: protectedProcedure.input(z.object({ id: z.string().uuid(), mode:operationalModeSchema.default("REAL"), source: reviewSourceSchema, insightType: z.enum(["intraday-decay", "revenge-trading", "oversizing", "off-plan"]) })).mutation(({ctx,input}) => createReviewCommitment(ctx.prisma,ctx.userId,input)),
+  planPractice: protectedProcedure.input(z.object({ id: z.string().uuid(), mode:operationalModeSchema.default("REAL"), source: reviewSourceSchema, resourceId: z.string().uuid(), date: z.string().date(), plannedMin: z.number().int().min(5).max(480) })).mutation(async ({ctx,input}) => {
     const user = await ctx.prisma.user.findUniqueOrThrow({where:{id:ctx.userId},select:{timezone:true}})
     if(input.date < localDateISO(new Date(),safeTimeZone(user.timezone))) throw new TRPCError({code:"BAD_REQUEST",message:"Elige hoy o una fecha futura."})
     return planReviewPractice(ctx.prisma,ctx.userId,input)
   }),
-  followUp: protectedProcedure.input(z.object({weekStart:z.string().date()})).query(({ctx,input}) => loadReviewFollowUp(ctx.prisma,ctx.userId,input.weekStart)),
+  followUp: protectedProcedure.input(z.object({weekStart:z.string().date(),mode:operationalModeSchema.default("REAL")})).query(({ctx,input}) => loadReviewFollowUp(ctx.prisma,ctx.userId,input.weekStart,input.mode)),
   list: protectedProcedure
-    .input(z.object({ accountId: z.string().uuid().optional() }).optional())
+    .input(z.object({ accountId: z.string().uuid().optional(),mode:operationalModeSchema.default("REAL") }).optional())
     .query(async ({ ctx, input }) => {
+      if(input?.accountId)await scopedTradeWhere(ctx.prisma,ctx.userId,{mode:input.mode,accountId:input.accountId,includeArchived:true})
       const reviews = await ctx.prisma.weeklyReview.findMany({
         where: {
           userId:    ctx.userId,
@@ -81,14 +87,18 @@ export const weeklyReviewsRouter = router({
       // Batched live metrics per week (one trade query) for the rich cards. Auto-draft
       // rows can carry stale 0s (created before finalize), so the computed P&L/WR/trades
       // override the stored values; discipline stays from the row (set at finalize).
-      const stats = await loadWeeklyCardStats(ctx.prisma, ctx.userId, serialized.map(r => r.weekStart))
+      const stats = await loadWeeklyCardStats(ctx.prisma, ctx.userId, serialized.map(r => r.weekStart),input?.mode ?? "REAL")
+      const mode=input?.mode ?? "REAL"
+      const snapshots=await ctx.prisma.reviewModeSnapshot.findMany({where:{userId:ctx.userId,kind:"WEEKLY",mode,evidenceHash:{not:""},periodKey:{in:serialized.map(r=>r.weekStart)}},select:{periodKey:true,metrics:true}})
+      const scores=new Map(snapshots.map(row=>[row.periodKey,(row.metrics as {disciplineScore?:number}).disciplineScore ?? null]))
       return serialized.map(r => {
         const s = stats.get(r.weekStart)
         return {
           ...r,
-          netPnl:       s ? s.netPnl : r.netPnl,
-          winRate:      s ? s.winRate : r.winRate,
-          tradeCount:   s ? s.trades : r.tradeCount,
+          operationalMode:mode, aiAnalysis:null,aiAnalysisAt:null,disciplineScore:scores.get(r.weekStart)??null,
+          netPnl:       s?.netPnl ?? 0,
+          winRate:      s?.winRate ?? 0,
+          tradeCount:   s?.trades ?? 0,
           profitFactor: s?.profitFactor ?? 0,
           avgR:         s?.avgR ?? 0,
           spark:        s?.spark ?? [],
@@ -99,57 +109,53 @@ export const weeklyReviewsRouter = router({
   // Trayectoria panel for the unified index: per-week grade series + from→to trend
   // stats + recurring-pattern cards. Window = whole history, or the active year/month.
   overview: protectedProcedure
-    .input(z.object({ year: z.number().int().optional(), month: z.number().int().min(1).max(12).optional() }).optional())
+    .input(z.object({ mode:operationalModeSchema.default("REAL"),year: z.number().int().optional(), month: z.number().int().min(1).max(12).optional() }).optional())
     .query(({ ctx, input }) => loadReviewsOverview(ctx.prisma, ctx.userId, input ?? undefined)),
 
   getByWeek: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
-    .query(({ ctx, input }) =>
-      ctx.prisma.weeklyReview.findFirst({
-        where: { userId: ctx.userId, weekStart: new Date(input.weekStart) },
-      })
-    ),
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
+    .query(async ({ctx,input})=>(await loadWeeklyReport(ctx.prisma,ctx.userId,input.weekStart,input.mode)).saved),
 
   // Visual report for one week (same pattern as monthlyReviews.report): KPIs +
   // deltas vs the prior week, day-by-day P&L trend, best/worst day, discipline,
   // setups, P&L por cuenta, and the saved review narrative if present.
   report: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
     .query(async ({ ctx, input }) => {
-      const { report, saved, pendingEmotion } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
-      const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
+      const { report, saved, pendingEmotion, scope } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart,input.mode)
+      const analytics = await loadReviewAnalytics(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart, mode:input.mode })
       // Live discipline so the hero/report show a real score even before finalize
       // (auto-draft rows store 0). Only when the week has trades.
       if (report.kpis.trades > 0 && (report.kpis.disciplineScore == null || report.kpis.disciplineScore === 0)) {
-        const from = new Date(input.weekStart + "T00:00:00")
+        const from = new Date(input.weekStart + "T00:00:00Z")
         const to   = new Date(from); to.setDate(from.getDate() + 7)
-        const disc = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to })
+        const disc = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to },undefined,input.mode)
         report.kpis.disciplineScore = disc.score ?? report.kpis.disciplineScore
       }
       // `pendingEmotion` viaja hasta el VM: la semana de la review ES la ventana
       // de 7 días, así que el panel de Psicología puede ofrecer el gesto en vez
       // de una instrucción sin salida.
-      return { ...report, userId: ctx.userId, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pendingEmotion }
+      return { ...report, scope, userId: ctx.userId, ai: aiMetaOf(saved), status: saved?.status ?? "draft", analytics, pendingEmotion }
     }),
 
   // Light learning summary for the week (study minutes, streak, repasos).
   learningSummary: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
     .query(({ ctx, input }) => {
-      const from = new Date(input.weekStart + "T00:00:00")
+      const from = new Date(input.weekStart + "T00:00:00Z")
       const to   = new Date(from); to.setDate(from.getDate() + 7)
       return loadLearningSummary(ctx.prisma, ctx.userId, { from, to })
     }),
 
   // Deterministic insight cards for the week (same engine as /analytics).
   insights: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
-    .query(({ ctx, input }) => loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })),
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
+    .query(({ ctx, input }) => loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart, mode:input.mode })),
 
   // T-XI: AI analysis of the computed weekly report. Persists to the review row
   // (creating a draft when none exists) so it's reused and embeddable in the email.
   generateAnalysis: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
     .mutation(async ({ ctx, input }) => {
       const aiCall = await resolveAiCall(ctx.prisma, ctx.userId, "weekly_reviews")
       const candidates = usableCandidates(aiCall)
@@ -160,45 +166,29 @@ export const weeklyReviewsRouter = router({
         })
       }
 
-      const { report, saved } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart)
+      const { report, saved, snapshot, evidenceHash } = await loadWeeklyReport(ctx.prisma, ctx.userId, input.weekStart,input.mode)
       if (report.kpis.trades === 0) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para analizar." })
       }
-      const insights = await loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart })
+      const insights = await loadReviewInsights(ctx.prisma, ctx.userId, { kind: "weekly", weekStart: input.weekStart, mode:input.mode })
 
       let analysis: string
       try {
         // "interactive": lo dispara el trader desde la review y espera el resultado.
-        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(report.weekLabel, "weekly", report, insights), "interactive")
+        analysis = await runReviewAnalysis(candidates, buildAnalysisPrompt(`${input.mode} · ${report.weekLabel}`, "weekly", {...report,saved:null}, insights), "interactive")
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Error al generar el análisis. Inténtalo de nuevo." })
       }
       if (!analysis) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "El análisis llegó vacío. Inténtalo de nuevo." })
 
-      const at = new Date()
-      if (saved) {
-        await ctx.prisma.weeklyReview.update({ where: { id: saved.id }, data: { aiAnalysis: analysis, aiAnalysisAt: at } })
-      } else {
-        const weekStart = new Date(input.weekStart + "T00:00:00")
-        const weekEnd   = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6)
-        await ctx.prisma.weeklyReview.create({
-          data: {
-            userId: ctx.userId,
-            weekStart, weekEnd,
-            weekLabel: report.weekLabel,
-            weekRange: report.weekLabel,
-            aiAnalysis: analysis, aiAnalysisAt: at,
-            status: "draft",
-          },
-        })
-      }
-      return { analysis, at: at.toISOString() }
+      if(!saved)await ensureWeeklyReviewEnvelope(ctx.prisma,ctx.userId,input.weekStart)
+      return saveReviewModeAnalysis(ctx.prisma,snapshot,evidenceHash,analysis)
     }),
 
   // Manual "send by email" — bypasses quiet-hours/dedupe but requires the master
   // email switch (the click is the opt-in). Cron uses the same service (Phase 4).
   sendEmail: protectedProcedure
-    .input(z.object({ weekStart: z.string() }))
+    .input(z.object({ weekStart: z.string().date(), mode:operationalModeSchema.default("REAL") }))
     .mutation(async ({ ctx, input }) => {
       const user = await ctx.prisma.user.findUnique({
         where: { id: ctx.userId },
@@ -206,7 +196,7 @@ export const weeklyReviewsRouter = router({
       })
       if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "Usuario no encontrado" })
 
-      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "weekly", weekStart: input.weekStart }, { manual: true })
+      const { status, error } = await sendReviewEmail({ prisma: ctx.prisma }, user, { kind: "weekly", weekStart: input.weekStart, mode:input.mode }, { manual: true })
       if (status === "ineligible") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Activa los correos en tu perfil para recibir la review." })
       if (status === "empty")      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No hay trades en esta semana para enviar." })
       if (status === "send_failed") throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: emailFailureMessage(error) })
@@ -257,12 +247,12 @@ export const weeklyReviewsRouter = router({
     ),
 
   computedDisciplineScore: protectedProcedure
-    .input(z.object({ weekStart: z.string(), weekEnd: z.string() }))
+    .input(z.object({ weekStart: z.string().date(), weekEnd: z.string().date(), mode:operationalModeSchema.default("REAL") }))
     .query(async ({ ctx, input }) => {
       const from = new Date(input.weekStart)
       const to   = new Date(input.weekEnd)
       to.setDate(to.getDate() + 1) // make end inclusive (discipline-service uses lt: to)
-      const result = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to })
+      const result = await computeDisciplineScore(ctx.prisma, ctx.userId, { from, to },undefined,input.mode)
       return {
         score:     result.score,
         breakdown: {
@@ -277,7 +267,8 @@ export const weeklyReviewsRouter = router({
   // T-IX-004: Auto pre-fill data for a new weekly review
   prefill: protectedProcedure
     .input(z.object({
-      weekStart: z.string(),
+      mode:operationalModeSchema.default("REAL"),
+      weekStart: z.string().date(),
       weekEnd:   z.string(),
       accountId: z.string().uuid().optional(),
     }))
@@ -287,19 +278,22 @@ export const weeklyReviewsRouter = router({
       const to     = new Date(input.weekEnd)
       to.setDate(to.getDate() + 1) // make end inclusive
 
-      const [trades, computedScore] = await Promise.all([
+      const [tradeRows, computedScore,profile] = await Promise.all([
         ctx.prisma.trade.findMany({
           where: {
-            userId,
+            ...await scopedTradeWhere(ctx.prisma,userId,{mode:input.mode,accountId:input.accountId,includeArchived:true}),
             status: "CLOSED",
             ...(input.accountId ? { accountId: input.accountId } : {}),
             date: { gte: from, lt: to },
           },
-          select: { pnl: true, rMultiple: true, setupId: true, tags: true },
+          select: { pnl: true, rMultiple: true, setupId: true, tags: true, account:{select:{currency:true}} },
         }),
-        computeDisciplineScore(ctx.prisma, userId, { from, to }, input.accountId),
+        computeDisciplineScore(ctx.prisma, userId, { from, to }, input.accountId,input.mode),
+        ctx.prisma.user.findUnique({where:{id:userId},select:{baseCurrency:true,fxRates:true}}),
       ])
 
+      const base=profile?.baseCurrency ?? "USD",rates=parseFxRates(profile?.fxRates)
+      const trades=tradeRows.filter(t=>hasFxConversion(t.account.currency,base,rates)).map(t=>({...t,pnl:Number(t.pnl??0)*fxFactor(t.account.currency,base,rates)}))
       const tradeCount = trades.length
       const netPnl     = parseFloat(trades.reduce((s, t) => s + Number(t.pnl ?? 0), 0).toFixed(2))
       const wins       = trades.filter(t => isWin({ pnl: Number(t.pnl ?? 0) })).length
@@ -333,7 +327,8 @@ export const weeklyReviewsRouter = router({
   // row (auto-first: the row may not exist yet when the report is just an auto-draft).
   saveReview: protectedProcedure
     .input(z.object({
-      weekStart: z.string(),
+      mode:operationalModeSchema.default("REAL"),
+      weekStart: z.string().date(),
       notes:     z.string().max(5000).optional(),
       status:    z.enum(["draft", "submitted"]).optional(),
     }))
@@ -342,31 +337,11 @@ export const weeklyReviewsRouter = router({
       if (input.notes !== undefined) data.executiveSummary = input.notes
       if (input.status) data.status = input.status
 
-      const ws = new Date(input.weekStart + "T00:00:00")
-      const existing = await ctx.prisma.weeklyReview.findFirst({
-        where: { userId: ctx.userId, weekStart: ws },
-        select: { id: true },
-      })
-      if (existing) {
-        const row = await writeReviewText(ctx.prisma, "weekly_reviews", input.notes !== undefined, tx => tx.weeklyReview.update({
-          where: { id: existing.id }, data,
-          select: { id: true, status: true, executiveSummary: true },
-        }))
-        if (input.notes !== undefined) {
-          scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes)
-        }
-        return { status: row.status, notes: row.executiveSummary }
-      }
-      const we = new Date(ws); we.setDate(ws.getDate() + 6)
-      const label = `Semana del ${ws.toLocaleDateString("es", { day: "numeric", month: "short" })}`
-      const row = await writeReviewText(ctx.prisma, "weekly_reviews", input.notes !== undefined, tx => tx.weeklyReview.create({
-        data: {
-          userId: ctx.userId, weekStart: ws, weekEnd: we, weekLabel: label, weekRange: label,
-          executiveSummary: input.notes ?? "", status: input.status ?? "draft",
-        },
-        select: { id: true, status: true, executiveSummary: true },
+      const envelope=await ensureWeeklyReviewEnvelope(ctx.prisma,ctx.userId,input.weekStart)
+      const row=await writeReviewText(ctx.prisma,"weekly_reviews",input.notes!==undefined,tx=>tx.weeklyReview.update({
+        where:{id:envelope.id,userId:ctx.userId},data,select:{id:true,status:true,executiveSummary:true},
       }))
-      scheduleEmbedding(ctx.prisma, ctx.userId, "weekly_reviews", row.id, input.notes ?? "")
-      return { status: row.status, notes: row.executiveSummary }
+      if(input.notes!==undefined)scheduleEmbedding(ctx.prisma,ctx.userId,"weekly_reviews",row.id,input.notes)
+      return {status:row.status,notes:row.executiveSummary}
     }),
 })

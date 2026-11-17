@@ -20,6 +20,10 @@ import { Field } from "@/components/ui/field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Markdown } from "@/components/ui/markdown";
 import { BookOpen, ImagePlus, Save, Sparkles, Trash2 } from "lucide-react";
+import { useOperationalMode } from "@/lib/operational-mode-store";
+import type { OperationalMode } from "@/domains/trading/operational-mode";
+import { PracticeTradePicker, type PracticeLinkDraft } from "../components/practice-trade-picker";
+type PracticeKind = "CONCEPT" | "EXECUTION" | "REVIEW";
 
 export type PracticeRecord =
   RouterOutputs["learningPractices"]["list"]["items"][number];
@@ -36,6 +40,7 @@ function PracticeEditor({
   repeatFrom,
   onRepeat,
   resourceId,
+  initialTradeIds = [],
   today,
   timezone = "UTC",
   onClose,
@@ -47,17 +52,22 @@ function PracticeEditor({
   repeatFrom?: PracticeRecord;
   onRepeat?: (record: PracticeRecord) => void;
   resourceId?: string;
+  initialTradeIds?: string[];
   today?: string;
   timezone?: string;
   onClose: () => void;
   onChanged: () => void;
 }) {
   const [saved, setSaved] = useState(record);
+  const activeMode = useOperationalMode(s => s.mode);
+  const [practiceKind, setPracticeKind] = useState<PracticeKind>((record?.kind ?? repeatFrom?.kind ?? (initialTradeIds.length ? (activeMode === "REAL" ? "REVIEW" : "EXECUTION") : "CONCEPT")) as PracticeKind);
+  const [practiceMode, setPracticeMode] = useState<OperationalMode | null>((record?.operationalMode ?? repeatFrom?.operationalMode ?? (initialTradeIds.length ? activeMode : null)) as OperationalMode | null);
+  const [links, setLinks] = useState<PracticeLinkDraft[]>(record?.tradeLinks?.map(l => ({tradeId:l.tradeId,role:l.role as PracticeLinkDraft["role"]})) ?? initialTradeIds.map(tradeId => ({tradeId,role: activeMode === "REAL" ? "REVIEWED" : "EXECUTED"})));
   const [id, setId] = useState(() => record?.id ?? crypto.randomUUID());
   const [title, setTitle] = useState(record?.title ?? plannedSession?.reviewSource?.conclusion.slice(0, 160) ?? repeatFrom?.title ?? "");
   const [date, setDate] = useState(record?.date.slice(0, 10) ?? today ?? "");
   const [minutes, setMinutes] = useState(
-    record ? String(record.durationMin) : repeatFrom ? "" : "30",
+    record ? String(record.durationMin) : repeatFrom || initialTradeIds.length ? "" : "30",
   );
   const [exercise, setExercise] = useState(
     record?.exercise ?? repeatFrom?.exercise ?? "",
@@ -116,6 +126,9 @@ function PracticeEditor({
       | "repeat"
       | null,
     resourceId: resource || null,
+    kind: practiceKind,
+    operationalMode: practiceMode,
+    links,
   };
   const dirty =
     !saved ||
@@ -129,15 +142,28 @@ function PracticeEditor({
         objective: saved.objective ?? "",
         assessment: saved.assessment ?? null,
         resourceId: saved.resourceId,
+        kind: saved.kind ?? "CONCEPT",
+        operationalMode: saved.operationalMode ?? null,
+        links: saved.tradeLinks?.map(l => ({tradeId:l.tradeId,role:l.role})) ?? [],
       });
   const draftVersion = useRef(record?.version);
-  const draft = useRecoverableDraft(userId, `practice:${saved?.id ?? (plannedSession?.id ? `plan:${plannedSession.id}` : repeatFrom?.id ? `repeat:${repeatFrom.id}` : `new:${resourceId ?? "all"}`)}`, (raw) => {
+  const draft = useRecoverableDraft(userId, `practice:${saved?.id ?? (plannedSession?.id ? `plan:${plannedSession.id}` : repeatFrom?.id ? `repeat:${repeatFrom.id}` : `new:${resourceId ?? "all"}${initialTradeIds.length ? `:${initialTradeIds.join(",")}` : ""}`)}`, (raw) => {
     if (!raw || typeof raw !== "object") return null;
     const v = raw as Record<string, unknown>;
     if (typeof v.id !== "string" || !/^[0-9a-f-]{36}$/i.test(v.id)) return null;
     for (const field of ["title", "date", "minutes", "exercise", "reflection", "resource", "objective", "assessment"]) if (typeof v[field] !== "string") return null;
     if (v.version !== undefined && typeof v.version !== "number") return null;
-    return { id: v.id, version: v.version as number | undefined, title: v.title as string, date: v.date as string, minutes: v.minutes as string, exercise: v.exercise as string, reflection: v.reflection as string, resource: v.resource as string, objective: v.objective as string, assessment: v.assessment as string };
+    if (v.practiceKind !== undefined && !["CONCEPT","EXECUTION","REVIEW"].includes(String(v.practiceKind))) return null;
+    if (v.practiceMode !== undefined && v.practiceMode !== null && !["REAL","DEMO","BACKTEST"].includes(String(v.practiceMode))) return null;
+    const recoveredLinks: PracticeLinkDraft[] = [];
+    if (v.links !== undefined) {
+      if (!Array.isArray(v.links) || v.links.length > 50) return null;
+      for (const link of v.links) {
+        if (!link || typeof link !== "object" || typeof link.tradeId !== "string" || !/^[0-9a-f-]{36}$/i.test(link.tradeId) || !["EXECUTED","REVIEWED"].includes(link.role)) return null;
+        recoveredLinks.push({tradeId:link.tradeId,role:link.role});
+      }
+    }
+    return { id: v.id, version: v.version as number | undefined, title: v.title as string, date: v.date as string, minutes: v.minutes as string, exercise: v.exercise as string, reflection: v.reflection as string, resource: v.resource as string, objective: v.objective as string, assessment: v.assessment as string, practiceKind: (v.practiceKind ?? "CONCEPT") as PracticeKind, practiceMode: (v.practiceMode ?? null) as OperationalMode | null, links: recoveredLinks };
   });
   const [initialInput] = useState(input);
   const hasUnsavedChanges =
@@ -147,12 +173,12 @@ function PracticeEditor({
         !!suggestion) || !!pendingUpload;
   const storeDraft = draft.store;
   useEffect(() => {
-    if (draft.ready && !draft.recovery && hasUnsavedChanges && !busy) storeDraft({id, version: draftVersion.current, title, date, minutes, exercise, reflection, resource, objective, assessment});
-  }, [storeDraft, draft.ready, draft.recovery, hasUnsavedChanges, busy, id, title, date, minutes, exercise, reflection, resource, objective, assessment]);
+    if (draft.ready && !draft.recovery && hasUnsavedChanges && !busy) storeDraft({id, version: draftVersion.current, title, date, minutes, exercise, reflection, resource, objective, assessment, practiceKind, practiceMode, links});
+  }, [storeDraft, draft.ready, draft.recovery, hasUnsavedChanges, busy, id, title, date, minutes, exercise, reflection, resource, objective, assessment, practiceKind, practiceMode, links]);
   function restoreDraft() {
     const v = draft.recovery?.value; if (!v) return;
     setId(v.id); draftVersion.current = v.version;
-    setTitle(v.title); setDate(v.date); setMinutes(v.minutes); setExercise(v.exercise); setReflection(v.reflection); setResource(plannedSession?.resourceId ?? v.resource); setObjective(v.objective); setAssessment(v.assessment); draft.dismiss();
+    setTitle(v.title); setDate(v.date); setMinutes(v.minutes); setExercise(v.exercise); setReflection(v.reflection); setResource(plannedSession?.resourceId ?? v.resource); setObjective(v.objective); setAssessment(v.assessment); setPracticeKind(v.practiceKind); setPracticeMode(v.practiceMode); setLinks(v.links); draft.dismiss();
   }
   function requestClose() {
     if (busy) return;
@@ -218,6 +244,9 @@ function PracticeEditor({
       setReflection(p.reflection);
       setObjective(p.objective ?? "");
       setAssessment(p.assessment ?? "");
+      setPracticeKind(p.kind as PracticeKind);
+      setPracticeMode(p.operationalMode as OperationalMode | null);
+      setLinks((p.tradeLinks ?? []).map(l => ({tradeId:l.tradeId,role:l.role as PracticeLinkDraft["role"]})));
       onChanged();
       setNotice(
         "Práctica guardada. Puedes añadir capturas o pedir ayuda al asistente.",
@@ -394,7 +423,7 @@ function PracticeEditor({
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field
-                    label="Fecha"
+                    label="Fecha efectiva de práctica"
                     htmlFor={controlId("date")}
                     required
                     className="min-w-0"
@@ -426,6 +455,25 @@ function PracticeEditor({
                     />
                   </Field>
                 </div>
+                <Field label="Tipo de práctica" htmlFor={controlId("kind")}>
+                  <select id={controlId("kind")} className={selectClass} value={practiceKind} onChange={e => {
+                    const kind = e.target.value as PracticeKind;
+                    setPracticeKind(kind);
+                    if (kind === "CONCEPT") { setLinks([]); setPracticeMode(null); }
+                    else { const mode = practiceMode ?? (kind === "EXECUTION" && activeMode === "REAL" ? "DEMO" : activeMode); setPracticeMode(mode); setLinks(links.map(l => ({...l,role:kind === "EXECUTION" ? "EXECUTED" : "REVIEWED"}))); }
+                  }}>
+                    <option value="CONCEPT">Conceptual (sin operaciones)</option><option value="EXECUTION" disabled={practiceMode === "REAL"}>Ejecución Demo / Backtesting</option><option value="REVIEW">Revisión de operaciones</option>
+                  </select>
+                </Field>
+                {practiceKind !== "CONCEPT" && <>
+                  <Field label="Modalidad de la evidencia" htmlFor={controlId("mode")}>
+                    <select id={controlId("mode")} className={selectClass} value={practiceMode ?? activeMode} onChange={e => {setPracticeMode(e.target.value as OperationalMode);setLinks([]);}}>
+                      {practiceKind !== "EXECUTION" && <option value="REAL">Real</option>}<option value="DEMO">Demo</option><option value="BACKTEST">Backtesting</option>
+                    </select>
+                  </Field>
+                  <PracticeTradePicker key={`${practiceKind}:${practiceMode}`} mode={practiceMode ?? activeMode} kind={practiceKind} links={links} onChange={setLinks} practiceId={saved?.id} />
+                  {saved?.tradeLinks?.length ? <ul className="text-xs space-y-1" aria-label="Evidencia guardada">{saved.tradeLinks.map(l => <li key={l.id}><a className="underline" target="_blank" rel="noreferrer" href={`/trades?mode=${saved.operationalMode}&trade=${l.tradeId}`}>{l.trade.symbol}</a> · mercado {l.trade.date.slice(0,10)} · práctica {saved.date.slice(0,10)} · {l.role === "EXECUTED" ? "Ejecución única" : "Revisión"} · {l.trade.account.currency}</li>)}</ul> : null}
+                </>}
                 <Field
                   label="Recurso relacionado (opcional)"
                   htmlFor={controlId("resource")}
@@ -720,7 +768,7 @@ function PracticeEditor({
                   </h3>
                   <p className="mt-1 text-[11px] text-[var(--ink-3)]">
                     Usa tu configuración del Coach. Solo se envían notas y, al
-                    comentar, capturas cuando lo solicitas.
+                    comentar, las capturas de esta práctica cuando lo solicitas, el objetivo, autoevaluación, reglas disponibles y las operaciones vinculadas con su procedencia.
                   </p>
                 </div>
                 {dirty && (
@@ -774,12 +822,12 @@ function PracticeEditor({
                           </time>
                           <span
                             className={
-                              f.version === saved.version
+                              f.isCurrent
                                 ? "rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[var(--accent)]"
                                 : "rounded-full bg-[var(--chip)] px-2 py-0.5 text-[var(--ink-3)]"
                             }
                           >
-                            {f.version === saved.version
+                            {f.isCurrent
                               ? "Versión actual"
                               : "Sobre una versión anterior"}
                           </span>

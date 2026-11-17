@@ -16,7 +16,7 @@ function makeMockPrisma() {
       update: vi.fn(),
       delete: vi.fn(),
       // Default: account with initialBalance > amount so balance check passes
-      findUniqueOrThrow: vi.fn().mockResolvedValue({ id: ACCOUNT_ID, currency: "USD", initialBalance: 100000 }),
+      findUniqueOrThrow: vi.fn().mockResolvedValue({ id: ACCOUNT_ID, type: "PERSONAL", currency: "USD", initialBalance: 100000 }),
     },
     accountLog: {
       findMany: vi.fn().mockResolvedValue([]),
@@ -65,7 +65,7 @@ describe("withdrawals router", () => {
     const result = await caller.withdrawals.list({ accountId: ACCOUNT_ID })
 
     expect(mockPrisma.withdrawal.findMany).toHaveBeenCalledWith({
-      where: { userId: USER_ID, accountId: ACCOUNT_ID },
+      where: { userId: USER_ID, accountId: ACCOUNT_ID, account: { userId: USER_ID, type: { in: ["PERSONAL", "PROP_FIRM"] } } },
       include: { account: { select: { name: true, currency: true } } },
       orderBy: { date: "desc" },
     })
@@ -78,7 +78,7 @@ describe("withdrawals router", () => {
     await caller.withdrawals.list()
 
     expect(mockPrisma.withdrawal.findMany).toHaveBeenCalledWith({
-      where: { userId: USER_ID, accountId: undefined },
+      where: { userId: USER_ID, accountId: undefined, account: { userId: USER_ID, type: { in: ["PERSONAL", "PROP_FIRM"] } } },
       include: { account: { select: { name: true, currency: true } } },
       orderBy: { date: "desc" },
     })
@@ -126,7 +126,7 @@ describe("withdrawals router", () => {
 
   it("create: rejects when amount exceeds available balance after prior withdrawals (D-02)", async () => {
     // initialBalance 100000, P&L 0, prior non-rejected withdrawals 98000 → available 2000
-    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ id: ACCOUNT_ID, currency: "USD", initialBalance: 100000 })
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ id: ACCOUNT_ID, type: "PERSONAL", currency: "USD", initialBalance: 100000 })
     mockPrisma.trade.findMany.mockResolvedValue([])
     mockPrisma.withdrawal.findMany.mockResolvedValue([
       { accountId: ACCOUNT_ID, currency: "USD", status: "PAGADO", amount: 50000 }, { accountId: ACCOUNT_ID, currency: "USD", status: "PAGADO", amount: 48000 },
@@ -148,7 +148,7 @@ describe("withdrawals router", () => {
 
   it("create: excludes RECHAZADO withdrawals from the reservation (D-02)", async () => {
     // Only non-rejected withdrawals reserve balance; query must filter status != RECHAZADO
-    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ id: ACCOUNT_ID, currency: "USD", initialBalance: 10000 })
+    mockPrisma.account.findUniqueOrThrow.mockResolvedValue({ id: ACCOUNT_ID, type: "PERSONAL", currency: "USD", initialBalance: 10000 })
     mockPrisma.trade.findMany.mockResolvedValue([])
     mockPrisma.withdrawal.findMany.mockResolvedValue([{ accountId: ACCOUNT_ID, currency: "USD", status: "SOLICITADO", amount: 1000 }]) // 1 prior, available 9000
     mockPrisma.withdrawal.create.mockResolvedValue({ id: WITHDRAWAL_ID, status: "SOLICITADO", accountId: ACCOUNT_ID })

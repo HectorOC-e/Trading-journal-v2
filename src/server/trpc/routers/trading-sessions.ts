@@ -1,3 +1,5 @@
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { isWin } from "@/lib/formulas"
@@ -5,6 +7,7 @@ import { isWin } from "@/lib/formulas"
 export const tradingSessionsRouter = router({
   log: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       date:        z.string(),
       session:     z.enum(["London", "New York", "Asia", "London Close"]),
       preMood:     z.number().int().min(1).max(5).optional(),
@@ -13,9 +16,10 @@ export const tradingSessionsRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       return ctx.prisma.tradingSessionLog.upsert({
-        where:  { userId_date_session: { userId: ctx.userId, date: new Date(input.date), session: input.session } },
+        where:  { userId_date_session_operationalMode: { userId: ctx.userId, operationalMode: input.mode, date: new Date(input.date), session: input.session } },
         create: {
           userId:      ctx.userId,
+          operationalMode: input.mode,
           date:        new Date(input.date),
           session:     input.session,
           preMood:     input.preMood,
@@ -31,10 +35,10 @@ export const tradingSessionsRouter = router({
     }),
 
   getByDate: protectedProcedure
-    .input(z.object({ date: z.string() }))
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), date: z.string() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.prisma.tradingSessionLog.findMany({
-        where: { userId: ctx.userId, date: new Date(input.date) },
+        where: { userId: ctx.userId, operationalMode: input.mode, date: new Date(input.date) },
         orderBy: { createdAt: "asc" },
       })
       return rows.map(r => ({
@@ -45,10 +49,11 @@ export const tradingSessionsRouter = router({
     }),
 
   moodCorrelation: protectedProcedure
-    .query(async ({ ctx }) => {
+    .input(z.object({ mode: operationalModeSchema.default("REAL") }).optional())
+    .query(async ({ ctx, input }) => {
       // Fetch all session logs with mood data
       const sessions = await ctx.prisma.tradingSessionLog.findMany({
-        where: { userId: ctx.userId, preMood: { not: null } },
+        where: { userId: ctx.userId, operationalMode: input?.mode ?? "REAL", preMood: { not: null } },
         select: { date: true, session: true, preMood: true },
       })
 
@@ -56,7 +61,7 @@ export const tradingSessionsRouter = router({
 
       // Fetch closed trades for the same user
       const trades = await ctx.prisma.trade.findMany({
-        where:  { userId: ctx.userId, status: "CLOSED" },
+        where: { ...await scopedTradeWhere(ctx.prisma, ctx.userId, { mode: input?.mode ?? "REAL", includeArchived: true }), status: "CLOSED" },
         select: { date: true, session: true, pnl: true },
       })
 

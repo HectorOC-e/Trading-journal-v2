@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Printer } from "lucide-react"
 import { toast } from "@/lib/use-toast"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 
 /**
  * Downloads the review PDF via fetch → blob so a server failure surfaces as a
@@ -10,12 +11,13 @@ import { toast } from "@/lib/use-toast"
  * cargar la página"). Replaces the old plain <a href> link.
  */
 export function DownloadPdfButton({ kind, period }: { kind: "weekly" | "monthly"; period: string }) {
+  const mode = useOperationalMode(s => s.mode)
   const [loading, setLoading] = useState(false)
 
   const onClick = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/reviews/pdf?type=${kind}&period=${period}`)
+      const res = await fetch(`/api/reviews/pdf?type=${kind}&period=${period}&mode=${mode}`)
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(
@@ -28,7 +30,7 @@ export function DownloadPdfButton({ kind, period }: { kind: "weekly" | "monthly"
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `review-${kind}-${period}.pdf`
+      a.download = `review-${kind}-${period}-${mode}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()

@@ -22,12 +22,15 @@ import { PracticesTab, PracticeWeekSummary } from "./components/practices-tab"
 import { ProfileClock } from "./components/profile-clock"
 import { useLearningCalendar } from "./hooks/use-learning-calendar"
 import { useResourceActions } from "./hooks/use-resource-actions"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
 
 export default function AprendizajePage() {
+  const mode = useOperationalMode(s => s.mode)
   const { timezone, today } = useLearningCalendar()
-  const { data: studyHome } = trpc.studySessions.home.useQuery()
+  const { data: studyHome } = trpc.studySessions.home.useQuery({ mode })
   const {
     modalOpen, setModalOpen,
     editTarget, setEditTarget,
@@ -42,6 +45,8 @@ export default function AprendizajePage() {
   const [practiceResource, setPracticeResource] = useState<string | undefined>()
   const [practiceRegister, setPracticeRegister] = useState(false)
   const [practicePlanId, setPracticePlanId] = useState<string | undefined>()
+  const [practiceTradeIds, setPracticeTradeIds] = useState<string[]>([])
+  const setMode = useOperationalMode(s => s.setMode)
   const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
   useEffect(() => {
@@ -49,13 +54,16 @@ export default function AprendizajePage() {
     const t = params.get("tab")
     if (t === "repaso" || t === "biblioteca" || t === "practicas") setTab(t)
     if (t === "practicas") {
+      const mode = params.get("mode")
+      if (mode === "REAL" || mode === "DEMO" || mode === "BACKTEST") setMode(mode)
+      setPracticeTradeIds((params.get("tradeIds") ?? "").split(",").filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)).slice(0,50))
       setPracticeRegister(params.get("register") === "1")
       if (params.get("register") === "1") {
         const url = new URL(window.location.href); url.searchParams.delete("register"); window.history.replaceState(null, "", url)
       }
       setPracticePlanId(params.get("plannedSessionId") || undefined)
     }
-  }, [])
+  }, [setMode])
   // Deep-link via ?resource= (citas del Coach). Sin fetch por id: learningResources.list
   // trae todo sin paginar, así que el recurso citado siempre está en la lista.
   const [deepLinkResource, setDeepLinkResource] = useState<string | null>(null)
@@ -180,6 +188,7 @@ export default function AprendizajePage() {
       />
 
       <ProfileClock timezone={timezone} />
+      <div className="mb-4 flex flex-wrap items-center gap-3"><span className="text-xs text-[var(--ink-3)]">Modalidad de evidencia operativa</span><OperationalModeSelector /></div>
 
       {/* Stats strip — quick glance, always visible, responsive */}
       {tab !== "hoy" && <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4">
@@ -234,7 +243,7 @@ export default function AprendizajePage() {
         ))}
       </div>
 
-      {tab === "practicas" ? <PracticesTab key={practicePlanId ?? "practice-list"} initialResourceId={practiceResource} registerOnOpen={practiceRegister} plannedSessionId={practicePlanId} /> : isLoading ? (
+      {tab === "practicas" ? <PracticesTab key={practicePlanId ?? `practice-list:${practiceTradeIds.join(",")}`} initialTradeIds={practiceTradeIds} initialResourceId={practiceResource} registerOnOpen={practiceRegister} plannedSessionId={practicePlanId} /> : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>

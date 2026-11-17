@@ -20,7 +20,7 @@ beforeEach(() => {
 describe("pipeline.search", () => {
   it("sin clave devuelve NO_KEY por corpus y no llama a embedText", async () => {
     vi.mocked(resolveEmbeddingCall).mockResolvedValue(noKey as never)
-    const out = await search(prisma, "u1", { query: "miedo", corpus: "trade_notes" })
+    const out = await search(prisma, "u1", { mode: "REAL", query: "miedo", corpus: "trade_notes" })
     expect(out.citations).toEqual([])
     expect(out.outcomes).toEqual([{ corpus: "trade_notes", state: "NO_KEY", remaining: 0 }])
     expect(embedText).not.toHaveBeenCalled()
@@ -29,18 +29,18 @@ describe("pipeline.search", () => {
   it("si el embedding falla devuelve EMBED_FAILED, no una ausencia", async () => {
     vi.mocked(resolveEmbeddingCall).mockResolvedValue(withKey as never)
     vi.mocked(embedText).mockResolvedValue(null)
-    const out = await search(prisma, "u1", { query: "miedo", corpus: "trade_notes" })
+    const out = await search(prisma, "u1", { mode: "REAL", query: "miedo", corpus: "trade_notes" })
     expect(out.outcomes[0].state).toBe("EMBED_FAILED")
     expect(out.citations).toEqual([])
   })
 
   it("sin corpus explicito reporta un estado POR corpus, sin colapsarlos", async () => {
     vi.mocked(resolveEmbeddingCall).mockResolvedValue(noKey as never)
-    const out = await search(prisma, "u1", { query: "plan" })
+    const out = await search(prisma, "u1", { mode: "REAL", query: "plan" })
     // Derivado de CORPUS_KEYS a proposito: si esta lista se fijara a mano, cada
     // corpus nuevo rompería el test sin que hubiera nada roto.
     expect(out.outcomes.map(o => o.corpus).sort()).toEqual([...CORPUS_KEYS].sort())
-    expect(out.outcomes.every(o => o.state === "NO_KEY")).toBe(true)
+    expect(out.outcomes.every(o => o.state === ((o.corpus === "weekly_reviews" || o.corpus === "monthly_reviews") ? "UNSCOPED_LEGACY" : "NO_KEY"))).toBe(true)
   })
 })
 

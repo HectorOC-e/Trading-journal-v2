@@ -8,8 +8,8 @@ import { getResourceTransfer, getErrorCards } from "@/server/services/learning/l
 
 export const learningInsightsRouter = router({
   transfer: protectedProcedure
-    .input(z.object({ resourceId: z.string().uuid() }))
-    .query(({ ctx, input }) => getResourceTransfer(ctx.prisma, ctx.userId, input.resourceId)),
+    .input(z.object({ resourceId: z.string().uuid(), mode: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL") }))
+    .query(({ ctx, input }) => getResourceTransfer(ctx.prisma, ctx.userId, input.resourceId, input.mode)),
 
-  errorCards: protectedProcedure.query(({ ctx }) => getErrorCards(ctx.prisma, ctx.userId)),
+  errorCards: protectedProcedure.input(z.object({ mode: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL") }).optional()).query(({ ctx, input }) => getErrorCards(ctx.prisma, ctx.userId, input?.mode ?? "REAL")),
 })

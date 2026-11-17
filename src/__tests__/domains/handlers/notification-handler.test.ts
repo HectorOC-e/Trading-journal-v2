@@ -22,25 +22,25 @@ beforeEach(() => {
 
 describe("insightCreatedHandler — insight.created → notificación", () => {
   it("emite INSIGHT_DETECTED con el título del insight y href a /analytics", async () => {
-    await insightCreatedHandler(prismaWith({ title: "Operas peor tras 2 pérdidas" }), evt)
+    await insightCreatedHandler(prismaWith({ operationalMode: "REAL", title: "Operas peor tras 2 pérdidas" }), evt)
 
     expect(emitNotification).toHaveBeenCalledWith(
       expect.anything(),
       "u1",
       "INSIGHT_DETECTED",
       expect.objectContaining({
-        params: { title: "Operas peor tras 2 pérdidas" },
+        params: { title: "Operas peor tras 2 pérdidas", mode: "REAL" },
         sourceId: "i1",
-        href: "/analytics",
+        href: "/analytics?mode=REAL",
       }),
     )
   })
 
   it("dedupea por insight:<id>, no por el id del evento — reprocesar refresca, no apila", async () => {
-    await insightCreatedHandler(prismaWith({ title: "x" }), evt)
+    await insightCreatedHandler(prismaWith({ operationalMode: "REAL", title: "x" }), evt)
 
     const opts = emitNotification.mock.calls[0][3]
-    expect(opts.dedupeKey).toBe("insight:i1")
+    expect(opts.dedupeKey).toBe("insight:REAL:i1")
   })
 
   it("no-op sin lanzar si el insight fue borrado entre publicación y consumo", async () => {
@@ -50,6 +50,6 @@ describe("insightCreatedHandler — insight.created → notificación", () => {
 
   it("NO traga el error de emitNotification — el dispatcher debe reintentar", async () => {
     emitNotification.mockRejectedValueOnce(new Error("db down"))
-    await expect(insightCreatedHandler(prismaWith({ title: "x" }), evt)).rejects.toThrow("db down")
+    await expect(insightCreatedHandler(prismaWith({ operationalMode: "REAL", title: "x" }), evt)).rejects.toThrow("db down")
   })
 })

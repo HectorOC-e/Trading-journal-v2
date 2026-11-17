@@ -1,5 +1,7 @@
 "use client"
 
+import { classifyAccountType } from "@/domains/trading/operational-mode"
+
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, Circle, Star, Calculator, ImagePlus, X as XIcon, ChevronDown, ChevronUp, Brain } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -35,6 +37,9 @@ interface AccountLike {
   id: string
   name: string
   type: string
+  timezone?: string
+  status?: string
+  locked?: boolean
   initialBalance: number
   /** Equity = initial + realized P&L (from accounts.list). Sizing base. */
   currentBalance?: number
@@ -150,6 +155,13 @@ const INITIAL: TradeFormValues = {
   fomoFlag: false,
   revengeFlag: false,
   regime: null,
+  captureContext: "LIVE",
+  marketTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  closeDate: "",
+  closeTime: "",
+  pnl: "",
+  emotionContext: "MARKET",
+  emotionReferenceAt: "",
 }
 
 /** Order in which to surface/scroll to the first validation error. */
@@ -208,14 +220,16 @@ export function RegisterTradeModal({
   } = useZodForm(tradeFormSchema, { defaultValues: INITIAL })
 
   const form = watch()
+  const historical = form.captureContext === "HISTORICAL"
   // User's profile timezone — drives the default trade date so it matches the
   // backend's trading-day boundaries (which also use the profile tz).
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 })
   const userTimezone = profile?.timezone
   // D10 incentive: the trader's history for the currently-selected pre-trade emotion.
+  const emotionMode=classifyAccountType(accounts.find(account=>account.id===form.accountId)?.type)
   const { data: emotionFeedback } = trpc.trades.emotionFeedback.useQuery(
-    { emotion: form.emotionBefore ?? "" },
-    { enabled: !!form.emotionBefore, staleTime: 60_000 },
+    { emotion: form.emotionBefore ?? "", mode: emotionMode === "DEMO" || emotionMode === "BACKTEST" ? emotionMode : "REAL" },
+    { enabled: !!form.emotionBefore && emotionMode !== null && emotionMode !== "INTERNAL", staleTime: 60_000 },
   )
   // Purely-UI toggles that aren't part of the validated form payload.
   const [uploading, setUploading] = useState(false)
@@ -286,18 +300,21 @@ export function RegisterTradeModal({
   const selectedSetup   = setups.find(s => s.id === form.setupId)
   const selectedMarket  = markets.find(m => m.symbol === form.symbol)
   const autoTag         = computeAutoTag(form, selectedSetup)
+  useEffect(() => {
+    if (selectedAccount?.timezone) setValue("marketTimeZone", selectedAccount.timezone)
+  }, [selectedAccount?.id, selectedAccount?.timezone, setValue])
 
   // ── Filtered symbols ───────────────────────────────────────────────────
   // null = no restriction (show all); string[] with items = filter to those
   const allowedSymbols: string[] | null = useMemo(() => {
-    if (!selectedAccount) return null
+    if (!selectedAccount || historical) return null
     const raw = (selectedAccount as { allowedSymbols?: string[] }).allowedSymbols
     if (raw && raw.length > 0) return raw
     if (selectedAccount.propFirmRules?.allowedSymbols?.length) {
       return selectedAccount.propFirmRules.allowedSymbols
     }
     return null
-  }, [selectedAccount])
+  }, [selectedAccount, historical])
 
   const visibleMarkets = useMemo(() => {
     // If account has no restrictions (null or empty), show all markets
@@ -309,7 +326,7 @@ export function RegisterTradeModal({
   const pointValue = selectedMarket ? parsePointValue(selectedMarket.pointValue) : null
   // Size off current equity (initial + realized P&L) — what the rest of the app
   // shows as "Balance actual"; falls back to initial if equity isn't provided.
-  const balance    = selectedAccount?.currentBalance ?? selectedAccount?.initialBalance ?? 0
+  const balance    = historical ? 0 : selectedAccount?.currentBalance ?? selectedAccount?.initialBalance ?? 0
 
   // Cheap derived values — computed inline so the React Compiler can memoize
   // them (manual useMemo over `watch()` values trips its mutation analysis).
@@ -354,7 +371,7 @@ export function RegisterTradeModal({
     ? computeLeverageMetrics({ notional, balance, maxLeverage: selectedAccount?.maxLeverage ?? null })
     : null
   const levBand = leverage ? leverageBand(leverage.effectiveLeverage, selectedAccount?.targetLeverage ?? null) : null
-  const showLeverage = leverage != null && (
+  const showLeverage = !historical && leverage != null && (
     selectedAccount?.maxLeverage != null || selectedAccount?.targetLeverage != null
   )
   // Block registration when the required margin can't be covered by the balance:
@@ -412,6 +429,14 @@ export function RegisterTradeModal({
         <form onSubmit={handleSubmit(onValid, onInvalid)} noValidate>
         <div className="flex flex-col gap-5">
 
+          <label className="text-eyebrow flex flex-col gap-1.5">Registro
+            <select className="rounded border border-[var(--line)] bg-[var(--panel-2)] p-2 text-sm" value={form.captureContext ?? "LIVE"} onChange={event => { update("captureContext", event.target.value as "LIVE" | "HISTORICAL"); setSizeManual(event.target.value === "HISTORICAL"); if (event.target.value === "LIVE" && selectedAccount && (selectedAccount.locked || (selectedAccount.status && selectedAccount.status !== "ACTIVE"))) update("accountId", "") }}>
+              <option value="LIVE">Operación actual</option>
+              <option value="HISTORICAL">Histórico cerrado</option>
+            </select>
+          </label>
+          {historical && <p className="text-xs text-[var(--ink-3)]">Registra el tamaño ejecutado y el resultado neto total. El riesgo se reconstruye con el capital a la fecha de apertura cuando hay evidencia suficiente.</p>}
+
           {/* ── Cuenta ── */}
           <div data-field="accountId">
             <p className="text-eyebrow mb-2">Cuenta <span className="text-[var(--loss)]">*</span></p>
@@ -421,13 +446,15 @@ export function RegisterTradeModal({
                   <button
                     key={acc.id}
                     type="button"
+                    disabled={!historical && (acc.locked || (!!acc.status && acc.status !== "ACTIVE"))}
                     onClick={() => {
                       setValue("accountId", acc.id, { shouldValidate: true, shouldTouch: true })
                       setValue("symbol", "")
+                      if (classifyAccountType(acc.type) === "REAL") { setValue("emotionContext", "MARKET"); setValue("emotionReferenceAt", "") }
                       setSizeManual(false)
                     }}
                     className={cn(
-                      "flex-1 min-w-[160px] text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
+                      "flex-1 min-w-[160px] text-left rounded-[var(--radius-sm)] p-3 border transition-[color,background-color,border-color,box-shadow,transform,opacity] disabled:opacity-50 disabled:cursor-not-allowed",
                       form.accountId === acc.id
                         ? "border-[var(--accent)] bg-[var(--accent-soft)]"
                         : "border-[var(--line)] bg-[var(--panel-2)] hover:border-[var(--ink-3)]"
@@ -444,9 +471,10 @@ export function RegisterTradeModal({
                         {acc.type === "PROP_FIRM" ? "PROP" : acc.type}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--ink-3)] mt-1 font-mono">
+                    {!historical && <p className="text-[11px] text-[var(--ink-3)] mt-1 font-mono">
                       ${(acc.currentBalance ?? acc.initialBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    </p>
+                    </p>}
+                    {(acc.locked || (acc.status && acc.status !== "ACTIVE")) && <p className="text-[10px] text-[var(--ink-3)] mt-1">{historical ? "Disponible para historia cerrada" : "No disponible para operar"}</p>}
                   </button>
                 ))}
               </div>
@@ -455,6 +483,16 @@ export function RegisterTradeModal({
             )}
             <FieldError message={errors.accountId?.message} />
           </div>
+
+          <label className="text-eyebrow flex flex-col gap-1.5">Zona horaria del mercado
+            <Input {...register("marketTimeZone")} placeholder="America/Tegucigalpa" />
+            <FieldError message={errors.marketTimeZone?.message} />
+          </label>
+          {historical && <div className="grid grid-cols-2 gap-3">
+            <label className="text-eyebrow flex flex-col gap-1.5">Fecha de cierre<Input type="date" {...register("closeDate")} /><FieldError message={errors.closeDate?.message} /></label>
+            <label className="text-eyebrow flex flex-col gap-1.5">Hora de cierre<Input type="time" {...register("closeTime")} /><FieldError message={errors.closeTime?.message} /></label>
+            <label className="text-eyebrow col-span-2 flex flex-col gap-1.5">Resultado neto total<Input type="number" step="any" {...register("pnl")} /><FieldError message={errors.pnl?.message} /></label>
+          </div>}
 
           {/* ── Dirección ── */}
           <div>
@@ -543,7 +581,7 @@ export function RegisterTradeModal({
               <p className="text-eyebrow">Tamaño (contratos) <span className="text-[var(--loss)]">*</span></p>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div>
+              {!historical && <div>
                 <label className="text-[10px] text-[var(--ink-3)] block mb-1">Riesgo %</label>
                 <Input
                   placeholder="1"
@@ -551,7 +589,7 @@ export function RegisterTradeModal({
                   mono
                   {...register("riskPct", { onChange: () => setSizeManual(false) })}
                 />
-              </div>
+              </div>}
               <div>
                 <label className="text-[10px] text-[var(--ink-3)] block mb-1">
                   Contratos
@@ -649,7 +687,7 @@ export function RegisterTradeModal({
             )}
 
             {/* Missing-fields hint — only when calc can't run */}
-            {calcContracts === null && (() => {
+            {!historical && calcContracts === null && (() => {
               const missing: string[] = []
               if (!selectedAccount)            missing.push("cuenta")
               if (selectedAccount && balance <= 0) missing.push("balance de la cuenta (edítala)")
@@ -696,7 +734,7 @@ export function RegisterTradeModal({
                   </button>
 
                   {setups.map(setup => {
-                    const selectable = isSelectableSetup(setup)
+                    const selectable = historical || isSelectableSetup(setup)
                     const paused = setup.status === "PAUSADO"
                     if (!selectable) {
                       return (
@@ -968,6 +1006,13 @@ export function RegisterTradeModal({
                 {/* Emoción antes del trade */}
                 <div>
                   <label className="text-[10px] text-[var(--ink-3)] font-medium block mb-1.5">Estado emocional</label>
+                  <p className="text-[11px] text-[var(--ink-3)] mb-2">El recuerdo de una operación antigua se guarda como emoción reconstruida.</p>
+                  {(emotionMode === "DEMO" || emotionMode === "BACKTEST") && <label className="text-xs flex flex-col gap-1.5 mb-2">La emoción se refiere a
+                    <select className="rounded border border-[var(--line)] bg-[var(--panel)] p-2" value={form.emotionContext ?? "MARKET"} onChange={event => update("emotionContext", event.target.value as "MARKET" | "PRACTICE")}>
+                      <option value="MARKET">La operación en su fecha de mercado</option><option value="PRACTICE">Una práctica actual sobre esas velas</option>
+                    </select>
+                    {form.emotionContext === "PRACTICE" && <><Input type="datetime-local" value={form.emotionReferenceAt ? new Date(form.emotionReferenceAt).toLocaleString("sv-SE").replace(" ", "T").slice(0,16) : ""} onChange={event => update("emotionReferenceAt", event.target.value ? new Date(event.target.value).toISOString() : "")} /><FieldError message={errors.emotionReferenceAt?.message} /></>}
+                  </label>}
                   <div className="flex gap-1 flex-wrap">
                     <button
                       type="button"

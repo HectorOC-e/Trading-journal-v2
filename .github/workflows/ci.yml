@@ -135,6 +135,15 @@ jobs:
         working-directory: src
         run: pnpm e2e
 
+      - name: Upload E2E screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: /tmp/e2e-shots
+          if-no-files-found: warn
+          retention-days: 7
+
   # ── 2. Migration validation (antierrores) ───────────────────────────────────
   # Boots a fresh local Supabase stack and replays EVERY migration from zero.
   # A broken, out-of-order, or non-idempotent migration fails here — long before

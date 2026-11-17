@@ -1,3 +1,4 @@
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 // Deterministic insight cards scoped to a single review period. Reuses the
 // Analytics intelligence engine (buildAnalyticsBundle + generateInsights) windowed
 // to the week/month so review reports get the same typed cards (correlation /
@@ -11,15 +12,15 @@ import type { ReviewPeriod } from "@/server/services/email/send-review"
 
 function windowFor(period: ReviewPeriod): { from: Date; to: Date } {
   if (period.kind === "weekly") {
-    const from = new Date(period.weekStart + "T00:00:00")
+    const from = new Date(period.weekStart + "T00:00:00Z")
     const to = new Date(from); to.setDate(from.getDate() + 7) // exclusive upper bound
     return { from, to }
   }
-  return { from: new Date(period.year, period.month - 1, 1), to: new Date(period.year, period.month, 1) }
+  return { from: new Date(Date.UTC(period.year, period.month - 1, 1)), to: new Date(Date.UTC(period.year, period.month, 1)) }
 }
 
 export async function loadReviewInsights(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<Insight[]> {
-  return loadInsightsForWindow(prisma, userId, windowFor(period))
+  return loadInsightsForWindow(prisma, userId, windowFor(period), period.mode ?? "REAL")
 }
 
 /**
@@ -27,9 +28,9 @@ export async function loadReviewInsights(prisma: PrismaClient, userId: string, p
  * history or a year/month range) — used by the Reviews "Trayectoria" recurring-pattern
  * cards. `to` is an exclusive upper bound.
  */
-export async function loadInsightsForWindow(prisma: PrismaClient, userId: string, window: { from: Date; to: Date }): Promise<Insight[]> {
+export async function loadInsightsForWindow(prisma: PrismaClient, userId: string, window: { from: Date; to: Date }, mode:OperationalMode="REAL"): Promise<Insight[]> {
   // includePractice=true to match the review report, which counts all closed trades.
-  const bundle = await buildAnalyticsBundle(userId, prisma, window, true)
+  const bundle = await buildAnalyticsBundle(userId, prisma, {from:window.from,to:new Date(window.to.getTime()-1)}, mode)
   return generateInsights({
     trades:      bundle.raw.trades,
     setups:      bundle.raw.setupsMeta,
@@ -50,7 +51,7 @@ export interface ReviewAnalytics {
 }
 
 export async function loadReviewAnalytics(prisma: PrismaClient, userId: string, period: ReviewPeriod): Promise<ReviewAnalytics> {
-  const b = await buildAnalyticsBundle(userId, prisma, windowFor(period), true)
+  const b = await buildAnalyticsBundle(userId, prisma, {from:windowFor(period).from,to:new Date(windowFor(period).to.getTime()-1)}, period.mode ?? "REAL")
   return {
     expectancy:  b.performance.expectancy,
     avgR:        b.performance.avgR,

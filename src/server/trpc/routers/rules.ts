@@ -1,3 +1,4 @@
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
@@ -9,6 +10,7 @@ import type { RuleMode } from "@/domains/rules/unification"
 const SEVERITIES = ["CRÍTICA", "MENOR", "INFORMACIÓN"] as const
 
 const RuleInput = z.object({
+  operationalMode: operationalModeSchema.nullable().default("REAL"),
   name:        z.string().min(1),
   description: z.string().default(""),
   severity:    z.enum(SEVERITIES).default("CRÍTICA"),
@@ -36,6 +38,7 @@ const action = z.object({ type: z.enum(ACTION_TYPES), params: z.record(z.string(
 const triggerEnum = z.enum(TRIGGERS as [string, ...string[]])
 
 const executableInput = z.object({
+  operationalMode: operationalModeSchema.nullable().default("REAL"),
   name:        z.string().min(1).max(80),
   description: z.string().max(280).default(""),
   trigger:     triggerEnum,
@@ -64,13 +67,15 @@ const SYSTEM_DEFAULTS = [
 // recursivo Prisma.JsonValue tumban la inferencia de tRPC+React Query (TS2589)
 // en los call sites; mapear a un shape explícito la corta de raíz.
 function serializeRule(r: {
-  id: string; name: string; description: string; severity: string; isSystem: boolean
+  operationalMode: string | null; globalManual: boolean; id: string; name: string; description: string; severity: string; isSystem: boolean
   enabled: boolean; mode: string; trigger: string | null; conditions: unknown; actions: unknown
   priority: number; category: string; sourceAutomationId: string | null
   sourceCommitmentId: string | null; sourceInsightId: string | null
   lastFiredAt: Date | null; createdAt: Date; updatedAt: Date
 }) {
   return {
+    operationalMode: r.operationalMode, globalManual: r.globalManual,
+    needsModeAssignment: r.operationalMode == null && !r.globalManual,
     id: r.id, name: r.name, description: r.description, severity: r.severity,
     isSystem: r.isSystem, enabled: r.enabled,
     mode: r.mode as RuleMode,
@@ -86,9 +91,9 @@ function serializeRule(r: {
 }
 
 export const rulesRouter = router({
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.input(z.object({ mode: operationalModeSchema.default("REAL") }).optional()).query(async ({ ctx, input }) => {
     const rows = await ctx.prisma.rule.findMany({
-      where:   { userId: ctx.userId },
+      where: { userId: ctx.userId, OR: [{ operationalMode: input?.mode ?? "REAL" }, { operationalMode: null }] },
       orderBy: [{ priority: "desc" }, { isSystem: "desc" }, { severity: "asc" }, { name: "asc" }],
     })
     return rows.map(serializeRule)
@@ -96,15 +101,27 @@ export const rulesRouter = router({
 
   templates: protectedProcedure.query(() => TEMPLATES),
 
+  /** Explicit review of an inert legacy rule; never changes its content or enabled state. */
+  assignMode: protectedProcedure
+    .input(z.object({ id: z.string().uuid(), mode: operationalModeSchema }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await ctx.prisma.rule.updateMany({
+        where: { id: input.id, userId: ctx.userId, operationalMode: null, globalManual: false },
+        data: { operationalMode: input.mode },
+      })
+      if (result.count !== 1) throw new TRPCError({ code: "NOT_FOUND", message: "La regla ya tiene ámbito o no está disponible." })
+      return { ok: true }
+    }),
+
   // Descriptive create/update (Recordatorios) — unchanged shape.
   create: protectedProcedure
     .input(RuleInput)
     .mutation(({ ctx, input }) =>
-      ctx.prisma.rule.create({ data: { ...input, isSystem: false, userId: ctx.userId } })
+      ctx.prisma.rule.create({ data: { ...input, globalManual: input.operationalMode === null, isSystem: false, userId: ctx.userId } })
     ),
 
   update: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }).merge(RuleInput.partial()))
+    .input(z.object({ id: z.string().uuid() }).merge(RuleInput.omit({ operationalMode: true }).partial()))
     .mutation(({ ctx, input }) => {
       const { id, ...data } = input
       return ctx.prisma.rule.update({ where: { id, userId: ctx.userId }, data })
@@ -116,7 +133,7 @@ export const rulesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const data = ruleDataFromExecutableInput(input as never)
       const row = await ctx.prisma.rule.create({
-        data: { ...data, conditions: data.conditions as object, actions: data.actions as object, userId: ctx.userId },
+        data: { ...data, operationalMode: input.operationalMode, globalManual: input.operationalMode === null, conditions: data.conditions as object, actions: data.actions as object, userId: ctx.userId },
       })
       return serializeRule(row)
     }),
@@ -128,18 +145,18 @@ export const rulesRouter = router({
       const data = ruleDataFromExecutableInput(rest as never)
       const row = await ctx.prisma.rule.update({
         where: { id, userId: ctx.userId },
-        data:  { ...data, conditions: data.conditions as object, actions: data.actions as object },
+        data: { ...data, conditions: data.conditions as object, actions: data.actions as object },
       })
       return serializeRule(row)
     }),
 
   createFromTemplate: protectedProcedure
-    .input(z.object({ templateId: z.string() }))
+    .input(z.object({ operationalMode: operationalModeSchema.nullable().default("REAL"), templateId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const data = ruleDataFromTemplate(input.templateId)
       if (!data) throw new TRPCError({ code: "NOT_FOUND", message: "Plantilla no encontrada" })
       const row = await ctx.prisma.rule.create({
-        data: { ...data, conditions: data.conditions as object, actions: data.actions as object, userId: ctx.userId },
+        data: { ...data, operationalMode: input.operationalMode, globalManual: input.operationalMode === null, conditions: data.conditions as object, actions: data.actions as object, userId: ctx.userId },
       })
       return serializeRule(row)
     }),
@@ -173,7 +190,7 @@ export const rulesRouter = router({
       const existing = await ctx.prisma.rule.count({ where: { userId: ctx.userId } })
       if (existing > 0) return { seeded: false }
       await ctx.prisma.rule.createMany({
-        data: SYSTEM_DEFAULTS.map(d => ({ ...d, enabled: true, userId: ctx.userId })),
+        data: SYSTEM_DEFAULTS.map(d => ({ ...d, globalManual: true, enabled: true, userId: ctx.userId })),
         skipDuplicates: true,
       })
       return { seeded: true }

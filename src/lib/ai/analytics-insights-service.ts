@@ -1,3 +1,4 @@
+import { type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { buildAnalyticsBundle } from "@/domains/analytics/services/analytics-bundle"
 import { generateInsights } from "@/domains/analytics/services/insights-engine"
@@ -6,6 +7,7 @@ import { resolveAiCall, usableCandidates, NoApiKeyError } from "./resolve-provid
 import { executeAiCall } from "./execute"
 
 export interface AnalyticsAiOptions {
+  mode?: OperationalMode
   userId: string
   prisma: PrismaClient
   period?: "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
@@ -27,7 +29,8 @@ function buildContext(bundle: Awaited<ReturnType<typeof buildAnalyticsBundle>>):
   const topSetup = bundle.setups[0]
   const topMarket = bundle.markets[0]
   const lines: string[] = []
-  lines.push("=== CONTEXTO ANALYTICS DEL TRADER (datos reales) ===")
+  lines.push(`=== CONTEXTO ANALYTICS · ${bundle.scope.mode} · ${bundle.baseCurrency} ===`)
+  lines.push(`Periodo: ${bundle.window.from ?? "inicio"} a ${bundle.window.to ?? "actualidad"}; base temporal TRADE_DATE. Sólo esta modalidad; no sumar ni inferir resultados de otras. Divisas incompletas: ${bundle.scope.excludedCurrencies.join(", ") || "ninguna"}.`)
   lines.push(`Performance: ${p.totalTrades} trades · WR ${p.winRate}% · PF ${p.profitFactor ?? "n/a"} · Expectancy ${p.expectancy} · avgR ${p.avgR} · Net P&L ${p.netPnl}`)
   lines.push(`Riesgo: peor drawdown ${bundle.risk.worstDrawdownPct}% · cuentas: ${bundle.risk.accounts.map(a => `${a.name}(${a.netPnl >= 0 ? "+" : ""}${a.netPnl}, dd ${a.maxDrawdownPct}%${a.locked ? ", BLOQUEADA" : ""})`).join("; ")}`)
   if (topSetup) lines.push(`Mejor setup: ${topSetup.name} · ${topSetup.trades} trades · WR ${topSetup.winRate}% · netPnl ${topSetup.netPnl}`)
@@ -51,7 +54,7 @@ Formato: para saltos de línea usa líneas o listas reales, NUNCA la etiqueta <b
 No inventes datos. Si faltan datos, dilo brevemente.`
 
 export async function streamAnalyticsInsights(opts: AnalyticsAiOptions): Promise<ReadableStream<Uint8Array>> {
-  const bundle = await buildAnalyticsBundle(opts.userId, opts.prisma, windowFor(opts.period))
+  const bundle = await buildAnalyticsBundle(opts.userId, opts.prisma, windowFor(opts.period), opts.mode ?? "REAL")
   const insights = generateInsights({
     trades: bundle.raw.trades, setups: bundle.raw.setupsMeta,
     accounts: bundle.raw.accountsMeta, withdrawals: bundle.raw.withdrawals,

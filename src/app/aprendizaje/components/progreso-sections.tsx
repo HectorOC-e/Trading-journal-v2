@@ -2,6 +2,7 @@
 
 import { formatCalendarDate } from "@/lib/datetime/local"
 import { trpc } from "@/lib/trpc/client"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { CategoryChip } from "@/components/ui/category-chip"
 import { FadeIn } from "@/components/ui/motion"
 import type { LearningResource, ResourceType } from "@/types"
@@ -41,9 +42,10 @@ export function ProgresoSections({
   rawResources:      ResourceFromDB[]
   onRevisarResource: (r: ResourceFromDB) => void
 }) {
+  const mode = useOperationalMode(s => s.mode)
   const { data: stats }              = trpc.learningResources.stats.useQuery()
   const { data: dailyInsight }       = trpc.learningResources.dailyInsight.useQuery()
-  const { data: impactRanking = [] } = trpc.learningResources.resourceImpactRanking.useQuery()
+  const { data: impactRanking = [] } = trpc.learningResources.resourceImpactRanking.useQuery({ mode })
 
   const totalResources = resources.length || 1
 
@@ -65,8 +67,9 @@ export function ProgresoSections({
 
         <div className="grid gap-3 lg:grid-cols-2">
           {/* Impacto en trading */}
-          {impactRanking.length > 0 && (
-            <Card title="Impacto en trading">
+          {(
+            <Card title={`Impacto en trading · ${mode}`}>
+              {impactRanking.length === 0 && <p className="text-xs text-[var(--ink-3)]">Muestra insuficiente: se necesita un hito de estudio y operaciones de esta modalidad; Demo/Backtesting requiere prácticas EXECUTED fechadas.</p>}
               <div className="flex flex-col gap-1.5">
                 {impactRanking.slice(0, 5).map((row) => (
                   <div key={`${row.resourceId}-${row.setupId}`}

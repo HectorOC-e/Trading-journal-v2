@@ -7,8 +7,9 @@ import { proposeRuleForCommitment } from "@/domains/behavior/rule-linking"
 import { proposeCommitment } from "@/server/services/behavior/commitment-service"
 import { isWin, calcWinRate, calcProfitFactor } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
-import { fxFactor, parseFxRates } from "@/lib/fx"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { search } from "@/server/services/retrieval/pipeline"
 import { CORPUS_KEYS, isCorpusKey } from "@/server/services/retrieval/types"
 import type { Citation, CorpusKey, CorpusOutcome } from "@/server/services/retrieval/types"
@@ -153,7 +154,7 @@ const PROTECTION_TO_METRIC: Record<string, string> = {
   max_risk_per_trade: "oversizedTrades",
 }
 
-export interface ToolCtx { userId: string; prisma: PrismaClient }
+export interface ToolCtx { userId: string; prisma: PrismaClient; mode?: OperationalMode }
 
 /**
  * Resultado de una tool con DOS destinos y necesidades distintas:
@@ -172,6 +173,8 @@ export interface ToolResult { text: string; cites?: Citation[] }
  */
 function explainState(o: CorpusOutcome): { pudeBuscar: boolean; explicacion: string } {
   switch (o.state) {
+    case "UNSCOPED_LEGACY":
+      return { pudeBuscar: false, explicacion: "Las reviews históricas todavía no tienen procedencia por modalidad; no se usan como evidencia hasta regenerarse." }
     case "NO_KEY":
       return { pudeBuscar: false, explicacion: "No pude buscar: no hay clave de embeddings configurada. Dile al trader que la configure en /perfil. NO afirmes que no ha escrito nada." }
     case "EMBED_FAILED":
@@ -206,19 +209,22 @@ async function runCoachTool(
   emitCites: (c: Citation[]) => void,
 ): Promise<string> {
   const { userId, prisma } = ctx
+  const mode = ctx.mode ?? "REAL"
   try {
+    const tradeWhere = await scopedTradeWhere(prisma, userId, { mode, includeArchived: true })
+    const accountWhere = { userId, type: { in: accountTypesForMode(mode) } }
     if (name === "get_account_detail") {
       const q = String(input.name ?? "").trim()
       const acc = await prisma.account.findFirst({
-        where:  { userId, name: { contains: q, mode: "insensitive" } },
+        where: { ...accountWhere, name: { contains: q, mode: "insensitive" } },
         select: { id: true, name: true, type: true, currency: true, phase: true, status: true, locked: true, lockReason: true, initialBalance: true, ddDailyPct: true, ddTotalPct: true, targetPct: true },
       })
       if (!acc) return JSON.stringify({ error: `No encontré una cuenta que coincida con "${q}".` })
-      const trades = await prisma.trade.findMany({ where: { userId, accountId: acc.id, status: "CLOSED" }, select: { pnl: true } })
+      const trades = await prisma.trade.findMany({ where: { ...tradeWhere, accountId: acc.id, status: "CLOSED" }, select: { pnl: true } })
       const net  = trades.reduce((s, t) => s + (t.pnl != null ? Number(t.pnl) : 0), 0)
       const wins = trades.filter(t => (t.pnl != null ? Number(t.pnl) : 0) > 0).length
       return JSON.stringify({
-        name: acc.name, type: acc.type, currency: acc.currency, phase: acc.phase, status: acc.status,
+        id: acc.id, operationalMode: mode, name: acc.name, type: acc.type, currency: acc.currency, phase: acc.phase, status: acc.status,
         locked: acc.locked, lockReason: acc.lockReason || null,
         initialBalance: Number(acc.initialBalance), balance: Number(acc.initialBalance) + net,
         netPnl: parseFloat(net.toFixed(2)), trades: trades.length, winRate: parseFloat(calcWinRate(wins, trades.length).toFixed(1)),
@@ -235,7 +241,7 @@ async function runCoachTool(
         select: { id: true, name: true, abbreviation: true, market: true, direction: true, status: true, expectedWr: true, expectedAvgR: true },
       })
       if (!setup) return JSON.stringify({ error: `No encontré un setup que coincida con "${q}".` })
-      const trades = await prisma.trade.findMany({ where: { userId, setupId: setup.id, status: "CLOSED" }, select: { pnl: true, rMultiple: true } })
+      const trades = await prisma.trade.findMany({ where: { ...tradeWhere, setupId: setup.id, status: "CLOSED" }, select: { pnl: true, rMultiple: true } })
       const wins   = trades.filter(t => isWin({ pnl: t.pnl != null ? Number(t.pnl) : 0 })).length
       const withR  = trades.filter(t => t.rMultiple != null)
       const winRate = parseFloat(calcWinRate(wins, trades.length).toFixed(2))
@@ -243,7 +249,7 @@ async function runCoachTool(
       const expWr = setup.expectedWr != null ? Number(setup.expectedWr) : null
       const expR  = setup.expectedAvgR != null ? Number(setup.expectedAvgR) : null
       return JSON.stringify({
-        name: setup.name, abbreviation: setup.abbreviation, market: setup.market, direction: setup.direction, status: setup.status,
+        operationalMode: mode, name: setup.name, abbreviation: setup.abbreviation, market: setup.market, direction: setup.direction, status: setup.status,
         expectedWr: expWr, expectedAvgR: expR, winRate, avgR, trades: trades.length,
         health: calcSetupHealth({ winRate, avgR, expectedWr: expWr, expectedAvgR: expR, tradeCount: trades.length }),
       })
@@ -266,7 +272,7 @@ async function runCoachTool(
       }
       const rows = await prisma.trade.findMany({
         where: {
-          userId, status: "CLOSED",
+          ...tradeWhere, status: "CLOSED",
           ...(symbol ? { symbol: { contains: symbol, mode: "insensitive" } } : {}),
           ...(setupIds ? { setupId: { in: setupIds } } : {}),
           ...(direction ? { direction } : {}),
@@ -275,13 +281,14 @@ async function runCoachTool(
           ...(outcome === "win"  ? { pnl: { gt: 0 } } : {}),
           ...(outcome === "loss" ? { pnl: { lt: 0 } } : {}),
         },
-        select: { id: true, date: true, symbol: true, direction: true, pnl: true, rMultiple: true, tags: true },
+        select: { id: true, date: true, symbol: true, direction: true, pnl: true, rMultiple: true, tags: true, accountId: true, operationalMode: true, account: { select: { name: true, type: true, currency: true } } },
         orderBy: { date: "desc" },
         take: limit,
       })
       return JSON.stringify({
         count: rows.length,
         trades: rows.map(t => ({
+          operationalMode: mode, accountId: t.accountId, accountName: t.account.name, accountType: t.account.type, currency: t.account.currency,
           id: t.id, date: (t.date as Date).toISOString().slice(0, 10), symbol: t.symbol, direction: t.direction,
           pnl: t.pnl != null ? parseFloat(Number(t.pnl).toFixed(2)) : 0,
           rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null, tags: t.tags as string[],
@@ -292,11 +299,12 @@ async function runCoachTool(
     if (name === "get_trade_detail") {
       const id = String(input.id ?? "").trim()
       const t = await prisma.trade.findFirst({
-        where:   { id, userId },
-        include: { setup: { select: { name: true } }, account: { select: { name: true, currency: true } }, events: { orderBy: { timestamp: "asc" }, select: { type: true, price: true, contracts: true, notes: true } } },
+        where: { ...tradeWhere, id },
+        include: { setup: { select: { name: true } }, account: { select: { name: true, type: true, currency: true } }, events: { orderBy: { timestamp: "asc" }, select: { type: true, price: true, contracts: true, notes: true } } },
       })
       if (!t) return JSON.stringify({ error: `No encontré un trade con id "${id}".` })
       return JSON.stringify({
+        id: t.id, operationalMode: mode, accountId: t.accountId, accountType: t.account.type,
         date: (t.date as Date).toISOString().slice(0, 10), symbol: t.symbol, direction: t.direction,
         account: t.account?.name, currency: t.account?.currency, setup: t.setup?.name ?? null,
         entry: Number(t.entry), stop: Number(t.stop), target: Number(t.target), size: Number(t.size),
@@ -315,17 +323,16 @@ async function runCoachTool(
       const from   = days != null ? new Date(Date.now() - days * 86_400_000) : undefined
       const [user, accounts, allRows] = await Promise.all([
         prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
-        prisma.account.findMany({ where: { userId }, select: { id: true, currency: true, type: true } }),
-        prisma.trade.findMany({ where: { userId, status: "CLOSED", ...(from ? { date: { gte: from } } : {}) }, select: { accountId: true, pnl: true, rMultiple: true, date: true } }),
+        prisma.account.findMany({ where: accountWhere, select: { id: true, currency: true, type: true } }),
+        prisma.trade.findMany({ where: { ...tradeWhere, status: "CLOSED", ...(from ? { date: { gte: from } } : {}) }, select: { accountId: true, pnl: true, rMultiple: true, date: true } }),
       ])
       const base   = user?.baseCurrency ?? "USD"
       const rates  = parseFxRates(user?.fxRates)
       const fxOf   = new Map(accounts.map(a => [a.id, fxFactor(a.currency, base, rates)]))
-      // Financial performance excludes practice (demo/backtest): unreal money must
-      // not inflate the real track record. The model is told what was excluded.
-      const practiceIds = new Set(accounts.filter(a => isPracticeType(a.type)).map(a => a.id))
-      const rows   = allRows.filter(t => !practiceIds.has(t.accountId))
-      const excludedPracticeTrades = allRows.length - rows.length
+      const excluded = accounts.filter(a => !hasFxConversion(a.currency, base, rates))
+      const excludedIds = new Set(excluded.map(a => a.id))
+      const excludedCurrencies = [...new Set(excluded.map(a => a.currency))]
+      const rows = allRows.filter(t => !excludedIds.has(t.accountId))
       const ps     = rows.map(t => (t.pnl != null ? Number(t.pnl) : 0) * (fxOf.get(t.accountId) ?? 1))
       const total  = ps.length
       const wins   = ps.filter(p => p > 0).length
@@ -338,7 +345,7 @@ async function runCoachTool(
       const best = dayEntries.length ? dayEntries.reduce((a, b) => b[1] > a[1] ? b : a) : null
       const worst = dayEntries.length ? dayEntries.reduce((a, b) => b[1] < a[1] ? b : a) : null
       return JSON.stringify({
-        period, baseCurrency: base, scope: "real_accounts_only", excludedPracticeTrades, trades: total,
+        period, baseCurrency: base, operationalMode: mode, scope: { mode, includeArchived: true }, excludedCurrencies, trades: total,
         winRate: parseFloat(calcWinRate(wins, total).toFixed(2)),
         profitFactor: parseFloat(calcProfitFactor(gW, gL).toFixed(2)),
         netPnl: parseFloat(net.toFixed(2)),
@@ -356,10 +363,11 @@ async function runCoachTool(
         return JSON.stringify({ error: `Corpus desconocido: ${String(input.corpus)}` })
       }
       const corpus = input.corpus as CorpusKey | undefined
-      const result = await search(prisma, userId, { query, corpus, limit: Number(input.limit) || undefined })
+      const result = await search(prisma, userId, { query, corpus, limit: Number(input.limit) || undefined, mode })
       emitCites(result.citations)
       return JSON.stringify({
         resultados: result.citations.map(c => ({
+          operationalMode: c.operationalMode, accountId: c.accountId, accountName: c.accountName, accountType: c.accountType, currency: c.currency,
           corpus: c.corpus, etiqueta: c.label, cuando: c.sublabel,
           desenlace: c.outcome, nota: c.snippet, similitud: c.similarity,
         })),
@@ -430,7 +438,7 @@ async function runCoachTool(
         }),
       ])
       const trades = await prisma.trade.findMany({
-        where: { userId, status: "CLOSED", setupId: { not: null } },
+        where: { ...tradeWhere, status: "CLOSED", setupId: { not: null } },
         select: { setupId: true, pnl: true },
       })
       const stats = new Map<string, { wins: number; trades: number }>()
@@ -472,14 +480,14 @@ async function runCoachTool(
       const limit = Math.min(25, Math.max(1, Number(input.limit) || 10))
       const unreadOnly = input.unreadOnly === true
       const rows = await prisma.notification.findMany({
-        where: { userId, archivedAt: null, ...(unreadOnly ? { readAt: null } : {}) },
+        where: { userId, archivedAt: null, params: { path: ["mode"], equals: mode }, ...(unreadOnly ? { readAt: null } : {}) },
         orderBy: { createdAt: "desc" },
         take: limit,
         select: { title: true, body: true, type: true, priority: true, category: true, readAt: true, createdAt: true },
       })
       return JSON.stringify({
         notifications: rows.map(r => ({
-          title: r.title, body: r.body, type: r.type, priority: r.priority, category: r.category,
+          operationalMode: mode, title: r.title, body: r.body, type: r.type, priority: r.priority, category: r.category,
           read: r.readAt != null, date: (r.createdAt as Date).toISOString().slice(0, 10),
         })),
       })
@@ -488,10 +496,10 @@ async function runCoachTool(
     if (name === "propose_commitment") {
       // WRITE tool (D1·b) — proposes a verifiable commitment the user must CONFIRM.
       // Lands as `proposed` (inert until accepted), never auto-active.
-      const proposal = await proposeCommitment(prisma, userId, String(input.commitment ?? ""))
+      const proposal = await proposeCommitment(prisma, userId, String(input.commitment ?? ""), mode)
       if (!proposal) return JSON.stringify({ error: `Compromiso no soportado: ${input.commitment}` })
       return JSON.stringify({
-        proposed: true, commitmentId: proposal.id, text: proposal.text,
+        operationalMode: mode, proposed: true, commitmentId: proposal.id, text: proposal.text,
         message: `Compromiso propuesto y pendiente de confirmación del trader: "${proposal.text}". Informa al trader de que lo verá para aceptarlo o descartarlo; tú no lo has activado.`,
       })
     }
@@ -507,11 +515,11 @@ async function runCoachTool(
       if (!proposed) return JSON.stringify({ error: "No se pudo construir la regla." })
       const reason = String(input.reason ?? "").slice(0, 300) || "Propuesta del coach."
       const sug = await prisma.ruleSuggestion.create({
-        data: { userId, insightId: null, proposedRule: proposed as unknown as Prisma.InputJsonValue, reason, status: "pending" },
+        data: { userId, operationalMode: mode, insightId: null, proposedRule: proposed as unknown as Prisma.InputJsonValue, reason, status: "pending" },
         select: { id: true },
       })
       return JSON.stringify({
-        proposed: true, suggestionId: sug.id, ruleName: proposed.name,
+        operationalMode: mode, proposed: true, suggestionId: sug.id, ruleName: proposed.name,
         message: `Propuesta creada y pendiente de confirmación del trader: "${proposed.name}". Informa al trader de que la verá para aceptarla o descartarla; tú no la has activado.`,
       })
     }

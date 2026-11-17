@@ -3,6 +3,7 @@
 // consultas LITERALES; el pipeline es genérico y único. Ver el spec
 // docs/superpowers/specs/2026-07-23-recuperacion-semantica-coach-design.md §3.
 // ─────────────────────────────────────────────────────────────────────────────
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
 /**
@@ -27,6 +28,7 @@ export function isCorpusKey(v: unknown): v is CorpusKey {
  * "no pude buscar", nunca "no hay".
  */
 export type RetrievalState =
+  | "UNSCOPED_LEGACY"
   | "OK"
   | "NO_KEY"
   | "EMBED_FAILED"
@@ -42,6 +44,11 @@ export const DEFAULT_LIMIT = 5
 export const MAX_LIMIT = 10
 
 export interface Citation {
+  operationalMode?: OperationalMode
+  accountId?: string
+  accountName?: string
+  accountType?: string
+  currency?: string
   corpus:     CorpusKey
   id:         string
   label:      string          // "NQ · LONG" | título del recurso
@@ -89,11 +96,11 @@ export interface CorpusAdapter<Row = never> {
   key:   CorpusKey
   /** Etiqueta humana para /perfil. */
   label: string
-  knn(prisma: PrismaClient, userId: string, vec: string, limit: number): Promise<Hit[]>
-  pending(prisma: PrismaClient, userId: string, limit: number): Promise<PendingRow[]>
+  knn(prisma: PrismaClient, userId: string, vec: string, limit: number, mode?: OperationalMode): Promise<Hit[]>
+  pending(prisma: PrismaClient, userId: string, limit: number, mode?: OperationalMode): Promise<PendingRow[]>
   writeVector(prisma: PrismaClient, id: string, vec: string, sourceText: string, userId: string): Promise<number>
-  counts(prisma: PrismaClient, userId: string): Promise<CorpusCounts>
-  hydrate(prisma: PrismaClient, userId: string, ids: string[]): Promise<Row[]>
+  counts(prisma: PrismaClient, userId: string, mode?: OperationalMode): Promise<CorpusCounts>
+  hydrate(prisma: PrismaClient, userId: string, ids: string[], mode?: OperationalMode): Promise<Row[]>
   rowId(row: Row): string
   toCitation(row: Row, similarity: number): Citation
 }

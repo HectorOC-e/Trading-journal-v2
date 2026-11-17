@@ -6,9 +6,10 @@
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate } from "@/lib/formulas"
-import { fxFactor, parseFxRates } from "@/lib/fx"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { computeSetupStats, type SetupStats } from "./setup-analytics"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import { classifyAccountType, accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { isViolationTag } from "@/types"
 import type { AnalyticsTrade } from "./insights-engine"
 
@@ -24,6 +25,7 @@ export interface MarketIntel { symbol: string; trades: number; netPnl: number; w
 export interface EmotionIntel { emotion: string; trades: number; reconstructed: number; avgPnl: number; winRate: number }
 
 export interface AnalyticsBundle {
+  scope: { mode: OperationalMode; dateBasis: "TRADE_DATE"; excludedCurrencies: string[] }
   window: { from: string | null; to: string | null }
   baseCurrency: string
   performance: {
@@ -79,13 +81,14 @@ export async function buildAnalyticsBundle(
   userId: string,
   prisma: PrismaClient,
   window?: { from: Date; to: Date },
-  includePractice = false,
+  mode: OperationalMode = "REAL",
 ): Promise<AnalyticsBundle> {
+  const scopeWhere = await scopedTradeWhere(prisma,userId,{mode,includeArchived:true})
   const dateFilter = window ? { gte: window.from, lte: window.to } : undefined
 
   const [tradeRows, accountRows, setupRows, withdrawalRows, userRow, sessionRows] = await Promise.all([
     prisma.trade.findMany({
-      where: { userId, status: "CLOSED", ...(dateFilter ? { date: dateFilter } : {}) },
+      where: { ...scopeWhere, status: "CLOSED", ...(dateFilter ? { date: dateFilter } : {}) },
       select: {
         id: true, accountId: true, symbol: true, direction: true, session: true,
         openTime: true, closeTime: true, pnl: true, rMultiple: true, tags: true, date: true,
@@ -95,10 +98,9 @@ export async function buildAnalyticsBundle(
         emotionBefore: true, emotionSource: true, fomoFlag: true, revengeFlag: true, confidenceRating: true,
       },
       orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-      take: 1000,
     }),
     prisma.account.findMany({
-      where: { userId },
+      where: { userId, type: { in: accountTypesForMode(mode) } },
       select: { id: true, name: true, type: true, currency: true, initialBalance: true, ddTotalPct: true, locked: true },
     }),
     prisma.setup.findMany({
@@ -106,7 +108,7 @@ export async function buildAnalyticsBundle(
       select: { id: true, name: true, abbreviation: true, color: true },
     }),
     prisma.withdrawal.findMany({
-      where: { userId, ...(dateFilter ? { date: dateFilter } : {}) },
+      where: { userId, account: { userId, type: { in: accountTypesForMode(mode) } }, ...(dateFilter ? { date: dateFilter } : {}) },
       select: { amount: true, currency: true, date: true },
       orderBy: { date: "asc" },
     }),
@@ -115,7 +117,7 @@ export async function buildAnalyticsBundle(
       select: { weeklyPnlGoal: true, weeklyTradesGoal: true, disciplineGoal: true, weeklyGoalMinutes: true, baseCurrency: true, fxRates: true },
     }),
     prisma.tradingSessionLog.findMany({
-      where: { userId, ...(dateFilter ? { date: dateFilter } : {}) },
+      where: { userId, operationalMode: mode, ...(dateFilter ? { date: dateFilter } : {}) },
       select: { preMood: true, energyLevel: true },
     }),
   ])
@@ -127,7 +129,10 @@ export async function buildAnalyticsBundle(
   const fxOf = (accountId: string) => fxByAccount.get(accountId) ?? 1
 
   // Normalize trades
-  const trades: AnalyticsTrade[] = tradeRows.map((t) => ({
+  const cohortAccounts = accountRows.filter(a => classifyAccountType(a.type) === mode)
+  const excludedCurrencies = [...new Set(cohortAccounts.filter(a => !hasFxConversion(a.currency,baseCurrency,fxRates)).map(a => a.currency))].sort()
+  const selectedIds = new Set(cohortAccounts.filter(a => hasFxConversion(a.currency,baseCurrency,fxRates)).map(a => a.id))
+  const trades: AnalyticsTrade[] = tradeRows.filter(t => selectedIds.has(t.accountId)).map((t) => ({
     id: t.id, accountId: t.accountId, symbol: t.symbol, direction: t.direction,
     session: t.session as string | null, openTime: t.openTime as string | null, closeTime: t.closeTime as string | null,
     pnl: (t.pnl != null ? Number(t.pnl) : 0) * fxOf(t.accountId), rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
@@ -138,14 +143,9 @@ export async function buildAnalyticsBundle(
     confidenceRating: t.confidenceRating,
   }))
 
-  // ── Practice (demo/backtest) partition ──────────────────────────────────────
-  // Financial/performance sections use only real accounts by default; behavioural
-  // (psychology) sections always count practice accounts. A toggle (includePractice)
-  // folds practice into the financial scope when the user asks.
-  const practiceId      = new Set(accountRows.filter((a) => isPracticeType(a.type)).map((a) => a.id))
-  const finTrades       = includePractice ? trades : trades.filter((t) => !practiceId.has(t.accountId))
-  const finAccountRows  = includePractice ? accountRows : accountRows.filter((a) => !isPracticeType(a.type))
-  const psychTotal      = trades.length
+  const finTrades = trades
+  const finAccountRows = accountRows.filter(a => selectedIds.has(a.id))
+  const psychTotal = trades.length
 
   // ── Performance ────────────────────────────────────────────────────────────
   const total  = finTrades.length
@@ -258,7 +258,7 @@ export async function buildAnalyticsBundle(
   const weekStartStr = weekStart.toISOString().slice(0, 10)
   const weekTrades = finTrades.filter((t) => t.date >= weekStartStr)
   const goals = {
-    weeklyPnlGoal: userRow?.weeklyPnlGoal != null ? Number(userRow.weeklyPnlGoal) : null,
+    weeklyPnlGoal: mode === "REAL" && userRow?.weeklyPnlGoal != null ? Number(userRow.weeklyPnlGoal) : null,
     weeklyTradesGoal: userRow?.weeklyTradesGoal ?? null,
     disciplineGoal: userRow?.disciplineGoal ?? null,
     weeklyGoalMinutes: userRow?.weeklyGoalMinutes ?? null,
@@ -267,7 +267,7 @@ export async function buildAnalyticsBundle(
   }
 
   // ── Withdrawals ────────────────────────────────────────────────────────────────
-  const wAmounts = withdrawalRows.map((w) => ({ amount: Number(w.amount) * fxFactor(w.currency, baseCurrency, fxRates), date: (w.date as Date).toISOString().slice(0, 10) }))
+  const wAmounts = withdrawalRows.filter(w => hasFxConversion(w.currency,baseCurrency,fxRates)).map((w) => ({ amount: Number(w.amount) * fxFactor(w.currency, baseCurrency, fxRates), date: (w.date as Date).toISOString().slice(0, 10) }))
   const totalWithdrawn = wAmounts.reduce((s, w) => s + Math.abs(w.amount), 0)
   const byMonthMap = new Map<string, number>()
   for (const w of wAmounts) { const m = w.date.slice(0, 7); byMonthMap.set(m, (byMonthMap.get(m) ?? 0) + Math.abs(w.amount)) }
@@ -278,6 +278,7 @@ export async function buildAnalyticsBundle(
   }
 
   return {
+    scope: { mode, dateBasis: "TRADE_DATE", excludedCurrencies },
     window: { from: window?.from.toISOString().slice(0, 10) ?? null, to: window?.to.toISOString().slice(0, 10) ?? null },
     baseCurrency,
     performance, risk: { worstDrawdownPct: round1(worstDrawdownPct), equityCurve, accounts },
@@ -286,7 +287,7 @@ export async function buildAnalyticsBundle(
       trades: finTrades,
       allTrades: trades,
       setupsMeta: setupRows.map((s) => ({ id: s.id, name: s.name })),
-      accountsMeta: accountRows.map((a) => ({ id: a.id, name: a.name, locked: a.locked, ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null })),
+      accountsMeta: finAccountRows.map((a) => ({ id: a.id, name: a.name, locked: a.locked, ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null })),
       withdrawals: wAmounts,
     },
   }

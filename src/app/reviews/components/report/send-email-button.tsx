@@ -4,6 +4,8 @@ import { Mail } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
 import { toast } from "@/lib/use-toast"
 import { formatErrorForUser } from "@/lib/error-formatter"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS } from "@/domains/trading/operational-mode"
 
 type Period =
   | { kind: "weekly"; weekStart: string }
@@ -11,7 +13,8 @@ type Period =
 
 /** Header action that emails the current review to the user. */
 export function SendReviewEmailButton({ period }: { period: Period }) {
-  const onSuccess = () => toast.success("Review enviada a tu correo")
+  const mode = useOperationalMode(s => s.mode)
+  const onSuccess = () => toast.success(`Review de ${MODE_LABELS[mode]} enviada a tu correo`)
   const onError = (e: unknown) => toast.error(formatErrorForUser(e as Parameters<typeof formatErrorForUser>[0]))
 
   const weeklyMut  = trpc.weeklyReviews.sendEmail.useMutation({ onSuccess, onError })
@@ -19,8 +22,8 @@ export function SendReviewEmailButton({ period }: { period: Period }) {
   const pending = weeklyMut.isPending || monthlyMut.isPending
 
   const send = () => {
-    if (period.kind === "weekly") weeklyMut.mutate({ weekStart: period.weekStart })
-    else monthlyMut.mutate({ year: period.year, month: period.month })
+    if (period.kind === "weekly") weeklyMut.mutate({ weekStart: period.weekStart, mode })
+    else monthlyMut.mutate({ year: period.year, month: period.month, mode })
   }
 
   return (

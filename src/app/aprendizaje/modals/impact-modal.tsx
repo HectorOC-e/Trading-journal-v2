@@ -5,6 +5,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
 import { trpc } from "@/lib/trpc/client"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import type { RouterOutputs } from "@/server/trpc/root"
 
 type ResourceFromDB = RouterOutputs["learningResources"]["list"][number]
@@ -18,8 +19,9 @@ export function SetupImpactModal({
   open:     boolean
   onOpenChange: (v: boolean) => void
 }) {
+  const mode = useOperationalMode(s => s.mode)
   const { data: impact = [], isLoading } = trpc.learningResources.setupImpact.useQuery(
-    resource?.id ?? "",
+    { resourceId: resource?.id ?? "", mode },
     { enabled: open && !!resource }
   )
 
@@ -31,14 +33,14 @@ export function SetupImpactModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Impacto en trading</DialogTitle>
+          <DialogTitle>Impacto en trading · {mode}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-[var(--ink-3)] -mt-2 truncate">{resource.title}</p>
 
         {noCompletedAt ? (
           <div className="py-6 text-center">
             <p className="text-sm text-[var(--ink-3)]">
-              Completa este recurso para empezar a medir su impacto en los setups vinculados.
+              Muestra insuficiente: falta un hito de finalización del recurso para comparar sus setups vinculados.
             </p>
           </div>
         ) : isLoading ? (

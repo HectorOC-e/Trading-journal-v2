@@ -18,13 +18,14 @@ function scoreColor(s: number) {
  *  (#49). Every number deterministic (P2). */
 export function ImprovementPanel({ d, money }: { d: Improvement; money: (n: number) => string }) {
   if (!d.hasData) {
-    return <div className="rounded-[var(--radius)] border border-dashed border-[var(--line)] py-12 text-center text-[12px] text-[var(--ink-3)]">Registra trades reales para construir tu índice de mejora.</div>
+    return <div className="rounded-[var(--radius)] border border-dashed border-[var(--line)] py-12 text-center text-[12px] text-[var(--ink-3)]">Registra operaciones en esta modalidad para construir tu índice de mejora.</div>
   }
   const score = d.improvement.score
   const color = scoreColor(score)
 
   return (
     <div className="flex flex-col gap-4">
+      {d.excludedCurrencies?.length > 0 && <p className="text-xs text-[var(--ink-3)]">Costes monetarios incompletos: falta conversión de {d.excludedCurrencies.join(", ")}.</p>}
       {/* Score hero + drivers */}
       <div className="rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-5 grid gap-5 md:grid-cols-[200px_1fr] items-center">
         <div className="flex flex-col items-center justify-center text-center">

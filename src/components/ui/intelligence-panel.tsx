@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Sparkles, Loader2 } from "lucide-react"
 import { Markdown } from "@/components/ui/markdown"
 import { InsightCards } from "@/components/ui/insight-cards"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
 import type { Insight } from "@/domains/analytics/services/insights-engine"
 
 /**
@@ -11,31 +13,49 @@ import type { Insight } from "@/domains/analytics/services/insights-engine"
  * Presentational: receives deterministic insights from the parent; streams the
  * LLM narrative from `endpoint`. Renders the narrative with the Markdown renderer.
  */
-export function IntelligencePanel({
-  insights, isLoading, endpoint, period, title, subtitle, emptyHint,
-}: {
+type IntelligencePanelProps = {
   insights: Insight[]
   isLoading: boolean
   endpoint: string
   period: string
+  mode?: OperationalMode
   title: string
   subtitle: string
   emptyHint?: string
-}) {
+}
+
+export function IntelligencePanel(props: IntelligencePanelProps) {
+  const selectedMode = useOperationalMode(state => state.mode)
+  const mode = props.mode ?? selectedMode
+  // Remount at the provenance boundary, so no old narrative survives even the
+  // first render with the new label. Cleanup aborts its outstanding stream.
+  return <ScopedIntelligencePanel key={`${props.endpoint}:${mode}:${props.period}`} {...props} mode={mode} />
+}
+
+function ScopedIntelligencePanel({ insights, isLoading, endpoint, period, mode, title, subtitle, emptyHint }: IntelligencePanelProps & { mode: OperationalMode }) {
   const [narrative, setNarrative] = useState("")
   const [streaming, setStreaming] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
+  const abortRef = useRef<AbortController | null>(null)
+  useEffect(() => () => abortRef.current?.abort(), [])
+
   async function generate() {
+    const controller = new AbortController()
+    abortRef.current?.abort()
+    abortRef.current = controller
+    const current = () => !controller.signal.aborted
     setStreaming(true); setNarrative(""); setErr(null)
     let got = false
     try {
       const res = await fetch(endpoint, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period, mode }), signal: controller.signal,
       })
+      if (!current()) return
       const ct = res.headers.get("content-type") ?? ""
       if (ct.includes("application/json")) {
         const j = await res.json() as { error?: string }
+        if (!current()) return
         setErr(j.error === "NO_API_KEY" ? "Configura tu API key en Perfil → Configuración de IA." : "No se pudo generar el análisis (IA).")
         setStreaming(false); return
       }
@@ -45,18 +65,19 @@ export function IntelligencePanel({
       try {
         for (;;) {
           const { done, value } = await reader.read()
+          if (!current()) { void reader.cancel(); return }
           if (done) break
           got = true
           setNarrative((p) => p + dec.decode(value, { stream: true }))
         }
       } catch {
         // Stream cut mid-way (timeout/provider). Keep partial output; only error if nothing arrived.
-        if (!got) setErr("La conexión con la IA se interrumpió. Vuelve a intentarlo.")
+        if (current() && !got) setErr("La conexión con la IA se interrumpió. Vuelve a intentarlo.")
       }
     } catch {
-      setErr("No se pudo conectar. Revisa tu conexión e intenta de nuevo.")
+      if (current()) setErr("No se pudo conectar. Revisa tu conexión e intenta de nuevo.")
     }
-    finally { setStreaming(false) }
+    finally { if (current()) setStreaming(false) }
   }
 
   return (
@@ -67,7 +88,7 @@ export function IntelligencePanel({
           <Sparkles size={16} className="text-[var(--accent)] shrink-0" />
           <div className="min-w-0">
             <p className="text-[13px] font-semibold text-[var(--ink)] leading-tight">{title}</p>
-            <p className="text-[11px] text-[var(--ink-3)] leading-tight">{subtitle}</p>
+            <p className="text-[11px] text-[var(--ink-3)] leading-tight">{subtitle} · {MODE_LABELS[mode]}</p>
           </div>
         </div>
         <button

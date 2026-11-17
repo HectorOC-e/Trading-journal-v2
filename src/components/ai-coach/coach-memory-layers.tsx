@@ -5,6 +5,7 @@
 // append-only evidence — neither is user-edited here (identity + facts are, above).
 
 import { Network, Clock } from "lucide-react"
+import { MODE_LABELS, type OperationalMode } from "@/domains/trading/operational-mode"
 import { trpc } from "@/lib/trpc/client"
 
 const EVENT_LABEL: Record<string, string> = {
@@ -19,9 +20,9 @@ const EVENT_LABEL: Record<string, string> = {
 
 const fmtDate = (iso: string) => iso.slice(0, 10)
 
-export function CoachMemoryLayers() {
-  const { data: patterns = [] } = trpc.coach.patterns.useQuery(undefined, { staleTime: 30_000 })
-  const { data: episodes = [] } = trpc.coach.episodes.useQuery(undefined, { staleTime: 30_000 })
+export function CoachMemoryLayers({ mode = "REAL" }: { mode?: OperationalMode }) {
+  const { data: patterns = [] } = trpc.coach.patterns.useQuery({ mode }, { staleTime: 30_000 })
+  const { data: episodes = [] } = trpc.coach.episodes.useQuery({ mode }, { staleTime: 30_000 })
 
   if (patterns.length === 0 && episodes.length === 0) return null
 
@@ -31,7 +32,7 @@ export function CoachMemoryLayers() {
         <section>
           <div className="flex items-center gap-1.5 mb-1.5">
             <Network size={13} className="text-[var(--accent)]" />
-            <p className="text-[12px] font-bold text-[var(--ink)]">Patrones</p>
+            <p className="text-[12px] font-bold text-[var(--ink)]">Patrones · {MODE_LABELS[mode]}</p>
             <span className="text-[10px] text-[var(--ink-3)]">— confirmados por tus datos</span>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -49,7 +50,7 @@ export function CoachMemoryLayers() {
         <section>
           <div className="flex items-center gap-1.5 mb-1.5">
             <Clock size={13} className="text-[var(--coach)]" />
-            <p className="text-[12px] font-bold text-[var(--ink)]">Momentos recordados</p>
+            <p className="text-[12px] font-bold text-[var(--ink)]">Momentos recordados · {MODE_LABELS[mode]}</p>
             <span className="text-[10px] text-[var(--ink-3)]">— evidencia, por relevancia</span>
           </div>
           <div className="flex flex-col gap-1.5">

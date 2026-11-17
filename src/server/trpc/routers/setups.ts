@@ -1,3 +1,5 @@
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { z } from "zod"
 import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure, dashboardMutation } from "../init"
@@ -5,6 +7,7 @@ import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } fr
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 import type { DirectionStats } from "@/domains/analytics/services/setup-analytics"
 import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
+import { fxFactor, hasFxConversion, parseFxRates } from "@/lib/fx"
 
 const PeriodEnum = z.enum(["1M", "3M", "6M", "1Y", "ALL"])
 
@@ -141,6 +144,7 @@ export const setupsRouter = router({
 
   performanceStats: protectedProcedure
     .input(z.object({
+      mode: operationalModeSchema.default("REAL"),
       setupId: z.string().uuid().optional(),
       period:  PeriodEnum.optional().default("ALL"),
     }).optional())
@@ -150,7 +154,8 @@ export const setupsRouter = router({
       const days     = periodDays[period]
       const fromDate = days != null ? new Date(Date.now() - days * 86_400_000) : undefined
 
-      const [setupRows, tradeRows, checklistRows] = await Promise.all([
+      const mode = input?.mode ?? "REAL"
+      const [setupRows, tradeRows, checklistRows, user] = await Promise.all([
         ctx.prisma.setup.findMany({
           where: { userId: ctx.userId, status: { not: "DESCARTADO" } },
           select: {
@@ -161,7 +166,7 @@ export const setupsRouter = router({
         }),
         ctx.prisma.trade.findMany({
           where: {
-            userId:  ctx.userId,
+            ...await scopedTradeWhere(ctx.prisma,ctx.userId,{mode,includeArchived:true}),
             status:  "CLOSED",
             setupId: input?.setupId ?? { not: null },
             ...(fromDate ? { date: { gte: fromDate } } : {}),
@@ -171,6 +176,7 @@ export const setupsRouter = router({
             session: true, openTime: true, closeTime: true,
             pnl: true, rMultiple: true, tags: true, date: true,
             setupId: true, entry: true, stop: true, target: true, size: true,
+            account: { select: { currency: true } },
           },
           orderBy: [{ date: "asc" }],
         }),
@@ -178,9 +184,13 @@ export const setupsRouter = router({
           where:  { userId: ctx.userId },
           select: { tradeId: true, itemsChecked: true, itemsTotal: true },
         }),
+        ctx.prisma.user.findUniqueOrThrow({ where: { id: ctx.userId }, select: { baseCurrency: true, fxRates: true } }),
       ])
 
-      const trades: MinimalTrade[] = tradeRows.map(t => ({
+      const baseCurrency = (user.baseCurrency ?? "USD").trim().toUpperCase()
+      const rates = parseFxRates(user.fxRates)
+      const excludedCurrencies = [...new Set(tradeRows.filter(t => !hasFxConversion(t.account.currency.trim().toUpperCase(), baseCurrency, rates)).map(t => t.account.currency.trim().toUpperCase()))].sort()
+      const trades: MinimalTrade[] = tradeRows.filter(t => hasFxConversion(t.account.currency.trim().toUpperCase(), baseCurrency, rates)).map(t => ({
         id:        t.id,
         accountId: t.accountId,
         symbol:    t.symbol,
@@ -188,7 +198,7 @@ export const setupsRouter = router({
         session:   t.session as string | null,
         openTime:  t.openTime as string | null,
         closeTime: t.closeTime as string | null,
-        pnl:       t.pnl       != null ? Number(t.pnl)       : 0,
+        pnl:       (t.pnl != null ? Number(t.pnl) : 0) * fxFactor(t.account.currency.trim().toUpperCase(), baseCurrency, rates),
         rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
         tags:      t.tags      as string[],
         date:      (t.date as Date).toISOString().slice(0, 10),
@@ -256,12 +266,13 @@ export const setupsRouter = router({
         }
       })() : null
 
-      return { setupStats, sessionMatrix, directionStats, playbookSummary }
+      return { setupStats, sessionMatrix, directionStats, playbookSummary, baseCurrency, scope: { mode, includeArchived: true, excludedCurrencies } }
     }),
 
   // ── T-VIII-003: lifecycle check ─────────────────────────────────────────────
   lifecycleCheck: protectedProcedure
-    .query(async ({ ctx }) => {
+    .input(z.object({mode:operationalModeSchema.default("REAL")}).optional())
+    .query(async ({ ctx,input }) => {
       const sixMonthsAgo = new Date(Date.now() - 180 * 86_400_000)
 
       const [setups, tradeRows] = await Promise.all([
@@ -270,7 +281,7 @@ export const setupsRouter = router({
           select: { id: true, name: true, abbreviation: true, expectedWr: true },
         }),
         ctx.prisma.trade.findMany({
-          where:  { userId: ctx.userId, status: "CLOSED", setupId: { not: null }, date: { gte: sixMonthsAgo } },
+          where:  { ...await scopedTradeWhere(ctx.prisma,ctx.userId,{mode:input?.mode ?? "REAL",includeArchived:true}), status: "CLOSED", setupId: { not: null }, date: { gte: sixMonthsAgo } },
           select: { setupId: true, pnl: true, date: true },
           orderBy: [{ date: "asc" }],
         }),

@@ -8,6 +8,8 @@ import { currencySymbol } from "@/lib/fx"
 import { CardEquityChart } from "./card-equity-chart"
 import { deriveVerdict } from "@/server/services/reviews/verdict"
 import type { RouterOutputs } from "@/server/trpc/root"
+import { useOperationalMode } from "@/lib/operational-mode-store"
+import { useCurrency } from "@/hooks/useCurrency"
 
 type ReportData = RouterOutputs["weeklyReviews"]["report"]
 
@@ -30,12 +32,16 @@ export function WeekHero({ data, weekStart, isLoading }: {
   weekStart: string
   isLoading: boolean
 }) {
-  if (isLoading || !data) {
+  const mode = useOperationalMode(s => s.mode)
+  const currency = useCurrency()
+  if (isLoading || !data || data.scope?.mode !== mode) {
     return <div className="h-[148px] rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] animate-pulse" />
   }
 
   const cur = currencySymbol(data.baseCurrency || "USD")
-  const money = (n: number) => `${n < 0 ? "-" : "+"}${cur}${Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+  const money = (n: number) => data.baseCurrency === currency.baseCurrency
+    ? currency.formatAmount(n, { showSign: true, decimals: 0 })
+    : `${n < 0 ? "-" : "+"}${cur}${Math.abs(n).toFixed(0)}`
   const net = data.kpis.netPnl
   const isLoss = net < 0
   const hasTrades = data.kpis.trades > 0
@@ -53,7 +59,7 @@ export function WeekHero({ data, weekStart, isLoading }: {
       className="relative rounded-[var(--radius)] border border-[var(--accent)]/30 overflow-hidden"
       style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--panel)), var(--panel))" }}
     >
-      <Link href={`/reviews/semanal/${weekStart}`} className="block p-4 sm:p-5 group">
+      <Link href={`/reviews/semanal/${weekStart}?mode=${mode}`} className="block p-4 sm:p-5 group">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <p className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
@@ -69,7 +75,7 @@ export function WeekHero({ data, weekStart, isLoading }: {
         </div>
 
         <div className="flex items-center gap-6 sm:gap-8 flex-wrap">
-          <HeroMetric label="P&L"        value={data.kpis.trades ? money(net) : "—"} color={data.kpis.trades ? (isLoss ? "var(--loss)" : "var(--win)") : undefined} />
+          <HeroMetric label={`P&L · ${data.baseCurrency}`} value={data.kpis.trades ? money(net) : "—"} color={data.kpis.trades ? (isLoss ? "var(--loss)" : "var(--win)") : undefined} />
           <HeroMetric label="Win Rate"   value={data.kpis.trades ? `${data.kpis.winRate.toFixed(0)}%` : "—"} />
           <HeroMetric label="Avg R"      value={data.analytics.avgR ? `${data.analytics.avgR.toFixed(2)}R` : "—"} />
           <HeroMetric label="Disciplina" value={data.kpis.disciplineScore != null ? String(data.kpis.disciplineScore) : "—"} />

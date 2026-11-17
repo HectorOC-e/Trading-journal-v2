@@ -35,6 +35,28 @@ test("trades page lists trades + register action", async ({ page }) => {
   await page.screenshot({ path: `${SHOTS}/02-trades.png`, fullPage: true })
 })
 
+test("operational worlds and learning practices visual QA", async ({ page }) => {
+  await login(page)
+  await page.waitForLoadState("networkidle")
+
+  const modeSelector = page.getByRole("tablist", { name: "Modalidad de operativa" })
+  await expect(modeSelector).toBeVisible({ timeout: 15_000 })
+  await modeSelector.getByRole("tab", { name: "Demo" }).click()
+  await expect(modeSelector.getByRole("tab", { name: "Demo" })).toHaveAttribute("aria-selected", "true")
+  await page.screenshot({ path: `${SHOTS}/06-dashboard-demo.png`, fullPage: true })
+
+  await page.goto("/aprendizaje")
+  await page.getByRole("tab", { name: "Prácticas" }).click()
+  await expect(page.getByRole("heading", { name: "Prácticas", exact: true })).toBeVisible({ timeout: 15_000 })
+  await page.waitForLoadState("networkidle")
+  await page.screenshot({ path: `${SHOTS}/07-aprendizaje-practicas.png`, fullPage: true })
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto("/dashboard")
+  await expect(page.getByRole("tablist", { name: "Modalidad de operativa" })).toBeVisible({ timeout: 15_000 })
+  await page.screenshot({ path: `${SHOTS}/08-dashboard-mobile.png`, fullPage: true })
+})
+
 test("retiros: create a USD withdrawal → per-currency KPI", async ({ page }) => {
   await login(page)
   await page.goto("/retiros")

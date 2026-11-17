@@ -10,24 +10,31 @@ import { Button } from "@/components/ui/button"
 import { queueReviewNotes, readReviewDraft, storeReviewDraft, clearReviewDraft, reviewDraftRevision } from "./notes-draft"
 import { Card, Eyebrow } from "./primitives"
 import { SendReviewEmailButton } from "./send-email-button"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 
 type Period =
   | { kind: "weekly"; weekStart: string }
   | { kind: "monthly"; year: number; month: number }
 
 function useSaveReview(period: Period, onSaved?: (r: { status: string; notes: string }) => void) {
+  const mode = useOperationalMode(s => s.mode)
   const onError = (e: unknown) => toast.error(formatErrorForUser(e as Parameters<typeof formatErrorForUser>[0]))
   const weekly  = trpc.weeklyReviews.saveReview.useMutation({ onSuccess: onSaved, onError })
   const monthly = trpc.monthlyReviews.saveReview.useMutation({ onSuccess: onSaved, onError })
   const save = (args: { notes?: string; status?: "draft" | "submitted" }) =>
     period.kind === "weekly"
-      ? weekly.mutateAsync({ weekStart: period.weekStart, ...args })
-      : monthly.mutateAsync({ year: period.year, month: period.month, ...args })
+      ? weekly.mutateAsync({ weekStart: period.weekStart, mode, ...args })
+      : monthly.mutateAsync({ year: period.year, month: period.month, mode, ...args })
   return { save, pending: weekly.isPending || monthly.isPending }
 }
 
 /** Header lifecycle controls: status badge + Finalizar + Enviar por correo. */
 export function ReviewActions({ period, initialStatus }: { period: Period; initialStatus: string }) {
+  const mode = useOperationalMode(s => s.mode)
+  return <ScopedReviewActions key={`${period.kind === "weekly" ? period.weekStart : `${period.year}-${period.month}`}:${mode}`} period={period} initialStatus={initialStatus} />
+}
+
+function ScopedReviewActions({ period, initialStatus }: { period: Period; initialStatus: string }) {
   const [status, setStatus] = useState(initialStatus)
   const { save, pending } = useSaveReview(period, (r) => { setStatus(r.status); toast.success("Review finalizada") })
   const finalized = status === "submitted"
@@ -129,7 +136,7 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
     <Card>
       {recovery !== null && <DraftRecovery onRestore={() => { change(recovery); setRecovery(null) }} onDiscard={() => { clearReviewDraft(draftKey, recovery, reviewDraftRevision(draftKey)); setRecovery(null) }} />}
       <div className="flex items-center justify-between mb-2">
-        <Eyebrow>Tus notas</Eyebrow>
+        <Eyebrow>Notas compartidas del periodo</Eyebrow>
         <div className="flex items-center gap-2" role="status" aria-live="polite">
           <span className="text-[10px] text-[var(--ink-3)]">
             {state === "saving" ? "Guardando…" : state === "saved" ? "Guardado ✓" : state === "error" ? "No se pudo guardar. Borrador conservado." : ""}
@@ -137,6 +144,7 @@ function NotesEditor({ period, initialNotes, draftKey }: { period: Period; initi
           {state === "error" && <Button size="sm" variant="ghost" onClick={() => flush.current()}>Reintentar</Button>}
         </div>
       </div>
+      <p className="text-xs text-[var(--ink-3)] mb-2">Notas manuales compartidas entre modalidades. Conservan la historia del periodo.</p>
       <textarea
         disabled={recovery !== null}
         aria-label="Tus notas"

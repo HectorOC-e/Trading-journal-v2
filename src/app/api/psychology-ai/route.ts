@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { operationalModeSchema, type OperationalMode } from "@/domains/trading/operational-mode"
 import { prisma } from "@/lib/prisma"
 import { createClient } from "@/lib/supabase/server"
 import { streamPsychologyInsights, type PsychologyAiOptions } from "@/lib/ai/psychology-insights-service"
@@ -15,18 +16,22 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 })
 
+  let mode: OperationalMode = "REAL"
   let period: PsychologyAiOptions["period"] = "3M"
   try {
-    const body = await req.json() as { period?: string }
+    const body = await req.json() as { period?: string; mode?: unknown; includePractice?: unknown }
+    mode = operationalModeSchema.parse(body.mode === undefined ? "REAL" : body.mode)
+    if (body.includePractice === true) throw new Error("mixed scope unsupported")
     if (body.period && (PERIODS as readonly string[]).includes(body.period)) {
       period = body.period as PsychologyAiOptions["period"]
     }
-  } catch { /* default */ }
+  } catch { return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 }) }
 
   try {
-    const readable = await streamPsychologyInsights({ userId: user.id, prisma, period })
+    const readable = await streamPsychologyInsights({ userId: user.id, prisma, period, mode })
     return new NextResponse(readable, {
-      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
+      headers: { "X-Operational-Mode": mode,
+        "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-cache", "X-Accel-Buffering": "no" },
     })
   } catch (err) {
     if (err instanceof NoApiKeyError) return NextResponse.json({ error: "NO_API_KEY" }, { status: 503 })

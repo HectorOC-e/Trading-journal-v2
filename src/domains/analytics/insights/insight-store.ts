@@ -11,6 +11,7 @@
 // the estimator lands in S3 (ADR-002) — S0 does not fabricate rigor.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 import { prisma as defaultPrisma } from "@/lib/prisma"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import type { Insight as EngineInsight } from "@/domains/analytics/services/insights-engine"
@@ -70,9 +71,9 @@ export interface PersistResult {
   resolved: number
 }
 
-async function loadActiveRefs(prisma: PrismaClient, userId: string): Promise<PersistedInsightRef[]> {
+async function loadActiveRefs(prisma: PrismaClient, userId: string, mode: OperationalMode): Promise<PersistedInsightRef[]> {
   const rows = await prisma.insight.findMany({
-    where: { userId, status: "active" },
+    where: { userId, operationalMode: mode, status: "active" },
     select: { id: true, fingerprint: true, status: true },
   })
   return rows.map((r) => ({ id: r.id, fingerprint: r.fingerprint, status: r.status as InsightStatus }))
@@ -87,8 +88,10 @@ export async function persistInsights(
   userId: string,
   computed: ComputedInsight[],
   client: PrismaClient = defaultPrisma,
+  mode: OperationalMode = "REAL",
 ): Promise<PersistResult> {
-  const existing = await loadActiveRefs(client, userId)
+  computed = computed.map(c => ({ ...c, fingerprint: c.fingerprint.startsWith(`${mode}:`) ? c.fingerprint : `${mode}:${c.fingerprint}` }))
+  const existing = await loadActiveRefs(client, userId, mode)
   const plan = reconcileInsights(existing, computed)
 
   await client.$transaction(async (tx) => {
@@ -96,6 +99,7 @@ export async function persistInsights(
       const created = await tx.insight.create({
         data: {
           userId,
+          operationalMode: mode,
           fingerprint: c.fingerprint,
           type: c.type,
           category: c.category,

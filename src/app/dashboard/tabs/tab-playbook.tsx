@@ -1,8 +1,9 @@
 "use client"
 
+import { useOperationalMode } from "@/lib/operational-mode-store"
+
 import { useMemo, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
 import { trpc } from "@/lib/trpc/client"
 import { SimpleTable } from "@/components/ui/data-table"
 
@@ -67,7 +68,8 @@ function getWeekKey(): string {
 // ── Lifecycle Suggestions (T-VIII-003) ─────────────────────────────────────
 
 function LifecycleSuggestions() {
-  const { data: suggestions } = trpc.setups.lifecycleCheck.useQuery(undefined, { staleTime: 300_000 })
+  const mode=useOperationalMode(state=>state.mode)
+  const { data: suggestions } = trpc.setups.lifecycleCheck.useQuery({mode}, { staleTime: 300_000 })
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
   // Load dismissals from localStorage on mount
@@ -129,16 +131,16 @@ function LifecycleSuggestions() {
 }
 
 export function TabPlaybook() {
+  const mode=useOperationalMode(state=>state.mode)
   const router = useRouter()
-  const { data, isLoading } = trpc.setups.performanceStats.useQuery(undefined, { staleTime: 60_000 })
+  const { data, isLoading } = trpc.setups.performanceStats.useQuery({mode}, { staleTime: 60_000 })
 
-  const setupStats     = data?.setupStats     ?? []
-  const sessionMatrix  = data?.sessionMatrix  ?? []
+  const setupStats = useMemo(() => data?.setupStats ?? [], [data?.setupStats])
+  const sessionMatrix = useMemo(() => data?.sessionMatrix ?? [], [data?.sessionMatrix])
   const directionStats = data?.directionStats ?? []
   const playbookSummary = data?.playbookSummary ?? null
 
   const sessionGrid = useMemo(() => {
-    const SESSIONS = ["New York", "London Close", "London", "Asia"] as const
     return setupStats.slice(0, 6).map(s => {
       const rows = sessionMatrix.filter(r => r.setupId === s.setupId)
       const wr = (sess: string) => rows.find(r => r.session === sess)?.winRate ?? null

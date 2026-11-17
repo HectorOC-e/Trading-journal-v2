@@ -76,3 +76,11 @@ export function parseFxRates(raw: unknown): Record<string, number> {
   }
   return out
 }
+
+/** Whether financial aggregates can convert without inventing an exchange rate. */
+export function hasFxConversion(from: string, base: string, rates?: Record<string, number> | null): boolean {
+  if (from === base) return true
+  const known = (currency: string) => currency === "USD" ||
+    (typeof rates?.[currency] === "number" && rates[currency] > 0) || Object.hasOwn(USD_VALUE,currency)
+  return known(from) && known(base)
+}

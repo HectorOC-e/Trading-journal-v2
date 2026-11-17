@@ -1,3 +1,4 @@
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
 import { readReviewSource } from "@/domains/learning/review-source"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { addDaysISO, localDateISO, safeTimeZone, weekStartISO } from "@/lib/datetime/local"
@@ -15,18 +16,18 @@ function dayBoundary(day: string, timezone: string): Date {
   return new Date(low)
 }
 
-export async function getDailyPlan(prisma: PrismaClient, userId: string, now = new Date()) {
+export async function getDailyPlan(prisma: PrismaClient, userId: string, now = new Date(), mode: OperationalMode = "REAL") {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { timezone: true } })
   const timezone = safeTimeZone(user.timezone)
   const today = localDateISO(now, timezone), tomorrow = addDaysISO(today, 1), weekStart = weekStartISO(today)
   const [commitments, accounts, resources, sessions, practices] = await Promise.all([
     prisma.commitment.findMany({
-      where: { userId, status: "active", archivedAt: null, startAt: { lt: dayBoundary(tomorrow, timezone) }, endAt: { gte: dayBoundary(today, timezone) } },
+      where: { userId, operationalMode: mode, status: "active", archivedAt: null, startAt: { lt: dayBoundary(tomorrow, timezone) }, endAt: { gte: dayBoundary(today, timezone) } },
       orderBy: [{ endAt: "asc" }, { id: "asc" }], take: 5,
       select: { id: true, text: true, startAt: true, endAt: true, reviewSource: true },
     }),
     prisma.account.findMany({
-      where: { userId, status: "ACTIVE", type: { notIn: ["DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] } },
+      where: { userId, status: "ACTIVE", type: { in: accountTypesForMode(mode) } },
       orderBy: [{ name: "asc" }, { id: "asc" }], take: 5,
       select: { id: true, name: true, locked: true, lockReason: true },
     }),
@@ -45,7 +46,7 @@ export async function getDailyPlan(prisma: PrismaClient, userId: string, now = n
     }),
   ])
   return {
-    today, timezone,
+    today, timezone, mode, studyScope: "SHARED" as const,
     commitments: commitments.map(c => {
       const reviewSource = readReviewSource(c.reviewSource)
       return { id: c.id, title: c.text, start: localDateISO(c.startAt, timezone), end: localDateISO(c.endAt, timezone), href: "/analytics", reviewSource, reviewHref: reviewSource ? `/reviews/semanal/${reviewSource.weekStart}` : null }

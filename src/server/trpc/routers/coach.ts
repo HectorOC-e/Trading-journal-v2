@@ -3,6 +3,7 @@
 // each exchange here and manages memory.
 
 import { z } from "zod"
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 import { router, protectedProcedure } from "../init"
 import {
   listMemory,
@@ -21,32 +22,34 @@ import { getIdentity, upsertIdentity } from "@/server/services/memory/memory-ide
 import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
 import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-service"
 
+const scopeInput = z.object({ mode: operationalModeSchema.default("REAL") }).default({ mode: "REAL" })
+
 const MEMORY_KIND = z.enum(["fact", "preference", "identity"])
 
 export const coachRouter = router({
   // ── Memory ────────────────────────────────────────────────────────────────
-  memory: protectedProcedure.query(({ ctx }) => listMemory(ctx.prisma, ctx.userId)),
+  memory: protectedProcedure.input(scopeInput).query(({ ctx, input }) => listMemory(ctx.prisma, ctx.userId, input.mode)),
 
   addMemory: protectedProcedure
-    .input(z.object({ kind: MEMORY_KIND, content: z.string().min(1).max(500) }))
-    .mutation(({ ctx, input }) => createMemory(ctx.prisma, ctx.userId, input.kind, input.content)),
+    .input(z.object({ kind: MEMORY_KIND, content: z.string().min(1).max(500), mode: operationalModeSchema.default("REAL") }))
+    .mutation(({ ctx, input }) => createMemory(ctx.prisma, ctx.userId, input.kind, input.content, input.mode)),
 
   confirmMemory: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => { await confirmMemory(ctx.prisma, ctx.userId, input.id); return { ok: true } }),
+    .input(z.object({ id: z.string().uuid(), mode: operationalModeSchema.default("REAL") }))
+    .mutation(async ({ ctx, input }) => { await confirmMemory(ctx.prisma, ctx.userId, input.id, input.mode); return { ok: true } }),
 
   editMemory: protectedProcedure
-    .input(z.object({ id: z.string().uuid(), content: z.string().min(1).max(500) }))
-    .mutation(async ({ ctx, input }) => { await editMemory(ctx.prisma, ctx.userId, input.id, input.content); return { ok: true } }),
+    .input(z.object({ id: z.string().uuid(), content: z.string().min(1).max(500), mode: operationalModeSchema.default("REAL") }))
+    .mutation(async ({ ctx, input }) => { await editMemory(ctx.prisma, ctx.userId, input.id, input.content, input.mode); return { ok: true } }),
 
   deleteMemory: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }))
-    .mutation(async ({ ctx, input }) => { await deleteMemory(ctx.prisma, ctx.userId, input.id); return { ok: true } }),
+    .input(z.object({ id: z.string().uuid(), mode: operationalModeSchema.default("REAL") }))
+    .mutation(async ({ ctx, input }) => { await deleteMemory(ctx.prisma, ctx.userId, input.id, input.mode); return { ok: true } }),
 
   // ── Hierarchical memory layers — visible/transparent (ADR-003 §3, v3.2) ──────
   // Read-only: episodes are append-only evidence; patterns are data-confirmed (D9).
-  episodes: protectedProcedure.query(({ ctx }) => getSalientEpisodes(ctx.prisma, ctx.userId, 8)),
-  patterns: protectedProcedure.query(({ ctx }) => getConfirmedPatterns(ctx.prisma, ctx.userId, 8)),
+  episodes: protectedProcedure.input(scopeInput).query(({ ctx, input }) => getSalientEpisodes(ctx.prisma, ctx.userId, 8, input.mode)),
+  patterns: protectedProcedure.input(scopeInput).query(({ ctx, input }) => getConfirmedPatterns(ctx.prisma, ctx.userId, 8, input.mode)),
 
   // ── Identity layer (E15, v3.2) ────────────────────────────────────────────────
   identity: protectedProcedure.query(({ ctx }) => getIdentity(ctx.prisma, ctx.userId)),
@@ -60,17 +63,18 @@ export const coachRouter = router({
     .mutation(({ ctx, input }) => upsertIdentity(ctx.prisma, ctx.userId, input)),
 
   // ── Threads ─────────────────────────────────────────────────────────────────
-  threads: protectedProcedure.query(({ ctx }) => getThreads(ctx.prisma, ctx.userId)),
+  threads: protectedProcedure.input(scopeInput).query(({ ctx, input }) => getThreads(ctx.prisma, ctx.userId, 30, input.mode)),
 
   threadMessages: protectedProcedure
-    .input(z.object({ threadId: z.string().uuid() }))
-    .query(({ ctx, input }) => getThreadMessages(ctx.prisma, ctx.userId, input.threadId)),
+    .input(z.object({ threadId: z.string().uuid(), mode: operationalModeSchema.default("REAL") }))
+    .query(({ ctx, input }) => getThreadMessages(ctx.prisma, ctx.userId, input.threadId, input.mode)),
 
   /** Persist one chat exchange (user + assistant). Ensures/creates the thread. */
   appendExchange: protectedProcedure
     .input(
       z.object({
         threadId: z.string().uuid().nullish(),
+        mode: operationalModeSchema.default("REAL"),
         userText: z.string().min(1),
         assistantText: z.string().min(1),
       }),
@@ -78,7 +82,7 @@ export const coachRouter = router({
     .mutation(async ({ ctx, input }) => {
       const thread = await appendExchange(ctx.prisma, ctx.userId, input)
       // S6 producer: summarize + extract candidate memory (best-effort, cost-gated, no-op without a key).
-      void summarizeThread(ctx.prisma, ctx.userId, thread.id).catch(() => {})
+      void summarizeThread(ctx.prisma, ctx.userId, thread.id, input.mode).catch(() => {})
       return { threadId: thread.id }
     }),
 })

@@ -41,6 +41,8 @@ model User {
   resourceReviews   ResourceReview[]
   studySessions     StudySession[]
   learningPractices LearningPractice[]
+  practiceTradeLinks PracticeTradeLink[]
+  reviewModeSnapshots ReviewModeSnapshot[]
   markets           Market[]
   withdrawals       Withdrawal[]
   accountLogs       AccountLog[]
@@ -297,6 +299,14 @@ model Setup {
 
 model Trade {
   id             String   @id @default(uuid()) @db.Uuid
+  operationalMode String? @map("operational_mode")
+  marketOpenedAt DateTime? @map("market_opened_at") @db.Timestamptz(3)
+  marketClosedAt DateTime? @map("market_closed_at") @db.Timestamptz(3)
+  marketTimeZone String? @map("market_time_zone")
+  captureContext String? @map("capture_context")
+  emotionRecordedAt DateTime? @map("emotion_recorded_at") @db.Timestamptz(3)
+  emotionReferenceAt DateTime? @map("emotion_reference_at") @db.Timestamptz(3)
+  emotionContext String? @map("emotion_context")
   userId         String   @map("user_id") @db.Uuid
   accountId      String   @map("account_id") @db.Uuid
   setupId        String?  @map("setup_id") @db.Uuid
@@ -342,9 +352,12 @@ model Trade {
   account Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
   setup   Setup?       @relation(fields: [setupId], references: [id], onDelete: SetNull)
   events  TradeEvent[]
+  practiceLinks PracticeTradeLink[]
 
   @@index([userId, date(sort: Desc)])
   @@index([userId, status, date(sort: Desc)])
+  @@index([userId, operationalMode, status, date])
+  @@unique([userId, id])
   @@index([accountId])
   @@map("trades")
 
@@ -379,6 +392,8 @@ model TradeEvent {
 // source_insight_id are provenance for the Behavior Engine (S4/S5); plain uuids
 // (no FK) since Commitment does not exist yet.
 model Rule {
+  globalManual Boolean @default(false) @map("global_manual")
+  operationalMode String? @map("operational_mode")
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
   name        String
@@ -732,6 +747,7 @@ model TradeChecklistResult {
 // Unique per (user, date, session).
 // ─────────────────────────────────────────────
 model TradingSessionLog {
+  operationalMode String? @map("operational_mode")
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
   date        DateTime @db.Date
@@ -743,7 +759,7 @@ model TradingSessionLog {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, date, session])
+  @@unique([userId, date, session, operationalMode])
   @@index([userId])
   @@map("trading_sessions")
 }
@@ -858,6 +874,7 @@ model MonthlyReview {
  * and are evaluated by the AI (status proposed) unless the user confirmed them.
  */
 model MonthlyGoal {
+  operationalMode String? @map("operational_mode")
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @map("user_id") @db.Uuid
   year          Int
@@ -874,6 +891,7 @@ model MonthlyGoal {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, year, month])
+  @@index([userId, year, month, operationalMode], map: "monthly_goals_user_period_mode_idx")
   @@map("monthly_goals")
 }
 
@@ -940,6 +958,7 @@ model DomainEvent {
 // rows are kept as history (unique partial index in the SQL migration).
 // ─────────────────────────────────────────────
 model Insight {
+  operationalMode String? @map("operational_mode")
   id                   String    @id @default(uuid()) @db.Uuid
   userId               String    @map("user_id") @db.Uuid
   fingerprint          String // stable identity across runs, e.g. "type:scope"
@@ -969,6 +988,7 @@ model Insight {
   ruleSuggestions RuleSuggestion[]
 
   @@index([userId, status])
+  @@index([userId, operationalMode, status], map: "insights_user_mode_status_idx")
   @@map("insights")
 }
 
@@ -979,6 +999,7 @@ model Insight {
 // signal without PII. Migration 20260626120000.
 // ─────────────────────────────────────────────
 model Commitment {
+  operationalMode String? @map("operational_mode")
   reviewSource Json? @map("review_source")
   id              String    @id @default(uuid()) @db.Uuid
   userId          String    @map("user_id") @db.Uuid
@@ -1006,6 +1027,7 @@ model Commitment {
   reinforcements Reinforcement[]
 
   @@index([userId, status])
+  @@index([userId, operationalMode, status], map: "commitments_user_mode_status_idx")
   @@index([sourceInsightId])
   @@map("commitments")
 }
@@ -1049,6 +1071,7 @@ model Reinforcement {
 // RuleSuggestion (E10, S5) — proposed enforce rule for a critical insight.
 // proposedRule json/reason carry no PII (anonymizable, ADR-004). Migration 20260626180000.
 model RuleSuggestion {
+  operationalMode String? @map("operational_mode")
   id           String   @id @default(uuid()) @db.Uuid
   userId       String   @map("user_id") @db.Uuid
   insightId    String?  @map("insight_id") @db.Uuid
@@ -1064,6 +1087,7 @@ model RuleSuggestion {
   rule    Rule?    @relation(fields: [ruleId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@index([userId, operationalMode, status], map: "rule_suggestions_user_mode_status_idx")
   @@index([insightId])
   @@map("rule_suggestions")
 }
@@ -1076,6 +1100,7 @@ model RuleSuggestion {
 // Migration 20260626200000.
 // ─────────────────────────────────────────────
 model CoachThread {
+  operationalMode String? @map("operational_mode")
   id            String   @id @default(uuid()) @db.Uuid
   userId        String   @map("user_id") @db.Uuid
   title         String   @default("Conversación")
@@ -1088,6 +1113,7 @@ model CoachThread {
   memories CoachMemory[]
 
   @@index([userId, lastMessageAt(sort: Desc)])
+  @@index([userId, operationalMode, lastMessageAt(sort: Desc)], map: "coach_threads_user_mode_message_idx")
   @@map("coach_threads")
 }
 
@@ -1107,6 +1133,7 @@ model CoachMessage {
 }
 
 model CoachMemory {
+  operationalMode String? @map("operational_mode")
   id             String    @id @default(uuid()) @db.Uuid
   userId         String    @map("user_id") @db.Uuid
   kind           String    @default("fact") // fact | preference | identity
@@ -1123,12 +1150,14 @@ model CoachMemory {
   sourceThread CoachThread? @relation(fields: [sourceThreadId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
+  @@index([userId, operationalMode, status], map: "coach_memory_user_mode_status_idx")
   @@map("coach_memory")
 }
 
 // Intervention (E11, S7) — in-the-moment intervention (C1 / FREEZE §9). Structured/
 // anonymizable (ADR-004). Migration 20260626220000.
 model Intervention {
+  operationalMode String? @map("operational_mode")
   id              String    @id @default(uuid()) @db.Uuid
   userId          String    @map("user_id") @db.Uuid
   accountId       String?   @map("account_id") @db.Uuid
@@ -1147,11 +1176,13 @@ model Intervention {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status])
+  @@index([userId, operationalMode, status], map: "interventions_user_mode_status_idx")
   @@map("interventions")
 }
 
 // PreSessionCheckin (E12, S8) — pre-session go/no-go (C7/#30). Migration 20260626240000.
 model PreSessionCheckin {
+  operationalMode String? @map("operational_mode")
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   date      DateTime @db.Date
@@ -1174,6 +1205,7 @@ model PreSessionCheckin {
 // index has a TIME SERIES ("vs hace 3 meses"), not just the current value.
 // One row per user per day (upsert). Drivers persisted for decomposition history.
 model ImprovementScore {
+  operationalMode String? @map("operational_mode")
   id          String   @id @default(uuid()) @db.Uuid
   userId      String   @map("user_id") @db.Uuid
   date        DateTime @db.Date
@@ -1188,7 +1220,7 @@ model ImprovementScore {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, date])
+  @@unique([userId, date, operationalMode])
   @@index([userId, date(sort: Desc)])
   @@map("improvement_scores")
 }
@@ -1197,6 +1229,7 @@ model ImprovementScore {
 // coach can recall. The pgvector `embedding` column lives in the DB (migration),
 // not here, and is read/written via raw SQL (mirrors trades.notes_embedding).
 model MemoryEpisode {
+  operationalMode String? @map("operational_mode")
   id         String   @id @default(uuid()) @db.Uuid
   userId     String   @map("user_id") @db.Uuid
   eventType  String   @map("event_type")
@@ -1209,12 +1242,14 @@ model MemoryEpisode {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, occurredAt(sort: Desc)])
+  @@index([userId, operationalMode, occurredAt(sort: Desc)], map: "memory_episodes_user_mode_occurred_idx")
   @@map("memory_episodes")
 }
 
 // MemoryPattern (E14, v3.2 §6) — semantic memory generalized from episodes, with
 // support episode ids. Confirmed deterministically by the Memory Agent (P6/D9).
 model MemoryPattern {
+  operationalMode String? @map("operational_mode")
   id                String   @id @default(uuid()) @db.Uuid
   userId            String   @map("user_id") @db.Uuid
   patternKey        String   @map("pattern_key")
@@ -1227,7 +1262,7 @@ model MemoryPattern {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, patternKey])
+  @@unique([userId, patternKey, operationalMode])
   @@index([userId, status])
   @@map("memory_patterns")
 }
@@ -1263,6 +1298,8 @@ model FeedIgnore {
 }
 
 model LearningPractice {
+  kind String @default("CONCEPT")
+  operationalMode String? @map("operational_mode")
   plannedSessionId String? @unique @map("planned_session_id") @db.Uuid
   plannedSession StudySession? @relation(fields:[plannedSessionId], references:[id], onDelete:SetNull)
   reviewSource Json? @map("review_source")
@@ -1283,6 +1320,8 @@ model LearningPractice {
   resource LearningResource? @relation(fields:[resourceId], references:[id], onDelete:SetNull)
   attachments PracticeAttachment[]
   feedback PracticeFeedback[]
+  tradeLinks PracticeTradeLink[]
+  @@unique([userId, id])
   @@index([userId, date(sort: Desc), id])
   @@index([resourceId])
   @@map("learning_practices")
@@ -1298,6 +1337,7 @@ model PracticeAttachment {
   @@map("practice_attachments")
 }
 model PracticeFeedback {
+  evidenceSignature String? @map("evidence_signature")
   id String @id @default(uuid()) @db.Uuid
   practiceId String @map("practice_id") @db.Uuid
   version Int
@@ -1307,6 +1347,42 @@ model PracticeFeedback {
   practice LearningPractice @relation(fields:[practiceId], references:[id], onDelete:Cascade)
   @@index([practiceId, createdAt(sort: Desc)])
   @@map("practice_feedback")
+}
+
+model PracticeTradeLink {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  practiceId String @map("practice_id") @db.Uuid
+  tradeId String @map("trade_id") @db.Uuid
+  role String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user User @relation(fields:[userId], references:[id], onDelete:Cascade)
+  practice LearningPractice @relation(fields:[userId,practiceId], references:[userId,id], onDelete:Cascade)
+  trade Trade @relation(fields:[userId,tradeId], references:[userId,id], onDelete:Cascade)
+  @@unique([practiceId,tradeId])
+  @@index([userId,tradeId])
+  @@index([userId,practiceId])
+  @@map("practice_trade_links")
+}
+
+model ReviewModeSnapshot {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  kind String
+  periodKey String @map("period_key")
+  mode String
+  evidenceHash String @default("") @map("evidence_hash")
+  analysisEvidenceHash String? @map("analysis_evidence_hash")
+  metrics Json @default("{}")
+  analysis String?
+  analysisAt DateTime? @map("analysis_at") @db.Timestamptz(3)
+  revision Int @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@unique([userId,kind,periodKey,mode])
+  @@index([userId,mode])
+  @@map("review_mode_snapshots")
 }
 
 // Deliberately no User relation: this intent must survive identity/data deletion.

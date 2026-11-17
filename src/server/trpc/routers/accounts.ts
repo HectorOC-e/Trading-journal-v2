@@ -7,6 +7,7 @@ import type { Prisma } from "@/lib/generated/prisma/client"
 import { router, protectedProcedure, dashboardMutation } from "../init"
 import type { AccountLogPayload } from "@/types"
 import { reconcileTemporalLock, isPermanentLockReason } from "@/domains/trading/services/risk-enforcement"
+import { classifyAccountType } from "@/domains/trading/operational-mode"
 
 /** Map a raw account row to the subset risk-enforcement needs. */
 function toEnforceable(a: RawAccount) {
@@ -158,6 +159,13 @@ export const accountsRouter = router({
     })))
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input
+      if (data.type) {
+        const previous = await ctx.prisma.account.findUniqueOrThrow({ where: { id, userId: ctx.userId }, select: { type: true } })
+        if (classifyAccountType(previous.type) !== classifyAccountType(data.type) &&
+          await ctx.prisma.trade.count({ where: { accountId: id, userId: ctx.userId } }) > 0) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Esta cuenta tiene operaciones. Crea otra cuenta para cambiar de modalidad y conservar su historial." })
+        }
+      }
       const account = await ctx.prisma.account.update({ where: { id, userId: ctx.userId }, data })
       return serializeAccount(account) // TD-031
     }),

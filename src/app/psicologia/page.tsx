@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
 import { TopBar } from "@/components/layout/top-bar"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
@@ -24,10 +25,10 @@ const EMOTION_LABELS: Record<string, string> = {
 
 export default function PsicologiaPage() {
   const [period, setPeriod] = useState<Period>("3M")
-  const { stats, isLoading, isError } = useDashboardStats(period)
+  const { stats, isLoading, isError, mode } = useDashboardStats(period)
   const { data: psychInsights = [], isLoading: psychLoading } =
-    trpc.analytics.psychologyInsights.useQuery({ period: period as never }, { staleTime: 30_000 })
-  const { data: bundle } = trpc.analytics.overview.useQuery({ period: period as never }, { staleTime: 30_000 })
+    trpc.analytics.psychologyInsights.useQuery({ period: period as never, mode }, { staleTime: 30_000 })
+  const { data: bundle } = trpc.analytics.overview.useQuery({ period: period as never, mode }, { staleTime: 30_000 })
 
   return (
     <main aria-label="Psicología">
@@ -35,6 +36,7 @@ export default function PsicologiaPage() {
         title="Psicología"
         subtitle="Análisis conductual · patrones, sesgos y disciplina"
       />
+      <OperationalModeSelector className="mb-4 flex-wrap" />
       <FilterBar
         options={PERIODS}
         value={period}
@@ -53,6 +55,7 @@ export default function PsicologiaPage() {
           isLoading={psychLoading}
           endpoint="/api/psychology-ai"
           period={period}
+          mode={mode}
           title="Inteligencia psicológica"
           subtitle="Patrones conductuales · sesgos · hábitos"
           emptyHint="Registra emociones y flags en tus trades para detectar patrones psicológicos."

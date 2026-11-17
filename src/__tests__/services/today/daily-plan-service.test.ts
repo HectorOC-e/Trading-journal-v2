@@ -25,7 +25,7 @@ describe("daily plan", () => {
     expect(plan.practices).toMatchObject({ sessions: 0, minutes: 0, href: "/aprendizaje?tab=practicas&register=1" })
     expect(plan.commitments).toEqual([])
     expect(plan.accounts).toEqual([])
-    expect(prisma.account.findMany.mock.calls[0][0].where).toMatchObject({ status: "ACTIVE", type: { notIn: ["DEMO_PERSONAL", "DEMO_PROP", "BACKTEST", "QA"] } })
+    expect(prisma.account.findMany.mock.calls[0][0].where).toMatchObject({ status: "ACTIVE", type: { in: ["PERSONAL", "PROP_FIRM"] } })
     expect(prisma.studySession.findMany.mock.calls[0][0].where).toMatchObject({ status: "planned", resource: { userId: "owner" } })
   })
   it("includes manual and SRS reviews and classifies plans using stored calendar days", async () => {

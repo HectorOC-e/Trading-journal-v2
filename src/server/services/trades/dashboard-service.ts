@@ -1,5 +1,6 @@
 import { loadAccountCashAdjustments } from "@/server/services/accounts/cash-adjustments"
 import { realizedRows } from "@/domains/trading/services/realized-history"
+import { periodEquityBalances } from "./historical-equity-service"
 import { createHash } from "node:crypto"
 // ─────────────────────────────────────────────────────────────────────────────
 // Dashboard stats service (TD-018) — the dashboardStats orchestration moved out
@@ -20,15 +21,18 @@ import type {
 } from "@/domains/analytics/services/dashboard-analytics"
 import { computeSetupStats, computeSessionMatrix, computeDirectionBreakdown } from "@/domains/analytics/services/setup-analytics"
 import type { SetupStats, SessionMatrixRow, DirectionStats } from "@/domains/analytics/services/setup-analytics"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import { classifyAccountType, accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "./operational-scope"
+import { TRPCError } from "@trpc/server"
 import { parsePointValue } from "@/domains/trading/services/trade-service"
 import { isCacheEnabled, getCachedStats, setCachedStats } from "@/domains/analytics/services/analytics-cache"
-import { fxFactor, parseFxRates } from "@/lib/fx"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { localDateISO, monthStartISO, weekStartISO, addDaysISO } from "@/lib/datetime/local"
 
 export type DashboardOutput = {
+  scope: { mode: OperationalMode; dateBasis: "TRADE_DATE"; equityDateBasis: "REALIZATION_DATE"; legacyRealizationFallback: boolean; includeArchived: boolean; excludedCurrencies: string[] }
   kpis:           KpiSummary
-  accountStats:   (AccountStat & { currencyToBaseRate: number })[]
+  accountStats:   (AccountStat & { currencyToBaseRate: number; status: string; availableForTrading: boolean; capitalKind: "PERSONAL" | "EVALUATION" | "FUNDED" | "SIMULATED" })[]
   equityCurve:    EquityCurvePoint[]
   pnlByDate:      PnlByDatePoint[]
   pnlBySymbol:    SymbolStat[]
@@ -86,32 +90,32 @@ export type DashboardStatsInput = {
   from?:            string
   to?:              string
   period?:          "7d" | "1M" | "3M" | "6M" | "1Y" | "ALL"
+  mode?: OperationalMode
+  includeArchived?: boolean
   includePractice?: boolean
 }
 
 export async function getDashboardStats(prisma: PrismaClient, userId: string, input?: DashboardStatsInput): Promise<DashboardOutput> {
   const period = input?.period ?? "3M"
 
-  // ── Practice (demo/backtest) scope ────────────────────────────────────
-  // A single explicit account selection always wins (the user picked it on
-  // purpose, even if it is a demo account).
-  const singleAccount   = !!input?.accountId
-  const includePractice = input?.includePractice ?? false
-  const financialScope  = (includePractice || singleAccount) ? "all" : "real"
+  if (input?.includePractice) throw new TRPCError({ code: "BAD_REQUEST", message: "Actualiza la página y selecciona una modalidad independiente." })
+  const mode = input?.mode ?? "REAL"
+  const includeArchived = input?.includeArchived ?? true
+  const scopeWhere = await scopedTradeWhere(prisma,userId,{mode,accountId:input?.accountId,includeArchived})
 
   // ── Fetch, round 1: everything that depends on nothing ────────────────
   // Accounts are fetched here rather than after the profile because they never
   // needed it. Only active/paused ones; archived (INACTIVE/LOST) are excluded
   // from all dashboard analytics (QA-002/003/004/005/009).
-  const [userRow, activeAccounts] = await Promise.all([
+  const [userRow, fetchedAccounts] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where:  { id: userId },
       select: { timezone: true, baseCurrency: true, fxRates: true },
     }),
     prisma.account.findMany({
-      where: { userId, status: { in: ["ACTIVE", "PAUSED"] }, ...(input?.accountId ? {id: input.accountId} : {}) },
+      where: { userId, type: { in: accountTypesForMode(mode) }, ...(!includeArchived ? { status: { in: ["ACTIVE", "PAUSED"] } } : {}), ...(input?.accountId ? {id: input.accountId} : {}) },
       select: {
-        id: true, name: true, type: true, status: true, currency: true, timezone: true,
+        id: true, name: true, type: true, status: true, locked: true, phase: true, currency: true, timezone: true,
         initialBalance: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true,
         ddModel: true, maxTradesPerDay: true, allowedSymbols: true,
         maxLeverage: true, targetLeverage: true,
@@ -120,6 +124,11 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
       },
     }),
   ])
+
+  const cohortAccounts = fetchedAccounts.filter(a => classifyAccountType(a.type) === mode)
+  const canConvert = (currency: string) => hasFxConversion(currency,userRow.baseCurrency ?? "USD",parseFxRates(userRow.fxRates))
+  const excludedCurrencies = [...new Set(cohortAccounts.filter(a => !canConvert(a.currency)).map(a => a.currency))].sort()
+  const activeAccounts = cohortAccounts.filter(a => canConvert(a.currency))
 
   // Trading-day boundaries ("today / this week / this month") are computed in the
   // USER's timezone, not UTC — a trade logged at 23:00 local must count toward the
@@ -152,7 +161,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // Version and request boundaries isolate calculations; profile/account snapshots
   // also prevent stale FX, timezone, limits or starting-capital results.
   const dependencyHash = createHash("sha256").update(JSON.stringify({ userRow, activeAccounts })).digest("hex")
-  const cacheKey = `v3:${period}:${input?.accountId ?? "all"}:${financialScope}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
+  const cacheKey = `v5:${period}:${input?.accountId ?? "all"}:${mode}:${includeArchived}:${queryFrom ?? ""}:${queryTo ?? ""}:${today}:${dependencyHash}`
   if (isCacheEnabled()) {
     const hit = await getCachedStats<DashboardOutput>(prisma, userId, cacheKey)
     if (hit) return hit
@@ -162,7 +171,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   const [tradeRows, setupRows, checklistRows, openTradeRows, marketRows, todayRaw, cashAdjustments] = await Promise.all([
     prisma.trade.findMany({
       where: {
-        userId,
+        ...scopeWhere,
         status:    "CLOSED",
         accountId: { in: activeAccountIds },
         ...(input?.accountId && { accountId: input.accountId }),
@@ -170,7 +179,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
       select: {
         id: true, accountId: true, symbol: true, direction: true, status: true,
         events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } },
-        session: true, openTime: true, closeTime: true,
+        session: true, openTime: true, closeTime: true, marketClosedAt: true, marketTimeZone: true,
         pnl: true, rMultiple: true, tags: true, date: true,
         setupId: true, entry: true, stop: true, target: true, size: true, originalSize: true, originalRiskMoney: true,
       },
@@ -187,8 +196,8 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     // OPEN positions + markets feed live leverage exposure (closed-only stats
     // above never see open trades).
     prisma.trade.findMany({
-      where:  { userId, status: "OPEN", accountId: { in: activeAccountIds } },
-      select: { accountId: true, symbol: true, entry: true, size: true, status: true, pnl: true, date: true, events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } } },
+      where:  { ...scopeWhere, status: "OPEN", accountId: { in: activeAccountIds } },
+      select: { accountId: true, symbol: true, entry: true, size: true, status: true, pnl: true, date: true, marketClosedAt: true, marketTimeZone: true, events: { where: { realizedPnl: { not: null } }, select: { realizedPnl: true, timestamp: true } } },
     }),
     prisma.market.findMany({
       where:  { userId },
@@ -198,7 +207,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     // `today` (from round 1), so it rides along here instead of costing its own
     // round trip after the aggregates are already built.
     prisma.trade.findMany({
-      where:  { userId, date: new Date(today) },
+      where:  { ...scopeWhere, date: new Date(today) },
       select: { accountId: true, pnl: true, status: true },
     }),
     loadAccountCashAdjustments(prisma, userId, activeAccounts, parseFxRates(userRow.fxRates)),
@@ -238,17 +247,10 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
 
   const allTrades = history.filter(t => (!queryFrom || t.date >= queryFrom) && (!queryTo || t.date <= queryTo))
 
-  // ── Practice partition ────────────────────────────────────────────────
-  // Financial/performance builders see only real accounts by default;
-  // `allTrades` is reserved for behavioural (discipline) metrics, which count
-  // practice (demo/backtest) accounts too.
-  const practiceIds = new Set(activeAccounts.filter(a => isPracticeType(a.type)).map(a => a.id))
-  const trades   = financialScope === "all" ? allTrades      : allTrades.filter(t => !practiceIds.has(t.accountId))
-  const accounts = financialScope === "all" ? activeAccounts : activeAccounts.filter(a => !practiceIds.has(a.id))
-
-  // Current balances and risk stop at the local trading day, even when the
-  // requested performance range includes future-dated journal entries.
-  const lifetimeTrades = history.filter(t => t.date <= today && (financialScope === "all" || !practiceIds.has(t.accountId)))
+  const accountIds = new Set(activeAccountIds)
+  const trades = allTrades.filter(t => accountIds.has(t.accountId))
+  const accounts = activeAccounts
+  const lifetimeTrades = history.filter(t => t.date <= today && accountIds.has(t.accountId))
 
   const acctBalances: AccountBalance[]     = accounts.map(a => ({ id: a.id, initialBalance: Number(a.initialBalance) * fx(a.id) }))
   const acctWithLimits: AccountWithLimits[] = accounts.map(a => ({
@@ -287,7 +289,7 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     id: `realization-${i}`, accountId: r.accountId, pnl: r.pnl * fx(r.accountId),
     date: r.date.toISOString().slice(0,10), symbol: '', direction: 'LONG',
     session: null, openTime: null, closeTime: null, rMultiple: null, tags: [], setupId: null, entry: 0, stop: 0, target: 0, size: 0,
-  })).filter(t => t.date <= today && (financialScope === 'all' || !practiceIds.has(t.accountId)))
+  })).filter(t => t.date <= today && accountIds.has(t.accountId))
   const realizedStats = new Map(buildAccountStats(realizations, acctBalances, today, monthStart, weekStart, limitsById).map(s => [s.accountId, s]))
   for (const stat of accountStats) {
     const realized = realizedStats.get(stat.accountId)!
@@ -313,7 +315,12 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
     })),
   )
   for (const s of accountStats) s.exposure = exposureById[s.accountId] ?? null
-  const equityCurve  = buildEquityCurve(trades, acctBalances)
+  const periodBalances = periodEquityBalances(acctBalances, realizations, queryFrom)
+  const periodRealizations = realizations.filter(row => (!queryFrom || row.date >= queryFrom) && (!queryTo || row.date <= queryTo))
+  const equityCurve = [
+    ...(queryFrom ? periodBalances.map(account => ({ accountId: account.id, date: queryFrom, balance: account.initialBalance })) : []),
+    ...buildEquityCurve(periodRealizations, periodBalances),
+  ]
   const pnlByDate    = buildPnlByDate(trades, grain)
   const pnlBySymbol  = buildPnlBySymbol(trades, 10)
   const sessionStats = buildSessionStats(trades)
@@ -355,11 +362,16 @@ export async function getDashboardStats(prisma: PrismaClient, userId: string, in
   // ── Execution stats + discipline (service delegation) ─────────────────
   const executionStats = buildExecutionStats(trades)
   // Discipline is behavioural: it always counts practice accounts too.
-  const discipline     = buildDiscipline(allTrades, allTrades.length)
+  const discipline     = buildDiscipline(trades, trades.length)
 
   const result: DashboardOutput = {
+    scope: { mode, dateBasis: "TRADE_DATE", equityDateBasis: "REALIZATION_DATE", legacyRealizationFallback: [...tradeRows, ...openTradeRows].some(trade => !trade.marketClosedAt && Math.round((Number(trade.pnl ?? 0) - (trade.events ?? []).reduce((sum,event) => sum + Number(event.realizedPnl ?? 0),0)) * 100) !== 0), includeArchived, excludedCurrencies },
     kpis,
-    accountStats: accountStats.map(stat => ({ ...stat, currencyToBaseRate: fx(stat.accountId) })),
+    accountStats: accountStats.map(stat => {
+      const account = accounts.find(account => account.id === stat.accountId)!
+      const capitalKind = classifyAccountType(account.type) !== "REAL" ? "SIMULATED" as const : account.type === "PROP_FIRM" ? (account.phase === "FUNDED" ? "FUNDED" as const : "EVALUATION" as const) : "PERSONAL" as const
+      return { ...stat, currencyToBaseRate: fx(stat.accountId), status: account.status, availableForTrading: account.status === "ACTIVE" && !account.locked, capitalKind }
+    }),
     equityCurve,
     pnlByDate,
     pnlBySymbol,

@@ -4,6 +4,9 @@ import type { PrismaClient } from "@/lib/generated/prisma/client"
 
 function makePrisma(overrides: Record<string, unknown> = {}): PrismaClient {
   return {
+    account: {
+      findFirst: vi.fn().mockResolvedValue({ id: "account-abc" }),
+    },
     trade: {
       findMany: vi.fn().mockResolvedValue([]),
     },

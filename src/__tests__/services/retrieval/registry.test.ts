@@ -22,18 +22,18 @@ describe("registro de corpus", () => {
   // Detecta un adaptador registrado bajo la clave equivocada: la cita que produce
   // debe declarar su propio corpus y apuntar a su propia superficie.
   it("trade_notes cita hacia /trades y se declara trade_notes", () => {
-    const row = { id: "11111111-1111-1111-1111-111111111111", date: new Date("2026-07-21"), symbol: "NQ", direction: "LONG", pnl: 420, rMultiple: 2.1, notes: "nota" }
+    const row = { operationalMode: "REAL", accountId: "a1", account: { name: "Real", type: "PERSONAL", currency: "USD" }, id: "11111111-1111-1111-1111-111111111111", date: new Date("2026-07-21"), symbol: "NQ", direction: "LONG", pnl: 420, rMultiple: 2.1, notes: "nota" }
     const c = getAdapter("trade_notes").toCitation(row as never, 0.9)
     expect(c.corpus).toBe("trade_notes")
-    expect(c.href).toBe(`/trades?trade=${row.id}`)
+    expect(c.href).toBe(`/trades?trade=${row.id}&mode=REAL`)
     expect(c.label).toBe("NQ · LONG")
   })
 
   it("trade_plans se distingue de trade_notes en la etiqueta, no solo en el corpus", () => {
-    const row = { id: "33333333-3333-3333-3333-333333333333", date: new Date("2026-07-21"), symbol: "NQ", direction: "LONG", pnl: -280, rMultiple: -1, planNotes: "esperar confirmacion" }
+    const row = { operationalMode: "REAL", accountId: "a1", account: { name: "Real", type: "PERSONAL", currency: "USD" }, id: "33333333-3333-3333-3333-333333333333", date: new Date("2026-07-21"), symbol: "NQ", direction: "LONG", pnl: -280, rMultiple: -1, planNotes: "esperar confirmacion" }
     const c = getAdapter("trade_plans").toCitation(row as never, 0.9)
     expect(c.corpus).toBe("trade_plans")
-    expect(c.href).toBe(`/trades?trade=${row.id}`)
+    expect(c.href).toBe(`/trades?trade=${row.id}&mode=REAL`)
     // Ambos corpus citan el MISMO trade: sin marca, el trader veria dos tarjetas
     // identicas sin saber cual es el plan y cual la nota posterior.
     expect(c.label).toBe("NQ · LONG · plan")
@@ -44,12 +44,12 @@ describe("registro de corpus", () => {
     const row = {
       id: "44444444-4444-4444-4444-444444444444", tradeId: "55555555-5555-5555-5555-555555555555",
       type: "PARTIAL_CLOSE", price: 21050, contracts: 2, notes: "cerre mitad",
-      timestamp: new Date("2026-07-22"), trade: { symbol: "NQ", direction: "LONG" },
+      timestamp: new Date("2026-07-22"), trade: { symbol: "NQ", direction: "LONG", operationalMode: "REAL", accountId: "a1", account: { name: "Real", type: "PERSONAL", currency: "USD" } },
     }
     const c = getAdapter("trade_events").toCitation(row as never, 0.9)
     expect(c.corpus).toBe("trade_events")
     // El href usa tradeId, NO el id del evento: un evento no tiene pantalla propia.
-    expect(c.href).toBe(`/trades?trade=${row.tradeId}`)
+    expect(c.href).toBe(`/trades?trade=${row.tradeId}&mode=REAL`)
     expect(c.id).toBe(row.id)
     expect(c.label).toBe("NQ · cierre parcial")
     expect(c.positive).toBeNull()

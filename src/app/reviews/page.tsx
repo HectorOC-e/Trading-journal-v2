@@ -24,6 +24,8 @@ import type { MonthFilter } from "./components/reviews-calendar-filter"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { deriveGrade, deriveVerdict, type VerdictTone } from "@/server/services/reviews/verdict"
 import type { EditionHeaderData } from "./components/edition-header"
+import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 
 const MONTHS_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -70,24 +72,30 @@ function buildEdition(
 }
 
 function ReviewsPageContent() {
+  const mode = useOperationalMode(s => s.mode)
+  const [monthFilter, setMonthFilter] = useState<MonthFilter>(null)
+  return <ScopedReviewsPageContent key={mode} monthFilter={monthFilter} setMonthFilter={setMonthFilter} />
+}
+
+function ScopedReviewsPageContent({ monthFilter, setMonthFilter }: { monthFilter: MonthFilter; setMonthFilter: (filter: MonthFilter) => void }) {
+  const mode = useOperationalMode(s => s.mode)
   const router = useRouter()
-  const [monthFilter,   setMonthFilter]   = useState<MonthFilter>(null)
   const [pendingDelete, setPendingDelete] = useState<ReviewFromDB | null>(null)
 
   const thisMonday = useMemo(() => currentMondayISO(), [])
   const currentYm  = thisMonday.slice(0, 7)
 
-  const { data: reviews = [],        isLoading }            = trpc.weeklyReviews.list.useQuery()
-  const { data: monthlyReviews = [] }                       = trpc.monthlyReviews.list.useQuery()
+  const { data: reviews = [],        isLoading }            = trpc.weeklyReviews.list.useQuery({ mode })
+  const { data: monthlyReviews = [] }                       = trpc.monthlyReviews.list.useQuery({ mode })
   const { data: accounts = [] }                             = trpc.accounts.list.useQuery()
 
   const overviewInput = monthFilter
-    ? { year: monthFilter.year, ...(monthFilter.month != null ? { month: monthFilter.month } : {}) }
-    : undefined
+    ? { mode, year: monthFilter.year, ...(monthFilter.month != null ? { month: monthFilter.month } : {}) }
+    : { mode }
   const { data: overview, isLoading: overviewLoading } = trpc.weeklyReviews.overview.useQuery(overviewInput)
 
   const { data: currentWeek, isLoading: currentWeekLoading } =
-    trpc.weeklyReviews.report.useQuery({ weekStart: thisMonday })
+    trpc.weeklyReviews.report.useQuery({ weekStart: thisMonday, mode })
 
   const utils = trpc.useUtils()
   const deleteWeekly = trpc.weeklyReviews.delete.useMutation({
@@ -161,9 +169,9 @@ function ReviewsPageContent() {
     return items
   }, [showHero, chapters])
 
-  const goNewWeekly = () => router.push(`/reviews/semanal/${thisMonday}`)
-  const openWeek    = (r: ReviewFromDB) => router.push(`/reviews/semanal/${r.weekStart}`)
-  const openEdition = (ch: TimelineChapter) => router.push(`/reviews/mensual/${ch.year}-${String(ch.month).padStart(2, "0")}`)
+  const goNewWeekly = () => router.push(`/reviews/semanal/${thisMonday}?mode=${mode}`)
+  const openWeek    = (r: ReviewFromDB) => router.push(`/reviews/semanal/${r.weekStart}?mode=${mode}`)
+  const openEdition = (ch: TimelineChapter) => router.push(`/reviews/mensual/${ch.year}-${String(ch.month).padStart(2, "0")}?mode=${mode}`)
 
   const noContent = !isLoading && chapters.length === 0 && !showHero
 
@@ -175,6 +183,7 @@ function ReviewsPageContent() {
           subtitle="Tu trayectoria, semana a semana"
           actions={[{ label: "Nueva review", icon: <Plus size={14} />, variant: "primary", onClick: goNewWeekly }]}
         />
+        <div className="mb-4"><OperationalModeSelector /></div>
 
         <div className="mx-auto max-w-[1320px]">
           {/* Trayectoria — full-width band */}
@@ -234,7 +243,7 @@ function ReviewsPageContent() {
         open={!!pendingDelete}
         onOpenChange={(v) => { if (!v) setPendingDelete(null) }}
         title="Eliminar review semanal"
-        description={pendingDelete ? `Se eliminará la review de “${pendingDelete.weekLabel}”. Esta acción no se puede deshacer.` : ""}
+        description={pendingDelete ? `Se eliminará la review de “${pendingDelete.weekLabel}” y sus notas compartidas del periodo para todas las modalidades. Esta acción no se puede deshacer.` : ""}
         loading={deleteWeekly.isPending}
         onConfirm={() => { if (pendingDelete) deleteWeekly.mutate(pendingDelete.id) }}
       />

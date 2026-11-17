@@ -7,42 +7,44 @@
 // create / confirm / edit / delete (ADR-003 §3).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { type OperationalMode } from "@/domains/trading/operational-mode"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { assembleContextBlock, proposeMemory, parseMemoryExtraction, type MemoryKind } from "@/domains/cognitive/coach/memory"
 import { completeText } from "@/lib/ai/complete"
 import { getSalientEpisodes } from "@/server/services/memory/memory-episode-service"
 import { getConfirmedPatterns } from "@/server/services/memory/memory-pattern-service"
 import { getIdentity, composeIdentityLine } from "@/server/services/memory/memory-identity-service"
-import { getImprovementSeries } from "@/server/services/improvement/improvement-snapshot-service"
 
 /**
  * Build the dynamic MEMORY block injected into the coach prompt: confirmed
  * identity + facts/preferences, the user's active commitments, and the previous
  * thread's summary — budget-bounded by the pure assembler (FREEZE-D10).
  */
-export async function assembleCoachContext(prisma: PrismaClient, userId: string): Promise<string> {
-  const [confirmed, commitments, lastThread, episodes, patterns, identityRow, series] = await Promise.all([
+export async function assembleCoachContext(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<string> {
+  const [confirmed, commitments, lastThread, identityRow, episodes, patterns] = await Promise.all([
     prisma.coachMemory.findMany({
-      where: { userId, status: "confirmed" },
+      where: { userId, status: "confirmed", OR: [
+        { operationalMode: mode },
+        { operationalMode: null, source: "user", kind: { in: ["identity", "preference"] } },
+      ] },
       orderBy: { updatedAt: "desc" },
       select: { kind: true, content: true },
       take: 50,
     }),
     prisma.commitment.findMany({
-      where: { userId, status: "active", archivedAt: null },
+      where: { userId, status: "active", archivedAt: null, operationalMode: mode },
       orderBy: { createdAt: "desc" },
       select: { text: true, status: true },
       take: 10,
     }),
     prisma.coachThread.findFirst({
-      where: { userId, summary: { not: null } },
+      where: { userId, operationalMode: mode, summary: { not: null } },
       orderBy: { lastMessageAt: "desc" },
       select: { summary: true },
     }),
-    getSalientEpisodes(prisma, userId, 4).catch(() => []),
-    getConfirmedPatterns(prisma, userId, 5).catch(() => []),
     getIdentity(prisma, userId).catch(() => null),
-    getImprovementSeries(prisma, userId, 90).catch(() => []),
+    getSalientEpisodes(prisma, userId, 4, mode).catch(() => []),
+    getConfirmedPatterns(prisma, userId, 5, mode).catch(() => []),
   ])
 
   // Identity layer (E15) — structured record + any confirmed kind:identity facts.
@@ -52,59 +54,51 @@ export async function assembleCoachContext(prisma: PrismaClient, userId: string)
   ].filter((s): s is string => !!s)
   const identity = identityParts.length > 0 ? identityParts.join("; ") : null
 
-  // Improvement layer (E16) — North Star narrative from the E19 series.
-  let improvement: string | null = null
-  if (series.length >= 2) {
-    const first = series[0].score
-    const last = series[series.length - 1].score
-    const delta = Math.round(last - first)
-    improvement = `índice de mejora ${Math.round(last)} (${delta >= 0 ? "+" : ""}${delta} vs hace ${series.length} días)`
-  }
-
-  // Semantic layer (E14) — confirmed facts (CoachMemory) + data-confirmed patterns.
+  // Only persisted provenance can attribute episodes/patterns. Improvement
+  // snapshots and legacy NULL memories remain historical.
   const facts = [
-    ...confirmed.filter((m) => m.kind !== "identity").map((m) => ({ kind: m.kind, content: m.content })),
-    ...patterns.map((p) => ({ kind: "pattern", content: p.text })),
+    ...confirmed.filter(m => m.kind !== "identity").map(m => ({ kind: m.kind, content: m.content })),
+    ...patterns.map(p => ({ kind: "pattern", content: p.text })),
   ]
 
   return assembleContextBlock({
     identity,
-    improvement,
+    improvement: null,
     confirmedMemories: facts,
     commitments: commitments.map((c) => ({ text: c.text, status: c.status })),
-    episodes: episodes.map((e) => ({ content: e.content })),
+    episodes: episodes.map(e => ({ content: e.content })),
     lastSummary: lastThread?.summary ?? null,
   })
 }
 
-export async function listMemory(prisma: PrismaClient, userId: string) {
+export async function listMemory(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL") {
   return prisma.coachMemory.findMany({
-    where: { userId },
+    where: { userId, OR: [{ operationalMode: mode }, { operationalMode: null, source: "user" }] },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
-    select: { id: true, kind: true, content: true, status: true, source: true, createdAt: true },
+    select: { id: true, kind: true, content: true, status: true, source: true, createdAt: true, operationalMode: true },
   })
 }
 
 /** User adds a memory directly → trusted (confirmed, source=user). */
-export async function createMemory(prisma: PrismaClient, userId: string, kind: MemoryKind, content: string) {
+export async function createMemory(prisma: PrismaClient, userId: string, kind: MemoryKind, content: string, mode: OperationalMode = "REAL") {
   return prisma.coachMemory.create({
-    data: { userId, kind, content: content.trim(), status: "confirmed", source: "user" },
+    data: { userId, operationalMode: mode, kind, content: content.trim(), status: "confirmed", source: "user" },
     select: { id: true },
   })
 }
 
 /** Confirm a candidate (LLM proposal) → it becomes injectable. */
-export async function confirmMemory(prisma: PrismaClient, userId: string, id: string): Promise<void> {
-  await prisma.coachMemory.updateMany({ where: { id, userId }, data: { status: "confirmed" } })
+export async function confirmMemory(prisma: PrismaClient, userId: string, id: string, mode: OperationalMode = "REAL"): Promise<void> {
+  await prisma.coachMemory.updateMany({ where: { id, userId, OR: [{ operationalMode: mode }, { operationalMode: null, source: "user" }] }, data: { status: "confirmed" } })
 }
 
 /** Edit content — a user edit makes it trusted (source=user). */
-export async function editMemory(prisma: PrismaClient, userId: string, id: string, content: string): Promise<void> {
-  await prisma.coachMemory.updateMany({ where: { id, userId }, data: { content: content.trim(), source: "user" } })
+export async function editMemory(prisma: PrismaClient, userId: string, id: string, content: string, mode: OperationalMode = "REAL"): Promise<void> {
+  await prisma.coachMemory.updateMany({ where: { id, userId, OR: [{ operationalMode: mode }, { operationalMode: null, source: "user" }] }, data: { content: content.trim(), source: "user" } })
 }
 
-export async function deleteMemory(prisma: PrismaClient, userId: string, id: string): Promise<void> {
-  await prisma.coachMemory.deleteMany({ where: { id, userId } })
+export async function deleteMemory(prisma: PrismaClient, userId: string, id: string, mode: OperationalMode = "REAL"): Promise<void> {
+  await prisma.coachMemory.deleteMany({ where: { id, userId, OR: [{ operationalMode: mode }, { operationalMode: null, source: "user" }] } })
 }
 
 /**
@@ -116,17 +110,18 @@ export async function proposeMemories(
   userId: string,
   threadId: string,
   items: { kind: MemoryKind; content: string }[],
+  mode: OperationalMode = "REAL",
 ): Promise<number> {
   if (items.length === 0) return 0
   // Dedupe against existing memory (candidate or confirmed) so repeated
   // summarization doesn't pile up duplicates.
-  const existing = await prisma.coachMemory.findMany({ where: { userId }, select: { content: true } })
+  const existing = await prisma.coachMemory.findMany({ where: { userId, operationalMode: mode }, select: { content: true } })
   const seen = new Set(existing.map((m) => m.content.toLowerCase()))
   const fresh = items.filter((i) => i.content.trim() && !seen.has(i.content.trim().toLowerCase()))
   if (fresh.length === 0) return 0
   const data = fresh.map((i) => {
     const p = proposeMemory(i.kind, i.content, threadId)
-    return { userId, kind: p.kind, content: p.content, status: p.status, source: p.source, sourceThreadId: threadId }
+    return { userId, operationalMode: mode, kind: p.kind, content: p.content, status: p.status, source: p.source, sourceThreadId: threadId }
   })
   const res = await prisma.coachMemory.createMany({ data })
   return res.count
@@ -141,9 +136,11 @@ Reglas: máximo 5 hechos; solo hechos ESTABLES y verificables sobre el trader (n
  * Best-effort + cost-gated (runs every 4 messages). The LLM only PROPOSES candidates
  * (proposeMemories → status='candidate'); the user confirms (D9). No-ops without a key.
  */
-export async function summarizeThread(prisma: PrismaClient, userId: string, threadId: string): Promise<void> {
+export async function summarizeThread(prisma: PrismaClient, userId: string, threadId: string, mode: OperationalMode = "REAL"): Promise<void> {
+  const thread = await prisma.coachThread.findFirst({ where: { id: threadId, userId, operationalMode: mode }, select: { id: true } })
+  if (!thread) return // Legacy or another mode cannot seed new memory.
   const msgs = await prisma.coachMessage.findMany({
-    where: { threadId, userId },
+    where: { threadId, userId, thread: { userId, operationalMode: mode } },
     orderBy: { createdAt: "asc" },
     select: { role: true, content: true },
   })
@@ -160,5 +157,5 @@ export async function summarizeThread(prisma: PrismaClient, userId: string, thre
 
   const { summary, facts } = parseMemoryExtraction(raw)
   if (summary) await prisma.coachThread.update({ where: { id: threadId }, data: { summary } }).catch(() => {})
-  if (facts.length) await proposeMemories(prisma, userId, threadId, facts).catch(() => {})
+  if (facts.length) await proposeMemories(prisma, userId, threadId, facts, mode).catch(() => {})
 }

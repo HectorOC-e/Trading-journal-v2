@@ -1,3 +1,5 @@
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import type { OperationalMode } from "@/domains/trading/operational-mode"
 import { calcDisciplineScore, type DisciplineBreakdown } from "@/lib/formulas/discipline"
 import { VIOLATION_TAGS } from "@/types"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
@@ -32,13 +34,14 @@ export async function computeDisciplineScore(
   userId: string,
   period: DisciplinePeriod,
   accountId?: string,
+  mode: OperationalMode = "REAL",
 ): Promise<DisciplineResult> {
   const { from, to } = period
 
   const [trades, reviews, pendingReviews, rules] = await Promise.all([
     prisma.trade.findMany({
       where: {
-        userId,
+        ...await scopedTradeWhere(prisma,userId,{mode,accountId,includeArchived:true}),
         status: "CLOSED",
         date:   { gte: from, lt: to },
         ...(accountId ? { accountId } : {}),

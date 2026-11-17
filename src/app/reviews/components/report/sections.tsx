@@ -151,7 +151,7 @@ export function NarrativeCard({ narrative }: { narrative: NarrativeVM }) {
     if (empty) return null
     return (
       <Card>
-        <Eyebrow>Resumen de la semana</Eyebrow>
+        <Eyebrow>Notas compartidas de la semana</Eyebrow>
         {narrative.executiveSummary
           ? <p className="text-sm text-[var(--ink-2)] mb-3">{narrative.executiveSummary}</p>
           : <p className="text-sm text-[var(--ink-3)] mb-3">Sin resumen escrito.</p>}
@@ -171,7 +171,7 @@ export function NarrativeCard({ narrative }: { narrative: NarrativeVM }) {
   // monthly
   return (
     <Card>
-      <Eyebrow>Resumen del mes</Eyebrow>
+      <Eyebrow>Notas compartidas del mes</Eyebrow>
       {narrative.summary ? <p className="text-sm text-[var(--ink-2)] mb-3">{narrative.summary}</p> : <p className="text-sm text-[var(--ink-3)] mb-3">Sin resumen escrito.</p>}
       <div className="flex flex-wrap gap-1.5">
         {narrative.keyThemes.map(t => <span key={t} className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">{t}</span>)}

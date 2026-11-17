@@ -1,8 +1,10 @@
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
 // Batched per-month metrics for the "Ediciones" cover grid: one trade query across the
 // listed months (fx-converted) + one goals query. Returns a map keyed by "YYYY-M".
 
 import type { PrismaClient } from "@/lib/generated/prisma/client"
-import { fxFactor, parseFxRates } from "@/lib/fx"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { isWin, calcWinRate, calcProfitFactor, getISOWeekKey } from "@/lib/formulas"
 
 export interface MonthlyCardStat {
@@ -23,6 +25,7 @@ export async function loadMonthlyCardStats(
   prisma: PrismaClient,
   userId: string,
   months: { year: number; month: number }[],
+  mode:OperationalMode="REAL",
 ): Promise<Map<string, MonthlyCardStat>> {
   const out = new Map<string, MonthlyCardStat>()
   if (months.length === 0) return out
@@ -34,13 +37,13 @@ export async function loadMonthlyCardStats(
 
   const [user, accounts, trades, goals] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { baseCurrency: true, fxRates: true } }),
-    prisma.account.findMany({ where: { userId }, select: { id: true, currency: true } }),
+    prisma.account.findMany({ where: { userId,type:{in:accountTypesForMode(mode)} }, select: { id: true, currency: true } }),
     prisma.trade.findMany({
-      where: { userId, status: "CLOSED", date: { gte: spanStart, lt: spanEnd } },
+      where: { ...await scopedTradeWhere(prisma,userId,{mode,includeArchived:true}), status: "CLOSED", date: { gte: spanStart, lt: spanEnd } },
       select: { accountId: true, pnl: true, rMultiple: true, date: true },
     }),
     prisma.monthlyGoal.findMany({
-      where: { userId, OR: months.map(m => ({ year: m.year, month: m.month })) },
+      where: { userId, operationalMode:mode, OR: months.map(m => ({ year: m.year, month: m.month })) },
       select: { year: true, month: true, status: true },
     }),
   ])
@@ -54,6 +57,7 @@ export async function loadMonthlyCardStats(
   const wanted = new Set(months.map(m => key(m.year, m.month)))
 
   for (const t of trades) {
+    if(!curById.has(t.accountId)||!hasFxConversion(curById.get(t.accountId)!,baseCurrency,fxRates))continue;
     const d = t.date as Date
     const k = key(d.getFullYear(), d.getMonth() + 1)
     if (!wanted.has(k)) continue

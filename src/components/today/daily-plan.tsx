@@ -4,6 +4,7 @@ import Link from "next/link"
 import type { AccountStat } from "@/domains/analytics/services/dashboard-analytics"
 import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 import { trpc } from "@/lib/trpc/client"
 import { formatCalendarDate } from "@/lib/datetime/local"
 
@@ -16,7 +17,8 @@ function PlanGroup({ title, children }: { title: string; children: ReactNode }) 
 
 /** Independent from dashboard analytics and the cognitive signals feed. */
 export function DailyPlan({ accountStats }: { accountStats?: Pick<AccountStat, "accountId" | "risk">[] } = {}) {
-  const { data, isLoading, isError, refetch } = trpc.today.plan.useQuery(undefined, { staleTime: 60_000 })
+  const mode = useOperationalMode(state => state.mode)
+  const { data, isLoading, isError, refetch } = trpc.today.plan.useQuery({ mode }, { staleTime: 60_000 })
   return (
     <section aria-label="Plan del día" className="mb-5 rounded-[var(--radius)] border border-[var(--line)] bg-[var(--panel)] p-4 text-[var(--ink)]">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -40,17 +42,17 @@ export function DailyPlan({ accountStats }: { accountStats?: Pick<AccountStat, "
                   {risk?.breach && <p className="text-[var(--loss)]">En riesgo</p>}
                   <p className="text-[var(--ink-3)]">{risk ? risk.daily.configured ? `Pérdida diaria: ${risk.daily.actualPct}% / límite ${risk.daily.limitPct}%` : "Sin límite diario configurado" : "Revisar límites del día"}</p>
                 </div>
-              }) : <p>Sin cuentas reales activas.</p>}
+              }) : <p>Sin cuentas activas en esta modalidad.</p>}
             </PlanGroup>
-            <PlanGroup title="Repasos pendientes">
+            <PlanGroup title="Repasos pendientes · compartidos">
               {data.resources.length ? data.resources.map(r => <Link key={r.id} href={r.href} className="block hover:underline"><span className="font-medium">{r.title}</span><span className="block text-[var(--ink-3)]">{r.reason}</span></Link>) : <p>Sin repasos pendientes.</p>}
             </PlanGroup>
-            <PlanGroup title="Sesiones programadas">
+            <PlanGroup title="Sesiones de estudio · compartidas">
               {data.sessions.length ? data.sessions.map(s => <div key={s.id}><Link href={s.href} className="block hover:underline"><span className="font-medium">{s.title}</span><span className="block text-[var(--ink-3)]">{timingLabel[s.timing]} · {dayLabel(s.date)}{s.minutes != null ? ` · ${s.minutes} min` : ""}</span></Link>{s.reviewHref && <Link href={s.reviewHref} className="block text-[var(--accent)] hover:underline">Ver review de origen</Link>}</div>) : <p>Sin sesiones programadas.</p>}
             </PlanGroup>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-            <p className="text-[var(--ink-3)]">Esta semana: {data.practices.sessions} prácticas · {data.practices.minutes} min registrados</p>
+            <p className="text-[var(--ink-3)]">Estudio compartido esta semana: {data.practices.sessions} prácticas · {data.practices.minutes} min registrados</p>
             <Link href={data.practices.href} className="text-[var(--accent)] font-medium hover:underline focus-visible:outline-2">Registrar práctica</Link>
           </div>
         </>

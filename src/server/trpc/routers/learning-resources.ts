@@ -6,12 +6,13 @@ import { router, protectedProcedure } from "../init"
 import type { LearningResource, ResourceReview } from "@/lib/generated/prisma/client"
 import { computeProgressPct, resourceProgressLifecycle } from "@/domains/learning/services/review-scheduler"
 import { computeNextReview, type Grade } from "@/domains/learning/srs"
-import { getResourceTransfer } from "@/server/services/learning/learning-insights-service"
 import { computeNewStreak } from "@/domains/learning/services/streak-service"
 import { detectDecayedResources } from "@/domains/learning/services/decay-detector"
 import { computeSetupStats } from "@/domains/analytics/services/setup-analytics"
 import type { MinimalTrade } from "@/domains/analytics/services/dashboard-analytics"
 import { scheduleEmbedding } from "@/server/services/retrieval/pipeline"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 
 /** Fire-and-forget: embebe las notas del recurso (SP2). La escritura del vector
  *  vive ahora en el pipeline de retrieval — un solo dueño de notes_embedding.
@@ -251,10 +252,9 @@ export const learningResourcesRouter = router({
       const todayISO = localDateISO(new Date(), safeTimeZone(user.timezone))
       const todayMarker = new Date(`${todayISO}T00:00:00Z`)
 
-      // #45 (closure A2): the linked setup's edge bends the SRS cadence — review
-      // sooner if the edge is decaying, later if it's improving. Read-only, pre-tx.
-      const signal = await getResourceTransfer(ctx.prisma, ctx.userId, resourceId)
-      const performance = signal?.performanceSignal ?? null
+      // The global memory schedule is based on study and recall. Operational
+      // signals belong to their mode and remain optional study suggestions.
+      const performance = null
 
       const review = await ctx.prisma.$transaction(async (tx) => {
         const resource = await tx.learningResource.findUniqueOrThrow({
@@ -484,23 +484,26 @@ export const learningResourcesRouter = router({
 
   // TASK-L016: WR of each linked setup since resource was completed (P13-A killer feature)
   setupImpact: protectedProcedure
-    .input(z.string().uuid())
+    .input(z.union([z.string().uuid(), z.object({ resourceId: z.string().uuid(), mode: operationalModeSchema.default("REAL") })]))
     .query(async ({ ctx, input }) => {
+      const resourceId = typeof input === "string" ? input : input.resourceId
+      const mode = typeof input === "string" ? "REAL" : input.mode
       const resource = await ctx.prisma.learningResource.findUniqueOrThrow({
-        where:   { id: input, userId: ctx.userId },
+        where:   { id: resourceId, userId: ctx.userId },
         select:  { completedAt: true, linkedSetups: { select: { id: true, name: true } } },
       })
       if (!resource.completedAt) return []
 
       const completedAt = resource.completedAt
+      const where = await scopedTradeWhere(ctx.prisma, ctx.userId, { mode, includeArchived: true })
 
       return Promise.all(
         resource.linkedSetups.map(async (setup) => {
           const trades = await ctx.prisma.trade.findMany({
             where: {
-              userId:  ctx.userId,
+              ...where,
               setupId: setup.id,
-              date:    { gte: completedAt },
+              ...(mode === "REAL" ? { date: { gte: completedAt } } : { practiceLinks: { some: { userId: ctx.userId, role: "EXECUTED", practice: { operationalMode: mode, kind: "EXECUTION", date: { gte: completedAt } } } } }),
               status:  "CLOSED",
             },
             select: { rMultiple: true, pnl: true },
@@ -515,6 +518,7 @@ export const learningResourcesRouter = router({
             wins,
             winRate:     trades.length > 0 ? Math.round((wins / trades.length) * 100) : null,
             completedAt: completedAt.toISOString(),
+            mode,
           }
         })
       )
@@ -639,7 +643,9 @@ export const learningResourcesRouter = router({
   // TASK-L028: rank completed resources by WR delta (post - pre completedAt) per linked setup.
   // Uses batched queries (O(2) DB calls regardless of resource/setup count) to avoid N+1.
   resourceImpactRanking: protectedProcedure
-    .query(async ({ ctx }) => {
+    .input(z.object({ mode: operationalModeSchema.default("REAL") }).optional())
+    .query(async ({ ctx, input }) => {
+      const mode = input?.mode ?? "REAL"
       const resources = await ctx.prisma.learningResource.findMany({
         where: {
           userId:      ctx.userId,
@@ -688,19 +694,21 @@ export const learningResourcesRouter = router({
       const setupIds = [...new Set(pairs.map(p => p.setupId))]
       const allTrades = await ctx.prisma.trade.findMany({
         where: {
-          userId:  ctx.userId,
+          ...await scopedTradeWhere(ctx.prisma, ctx.userId, { mode, includeArchived: true }),
           setupId: { in: setupIds },
           status:  "CLOSED",
         },
-        select: { setupId: true, date: true, pnl: true, rMultiple: true },
+        select: { setupId: true, date: true, pnl: true, rMultiple: true, practiceLinks: { where: { userId: ctx.userId, role: "EXECUTED", practice: { operationalMode: mode, kind: "EXECUTION" } }, select: { practice: { select: { date: true } } } } },
       })
 
       // Group trades by setupId for O(1) lookup
       const bySetup = new Map<string, { date: Date; pnl: number; rMultiple: number | null }[]>()
       for (const t of allTrades) {
+        const date = mode === "REAL" ? t.date : t.practiceLinks[0]?.practice.date
+        if (!date) continue
         const list = bySetup.get(t.setupId!) ?? []
         list.push({
-          date:      t.date as Date,
+          date,
           pnl:       t.pnl != null ? Number(t.pnl) : 0,
           rMultiple: t.rMultiple != null ? Number(t.rMultiple) : null,
         })

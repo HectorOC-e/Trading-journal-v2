@@ -1,17 +1,21 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createWithdrawal, changeWithdrawalStatus } from '@/server/services/accounts/withdrawal-service'
+import { createWithdrawal, changeWithdrawalStatus, deleteWithdrawal } from '@/server/services/accounts/withdrawal-service'
 import { loadAccountCashAdjustments } from '@/server/services/accounts/cash-adjustments'
 const userId='550e8400-e29b-41d4-a716-446655440000',accountId='550e8400-e29b-41d4-a716-446655440001',requestId='550e8400-e29b-41d4-a716-446655440002'
 const input={accountId,amount:800,currency:'USD',date:'2026-11-05',note:'',reference:''}
-function fixture(){
+function fixture(type: string | null = 'PERSONAL'){
  const rows:any[]=[];let queue=Promise.resolve();let fail=false
  const tx:any={
- $queryRaw:vi.fn(async()=>[{id:accountId}]),account:{findUniqueOrThrow:vi.fn(async()=>({id:accountId,initialBalance:1000,currency:'USD'}))},user:{findUniqueOrThrow:vi.fn(async()=>({fxRates:null}))},trade:{findMany:vi.fn(async()=>[])},
+ $queryRaw:vi.fn(async()=>[{id:accountId}]),account:{findUniqueOrThrow:vi.fn(async()=>({id:accountId,initialBalance:1000,currency:'USD',type}))},user:{findUniqueOrThrow:vi.fn(async()=>({fxRates:null}))},trade:{findMany:vi.fn(async()=>[])},
  withdrawal:{findMany:vi.fn(async({where}:any)=>rows.filter(w=>w.userId===userId&&(!where.status||w.status!=='RECHAZADO'))),findUnique:vi.fn(async({where}:any)=>rows.find(w=>w.id===where.id&&w.userId===where.userId)??null),findUniqueOrThrow:vi.fn(async({where}:any)=>{const w=rows.find(w=>w.id===where.id&&w.userId===where.userId);if(!w)throw Error('not found');return {...w}}),create:vi.fn(async({data}:any)=>{const w={id:requestId+rows.length,...data};rows.push(w);return {...w}}),update:vi.fn(async({where,data}:any)=>Object.assign(rows.find(w=>w.id===where.id),data))},accountLog:{findMany:vi.fn(async()=>[]),create:vi.fn(async()=>{if(fail)throw Error('log unavailable');return {}})}}
  const db:any={...tx,$transaction:(fn:any)=>{const next=queue.then(async()=>{const snap=structuredClone(rows);try{return await fn(tx)}catch(e){rows.splice(0,rows.length,...snap);throw e}});queue=next.then(()=>{},()=>{});return next}}
  return {db,rows,tx,failLog:()=>{fail=true}}
 }
 describe('withdrawal reliability',()=>{
+ it.each(['DEMO_PERSONAL','DEMO_PROP','BACKTEST','QA','UNKNOWN',null])('refuses new withdrawals for non-real account type %s',async(type)=>{const f=fixture(type);await expect(createWithdrawal(f.db,userId,input)).rejects.toThrow(/real/i);expect(f.rows).toHaveLength(0)})
+ it.each(['DEMO_PERSONAL','BACKTEST','QA','UNKNOWN',null])('refuses payment approval for non-real account type %s',async(type)=>{const f=fixture(type);f.rows.push({id:requestId,userId,accountId,amount:800,currency:'USD',status:'SOLICITADO'});await expect(changeWithdrawalStatus(f.db,userId,{id:requestId,status:'PAGADO'})).rejects.toThrow(/real/i);expect(f.rows[0].status).toBe('SOLICITADO')})
+ it('allows deleting owned legacy practice withdrawals for cleanup',async()=>{const f=fixture('DEMO_PERSONAL');f.rows.push({id:requestId,userId,accountId,amount:800,currency:'USD',status:'SOLICITADO'});f.tx.withdrawal.delete=vi.fn(async({where}:any)=>{const index=f.rows.findIndex(row=>row.id===where.id&&row.userId===where.userId);return f.rows.splice(index,1)[0]});await deleteWithdrawal(f.db,userId,requestId);expect(f.rows).toHaveLength(0)})
+ it('does not fund a real withdrawal with mismatched practice trades',async()=>{const f=fixture();f.tx.trade.findMany.mockImplementation(async({where}:any)=>[{pnl:1000,operationalMode:'DEMO'}].filter(t=>!where.operationalMode||t.operationalMode===where.operationalMode));await expect(createWithdrawal(f.db,userId,{...input,amount:1100})).rejects.toThrow(/saldo disponible/i);expect(f.rows).toHaveLength(0)})
  it('honors negative broker corrections before reserving cash',async()=>{const f=fixture();f.tx.accountLog.findMany.mockResolvedValue([{accountId,payload:{variance:-200}}]);await expect(createWithdrawal(f.db,userId,{...input,amount:900})).rejects.toThrow(/saldo disponible/);expect(f.rows).toHaveLength(0)})
  it('allows legitimate positive broker corrections without inventing trading PnL',async()=>{const f=fixture();f.tx.accountLog.findMany.mockResolvedValue([{accountId,payload:{variance:200}}]);await expect(createWithdrawal(f.db,userId,{...input,amount:1100})).resolves.toMatchObject({amount:1100})})
  it('serializes reservations and rejects the second request exceeding cash',async()=>{const f=fixture();const r=await Promise.allSettled([createWithdrawal(f.db,userId,input),createWithdrawal(f.db,userId,input)]);expect(r.filter(x=>x.status==='fulfilled')).toHaveLength(1);expect(f.rows.reduce((s,w)=>s+w.amount,0)).toBe(800);expect(f.tx.$queryRaw).toHaveBeenCalledTimes(2)})

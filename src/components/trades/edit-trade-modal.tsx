@@ -10,7 +10,7 @@ import { FieldError } from "@/components/ui/field"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { tradeEditSchema, type TradeEditValues } from "@/domains/trading/schemas/trade-form-schema"
 import { EMOTION_OPTIONS, type EmotionBefore } from "@/domains/trading/emotions"
-import { isWithinEmotionWindow } from "@/domains/trading/services/emotion-provenance"
+import { marketTimestamp, validateMarketSequence } from "@/domains/trading/historical-capture"
 
 const SESSIONS = ["London", "New York", "Asia", "London Close"] as const
 const TAGS_TOGGLEABLE = ["Off-plan", "Impulsivo"] as const
@@ -31,6 +31,13 @@ interface EditTradeModalProps {
     id: string
     /** "YYYY-MM-DD". Ancla de la ventana de 7 días para editar la emoción. */
     date: string
+    openTime?: string
+    marketOpenedAt?: string | null
+    marketClosedAt?: string | null
+    marketTimeZone?: string | null
+    operationalMode?: string | null
+    emotionContext?: string | null
+    emotionReferenceAt?: string | null
     symbol: string
     direction: string
     entry: number
@@ -38,7 +45,7 @@ interface EditTradeModalProps {
     target: number
     size: number
     realizedPnl?: number | null
-    events?: { type: string }[]
+    events?: { id?: string; type: string; timestamp?: string }[]
     session: string
     notes: string
     planNotes?: string | null
@@ -67,17 +74,30 @@ interface EditTradeModalProps {
     maeR: number | null
     mfeR: number | null
     regime: "trend" | "range" | "volatile" | null
+    date: string; openTime: string; marketTimeZone: string; marketClosedAt: string
+    eventTimestamps: { id: string; timestamp: string }[]
+    emotionContext: "MARKET" | "PRACTICE"; emotionReferenceAt: string
   }>) => void
   saving?: boolean
 }
 
 type Tab = "precios" | "detalles" | "psicologia"
 
-export function EditTradeModal({
+export function EditTradeModal(props: EditTradeModalProps) {
+  return <EditTradeModalForm key={props.trade.id} {...props} />
+}
+
+function EditTradeModalForm({
   open, onOpenChange, trade, setups = [], onSave, saving
 }: EditTradeModalProps) {
   const monetaryLocked = (trade.events ?? []).some(event => event.type === "PARTIAL_CLOSE" || event.type === "SCALE_IN") || (trade.realizedPnl != null && trade.realizedPnl !== 0)
   const [tab, setTab] = useState<Tab>("precios")
+  const [marketDate, setMarketDate] = useState(trade.date)
+  const [marketOpenTime, setMarketOpenTime] = useState(trade.openTime ?? "")
+  const [marketZone, setMarketZone] = useState(trade.marketTimeZone ?? "UTC")
+  const [marketClose, setMarketClose] = useState(trade.marketClosedAt?.slice(0,16) ?? "")
+  const [eventTimes, setEventTimes] = useState<Record<string,string>>({})
+  const [dateError, setDateError] = useState("")
 
   // Prices are validated via RHF + zod; the rest of the form stays local state.
   const {
@@ -102,6 +122,8 @@ export function EditTradeModal({
   const [emotionBefore,    setEmotionBefore]    = useState<EmotionBefore | null>(
     (trade.emotionBefore as EmotionBefore | null | undefined) ?? null
   )
+  const [emotionContext, setEmotionContext] = useState<"MARKET" | "PRACTICE">(trade.emotionContext === "PRACTICE" ? "PRACTICE" : "MARKET")
+  const [emotionReference, setEmotionReference] = useState(trade.emotionReferenceAt?.slice(0,16) ?? "")
   const [confidenceRating, setConfidenceRating] = useState<number | null>(trade.confidenceRating ?? null)
   const [executionQuality, setExecutionQuality] = useState<number | null>(trade.executionQuality ?? null)
   const [fomoFlag,         setFomoFlag]         = useState(trade.fomoFlag ?? false)
@@ -143,6 +165,14 @@ export function EditTradeModal({
     setChecklist(prev => ({ ...prev, [item]: !prev[item] }))
 
   const onValid = (prices: TradeEditValues) => {
+    const datesChanged = marketDate !== trade.date || marketOpenTime !== (trade.openTime ?? "") || marketZone !== (trade.marketTimeZone ?? "UTC") || marketClose !== (trade.marketClosedAt?.slice(0,16) ?? "") || Object.keys(eventTimes).length > 0
+    if (datesChanged) {
+      if (trade.marketClosedAt && !marketClose) { setDateError("Indica la fecha corregida del cierre conocido."); setTab("detalles"); return }
+      try {
+        validateMarketSequence(marketTimestamp(marketDate, marketOpenTime, marketZone), marketClose ? new Date(`${marketClose}:00Z`) : null,
+          (trade.events ?? []).filter(event => event.type !== "OPEN" && event.type !== "NOTE" && event.timestamp).map(event => new Date(event.id && eventTimes[event.id] ? `${eventTimes[event.id]}:00Z` : event.timestamp!)))
+      } catch { setDateError("Revisa las fechas de apertura, cierre y eventos en el mismo formulario."); setTab("detalles"); return }
+    }
     // Build tags from checklist: add "A+" if all A+ items checked
     let finalTags = [...tags]
     if (aplusItems.length > 0 && aplusItems.every(i => checklist[i])) {
@@ -152,6 +182,7 @@ export function EditTradeModal({
     }
 
     onSave?.({
+      ...(datesChanged ? { date: marketDate, openTime: marketOpenTime, marketTimeZone: marketZone, ...(marketClose ? { marketClosedAt: `${marketClose}:00Z` } : {}), eventTimestamps: Object.entries(eventTimes).map(([id,time]) => ({ id, timestamp: `${time}:00Z` })) } : {}),
       ...(!monetaryLocked && parseFloat(prices.entry) !== trade.entry ? { entry: parseFloat(prices.entry) } : {}),
       ...(!monetaryLocked && parseFloat(prices.stop) !== trade.stop ? { stop: parseFloat(prices.stop) } : {}),
       ...(!monetaryLocked && parseFloat(prices.target) !== trade.target ? { target: parseFloat(prices.target) } : {}),
@@ -161,7 +192,7 @@ export function EditTradeModal({
       planNotes: planNotes || null,
       tags:    finalTags,
       setupId: setupId || undefined,
-      ...(emotionBefore !== (trade.emotionBefore ?? null) ? { emotionBefore } : {}),
+      ...(emotionBefore !== (trade.emotionBefore ?? null) || emotionContext !== (trade.emotionContext ?? "MARKET") || emotionReference !== (trade.emotionReferenceAt?.slice(0,16) ?? "") ? { emotionBefore, emotionContext, ...(emotionContext === "PRACTICE" && emotionReference ? { emotionReferenceAt: `${emotionReference}:00Z` } : {}) } : {}),
       ...(confidenceRating !== (trade.confidenceRating ?? null) ? { confidenceRating } : {}),
       ...(executionQuality !== (trade.executionQuality ?? null) ? { executionQuality } : {}),
       ...(fomoFlag !== (trade.fomoFlag ?? false) ? { fomoFlag } : {}),
@@ -233,6 +264,14 @@ export function EditTradeModal({
 
         {tab === "detalles" && (
           <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-xs flex flex-col gap-1">Fecha de mercado<input type="date" value={marketDate} onChange={event => setMarketDate(event.target.value)} /></label>
+              <label className="text-xs flex flex-col gap-1">Hora apertura<input type="time" value={marketOpenTime} onChange={event => setMarketOpenTime(event.target.value)} /></label>
+              <label className="text-xs col-span-2 flex flex-col gap-1">Zona del mercado<input value={marketZone} onChange={event => setMarketZone(event.target.value)} /></label>
+              <label className="text-xs col-span-2 flex flex-col gap-1">Cierre en UTC (vacío si desconocido)<input type="datetime-local" value={marketClose} onChange={event => setMarketClose(event.target.value)} /></label>
+              {(trade.events ?? []).filter(event => event.id && event.timestamp && event.type !== "OPEN" && event.type !== "NOTE").map(event => <label key={event.id} className="text-xs col-span-2 flex flex-col gap-1">{event.type} · UTC<input type="datetime-local" value={eventTimes[event.id!] ?? event.timestamp!.slice(0,16)} onChange={change => setEventTimes(previous => ({...previous,[event.id!]:change.target.value}))} /></label>)}
+            </div>
+            <FieldError message={dateError} />
             {/* Session */}
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-[var(--ink-3)] font-medium">Sesión</label>
@@ -439,12 +478,6 @@ export function EditTradeModal({
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-[var(--ink-3)] font-medium">Estado emocional</label>
               <div className="flex gap-1 flex-wrap">
-                {/* Sin esta guarda la ventana es decorativa: bastaría abrir el
-                    modal de edición para anotar un trade de abril. El botón "—"
-                    (limpiar) también queda fuera de plazo, y es deliberado:
-                    borrar una emoción registrada en el momento es tan
-                    irreversible como inventarla. */}
-                {isWithinEmotionWindow(new Date(trade.date), new Date()) ? (
                   <>
                     <button
                       onClick={() => setEmotionBefore(null)}
@@ -472,12 +505,9 @@ export function EditTradeModal({
                       </button>
                     ))}
                   </>
-                ) : (
-                  <p className="text-[11px] text-[var(--ink-3)]">
-                    La ventana para registrar la emoción se cerró (7 días desde la fecha del trade).
-                  </p>
-                )}
               </div>
+              <p className="text-[11px] text-[var(--ink-3)]">La corrección se guarda como emoción reconstruida, con su fecha y actividad de referencia.</p>
+              {(trade.operationalMode === "DEMO" || trade.operationalMode === "BACKTEST") && <label className="text-xs flex flex-col gap-1">Actividad de referencia<select value={emotionContext} onChange={event => setEmotionContext(event.target.value as "MARKET" | "PRACTICE")}><option value="MARKET">Operación en fecha de mercado</option><option value="PRACTICE">Práctica explícita</option></select>{emotionContext === "PRACTICE" && <input aria-label="Fecha de práctica en UTC" type="datetime-local" value={emotionReference} onChange={event => setEmotionReference(event.target.value)} />}</label>}
             </div>
 
             {/* Confianza */}

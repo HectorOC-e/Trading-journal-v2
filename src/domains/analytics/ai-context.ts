@@ -1,15 +1,17 @@
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 import { isWin, calcWinRate, calcSharpeRatio } from "@/lib/formulas"
 import { calcSetupHealth } from "@/lib/formulas/setup"
-import { fxFactor, parseFxRates } from "@/lib/fx"
+import { fxFactor, parseFxRates, hasFxConversion } from "@/lib/fx"
 import { VIOLATION_TAGS } from "@/types"
-import { isPracticeType } from "@/domains/trading/account-reality"
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import { detectPatterns } from "./services/pattern-detector"
 import type { DetectedPattern } from "./services/pattern-detector"
 import type { MinimalTrade } from "./services/dashboard-analytics"
 import { studyStreak, minutesThisWeek } from "@/domains/learning/services/study-session-service"
 
 export type TraderContext = {
+  scope: { mode: OperationalMode; from?: string; to?: string; includeArchived: true; sampleLimit: number; sampleSize: number; order: "date_desc"; statistics: "sample"; excludedCurrencies: string[] }
   performance: {
     totalTrades: number
     winRate: number
@@ -49,6 +51,11 @@ export type TraderContext = {
     weekTrades:        number
   }
   recentTrades: {
+    operationalMode: OperationalMode
+    accountId: string
+    accountName: string
+    accountType: string
+    currency: string
     id: string
     date: string
     symbol: string
@@ -62,6 +69,8 @@ export type TraderContext = {
   // ── Global context (read-only; never includes credentials) ──────────────────
   baseCurrency: string
   accounts: {
+    id: string
+    operationalMode: OperationalMode
     name: string
     type: string
     currency: string
@@ -69,7 +78,7 @@ export type TraderContext = {
     status: string
     locked: boolean
     lockReason: string | null
-    balance: number          // equity in baseCurrency (initial + closed P&L, FX-converted)
+    balance: number | null   // sample equity in baseCurrency (initial + closed P&L, FX-converted)
     ddDailyPct: number | null
     ddTotalPct: number | null
     targetPct: number | null
@@ -98,6 +107,8 @@ export type TraderContext = {
 type RawTradeRow = {
   id: string
   accountId: string
+  operationalMode: OperationalMode
+  account: { name: string; type: string; currency: string }
   symbol: string
   direction: string
   session: unknown
@@ -115,6 +126,7 @@ type RawTradeRow = {
 }
 
 type RawViolationRow = {
+  account: { currency: string }
   tags: unknown
   pnl: unknown
   date: unknown
@@ -174,6 +186,7 @@ export async function buildTraderContext(
   userId: string,
   prisma: PrismaClient,
   window?: { from: Date; to: Date },
+  mode: OperationalMode = "REAL",
 ): Promise<TraderContext> {
   const now        = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -182,6 +195,10 @@ export async function buildTraderContext(
     ? { gte: window.from, lte: window.to }
     : undefined
 
+  const scope = { mode, includeArchived: true as const, ...(window ? { from: window.from.toISOString().slice(0, 10), to: window.to.toISOString().slice(0, 10) } : {}) }
+  const tradeWhere = await scopedTradeWhere(prisma, userId, scope)
+  const accountWhere = { userId, type: { in: accountTypesForMode(mode) } }
+
   // ── parallel sub-fetches ──────────────────────────────────────────────────
   const studySince = new Date(now); studySince.setDate(now.getDate() - 60)
   const [tradeRows, violationRows, learningRows, reviewRows, setupRows, goalRow,
@@ -189,29 +206,29 @@ export async function buildTraderContext(
     // 1. Closed trades for performance & patterns
     prisma.trade.findMany({
       where: {
-        userId,
+        ...tradeWhere,
         status: "CLOSED",
         ...(dateFilter ? { date: dateFilter } : {}),
       },
       select: {
-        id: true, accountId: true, symbol: true, direction: true,
+        id: true, accountId: true, operationalMode: true, account: { select: { name: true, type: true, currency: true } }, symbol: true, direction: true,
         session: true, openTime: true, closeTime: true,
         pnl: true, rMultiple: true, tags: true, date: true,
         setupId: true, entry: true, stop: true, target: true, size: true,
       },
-      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: 500,
     }) as Promise<RawTradeRow[]>,
 
     // 2. Violation trades
     prisma.trade.findMany({
       where: {
-        userId,
+        ...tradeWhere,
         status: "CLOSED",
         tags: { hasSome: [...VIOLATION_TAGS] },
         ...(dateFilter ? { date: dateFilter } : {}),
       },
-      select: { tags: true, pnl: true, date: true },
+      select: { tags: true, pnl: true, date: true, account: { select: { currency: true } } },
     }) as Promise<RawViolationRow[]>,
 
     // 3. Learning resources (status + progress + reviews + linked setups)
@@ -243,25 +260,25 @@ export async function buildTraderContext(
 
     // 7. Accounts (no credentials)
     prisma.account.findMany({
-      where:  { userId },
+      where: accountWhere,
       select: { id: true, name: true, type: true, currency: true, phase: true, status: true, locked: true, lockReason: true, initialBalance: true, ddDailyPct: true, ddTotalPct: true, targetPct: true },
     }) as Promise<RawAccountRow[]>,
 
     // 8. Withdrawals (for aggregation)
     prisma.withdrawal.findMany({
-      where:  { userId },
+      where: { userId, account: accountWhere },
       select: { currency: true, status: true, amount: true },
     }) as Promise<RawWithdrawalRow[]>,
 
     // 9. Active rules
     prisma.rule.findMany({
-      where:  { userId, enabled: true },
+      where: { userId, enabled: true, OR: [{ operationalMode: mode }, { operationalMode: null, globalManual: true, sourceInsightId: null, sourceCommitmentId: null }] },
       select: { name: true, severity: true },
     }) as Promise<RawRuleRow[]>,
 
     // 10. Trading session logs (psychology)
     prisma.tradingSessionLog.findMany({
-      where:  { userId },
+      where: { userId, operationalMode: mode, ...(dateFilter ? { date: dateFilter } : {}) },
       select: { preMood: true, energyLevel: true },
     }) as Promise<RawSessionRow[]>,
 
@@ -281,6 +298,13 @@ export async function buildTraderContext(
     baseCurrency: string | null; fxRates: unknown
   } | null, RawAccountRow[], RawWithdrawalRow[], RawRuleRow[], RawSessionRow[], RawMarketRow[], RawStudySessionRow[]]
 
+  const baseCurrency = goalRow?.baseCurrency ?? "USD"
+  const fxRates = parseFxRates(goalRow?.fxRates)
+  const excludedCurrencies = [...new Set(accountRows.filter(a => !hasFxConversion(a.currency, baseCurrency, fxRates)).map(a => a.currency))]
+  const monetaryPnl = (pnl: unknown, currency: string) => hasFxConversion(currency, baseCurrency, fxRates)
+    ? Number(pnl ?? 0) * fxFactor(currency, baseCurrency, fxRates) : 0
+  const rawById = new Map(tradeRows.map(row => [row.id, row]))
+
   // ── Normalize trades to MinimalTrade ──────────────────────────────────────
   const trades: MinimalTrade[] = tradeRows.map((t: RawTradeRow) => ({
     id:        t.id,
@@ -290,7 +314,7 @@ export async function buildTraderContext(
     session:   t.session as string | null,
     openTime:  t.openTime as string | null,
     closeTime: t.closeTime as string | null,
-    pnl:       t.pnl        != null ? Number(t.pnl)        : 0,
+    pnl:       monetaryPnl(t.pnl, t.account.currency),
     rMultiple: t.rMultiple  != null ? Number(t.rMultiple)  : null,
     tags:      t.tags        as string[],
     date:      (t.date as Date).toISOString().slice(0, 10),
@@ -301,14 +325,9 @@ export async function buildTraderContext(
     size:      Number(t.size),
   }))
 
-  // ── Practice (demo/backtest) partition ────────────────────────────────────
-  // Financial/performance metrics use only real accounts: unreal money must not
-  // inflate the track record the coach reasons about. Behaviour (violations,
-  // streaks, patterns) below still counts every account — the habit is real.
-  const practiceAccountIds = new Set(accountRows.filter(a => isPracticeType(a.type)).map(a => a.id))
-  const finTrades = trades.filter((t: MinimalTrade) => !practiceAccountIds.has(t.accountId))
+  // All evidence is selected within the mode before the sample limit.
+  const finTrades = trades.filter(t => !excludedCurrencies.includes(rawById.get(t.id)!.account.currency))
 
-  // ── Performance (real accounts only) ──────────────────────────────────────
   const total   = finTrades.length
   const wins    = finTrades.filter((t: MinimalTrade) => isWin({ pnl: t.pnl })).length
   const winRate = parseFloat(calcWinRate(wins, total).toFixed(2))
@@ -360,7 +379,7 @@ export async function buildTraderContext(
   }
   const violationCount    = violationRows.length
   const costoIndisciplina = parseFloat(
-    violationRows.reduce((s: number, t: RawViolationRow) => s + Number(t.pnl ?? 0), 0).toFixed(2),
+    violationRows.reduce((s: number, t: RawViolationRow) => s + monetaryPnl(t.pnl, t.account.currency), 0).toFixed(2),
   )
 
   // Racha días limpios
@@ -378,7 +397,7 @@ export async function buildTraderContext(
       (tag: string) => VIOLATION_TAGS.includes(tag as typeof VIOLATION_TAGS[number]),
     ),
   ).length
-  // Behavioural: denominator is ALL trades (practice included), not just real.
+  // Behaviour uses the same isolated sample.
   const allTotal     = trades.length
   const offPlanPct   = allTotal > 0 ? parseFloat(((offPlanCount / allTotal) * 100).toFixed(2)) : 0
 
@@ -421,11 +440,16 @@ export async function buildTraderContext(
     .sort((a: MinimalTrade, b: MinimalTrade) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
     .slice(0, 10)
     .map((t: MinimalTrade) => ({
+      operationalMode: mode,
+      accountId: t.accountId,
+      accountName: rawById.get(t.id)!.account.name,
+      accountType: rawById.get(t.id)!.account.type,
+      currency: rawById.get(t.id)!.account.currency,
       id:        t.id,
       date:      t.date,
       symbol:    t.symbol,
       direction: t.direction,
-      pnl:       t.pnl,
+      pnl:       Number(rawById.get(t.id)!.pnl ?? 0),
       rMultiple: t.rMultiple,
       tags:      t.tags,
       session:   t.session,
@@ -449,17 +473,17 @@ export async function buildTraderContext(
   }
 
   // ── Global context (read-only) ────────────────────────────────────────────
-  const baseCurrency = goalRow?.baseCurrency ?? "USD"
-  const fxRates      = parseFxRates(goalRow?.fxRates)
 
   // Per-account closed P&L (in the account's own currency)
   const netByAccount = new Map<string, number>()
-  for (const t of trades) netByAccount.set(t.accountId, (netByAccount.get(t.accountId) ?? 0) + t.pnl)
+  for (const t of tradeRows) netByAccount.set(t.accountId, (netByAccount.get(t.accountId) ?? 0) + Number(t.pnl ?? 0))
 
   const accounts: TraderContext["accounts"] = accountRows.map(a => {
     const initial = Number(a.initialBalance)
     const equity  = initial + (netByAccount.get(a.id) ?? 0)
     return {
+      id: a.id,
+      operationalMode: mode,
       name:       a.name,
       type:       a.type,
       currency:   a.currency,
@@ -467,7 +491,7 @@ export async function buildTraderContext(
       status:     a.status,
       locked:     a.locked,
       lockReason: a.lockReason || null,
-      balance:    parseFloat((equity * fxFactor(a.currency, baseCurrency, fxRates)).toFixed(2)),
+      balance: hasFxConversion(a.currency, baseCurrency, fxRates) ? parseFloat((equity * fxFactor(a.currency, baseCurrency, fxRates)).toFixed(2)) : null,
       ddDailyPct: a.ddDailyPct != null ? Number(a.ddDailyPct) : null,
       ddTotalPct: a.ddTotalPct != null ? Number(a.ddTotalPct) : null,
       targetPct:  a.targetPct  != null ? Number(a.targetPct)  : null,
@@ -509,6 +533,7 @@ export async function buildTraderContext(
   const markets = marketRows.map(m => ({ symbol: m.symbol, name: m.name }))
 
   return {
+    scope: { ...scope, sampleLimit: 500, sampleSize: trades.length, order: "date_desc", statistics: "sample", excludedCurrencies },
     baseCurrency,
     accounts,
     setups,

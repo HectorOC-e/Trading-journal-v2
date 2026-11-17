@@ -90,7 +90,7 @@ it("reopened resources retain their historical setup-impact baseline", async () 
   const impactCaller = learningResourcesRouter.createCaller({ prisma: { ...prisma, trade } as never, userId: "u", supabase: {} as never })
   expect(await impactCaller.setupImpact(id)).toEqual([expect.objectContaining({ setupId: "setup", completedAt: completedAt.toISOString() })])
   expect(row.status).toBe("IN_PROGRESS")
-  expect(trade.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "u", setupId: "setup", date: { gte: completedAt }, status: "CLOSED" } }))
+  expect(trade.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: "u", operationalMode: "REAL", setupId: "setup", date: { gte: completedAt }, status: "CLOSED" }) }))
 })
 
 it("create at 100/100 records completion and retains its anchor through reopening",async()=>{

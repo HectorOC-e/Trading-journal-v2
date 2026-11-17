@@ -18,6 +18,11 @@ const MT4_CSV = [
 ].join("\n")
 
 describe("parseMt4Statement", () => {
+  it("interprets broker wall clocks in the declared market timezone", () => {
+    const { rows } = parseMt4Statement(MT4_CSV, "America/Tegucigalpa")
+    expect(rows[0].openTime).toBe("2024-03-15T20:30:00.000Z")
+    expect(rows[0].closeTime).toBe("2024-03-15T22:00:00.000Z")
+  })
   it("parses buy/sell rows with correct fields and P&L", () => {
     const { rows, warnings } = parseMt4Statement(MT4_CSV)
     expect(rows).toHaveLength(2)

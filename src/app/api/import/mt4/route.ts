@@ -4,6 +4,13 @@ import { createClient } from "@/lib/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { calcRMultiple } from "@/lib/formulas"
 import type { ParsedTrade } from "@/domains/trading/services/csv-import"
+import { classifyAccountType } from "@/domains/trading/operational-mode"
+import { localDateISO } from "@/lib/datetime/local"
+import { loadHistoricalEquity } from "@/server/services/trades/historical-equity-service"
+import { deriveRiskPct } from "@/domains/trading/services/trade-derivation"
+import { parsePointValue } from "@/domains/trading/services/trade-service"
+import { evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
+import { isCacheEnabled, invalidateCache } from "@/domains/analytics/services/analytics-cache"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -13,10 +20,10 @@ import type { ParsedTrade } from "@/domains/trading/services/csv-import"
  * parsed full-ISO openTime must be reduced to date + HH:MM to ever match (bug fix:
  * the old key compared full ISO against "HH:MM" and never matched).
  */
-function dupKey(symbol: string, isoOpenTime: string, size: number): string {
+function dupKey(symbol: string, isoOpenTime: string, size: number, timeZone: string): string {
   const d = new Date(isoOpenTime)
-  const dateStr = isNaN(d.getTime()) ? isoOpenTime : d.toISOString().slice(0, 10)
-  const hhmm    = isNaN(d.getTime()) ? "" : d.toISOString().slice(11, 16)
+  const dateStr = isNaN(d.getTime()) ? isoOpenTime : localDateISO(d,timeZone)
+  const hhmm = isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat("en-GB",{timeZone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(d)
   return `${symbol}|${dateStr}|${hhmm}|${size}`
 }
 
@@ -72,18 +79,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // 3. Verify account belongs to user
   const account = await prisma.account.findUnique({
     where: { id: accountId, userId },
-    select: { id: true, locked: true, lockReason: true },
+    select: { id: true, type: true, status: true, locked: true, lockReason: true, timezone: true, initialBalance: true, ddModel: true, ddDailyPct: true, ddWeeklyPct: true, ddMonthlyPct: true, ddTotalPct: true },
   })
   if (!account) {
     return NextResponse.json({ error: "Account not found" }, { status: 404 })
   }
-  // HALLAZGO 1B — a locked account cannot import new trades
-  if (account.locked) {
-    return NextResponse.json(
-      { error: "ACCOUNT_LOCKED", reason: account.lockReason || "MANUAL" },
-      { status: 403 },
-    )
-  }
+  const zoneInput = formData.get("marketTimeZone")
+  const marketTimeZone = typeof zoneInput === "string" && zoneInput.trim() ? zoneInput.trim() : account.timezone ?? "UTC"
+  try { new Intl.DateTimeFormat("en",{timeZone:marketTimeZone}).format() }
+  catch { return NextResponse.json({ error: "INVALID_MARKET_TIME_ZONE" },{status:400}) }
 
   // 4. Read file text and detect format
   const csvText = await file.text()
@@ -91,12 +95,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let parseResult
   if (format === "mt4") {
-    parseResult = parseMt4Statement(csvText)
+    parseResult = parseMt4Statement(csvText, marketTimeZone)
   } else if (format === "ctrader") {
-    parseResult = parseCtraderStatement(csvText)
+    parseResult = parseCtraderStatement(csvText, marketTimeZone)
   } else {
     // Try MT4 as default fallback
-    parseResult = parseMt4Statement(csvText)
+    parseResult = parseMt4Statement(csvText, marketTimeZone)
   }
 
   const { rows, warnings } = parseResult
@@ -136,7 +140,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Also dedup within the same file (a statement that lists the same fill twice).
   const seenInBatch = new Set<string>()
   for (const row of rows) {
-    const key = dupKey(row.symbol, row.openTime, row.size)
+    const key = dupKey(row.symbol, row.openTime, row.size, marketTimeZone)
     const isDup = (row.ticket && existingTickets.has(row.ticket)) ||
                   existingKeys.has(key) ||
                   seenInBatch.has(row.ticket ? `t:${row.ticket}` : key)
@@ -165,8 +169,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       await prisma.$transaction(async (tx) => {
         // Parse the openTime as a Date for the trade `date` field
         const openDate = new Date(row.openTime)
-        const dateStr  = openDate.toISOString().slice(0, 10)
-        const openTimeStr = openDate.toISOString().slice(11, 16) // "HH:MM"
+        const dateStr = localDateISO(openDate,marketTimeZone)
+        const openTimeStr = new Intl.DateTimeFormat("en-GB",{timeZone:marketTimeZone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(openDate)
+        const historicalBalance = await loadHistoricalEquity(tx,userId,{accountId,asOf:openDate})
+        const market = await tx.market.findFirst({where:{userId,symbol:row.symbol},select:{pointValue:true}})
 
         const direction = toDirection(row.type)
         // sl=0 is the parser sentinel for "no stop loss recorded" in both MT4 and cTrader exports
@@ -178,13 +184,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           data: {
             userId,
             accountId,
+            operationalMode: classifyAccountType(account.type),
+            captureContext: "HISTORICAL",
+            marketOpenedAt: openDate,
+            marketClosedAt: new Date(row.closeTime),
+            marketTimeZone,
+            riskPct: historicalBalance == null || row.sl <= 0 ? null : deriveRiskPct({entry:row.openPrice,stop:row.sl,size:row.size,pointValue:parsePointValue(market?.pointValue),balance:historicalBalance}),
+            originalSize: row.size,
+            originalRiskMoney: row.sl > 0 ? Math.abs(row.openPrice-row.sl)*row.size*parsePointValue(market?.pointValue) : null,
             direction,
             symbol:      row.symbol,
             entry:       row.openPrice,
             stop:        row.sl,
             target:      row.tp,
             size:        row.size,
-            date:        openDate,
+            date:        new Date(dateStr),
             openTime:    openTimeStr,
             session:      "New York", // default session for imports
             status:       "CLOSED",
@@ -216,6 +230,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             userId,
             tradeId:   trade.id,
             type:      "CLOSE",
+            realizedPnl: row.profit,
             price:     row.closePrice,
             contracts: row.size,
             notes:     `Cierre importado. Comisión: ${row.commission}. P&L: ${row.profit}`,
@@ -230,5 +245,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
+  if (created > 0) {
+    if (isCacheEnabled()) await invalidateCache(prisma,userId)
+    // Closed imports change current realized risk, but cannot replace a manual
+    // lock or make an archived account available for a new position.
+    if (!account.locked && account.status === "ACTIVE") {
+      try {
+        await evaluateAndLock(prisma,userId,{
+          id:account.id,type:account.type,initialBalance:Number(account.initialBalance),locked:account.locked,lockReason:account.lockReason,ddModel:account.ddModel,
+          ddDailyPct:account.ddDailyPct == null ? null : Number(account.ddDailyPct),ddWeeklyPct:account.ddWeeklyPct == null ? null : Number(account.ddWeeklyPct),ddMonthlyPct:account.ddMonthlyPct == null ? null : Number(account.ddMonthlyPct),ddTotalPct:account.ddTotalPct == null ? null : Number(account.ddTotalPct),
+        },localDateISO(new Date(),account.timezone ?? "UTC"))
+      } catch { warnings.push("La historia se guardó; vuelve a cargar los controles de riesgo de la cuenta.") }
+    }
+  }
   return NextResponse.json({ format: detectedFormat, created, skipped, warnings })
 }

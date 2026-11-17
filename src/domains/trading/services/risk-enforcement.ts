@@ -12,6 +12,7 @@
 //   • The total max-drawdown limit is permanent: it requires a manual unlock.
 //   • Manual locks (lockReason "MANUAL" / custom) are always permanent.
 
+import { classifyAccountType } from "@/domains/trading/operational-mode"
 import { loadRealizedPnlHistory } from "./realized-history"
 import { TRPCError } from "@trpc/server"
 import type { AccountLogPayload } from "@/types"
@@ -83,17 +84,19 @@ async function lockAccount(
   const acc = await prisma.account.update({
     where: { id: accountId, userId },
     data:  { locked: true, lockReason: reason, lockedAt: new Date() },
-    select: { name: true },
+    select: { name: true, type: true },
   })
   const payload: AccountLogPayload = { event: "LOCKED", reason, limitPct, currentPct, auto: true }
   await prisma.accountLog.create({ data: { userId, accountId, event: "LOCKED", payload } })
 
   // Notify the trader (secondary to the lock — never let it break enforcement).
   try {
+    const mode = classifyAccountType(acc.type)
+    if (!mode || mode === "INTERNAL") return
     await emitNotification(prisma, userId, "ACCOUNT_LOCKED", {
-      params:    { name: acc.name, reason: LOCK_REASON_TEXT[reason] ?? reason },
+      params:    { mode, name: acc.name, reason: LOCK_REASON_TEXT[reason] ?? reason },
       sourceId:  accountId,
-      dedupeKey: `lock:${accountId}`,
+      dedupeKey: `lock:${mode}:${accountId}`,
     })
   } catch (err) {
     console.warn("[risk-enforcement] emitNotification failed:", err instanceof Error ? err.message : err)
@@ -250,6 +253,7 @@ export async function reconcileTemporalLock(
   }
 
   const risk = await loadAccountRisk(prisma, userId, account, referenceDate)
+  if (account.locked && isPermanentLockReason(account.lockReason)) return { locked: account.locked, lockReason: account.lockReason }
   if (risk.breach) {
     // Still in breach for the current period → keep locked (reason may have
     // shifted, e.g. weekly cleared but monthly now binds).
@@ -275,6 +279,7 @@ export async function evaluateAndLock(
   if (!hasAnyLimit(account) || account.initialBalance <= 0) return null
 
   const risk = await loadAccountRisk(prisma, userId, account, referenceDate)
+  if (account.locked && isPermanentLockReason(account.lockReason)) return risk.breach
   if (risk.breach) {
     if (!account.locked || account.lockReason !== risk.breach.reason) {
       await lockAccount(prisma, userId, account.id, risk.breach.reason, risk.breach.limitPct, risk.breach.actualPct)

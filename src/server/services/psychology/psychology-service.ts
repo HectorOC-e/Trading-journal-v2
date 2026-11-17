@@ -2,6 +2,8 @@
 // confidence calibration, and longitudinal mood. The scoring lives in the pure
 // domain (domains/analytics/psychology/*); this layer is just I/O.
 
+import type { OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client"
 import { checkinVerdict, type CheckinResult } from "@/domains/analytics/psychology/checkin"
 import { calibration, type CalibrationResult } from "@/domains/analytics/psychology/calibration"
@@ -13,12 +15,13 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 export async function submitCheckin(
   prisma: PrismaClient,
   userId: string,
-  input: { mood: number; energy: number; sleep: number; session?: string | null },
+  input: { mood: number; energy: number; sleep: number; session?: string | null; mode?: OperationalMode },
 ): Promise<CheckinResult & { id: string }> {
   const result = checkinVerdict({ mood: input.mood, energy: input.energy, sleep: input.sleep })
   const row = await prisma.preSessionCheckin.create({
     data: {
       userId,
+      operationalMode: input.mode ?? "REAL",
       date: new Date(isoDay(new Date())),
       session: input.session ?? null,
       mood: Math.max(1, Math.min(5, Math.round(input.mood))),
@@ -33,8 +36,9 @@ export async function submitCheckin(
   // E13 (v3.2): a red pre-session check-in is a salient moment to recall.
   if (result.verdict === "no_go") {
     void recordEpisode(prisma, userId, {
+      operationalMode: input.mode ?? "REAL",
       eventType: "checkin_red",
-      content: `Check-in pre-sesión rojo (no operar): ánimo ${input.mood}, energía ${input.energy}, sueño ${input.sleep}. ${result.reasons.join(" ")}`,
+      content: `[${input.mode ?? "REAL"}] Check-in pre-sesión rojo (no operar): ánimo ${input.mood}, energía ${input.energy}, sueño ${input.sleep}. ${result.reasons.join(" ")}`,
       sourceId: row.id,
     })
   }
@@ -42,9 +46,9 @@ export async function submitCheckin(
 }
 
 /** Today's check-in (or the most recent), for surfacing the verdict. */
-export async function latestCheckin(prisma: PrismaClient, userId: string) {
+export async function latestCheckin(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL") {
   const row = await prisma.preSessionCheckin.findFirst({
-    where: { userId },
+    where: { userId, operationalMode: mode },
     orderBy: { createdAt: "desc" },
     select: { id: true, date: true, mood: true, energy: true, sleep: true, score: true, verdict: true, reasons: true, createdAt: true },
   })
@@ -57,18 +61,19 @@ export async function latestCheckin(prisma: PrismaClient, userId: string) {
   }
 }
 
-export async function getCalibration(prisma: PrismaClient, userId: string): Promise<CalibrationResult> {
+export async function getCalibration(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<CalibrationResult> {
+  const scope = await scopedTradeWhere(prisma, userId, { mode, includeArchived: true })
   const rows = await prisma.trade.findMany({
-    where: { userId, status: "CLOSED", confidenceRating: { not: null } },
+    where: { ...scope, status: "CLOSED", confidenceRating: { not: null } },
     select: { confidenceRating: true, pnl: true },
   })
   return calibration(rows.map((r) => ({ confidenceRating: r.confidenceRating, win: r.pnl != null && Number(r.pnl) > 0 })))
 }
 
-export async function getMoodTrend(prisma: PrismaClient, userId: string): Promise<MoodTrendResult> {
+export async function getMoodTrend(prisma: PrismaClient, userId: string, mode: OperationalMode = "REAL"): Promise<MoodTrendResult> {
   const [sessions, checkins] = await Promise.all([
-    prisma.tradingSessionLog.findMany({ where: { userId }, select: { date: true, preMood: true, energyLevel: true } }),
-    prisma.preSessionCheckin.findMany({ where: { userId }, select: { date: true, mood: true, energy: true } }),
+    prisma.tradingSessionLog.findMany({ where: { userId, operationalMode: mode }, select: { date: true, preMood: true, energyLevel: true } }),
+    prisma.preSessionCheckin.findMany({ where: { userId, operationalMode: mode }, select: { date: true, mood: true, energy: true } }),
   ])
   const samples: MoodSample[] = [
     ...sessions.map((s) => ({ date: isoDay(s.date), mood: s.preMood, energy: s.energyLevel })),

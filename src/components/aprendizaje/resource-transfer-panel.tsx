@@ -2,6 +2,7 @@
 
 import { ArrowRight, TrendingUp, TrendingDown, Minus, Clock } from "lucide-react"
 import { trpc } from "@/lib/trpc/client"
+import { useOperationalMode } from "@/lib/operational-mode-store"
 
 const fmt = (n: number | null) => (n == null ? "—" : `${n.toLocaleString("en-US", { maximumFractionDigits: 2 })}R`)
 
@@ -16,7 +17,8 @@ const LABEL: Record<string, { text: string; color: string; Icon: React.Component
  *  over its linked setups. Honest association (never "cause", FREEZE-D17) + the SRS
  *  cadence nudge from the linked-setup edge (#45). */
 export function ResourceTransferPanel({ resourceId }: { resourceId: string }) {
-  const { data, isLoading } = trpc.learningInsights.transfer.useQuery({ resourceId }, { staleTime: 60_000 })
+  const mode = useOperationalMode(s => s.mode)
+  const { data, isLoading } = trpc.learningInsights.transfer.useQuery({ resourceId, mode }, { staleTime: 60_000 })
 
   if (isLoading || !data) return null
   const t = data.transfer
@@ -24,11 +26,11 @@ export function ResourceTransferPanel({ resourceId }: { resourceId: string }) {
 
   return (
     <div>
-      <p className="text-eyebrow mb-2">Transferencia al trading</p>
+      <p className="text-eyebrow mb-2">Transferencia al trading · {mode}</p>
       <div className="rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] p-3 flex flex-col gap-2">
         {t.label === "insufficient" ? (
           <p className="text-[11.5px] text-[var(--ink-3)] leading-snug">
-            Vincula setups y registra trades antes/después para medir si estudiar esto movió tu edge.
+            {data.missingEvidence ?? "Muestra insuficiente: registra operaciones antes y después de un hito de estudio; Demo/Backtesting necesita una práctica de ejecución fechada."}
           </p>
         ) : (
           <>
@@ -47,7 +49,7 @@ export function ResourceTransferPanel({ resourceId }: { resourceId: string }) {
         {data.reviewSooner && (
           <div className="flex items-start gap-1.5 mt-0.5 rounded-[var(--radius-xs)] px-2 py-1.5" style={{ background: "var(--be-soft)", color: "var(--be)" }}>
             <Clock size={12} className="mt-0.5 shrink-0" />
-            <p className="text-[10.5px] leading-snug">El edge del setup vinculado está decayendo — conviene repasar este material antes (el SRS ya lo adelanta).</p>
+            <p className="text-[10.5px] leading-snug">La señal de {mode} sugiere repasar este material. El calendario global de memoria se mantiene.</p>
           </div>
         )}
       </div>

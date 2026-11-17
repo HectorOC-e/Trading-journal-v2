@@ -3,6 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import { FilterBar } from "@/components/ui/filter-bar"
 import { SegmentedTabs } from "@/components/ui/segmented-tabs"
+import { OperationalComparison } from "@/components/trades/operational-comparison"
+import { MODE_LABELS } from "@/domains/trading/operational-mode"
+import { currencySymbol } from "@/lib/fx"
 import { PracticeToggle } from "@/components/ui/practice-toggle"
 import { TopBar } from "@/components/layout/top-bar"
 import { SkeletonKpiStrip } from "@/components/ui/skeleton"
@@ -17,6 +20,7 @@ import { TabDisciplina } from "./tabs/tab-disciplina"
 import { TabPlaybook }   from "./tabs/tab-playbook"
 import { FileDown } from "lucide-react"
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist"
+import { CapitalOverview } from "./components/capital-overview"
 
 type Tab = "portfolio" | "operador" | "disciplina" | "playbook"
 
@@ -36,7 +40,7 @@ export default function DashboardPage() {
   const [prefsLoaded, setPrefsLoaded] = useState(false)
   const tabDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const { stats, accounts, isLoading, isError } = useDashboardStats(period)
+  const { stats, accounts, isLoading, isError, mode } = useDashboardStats(period)
   const { data: prefs } = trpc.preferences.get.useQuery()
   const updatePrefs = trpc.preferences.update.useMutation({
     onError: () => { /* silent */ },
@@ -120,8 +124,8 @@ export default function DashboardPage() {
   const heroNet = stats.kpis.netPnl ?? 0
   const heroPositive = heroNet >= 0
   const heroNetLabel = heroPositive
-    ? `+$${heroNet.toLocaleString()}`
-    : `-$${Math.abs(heroNet).toLocaleString()}`
+    ? `+${currencySymbol(stats.baseCurrency)}${heroNet.toLocaleString()}`
+    : `-${currencySymbol(stats.baseCurrency)}${Math.abs(heroNet).toLocaleString()}`
   const greeting = (() => {
     const h = new Date().getHours()
     if (h < 12) return "Buenos días"
@@ -156,7 +160,7 @@ export default function DashboardPage() {
           }}
         >
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)]">Net P&L · periodo</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--ink-3)]">Net P&L · {MODE_LABELS[mode]} · periodo</p>
             <p className="num text-[26px] font-bold leading-tight" style={{ color: heroPositive ? "var(--win)" : "var(--loss)" }}>
               {heroNetLabel}
             </p>
@@ -167,7 +171,7 @@ export default function DashboardPage() {
             <p className="text-[11px] text-[var(--ink-2)]"><span className="num font-semibold text-[var(--ink)]">{stats.kpis.total}</span> trades</p>
           </div>
           <button
-            onClick={() => window.open("/dashboard/export", "_blank")}
+            onClick={() => window.open(`/dashboard/export?mode=${mode}&period=${period}`, "_blank", "noopener,noreferrer")}
             className="self-center ml-1 flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel)] text-[var(--ink-2)] hover:text-[var(--ink)] text-[12px] font-medium transition-colors"
           >
             <FileDown size={14} /> PDF
@@ -183,6 +187,11 @@ export default function DashboardPage() {
         />
         <PracticeToggle />
       </div>
+      <OperationalComparison period={period} />
+      <CapitalOverview accounts={stats.accountStats} baseCurrency={stats.baseCurrency} />
+      <p className="mb-4 text-xs text-[var(--ink-3)]">Resultados por fecha de operación. {stats.scope.equityDateBasis === "REALIZATION_DATE" ? "Equity por fecha de realización, con saldo previo al periodo." : "Revisa la base temporal de la curva de equity."} {stats.scope.legacyRealizationFallback ? "Parte del historial legado usa la fecha de operación porque se desconoce su cierre." : ""}</p>
+      {stats.scope.excludedCurrencies.length ? <p className="mb-4 text-xs text-[var(--ink-3)]" role="status">Faltan tipos de cambio para {stats.scope.excludedCurrencies.join(", ")}. Sus importes se excluyen de los totales.</p> : null}
+      {stats.kpis.total === 0 ? <p className="mb-4 text-sm text-[var(--ink-3)]">Sin operaciones en esta modalidad y periodo.</p> : null}
       {tab === "portfolio" && (
         <div className="flex flex-col gap-4">
           <OnboardingChecklist />
@@ -195,6 +204,7 @@ export default function DashboardPage() {
             discipline={stats.discipline}
             accounts={accounts}
             baseCurrency={stats.baseCurrency}
+            scope={stats.scope}
             period={period}
             onPeriodChange={handlePeriodChange}
           />
@@ -211,6 +221,8 @@ export default function DashboardPage() {
           recentTrades={stats.recentTrades}
           executionStats={stats.executionStats}
           accounts={accounts}
+          baseCurrency={stats.baseCurrency}
+          scope={stats.scope}
           period={period}
           onPeriodChange={handlePeriodChange}
         />

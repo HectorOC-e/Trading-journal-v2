@@ -8,6 +8,7 @@ vi.mock("@/server/services/memory/memory-episode-service", () => ({ recordEpisod
 import { memoryHandler } from "@/domains/cognitive/events/handlers/memory-handler"
 
 const COMMITMENT = {
+  operationalMode: "REAL",
   text: "No tomar más de 2 trades por día esta semana",
   metricKey: "tradesPerDayBeyond2",
   comparator: "<=",

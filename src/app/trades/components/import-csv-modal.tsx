@@ -45,6 +45,7 @@ interface ImportCsvModalProps {
 export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
   const [selectedFile, setSelectedFile]   = useState<File | null>(null)
   const [selectedAccount, setSelectedAccount] = useState<string>("")
+  const [marketTimeZone, setMarketTimeZone] = useState("UTC")
   const [state, setState] = useState<ImportState>({ phase: "idle" })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -79,6 +80,7 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
       fd.append("file",      selectedFile)
       fd.append("accountId", selectedAccount)
       fd.append("confirm",   "false")
+      fd.append("marketTimeZone", marketTimeZone)
 
       const res = await fetch("/api/import/mt4", { method: "POST", body: fd })
       if (!res.ok) {
@@ -101,6 +103,7 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
       fd.append("file",      selectedFile)
       fd.append("accountId", selectedAccount)
       fd.append("confirm",   "true")
+      fd.append("marketTimeZone", marketTimeZone)
 
       const res = await fetch("/api/import/mt4", { method: "POST", body: fd })
       if (!res.ok) {
@@ -133,6 +136,7 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
         <div className="flex flex-col gap-5 overflow-y-auto flex-1 min-h-0">
 
           {/* ── Cuenta selector ── */}
+          <label className="text-xs flex flex-col gap-1">Zona horaria de las fechas del archivo<input className="rounded border border-[var(--line)] bg-[var(--panel)] p-2" value={marketTimeZone} disabled={isBusy} onChange={event => { setMarketTimeZone(event.target.value); if (state.phase !== "idle") setState({phase:"idle"}) }} /></label>
           <div>
             <p className="text-eyebrow mb-2">Cuenta *</p>
             {accounts.length === 0 ? (
@@ -144,7 +148,7 @@ export function ImportCsvModal({ open, onOpenChange }: ImportCsvModalProps) {
                     key={acc.id}
                     type="button"
                     disabled={isBusy}
-                    onClick={() => setSelectedAccount(acc.id)}
+                    onClick={() => { setSelectedAccount(acc.id); setMarketTimeZone(acc.timezone ?? "UTC"); if (state.phase !== "idle") setState({phase:"idle"}) }}
                     className={cn(
                       "flex-1 min-w-[140px] text-left rounded-[var(--radius-sm)] p-2.5 border transition-[color,background-color,border-color,box-shadow,transform,opacity]",
                       selectedAccount === acc.id
