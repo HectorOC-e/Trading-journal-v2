@@ -1,5 +1,4 @@
 {
-  "7": "review-summary.tsx",
   "11": "dependencies",
   "12": "monthly-letter.tsx",
   "13": "3. HALLAZGOS POR MÓDULO",
@@ -20,7 +19,6 @@
   "64": "trade-detail-panel.tsx",
   "77": "ADR-003: Memory Privacy Boundary",
   "78": "Trading Journal (project)",
-  "80": "today-service.ts",
   "82": "ARCHITECTURE_FREEZE Canonical Doc",
   "83": "G2 Rules Cutover Design Spec",
   "87": "commitment-service.ts",

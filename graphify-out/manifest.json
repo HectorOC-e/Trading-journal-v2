@@ -3090,9 +3090,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1794801751.469221,
-    "seen": 1794801869.797559,
-    "ast_hash": "9301744eb9e41d74cedc8b029525118b",
+    "mtime": 1794934098.8927703,
+    "seen": 1794934309.3834968,
+    "ast_hash": "04c026dbcc0fff478e9da25c640eb62e",
     "semantic_hash": ""
   },
   "README.md": {
@@ -4485,6 +4485,18 @@
     "mtime": 1794836414.3357415,
     "seen": 1794861230.3688476,
     "ast_hash": "f760e0dddd52fb987fe8cbe7a01650e4",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261117161500_practice_trade_links_practice_fk_index.sql": {
+    "mtime": 1794934098.8967702,
+    "seen": 1794934309.3843722,
+    "ast_hash": "82f6b82f1038f156a22427df40fede32",
+    "semantic_hash": ""
+  },
+  "docs/MANUAL_MUNDOS_OPERATIVOS.md": {
+    "mtime": 1794934272.7249289,
+    "seen": 1794934309.3843784,
+    "ast_hash": "bdd2e7a994593ef57f654366f1e76303",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
