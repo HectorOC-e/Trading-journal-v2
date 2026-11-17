@@ -17,6 +17,8 @@ import {
   aggregateFreezeSignal,
   type OpenPosition,
 } from "@/domains/analytics/risk/correlation"
+import { accountTypesForMode, type OperationalMode } from "@/domains/trading/operational-mode"
+import { scopedTradeWhere } from "@/server/services/trades/operational-scope"
 
 const MC_TRIALS = 5_000
 const DEFAULT_TRADES_PER_SESSION = 4
@@ -147,6 +149,7 @@ function realizedPnlPctLatestDay(
 }
 
 export interface ExposureOverview {
+  scope: { mode: OperationalMode }
   exposure: ReturnType<typeof aggregateExposure>
   freeze: ReturnType<typeof aggregateFreezeSignal>
 }
@@ -167,14 +170,16 @@ export interface ExposureOverview {
 export async function getAggregateExposure(
   prisma: PrismaClient,
   userId: string,
+  mode: OperationalMode = "REAL",
   aggregateCapAmount: number | null = null,
 ): Promise<ExposureOverview> {
+  const scope = await scopedTradeWhere(prisma, userId, { mode, includeArchived: false })
   const [open, accounts] = await Promise.all([
     prisma.trade.findMany({
-      where: { userId, status: "OPEN" },
+      where: { ...scope, status: "OPEN" },
       select: { accountId: true, symbol: true, riskPct: true, direction: true },
     }),
-    prisma.account.findMany({ where: { userId }, select: { id: true, initialBalance: true } }),
+    prisma.account.findMany({ where: { userId, type: { in: accountTypesForMode(mode) }, status: { in: ["ACTIVE", "PAUSED"] } }, select: { id: true, initialBalance: true } }),
   ])
 
   const balanceById = new Map(accounts.map((a) => [a.id, Number(a.initialBalance)]))
@@ -192,5 +197,5 @@ export async function getAggregateExposure(
 
   const exposure = aggregateExposure(positions)
   const freeze = aggregateFreezeSignal({ totalGrossRiskAmount: exposure.totalGrossRiskAmount, aggregateCapAmount })
-  return { exposure, freeze }
+  return { scope: { mode }, exposure, freeze }
 }

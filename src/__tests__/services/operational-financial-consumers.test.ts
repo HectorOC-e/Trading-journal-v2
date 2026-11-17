@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { getInstrumentEdges, getTagEdges } from "@/server/services/analytics/edge-service"
 import { setupsRouter } from "@/server/trpc/routers/setups"
+import { getAggregateExposure } from "@/server/services/risk/risk-service"
 import type { OperationalMode } from "@/domains/trading/operational-mode"
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
@@ -58,4 +59,19 @@ describe.each<OperationalMode>(["REAL", "DEMO", "BACKTEST"])("%s financial consu
     expect(result.playbookSummary?.mostProfitable.netPnl).toBe(15)
     expect(result).toMatchObject({ baseCurrency: "USD", scope: { mode, includeArchived: true, excludedCurrencies: ["BRL"] } })
   })
+})
+
+it("keeps aggregate open-position exposure inside the selected operational world", async () => {
+  const trades = [
+    { accountId: "real", operationalMode: "REAL", symbol: "ES", riskPct: 1, direction: "LONG" },
+    { accountId: "demo", operationalMode: "DEMO", symbol: "NQ", riskPct: 2, direction: "SHORT" },
+  ]
+  const db = {
+    trade: { findMany: vi.fn(async ({ where }) => trades.filter(row => !where.operationalMode || row.operationalMode === where.operationalMode)) },
+    account: { findMany: vi.fn().mockResolvedValue([{ id: "demo", initialBalance: 1000 }]) },
+  }
+  const result = await getAggregateExposure(db as never, "user", "DEMO")
+  expect(db.trade.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ operationalMode: "DEMO" }) }))
+  expect(result.exposure.totalGrossRiskAmount).toBe(20)
+  expect(result.scope).toEqual({ mode: "DEMO" })
 })

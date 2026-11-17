@@ -40,6 +40,8 @@ vi.mock("@/server/services/trades/serializers", () => ({ serializeTrade: (t: unk
 vi.mock("@/server/services/retrieval/pipeline", () => ({ scheduleEmbedding: vi.fn() }))
 
 import { assertTradeable, evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
+import { runRules } from "@/domains/rules/engine"
+import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 import { createTrade, captureEmotion } from "@/server/services/trades/trade-write-service"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
 
@@ -109,6 +111,14 @@ describe("historical capture cannot create live exposure", () => {
       captureContext: "HISTORICAL", marketTimeZone: "America/Tegucigalpa", marketClosedAt: "2024-01-03T07:00:00Z", status: "CLOSED", pnl: 100, riskPct: 50 } as never)
     expect(vi.mocked(db.trade.create).mock.calls[0][0].data).toMatchObject({ riskPct: 1, marketOpenedAt: new Date("2024-01-02T07:00Z"), marketClosedAt: new Date("2024-01-03T07:00Z"), captureContext: "HISTORICAL" })
     vi.mocked(assertTradeable).mockReset()
+  })
+  it("does not apply current rules, locks or commitments to imported history", async () => {
+    const db = mockPrisma({ initialBalance: 1000, closedPnl: 0 })
+    await createTrade(db, USER, { ...INPUT, date: "2024-01-02", openTime: "01:00", entry: 100, stop: 90, size: 1,
+      captureContext: "HISTORICAL", marketTimeZone: "America/Tegucigalpa", marketClosedAt: "2024-01-03T07:00:00Z", status: "CLOSED", pnl: -100 } as never)
+    expect(runRules).not.toHaveBeenCalled()
+    expect(evaluateAndLock).not.toHaveBeenCalled()
+    expect(evaluateRuledCommitmentsOnTrade).not.toHaveBeenCalled()
   })
   it("rejects an OPEN trade falsely declared historical", async () => {
     const db = mockPrisma({ initialBalance: 1000, closedPnl: 0 })

@@ -5,6 +5,7 @@
 import { z } from "zod"
 import { router, protectedProcedure } from "../init"
 import { getRiskOverview, getAggregateExposure } from "@/server/services/risk/risk-service"
+import { operationalModeSchema } from "@/domains/trading/operational-mode"
 
 export const riskRouter = router({
   overview: protectedProcedure
@@ -12,6 +13,6 @@ export const riskRouter = router({
     .query(({ ctx, input }) => getRiskOverview(ctx.prisma, ctx.userId, input.accountId)),
 
   aggregateExposure: protectedProcedure
-    .input(z.object({ aggregateCapAmount: z.number().positive().nullish() }).optional())
-    .query(({ ctx, input }) => getAggregateExposure(ctx.prisma, ctx.userId, input?.aggregateCapAmount ?? null)),
+    .input(z.object({ mode: operationalModeSchema.default("REAL"), aggregateCapAmount: z.number().positive().nullish() }).optional())
+    .query(({ ctx, input }) => getAggregateExposure(ctx.prisma, ctx.userId, input?.mode ?? "REAL", input?.aggregateCapAmount ?? null)),
 })

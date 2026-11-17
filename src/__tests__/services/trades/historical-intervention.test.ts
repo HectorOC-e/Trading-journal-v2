@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-vi.mock("@/domains/trading/services/risk-enforcement",()=>({assertTradeable:async()=>{},evaluateAndLock:async()=>null}))
+vi.mock("@/domains/trading/services/risk-enforcement",()=>({assertTradeable:vi.fn(),evaluateAndLock:vi.fn().mockResolvedValue(null)}))
 vi.mock("@/domains/rules/engine",()=>({runRules:async()=>({blocked:false,addTags:[],removeTags:[]})}))
-vi.mock("@/server/services/behavior/commitment-service",()=>({evaluateRuledCommitmentsOnTrade:async()=>{}}))
+vi.mock("@/server/services/behavior/commitment-service",()=>({evaluateRuledCommitmentsOnTrade:vi.fn().mockResolvedValue(undefined)}))
 vi.mock("@/domains/analytics/services/analytics-cache",()=>({isCacheEnabled:()=>false,invalidateCache:async()=>{}}))
 vi.mock("@/server/services/retrieval/pipeline",()=>({scheduleEmbedding:()=>{}}))
 vi.mock("@/server/services/trades/serializers",()=>({serializeTrade:(trade:unknown)=>trade}))
 vi.mock("@/server/services/memory/memory-episode-service",()=>({recordEpisode:async()=>{}}))
 import { addTradeEvent, closeTrade } from "@/server/services/trades/trade-write-service"
+import { evaluateAndLock } from "@/domains/trading/services/risk-enforcement"
+import { evaluateRuledCommitmentsOnTrade } from "@/server/services/behavior/commitment-service"
 
-beforeEach(()=>{vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-16T00:30:00Z"))})
+beforeEach(()=>{vi.clearAllMocks();vi.useFakeTimers();vi.setSystemTime(new Date("2026-11-16T00:30:00Z"))})
 afterEach(()=>vi.useRealTimers())
 function journal(context:"LIVE"|"HISTORICAL",operation:"close"|"partial") {
   const account={id:"a",type:"BACKTEST",timezone:"America/Tegucigalpa",initialBalance:1000,locked:false,lockReason:"",ddDailyPct:null,ddTotalPct:null}
@@ -31,6 +33,8 @@ it.each(["close","partial"] as const)("does not turn a historical %s into a pers
   if(operation==="close") await closeTrade(store.db,"u",{id:"t",closePrice:90,commission:0,captureContext:"HISTORICAL",marketClosedAt:"2024-01-04T07:00:00Z"})
   else await addTradeEvent(store.db,"u",{tradeId:"t",type:"PARTIAL_CLOSE",price:90,contracts:1,notes:"Replay",timestamp:"2024-01-03T07:00:00Z"})
   expect(store.alerts).toEqual([])
+  expect(evaluateAndLock).not.toHaveBeenCalled()
+  expect(evaluateRuledCommitmentsOnTrade).not.toHaveBeenCalled()
 })
 it.each(["close","partial"] as const)("uses the current account-local day for LIVE %s even with an old Trade.date",async operation=>{
   const store=journal("LIVE",operation)

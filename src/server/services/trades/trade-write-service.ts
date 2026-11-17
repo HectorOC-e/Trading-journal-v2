@@ -259,7 +259,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   if (effectiveTags.length) await ensureTagRows(prisma, userId, effectiveTags)
 
   // User automations — POST-trade (best-effort; never break the write).
-  try {
+  if (!historical) try {
     const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_CREATED"
     const postRules = operationalMode == null || operationalMode === "INTERNAL" ? { addTags: [] as string[], removeTags: [] as string[] } : await runRules(prisma, userId, postTrigger, async () =>
       buildContext(prisma, userId, { id: trade.accountId, initialBalance: Number(account.initialBalance) }, {
@@ -281,7 +281,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
 
   // Post-trade: a trade registered already-closed can itself breach a limit
   // → auto-lock immediately (locked was just cleared/false by assertTradeable).
-  if (input.status === "CLOSED" && input.pnl != null && !(historical && account.locked)) {
+  if (!historical && input.status === "CLOSED" && input.pnl != null) {
     await evaluateAndLock(prisma, userId, { ...enforceAccount, locked: false, lockReason: "" }, riskDate)
   }
 
@@ -294,7 +294,7 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
   scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
   scheduleEmbedding(prisma, userId, "trade_plans", trade.id, input.planNotes ?? "")
   // Continuous eval of rule-backed commitments (S5, best-effort).
-  await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
+  if (!historical) await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
   return serializeTrade(full)
 }
 
@@ -411,11 +411,12 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
     }
     return write(tx, snapshots)
   }) : await write(prisma)
+  const historical = trade.captureContext === "HISTORICAL"
 
   if (input.tags?.length) await ensureTagRows(prisma, userId, input.tags)
 
   // User automations — post-update (best-effort; never break the write).
-  try {
+  if (!historical) try {
     const postTrigger = trade.status === "CLOSED" ? "TRADE_CLOSED" : "TRADE_UPDATED"
     const dateStr = (trade.date as Date).toISOString().slice(0, 10)
     const operationalMode = classifyAccountType(trade.account.type)
@@ -441,7 +442,7 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
   }
 
   // Editing realized P&L can push the account over a limit → re-evaluate lock.
-  if (input.pnl !== undefined || temporalEdit) {
+  if (!historical && (input.pnl !== undefined || temporalEdit)) {
     const a = trade.account
     if (!(trade.captureContext === "HISTORICAL" && a.locked)) await evaluateAndLock(prisma, userId, {
       id:             a.id,
@@ -459,7 +460,7 @@ export async function updateTrade(prisma: PrismaClient, userId: string, input: U
   }
   if (input.notes !== undefined) scheduleEmbedding(prisma, userId, "trade_notes", trade.id, input.notes ?? "")
   if (input.planNotes !== undefined) scheduleEmbedding(prisma, userId, "trade_plans", trade.id, input.planNotes ?? "")
-  await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
+  if (!historical) await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
   return serializeTrade(trade)
 }
 
@@ -548,7 +549,7 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
     },
   })
   let breach: Awaited<ReturnType<typeof evaluateAndLock>> = null
-  if (acct && !(updated.captureContext === "HISTORICAL" && acct.locked)) {
+  if (acct && updated.captureContext === "LIVE") {
     breach = await evaluateAndLock(prisma, userId, {
       id:             trade.accountId,
       type:           acct.type,
@@ -565,7 +566,7 @@ export async function closeTrade(prisma: PrismaClient, userId: string, input: Cl
 
   if (isCacheEnabled()) await invalidateCache(prisma, userId)
   // Continuous eval of rule-backed commitments (S5, best-effort).
-  await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
+  if (updated.captureContext === "LIVE") await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
   // S7 fast-path: realize losses → run the intervention engine (best-effort, ≤2s).
   // The row is persisted here; the client reads it via intervention.active.
   if (updated.captureContext === "LIVE") {
@@ -680,10 +681,10 @@ export async function addTradeEvent(prisma: PrismaClient, userId: string, input:
   })
   if (realized) {
     const a = trade.account
-    if (a && !(trade.captureContext === "HISTORICAL" && a.locked)) await evaluateAndLock(prisma, userId, { id: trade.accountId, type: a.type, ddModel: a.ddModel, initialBalance: Number(a.initialBalance), locked: a.locked, lockReason: a.lockReason,
+    if (a && trade.captureContext === "LIVE") await evaluateAndLock(prisma, userId, { id: trade.accountId, type: a.type, ddModel: a.ddModel, initialBalance: Number(a.initialBalance), locked: a.locked, lockReason: a.lockReason,
       ddDailyPct: a.ddDailyPct == null ? null : Number(a.ddDailyPct), ddWeeklyPct: a.ddWeeklyPct == null ? null : Number(a.ddWeeklyPct), ddMonthlyPct: a.ddMonthlyPct == null ? null : Number(a.ddMonthlyPct), ddTotalPct: a.ddTotalPct == null ? null : Number(a.ddTotalPct) }, localDateISO(new Date(), a.timezone ?? "UTC"))
     if (isCacheEnabled()) await invalidateCache(prisma, userId)
-    await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
+    if (trade.captureContext === "LIVE") await evaluateRuledCommitmentsOnTrade(prisma, userId, { accountId: trade.accountId, tradeId: trade.id }).catch(() => {})
     if (trade.captureContext === "LIVE") {
       await runIntervention(prisma, userId, trade.accountId, localDateISO(new Date(), a.timezone ?? "UTC")).catch(() => {})
     }
