@@ -4,20 +4,26 @@ import { replacePracticeTradeLinks } from '@/server/services/learning/practice-t
 import { learningPracticesRouter } from '@/server/trpc/routers/learning-practices';
 import { randomUUID } from 'node:crypto';
 let owner:string,other:string;
+const RLS_TABLES=['accounts','trades','learning_practices'] as const;
 beforeAll(async()=>{
-  for(const table of ['accounts','trades','learning_practices']) {
+  for(const table of RLS_TABLES) {
     const rows=await prisma.$queryRawUnsafe<{relrowsecurity:boolean}[]>(`SELECT relrowsecurity FROM pg_class WHERE oid='public.${table}'::regclass`);
-    if(!rows[0].relrowsecurity) {
-      await prisma.$executeRawUnsafe(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
-      await prisma.$executeRawUnsafe(`CREATE POLICY qa_owned_rows ON public.${table} TO authenticated USING ((select auth.uid())=user_id) WITH CHECK ((select auth.uid())=user_id)`);
-    }
+    if(!rows[0].relrowsecurity) await prisma.$executeRawUnsafe(`ALTER TABLE public.${table} ENABLE ROW LEVEL SECURITY`);
+    // Fresh Supabase has a read-only policy for learning_practices. The trigger
+    // locks that row, so this integration fixture needs an explicit temporary
+    // owner policy even when RLS was already enabled.
+    await prisma.$executeRawUnsafe(`DROP POLICY IF EXISTS qa_owned_rows ON public.${table}`);
+    await prisma.$executeRawUnsafe(`CREATE POLICY qa_owned_rows ON public.${table} TO authenticated USING ((select auth.uid())=user_id) WITH CHECK ((select auth.uid())=user_id)`);
     await prisma.$executeRawUnsafe(`GRANT SELECT,INSERT,UPDATE,DELETE ON public.${table} TO authenticated`);
   }
   await prisma.$executeRawUnsafe('GRANT USAGE ON SCHEMA public,auth TO authenticated');
 });
 beforeEach(async()=>{owner=await makeUser();other=await makeUser()});
 afterEach(async()=>{await dropUser(owner);await dropUser(other)});
-afterAll(async()=>prisma.$disconnect());
+afterAll(async()=>{
+  for(const table of RLS_TABLES) await prisma.$executeRawUnsafe(`DROP POLICY IF EXISTS qa_owned_rows ON public.${table}`);
+  await prisma.$disconnect();
+});
 async function trade(type='BACKTEST',userId=owner) {
  const account=await prisma.account.create({data:{userId,name:'Practice QA',broker:'QA',type,initialBalance:1000,allowedSymbols:[]}});
  return prisma.trade.create({data:{userId,accountId:account.id,direction:'LONG',symbol:'EURUSD',entry:1.1,stop:1.09,target:1.12,size:1,date:new Date('2024-01-01'),openTime:'09:30',session:'London',tags:[],screenshotUrls:[],status:'CLOSED',pnl:100}});
