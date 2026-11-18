@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   create: vi.fn(),
   updatePolicy: vi.fn(),
   sync: vi.fn(),
+  explain: vi.fn(),
   retry: vi.fn(),
   invalidate: vi.fn(),
 }))
@@ -33,6 +34,11 @@ vi.mock("@/lib/trpc/client", () => ({
       }) },
       syncValidationNotifications: { useMutation: () => ({
         mutate: state.sync,
+        isPending: false,
+        error: null,
+      }) },
+      validationExplanation: { useMutation: (options: { onSuccess?: (data: { text: string; stage: string }) => void }) => ({
+        mutate: (input: unknown) => { state.explain(input); options.onSuccess?.({ text: "Faltan ejemplos y cobertura del checklist.", stage: (input as { stage: string }).stage }) },
         isPending: false,
         error: null,
       }) },
@@ -168,6 +174,31 @@ describe("strategy validation route", () => {
       expectedCurrentStage: "BACKTEST",
       exceptionReason: "Continuaré con supervisión y una muestra ampliada.",
     }))
+  })
+
+  it("offers a safe practice draft and a transient AI explanation for a pending criterion", async () => {
+    state.query = { data: overview("BACKTEST", "INSUFFICIENT") }
+    render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+
+    const practice = screen.getByRole("link", { name: /crear práctica/i })
+    const href = new URL(practice.getAttribute("href") ?? "", "https://tjournalx.test")
+    expect(href.pathname).toBe("/aprendizaje")
+    expect(Object.fromEntries(href.searchParams)).toEqual({
+      tab: "practicas",
+      register: "1",
+      validationSetup: "550e8400-e29b-41d4-a716-446655440002",
+      validationStage: "BACKTEST",
+      validationTemplate: "sample",
+      mode: "BACKTEST",
+    })
+    expect(href.search).not.toContain("objetivo")
+
+    fireEvent.click(screen.getByRole("button", { name: /explicar con ia/i }))
+    expect(state.explain).toHaveBeenCalledWith({
+      setupId: "550e8400-e29b-41d4-a716-446655440002",
+      stage: "BACKTEST",
+    })
+    expect(await screen.findByText("Faltan ejemplos y cobertura del checklist.")).toBeInTheDocument()
   })
 
   it("labels Real as continuous monitoring and never offers completion", () => {

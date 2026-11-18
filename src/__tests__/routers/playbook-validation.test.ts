@@ -8,8 +8,10 @@ const services = vi.hoisted(() => ({
   buildValidationEvidenceSignature: vi.fn(() => "hypothesis-signature"),
 }))
 const notifications = vi.hoisted(() => ({ emitNotification: vi.fn() }))
+const validationAi = vi.hoisted(() => ({ generateValidationExplanation: vi.fn() }))
 vi.mock("@/server/services/setups/validation-service", () => services)
 vi.mock("@/server/services/notifications/emit", () => notifications)
+vi.mock("@/server/services/setups/validation-ai-service", () => validationAi)
 
 import { playbookRouter } from "@/server/trpc/routers/playbook"
 
@@ -86,6 +88,7 @@ beforeEach(() => {
   services.getValidationPolicy.mockResolvedValue(policy)
   services.buildValidationEvidenceSignature.mockReturnValue("hypothesis-signature")
   notifications.emitNotification.mockResolvedValue({ id: "notification-1" })
+  validationAi.generateValidationExplanation.mockResolvedValue({ text: "Explicación", stage: "BACKTEST", mode: "BACKTEST" })
 })
 
 describe("playbook validation router", () => {
@@ -244,5 +247,11 @@ describe("playbook validation router", () => {
     services.getSetupValidationOverview.mockResolvedValue(data)
     await expect(caller.syncValidationNotifications({ setupId, evidenceSignature: "insufficient-signature" })).resolves.toEqual({ emitted: false })
     expect(notifications.emitNotification).not.toHaveBeenCalled()
+  })
+
+  it("returns a transient owned validation explanation", async () => {
+    const { caller } = fixture()
+    await expect(caller.validationExplanation({ setupId, stage: "BACKTEST" })).resolves.toMatchObject({ text: "Explicación" })
+    expect(validationAi.generateValidationExplanation).toHaveBeenCalledWith(expect.anything(), userId, setupId, "BACKTEST")
   })
 })

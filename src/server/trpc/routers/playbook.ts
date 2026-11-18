@@ -15,6 +15,7 @@ import {
 import { validateValidationTransition, type ValidationStage } from "@/domains/analytics/setups/validation"
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
 import { emitNotification } from "@/server/services/notifications/emit"
+import { generateValidationExplanation } from "@/server/services/setups/validation-ai-service"
 
 const setupIdentity = z.object({ setupId: z.string().uuid() })
 const mode = z.enum(["REAL", "DEMO", "BACKTEST"])
@@ -130,6 +131,10 @@ export const playbookRouter = router({
       }
       return { emitted: false }
     }),
+
+  validationExplanation: protectedProcedure
+    .input(setupIdentity.extend({ stage }))
+    .mutation(({ ctx, input }) => generateValidationExplanation(ctx.prisma, ctx.userId, input.setupId, input.stage)),
 
   updateValidationPolicy: protectedProcedure
     .input(policyUpdate)

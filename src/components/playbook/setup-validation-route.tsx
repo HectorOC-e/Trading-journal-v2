@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowRight, Settings2 } from "lucide-react"
+import { ArrowRight, BookOpenCheck, Settings2, Sparkles } from "lucide-react"
 import { SetupValidationDecisionDialog, type ValidationDecisionDraft } from "./setup-validation-decision-dialog"
 import { SetupValidationStageCard } from "./setup-validation-stage-card"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,15 @@ const ACTION_LABELS = {
   RETURN_TO_REVIEW: "Retorno a revisión",
 } as const
 
+function practiceTemplate(criterion: string) {
+  if (criterion === "closedCount") return "sample"
+  if (criterion === "rCoverage") return "r_coverage"
+  if (criterion === "checklistCoverage" || criterion === "checklistCompliance" || criterion === "checklist") return "checklist"
+  if (criterion === "distinctWeeks") return "weeks"
+  if (["market", "direction", "description", "expectancy"].includes(criterion)) return "definition"
+  return "review"
+}
+
 function statusFor(stage: ValidationStage, overview: Overview) {
   const currentIndex = STAGES.findIndex((item) => item.value === overview.state.currentStage)
   const stageIndex = STAGES.findIndex((item) => item.value === stage)
@@ -84,6 +93,7 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
   const [stageSelection, setStageSelection] = useState<{ setupId: string; stage: ValidationStage } | null>(null)
   const [decisionOpen, setDecisionOpen] = useState(false)
   const [policyOpen, setPolicyOpen] = useState(false)
+  const [explanation, setExplanation] = useState<{ stage: ValidationStage; text: string } | null>(null)
   const synchronizedSignatures = useRef(new Set<string>())
 
   const refresh = async () => {
@@ -106,6 +116,9 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
     },
   })
   const syncNotifications = trpc.playbook.syncValidationNotifications.useMutation()
+  const explain = trpc.playbook.validationExplanation.useMutation({
+    onSuccess: (result) => setExplanation({ stage: result.stage, text: result.text }),
+  })
   const currentStageForSync = overview?.state.currentStage
   const currentSignature = currentStageForSync === "HYPOTHESIS"
     ? overview?.hypothesis.signature
@@ -137,6 +150,18 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
   const currentEvidence = overview.state.currentStage === "HYPOTHESIS"
     ? overview.hypothesis
     : overview.stages[overview.state.currentStage]
+  const missingCriterion = evidence.criteria.find((criterion) => !criterion.met)
+  const practiceHref = missingCriterion ? (() => {
+    const params = new URLSearchParams({
+      tab: "practicas",
+      register: "1",
+      validationSetup: setupId,
+      validationStage: selectedStage,
+      validationTemplate: practiceTemplate(missingCriterion.key),
+    })
+    if (selectedStage !== "HYPOTHESIS") params.set("mode", selectedStage)
+    return `/aprendizaje?${params.toString()}`
+  })() : null
 
   return (
     <section className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--panel)] p-4" aria-labelledby={`validation-route-${setupId}`}>
@@ -177,6 +202,31 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
 
       <div id={`validation-panel-${setupId}`} role="tabpanel" className="mt-3">
         <SetupValidationStageCard evidence={evidence} status={evidenceStatusFor(selectedStage, overview)} />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {practiceHref ? (
+            <a
+              href={practiceHref}
+              className="inline-flex h-7 items-center justify-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--line)] px-3 text-xs font-medium text-[var(--ink-2)] transition-colors hover:border-[var(--line-2)] hover:bg-[var(--chip)] hover:text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            >
+              <BookOpenCheck size={13} />Crear práctica
+            </a>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            loading={explain.isPending}
+            onClick={() => explain.mutate({ setupId, stage: selectedStage })}
+          >
+            <Sparkles size={13} />Explicar con IA
+          </Button>
+        </div>
+        {explain.error ? <p role="alert" className="mt-2 text-xs text-[var(--loss)]">{explain.error.message}</p> : null}
+        {explanation?.stage === selectedStage ? (
+          <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--accent)]/20 bg-[var(--accent-soft)] p-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--accent)]">Explicación orientativa</p>
+            <p className="mt-1 whitespace-pre-wrap text-[11px] leading-relaxed text-[var(--ink-2)]">{explanation.text}</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-4 overflow-x-auto">

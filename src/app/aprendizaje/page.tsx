@@ -18,7 +18,7 @@ import { LinkSetupModal } from "./modals/link-setup-modal"
 import { AddEditResourceModal } from "./modals/add-edit-resource-modal"
 import { ProgresoSections } from "./components/progreso-sections"
 import { HoyTab } from "./components/hoy-tab"
-import { PracticesTab, PracticeWeekSummary } from "./components/practices-tab"
+import { PracticesTab, PracticeWeekSummary, type ValidationPracticeIntent } from "./components/practices-tab"
 import { ProfileClock } from "./components/profile-clock"
 import { useLearningCalendar } from "./hooks/use-learning-calendar"
 import { useResourceActions } from "./hooks/use-resource-actions"
@@ -46,6 +46,7 @@ export default function AprendizajePage() {
   const [practiceRegister, setPracticeRegister] = useState(false)
   const [practicePlanId, setPracticePlanId] = useState<string | undefined>()
   const [practiceTradeIds, setPracticeTradeIds] = useState<string[]>([])
+  const [practiceValidationIntent, setPracticeValidationIntent] = useState<ValidationPracticeIntent | undefined>()
   const setMode = useOperationalMode(s => s.setMode)
   const [tab, setTab] = useState<Tab>("hoy")
   // Deep-link via ?tab= (client-only — avoids useSearchParams Suspense requirement)
@@ -57,8 +58,17 @@ export default function AprendizajePage() {
       const mode = params.get("mode")
       if (mode === "REAL" || mode === "DEMO" || mode === "BACKTEST") setMode(mode)
       setPracticeTradeIds((params.get("tradeIds") ?? "").split(",").filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)).slice(0,50))
+      const validationSetup = params.get("validationSetup")
+      const validationStage = params.get("validationStage")
+      const validationTemplate = params.get("validationTemplate")
+      const validStage = validationStage === "HYPOTHESIS" || validationStage === "BACKTEST" || validationStage === "DEMO" || validationStage === "REAL"
+      const validTemplate = validationTemplate === "sample" || validationTemplate === "r_coverage" || validationTemplate === "checklist" || validationTemplate === "weeks" || validationTemplate === "definition" || validationTemplate === "review"
+      const validationIntent = validationSetup && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validationSetup) && validStage && validTemplate
+        ? { setupId: validationSetup, stage: validationStage, template: validationTemplate } as ValidationPracticeIntent
+        : undefined
+      setPracticeValidationIntent(validationIntent)
       setPracticeRegister(params.get("register") === "1")
-      if (params.get("register") === "1") {
+      if (params.get("register") === "1" && !validationIntent) {
         const url = new URL(window.location.href); url.searchParams.delete("register"); window.history.replaceState(null, "", url)
       }
       setPracticePlanId(params.get("plannedSessionId") || undefined)
@@ -225,6 +235,7 @@ export default function AprendizajePage() {
               if (t.id === "practicas") {
                 setPracticeRegister(false);
                 setPracticeResource(undefined);
+                setPracticeValidationIntent(undefined);
               }
               selectTab(t.id);
             }}
@@ -243,7 +254,7 @@ export default function AprendizajePage() {
         ))}
       </div>
 
-      {tab === "practicas" ? <PracticesTab key={practicePlanId ?? `practice-list:${practiceTradeIds.join(",")}`} initialTradeIds={practiceTradeIds} initialResourceId={practiceResource} registerOnOpen={practiceRegister} plannedSessionId={practicePlanId} /> : isLoading ? (
+      {tab === "practicas" ? <PracticesTab key={practicePlanId ?? practiceValidationIntent?.setupId ?? `practice-list:${practiceTradeIds.join(",")}`} initialTradeIds={practiceTradeIds} initialResourceId={practiceResource} registerOnOpen={practiceRegister} plannedSessionId={practicePlanId} initialValidationIntent={practiceValidationIntent} /> : isLoading ? (
         <div className="flex items-center justify-center py-20">
           <p className="text-sm text-[var(--ink-3)]">Cargando recursos…</p>
         </div>
