@@ -1,7 +1,7 @@
-# Graph Report - tjournalx-migration-history-hotfix  (2026-11-17)
+# Graph Report - tjournalx-migration-history-hotfix  (2026-11-18)
 
 ## Corpus Check
-- 750 files · ~506,997 words
+- 750 files · ~507,020 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 12 file(s) not represented in the graph (top: (none) 5, .css 2, .example 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `85f932ad`
+- Built from commit: `328a537d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
