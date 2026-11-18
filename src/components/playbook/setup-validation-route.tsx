@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowRight, Settings2 } from "lucide-react"
 import { SetupValidationDecisionDialog, type ValidationDecisionDraft } from "./setup-validation-decision-dialog"
 import { SetupValidationStageCard } from "./setup-validation-stage-card"
@@ -11,12 +11,13 @@ import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
 
 type EvidenceView = StageEvidence & {
+  signature: string
   practiceContext?: { executedPractices: number; reviewPractices: number; captures: number }
 }
 
 type Overview = {
   policy: ValidationPolicy
-  hypothesis: StageEvidence
+  hypothesis: StageEvidence & { signature: string }
   stages: Record<"BACKTEST" | "DEMO" | "REAL", EvidenceView>
   comparison: Array<{
     mode: "BACKTEST" | "DEMO" | "REAL"
@@ -83,6 +84,7 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
   const [stageSelection, setStageSelection] = useState<{ setupId: string; stage: ValidationStage } | null>(null)
   const [decisionOpen, setDecisionOpen] = useState(false)
   const [policyOpen, setPolicyOpen] = useState(false)
+  const synchronizedSignatures = useRef(new Set<string>())
 
   const refresh = async () => {
     await Promise.all([
@@ -103,6 +105,20 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
       await refresh()
     },
   })
+  const syncNotifications = trpc.playbook.syncValidationNotifications.useMutation()
+  const currentStageForSync = overview?.state.currentStage
+  const currentSignature = currentStageForSync === "HYPOTHESIS"
+    ? overview?.hypothesis.signature
+    : currentStageForSync
+      ? overview?.stages[currentStageForSync].signature
+      : undefined
+  useEffect(() => {
+    if (!currentSignature) return
+    const key = `${setupId}:${currentSignature}`
+    if (synchronizedSignatures.current.has(key)) return
+    synchronizedSignatures.current.add(key)
+    syncNotifications.mutate({ setupId, evidenceSignature: currentSignature })
+  }, [currentSignature, setupId, syncNotifications])
 
   if (overviewQuery.isLoading) {
     return <div role="status" className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--panel-2)] p-4 text-xs text-[var(--ink-3)]">Cargando ruta de validación…</div>

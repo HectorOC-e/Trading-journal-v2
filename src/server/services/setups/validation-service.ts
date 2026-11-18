@@ -266,7 +266,7 @@ export async function getSetupValidationOverview(
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   })
   const history = storedHistory.map(domainDecision)
-  const hypothesis = evaluateValidationStage({
+  const hypothesisEvidence = evaluateValidationStage({
     stage: "HYPOTHESIS",
     policy: context.policy,
     definition: {
@@ -279,6 +279,21 @@ export async function getSetupValidationOverview(
     trades: [],
     checklist: new Map(),
   })
+  const hypothesis = {
+    ...hypothesisEvidence,
+    signature: buildValidationEvidenceSignature({
+      schemaVersion: 1,
+      setup: { id: context.setup.id, updatedAt: context.setup.updatedAt, edgeUpdatedAt: context.setup.edgeUpdatedAt },
+      definition: {
+        market: context.setup.market,
+        direction: context.setup.direction,
+        description: context.setup.description,
+        expectedAvgR: num(context.setup.expectedAvgR),
+        checklistItemCount: context.setup.aplusChecklist.length + context.setup.standardChecklist.length,
+      },
+      evidence: hypothesisEvidence,
+    }, context.policy.version),
+  }
   return {
     setup: { id: context.setup.id, name: context.setup.name },
     policy: context.row,

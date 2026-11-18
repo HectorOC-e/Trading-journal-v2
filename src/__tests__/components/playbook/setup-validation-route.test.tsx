@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react"
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { SetupValidationRoute } from "@/components/playbook/setup-validation-route"
 
@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   query: {} as Record<string, unknown>,
   create: vi.fn(),
   updatePolicy: vi.fn(),
+  sync: vi.fn(),
   retry: vi.fn(),
   invalidate: vi.fn(),
 }))
@@ -27,6 +28,11 @@ vi.mock("@/lib/trpc/client", () => ({
       }) },
       updateValidationPolicy: { useMutation: (options: { onSuccess?: () => void }) => ({
         mutate: (input: unknown) => { state.updatePolicy(input); options.onSuccess?.() },
+        isPending: false,
+        error: null,
+      }) },
+      syncValidationNotifications: { useMutation: () => ({
+        mutate: state.sync,
         isPending: false,
         error: null,
       }) },
@@ -81,7 +87,7 @@ function overview(currentStage = "BACKTEST", verdict = "ELIGIBLE") {
   return {
     setup: { id: "550e8400-e29b-41d4-a716-446655440002", name: "Ruptura" },
     policy,
-    hypothesis: { ...evidence("HYPOTHESIS", null), closedCount: 0 },
+    hypothesis: { ...evidence("HYPOTHESIS", null), closedCount: 0, signature: "hypothesis-signature" },
     stages: {
       BACKTEST: evidence("BACKTEST", "BACKTEST", verdict),
       DEMO: evidence("DEMO", "DEMO", "INSUFFICIENT"),
@@ -125,6 +131,16 @@ describe("strategy validation route", () => {
     expect(screen.getAllByText("Real").length).toBeGreaterThan(0)
     expect(screen.getAllByText("—").length).toBeGreaterThan(0)
     expect(screen.queryByText(/total combinado|p&l total/i)).not.toBeInTheDocument()
+  })
+
+  it("synchronizes notifications at most once for the current evidence signature", async () => {
+    const view = render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+    await waitFor(() => expect(state.sync).toHaveBeenCalledWith({
+      setupId: "550e8400-e29b-41d4-a716-446655440002",
+      evidenceSignature: "BACKTEST-signature",
+    }))
+    view.rerender(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+    expect(state.sync).toHaveBeenCalledTimes(1)
   })
 
   it("changes the evidence panel without changing the financial scope", () => {

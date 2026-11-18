@@ -132,6 +132,7 @@ describe("setup validation service", () => {
       expect.objectContaining({ mode: "REAL", closedCount: 1, expectancyR: null }),
     ])
     expect(overview?.state).toEqual({ currentStage: "DEMO", suspended: false })
+    expect(overview?.hypothesis.signature).toMatch(/^[a-f0-9]{64}$/)
     expect(overview).not.toHaveProperty("total")
     expect(overview).not.toHaveProperty("netPnl")
   })

@@ -7,7 +7,6 @@ import { TRPCError } from "@trpc/server"
 import { router, protectedProcedure } from "../init"
 import { getSetupPlaybook } from "@/server/services/setups/playbook-service"
 import {
-  buildValidationEvidenceSignature,
   getSetupValidationEvidence,
   getSetupValidationHistory,
   getSetupValidationOverview,
@@ -15,6 +14,7 @@ import {
 } from "@/server/services/setups/validation-service"
 import { validateValidationTransition, type ValidationStage } from "@/domains/analytics/setups/validation"
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma/client"
+import { emitNotification } from "@/server/services/notifications/emit"
 
 const setupIdentity = z.object({ setupId: z.string().uuid() })
 const mode = z.enum(["REAL", "DEMO", "BACKTEST"])
@@ -55,6 +55,19 @@ function modeForStage(value: ValidationStage) {
   return value === "HYPOTHESIS" ? null : value
 }
 
+const stageLabel: Record<ValidationStage, string> = {
+  HYPOTHESIS: "Hipótesis",
+  BACKTEST: "Backtesting",
+  DEMO: "Demo",
+  REAL: "Real",
+}
+
+const nextStage: Partial<Record<ValidationStage, ValidationStage>> = {
+  HYPOTHESIS: "BACKTEST",
+  BACKTEST: "DEMO",
+  DEMO: "REAL",
+}
+
 export const playbookRouter = router({
   setup: protectedProcedure
     .input(z.object({ setupId: z.string().uuid(), scope: z.enum(["REAL", "DEMO", "BACKTEST"]).default("REAL") }))
@@ -75,6 +88,48 @@ export const playbookRouter = router({
   validationHistory: protectedProcedure
     .input(setupIdentity)
     .query(async ({ ctx, input }) => await getSetupValidationHistory(ctx.prisma, ctx.userId, input.setupId) ?? notFound()),
+
+  syncValidationNotifications: protectedProcedure
+    .input(setupIdentity.extend({ evidenceSignature: z.string().min(1).max(256) }))
+    .mutation(async ({ ctx, input }) => {
+      const overview = await getSetupValidationOverview(ctx.prisma, ctx.userId, input.setupId)
+      if (!overview) notFound()
+      const currentStage = overview.state.currentStage as ValidationStage
+      const evidence = currentStage === "HYPOTHESIS" ? overview.hypothesis : overview.stages[currentStage]
+      if (evidence.signature !== input.evidenceSignature) {
+        throw new TRPCError({ code: "CONFLICT", message: "La evidencia cambió. Actualiza la ruta antes de sincronizar avisos." })
+      }
+
+      const href = `/playbook?highlight=${input.setupId}`
+      const dedupeKey = `setup-validation:${input.setupId}:${currentStage}:${evidence.verdict}:${evidence.signature}`
+      if (evidence.verdict === "ELIGIBLE" && currentStage !== "REAL") {
+        const target = nextStage[currentStage]
+        if (!target) return { emitted: false }
+        const notification = await emitNotification(ctx.prisma, ctx.userId, "SETUP_STAGE_ELIGIBLE", {
+          params: { name: overview.setup.name, stage: stageLabel[currentStage], nextStage: stageLabel[target] },
+          sourceId: input.setupId,
+          href,
+          dedupeKey,
+        })
+        return { emitted: notification !== null }
+      }
+      if (evidence.verdict === "WARNING") {
+        const warnings = "warnings" in evidence ? evidence.warnings : []
+        const warning = warnings.includes("EDGE_DECAY") && warnings.includes("DEFINITION_DRIFT")
+          ? "deterioro del edge y desvío de definición"
+          : warnings.includes("EDGE_DECAY")
+            ? "deterioro del edge"
+            : "desvío de definición"
+        const notification = await emitNotification(ctx.prisma, ctx.userId, "SETUP_VALIDATION_WARNING", {
+          params: { name: overview.setup.name, stage: stageLabel[currentStage], warning },
+          sourceId: input.setupId,
+          href,
+          dedupeKey,
+        })
+        return { emitted: notification !== null }
+      }
+      return { emitted: false }
+    }),
 
   updateValidationPolicy: protectedProcedure
     .input(policyUpdate)
@@ -139,9 +194,7 @@ export const playbookRouter = router({
       if (input.action === "PROMOTE" && evidence.verdict !== "ELIGIBLE" && !input.exceptionReason) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Explica por qué deseas avanzar con criterios pendientes." })
       }
-      const signature = currentMode
-        ? overview.stages[currentMode].signature
-        : buildValidationEvidenceSignature({ setupId: input.setupId, evidence }, overview.policy.version)
+      const signature = currentMode ? overview.stages[currentMode].signature : overview.hypothesis.signature
       const evidenceSnapshot = {
         schemaVersion: 1,
         capturedAt: new Date().toISOString(),

@@ -7,7 +7,9 @@ const services = vi.hoisted(() => ({
   getValidationPolicy: vi.fn(),
   buildValidationEvidenceSignature: vi.fn(() => "hypothesis-signature"),
 }))
+const notifications = vi.hoisted(() => ({ emitNotification: vi.fn() }))
 vi.mock("@/server/services/setups/validation-service", () => services)
+vi.mock("@/server/services/notifications/emit", () => notifications)
 
 import { playbookRouter } from "@/server/trpc/routers/playbook"
 
@@ -22,6 +24,7 @@ const eligible = {
   signature: "backtest-signature",
   closedCount: 30,
   expectancyR: 0.4,
+  warnings: [] as string[],
 }
 const policy = {
   id: "550e8400-e29b-41d4-a716-446655440004",
@@ -46,7 +49,7 @@ function overview(currentStage = "HYPOTHESIS", hypothesisVerdict = "ELIGIBLE") {
     setup: { id: setupId, name: "Ruptura" },
     policy,
     state: { currentStage, suspended: false },
-    hypothesis: { stage: "HYPOTHESIS", mode: null, verdict: hypothesisVerdict, criteria: [] },
+    hypothesis: { stage: "HYPOTHESIS", mode: null, verdict: hypothesisVerdict, criteria: [], signature: "hypothesis-signature" },
     stages: {
       BACKTEST: eligible,
       DEMO: { ...eligible, stage: "DEMO", mode: "DEMO", signature: "demo-signature" },
@@ -82,6 +85,7 @@ beforeEach(() => {
   services.getSetupValidationHistory.mockResolvedValue([])
   services.getValidationPolicy.mockResolvedValue(policy)
   services.buildValidationEvidenceSignature.mockReturnValue("hypothesis-signature")
+  notifications.emitNotification.mockResolvedValue({ id: "notification-1" })
 })
 
 describe("playbook validation router", () => {
@@ -198,5 +202,47 @@ describe("playbook validation router", () => {
     await expect(caller.createValidationDecision({ ...base, targetStage: "BACKTEST" })).resolves.toEqual(existing)
     expect(decisionCreate).not.toHaveBeenCalled()
     await expect(caller.createValidationDecision({ ...base, targetStage: "DEMO" })).rejects.toMatchObject({ code: "CONFLICT" })
+  })
+
+  it("synchronizes eligible evidence once through a signature-scoped learning notification", async () => {
+    services.getSetupValidationOverview.mockResolvedValue(overview("BACKTEST"))
+    const { caller } = fixture()
+    await expect(caller.syncValidationNotifications({ setupId, evidenceSignature: "backtest-signature" })).resolves.toMatchObject({ emitted: true })
+    expect(notifications.emitNotification).toHaveBeenCalledWith(expect.anything(), userId, "SETUP_STAGE_ELIGIBLE", {
+      params: { name: "Ruptura", stage: "Backtesting", nextStage: "Demo" },
+      sourceId: setupId,
+      href: `/playbook?highlight=${setupId}`,
+      dedupeKey: `setup-validation:${setupId}:BACKTEST:ELIGIBLE:backtest-signature`,
+    })
+  })
+
+  it("emits a non-downgrading warning only for the current promoted stage", async () => {
+    const data = overview("REAL")
+    data.stages.REAL = {
+      ...data.stages.REAL,
+      verdict: "WARNING",
+      signature: "real-warning-signature",
+      warnings: ["EDGE_DECAY"],
+    }
+    services.getSetupValidationOverview.mockResolvedValue(data)
+    const { caller } = fixture()
+    await caller.syncValidationNotifications({ setupId, evidenceSignature: "real-warning-signature" })
+    expect(notifications.emitNotification).toHaveBeenCalledWith(expect.anything(), userId, "SETUP_VALIDATION_WARNING", expect.objectContaining({
+      dedupeKey: `setup-validation:${setupId}:REAL:WARNING:real-warning-signature`,
+      params: expect.objectContaining({ stage: "Real", warning: "deterioro del edge" }),
+    }))
+  })
+
+  it("rejects stale signatures and skips evidence that is not eligible or warning", async () => {
+    services.getSetupValidationOverview.mockResolvedValue(overview("BACKTEST"))
+    const { caller } = fixture()
+    await expect(caller.syncValidationNotifications({ setupId, evidenceSignature: "stale-signature" })).rejects.toMatchObject({ code: "CONFLICT" })
+    expect(notifications.emitNotification).not.toHaveBeenCalled()
+
+    const data = overview("BACKTEST")
+    data.stages.BACKTEST = { ...data.stages.BACKTEST, verdict: "INSUFFICIENT", signature: "insufficient-signature" }
+    services.getSetupValidationOverview.mockResolvedValue(data)
+    await expect(caller.syncValidationNotifications({ setupId, evidenceSignature: "insufficient-signature" })).resolves.toEqual({ emitted: false })
+    expect(notifications.emitNotification).not.toHaveBeenCalled()
   })
 })
