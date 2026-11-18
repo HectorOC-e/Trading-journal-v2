@@ -84,7 +84,9 @@ jobs:
   e2e:
     name: E2E (authenticated)
     needs: [checks]
-    runs-on: ubuntu-latest
+    # Playwright 1.60 rejects Chromium on Ubuntu 26.04. Pin the browser job
+    # while GitHub migrates ubuntu-latest; the non-browser jobs can stay current.
+    runs-on: ubuntu-24.04
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
