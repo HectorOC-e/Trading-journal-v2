@@ -23,6 +23,7 @@ import { formatErrorForUser } from "@/lib/error-formatter"
 import { useZodForm } from "@/lib/forms/use-zod-form"
 import { setupFormSchema, type SetupFormValues } from "@/domains/trading/schemas/setup-form-schema"
 import { SetupIntelligencePanel } from "@/components/playbook/setup-intelligence-panel"
+import { SetupValidationRoute } from "@/components/playbook/setup-validation-route"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { parseEdgeNumber, duplicateSetup, activeSetupPnl } from "@/domains/trading/services/playbook-reliability"
 import { ErrorCardsPanel } from "@/components/playbook/error-cards-panel"
@@ -395,6 +396,9 @@ function SetupDrawer({
 
           {/* Playbook intelligence (S10): edge decay / drift / evolution */}
           <SetupIntelligencePanel setupId={setup.id} />
+
+          {/* Strategy validation keeps Backtesting, Demo and Real evidence isolated. */}
+          <SetupValidationRoute setupId={setup.id} setupName={setup.name} />
 
           {/* Description */}
           {setup.description && (

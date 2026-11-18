@@ -6,6 +6,7 @@ import {
   deriveValidationState,
   evaluateValidationStage,
   type StageEvidence,
+  type ValidationAction,
   type ValidationDecisionLike,
   type ValidationPolicy,
   type ValidationStage,
@@ -54,6 +55,14 @@ export type SetupValidationEvidence = StageEvidence & {
   practiceContext: PracticeValidationContext
   intelligence: { decay: string; drift: string }
   signature: string
+}
+
+function domainDecision<T extends { action: string; fromStage: string; toStage: string }>(decision: T) {
+  return decision as Omit<T, "action" | "fromStage" | "toStage"> & {
+    action: ValidationAction
+    fromStage: ValidationStage
+    toStage: ValidationStage
+  }
 }
 
 const setupSelect = {
@@ -237,10 +246,11 @@ export async function getSetupValidationEvidence(
 export async function getSetupValidationHistory(prisma: PrismaClient, userId: string, setupId: string) {
   const owned = await prisma.setup.findFirst({ where: { id: setupId, userId }, select: { id: true } })
   if (!owned) return null
-  return prisma.setupValidationDecision.findMany({
+  const history = await prisma.setupValidationDecision.findMany({
     where: { userId, setupId },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   })
+  return history.map(domainDecision)
 }
 
 export async function getSetupValidationOverview(
@@ -251,10 +261,11 @@ export async function getSetupValidationOverview(
   const context = await ownedContext(prisma, userId, setupId)
   if (!context) return null
   const evidence = await Promise.all(MODES.map((mode) => evidenceForContext(prisma, userId, context.setup, context.policy, mode)))
-  const history = await prisma.setupValidationDecision.findMany({
+  const storedHistory = await prisma.setupValidationDecision.findMany({
     where: { userId, setupId },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   })
+  const history = storedHistory.map(domainDecision)
   const hypothesis = evaluateValidationStage({
     stage: "HYPOTHESIS",
     policy: context.policy,
