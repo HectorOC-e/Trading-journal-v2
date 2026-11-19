@@ -5,7 +5,7 @@
  */
 import { test, expect, type Page } from "@playwright/test"
 import { randomUUID } from "node:crypto"
-import type { PrismaClient } from "@/lib/generated/prisma/client"
+import { Pool } from "pg"
 
 const EMAIL    = process.env.E2E_USER_EMAIL    ?? ""
 const PASSWORD = process.env.E2E_USER_PASSWORD ?? ""
@@ -119,7 +119,7 @@ test("retiros: D-02 over-withdrawal is rejected", async ({ page }) => {
 })
 
 test.describe("ruta de validación de estrategias", () => {
-  let prisma: PrismaClient
+  let pool: Pool | undefined
   let userId = ""
   let setupId = ""
   let practiceId = ""
@@ -127,72 +127,89 @@ test.describe("ruta de validación de estrategias", () => {
   const tradeIds: string[] = []
 
   async function createTrade(mode: "BACKTEST" | "DEMO" | "REAL", accountId: string, index: number, totalWeeks: number, rMultiple: number, direction = "LONG") {
+    if (!pool) throw new Error("Pool E2E no inicializado")
     const id = randomUUID()
     const date = new Date(Date.UTC(2026, index % 12, 2 + Math.floor(index / Math.max(1, Math.ceil((index + 1) / totalWeeks))) * 7 + (index % 5)))
-    await prisma.trade.create({
-      data: {
-        id, userId, accountId, setupId, operationalMode: mode,
-        direction, symbol: "EURUSD", entry: 1.1, stop: 1.09, target: 1.12, size: 1,
-        date, openTime: "09:00", closeTime: "10:00", session: "LONDRES",
-        tags: ["E2E_VALIDATION"], notes: "Fixture aislada de validación", screenshotUrls: [],
-        rMultiple, pnl: rMultiple * 100, status: "CLOSED", closePrice: rMultiple > 0 ? 1.11 : 1.09,
-      },
-    })
-    await prisma.tradeChecklistResult.create({
-      data: { userId, tradeId: id, setupId, itemsChecked: ["Confirmación"], itemsTotal: 1 },
-    })
+    await pool.query(
+      `INSERT INTO public.trades (
+        id, user_id, account_id, setup_id, operational_mode, direction, symbol,
+        entry, stop, target, size, date, open_time, close_time, session, tags,
+        notes, screenshot_urls, r_multiple, pnl, status, close_price
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, 'EURUSD',
+        1.1, 1.09, 1.12, 1, $7, '09:00', '10:00', 'LONDRES', $8::text[],
+        'Fixture aislada de validación', ARRAY[]::text[], $9, $10, 'CLOSED', $11
+      )`,
+      [id, userId, accountId, setupId, mode, direction, date, ["E2E_VALIDATION"], rMultiple, rMultiple * 100, rMultiple > 0 ? 1.11 : 1.09],
+    )
+    await pool.query(
+      `INSERT INTO public.trade_checklist_results
+        (user_id, trade_id, setup_id, items_checked, items_total)
+       VALUES ($1, $2, $3, $4::text[], 1)`,
+      [userId, id, setupId, ["Confirmación"]],
+    )
     tradeIds.push(id)
     return id
   }
 
   test.beforeAll(async () => {
-    const prismaModule = await import("@/lib/prisma")
-    prisma = prismaModule.prisma
-    const user = await prisma.user.findUnique({ where: { email: EMAIL }, select: { id: true } })
+    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL no está configurada para el E2E autenticado")
+    pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 })
+    const userResult = await pool.query<{ id: string }>("SELECT id FROM public.users WHERE email = $1 LIMIT 1", [EMAIL])
+    const user = userResult.rows[0]
     if (!user) throw new Error(`No existe el usuario E2E ${EMAIL}`)
     userId = user.id
     setupId = randomUUID()
-    await prisma.setup.create({
-      data: {
-        id: setupId, userId, name: `Validación E2E ${setupId.slice(0, 6)}`, abbreviation: "VQA",
-        market: "FX", direction: "LONG", description: "Ruptura confirmada con retroceso y checklist",
-        color: "#4f6ef7", images: [], aplusChecklist: ["Confirmación"], standardChecklist: [],
-        expectedWr: 60, expectedAvgR: 1,
-      },
-    })
+    await pool.query(
+      `INSERT INTO public.setups (
+        id, user_id, name, abbreviation, market, direction, description, color,
+        images, aplus_checklist, standard_checklist, expected_wr, expected_avg_r
+      ) VALUES ($1, $2, $3, 'VQA', 'FX', 'LONG', $4, '#4f6ef7',
+        ARRAY[]::text[], $5::text[], ARRAY[]::text[], 60, 1)`,
+      [setupId, userId, `Validación E2E ${setupId.slice(0, 6)}`, "Ruptura confirmada con retroceso y checklist", ["Confirmación"]],
+    )
     for (const [type, name] of [["BACKTEST", "Backtesting"], ["DEMO_PERSONAL", "Demo"], ["PERSONAL", "Real"]] as const) {
-      const account = await prisma.account.create({
-        data: {
-          id: randomUUID(), userId, name: `Validación ${name} ${setupId.slice(0, 6)}`, broker: "E2E",
-          type, status: "ACTIVE", initialBalance: 10_000, currency: "USD", timezone: "America/Tegucigalpa",
-          allowedSymbols: ["EURUSD"],
-        },
-      })
-      accountIds.push(account.id)
+      const accountId = randomUUID()
+      await pool.query(
+        `INSERT INTO public.accounts (
+          id, user_id, name, broker, type, status, initial_balance, currency, timezone, allowed_symbols
+        ) VALUES ($1, $2, $3, 'E2E', $4, 'ACTIVE', 10000, 'USD', 'America/Tegucigalpa', $5::text[])`,
+        [accountId, userId, `Validación ${name} ${setupId.slice(0, 6)}`, type, ["EURUSD"]],
+      )
+      accountIds.push(accountId)
     }
     for (let index = 0; index < 29; index++) await createTrade("BACKTEST", accountIds[0], index, 5, index % 3 === 0 ? -0.5 : 1)
     for (let index = 0; index < 20; index++) await createTrade("DEMO", accountIds[1], index, 4, index % 4 === 0 ? -0.5 : 1)
     for (let index = 0; index < 20; index++) await createTrade("REAL", accountIds[2], index, 4, -1, "SHORT")
 
     practiceId = randomUUID()
-    await prisma.learningPractice.create({
-      data: {
-        id: practiceId, userId, title: "Práctica E2E de ruptura", date: new Date("2026-10-01"),
-        durationMin: 25, exercise: "Revisar confirmación", objective: "Aplicar checklist",
-        reflection: "Fixture temporal", kind: "EXECUTION", operationalMode: "BACKTEST",
-      },
-    })
-    await prisma.practiceTradeLink.create({ data: { userId, practiceId, tradeId: tradeIds[0], role: "EXECUTED" } })
-    await prisma.practiceAttachment.create({ data: { practiceId, path: `e2e-validation/${practiceId}.png`, mime: "image/png" } })
+    await pool.query(
+      `INSERT INTO public.learning_practices (
+        id, user_id, title, date, duration_min, exercise, objective, reflection, kind, operational_mode
+      ) VALUES ($1, $2, 'Práctica E2E de ruptura', DATE '2026-10-01', 25,
+        'Revisar confirmación', 'Aplicar checklist', 'Fixture temporal', 'EXECUTION', 'BACKTEST')`,
+      [practiceId, userId],
+    )
+    await pool.query(
+      "INSERT INTO public.practice_trade_links (user_id, practice_id, trade_id, role) VALUES ($1, $2, $3, 'EXECUTED')",
+      [userId, practiceId, tradeIds[0]],
+    )
+    await pool.query(
+      "INSERT INTO public.practice_attachments (practice_id, path, mime) VALUES ($1, $2, 'image/png')",
+      [practiceId, `e2e-validation/${practiceId}.png`],
+    )
   })
 
   test.afterAll(async () => {
-    if (!prisma || !userId) return
-    if (setupId) await prisma.notification.deleteMany({ where: { userId, sourceId: setupId } })
-    if (practiceId) await prisma.learningPractice.deleteMany({ where: { id: practiceId, userId } })
-    if (accountIds.length) await prisma.account.deleteMany({ where: { userId, id: { in: accountIds } } })
-    if (setupId) await prisma.setup.deleteMany({ where: { id: setupId, userId } })
-    await prisma.$disconnect()
+    if (!pool) return
+    try {
+      if (userId && setupId) await pool.query("DELETE FROM public.notifications WHERE user_id = $1 AND source_id = $2", [userId, setupId])
+      if (userId && practiceId) await pool.query("DELETE FROM public.learning_practices WHERE id = $1 AND user_id = $2", [practiceId, userId])
+      if (userId && accountIds.length) await pool.query("DELETE FROM public.accounts WHERE user_id = $1 AND id = ANY($2::uuid[])", [userId, accountIds])
+      if (userId && setupId) await pool.query("DELETE FROM public.setups WHERE id = $1 AND user_id = $2", [setupId, userId])
+    } finally {
+      await pool.end()
+    }
   })
 
   test("brecha → práctica → elegibilidad → Demo → monitoreo Real", async ({ page }) => {
