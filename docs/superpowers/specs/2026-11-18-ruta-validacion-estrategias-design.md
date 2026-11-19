@@ -263,4 +263,3 @@ La entrega requerirá pruebas unitarias, integración de base de datos, typechec
 4. Ruta visual dentro de Playbook y comparación por modalidad.
 5. Integración con Prácticas, explicación IA y notificaciones internas.
 6. E2E, capturas, manual, preview y despliegue siguiendo el procedimiento QA del proyecto.
-

@@ -410,4 +410,3 @@
 - Type consistency: stage/action/verdict/policy types originate in Task 1; persistence and all later interfaces consume the same names.
 - Review focus: all five high-risk input classes have an explicit owning test task.
 - Proportion: the plan fixes interfaces and acceptance behavior without transcribing implementations.
-
