@@ -186,5 +186,8 @@ describe("strategy validation engine", () => {
     expect(validateValidationTransition(promoted, "PROMOTE", "BACKTEST").valid).toBe(false)
     expect(validateValidationTransition({ currentStage: "HYPOTHESIS", suspended: false }, "PROMOTE", "DEMO").valid).toBe(false)
     expect(validateValidationTransition({ currentStage: "REAL", suspended: false }, "PROMOTE", "REAL").valid).toBe(false)
+    expect(validateValidationTransition({ currentStage: "REAL", suspended: false }, "RETURN_TO_REVIEW", "DEMO")).toEqual({ valid: true })
+    expect(validateValidationTransition({ currentStage: "REAL", suspended: false }, "RETURN_TO_REVIEW", "HYPOTHESIS").valid).toBe(false)
+    expect(validateValidationTransition({ currentStage: "DEMO", suspended: false }, "RETURN_TO_REVIEW", "DEMO").valid).toBe(false)
   })
 })

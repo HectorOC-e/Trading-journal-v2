@@ -264,7 +264,7 @@ export function validateValidationTransition(
       ? { valid: true }
       : { valid: false, reason: state.currentStage === "REAL" ? "Real permanece en monitoreo continuo." : "La promoción debe avanzar exactamente una etapa." }
   }
-  return targetIndex <= currentIndex
+  return targetIndex === currentIndex - 1
     ? { valid: true }
-    : { valid: false, reason: "Volver a revisión no puede avanzar la ruta." }
+    : { valid: false, reason: "Volver a revisión debe retroceder exactamente una etapa." }
 }

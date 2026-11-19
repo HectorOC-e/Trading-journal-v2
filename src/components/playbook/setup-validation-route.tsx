@@ -339,12 +339,12 @@ function ValidationPolicyDialog(props: {
     realMonitorMinDistinctWeeks: props.policy.realMonitorMinDistinctWeeks,
   }))
 
-  const numberField = (key: keyof EditablePolicy, label: string, max = 100_000) => (
+  const numberField = (key: keyof EditablePolicy, label: string, max = 100_000, min = 1) => (
     <label className="text-[11px] font-medium text-[var(--ink-2)]">
       {label}
       <input
         type="number"
-        min={1}
+        min={min}
         max={max}
         value={String(form[key])}
         onChange={(event) => setForm((current) => ({ ...current, [key]: Number(event.target.value) }))}
@@ -363,14 +363,14 @@ function ValidationPolicyDialog(props: {
         <div className="space-y-4">
           <PolicyGroup title="Backtesting">
             {numberField("backtestMinClosed", "Operaciones cerradas")}
-            {numberField("backtestMinRCoveragePct", "Cobertura de R (%)", 100)}
-            {numberField("backtestMinChecklistCoveragePct", "Checklist evaluado (%)", 100)}
+            {numberField("backtestMinRCoveragePct", "Cobertura de R (%)", 100, 0)}
+            {numberField("backtestMinChecklistCoveragePct", "Checklist evaluado (%)", 100, 0)}
             <BooleanField label="Exigir expectativa positiva" checked={form.backtestRequirePositiveExpectancy} onChange={(checked) => setForm((current) => ({ ...current, backtestRequirePositiveExpectancy: checked }))} />
           </PolicyGroup>
           <PolicyGroup title="Demo">
             {numberField("demoMinClosed", "Operaciones cerradas")}
             {numberField("demoMinDistinctWeeks", "Semanas distintas", 5_200)}
-            {numberField("demoMinChecklistCompliancePct", "Disciplina de checklist (%)", 100)}
+            {numberField("demoMinChecklistCompliancePct", "Disciplina de checklist (%)", 100, 0)}
             <BooleanField label="Exigir expectativa positiva" checked={form.demoRequirePositiveExpectancy} onChange={(checked) => setForm((current) => ({ ...current, demoRequirePositiveExpectancy: checked }))} />
           </PolicyGroup>
           <PolicyGroup title="Real · monitoreo">

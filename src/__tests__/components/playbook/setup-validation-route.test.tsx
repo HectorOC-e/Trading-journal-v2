@@ -3,6 +3,7 @@ import React from "react"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { SetupValidationRoute } from "@/components/playbook/setup-validation-route"
+import { SetupValidationDecisionDialog } from "@/components/playbook/setup-validation-decision-dialog"
 
 const state = vi.hoisted(() => ({
   query: {} as Record<string, unknown>,
@@ -157,6 +158,16 @@ describe("strategy validation route", () => {
     expect(screen.getByRole("tabpanel")).toHaveTextContent("2 prácticas de ejecución")
   })
 
+  it("describes the hypothesis expectancy as defined rather than already profitable", () => {
+    const data = overview()
+    data.hypothesis.criteria = [{ key: "expectancy", met: true, actual: -0.2, target: 0 }]
+    state.query = { data }
+    render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+    fireEvent.click(screen.getByRole("tab", { name: /hipótesis/i }))
+    expect(screen.getByText("Expectativa definida")).toBeInTheDocument()
+    expect(screen.queryByText("Expectativa positiva")).not.toBeInTheDocument()
+  })
+
   it("requires an exception reason before promoting evidence with pending criteria", () => {
     state.query = { data: overview("BACKTEST", "INSUFFICIENT") }
     render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
@@ -208,6 +219,45 @@ describe("strategy validation route", () => {
     render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
     expect(screen.getAllByText(/monitoreo continuo/i).length).toBeGreaterThan(0)
     expect(screen.queryByRole("button", { name: /finalizar|completar real/i })).not.toBeInTheDocument()
+  })
+
+  it("surfaces edge decay and definition drift together", () => {
+    const data = overview("REAL")
+    data.stages.REAL = { ...evidence("REAL", "REAL", "WARNING"), warnings: ["EDGE_DECAY", "DEFINITION_DRIFT"] }
+    state.query = { data }
+    render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+    expect(screen.getByText(/edge muestra deterioro.*ejecución se alejó/i)).toBeInTheDocument()
+  })
+
+  it("allows zero-percent policy thresholds in the criteria dialog", () => {
+    render(<SetupValidationRoute setupId="550e8400-e29b-41d4-a716-446655440002" setupName="Ruptura" />)
+    fireEvent.click(screen.getByRole("button", { name: /criterios/i }))
+    expect(screen.getByLabelText("Cobertura de R (%)")).toHaveAttribute("min", "0")
+    expect(screen.getByLabelText("Checklist evaluado (%)")).toHaveAttribute("min", "0")
+    expect(screen.getByLabelText("Disciplina de checklist (%)")).toHaveAttribute("min", "0")
+  })
+
+  it("reuses one idempotency key for retries of the same decision intent", () => {
+    const submit = vi.fn()
+    render(
+      <SetupValidationDecisionDialog
+        open
+        onOpenChange={vi.fn()}
+        setupId="550e8400-e29b-41d4-a716-446655440002"
+        setupName="Ruptura"
+        currentStage="BACKTEST"
+        verdict="ELIGIBLE"
+        policyVersion={1}
+        suspended={false}
+        pending={false}
+        onSubmit={submit}
+      />,
+    )
+    const confirm = screen.getByRole("button", { name: /confirmar decisión/i })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+    expect(submit).toHaveBeenCalledTimes(2)
+    expect(submit.mock.calls[0][0].idempotencyKey).toBe(submit.mock.calls[1][0].idempotencyKey)
   })
 
   it("shows the immutable decision history without turning it into combined performance", () => {

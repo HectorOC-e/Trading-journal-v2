@@ -138,7 +138,15 @@ describe("playbook validation router", () => {
       mode: null,
       policyVersion: 1,
       evidenceSignature: "hypothesis-signature",
-      evidenceSnapshot: expect.objectContaining({ schemaVersion: 1, verdict: "ELIGIBLE" }),
+      evidenceSnapshot: expect.objectContaining({
+        schemaVersion: 1,
+        verdict: "ELIGIBLE",
+        policy: expect.objectContaining({
+          backtestRequirePositiveExpectancy: true,
+          demoRequirePositiveExpectancy: true,
+          criteria: {},
+        }),
+      }),
     }) })
     expect((decisionCreate.mock.calls[0][0].data.evidenceSnapshot as Record<string, unknown>)).not.toHaveProperty("forged")
     expect(result).toMatchObject({ action: "PROMOTE", toStage: "BACKTEST" })
@@ -207,7 +215,7 @@ describe("playbook validation router", () => {
     await expect(caller.createValidationDecision({ ...base, targetStage: "DEMO" })).rejects.toMatchObject({ code: "CONFLICT" })
   })
 
-  it("synchronizes eligible evidence once through a signature-scoped learning notification", async () => {
+  it("synchronizes eligible evidence with a stable state-scoped learning notification", async () => {
     services.getSetupValidationOverview.mockResolvedValue(overview("BACKTEST"))
     const { caller } = fixture()
     await expect(caller.syncValidationNotifications({ setupId, evidenceSignature: "backtest-signature" })).resolves.toMatchObject({ emitted: true })
@@ -215,7 +223,7 @@ describe("playbook validation router", () => {
       params: { name: "Ruptura", stage: "Backtesting", nextStage: "Demo" },
       sourceId: setupId,
       href: `/playbook?highlight=${setupId}`,
-      dedupeKey: `setup-validation:${setupId}:BACKTEST:ELIGIBLE:backtest-signature`,
+      dedupeKey: `setup-validation:${setupId}:BACKTEST:ELIGIBLE`,
     })
   })
 
@@ -231,7 +239,7 @@ describe("playbook validation router", () => {
     const { caller } = fixture()
     await caller.syncValidationNotifications({ setupId, evidenceSignature: "real-warning-signature" })
     expect(notifications.emitNotification).toHaveBeenCalledWith(expect.anything(), userId, "SETUP_VALIDATION_WARNING", expect.objectContaining({
-      dedupeKey: `setup-validation:${setupId}:REAL:WARNING:real-warning-signature`,
+      dedupeKey: `setup-validation:${setupId}:REAL:WARNING`,
       params: expect.objectContaining({ stage: "Real", warning: "deterioro del edge" }),
     }))
   })

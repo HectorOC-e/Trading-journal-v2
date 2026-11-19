@@ -22,8 +22,18 @@ const CRITERIA: Record<string, string> = {
 
 const fmt = (value: number | null, suffix = "") => value == null ? "—" : `${value.toLocaleString("es-HN", { maximumFractionDigits: 2 })}${suffix}`
 
+function criterionLabel(stage: StageEvidence["stage"], key: string) {
+  if (stage === "HYPOTHESIS" && key === "expectancy") return "Expectativa definida"
+  return CRITERIA[key] ?? key
+}
+
 export function SetupValidationStageCard({ evidence, status }: { evidence: Evidence; status: string }) {
   const practices = evidence.practiceContext
+  const warningText = evidence.warnings.includes("EDGE_DECAY") && evidence.warnings.includes("DEFINITION_DRIFT")
+    ? "El edge muestra deterioro y la ejecución se alejó de la definición."
+    : evidence.warnings.includes("EDGE_DECAY")
+      ? "El edge muestra deterioro."
+      : "La ejecución se alejó de la definición."
   return (
     <section className="rounded-[var(--radius-md)] border border-[var(--line)] bg-[var(--panel-2)] p-4" aria-label={`Evidencia ${evidence.stage}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -61,7 +71,7 @@ export function SetupValidationStageCard({ evidence, status }: { evidence: Evide
           <div key={item.key} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--panel)] px-3 py-2 text-[11px]">
             <span className="flex items-center gap-2 text-[var(--ink-2)]">
               {item.met ? <CheckCircle2 size={13} className="text-[var(--win)]" /> : <CircleDashed size={13} className="text-[var(--ink-3)]" />}
-              {CRITERIA[item.key] ?? item.key}
+              {criterionLabel(evidence.stage, item.key)}
             </span>
             <span className={cn("font-mono", item.met ? "text-[var(--win)]" : "text-[var(--ink-3)]")}>{item.actual ?? "—"} / {item.target}</span>
           </div>
@@ -71,7 +81,7 @@ export function SetupValidationStageCard({ evidence, status }: { evidence: Evide
       {evidence.warnings.length > 0 && (
         <div className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[var(--loss-soft)] px-3 py-2 text-[11px] text-[var(--loss)]">
           <CircleAlert size={13} className="mt-0.5 shrink-0" />
-          <span>{evidence.warnings.includes("EDGE_DECAY") ? "El edge muestra deterioro." : "La ejecución se alejó de la definición."}</span>
+          <span>{warningText}</span>
         </div>
       )}
     </section>

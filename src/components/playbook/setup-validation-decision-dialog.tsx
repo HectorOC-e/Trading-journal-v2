@@ -40,6 +40,7 @@ export function SetupValidationDecisionDialog(props: {
   const [decisionAction, setDecisionAction] = useState<ValidationAction>(defaultAction)
   const [note, setNote] = useState("")
   const [exceptionReason, setExceptionReason] = useState("")
+  const [idempotencyKey] = useState(requestId)
 
   const targetStage = useMemo<ValidationStage>(() => {
     const current = ORDER.indexOf(props.currentStage)
@@ -109,7 +110,7 @@ export function SetupValidationDecisionDialog(props: {
             disabled={disabled}
             onClick={() => props.onSubmit({
               setupId: props.setupId,
-              idempotencyKey: requestId(),
+              idempotencyKey,
               action: decisionAction,
               targetStage,
               expectedPolicyVersion: props.policyVersion,

@@ -85,7 +85,7 @@ Una advertencia no baja la estrategia automáticamente. Puedes mantenerla en rev
 
 ## 9. Notificaciones
 
-TjournalX crea una notificación cuando una etapa actual queda elegible para avanzar o cuando aparece una advertencia de validación. Las notificaciones se deduplican por estrategia, etapa y evidencia; volver a abrir la pantalla no genera copias.
+TjournalX crea una notificación cuando una etapa actual queda elegible para avanzar o cuando aparece una advertencia de validación. Las notificaciones se deduplican por estrategia, etapa y estado; nuevas operaciones que mantienen el mismo estado no generan copias.
 
 ## 10. Buenas prácticas
 

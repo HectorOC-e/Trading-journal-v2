@@ -2532,9 +2532,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/playbook.ts": {
-    "mtime": 1795031250.668427,
-    "seen": 1795032468.3317885,
-    "ast_hash": "1a73123271a88177062c9d7651447ae6",
+    "mtime": 1795062490.123881,
+    "seen": 1795062659.801682,
+    "ast_hash": "8b582ea2ed3d64ab6e99bd59745e1cad",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/preferences.ts": {
@@ -3114,9 +3114,9 @@
     "semantic_hash": ""
   },
   "docs/PROJECT_GUIDE.md": {
-    "mtime": 1795032392.053103,
-    "seen": 1795032468.3320374,
-    "ast_hash": "e3f1818615f883beec10ef88b396e2e8",
+    "mtime": 1795032525.4790971,
+    "seen": 1795062659.8018072,
+    "ast_hash": "ce98b1771ea35b8b6ee4debd93f8e598",
     "semantic_hash": ""
   },
   "docs/auditoria-producto-trading-journal-v2.md": {
@@ -4500,33 +4500,33 @@
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-decision-dialog.tsx": {
-    "mtime": 1795030392.3471057,
-    "seen": 1795032468.3312984,
-    "ast_hash": "a540b391d2dda14b4536b4ce12370772",
+    "mtime": 1795062491.0438397,
+    "seen": 1795062659.8011947,
+    "ast_hash": "134d4585cfabef9b3dda3d95b3b10cfc",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-route.tsx": {
-    "mtime": 1795031274.5913486,
-    "seen": 1795032468.3312998,
-    "ast_hash": "7ce2a5c9980c4b7898463837ce1af9b0",
+    "mtime": 1795062490.4558663,
+    "seen": 1795062659.801197,
+    "ast_hash": "7501eb9a13e3703141378b783d44cfcb",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-stage-card.tsx": {
-    "mtime": 1795025665.4719737,
-    "seen": 1795032468.3313012,
-    "ast_hash": "559cbb6781b9797e7eaf24c863fcaf9d",
+    "mtime": 1795062541.4575675,
+    "seen": 1795062659.8011985,
+    "ast_hash": "41e588704ecc66b183637753907bd07c",
     "semantic_hash": ""
   },
   "src/domains/analytics/setups/validation.ts": {
-    "mtime": 1795023744.706639,
-    "seen": 1795032468.3314009,
-    "ast_hash": "9147f2a438e7e7638ad971299afafe10",
+    "mtime": 1795062489.8518934,
+    "seen": 1795062659.8013003,
+    "ast_hash": "a953501dc8e899012c893b0e417255cf",
     "semantic_hash": ""
   },
   "src/server/services/setups/validation-ai-service.ts": {
-    "mtime": 1795031250.3084433,
-    "seen": 1795032468.331743,
-    "ast_hash": "b61f0aee6fe8d98177dd52297cb2eab6",
+    "mtime": 1795062601.69885,
+    "seen": 1795062659.8015635,
+    "ast_hash": "2727d80b6832f7f896b1ef9914f7adeb",
     "semantic_hash": ""
   },
   "src/server/services/setups/validation-service.ts": {
@@ -4542,21 +4542,45 @@
     "semantic_hash": ""
   },
   "docs/MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md": {
-    "mtime": 1795032391.785115,
-    "seen": 1795032468.3320363,
-    "ast_hash": "a1ac6c821a57cb948e27276a91f2fc78",
+    "mtime": 1795062569.5003035,
+    "seen": 1795062659.8018064,
+    "ast_hash": "7e378db3cdbe8fcdbe4c7eaf110382a7",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-18-ruta-validacion-estrategias.md": {
-    "mtime": 1795023002.092025,
-    "seen": 1795032468.3320723,
-    "ast_hash": "dd25e41f1b8baea2836c287ac05a757b",
+    "mtime": 1795060679.7256527,
+    "seen": 1795062659.801845,
+    "ast_hash": "3094f541695d02edfa22a698244a71ac",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-18-ruta-validacion-estrategias-design.md": {
-    "mtime": 1795023002.092025,
-    "seen": 1795032468.3320913,
-    "ast_hash": "4c67c583db4cc22509f832ad9b4c47fc",
+    "mtime": 1795060680.0376387,
+    "seen": 1795062659.8018649,
+    "ast_hash": "088bd240abd92614b68e4756ca58ac1a",
+    "semantic_hash": ""
+  },
+  "docs/images/strategy-validation/09-validacion-brecha-desktop.png": {
+    "mtime": 1795062240.4976878,
+    "seen": 1795062659.8018699,
+    "ast_hash": "27a88d8c6432000d1f9ff31a744ddfe8",
+    "semantic_hash": ""
+  },
+  "docs/images/strategy-validation/10-validacion-practica-borrador.png": {
+    "mtime": 1795062240.500386,
+    "seen": 1795062659.8018737,
+    "ast_hash": "e42f28d978566a373d8e61f604d30c5a",
+    "semantic_hash": ""
+  },
+  "docs/images/strategy-validation/11-validacion-decision.png": {
+    "mtime": 1795062240.5035963,
+    "seen": 1795062659.801875,
+    "ast_hash": "ce2d448cabb885143ad6a473afd7dc89",
+    "semantic_hash": ""
+  },
+  "docs/images/strategy-validation/12-validacion-real-mobile.png": {
+    "mtime": 1795062240.5071108,
+    "seen": 1795062659.8018763,
+    "ast_hash": "e6069473b2c64cb2f31c879a0e39049e",
     "semantic_hash": ""
   },
   "src/package-lock.json": {

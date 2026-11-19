@@ -102,7 +102,7 @@ export const playbookRouter = router({
       }
 
       const href = `/playbook?highlight=${input.setupId}`
-      const dedupeKey = `setup-validation:${input.setupId}:${currentStage}:${evidence.verdict}:${evidence.signature}`
+      const dedupeKey = `setup-validation:${input.setupId}:${currentStage}:${evidence.verdict}`
       if (evidence.verdict === "ELIGIBLE" && currentStage !== "REAL") {
         const target = nextStage[currentStage]
         if (!target) return { emitted: false }
@@ -213,11 +213,14 @@ export const playbookRouter = router({
           backtestMinClosed: overview.policy.backtestMinClosed,
           backtestMinRCoveragePct: overview.policy.backtestMinRCoveragePct,
           backtestMinChecklistCoveragePct: overview.policy.backtestMinChecklistCoveragePct,
+          backtestRequirePositiveExpectancy: overview.policy.backtestRequirePositiveExpectancy,
           demoMinClosed: overview.policy.demoMinClosed,
           demoMinDistinctWeeks: overview.policy.demoMinDistinctWeeks,
           demoMinChecklistCompliancePct: overview.policy.demoMinChecklistCompliancePct,
+          demoRequirePositiveExpectancy: overview.policy.demoRequirePositiveExpectancy,
           realMonitorMinClosed: overview.policy.realMonitorMinClosed,
           realMonitorMinDistinctWeeks: overview.policy.realMonitorMinDistinctWeeks,
+          criteria: overview.policy.criteria,
         },
       }
       return tx.setupValidationDecision.create({
