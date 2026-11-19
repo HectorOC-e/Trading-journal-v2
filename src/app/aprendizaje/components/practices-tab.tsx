@@ -4,8 +4,28 @@ import { Input } from "@/components/ui/input";
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { formatCalendarDate } from "@/lib/datetime/local";
-import { PracticeModal, type PracticeRecord } from "../modals/practice-modal";
+import { PracticeModal, type PracticeInitialDraft, type PracticeRecord } from "../modals/practice-modal";
 import { useOperationalMode } from "@/lib/operational-mode-store";
+
+export type ValidationPracticeIntent = {
+  setupId: string;
+  stage: "HYPOTHESIS" | "BACKTEST" | "DEMO" | "REAL";
+  template: "sample" | "r_coverage" | "checklist" | "weeks" | "definition" | "review";
+};
+
+const STAGE_LABEL = { HYPOTHESIS: "Hipótesis", BACKTEST: "Backtesting", DEMO: "Demo", REAL: "Real" } as const;
+
+function validationDraft(intent: ValidationPracticeIntent, setupName: string): PracticeInitialDraft {
+  const mode = intent.stage === "HYPOTHESIS" ? null : intent.stage;
+  const label = STAGE_LABEL[intent.stage];
+  const common = { sourceKey: `${intent.setupId}:${intent.stage}:${intent.template}`, title: `Validación · ${setupName} · ${label}`, operationalMode: mode };
+  if (intent.template === "sample") return { ...common, kind: mode === "REAL" ? "REVIEW" : mode ? "EXECUTION" : "CONCEPT", objective: `Ampliar la muestra de ${label} para evaluar la estrategia con evidencia suficiente.`, exercise: `Registra y revisa nuevos ejemplos de ${setupName} en ${label}; vincula sólo las operaciones realmente practicadas.` };
+  if (intent.template === "r_coverage") return { ...common, kind: mode === "REAL" ? "REVIEW" : "EXECUTION", objective: `Completar el registro en R de ${label}.`, exercise: `Revisa cada operación de ${setupName} sin R y documenta entrada, stop, salida y múltiplo R verificable.` };
+  if (intent.template === "checklist") return { ...common, kind: mode === "REAL" ? "REVIEW" : mode ? "EXECUTION" : "CONCEPT", objective: `Mejorar la disciplina del checklist en ${label}.`, exercise: `Aplica el checklist de ${setupName} antes de evaluar el resultado y adjunta evidencia de los criterios revisados.` };
+  if (intent.template === "weeks") return { ...common, kind: mode === "REAL" ? "REVIEW" : "EXECUTION", objective: `Practicar ${setupName} durante semanas distintas en ${label}.`, exercise: `Programa una sesión breve por semana y vincula únicamente los ejemplos ejecutados o revisados en cada sesión.` };
+  if (intent.template === "definition") return { ...common, kind: "CONCEPT", objective: `Completar la hipótesis verificable de ${setupName}.`, exercise: "Define mercado, dirección, condiciones, expectativa y checklist; incluye un ejemplo válido y un contraejemplo." };
+  return { ...common, kind: mode === "REAL" ? "REVIEW" : mode ? "EXECUTION" : "CONCEPT", objective: `Revisar la principal brecha de ${setupName} en ${label}.`, exercise: "Describe la brecha, practica un caso y registra qué evidencia confirmaría o refutaría la hipótesis." };
+}
 
 export function PracticeWeekSummary({ onOpen }: { onOpen: () => void }) {
   const q = trpc.learningPractices.summary.useQuery();
@@ -97,11 +117,13 @@ export function PracticesTab({
   registerOnOpen = false,
   plannedSessionId,
   initialTradeIds = [],
+  initialValidationIntent,
 }: {
   initialResourceId?: string;
   registerOnOpen?: boolean;
   plannedSessionId?: string;
   initialTradeIds?: string[];
+  initialValidationIntent?: ValidationPracticeIntent;
 }) {
   const mode = useOperationalMode(s => s.mode);
   const [entryTradeIds, setEntryTradeIds] = useState(initialTradeIds);
@@ -109,12 +131,14 @@ export function PracticesTab({
   const [from, setFrom] = useState(""),
     [to, setTo] = useState("");
   const [editing, setEditing] = useState<PracticeRecord | null | undefined>(
-    registerOnOpen && !plannedSessionId ? null : undefined,
+    registerOnOpen && !plannedSessionId && !initialValidationIntent ? null : undefined,
   );
   const [repeatFrom, setRepeatFrom] = useState<PracticeRecord | undefined>();
   const [modalKey, setModalKey] = useState(0);
   const [activePlanId, setActivePlanId] = useState(plannedSessionId);
   const [openedPlan, setOpenedPlan] = useState<Parameters<typeof PracticeModal>[0]["plannedSession"]>();
+  const [openedValidationDraft, setOpenedValidationDraft] = useState<PracticeInitialDraft>();
+  const [validationConsumed, setValidationConsumed] = useState(false);
   const plan = trpc.studySessions?.getPlan.useQuery(
     { id: activePlanId ?? "00000000-0000-4000-8000-000000000000" },
     { enabled: !!activePlanId },
@@ -161,6 +185,21 @@ export function PracticesTab({
     "h-8 rounded-[var(--radius-sm)] border border-[var(--line)] bg-[var(--panel-2)] px-3 text-[13px] text-[var(--ink)] min-w-0 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30 focus:border-[var(--accent)]";
   return (
     <section aria-label="Prácticas de aprendizaje">
+      {initialValidationIntent && !validationConsumed && (
+        <ValidationIntentResolver
+          intent={initialValidationIntent}
+          onResolved={(draft) => {
+            setOpenedValidationDraft(draft);
+            setValidationConsumed(true);
+            setRepeatFrom(undefined);
+            setEditing(null);
+            setModalKey((key) => key + 1);
+            const url = new URL(window.location.href);
+            for (const key of ["tab", "register", "validationSetup", "validationStage", "validationTemplate", "mode"]) url.searchParams.delete(key);
+            window.history.replaceState(window.history.state, "", url);
+          }}
+        />
+      )}
       {activePlanId && !openedPlan && <div className="mb-4 text-sm" role={plan?.error ? "alert" : "status"}>
         <p>{plan?.error ? "La planificación no está disponible. Puede haberse completado o eliminado." : "Cargando la planificación y la fecha de tu perfil…"}</p>
         {plan?.error && <Button variant="link" size="sm" onClick={() => void plan.refetch()}>Reintentar planificación</Button>}
@@ -196,6 +235,7 @@ export function PracticesTab({
           className="self-start"
           onClick={() => {
             clearPlanEntry();
+            setOpenedValidationDraft(undefined);
             setRepeatFrom(undefined);
             setEditing(null);
             setModalKey((k) => k + 1);
@@ -343,6 +383,7 @@ export function PracticesTab({
         <PracticeModal
           key={openedPlan ? `${openedPlan.id}:${modalKey}` : modalKey}
           plannedSession={openedPlan}
+          initialDraft={editing === null && !repeatFrom && !openedPlan ? openedValidationDraft : undefined}
           initialTradeIds={editing === null && !repeatFrom && !openedPlan ? entryTradeIds : undefined}
           record={editing}
           repeatFrom={repeatFrom}
@@ -357,6 +398,7 @@ export function PracticesTab({
           timezone={summary.data?.timezone}
           onClose={() => {
             clearPlanEntry();
+            setOpenedValidationDraft(undefined);
             setEditing(undefined);
             setRepeatFrom(undefined);
           }}
@@ -365,4 +407,13 @@ export function PracticesTab({
       )}
     </section>
   );
+}
+
+function ValidationIntentResolver({ intent, onResolved }: { intent: ValidationPracticeIntent; onResolved: (draft: PracticeInitialDraft) => void }) {
+  const query = trpc.playbook.validationOverview.useQuery({ setupId: intent.setupId });
+  useEffect(() => {
+    if (query.data) onResolved(validationDraft(intent, query.data.setup.name));
+  }, [intent, onResolved, query.data]);
+  if (query.error) return <p role="alert" className="mb-4 text-sm text-[var(--loss)]">No se pudo abrir el borrador porque la estrategia no está disponible.</p>;
+  return <p role="status" className="mb-4 text-sm text-[var(--ink-3)]">Preparando práctica de validación…</p>;
 }

@@ -1,7 +1,7 @@
 # Project Guide — Trading Journal v3.2
 
 > **Punto de entrada único para cualquier desarrollador.** Si lees solo un documento, que sea este.
-> Última actualización: 2026-07-09.
+> Última actualización: 2026-11-18.
 
 ---
 
@@ -40,7 +40,7 @@ En una frase: captura cada trade, revela patrones de comportamiento que el trade
 | **Dashboard** | `/dashboard` | 4 pestañas (Portfolio, Operador, Disciplina, Playbook); analítica server-side |
 | **Trades** | `/trades` | Ciclo de vida del trade, import CSV, filtros, psicología por trade |
 | **Cuentas** | `/cuentas` | CRUD de cuentas, fases prop-firm, drawdown, audit log |
-| **Playbook / Setups** | `/playbook` | Setups con checklists, versiones+diff, sparklines, salud, lifecycle |
+| **Playbook / Setups** | `/playbook` | Setups con checklists, versiones+diff, salud y ruta Hipótesis → Backtesting → Demo → Real |
 | **Reviews** | `/reviews` | Reviews semanales y mensuales con discipline score y resumen IA |
 | **Aprendizaje** | `/aprendizaje` | Recursos + repetición espaciada (SRS), decay, rachas |
 | **Retiros** | `/retiros` | CRUD de retiros con transiciones de estado |
@@ -64,6 +64,7 @@ En una frase: captura cada trade, revela patrones de comportamiento que el trade
 | **Check-in pre-sesión** | formulario de check-in | Mood/energía/sueño → veredicto go/caution/no_go | El estado mental predice el desempeño; un go/no-go honesto antes de operar previene sesiones que no debieron abrirse |
 | **Write-tools del coach con permiso** | panel del bucle ("el coach te propone") | El coach puede `propose_rule` o `propose_commitment`, pero quedan inertes hasta que el trader los confirma | El sistema propone, el usuario dispone — nunca escritura sin confirmación explícita |
 | **Digest cognitivo semanal** | notificación "Tu semana cognitiva" (opt-outable) | Delta de mejora + compromisos + patrón nuevo, 1 notificación semanal deduplicada | El sistema busca proactivamente al trader sin incordiar cuando no hay nada que decir |
+| **Ruta de validación de estrategias** | cada setup en `/playbook` | Separa evidencia de Hipótesis, Backtesting, Demo y Real; aplica criterios versionados, decisiones explícitas, prácticas guiadas, explicación IA y monitoreo continuo | Evita mezclar mundos operativos y convierte una brecha medible en práctica sin alterar trades ni resultados financieros |
 
 Detalle funcional completo por pieza (sprint a sprint) → ver historial de git (`RECAP_V3_V32`).
 
@@ -108,6 +109,7 @@ src/
     behavior/                  # verifiers.ts, commitment-machine.ts (deriveSpec/evaluateResult),
                                  #   reinforcement.ts — loop de mejora, puro
     analytics/
+      setups/                  # validation.ts — criterios y veredictos puros por etapa
       longitudinal/            # rolling-window.ts (primitiva longitudinal)
       institutional/           # bayes.ts, drawdown.ts, r-distribution.ts, risk-ratios.ts,
                                  #   mae-mfe.ts, benchmark.ts, pnl-heatmap.ts (puro)
@@ -120,6 +122,7 @@ src/
     learning/services/         # review-scheduler, streak-service, decay-detector
     profile/services/          # profile-service
   server/services/
+    setups/                    # evidencia, decisiones, políticas y explicación IA de validación
     behavior/                  # commitment-service.ts (createCommitmentFromInsight/evaluateCommitment/
                                  #   evaluateWindowCommitments/carryOverCommitments + outbox)
     memory/                    # memory-episode-service.ts
@@ -142,7 +145,7 @@ supabase/migrations/            # incluye outbox+insights, unify rules, trade ca
 
 ## 7. Dónde está todo
 
-Esta es la fuente de verdad consolidada. Solo 4 documentos vivos:
+Esta es la fuente de verdad consolidada. Documentos maestros:
 
 | Documento | Responde |
 |---|---|
@@ -150,6 +153,7 @@ Esta es la fuente de verdad consolidada. Solo 4 documentos vivos:
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Cómo funciona por dentro — el freeze v3.1 (principios, decisiones, entidades, eventos, subsistemas) + los 5 ADRs que lo fundamentan |
 | **[STATUS.md](STATUS.md)** | Estado vivo: checklist de QA pendiente, ops pendientes, deuda técnica, backlog, roadmap reservado |
 | **[CHANGELOG.md](CHANGELOG.md)** | Historial consolidado de cambios |
+| **[MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md](MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md)** | Cómo usar Hipótesis → Backtesting → Demo → Real |
 
 Material histórico adicional (auditoría de producto que motivó el freeze v3.1) → **[auditoria-producto-trading-journal-v2.md](auditoria-producto-trading-journal-v2.md)**.
 

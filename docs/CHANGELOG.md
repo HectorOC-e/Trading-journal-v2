@@ -1,11 +1,29 @@
 # Changelog — Trading Journal v2
 
 > Historial consolidado único, por hito. Formato inspirado en Keep a Changelog.
-> Última actualización: 2026-07-14. El detalle verboso por sprint vivía en un
+> Última actualización: 2026-11-18. El detalle verboso por sprint vivía en un
 > `changelog-detailed.md` bajo el antiguo directorio de archivo, eliminado en la consolidación
 > de docs/ (2026-07-09); sigue disponible en el historial de git.
 
 ---
+
+## [2026-11-18] · Ruta Hipótesis → Backtesting → Demo → Real
+
+### Added
+
+- Ruta independiente por setup con cuatro etapas, criterios configurables y evidencia financiera aislada por modalidad.
+- Motor determinista de elegibilidad, deterioro y desviación; métricas ausentes se muestran como `—` y nunca como cero inventado.
+- Políticas versionadas y decisiones inmutables con idempotencia, fotografía de evidencia, suspensión, retorno y promoción excepcional justificada.
+- Tabla comparativa sin totales combinados, historial de decisiones, notificaciones deduplicadas y monitoreo continuo en Real.
+- Enlace de brechas a borradores editables de Prácticas; no registra actividad, tiempo ni trades hasta que el usuario guarde.
+- Explicación IA transitoria con contexto mínimo, límites de tasa y sin capacidad de decidir o escribir por el usuario.
+- Pruebas unitarias, integración PostgreSQL/RLS y recorrido E2E autenticado en escritorio y móvil.
+- Manual ilustrado: [MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md](MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md).
+
+### Security
+
+- Tablas nuevas con RLS, lectura exclusiva del propietario y escrituras reservadas a la API autenticada del servidor.
+- La ruta deriva evidencia desde operaciones existentes y nunca modifica trades, cuentas, P&L ni estadísticas fuente.
 
 ## [2026-07-14] · S0/DT-4 — drift check SQL↔Prisma en CI
 

@@ -77,6 +77,8 @@ model User {
   memoryPatterns           MemoryPattern[]
   memoryIdentity           MemoryIdentity?
   feedIgnores              FeedIgnore[]
+  setupValidationPolicies  SetupValidationPolicy[]
+  setupValidationDecisions SetupValidationDecision[]
 
 
 
@@ -293,8 +295,63 @@ model Setup {
   trades Trade[]
   linkedResources LearningResource[] @relation("ResourceSetups")
   versions SetupVersion[]
+  validationPolicy SetupValidationPolicy?
+  validationDecisions SetupValidationDecision[]
 
+  @@unique([userId, id])
   @@map("setups")
+}
+
+model SetupValidationPolicy {
+  id                                String   @id @default(uuid()) @db.Uuid
+  userId                            String   @map("user_id") @db.Uuid
+  setupId                           String   @map("setup_id") @db.Uuid
+  version                           Int      @default(1)
+  backtestMinClosed                 Int      @default(30) @map("backtest_min_closed")
+  backtestMinRCoveragePct           Int      @default(80) @map("backtest_min_r_coverage_pct")
+  backtestMinChecklistCoveragePct   Int      @default(70) @map("backtest_min_checklist_coverage_pct")
+  backtestRequirePositiveExpectancy Boolean  @default(true) @map("backtest_require_positive_expectancy")
+  demoMinClosed                     Int      @default(20) @map("demo_min_closed")
+  demoMinDistinctWeeks              Int      @default(4) @map("demo_min_distinct_weeks")
+  demoMinChecklistCompliancePct     Int      @default(80) @map("demo_min_checklist_compliance_pct")
+  demoRequirePositiveExpectancy     Boolean  @default(true) @map("demo_require_positive_expectancy")
+  realMonitorMinClosed              Int      @default(20) @map("real_monitor_min_closed")
+  realMonitorMinDistinctWeeks       Int      @default(4) @map("real_monitor_min_distinct_weeks")
+  criteria                          Json     @default("{}")
+  createdAt                         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setup Setup @relation(fields: [userId, setupId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([userId, setupId])
+  @@index([setupId])
+  @@map("setup_validation_policies")
+}
+
+model SetupValidationDecision {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  setupId           String   @map("setup_id") @db.Uuid
+  fromStage         String   @map("from_stage")
+  toStage           String   @map("to_stage")
+  action            String
+  mode              String?
+  policyVersion     Int      @map("policy_version")
+  evidenceSnapshot  Json     @map("evidence_snapshot")
+  evidenceSignature String   @map("evidence_signature") @db.VarChar(128)
+  note              String   @default("") @db.VarChar(2000)
+  exceptionReason   String?  @map("exception_reason") @db.VarChar(1000)
+  idempotencyKey    String   @map("idempotency_key") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setup Setup @relation(fields: [userId, setupId], references: [userId, id], onDelete: Cascade)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, setupId, createdAt(sort: Desc)])
+  @@index([setupId])
+  @@map("setup_validation_decisions")
 }
 
 model Trade {

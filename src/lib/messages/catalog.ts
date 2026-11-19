@@ -12,6 +12,7 @@ export const LABELS: Record<string, { es: string; en?: string }> = {
   VIEW_REPORT:   { es: "Ver reporte",  en: "View report" },
   STUDY_NOW:     { es: "Repasar ahora", en: "Review now" },
   VIEW_PROGRESS: { es: "Ver progreso", en: "View progress" },
+  VIEW_STRATEGY: { es: "Ver estrategia", en: "View strategy" },
   VIEW_FISCAL_RULES: { es: "Ver actualización fiscal", en: "View tax update" },
   DISMISS:       { es: "Descartar",    en: "Dismiss" },
   RETRY:         { es: "Reintentar",   en: "Retry" },
@@ -83,6 +84,22 @@ export const MESSAGES = {
     es: { title: "Tu semana cognitiva", body: "{summary}" },
     en: { title: "Your cognitive week", body: "{summary}" },
     actions: [{ labelCode: "VIEW_PROGRESS", href: "/analytics", style: "ghost" }],
+  },
+  SETUP_STAGE_ELIGIBLE: {
+    type: "SUCCESS", priority: "P2", category: "Aprendizaje", persist: true,
+    es: {
+      title: "{name} está lista para avanzar",
+      body: "La evidencia de {stage} cumple los criterios. Revisa los datos antes de promover a {nextStage}.",
+    },
+    actions: [{ labelCode: "VIEW_STRATEGY", href: "/playbook", style: "primary" }],
+  },
+  SETUP_VALIDATION_WARNING: {
+    type: "WARNING", priority: "P1", category: "Aprendizaje", persist: true,
+    es: {
+      title: "{name} necesita revisión",
+      body: "La evidencia de {stage} muestra {warning}. La etapa no cambió automáticamente.",
+    },
+    actions: [{ labelCode: "VIEW_STRATEGY", href: "/playbook", style: "primary" }],
   },
 
   // ── System (persisted) ────────────────────────────────────────────────────

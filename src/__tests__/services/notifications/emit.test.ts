@@ -84,4 +84,35 @@ describe("emitNotification", () => {
     expect(r).toBeNull()
     expect(p.notification.create).not.toHaveBeenCalled()
   })
+
+  it("renders strategy eligibility as a learning notification linked to its setup", async () => {
+    const p = mockPrisma()
+    const result = await emitNotification(p as never, "u1", "SETUP_STAGE_ELIGIBLE", {
+      params: { name: "Ruptura", stage: "Backtesting", nextStage: "Demo" },
+      sourceId: "setup-1",
+      href: "/playbook?highlight=setup-1",
+      dedupeKey: "setup-validation:setup-1:BACKTEST:ELIGIBLE:sig-1",
+    })
+    expect(result).toMatchObject({
+      category: "Aprendizaje",
+      title: "Ruptura está lista para avanzar",
+      body: "La evidencia de Backtesting cumple los criterios. Revisa los datos antes de promover a Demo.",
+      href: "/playbook?highlight=setup-1",
+    })
+  })
+
+  it("renders strategy deterioration without implying an automatic downgrade", async () => {
+    const p = mockPrisma()
+    const result = await emitNotification(p as never, "u1", "SETUP_VALIDATION_WARNING", {
+      params: { name: "Ruptura", stage: "Real", warning: "deterioro del edge" },
+      sourceId: "setup-1",
+      href: "/playbook?highlight=setup-1",
+      dedupeKey: "setup-validation:setup-1:REAL:WARNING:sig-2",
+    })
+    expect(result).toMatchObject({
+      category: "Aprendizaje",
+      title: "Ruptura necesita revisión",
+      body: "La evidencia de Real muestra deterioro del edge. La etapa no cambió automáticamente.",
+    })
+  })
 })
