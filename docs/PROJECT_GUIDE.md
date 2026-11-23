@@ -1,7 +1,7 @@
 # Project Guide — Trading Journal v3.2
 
 > **Punto de entrada único para cualquier desarrollador.** Si lees solo un documento, que sea este.
-> Última actualización: 2026-11-18.
+> Última actualización: 2026-11-23.
 
 ---
 
@@ -153,8 +153,9 @@ Esta es la fuente de verdad consolidada. Documentos maestros:
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Cómo funciona por dentro — el freeze v3.1 (principios, decisiones, entidades, eventos, subsistemas) + los 5 ADRs que lo fundamentan |
 | **[STATUS.md](STATUS.md)** | Estado vivo: checklist de QA pendiente, ops pendientes, deuda técnica, backlog, roadmap reservado |
 | **[CHANGELOG.md](CHANGELOG.md)** | Historial consolidado de cambios |
+| **[MANUAL_PLAYBOOK_SETUPS.md](MANUAL_PLAYBOOK_SETUPS.md)** | Cómo crear, medir, validar y mantener setups en el Playbook |
 | **[MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md](MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md)** | Cómo usar Hipótesis → Backtesting → Demo → Real |
 
 Material histórico adicional (auditoría de producto que motivó el freeze v3.1) → **[auditoria-producto-trading-journal-v2.md](auditoria-producto-trading-journal-v2.md)**.
 
-Todo lo demás que existió bajo `docs/v3/`, `docs/archive/` y `docs/superpowers/` (sprints, specs, informes de arquitectura previos) queda recuperable en el historial de git; se consolidó en los 4 documentos de arriba para evitar que la documentación vuelva a divergir del código.
+Todo lo demás que existió bajo `docs/v3/`, `docs/archive/` y `docs/superpowers/` (sprints, specs, informes de arquitectura previos) queda recuperable en el historial de git; se consolidó en los documentos maestros de arriba para evitar que la documentación vuelva a divergir del código.
