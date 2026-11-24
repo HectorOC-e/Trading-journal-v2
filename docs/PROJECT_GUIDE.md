@@ -155,6 +155,7 @@ Esta es la fuente de verdad consolidada. Documentos maestros:
 | **[CHANGELOG.md](CHANGELOG.md)** | Historial consolidado de cambios |
 | **[MANUAL_PLAYBOOK_SETUPS.md](MANUAL_PLAYBOOK_SETUPS.md)** | Cómo crear, medir, validar y mantener setups en el Playbook |
 | **[MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md](MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md)** | Cómo usar Hipótesis → Backtesting → Demo → Real |
+| **[MANUAL_PRACTICAS_APRENDIZAJE.md](MANUAL_PRACTICAS_APRENDIZAJE.md)** | Cómo convertir conceptos, trades y brechas de validación en prácticas verificables |
 
 Material histórico adicional (auditoría de producto que motivó el freeze v3.1) → **[auditoria-producto-trading-journal-v2.md](auditoria-producto-trading-journal-v2.md)**.
 
