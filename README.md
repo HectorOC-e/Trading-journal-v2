@@ -181,6 +181,8 @@ pnpm e2e          # playwright (e2e)
 
 ## 📚 Documentación
 
+Consulta los [manuales de uso de TjournalX](docs/manuales/) para aprender a usar los módulos y descargar las guías en PDF.
+
 Tres documentos vivos y dos anexos. Todo lo demás (bitácoras por sprint, specs de v3, informes)
 se consolidó aquí el 2026-07-09 y vive en el historial de git.
 
