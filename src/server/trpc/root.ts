@@ -35,12 +35,14 @@ import { todayRouter }              from "./routers/today"
 import { propFirmPresetsRouter }    from "./routers/prop-firm-presets"
 
 import { learningPracticesRouter } from "./routers/learning-practices"
+import { backtestSessionsRouter } from "./routers/backtest-sessions"
 
 import { taxRouter } from "./routers/tax"
 
 export const appRouter = router({
   tax: taxRouter,
   learningPractices: learningPracticesRouter,
+  backtestSessions: backtestSessionsRouter,
   trades:           tradesRouter,
   analytics:        analyticsRouter,
   accounts:         accountsRouter,

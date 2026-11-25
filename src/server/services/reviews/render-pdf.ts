@@ -9,9 +9,8 @@
 // Runtime note: @sparticuz/chromium ships a Linux Chromium for serverless (Vercel).
 // Locally on Windows/macOS set PUPPETEER_EXECUTABLE_PATH to a local Chrome/Chromium.
 
-import chromium from "@sparticuz/chromium"
-import puppeteer from "puppeteer-core"
 import type { PrismaClient } from "@/lib/generated/prisma/client"
+import { renderHtmlPdf } from "./render-html-pdf"
 import { loadWeeklyReport, loadMonthlyReport } from "./report-data"
 import { loadReviewAnalytics } from "./review-insights"
 import { renderReviewReportHtml } from "./pdf-report-html"
@@ -49,22 +48,5 @@ async function buildHtml(prisma: PrismaClient, userId: string, period: ReviewPer
 }
 
 export async function renderReviewPdf(prisma: PrismaClient, args: { userId: string; period: ReviewPeriod }): Promise<Buffer> {
-  const html = await buildHtml(prisma, args.userId, args.period)
-
-  const localExe = process.env.PUPPETEER_EXECUTABLE_PATH
-  const executablePath = localExe || (await chromium.executablePath())
-
-  const browser = await puppeteer.launch({
-    args: chromium.args,
-    executablePath,
-    headless: true,
-  })
-  try {
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: "load" }) // self-contained HTML, no network
-    const pdf = await page.pdf({ format: "A4", printBackground: true })
-    return Buffer.from(pdf)
-  } finally {
-    await browser.close()
-  }
+  return renderHtmlPdf(await buildHtml(prisma, args.userId, args.period))
 }

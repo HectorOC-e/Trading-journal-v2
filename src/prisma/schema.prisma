@@ -41,6 +41,7 @@ model User {
   resourceReviews   ResourceReview[]
   studySessions     StudySession[]
   learningPractices LearningPractice[]
+  backtestSessions  BacktestSession[]
   practiceTradeLinks PracticeTradeLink[]
   reviewModeSnapshots ReviewModeSnapshot[]
   markets           Market[]
@@ -410,6 +411,7 @@ model Trade {
   setup   Setup?       @relation(fields: [setupId], references: [id], onDelete: SetNull)
   events  TradeEvent[]
   practiceLinks PracticeTradeLink[]
+  backtestLinks BacktestSessionTrade[]
 
   @@index([userId, date(sort: Desc)])
   @@index([userId, status, date(sort: Desc)])
@@ -1378,11 +1380,74 @@ model LearningPractice {
   attachments PracticeAttachment[]
   feedback PracticeFeedback[]
   tradeLinks PracticeTradeLink[]
+  backtestLinks BacktestSessionPractice[]
   @@unique([userId, id])
   @@index([userId, date(sort: Desc), id])
   @@index([resourceId])
   @@map("learning_practices")
 }
+model BacktestSession {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  setupKey      String?  @map("setup_key") @db.Uuid
+  status        String   @default("DRAFT")
+  revision      Int      @default(1)
+  reportNumber  Int      @default(0) @map("report_number")
+  evidenceCount Int      @default(0) @map("evidence_count")
+  plan          Json
+  work          Json
+  workDays      String[] @default([]) @map("work_days")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trades        BacktestSessionTrade[]
+  practices     BacktestSessionPractice[]
+  reports       BacktestSessionReport[]
+
+  @@unique([userId, id])
+  @@index([userId, updatedAt(sort: Desc), id])
+  @@index([userId, setupKey])
+  @@map("backtest_sessions")
+}
+
+model BacktestSessionTrade {
+  userId    String @map("user_id") @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  tradeId   String @map("trade_id") @db.Uuid
+  session   BacktestSession @relation(fields: [userId, sessionId], references: [userId, id], onDelete: Cascade)
+  trade     Trade @relation(fields: [userId, tradeId], references: [userId, id], onDelete: Cascade)
+
+  @@id([userId, sessionId, tradeId])
+  @@index([userId, tradeId])
+  @@map("backtest_session_trades")
+}
+
+model BacktestSessionPractice {
+  userId     String @map("user_id") @db.Uuid
+  sessionId  String @map("session_id") @db.Uuid
+  practiceId String @map("practice_id") @db.Uuid
+  session    BacktestSession @relation(fields: [userId, sessionId], references: [userId, id], onDelete: Cascade)
+  practice   LearningPractice @relation(fields: [userId, practiceId], references: [userId, id], onDelete: Cascade)
+
+  @@id([userId, sessionId, practiceId])
+  @@index([userId, practiceId])
+  @@map("backtest_session_practices")
+}
+
+model BacktestSessionReport {
+  userId      String   @map("user_id") @db.Uuid
+  sessionId   String   @map("session_id") @db.Uuid
+  number      Int
+  requestId   String   @map("request_id") @db.Uuid
+  snapshot    Json
+  closedAt    DateTime @default(now()) @map("closed_at") @db.Timestamptz(3)
+  session     BacktestSession @relation(fields: [userId, sessionId], references: [userId, id], onDelete: Cascade)
+
+  @@id([userId, sessionId, number])
+  @@unique([userId, sessionId, requestId])
+  @@map("backtest_session_reports")
+}
+
 model PracticeAttachment {
   id String @id @default(uuid()) @db.Uuid
   practiceId String @map("practice_id") @db.Uuid

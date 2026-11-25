@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { StageEvidence, ValidationAction, ValidationPolicy, ValidationStage } from "@/domains/analytics/setups/validation"
 import { trpc } from "@/lib/trpc/client"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 type EvidenceView = StageEvidence & {
   signature: string
@@ -151,6 +152,9 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
     ? overview.hypothesis
     : overview.stages[overview.state.currentStage]
   const missingCriterion = evidence.criteria.find((criterion) => !criterion.met)
+  const backtestGaps: Record<string, string> = { closedCount: "Ampliar la muestra de operaciones", rCoverage: "Completar la cobertura de R", checklistCoverage: "Completar la cobertura del checklist", expectancy: "Evaluar la expectativa" }
+  const backtestCriterion = selectedStage === "BACKTEST" && missingCriterion ? backtestGaps[missingCriterion.key] : undefined
+  const backtestHref = `/aprendizaje/backtesting?${new URLSearchParams({ setup: setupId, ...(backtestCriterion ? { criterion: backtestCriterion } : {}) })}`
   const practiceHref = missingCriterion ? (() => {
     const params = new URLSearchParams({
       tab: "practicas",
@@ -211,6 +215,7 @@ export function SetupValidationRoute({ setupId, setupName }: { setupId: string; 
               <BookOpenCheck size={13} />Crear práctica
             </a>
           ) : null}
+          {selectedStage === "BACKTEST" && <Link href={backtestHref} className="inline-flex h-7 items-center rounded-[var(--radius-sm)] border border-[var(--line)] px-3 text-xs font-medium text-[var(--ink-2)] hover:bg-[var(--chip)]">Planificar sesión de backtesting</Link>}
           <Button
             type="button"
             size="sm"

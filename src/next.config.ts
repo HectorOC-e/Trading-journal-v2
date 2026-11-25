@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/tax/export": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
     "/api/reviews/pdf": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
+    "/api/backtesting/pdf": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
     "/api/cron/reviews-digest": ["./node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**"],
   },
 }

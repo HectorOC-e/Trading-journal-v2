@@ -55,6 +55,7 @@ function PracticeEditor({
   timezone = "UTC",
   onClose,
   onChanged,
+  onSaved,
 }: {
   userId?: string;
   record: PracticeRecord | null;
@@ -68,6 +69,7 @@ function PracticeEditor({
   timezone?: string;
   onClose: () => void;
   onChanged: () => void;
+  onSaved?: (record: PracticeRecord) => void;
 }) {
   const [saved, setSaved] = useState(record);
   const activeMode = useOperationalMode(s => s.mode);
@@ -259,6 +261,7 @@ function PracticeEditor({
       setPracticeMode(p.operationalMode as OperationalMode | null);
       setLinks((p.tradeLinks ?? []).map(l => ({tradeId:l.tradeId,role:l.role as PracticeLinkDraft["role"]})));
       onChanged();
+      onSaved?.(p);
       setNotice(
         "Práctica guardada. Puedes añadir capturas o pedir ayuda al asistente.",
       );
