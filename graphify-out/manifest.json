@@ -1,19 +1,19 @@
 {
   "src/app/analytics/components/ai-insights-panel.tsx": {
-    "mtime": 1795022994.9891474,
-    "seen": 1795032468.3309443,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8896685,
     "ast_hash": "159f0f9132ad69272ee9463a5b2f0369",
     "semantic_hash": ""
   },
   "src/app/analytics/page.tsx": {
-    "mtime": 1795022994.9891474,
-    "seen": 1795032468.3309464,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8896713,
     "ast_hash": "a276b0bac3a57e32c28fadef8d7c9fe7",
     "semantic_hash": ""
   },
   "src/app/api/ai-coach/route.ts": {
-    "mtime": 1795022994.990215,
-    "seen": 1795032468.330948,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.889673,
     "ast_hash": "72865597b04c6af3d7c29b1f94ae21b7",
     "semantic_hash": ""
   },
@@ -24,8 +24,8 @@
     "semantic_hash": ""
   },
   "src/app/api/analytics-ai/route.ts": {
-    "mtime": 1795022994.990215,
-    "seen": 1795032468.3309512,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8896763,
     "ast_hash": "24c3c42ae172cdf29b42edc8fdcace99",
     "semantic_hash": ""
   },
@@ -72,20 +72,20 @@
     "semantic_hash": ""
   },
   "src/app/api/import/mt4/route.ts": {
-    "mtime": 1795022994.9977384,
-    "seen": 1795032468.3309653,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.889695,
     "ast_hash": "aa2cec903c58ea8a0c428893d4e22335",
     "semantic_hash": ""
   },
   "src/app/api/psychology-ai/route.ts": {
-    "mtime": 1795022994.9977384,
-    "seen": 1795032468.3309665,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8896964,
     "ast_hash": "12115207cd17b10c29848dcedc6c9ed1",
     "semantic_hash": ""
   },
   "src/app/api/reviews/pdf/route.ts": {
-    "mtime": 1795022994.999121,
-    "seen": 1795032468.3309681,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8896976,
     "ast_hash": "6b2da4894b0b4ac146fb690287f928b0",
     "semantic_hash": ""
   },
@@ -108,8 +108,8 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/hoy-tab.tsx": {
-    "mtime": 1795022995.0031867,
-    "seen": 1795032468.3309772,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8897147,
     "ast_hash": "43ff6e2abdbf4950710732031a87377d",
     "semantic_hash": ""
   },
@@ -120,8 +120,8 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/progreso-sections.tsx": {
-    "mtime": 1795022995.0031867,
-    "seen": 1795032468.3309877,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.889727,
     "ast_hash": "3f5d1d3c6c28a40bbee61c9cfc76191b",
     "semantic_hash": ""
   },
@@ -150,8 +150,8 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/impact-modal.tsx": {
-    "mtime": 1795022995.008992,
-    "seen": 1795032468.3309956,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.889736,
     "ast_hash": "9f4985cc3fd8fae189546384cbbe4093",
     "semantic_hash": ""
   },
@@ -168,8 +168,8 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/page.tsx": {
-    "mtime": 1795031369.539072,
-    "seen": 1795032468.3310006,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8897414,
     "ast_hash": "c0d5ab035289f13839460cfd1d06313c",
     "semantic_hash": ""
   },
@@ -258,8 +258,8 @@
     "semantic_hash": ""
   },
   "src/app/dashboard/components/chart-tooltip.tsx": {
-    "mtime": 1795022995.024953,
-    "seen": 1795032468.3310246,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897684,
     "ast_hash": "e154a89148f43e76933ab530cb474c08",
     "semantic_hash": ""
   },
@@ -294,14 +294,14 @@
     "semantic_hash": ""
   },
   "src/app/dashboard/export/page.tsx": {
-    "mtime": 1795022995.0257838,
-    "seen": 1795032468.3310313,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.889791,
     "ast_hash": "70c7e7fdcf638495753e4e8184c09c2f",
     "semantic_hash": ""
   },
   "src/app/dashboard/hooks/use-dashboard-stats.ts": {
-    "mtime": 1795022995.0257838,
-    "seen": 1795032468.3310325,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897922,
     "ast_hash": "23b9e83ec7ae8b3ffb7aa5d98a3a3d1f",
     "semantic_hash": ""
   },
@@ -312,32 +312,32 @@
     "semantic_hash": ""
   },
   "src/app/dashboard/page.tsx": {
-    "mtime": 1795022995.0257838,
-    "seen": 1795032468.331035,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897946,
     "ast_hash": "8fe3d01e3ef50bc60972d09e79671add",
     "semantic_hash": ""
   },
   "src/app/dashboard/tabs/tab-disciplina.tsx": {
-    "mtime": 1795022995.0257838,
-    "seen": 1795032468.3310359,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897955,
     "ast_hash": "b89852fb51b4b71b6c7af38de6efac5e",
     "semantic_hash": ""
   },
   "src/app/dashboard/tabs/tab-operador.tsx": {
-    "mtime": 1795022995.0284567,
-    "seen": 1795032468.331037,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897963,
     "ast_hash": "ddd346059547d854e44f16a7c70f226d",
     "semantic_hash": ""
   },
   "src/app/dashboard/tabs/tab-playbook.tsx": {
-    "mtime": 1795022995.0284567,
-    "seen": 1795032468.3310382,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897974,
     "ast_hash": "a3ea649742d56cd5be1eb506d57f3618",
     "semantic_hash": ""
   },
   "src/app/dashboard/tabs/tab-portfolio.tsx": {
-    "mtime": 1795022995.0284567,
-    "seen": 1795032468.3310397,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897984,
     "ast_hash": "7e9e2e4c4e2b1f3516f206e2982a9e08",
     "semantic_hash": ""
   },
@@ -402,20 +402,20 @@
     "semantic_hash": ""
   },
   "src/app/playbook/page.tsx": {
-    "mtime": 1795030197.2678826,
-    "seen": 1795032468.3310688,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.889841,
     "ast_hash": "0d168c1f93a19407375a861dfddfab44",
     "semantic_hash": ""
   },
   "src/app/psicologia/page.tsx": {
-    "mtime": 1795022995.0403428,
-    "seen": 1795032468.3310697,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8898423,
     "ast_hash": "ebec294cc821e9e3d8dcc3223d10fdd7",
     "semantic_hash": ""
   },
   "src/app/reglas/page.tsx": {
-    "mtime": 1795022995.0403428,
-    "seen": 1795032468.331071,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8898432,
     "ast_hash": "6b09cb9e733d4108c17a7a67a6d7abb5",
     "semantic_hash": ""
   },
@@ -432,8 +432,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/edition-header.tsx": {
-    "mtime": 1795022995.0488698,
-    "seen": 1795032468.3310742,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8898463,
     "ast_hash": "66ffd9cf06b920e6161fa00bf1e720f0",
     "semantic_hash": ""
   },
@@ -450,14 +450,14 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/period-summary.tsx": {
-    "mtime": 1795022995.0488698,
-    "seen": 1795032468.3311615,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8898497,
     "ast_hash": "57a4281cedbb8ad71d9980fdae3b4bf4",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/ai-analysis-card.tsx": {
-    "mtime": 1795022995.0488698,
-    "seen": 1795032468.331163,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898506,
     "ast_hash": "79d649106cdc9c3fcb1cf142a8254436",
     "semantic_hash": ""
   },
@@ -468,8 +468,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/download-pdf-button.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.331165,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898528,
     "ast_hash": "4831e9e3c87463c968d51657f353e47b",
     "semantic_hash": ""
   },
@@ -480,8 +480,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/monthly-letter.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.3311677,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898551,
     "ast_hash": "93a58edc63f90a5ab3cb69955b581a48",
     "semantic_hash": ""
   },
@@ -492,26 +492,26 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-lifecycle.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.331173,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898602,
     "ast_hash": "2405ece3e464147678e8f2796a49b7a0",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-report-shell.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.3311744,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.889861,
     "ast_hash": "03941106559e87722145babcbeedba23",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/sections.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.3311756,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.889862,
     "ast_hash": "463899bea3e4ea1abf290c3b5b88de17",
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/send-email-button.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.3311772,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898633,
     "ast_hash": "667252b4baa6f6125544ec81bc44edbc",
     "semantic_hash": ""
   },
@@ -522,8 +522,8 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/review-card.tsx": {
-    "mtime": 1795022995.0523422,
-    "seen": 1795032468.33118,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898654,
     "ast_hash": "d59e149e342cc7e529253656e0d35f21",
     "semantic_hash": ""
   },
@@ -546,38 +546,38 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/trajectory-panel.tsx": {
-    "mtime": 1795022995.0523422,
-    "seen": 1795032468.3311849,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898702,
     "ast_hash": "b61dcc2d252ae49466e386c99bc8024b",
     "semantic_hash": ""
   },
   "src/app/reviews/components/week-hero.tsx": {
-    "mtime": 1795022995.0523422,
-    "seen": 1795032468.3311858,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898711,
     "ast_hash": "cbcdede4df19cc6d57cdf5ea20c8be57",
     "semantic_hash": ""
   },
   "src/app/reviews/mensual/[yearMonth]/page.tsx": {
-    "mtime": 1795022995.0597043,
-    "seen": 1795032468.3311872,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898723,
     "ast_hash": "df49a8d5da938a58f48e3dbaf7e878d0",
     "semantic_hash": ""
   },
   "src/app/reviews/page.tsx": {
-    "mtime": 1795022995.0597043,
-    "seen": 1795032468.3311884,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898735,
     "ast_hash": "652563268b63fb4f4beae9736a27a36e",
     "semantic_hash": ""
   },
   "src/app/reviews/semanal/[weekStart]/page.tsx": {
-    "mtime": 1795022995.0611374,
-    "seen": 1795032468.3311927,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898745,
     "ast_hash": "e7cd140ba89567602ae74e8c24a5cdd8",
     "semantic_hash": ""
   },
   "src/app/trades/components/import-csv-modal.tsx": {
-    "mtime": 1795022995.0618746,
-    "seen": 1795032468.331195,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898757,
     "ast_hash": "ca128ded78b73bd24cc3b94c7c1747c0",
     "semantic_hash": ""
   },
@@ -594,14 +594,14 @@
     "semantic_hash": ""
   },
   "src/app/trades/page.tsx": {
-    "mtime": 1795022995.0618746,
-    "seen": 1795032468.3312652,
-    "ast_hash": "695acbdae38b3260180bfbb217bb0406",
+    "mtime": 1795585330.8216965,
+    "seen": 1795585367.8898785,
+    "ast_hash": "9fc4fae5c29618df8feb4c4034632cfc",
     "semantic_hash": ""
   },
   "src/components/ai-coach/ai-coach-drawer.tsx": {
-    "mtime": 1795022995.063951,
-    "seen": 1795032468.3312678,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.8898792,
     "ast_hash": "5375f8c791ca9258437eadae662de13c",
     "semantic_hash": ""
   },
@@ -612,14 +612,14 @@
     "semantic_hash": ""
   },
   "src/components/ai-coach/coach-memory-layers.tsx": {
-    "mtime": 1795022995.066107,
-    "seen": 1795032468.33127,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8898816,
     "ast_hash": "bea1bf2027e971e9a82570138bba0708",
     "semantic_hash": ""
   },
   "src/components/ai-coach/coach-memory-panel.tsx": {
-    "mtime": 1795022995.066107,
-    "seen": 1795032468.331271,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8898823,
     "ast_hash": "a1af54fed124b34f5993209651b2adae",
     "semantic_hash": ""
   },
@@ -642,8 +642,8 @@
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-drawer.tsx": {
-    "mtime": 1795022995.0723414,
-    "seen": 1795032468.3312755,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8898866,
     "ast_hash": "8dfa33d19535fc98a195c35a4fa82d9b",
     "semantic_hash": ""
   },
@@ -660,26 +660,26 @@
     "semantic_hash": ""
   },
   "src/components/aprendizaje/resource-transfer-panel.tsx": {
-    "mtime": 1795022995.0723414,
-    "seen": 1795032468.3312783,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8898897,
     "ast_hash": "182e0201df98477af2e89800904ffd27",
     "semantic_hash": ""
   },
   "src/components/behavior/behavior-loop-panel.tsx": {
-    "mtime": 1795022995.0723414,
-    "seen": 1795032468.3312795,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.889891,
     "ast_hash": "54ed3c140a2c95754e6b07e5ee8759fe",
     "semantic_hash": ""
   },
   "src/components/improvement/improvement-panel.tsx": {
-    "mtime": 1795022995.0763412,
-    "seen": 1795032468.3312807,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.889892,
     "ast_hash": "de8f94134aed53201dc6e996cc0b8a3f",
     "semantic_hash": ""
   },
   "src/components/intervention/intervention-overlay.tsx": {
-    "mtime": 1795022995.0763412,
-    "seen": 1795032468.3312814,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.889893,
     "ast_hash": "2d152ae8ac7f0b75bd013b579e43d5d8",
     "semantic_hash": ""
   },
@@ -738,8 +738,8 @@
     "semantic_hash": ""
   },
   "src/components/notifications/notification-item.tsx": {
-    "mtime": 1795022995.0824904,
-    "seen": 1795032468.33129,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8899035,
     "ast_hash": "7dbb807e75f475ce72d9723ca3b13832",
     "semantic_hash": ""
   },
@@ -774,20 +774,20 @@
     "semantic_hash": ""
   },
   "src/components/playbook/error-cards-panel.tsx": {
-    "mtime": 1795022995.0837286,
-    "seen": 1795032468.331295,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.88991,
     "ast_hash": "60526e81d0dc3c9a2beef52587bec819",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-intelligence-panel.tsx": {
-    "mtime": 1795022995.0837286,
-    "seen": 1795032468.3312957,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8899117,
     "ast_hash": "5c99db82e3838938023281232046712d",
     "semantic_hash": ""
   },
   "src/components/psychology/psychology-v3-panel.tsx": {
-    "mtime": 1795022995.0837286,
-    "seen": 1795032468.3313022,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8899174,
     "ast_hash": "ae8acf80fddedb405052b17636e2b783",
     "semantic_hash": ""
   },
@@ -846,14 +846,14 @@
     "semantic_hash": ""
   },
   "src/components/today/today-feed.tsx": {
-    "mtime": 1795022995.0864837,
-    "seen": 1795032468.3313138,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.88993,
     "ast_hash": "e469e71322d1ab32e9544a85facf35cc",
     "semantic_hash": ""
   },
   "src/components/trades/edit-trade-modal.tsx": {
-    "mtime": 1795022995.0864837,
-    "seen": 1795032468.3313148,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.889931,
     "ast_hash": "26a0faf0128f74d6c89f685e12b8a4ca",
     "semantic_hash": ""
   },
@@ -864,8 +864,8 @@
     "semantic_hash": ""
   },
   "src/components/trades/log-session-popover.tsx": {
-    "mtime": 1795022995.0876157,
-    "seen": 1795032468.331318,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.889934,
     "ast_hash": "91dcf47cb9010da19ec335e33d29bdee",
     "semantic_hash": ""
   },
@@ -876,15 +876,15 @@
     "semantic_hash": ""
   },
   "src/components/trades/position-log-modal.tsx": {
-    "mtime": 1795022995.0876157,
-    "seen": 1795032468.3313208,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8899379,
     "ast_hash": "c10b0e50fa8cd974eb8f19f9ded65fe3",
     "semantic_hash": ""
   },
   "src/components/trades/register-trade-modal.tsx": {
-    "mtime": 1795022995.0876157,
-    "seen": 1795032468.3313217,
-    "ast_hash": "d03dff8b34ebe4626bb2d3a26a92800d",
+    "mtime": 1795585077.7645009,
+    "seen": 1795585367.8899393,
+    "ast_hash": "1ee9bd15b5c0c77c6dc0aecbf4158f9a",
     "semantic_hash": ""
   },
   "src/components/trades/trade-detail-panel.tsx": {
@@ -1050,8 +1050,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/intelligence-panel.tsx": {
-    "mtime": 1795022995.0959435,
-    "seen": 1795032468.3313508,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.889971,
     "ast_hash": "17a52627e4469ab59a9cdc3ad49cdc8e",
     "semantic_hash": ""
   },
@@ -1092,8 +1092,8 @@
     "semantic_hash": ""
   },
   "src/components/ui/practice-toggle.tsx": {
-    "mtime": 1795022995.0963402,
-    "seen": 1795032468.331358,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8899794,
     "ast_hash": "90a02f9362b7fbd82d3129985cd4c329",
     "semantic_hash": ""
   },
@@ -1128,8 +1128,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/ai-context.ts": {
-    "mtime": 1795022995.1028087,
-    "seen": 1795032468.3313649,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8899858,
     "ast_hash": "3b042612a3daa8b250151108f1ba3020",
     "semantic_hash": ""
   },
@@ -1146,14 +1146,14 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/insights/insight-store.ts": {
-    "mtime": 1795022995.1039553,
-    "seen": 1795032468.331368,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8899977,
     "ast_hash": "92b6cf006368c05df5518b0d5df10ab8",
     "semantic_hash": ""
   },
   "src/domains/analytics/insights/recompute-insights.ts": {
-    "mtime": 1795022995.1039553,
-    "seen": 1795032468.3313687,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.889999,
     "ast_hash": "a874fd285d5b1ca2980a2f2113b821c1",
     "semantic_hash": ""
   },
@@ -1296,8 +1296,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/analytics-bundle.ts": {
-    "mtime": 1795022995.106762,
-    "seen": 1795032468.3313892,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8900247,
     "ast_hash": "252bbd67f9e1c85ebee89bc686f3e02a",
     "semantic_hash": ""
   },
@@ -1314,8 +1314,8 @@
     "semantic_hash": ""
   },
   "src/domains/analytics/services/discipline-service.ts": {
-    "mtime": 1795022995.1083777,
-    "seen": 1795032468.3313916,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8900278,
     "ast_hash": "89dc7613bcd1f1fa3b47c6d83f15fae4",
     "semantic_hash": ""
   },
@@ -1464,8 +1464,8 @@
     "semantic_hash": ""
   },
   "src/domains/learning/error-cards.ts": {
-    "mtime": 1795022995.1137075,
-    "seen": 1795032468.3315432,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8900645,
     "ast_hash": "eb1e9fecd979862cb79c4a87d4d731a7",
     "semantic_hash": ""
   },
@@ -1518,8 +1518,8 @@
     "semantic_hash": ""
   },
   "src/domains/rules/actions.ts": {
-    "mtime": 1795022995.1203392,
-    "seen": 1795032468.3315606,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.890084,
     "ast_hash": "727856c25f6f5006a17deb22557e9ea0",
     "semantic_hash": ""
   },
@@ -1536,8 +1536,8 @@
     "semantic_hash": ""
   },
   "src/domains/rules/engine.ts": {
-    "mtime": 1795022995.1268845,
-    "seen": 1795032468.3315642,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8900871,
     "ast_hash": "19da9f7c66892cf3a636ca40a9513265",
     "semantic_hash": ""
   },
@@ -1572,8 +1572,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/account-reality.ts": {
-    "mtime": 1795022995.1297145,
-    "seen": 1795032468.3315802,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8901045,
     "ast_hash": "947f819990502bd374b10eab686b5b11",
     "semantic_hash": ""
   },
@@ -1590,9 +1590,9 @@
     "semantic_hash": ""
   },
   "src/domains/trading/schemas/trade-form-schema.ts": {
-    "mtime": 1795022995.1327214,
-    "seen": 1795032468.3315873,
-    "ast_hash": "827a387cf40c7ab40004044b3bffd98d",
+    "mtime": 1795585077.0685053,
+    "seen": 1795585367.890112,
+    "ast_hash": "7884fa874f7c5472d4bf2316150064a1",
     "semantic_hash": ""
   },
   "src/domains/trading/services/account-service.ts": {
@@ -1608,8 +1608,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/csv-import.ts": {
-    "mtime": 1795022995.1337278,
-    "seen": 1795032468.3315904,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.890115,
     "ast_hash": "dd49e73035bc3fe6267c2c886857b03e",
     "semantic_hash": ""
   },
@@ -1626,8 +1626,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/mt4-parser.ts": {
-    "mtime": 1795022995.1337278,
-    "seen": 1795032468.3315942,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.89012,
     "ast_hash": "81556382df46f96fd16f1631f096e322",
     "semantic_hash": ""
   },
@@ -1644,8 +1644,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/risk-enforcement.ts": {
-    "mtime": 1795022995.1337278,
-    "seen": 1795032468.3316007,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.890128,
     "ast_hash": "1d5990c02f94d4a1612b3f11ac2473ab",
     "semantic_hash": ""
   },
@@ -1764,8 +1764,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/analytics-insights-service.ts": {
-    "mtime": 1795022995.140728,
-    "seen": 1795032468.3316224,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8901546,
     "ast_hash": "8f5842beba1d41e414aeda18fced627e",
     "semantic_hash": ""
   },
@@ -1782,20 +1782,20 @@
     "semantic_hash": ""
   },
   "src/lib/ai/coach-agent.ts": {
-    "mtime": 1795022995.140728,
-    "seen": 1795032468.3316247,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8901575,
     "ast_hash": "13dac38de7400af3ed2fbcfb581a0a36",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-service.ts": {
-    "mtime": 1795022995.140728,
-    "seen": 1795032468.3316255,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8901587,
     "ast_hash": "dbc2024ba02f0401b0699585854e81bc",
     "semantic_hash": ""
   },
   "src/lib/ai/coach-tools.ts": {
-    "mtime": 1795022995.140728,
-    "seen": 1795032468.3316264,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8901594,
     "ast_hash": "544326adfd99496d8bd1d522144b17b3",
     "semantic_hash": ""
   },
@@ -1836,8 +1836,8 @@
     "semantic_hash": ""
   },
   "src/lib/ai/psychology-insights-service.ts": {
-    "mtime": 1795022995.1443381,
-    "seen": 1795032468.3316345,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8901699,
     "ast_hash": "11d5b8d2aecba73d00ba2e354be1901a",
     "semantic_hash": ""
   },
@@ -1950,8 +1950,8 @@
     "semantic_hash": ""
   },
   "src/lib/fx.ts": {
-    "mtime": 1795022995.152702,
-    "seen": 1795032468.3316534,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.890192,
     "ast_hash": "7be9f56592823d919ad84b84911699d6",
     "semantic_hash": ""
   },
@@ -1968,8 +1968,8 @@
     "semantic_hash": ""
   },
   "src/lib/messages/catalog.ts": {
-    "mtime": 1795030842.2588186,
-    "seen": 1795032468.3316562,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.890195,
     "ast_hash": "626ee0b5a69e7be3deddaf9649f1d074",
     "semantic_hash": ""
   },
@@ -2004,8 +2004,8 @@
     "semantic_hash": ""
   },
   "src/lib/practice-scope-store.ts": {
-    "mtime": 1795022995.1539352,
-    "seen": 1795032468.331663,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902037,
     "ast_hash": "3f14ce85ebece20c6062ed0882f18744",
     "semantic_hash": ""
   },
@@ -2160,32 +2160,32 @@
     "semantic_hash": ""
   },
   "src/server/services/analytics/edge-service.ts": {
-    "mtime": 1795022995.17016,
-    "seen": 1795032468.3316894,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902361,
     "ast_hash": "c3d772da8494904a58fa3f5329615f71",
     "semantic_hash": ""
   },
   "src/server/services/behavior/commitment-service.ts": {
-    "mtime": 1795022995.1723368,
-    "seen": 1795032468.3316903,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902373,
     "ast_hash": "7613f8007caac3891e6819d51664744f",
     "semantic_hash": ""
   },
   "src/server/services/behavior/rule-suggestion-service.ts": {
-    "mtime": 1795022995.1771915,
-    "seen": 1795032468.3316913,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902388,
     "ast_hash": "7a1b10f7d02d46608c8e125dc6beaece",
     "semantic_hash": ""
   },
   "src/server/services/coach/coach-memory-service.ts": {
-    "mtime": 1795022995.1771915,
-    "seen": 1795032468.3316922,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902397,
     "ast_hash": "48bf3b019fde091895e1edb27028bf35",
     "semantic_hash": ""
   },
   "src/server/services/coach/coach-thread-service.ts": {
-    "mtime": 1795022995.1814713,
-    "seen": 1795032468.3316932,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902407,
     "ast_hash": "1be9422bddd3e7c24d5fc04f417f47d8",
     "semantic_hash": ""
   },
@@ -2220,38 +2220,38 @@
     "semantic_hash": ""
   },
   "src/server/services/email/send-review.ts": {
-    "mtime": 1795022995.18242,
-    "seen": 1795032468.3316984,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902473,
     "ast_hash": "151b6fbbb4ce49db862e03d6efc23f14",
     "semantic_hash": ""
   },
   "src/server/services/improvement/improvement-service.ts": {
-    "mtime": 1795022995.18242,
-    "seen": 1795032468.3316991,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902485,
     "ast_hash": "a3866bb7354a90ebbed9d4df532c7d96",
     "semantic_hash": ""
   },
   "src/server/services/improvement/improvement-snapshot-service.ts": {
-    "mtime": 1795022995.1839645,
-    "seen": 1795032468.3317,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902495,
     "ast_hash": "ecbe8bdbf270ad0d68cb25fb876b2f60",
     "semantic_hash": ""
   },
   "src/server/services/intervention/intervention-service.ts": {
-    "mtime": 1795022995.1839645,
-    "seen": 1795032468.3317008,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902507,
     "ast_hash": "e3b27e9daecd0c1b6b3ca288a6f659c5",
     "semantic_hash": ""
   },
   "src/server/services/learning/learning-insights-service.ts": {
-    "mtime": 1795022995.1839645,
-    "seen": 1795032468.3317015,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902538,
     "ast_hash": "4fcec001e1c050fff8d72ea5a5322300",
     "semantic_hash": ""
   },
   "src/server/services/memory/memory-episode-service.ts": {
-    "mtime": 1795022995.1851754,
-    "seen": 1795032468.3317063,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902607,
     "ast_hash": "cf7fbe4c1d9ef170435b8c5605ff00c9",
     "semantic_hash": ""
   },
@@ -2262,8 +2262,8 @@
     "semantic_hash": ""
   },
   "src/server/services/memory/memory-pattern-service.ts": {
-    "mtime": 1795022995.1868029,
-    "seen": 1795032468.331708,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902626,
     "ast_hash": "4ce3aabe77bb880eaf882815983977d6",
     "semantic_hash": ""
   },
@@ -2274,32 +2274,32 @@
     "semantic_hash": ""
   },
   "src/server/services/psychology/psychology-service.ts": {
-    "mtime": 1795022995.1875648,
-    "seen": 1795032468.3317113,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902667,
     "ast_hash": "ba668610576bda10f85c8aeb93ae6691",
     "semantic_hash": ""
   },
   "src/server/services/reviews/card-stats.ts": {
-    "mtime": 1795022995.1923358,
-    "seen": 1795032468.3317246,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.890284,
     "ast_hash": "3c5a7987f8687e3de9c0894a57694ad7",
     "semantic_hash": ""
   },
   "src/server/services/reviews/ensure-analysis.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.3317263,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902867,
     "ast_hash": "dc87def0b668e217cd2998e3088fdf20",
     "semantic_hash": ""
   },
   "src/server/services/reviews/finalize-monthly.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.331728,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902886,
     "ast_hash": "cd9095fe7f5a270d16a6473f51592d2c",
     "semantic_hash": ""
   },
   "src/server/services/reviews/finalize.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.3317287,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902895,
     "ast_hash": "4597d0b5b1d25c8357c09fb0309e95c4",
     "semantic_hash": ""
   },
@@ -2316,8 +2316,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/monthly-card-stats.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.331732,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902943,
     "ast_hash": "e591e024fdbca7ca5c3d1dd77e5ea5e6",
     "semantic_hash": ""
   },
@@ -2328,8 +2328,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/overview.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.3317337,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902965,
     "ast_hash": "e30dc4ffa098987077d8c00b322a2d3c",
     "semantic_hash": ""
   },
@@ -2346,14 +2346,14 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/render-pdf.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.3317363,
-    "ast_hash": "e2402094da5326150273614d0973783b",
+    "mtime": 1795584344.4693727,
+    "seen": 1795585367.890301,
+    "ast_hash": "e7c78605fa69064108fd72611a798450",
     "semantic_hash": ""
   },
   "src/server/services/reviews/report-data.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.331737,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8903022,
     "ast_hash": "39d110bee935b95db2c2b32d4e160137",
     "semantic_hash": ""
   },
@@ -2364,8 +2364,8 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/review-insights.ts": {
-    "mtime": 1795022995.2003355,
-    "seen": 1795032468.331739,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8903043,
     "ast_hash": "9b6e80499304edf865e4d9a8efcfb5a0",
     "semantic_hash": ""
   },
@@ -2382,14 +2382,14 @@
     "semantic_hash": ""
   },
   "src/server/services/risk/risk-service.ts": {
-    "mtime": 1795022995.2003355,
-    "seen": 1795032468.331741,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8903077,
     "ast_hash": "aed6da8bd5f8175f4e75bfa50ef0e8bd",
     "semantic_hash": ""
   },
   "src/server/services/setups/playbook-service.ts": {
-    "mtime": 1795022995.2003355,
-    "seen": 1795032468.331742,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903086,
     "ast_hash": "baa53a094b74ff02ee02894810f44a99",
     "semantic_hash": ""
   },
@@ -2406,8 +2406,8 @@
     "semantic_hash": ""
   },
   "src/server/services/today/today-service.ts": {
-    "mtime": 1795022995.2174435,
-    "seen": 1795032468.331764,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903358,
     "ast_hash": "dadb63c3f1864337fb25da18d69f063b",
     "semantic_hash": ""
   },
@@ -2418,9 +2418,9 @@
     "semantic_hash": ""
   },
   "src/server/trpc/root.ts": {
-    "mtime": 1795022995.225447,
-    "seen": 1795032468.3317711,
-    "ast_hash": "4b04d964305f4e81a44d1f3dd967c4ee",
+    "mtime": 1795584206.070832,
+    "seen": 1795585367.8903453,
+    "ast_hash": "08d0d52028d5a1344a9fc0cfa4baba63",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/account-logs.ts": {
@@ -2430,8 +2430,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/accounts.ts": {
-    "mtime": 1795022995.2320573,
-    "seen": 1795032468.3317726,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903472,
     "ast_hash": "9ba8da658feb12fbcf9d0d7535650621",
     "semantic_hash": ""
   },
@@ -2448,20 +2448,20 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/analytics.ts": {
-    "mtime": 1795022995.236334,
-    "seen": 1795032468.3317752,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903506,
     "ast_hash": "19f215e12a45c7e0e07b57da0d337cb1",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/behavior.ts": {
-    "mtime": 1795022995.236334,
-    "seen": 1795032468.3317761,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903527,
     "ast_hash": "8af37078498881258c34d66f678bfd34",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/coach.ts": {
-    "mtime": 1795022995.236334,
-    "seen": 1795032468.331777,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903537,
     "ast_hash": "05195ba65261230dce6eb4fe2d6c7581",
     "semantic_hash": ""
   },
@@ -2472,8 +2472,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/edges.ts": {
-    "mtime": 1795022995.236334,
-    "seen": 1795032468.3317792,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903558,
     "ast_hash": "42a337cafe5bee534d3923e2b9edeee8",
     "semantic_hash": ""
   },
@@ -2484,26 +2484,26 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/improvement.ts": {
-    "mtime": 1795022995.2403338,
-    "seen": 1795032468.3317811,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.890358,
     "ast_hash": "b21beab8ee0babcc9ed0ab03aef60b2f",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/intervention.ts": {
-    "mtime": 1795022995.2403338,
-    "seen": 1795032468.3317819,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.890359,
     "ast_hash": "60f2fcc0001cdd11ba3a079cb19c819a",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-insights.ts": {
-    "mtime": 1795022995.2403338,
-    "seen": 1795032468.3317828,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.89036,
     "ast_hash": "79d93461cda2c903faa41eac6d2844d1",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-resources.ts": {
-    "mtime": 1795022995.2403338,
-    "seen": 1795032468.3317847,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903623,
     "ast_hash": "034c83da22c49e3e8d7bedc2000228f7",
     "semantic_hash": ""
   },
@@ -2514,14 +2514,14 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-goals.ts": {
-    "mtime": 1795022995.2443335,
-    "seen": 1795032468.3317862,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903644,
     "ast_hash": "d9f5d7cbc177f2a73d294872d7dfba25",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/monthly-reviews.ts": {
-    "mtime": 1795022995.2443335,
-    "seen": 1795032468.331787,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903654,
     "ast_hash": "d8d22fae4f5550e8ea8b06d0a66942cd",
     "semantic_hash": ""
   },
@@ -2532,8 +2532,8 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/playbook.ts": {
-    "mtime": 1795062490.123881,
-    "seen": 1795062659.801682,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.890367,
     "ast_hash": "8b582ea2ed3d64ab6e99bd59745e1cad",
     "semantic_hash": ""
   },
@@ -2550,32 +2550,32 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/psychology.ts": {
-    "mtime": 1795022995.2483335,
-    "seen": 1795032468.3317919,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.890371,
     "ast_hash": "5d62fcfda8c7dba8ec688c09cc3b776a",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/risk.ts": {
-    "mtime": 1795022995.2483335,
-    "seen": 1795032468.3317926,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.890372,
     "ast_hash": "0e02f0c3f610a6506c6643787dd97e0c",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/rules.ts": {
-    "mtime": 1795022995.2483335,
-    "seen": 1795032468.3317933,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903728,
     "ast_hash": "30a27bf01839c0a42725c871ca9b5aa9",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/setups.ts": {
-    "mtime": 1795022995.2483335,
-    "seen": 1795032468.3317945,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.890374,
     "ast_hash": "899d892296ca97db708ed223ad2e2dcf",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/study-sessions.ts": {
-    "mtime": 1795022995.2483335,
-    "seen": 1795032468.3317952,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903747,
     "ast_hash": "657e093b23392d38878c17bc1e8b2ac8",
     "semantic_hash": ""
   },
@@ -2586,32 +2586,32 @@
     "semantic_hash": ""
   },
   "src/server/trpc/routers/today.ts": {
-    "mtime": 1795022995.256333,
-    "seen": 1795032468.3317978,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903778,
     "ast_hash": "a31f05f60043c67dbc004d148e9bfd17",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trades.ts": {
-    "mtime": 1795022995.256333,
-    "seen": 1795032468.3317988,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903787,
     "ast_hash": "fc8d1e927f09704a2bff7463b7aa6d25",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/trading-sessions.ts": {
-    "mtime": 1795022995.256333,
-    "seen": 1795032468.3317995,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903797,
     "ast_hash": "5b49f47a2ec56f12dd301567da861950",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/weekly-reviews.ts": {
-    "mtime": 1795022995.256333,
-    "seen": 1795032468.3318002,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903806,
     "ast_hash": "238e05824dce3bab77f8b79e6091d11d",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/withdrawals.ts": {
-    "mtime": 1795022995.256333,
-    "seen": 1795032468.3318012,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8903813,
     "ast_hash": "0c9f45561c9bb2926de04009ed358c04",
     "semantic_hash": ""
   },
@@ -3090,8 +3090,8 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1795022994.2996178,
-    "seen": 1795032468.3309298,
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.88965,
     "ast_hash": "9421812c8c35e1b42d09a5d374267abd",
     "semantic_hash": ""
   },
@@ -3108,15 +3108,15 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1795032392.3290906,
-    "seen": 1795032468.3320346,
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.8905058,
     "ast_hash": "89f0b084ddf839f117f439d2db65525e",
     "semantic_hash": ""
   },
   "docs/PROJECT_GUIDE.md": {
-    "mtime": 1795032525.4790971,
-    "seen": 1795062659.8018072,
-    "ast_hash": "ce98b1771ea35b8b6ee4debd93f8e598",
+    "mtime": 1795491281.384053,
+    "seen": 1795585367.8905108,
+    "ast_hash": "a6ec631dee43910fbb9583756c8115b2",
     "semantic_hash": ""
   },
   "docs/auditoria-producto-trading-journal-v2.md": {
@@ -3234,27 +3234,27 @@
     "semantic_hash": ""
   },
   "src/server/services/trades/dashboard-service.ts": {
-    "mtime": 1795022995.2174435,
-    "seen": 1795032468.3317647,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.890337,
     "ast_hash": "7d95895298e10d98f6a71829969f1dfc",
     "semantic_hash": ""
   },
   "src/server/services/trades/serializers.ts": {
-    "mtime": 1795022995.2184863,
-    "seen": 1795032468.3317676,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903406,
     "ast_hash": "41bca3fb8f1b4bc0135a28d762d47766",
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-read-service.ts": {
-    "mtime": 1795022995.2203348,
-    "seen": 1795032468.3317685,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903415,
     "ast_hash": "f0eae9334419d3b8e39ebc159ee54d32",
     "semantic_hash": ""
   },
   "src/server/services/trades/trade-write-service.ts": {
-    "mtime": 1795022995.2203348,
-    "seen": 1795032468.3317697,
-    "ast_hash": "26b8a730b3e1a9a2da110ec872b76d8e",
+    "mtime": 1795585079.0284944,
+    "seen": 1795585367.8903427,
+    "ast_hash": "dae9b5fa521e3bf4f623755ca7d6ef9f",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-07-14-td018-trade-service.md": {
@@ -3318,14 +3318,14 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-notes.ts": {
-    "mtime": 1795022995.1920815,
-    "seen": 1795032468.331717,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902743,
     "ast_hash": "ed7c94ea0e3d1a7b38bdc39989d319a6",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/pipeline.ts": {
-    "mtime": 1795022995.1923358,
-    "seen": 1795032468.33172,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902776,
     "ast_hash": "714e3232c2f9cfb0e33b65117ee6f2fa",
     "semantic_hash": ""
   },
@@ -3342,8 +3342,8 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/types.ts": {
-    "mtime": 1795022995.1923358,
-    "seen": 1795032468.3317237,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902833,
     "ast_hash": "ecc0ac1613d78e0e8d4c0a043312d0b1",
     "semantic_hash": ""
   },
@@ -3426,14 +3426,14 @@
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-event-notes.ts": {
-    "mtime": 1795022995.1920815,
-    "seen": 1795032468.3317163,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902733,
     "ast_hash": "a89dac2bc0bf0b6a9faf321796785255",
     "semantic_hash": ""
   },
   "src/server/services/retrieval/corpora/trade-plans.ts": {
-    "mtime": 1795022995.1920815,
-    "seen": 1795032468.3317184,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902752,
     "ast_hash": "13e83a9d04cf7a64380f1f327902fdcd",
     "semantic_hash": ""
   },
@@ -3492,14 +3492,14 @@
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/handlers/memory-handler.ts": {
-    "mtime": 1795022995.11274,
-    "seen": 1795032468.3315365,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8900557,
     "ast_hash": "28e90b5688a0ef2d300e1b2f955fc335",
     "semantic_hash": ""
   },
   "src/domains/cognitive/events/handlers/notification-handler.ts": {
-    "mtime": 1795022995.11274,
-    "seen": 1795032468.3315384,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8900576,
     "ast_hash": "706fab1bbc175fcda962c6045f965947",
     "semantic_hash": ""
   },
@@ -3732,26 +3732,26 @@
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practices-tab.tsx": {
-    "mtime": 1795031369.227086,
-    "seen": 1795032468.330985,
-    "ast_hash": "d98d5ce437ff03484344dcb9783e4cf1",
+    "mtime": 1795584677.798905,
+    "seen": 1795585367.889723,
+    "ast_hash": "820f276abf54bb391f485184096559e5",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/modals/practice-modal.tsx": {
-    "mtime": 1795031299.8542104,
-    "seen": 1795032468.330998,
-    "ast_hash": "32c5e8cc65167a7e2063c647f2137191",
+    "mtime": 1795584677.1989088,
+    "seen": 1795585367.8897388,
+    "ast_hash": "b3efe3629f8cbb0d5a03ea2a26081543",
     "semantic_hash": ""
   },
   "src/server/services/learning/practice-feedback-service.ts": {
-    "mtime": 1795022995.1851754,
-    "seen": 1795032468.3317025,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902552,
     "ast_hash": "fdbd8d8efc5650dc0b125f7a25eb24c7",
     "semantic_hash": ""
   },
   "src/server/trpc/routers/learning-practices.ts": {
-    "mtime": 1795022995.2403338,
-    "seen": 1795032468.3317838,
+    "mtime": 1795491281.4960551,
+    "seen": 1795585367.8903613,
     "ast_hash": "8661233241b86687e560ea165267712c",
     "semantic_hash": ""
   },
@@ -3954,8 +3954,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/services/realized-history.ts": {
-    "mtime": 1795022995.1337278,
-    "seen": 1795032468.3315997,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8901262,
     "ast_hash": "01e4271fd882424769b7e70f762be2e3",
     "semantic_hash": ""
   },
@@ -3972,8 +3972,8 @@
     "semantic_hash": ""
   },
   "src/server/services/accounts/withdrawal-service.ts": {
-    "mtime": 1795022995.17016,
-    "seen": 1795032468.3316875,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902338,
     "ast_hash": "ffc40325f4d64cd633db35e7bdee903f",
     "semantic_hash": ""
   },
@@ -4008,14 +4008,14 @@
     "semantic_hash": ""
   },
   "src/app/reviews/components/report/review-continuity.tsx": {
-    "mtime": 1795022995.051259,
-    "seen": 1795032468.3311715,
+    "mtime": 1795491281.4640546,
+    "seen": 1795585367.889859,
     "ast_hash": "5a83c51e2f811b9b9d40e1a97eab9b65",
     "semantic_hash": ""
   },
   "src/components/today/daily-plan.tsx": {
-    "mtime": 1795022995.0852208,
-    "seen": 1795032468.3313131,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.889929,
     "ast_hash": "74f0630f052fc3b32abb5842122d70ae",
     "semantic_hash": ""
   },
@@ -4038,14 +4038,14 @@
     "semantic_hash": ""
   },
   "src/server/services/reviews/continuity.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.3317256,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902855,
     "ast_hash": "74d9b0908825e5d5bf0cfecd63c03173",
     "semantic_hash": ""
   },
   "src/server/services/today/daily-plan-service.ts": {
-    "mtime": 1795022995.212335,
-    "seen": 1795032468.331762,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903337,
     "ast_hash": "ae7d2151e0e54bf7a820e592f7f9c354",
     "semantic_hash": ""
   },
@@ -4296,8 +4296,8 @@
     "semantic_hash": ""
   },
   "src/domains/trading/operational-mode.ts": {
-    "mtime": 1795022995.1316156,
-    "seen": 1795032468.3315842,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8901093,
     "ast_hash": "c1441b39f28aa3fedada8160f4cf63e7",
     "semantic_hash": ""
   },
@@ -4356,8 +4356,8 @@
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-15-mundos-operativos.md": {
-    "mtime": 1795022994.3283749,
-    "seen": 1795032468.3320715,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8905568,
     "ast_hash": "4f579d3c70dc175d94735da46f415a7f",
     "semantic_hash": ""
   },
@@ -4368,219 +4368,429 @@
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-15-mundos-operativos-design.md": {
-    "mtime": 1795022994.3443742,
-    "seen": 1795032468.3320906,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8905816,
     "ast_hash": "941b1574e64dfaf68c62b7187c8f13aa",
     "semantic_hash": ""
   },
   "scripts/backfill-trade-operational-mode.ts": {
-    "mtime": 1795022994.8203528,
-    "seen": 1795032468.3309338,
+    "mtime": 1795491281.4320538,
+    "seen": 1795585367.8896542,
     "ast_hash": "339fa4e861e796de92653b9f80095b2d",
     "semantic_hash": ""
   },
   "src/server/services/trades/operational-scope.ts": {
-    "mtime": 1795022995.2184863,
-    "seen": 1795032468.3317668,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903391,
     "ast_hash": "db26147efe2a29aa15f11c10b2a047df",
     "semantic_hash": ""
   },
   "src/app/aprendizaje/components/practice-trade-picker.tsx": {
-    "mtime": 1795022995.0031867,
-    "seen": 1795032468.3309832,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8897214,
     "ast_hash": "172ce07c051f6bec6e8a43e2d63cd99a",
     "semantic_hash": ""
   },
   "src/app/dashboard/capital-summary.ts": {
-    "mtime": 1795022995.0213306,
-    "seen": 1795032468.3310204,
+    "mtime": 1795491281.4560544,
+    "seen": 1795585367.8897634,
     "ast_hash": "6f58ec37c4fb5fe17b15318f4c468617",
     "semantic_hash": ""
   },
   "src/app/dashboard/components/capital-overview.tsx": {
-    "mtime": 1795022995.024619,
-    "seen": 1795032468.3310218,
+    "mtime": 1795491281.4600544,
+    "seen": 1795585367.8897657,
     "ast_hash": "9a29aed15d6d7f897f4f5027d1646747",
     "semantic_hash": ""
   },
   "src/components/trades/operational-comparison.tsx": {
-    "mtime": 1795022995.0876157,
-    "seen": 1795032468.3313198,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.889937,
     "ast_hash": "eb7a64f0da8cb7be593664fe75a50046",
     "semantic_hash": ""
   },
   "src/components/ui/operational-mode-selector.tsx": {
-    "mtime": 1795022995.0963402,
-    "seen": 1795032468.3313572,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8899784,
     "ast_hash": "3bbb9f07cc1a3b2a85a6e8151c4bdbb8",
     "semantic_hash": ""
   },
   "src/domains/behavior/operational-scope.ts": {
-    "mtime": 1795022995.1113145,
-    "seen": 1795032468.3314097,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8900437,
     "ast_hash": "7d1476bc05987130609c6d9af48f4879",
     "semantic_hash": ""
   },
   "src/domains/trading/historical-capture.ts": {
-    "mtime": 1795022995.1316156,
-    "seen": 1795032468.331583,
+    "mtime": 1795491281.4760547,
+    "seen": 1795585367.8901079,
     "ast_hash": "bc25aa0ecda6c1b45d1774b21e58866f",
     "semantic_hash": ""
   },
   "src/lib/operational-mode-store.ts": {
-    "mtime": 1795022995.1539352,
-    "seen": 1795032468.3316622,
+    "mtime": 1795491281.4800549,
+    "seen": 1795585367.8902025,
     "ast_hash": "a05bd97fa3e0d54ea204b70324a6d9f9",
     "semantic_hash": ""
   },
   "src/server/services/learning/practice-trades-service.ts": {
-    "mtime": 1795022995.1851754,
-    "seen": 1795032468.3317037,
+    "mtime": 1795491281.484055,
+    "seen": 1795585367.8902562,
     "ast_hash": "925fc92c6d6df289122ad35822c27178",
     "semantic_hash": ""
   },
   "src/server/services/reviews/envelopes.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.331727,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902876,
     "ast_hash": "7590645da3e51a7a6a881f5620f81b02",
     "semantic_hash": ""
   },
   "src/server/services/reviews/mode-snapshots.ts": {
-    "mtime": 1795022995.1995595,
-    "seen": 1795032468.331731,
+    "mtime": 1795491281.488055,
+    "seen": 1795585367.8902934,
     "ast_hash": "08113f3dae5fb120c1374980a9886f25",
     "semantic_hash": ""
   },
   "src/server/services/trades/historical-equity-service.ts": {
-    "mtime": 1795022995.2184863,
-    "seen": 1795032468.3317657,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.890338,
     "ast_hash": "b348da7fdbd3d95b8b921c50f8eded65",
     "semantic_hash": ""
   },
   "docs/MANUAL_MUNDOS_OPERATIVOS.md": {
-    "mtime": 1795022994.302457,
-    "seen": 1795032468.3320353,
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.8905067,
     "ast_hash": "2bbb0e5504386e0284a982ecd19df50d",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117020757_20261116040800_operational_worlds_provenance.sql": {
-    "mtime": 1795022995.2723324,
-    "seen": 1795032468.3320248,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.8904936,
     "ast_hash": "ef0f78be17390d449aec9e280d67a7e1",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117020802_20261116043633_operational_worlds_evidence.sql": {
-    "mtime": 1795022995.2723324,
-    "seen": 1795032468.3320255,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.890495,
     "ast_hash": "9e5b92a1b01f5c4edcc400b6a4aff4fc",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117042006_20261116044718_operational_worlds_behavior.sql": {
-    "mtime": 1795022995.2723324,
-    "seen": 1795032468.3320267,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.890496,
     "ast_hash": "48a18acb44b6acb6497cb5f02aaadade",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117160931_20261116132946_operational_worlds_monthly_goals.sql": {
-    "mtime": 1795022995.2723324,
-    "seen": 1795032468.3320277,
+    "mtime": 1795491281.5000553,
+    "seen": 1795585367.890497,
     "ast_hash": "9aec1437faa0b6d1ef463da56a30fcda",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117160943_20261116133907_operational_worlds_explicit_global_rules.sql": {
-    "mtime": 1795022995.2763321,
-    "seen": 1795032468.3320289,
+    "mtime": 1795491281.5040553,
+    "seen": 1795585367.8904982,
     "ast_hash": "f760e0dddd52fb987fe8cbe7a01650e4",
     "semantic_hash": ""
   },
   "supabase/migrations/20261117161234_20261117161500_practice_trade_links_practice_fk_index.sql": {
-    "mtime": 1795022995.2763321,
-    "seen": 1795032468.3320296,
+    "mtime": 1795491281.5040553,
+    "seen": 1795585367.8904989,
     "ast_hash": "82f6b82f1038f156a22427df40fede32",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-decision-dialog.tsx": {
-    "mtime": 1795062491.0438397,
-    "seen": 1795062659.8011947,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8899133,
     "ast_hash": "134d4585cfabef9b3dda3d95b3b10cfc",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-route.tsx": {
-    "mtime": 1795062490.4558663,
-    "seen": 1795062659.801197,
-    "ast_hash": "7501eb9a13e3703141378b783d44cfcb",
+    "mtime": 1795584678.422901,
+    "seen": 1795585367.8899152,
+    "ast_hash": "fe0c78a22f64db8f2650ca02847e4f1e",
     "semantic_hash": ""
   },
   "src/components/playbook/setup-validation-stage-card.tsx": {
-    "mtime": 1795062541.4575675,
-    "seen": 1795062659.8011985,
+    "mtime": 1795491281.4680545,
+    "seen": 1795585367.8899164,
     "ast_hash": "41e588704ecc66b183637753907bd07c",
     "semantic_hash": ""
   },
   "src/domains/analytics/setups/validation.ts": {
-    "mtime": 1795062489.8518934,
-    "seen": 1795062659.8013003,
+    "mtime": 1795491281.4720547,
+    "seen": 1795585367.8900387,
     "ast_hash": "a953501dc8e899012c893b0e417255cf",
     "semantic_hash": ""
   },
   "src/server/services/setups/validation-ai-service.ts": {
-    "mtime": 1795062601.69885,
-    "seen": 1795062659.8015635,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903096,
     "ast_hash": "2727d80b6832f7f896b1ef9914f7adeb",
     "semantic_hash": ""
   },
   "src/server/services/setups/validation-service.ts": {
-    "mtime": 1795030842.6428013,
-    "seen": 1795032468.3317437,
+    "mtime": 1795491281.4920552,
+    "seen": 1795585367.8903108,
     "ast_hash": "e6a6d07790c6d14363a0878b2dfe64eb",
     "semantic_hash": ""
   },
-  "supabase/migrations/20261118174426_setup_validation_route.sql": {
-    "mtime": 1795024269.890979,
-    "seen": 1795032468.3320308,
-    "ast_hash": "29a778db7c5e09cfc7f6a7b432bbb145",
-    "semantic_hash": ""
-  },
   "docs/MANUAL_RUTA_VALIDACION_ESTRATEGIAS.md": {
-    "mtime": 1795062569.5003035,
-    "seen": 1795062659.8018064,
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.89051,
     "ast_hash": "7e378db3cdbe8fcdbe4c7eaf110382a7",
     "semantic_hash": ""
   },
   "docs/superpowers/plans/2026-11-18-ruta-validacion-estrategias.md": {
-    "mtime": 1795060679.7256527,
-    "seen": 1795062659.801845,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8905582,
     "ast_hash": "3094f541695d02edfa22a698244a71ac",
     "semantic_hash": ""
   },
   "docs/superpowers/specs/2026-11-18-ruta-validacion-estrategias-design.md": {
-    "mtime": 1795060680.0376387,
-    "seen": 1795062659.8018649,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8905826,
     "ast_hash": "088bd240abd92614b68e4756ca58ac1a",
     "semantic_hash": ""
   },
   "docs/images/strategy-validation/09-validacion-brecha-desktop.png": {
-    "mtime": 1795062240.4976878,
-    "seen": 1795062659.8018699,
+    "mtime": 1795491281.4120536,
+    "seen": 1795585367.8906221,
     "ast_hash": "27a88d8c6432000d1f9ff31a744ddfe8",
     "semantic_hash": ""
   },
   "docs/images/strategy-validation/10-validacion-practica-borrador.png": {
-    "mtime": 1795062240.500386,
-    "seen": 1795062659.8018737,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8906236,
     "ast_hash": "e42f28d978566a373d8e61f604d30c5a",
     "semantic_hash": ""
   },
   "docs/images/strategy-validation/11-validacion-decision.png": {
-    "mtime": 1795062240.5035963,
-    "seen": 1795062659.801875,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8906245,
     "ast_hash": "ce2d448cabb885143ad6a473afd7dc89",
     "semantic_hash": ""
   },
   "docs/images/strategy-validation/12-validacion-real-mobile.png": {
-    "mtime": 1795062240.5071108,
-    "seen": 1795062659.8018763,
+    "mtime": 1795491281.4168358,
+    "seen": 1795585367.8906255,
     "ast_hash": "e6069473b2c64cb2f31c879a0e39049e",
+    "semantic_hash": ""
+  },
+  "src/app/api/backtesting/pdf/route.ts": {
+    "mtime": 1795584346.0333574,
+    "seen": 1795585367.8896785,
+    "ast_hash": "b71bbce1e70b95b19771a761b999f51e",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/components/fields.tsx": {
+    "mtime": 1795585588.3276374,
+    "seen": 1795585739.0790262,
+    "ast_hash": "7ce235efdf1db46fe4e76700b51d68f0",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/components/plan-form.tsx": {
+    "mtime": 1795585588.9116335,
+    "seen": 1795585739.0790284,
+    "ast_hash": "9a9934f51a1ff629eecee5b4b49b928b",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/components/report.tsx": {
+    "mtime": 1795585617.2994401,
+    "seen": 1795585739.07903,
+    "ast_hash": "471b5b3b399ab7b48f298a1e6f7551f8",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/components/session-editor.tsx": {
+    "mtime": 1795585590.147625,
+    "seen": 1795585739.0790315,
+    "ast_hash": "0f05d8d3ad2530ed29ea0a3153bb5409",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/components/workspace.tsx": {
+    "mtime": 1795584676.5069132,
+    "seen": 1795585367.8897111,
+    "ast_hash": "55eb52b79ad1c2f9cb8bcff6a9d3fa96",
+    "semantic_hash": ""
+  },
+  "src/app/aprendizaje/backtesting/page.tsx": {
+    "mtime": 1795584427.688654,
+    "seen": 1795585367.889712,
+    "ast_hash": "1338cf14f5396c26a8e8865269406fbe",
+    "semantic_hash": ""
+  },
+  "src/domains/learning/backtest-session.ts": {
+    "mtime": 1795585587.7476416,
+    "seen": 1795585739.0793483,
+    "ast_hash": "3a9baa0e2591c9a4809e1a2b33f8212b",
+    "semantic_hash": ""
+  },
+  "src/server/services/learning/backtest-pdf.ts": {
+    "mtime": 1795585616.7394438,
+    "seen": 1795585739.0795395,
+    "ast_hash": "13e02fb918737c44b90f6d01d6f4c5e3",
+    "semantic_hash": ""
+  },
+  "src/server/services/learning/backtest-sessions.ts": {
+    "mtime": 1795585076.5045094,
+    "seen": 1795585367.8902528,
+    "ast_hash": "eb732878bd72086099c332d7ca5fa9ec",
+    "semantic_hash": ""
+  },
+  "src/server/services/reviews/render-html-pdf.ts": {
+    "mtime": 1795584343.9093783,
+    "seen": 1795585367.8902998,
+    "ast_hash": "bea0ecca79ea88f5ca0112fe031b9656",
+    "semantic_hash": ""
+  },
+  "src/server/trpc/routers/backtest-sessions.ts": {
+    "mtime": 1795585589.5236292,
+    "seen": 1795585739.0796416,
+    "ast_hash": "dab13801d2df4f160a9904976098275a",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261118195647_setup_validation_route.sql": {
+    "mtime": 1795491281.5040553,
+    "seen": 1795585367.8904998,
+    "ast_hash": "29a778db7c5e09cfc7f6a7b432bbb145",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/20261125051933_backtest_sessions.sql": {
+    "mtime": 1795584679.7468925,
+    "seen": 1795585367.8905005,
+    "ast_hash": "67d8ac14aeef922a2e8fc91ab3db257b",
+    "semantic_hash": ""
+  },
+  "docs/MANUAL_PLAYBOOK_SETUPS.md": {
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.8905077,
+    "ast_hash": "9c9617c3b66ec2ac60a4a1d595023a21",
+    "semantic_hash": ""
+  },
+  "docs/MANUAL_PRACTICAS_APRENDIZAJE.md": {
+    "mtime": 1795491281.3800528,
+    "seen": 1795585367.8905087,
+    "ast_hash": "d8f7bf6daa7f30de4da93edcca842a31",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-11-24-sesiones-backtesting.md": {
+    "mtime": 1795583835.273991,
+    "seen": 1795585367.890559,
+    "ast_hash": "a54dfdb9d70f8aa65d68c452b6f63c09",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/specs/2026-11-24-sesiones-backtesting-design.md": {
+    "mtime": 1795583713.798681,
+    "seen": 1795585367.8905835,
+    "ast_hash": "2db98e9e0fa7b7b9a6751a9ead1ea6bb",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/01-vista-general-practicas.png": {
+    "mtime": 1795491281.3867223,
+    "seen": 1795585367.8905876,
+    "ast_hash": "563feefd10db958352aa499c9428a18e",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/02-registro-conceptual.png": {
+    "mtime": 1795491281.3882492,
+    "seen": 1795585367.8906076,
+    "ast_hash": "810663bfe4b476a130379db506070ff5",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/03-ejecucion-demo.png": {
+    "mtime": 1795491281.3882492,
+    "seen": 1795585367.8906085,
+    "ast_hash": "22ca690eafe75665ab96bbb6b576df74",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/04-revision-real.png": {
+    "mtime": 1795491281.3920531,
+    "seen": 1795585367.8906097,
+    "ast_hash": "fcd5ee70622aeeb5a26ce314f6806519",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/05-practica-guardada.png": {
+    "mtime": 1795491281.3920531,
+    "seen": 1795585367.8906107,
+    "ast_hash": "37f4419d68155c7573f8caca06a5ada6",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/06-evidencias-y-asistente.png": {
+    "mtime": 1795491281.3960533,
+    "seen": 1795585367.8906114,
+    "ast_hash": "d6000e49dcaed0c55bea361f51fa3a24",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/07-historial-practicas.png": {
+    "mtime": 1795491281.3960533,
+    "seen": 1795585367.8906121,
+    "ast_hash": "1301cf2582671f6e93c80ec8c1561a81",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/08-volver-a-practicar.png": {
+    "mtime": 1795491281.4000533,
+    "seen": 1795585367.890613,
+    "ast_hash": "d33d88d758f7b746d4ea6d898e278630",
+    "semantic_hash": ""
+  },
+  "docs/images/learning-practices/09-registro-movil.png": {
+    "mtime": 1795491281.4000533,
+    "seen": 1795585367.8906138,
+    "ast_hash": "ab295377c819f81574399c3860af7887",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/01-vista-general-real.png": {
+    "mtime": 1795491281.4040534,
+    "seen": 1795585367.8906147,
+    "ast_hash": "30db3456839ad8071133a3ca81887306",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/02-modalidad-backtesting.png": {
+    "mtime": 1795491281.4040534,
+    "seen": 1795585367.8906155,
+    "ast_hash": "7239cf52d52ed449551b114bf6f147a0",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/03-nuevo-setup-informacion.png": {
+    "mtime": 1795491281.4040534,
+    "seen": 1795585367.8906162,
+    "ast_hash": "cea91923eed30800383d63c9661291de",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/04-nuevo-setup-checklists.png": {
+    "mtime": 1795491281.4080534,
+    "seen": 1795585367.890617,
+    "ast_hash": "9a8a0ec1783b00feff1258379792c4e5",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/05-nuevo-setup-edge.png": {
+    "mtime": 1795491281.4080534,
+    "seen": 1795585367.8906178,
+    "ast_hash": "375b54bd63e5357d46b26adb3ce24767",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/06-detalle-setup.png": {
+    "mtime": 1795491281.4080534,
+    "seen": 1795585367.8906186,
+    "ast_hash": "cc5ded3430299b500ba1a7d5e17a0c9d",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/07-ruta-validacion.png": {
+    "mtime": 1795491281.4120536,
+    "seen": 1795585367.8906193,
+    "ast_hash": "e94ef578c2671915f8392e3d96d97e9b",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/08-acciones-setup.png": {
+    "mtime": 1795491281.4120536,
+    "seen": 1795585367.8906202,
+    "ast_hash": "08678593a504426f8033ffde97b2f72f",
+    "semantic_hash": ""
+  },
+  "docs/images/playbook/09-detalle-movil.png": {
+    "mtime": 1795491281.4120536,
+    "seen": 1795585367.890621,
+    "ast_hash": "c48af963de7490e21b2aa90061a99ec2",
     "semantic_hash": ""
   },
   "src/package-lock.json": {
