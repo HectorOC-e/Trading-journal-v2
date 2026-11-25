@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto"
-import { createClient } from "@supabase/supabase-js"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest"
 import { emptyBacktestWork, type BacktestReport } from "@/domains/learning/backtest-session"
 import { backtestSessionsRouter } from "@/server/trpc/routers/backtest-sessions"
-import { closeBacktest, previewBacktest } from "@/server/services/learning/backtest-sessions"
 import { dropUser, makeUser, prisma } from "./_helpers"
 
-const supabase = createClient("http://127.0.0.1:54321", "qa-local-key", { auth: { autoRefreshToken: false, persistSession: false } })
+// The caller already has a verified user ID. These fixtures have no captures,
+// so the only external boundary is PostgreSQL and Storage is intentionally absent.
+const supabase = { storage: null } as unknown as SupabaseClient
 const caller = (userId: string) => backtestSessionsRouter.createCaller({ userId, prisma, supabase })
 const plan = { title: "Confirmación QA", hypothesis: "Esperar el cierre", symbols: "EURUSD", timeframe: "M15", from: "2024-01-01", to: "2024-01-31",
   rules: "Cierre", invalidation: "Nivel inicial", exitRules: "Salida al invalidador", assumptions: "Sin costo",
@@ -44,18 +45,18 @@ describe("backtest sessions on PostgreSQL", () => {
     await prisma.practiceTradeLink.create({ data: { userId: owner, practiceId: practice.id, tradeId: item.id, role: "REVIEWED" } })
     const work = { ...emptyBacktestWork, tradeIds: [item.id], practiceIds: [practice.id], conclusion: "Un cierre con datos", nextStep: "Probar dos casos nuevos", tradeNotes: { [item.id]: { entryReason: "Ruptura confirmada", exitReason: "Objetivo de precio", compliant: true } } }
     await api.save({ id, revision: 2, work })
-    const first = await previewBacktest(prisma, owner, id, null)
+    const first = await api.preview({ id })
     const base = { id, revision: 3, requestId: randomUUID(), signature: first.signature }
-    const closes = await Promise.all([closeBacktest(prisma, owner, base, null), closeBacktest(prisma, owner, base, null)])
+    const closes = await Promise.all([api.close(base), api.close(base)])
     expect(closes.map(row => row.number)).toEqual([1, 1])
     expect(first.report.metrics.closed).toBe(1)
     expect(first.report.practices[0]).toMatchObject({ date: "2026-01-22", duration: 35 })
     await prisma.trade.update({ where: { id: item.id }, data: { rMultiple: -1, pnl: -50 } })
     await api.reopen({ id, revision: 4 })
-    const second = await previewBacktest(prisma, owner, id, null)
+    const second = await api.preview({ id })
     expect(second.changes).toEqual(["Operación actualizada · EURUSD"])
-    await expect(closeBacktest(prisma, owner, { ...base, revision: 5, requestId: randomUUID() }, null)).rejects.toMatchObject({ code: "CONFLICT" })
-    await closeBacktest(prisma, owner, { id, revision: 5, requestId: randomUUID(), signature: second.signature }, null)
+    await expect(api.close({ ...base, revision: 5, requestId: randomUUID() })).rejects.toMatchObject({ code: "CONFLICT" })
+    await api.close({ id, revision: 5, requestId: randomUUID(), signature: second.signature })
     const reports = await prisma.backtestSessionReport.findMany({ where: { userId: owner, sessionId: id }, orderBy: { number: "asc" } })
     expect(reports.map(row => [(row.snapshot as unknown as BacktestReport).metrics.expectancy, row.number])).toEqual([[2, 1], [-1, 2]])
     await expect(caller(other).report({ id, number: 1 })).rejects.toMatchObject({ code: "NOT_FOUND" })
