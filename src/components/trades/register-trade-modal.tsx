@@ -159,6 +159,8 @@ const INITIAL: TradeFormValues = {
   marketTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   closeDate: "",
   closeTime: "",
+  closePrice: "",
+  commission: "",
   pnl: "",
   emotionContext: "MARKET",
   emotionReferenceAt: "",
@@ -197,6 +199,7 @@ interface RegisterTradeModalProps {
   submitting?: boolean
   customTags?: string[]
   tradeCountToday?: number
+  historicalOnly?: boolean
   onSubmit?: (data: RegisterTradeFormData) => void
 }
 
@@ -212,12 +215,13 @@ export function RegisterTradeModal({
   submitting = false,
   customTags = [],
   tradeCountToday = 0,
+  historicalOnly = false,
   onSubmit,
 }: RegisterTradeModalProps) {
   const {
     register, handleSubmit, watch, setValue, getValues, reset,
     formState: { errors },
-  } = useZodForm(tradeFormSchema, { defaultValues: INITIAL })
+  } = useZodForm(tradeFormSchema, { defaultValues: historicalOnly ? { ...INITIAL, captureContext: "HISTORICAL" } : INITIAL })
 
   const form = watch()
   const historical = form.captureContext === "HISTORICAL"
@@ -234,7 +238,7 @@ export function RegisterTradeModal({
   // Purely-UI toggles that aren't part of the validated form payload.
   const [uploading, setUploading] = useState(false)
   const [psychOpen, setPsychOpen] = useState(false)
-  const [sizeManual, setSizeManual] = useState(false)
+  const [sizeManual, setSizeManual] = useState(historicalOnly)
   // Session is auto-derived from the open time (deriveSession, #27) until the user
   // picks one manually; then we stop clobbering their choice.
   const [sessionManual, setSessionManual] = useState(false)
@@ -271,13 +275,13 @@ export function RegisterTradeModal({
   useEffect(() => {
     if (!open) {
       const t = setTimeout(() => {
-        reset(INITIAL)
-        setSizeManual(false)
+        reset(historicalOnly ? { ...INITIAL, captureContext: "HISTORICAL" } : INITIAL)
+        setSizeManual(historicalOnly)
         setSessionManual(false)
       }, 200)
       return () => clearTimeout(t)
     }
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, historicalOnly, reset])
 
   // On open, default the date to *today in the user's profile timezone* (the module-level
   // INITIAL baseline can be stale or browser-tz). Fires only on open / tz-resolved, so a
@@ -430,7 +434,7 @@ export function RegisterTradeModal({
         <div className="flex flex-col gap-5">
 
           <label className="text-eyebrow flex flex-col gap-1.5">Registro
-            <select className="rounded border border-[var(--line)] bg-[var(--panel-2)] p-2 text-sm" value={form.captureContext ?? "LIVE"} onChange={event => { update("captureContext", event.target.value as "LIVE" | "HISTORICAL"); setSizeManual(event.target.value === "HISTORICAL"); if (event.target.value === "LIVE" && selectedAccount && (selectedAccount.locked || (selectedAccount.status && selectedAccount.status !== "ACTIVE"))) update("accountId", "") }}>
+            <select disabled={historicalOnly} className="rounded border border-[var(--line)] bg-[var(--panel-2)] p-2 text-sm" value={form.captureContext ?? "LIVE"} onChange={event => { update("captureContext", event.target.value as "LIVE" | "HISTORICAL"); setSizeManual(event.target.value === "HISTORICAL"); if (event.target.value === "LIVE" && selectedAccount && (selectedAccount.locked || (selectedAccount.status && selectedAccount.status !== "ACTIVE"))) update("accountId", "") }}>
               <option value="LIVE">Operación actual</option>
               <option value="HISTORICAL">Histórico cerrado</option>
             </select>
@@ -491,6 +495,8 @@ export function RegisterTradeModal({
           {historical && <div className="grid grid-cols-2 gap-3">
             <label className="text-eyebrow flex flex-col gap-1.5">Fecha de cierre<Input type="date" {...register("closeDate")} /><FieldError message={errors.closeDate?.message} /></label>
             <label className="text-eyebrow flex flex-col gap-1.5">Hora de cierre<Input type="time" {...register("closeTime")} /><FieldError message={errors.closeTime?.message} /></label>
+            <label className="text-eyebrow flex flex-col gap-1.5">Precio de salida (opcional)<Input type="number" step="any" {...register("closePrice")} /><FieldError message={errors.closePrice?.message} /></label>
+            <label className="text-eyebrow flex flex-col gap-1.5">Comisión total (opcional)<Input type="number" step="any" min="0" {...register("commission")} /><FieldError message={errors.commission?.message} /></label>
             <label className="text-eyebrow col-span-2 flex flex-col gap-1.5">Resultado neto total<Input type="number" step="any" {...register("pnl")} /><FieldError message={errors.pnl?.message} /></label>
           </div>}
 

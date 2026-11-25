@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef } from "react"
+import Link from "next/link"
+import { z } from "zod"
 import { Plus, TrendingUp, Percent, Zap, Activity, Upload, AlertTriangle } from "lucide-react"
 import { OperationalModeSelector } from "@/components/ui/operational-mode-selector"
 import { useOperationalMode } from "@/lib/operational-mode-store"
@@ -41,10 +43,19 @@ export default function TradesPage() {
   // Deep-link via ?trade= (citas del Coach). Client-only, mismo patrón que
   // /aprendizaje:38 — evita a propósito el requisito de Suspense de useSearchParams.
   const [deepLinkId, setDeepLinkId] = useState<string | null>(null)
+  const [backtestSession, setBacktestSession] = useState<string | null>(null)
+  const [registeredForBacktest, setRegisteredForBacktest] = useState<string | null>(null)
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("trade")
+    const params = new URLSearchParams(window.location.search)
+    const id = params.get("trade")
     if (id) { setSelectedId(id); setDeepLinkId(id) }
-  }, [])
+    const backtestId = z.uuid().safeParse(params.get("backtestSession")).data
+    if (backtestId && params.get("mode") === "BACKTEST") {
+      setBacktestSession(backtestId)
+      setMode("BACKTEST")
+      if (params.get("registerHistorical") === "1") setModalOpen(true)
+    }
+  }, [setMode])
 
 
   function handleAccountFilter(id: string | null) {
@@ -126,6 +137,7 @@ export default function TradesPage() {
   const createTrade = trpc.trades.create.useMutation({
     onSuccess: (trade) => {
       setModalOpen(false)
+      if (backtestSession && trade.operationalMode === "BACKTEST") setRegisteredForBacktest(trade.id)
       utils.trades.list.invalidate()
       utils.accounts.list.invalidate()
       // /cuentas + dashboard read trades.dashboardStats (staleTime 60s) — invalidate
@@ -307,7 +319,7 @@ export default function TradesPage() {
       captureContext:   form.captureContext ?? "LIVE",
       marketTimeZone:   form.marketTimeZone,
       status:           form.captureContext === "HISTORICAL" ? "CLOSED" : "OPEN",
-      ...(form.captureContext === "HISTORICAL" ? { closeDate: form.closeDate, closeTime: form.closeTime, pnl: Number(form.pnl) } : {}),
+      ...(form.captureContext === "HISTORICAL" ? { closeDate: form.closeDate, closeTime: form.closeTime, pnl: Number(form.pnl), closePrice: form.closePrice?.trim() ? Number(form.closePrice) : undefined, commission: form.commission?.trim() ? Number(form.commission) : undefined } : {}),
       session:          form.session,
       tags:             form.tags,
       notes:            form.notes,
@@ -403,6 +415,9 @@ export default function TradesPage() {
             ]}
           />
           <OperationalModeSelector className="mb-4 flex-wrap" />
+          {backtestSession && <div className="mb-4 rounded-xl border border-[var(--line)] bg-[var(--panel)] p-3 text-sm">
+            <Link className="font-medium text-[var(--accent)] underline" href={`/aprendizaje/backtesting?session=${backtestSession}${registeredForBacktest ? `&trade=${registeredForBacktest}` : ""}`}>{registeredForBacktest ? "Volver a la sesión y vincular la operación" : "Volver a la sesión de backtesting"}</Link>
+          </div>}
           <KpiStrip items={kpiItems} className="mb-4" />
 
           {/* Account filter (TD-035) */}
@@ -481,7 +496,9 @@ export default function TradesPage() {
       </DrawerPanel>
 
       <RegisterTradeModal
+        key={backtestSession && mode === "BACKTEST" ? backtestSession : "general"}
         open={modalOpen}
+        historicalOnly={!!backtestSession && mode === "BACKTEST"}
         onOpenChange={setModalOpen}
         accounts={accounts}
         setups={setups}

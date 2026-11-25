@@ -60,6 +60,8 @@ export const tradeFormSchema = z
     marketTimeZone: z.string().optional(),
     closeDate: z.string().optional(),
     closeTime: z.string().optional(),
+    closePrice: z.string().optional(),
+    commission: z.string().optional(),
     pnl: z.string().optional(),
     emotionContext: z.enum(["MARKET", "PRACTICE"]).optional(),
     emotionReferenceAt: z.string().optional(),
@@ -68,6 +70,8 @@ export const tradeFormSchema = z
     if (data.captureContext === "HISTORICAL") {
       for (const field of ["closeDate", "closeTime", "marketTimeZone"] as const) if (!data[field]) ctx.addIssue({ code: "custom", path: [field], message: "Requerido para el histórico" })
       if (!data.pnl?.trim() || !Number.isFinite(Number(data.pnl))) ctx.addIssue({ code: "custom", path: ["pnl"], message: "Indica el resultado neto total" })
+      if (data.closePrice?.trim() && (!Number.isFinite(Number(data.closePrice)) || Number(data.closePrice) <= 0)) ctx.addIssue({ code: "custom", path: ["closePrice"], message: "Indica un precio mayor que cero" })
+      if (data.commission?.trim() && (!Number.isFinite(Number(data.commission)) || Number(data.commission) < 0)) ctx.addIssue({ code: "custom", path: ["commission"], message: "Indica una comisión mayor o igual a cero" })
       if (data.closeDate && data.closeTime && data.marketTimeZone) {
         try { validateMarketSequence(marketTimestamp(data.date, data.openTime, data.marketTimeZone), marketTimestamp(data.closeDate, data.closeTime, data.marketTimeZone)) }
         catch { ctx.addIssue({ code: "custom", path: ["closeTime"], message: "Revisa la zona y el orden de apertura y cierre" }) }

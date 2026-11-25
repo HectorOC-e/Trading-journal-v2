@@ -21,6 +21,10 @@ afterAll(async () => { await prisma.$disconnect() })
 const input = () => ({accountId,direction:"LONG" as const,symbol:"X",entry:100,stop:90,target:120,size:1,date:"2024-01-02",openTime:"01:00",session:"New York" as const,tags:[],notes:"",screenshotUrls:[],status:"CLOSED" as const,pnl:100,captureContext:"HISTORICAL" as const,marketTimeZone:"America/Tegucigalpa",marketClosedAt:"2024-01-03T07:00:00Z"})
 
 describe("historical capture against local PostgreSQL", () => {
+  it("records the exit and computes Backtesting R using original risk and documented costs", async () => {
+    const trade = await createTrade(prisma, userId, { ...input(), closePrice: 120, commission: 2, pnl: 18 })
+    expect(trade).toMatchObject({ closePrice: 120, pnl: 18, rMultiple: 2 })
+  })
   it("preserves a manual lock while importing a historical loss", async () => {
     await prisma.account.update({where:{id:accountId},data:{ddTotalPct:5}})
     await createTrade(prisma,userId,{...input(),pnl:-100})

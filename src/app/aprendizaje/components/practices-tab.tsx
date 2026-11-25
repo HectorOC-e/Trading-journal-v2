@@ -6,6 +6,7 @@ import { trpc } from "@/lib/trpc/client";
 import { formatCalendarDate } from "@/lib/datetime/local";
 import { PracticeModal, type PracticeInitialDraft, type PracticeRecord } from "../modals/practice-modal";
 import { useOperationalMode } from "@/lib/operational-mode-store";
+import Link from "next/link";
 
 export type ValidationPracticeIntent = {
   setupId: string;
@@ -228,6 +229,8 @@ export function PracticesTab({
             </Button>
           )}
         </div>
+        <div className="flex flex-wrap items-start gap-3">
+        <Link href="/aprendizaje/backtesting" className="self-center text-sm font-medium text-[var(--accent)] underline underline-offset-4">Sesiones de backtesting</Link>
         <Button
           type="button"
           variant="primary"
@@ -243,6 +246,7 @@ export function PracticesTab({
         >
           Registrar práctica
         </Button>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
         <label className="text-xs">

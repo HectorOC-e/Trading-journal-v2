@@ -119,6 +119,8 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     : input.closeTime ? marketTimestamp(input.closeDate ?? input.date, input.closeTime, marketTimeZone) : null
   if (historical && !marketClosedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "HISTORICAL_CLOSE_REQUIRED" })
   if (historical && input.pnl == null) throw new TRPCError({ code: "BAD_REQUEST", message: "HISTORICAL_PNL_REQUIRED" })
+  if (historical && input.closePrice != null) assertPositive(input.closePrice)
+  if (historical && input.commission != null && (!Number.isFinite(input.commission) || input.commission < 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "INVALID_COMMISSION" })
   validateMarketSequence(marketOpenedAt, marketClosedAt)
 
   // Account equity = initial balance + realised P&L. Resolved at most once, and
@@ -242,12 +244,16 @@ export async function createTrade(prisma: PrismaClient, userId: string, input: C
     referenceAt: input.emotionContext === "PRACTICE" ? (input.emotionReferenceAt ? explicitMarketTimestamp(input.emotionReferenceAt) : (() => { throw new TRPCError({ code: "BAD_REQUEST", message: "EMOTION_PRACTICE_REFERENCE_REQUIRED" }) })()) : marketOpenedAt,
     context: input.emotionContext ?? "MARKET", mode: classifyAccountType(account.type), now: new Date(),
   }) : { emotionSource: null }
+  const originalRiskMoney = Math.abs(input.entry - input.stop) * input.size * await pointValue()
+  const recordedGross = historical && operationalMode === "BACKTEST" && input.closePrice != null && input.pnl != null ? input.pnl + (input.commission ?? 0) : null
+  const recordedR = recordedGross != null && originalRiskMoney > 0 ? recordedGross / originalRiskMoney : null
   const trade = await prisma.trade.create({
     data: {
       ...storedInput, operationalMode: classifyAccountType(account.type), riskPct: riskPctValue, tags: effectiveTags, userId, date: new Date(input.date),
       captureContext, marketOpenedAt, marketClosedAt, marketTimeZone,
       realizedPnl: 0, originalSize: input.size,
-      originalRiskMoney: Math.abs(input.entry - input.stop) * input.size * await pointValue(),
+      originalRiskMoney,
+      ...(recordedR != null && Math.abs(recordedR) <= 99_999.999 ? { rMultiple: recordedR } : {}),
       // Activity time determines provenance, independently of the registration time.
       ...emotionData,
       events: { create: { userId, type: "OPEN", price: input.entry, contracts: input.size, notes: `${input.direction} · SL ${input.stop} · TP ${input.target}`, timestamp: marketOpenedAt } },
