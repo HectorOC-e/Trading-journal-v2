@@ -13,7 +13,7 @@ export function Label({ text, children }: { text: string; children: ReactNode })
 }
 
 export function TextField({ label, value, onChange, type = "text", maxLength = 160, required = false, max }: {
-  label: string; value: string; onChange: (value: string) => void; type?: "text" | "date"; maxLength?: number; required?: boolean; max?: string;
+  label: string; value: string; onChange: (value: string) => void; type?: "text" | "date" | "time"; maxLength?: number; required?: boolean; max?: string;
 }) {
   return <Label text={label}><Input type={type} max={max} maxLength={maxLength} value={value} required={required} onChange={e => onChange(e.target.value)} /></Label>
 }

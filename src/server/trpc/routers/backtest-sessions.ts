@@ -49,6 +49,7 @@ async function moveStatus(prisma: PrismaClient, userId: string, input: z.infer<t
   const workDays = row.workDays.length >= 100 ? row.workDays : [...new Set([...row.workDays, today])].sort()
   const result = await prisma.backtestSession.updateMany({ where: { id: row.id, userId, revision: input.revision, status: from }, data: {
     status: "ACTIVE", revision: { increment: 1 }, workDays,
+    ...(from === "CLOSED" ? { work: { ...(row.work as object), coach: null } } : {}),
   } })
   if (!result.count) throw new TRPCError({ code: "CONFLICT", message: "La sesión cambió. Vuelve a cargarla." })
   return { id: row.id }
@@ -68,7 +69,7 @@ export const backtestSessionsRouter = router({
       ctx.prisma.setup.findMany({ where: { userId: ctx.userId }, orderBy: { name: "asc" }, select: { id: true, name: true, market: true, description: true } }),
       localBacktestDay(ctx.prisma, ctx.userId),
     ])
-    return { setups, today }
+    return { setups, today, userId: ctx.userId }
   }),
   candidates: protectedProcedure.input(z.object({ kind: z.enum(["trades", "practices"]), query: z.string().trim().max(120), cursor: z.uuid().optional() }))
     .query(async ({ ctx, input }) => {

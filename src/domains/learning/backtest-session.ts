@@ -25,6 +25,9 @@ export type BacktestPlan = BacktestPlanInput & { setup: BacktestSetup | null }
 const tradeAnnotation = z.object({
   context: note.optional(), entryReason: note.optional(), riskPlan: note.optional(), adjustmentReason: note.optional(),
   exitReason: note.optional(), lesson: note.optional(), outOfRange: note.optional(), excluded: note.optional(), compliant: z.boolean().nullable().optional(),
+  adjustments: z.array(z.object({ date: backtestDay, time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
+    price: z.string().trim().max(24).refine(value => /^\d+(?:\.\d+)?$/.test(value) && Number(value) > 0), reason: note.min(1),
+  })).max(25).optional(),
 })
 export const backtestAssessment = z.enum(["achieved", "partial", "repeat", "insufficient"])
 export const backtestWorkSchema = z.object({
@@ -39,6 +42,11 @@ export const backtestWorkSchema = z.object({
 })
 
 export type BacktestWork = z.infer<typeof backtestWorkSchema>
+const recoverableWork = backtestWorkSchema.extend({
+  signals: z.array(backtestWorkSchema.shape.signals.element.extend({ date: z.string().max(10), reason: note })).max(100),
+  tradeNotes: z.record(uuid, tradeAnnotation.extend({ adjustments: z.array(z.object({ date: z.string().max(10), time: z.string().max(5), price: z.string().max(24), reason: note })).max(25).optional() })).refine(v => Object.keys(v).length <= 250),
+})
+export const backtestDraftSchema = z.object({ revision: z.number().int().positive(), work: recoverableWork })
 export const emptyBacktestWork: BacktestWork = { workDays: [], tradeIds: [], practiceIds: [], tradeNotes: {}, signals: [], captureIds: [], observations: "", conclusion: "", nextStep: "", evaluations: {}, coach: null }
 export const ASSESSMENT_LABELS = { achieved: "Logrado", partial: "Parcial", repeat: "Pendiente de repetir", insufficient: "Sin evidencia suficiente" } satisfies Record<z.infer<typeof backtestAssessment>, string>
 
@@ -80,7 +88,7 @@ export function buildBacktestReport(input: BacktestReportInput) {
       const date = openingDay(t)
       const outsideRange = date < input.plan.from || date > input.plan.to
       const included = t.status === "CLOSED"
-      if (!included && !t.annotations?.excluded) blockers.push(`${t.symbol} (${date}) sigue abierta. Ciérrala o justifica su exclusión.`)
+      if (!included && t.status !== "CANCELLED" && !t.annotations?.excluded) blockers.push(`${t.symbol} (${date}) sigue abierta. Ciérrala o justifica su exclusión.`)
       if (outsideRange && !t.annotations?.outOfRange) blockers.push(`${t.symbol} (${date}) está fuera del rango histórico. Añade una justificación.`)
       return { ...t, outsideRange, included }
     })

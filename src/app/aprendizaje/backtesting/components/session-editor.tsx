@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { DraftRecovery } from "@/components/ui/draft-recovery"
 import { Input } from "@/components/ui/input"
-import { ASSESSMENT_LABELS, backtestWorkSchema, type BacktestTrade, type BacktestWork } from "@/domains/learning/backtest-session"
+import { ASSESSMENT_LABELS, backtestDraftSchema, backtestWorkSchema, type BacktestTrade, type BacktestWork } from "@/domains/learning/backtest-session"
+import { useRecoverableDraft } from "@/hooks/useRecoverableDraft"
 import { trpc } from "@/lib/trpc/client"
 import type { RouterOutputs } from "@/server/trpc/root"
 import { PracticeModal } from "../../modals/practice-modal"
@@ -44,6 +46,13 @@ function TradeNotes({ trade, value, onChange }: { trade: BacktestTrade & { outsi
         return <NotesField key={key} label={label} value={value[field] ?? ""} onChange={text => onChange({ [field]: text })} />
       })}</div>
       <Label text="Cumplimiento del checklist"><select className={selectClass} value={value.compliant == null ? "source" : String(value.compliant)} onChange={e => onChange({ compliant: e.target.value === "source" ? null : e.target.value === "true" })}><option value="source">{trade.checklist?.source === "journal" ? "Cumplido según Trades" : "Usar evidencia de Trades si coincide"}</option><option value="true">Cumplido</option><option value="false">Incumplido</option></select></Label>
+      <div className="space-y-2"><h3 className="font-medium">Ajustes de stop documentados en la sesión</h3>
+        {(value.adjustments ?? []).map((item, index, adjustments) => {
+          const update = (patch: Partial<typeof item>) => onChange({ adjustments: adjustments.map((a, i) => i === index ? { ...a, ...patch } : a) })
+          return <div key={index} className="grid gap-2 rounded border border-[var(--line)] p-2 sm:grid-cols-2"><TextField label="Fecha del ajuste" type="date" value={item.date} onChange={date => update({ date })} /><TextField label="Hora del ajuste" type="time" value={item.time} onChange={time => update({ time })} /><TextField label="Nuevo precio de stop" value={item.price} onChange={price => update({ price })} maxLength={24} /><NotesField label="Por qué ajustaste el stop" value={item.reason} onChange={reason => update({ reason })} /><Button size="xs" onClick={() => onChange({ adjustments: adjustments.filter((_, i) => i !== index) })}>Quitar ajuste {index + 1}</Button></div>
+        })}
+        <Button size="sm" disabled={(value.adjustments?.length ?? 0) >= 25} onClick={() => onChange({ adjustments: [...(value.adjustments ?? []), { date: trade.date, time: "", price: "", reason: "" }] })}>Añadir ajuste histórico de stop</Button>
+      </div>
       <Link className={textLink} href={`/trades?mode=BACKTEST&trade=${trade.id}`}>Consultar operación en Trades</Link>
     </div>
   </details>
@@ -58,7 +67,7 @@ function Signals({ work, attachments, set, day }: { work: BacktestWork; attachme
         <TextField label="Símbolo" value={s.symbol} onChange={symbol => update({ symbol })} maxLength={40} />
         <NotesField label="Contexto de la señal" value={s.context} onChange={context => update({ context })} />
         <NotesField label="Por qué la descartaste" value={s.reason} onChange={reason => update({ reason })} />
-        {attachments.length > 0 && <Label text="Captura de la señal"><select className={selectClass} value={s.captureId ?? ""} onChange={e => update({ captureId: e.target.value || undefined })}><option value="">Sin captura</option>{attachments.map((a, k) => <option key={a.id} value={a.id}>{a.label} · captura {k + 1}</option>)}</select></Label>}
+        {(attachments.length > 0 || s.captureId) && <Label text="Captura de la señal"><select className={selectClass} value={s.captureId ?? ""} onChange={e => update({ captureId: e.target.value || undefined })}><option value="">Sin captura</option>{s.captureId && !attachments.some(a => a.id === s.captureId) && <option value={s.captureId}>Captura no disponible</option>}{attachments.map((a, k) => <option key={a.id} value={a.id}>{a.label} · captura {k + 1}</option>)}</select></Label>}
         <Button size="sm" onClick={() => set(work.signals.filter((_, k) => k !== i))}>Quitar señal {i + 1}</Button>
       </div>
     })}
@@ -85,6 +94,11 @@ export function SessionEditor({ initial, tradeId, onClosed }: { initial: Session
   const close = trpc.backtestSessions.close.useMutation()
   const coach = trpc.backtestSessions.coach.useMutation()
   const dirty = JSON.stringify(session.work) !== JSON.stringify(work)
+  const draft = useRecoverableDraft(options.data?.userId, `backtesting:${session.id}`, value => backtestDraftSchema.safeParse(value).data ?? null)
+  const storeDraft = draft.store
+  useEffect(() => {
+    if (draft.ready && !draft.recovery && dirty && !busy) storeDraft({ revision: session.revision, work })
+  }, [draft.ready, draft.recovery, dirty, busy, storeDraft, session.revision, work])
   useEffect(() => {
     if (!dirty) return
     function warn(e: BeforeUnloadEvent) { e.preventDefault() }
@@ -119,7 +133,9 @@ export function SessionEditor({ initial, tradeId, onClosed }: { initial: Session
     if (!dirty) return session
     const result = backtestWorkSchema.safeParse(work)
     if (!result.success) throw new Error(`Completa o corrige ${result.error.issues[0]?.path.join(" · ") || "la evidencia"}.`)
+    const token = draft.snapshot()
     await save.mutateAsync({ id: session.id, revision: session.revision, work: result.data })
+    draft.clearSaved(token)
     if (tradeId) {
       const url = new URL(window.location.href)
       url.searchParams.delete("trade")
@@ -137,7 +153,14 @@ export function SessionEditor({ initial, tradeId, onClosed }: { initial: Session
 
   const samples = session.trades.filter(t => work.tradeIds.includes(t.id) || session.practiceTradeIds[t.id]?.some(id => work.practiceIds.includes(id)))
   const pending = work.tradeIds.filter(id => !session.trades.some(t => t.id === id)).length + work.practiceIds.filter(id => !session.practices.some(p => p.id === id)).length
+  const captureOptions = session.attachments.filter(a => work.practiceIds.includes(a.practiceId))
+  const unavailable = work.captureIds.filter(id => !captureOptions.some(a => a.id === id))
   return <div className="space-y-4">
+    {draft.recovery?.value.revision === session.revision && <DraftRecovery onRestore={() => {
+      if (!draft.recovery) return
+      setWork(draft.recovery.value.work); setPreview(null); setConfirmed(false); draft.dismiss()
+    }} onDiscard={draft.discard} />}
+    {draft.recovery && draft.recovery.value.revision !== session.revision && <p className="text-sm">Hay un borrador de una revisión anterior. <Button size="sm" onClick={draft.discard}>Descartar borrador anterior</Button></p>}
     <section className={`${panel} space-y-3`}><h2 className="text-lg font-semibold">Evidencia y jornadas</h2>
       <fieldset disabled={busy} className="space-y-3">
         <div className="flex flex-wrap gap-4">
@@ -160,7 +183,7 @@ export function SessionEditor({ initial, tradeId, onClosed }: { initial: Session
       {work.practiceIds.filter(id => !session.practices.some(p => p.id === id)).map(id => <p key={id} className="text-sm">Práctica pendiente · {id.slice(0, 8)} <Button size="xs" variant="link" onClick={() => switchId("practiceIds", id)}>Quitar vínculo</Button></p>)}
     </fieldset></section>
     <fieldset disabled={busy}><Signals work={work} attachments={session.attachments.filter(a => work.practiceIds.includes(a.practiceId))} set={signals => change({ signals })} day={session.plan.from} /></fieldset>
-    {session.attachments.length > 0 && <fieldset disabled={busy} className={`${panel} space-y-2`}><legend className="sr-only">Capturas del PDF</legend><h2 className="text-lg font-semibold">Capturas del PDF</h2><p className="text-sm">Selecciona hasta ocho capturas de tus prácticas, con un máximo total de 8 MB.</p>{session.attachments.filter(a => work.practiceIds.includes(a.practiceId)).map((a, i) => <label key={a.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={work.captureIds.includes(a.id)} onChange={() => switchId("captureIds", a.id)} />{a.label} · captura {i + 1}</label>)}</fieldset>}
+    {(captureOptions.length > 0 || unavailable.length > 0) && <fieldset disabled={busy} className={`${panel} space-y-2`}><legend className="sr-only">Capturas del PDF</legend><h2 className="text-lg font-semibold">Capturas del PDF</h2><p className="text-sm">Selecciona hasta ocho capturas de tus prácticas, con un máximo total de 8 MB.</p>{captureOptions.map((a, i) => <label key={a.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={work.captureIds.includes(a.id)} onChange={() => switchId("captureIds", a.id)} />{a.label} · captura {i + 1}</label>)}{unavailable.map(id => <p className="text-sm" key={id}>Captura no disponible <Button size="xs" onClick={() => switchId("captureIds", id)}>Quitar captura</Button></p>)}</fieldset>}
     <section className={`${panel} space-y-3`}><h2 className="text-lg font-semibold">Evaluar y cerrar</h2><fieldset disabled={busy} className="space-y-3">
       {session.plan.objectives.map((o, i) => {
         const value = work.evaluations[i]

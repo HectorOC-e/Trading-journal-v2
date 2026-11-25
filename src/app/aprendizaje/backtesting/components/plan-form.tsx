@@ -15,8 +15,8 @@ export function PlanForm({ initial, setupId, criterion, onSaved }: {
   setupId?: string; criterion?: string; onSaved: (id: string) => void | Promise<void>;
 }) {
   const options = trpc.backtestSessions.options.useQuery()
-  const setup = options.data?.setups.find(s => s.id === setupId)
   const [chosen, setChosen] = useState(initial?.plan.setup?.id ?? setupId ?? "")
+  const setup = options.data?.setups.find(s => s.id === chosen)
   const [plan, setPlan] = useState<BacktestPlanInput>(() => initial?.plan ?? { title: "", hypothesis: "", symbols: "", timeframe: "", from: "", to: "", rules: "", invalidation: "", exitRules: "", assumptions: "", objectives: [criterion ? { ...blankObjective, title: criterion, criterion: "Revisar la evidencia del criterio en Playbook" } : blankObjective] })
   const [error, setError] = useState("")
   const create = trpc.backtestSessions.create.useMutation()

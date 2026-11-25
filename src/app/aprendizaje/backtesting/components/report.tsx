@@ -28,6 +28,7 @@ export function ClosedReport({ report }: { report: Omit<BacktestReport, "capture
         <p className="whitespace-pre-wrap text-sm">Motivo de entrada · {t.annotations?.entryReason || "Sin documentar"}</p>
         <p className="whitespace-pre-wrap text-sm">Motivo de salida · {t.annotations?.exitReason || "Sin documentar"}</p>
         {t.events.length > 0 && <ul className="text-sm">{t.events.map((e, i) => <li key={i}>{e.type} · {e.at} · {e.price ?? "—"} · {e.notes}</li>)}</ul>}
+        {!!t.annotations?.adjustments?.length && <ul className="text-sm">{t.annotations.adjustments.map((a, i) => <li key={i}>Ajuste de stop · {a.date} {a.time} · {a.price} · {a.reason}</li>)}</ul>}
       </details>)}
       {report.trades.length === 0 && <p className="text-sm">Sin operaciones vinculadas.</p>}
       <h3 className="font-semibold">Prácticas y señales descartadas</h3>
